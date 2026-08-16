@@ -1,0 +1,26 @@
+# Minimal DigitalOceanLoadBalancer: a regional HTTP balancer with no VPC
+# (DigitalOcean places it in the region's default VPC) and no Droplets (a
+# memberless balancer is valid). Proves the create/verify/destroy lifecycle
+# and the load_balancer_id / ip outputs.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanLoadBalancer
+metadata:
+  name: planton-oss-e2e-digitaloceanloadbalancer-min
+  id: planton-oss-e2e-digitaloceanloadbalancer-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanloadbalancer
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  loadBalancerName: pltn-e2e-dolb-min
+  region: nyc3
+  forwardingRules:
+    - entryPort: 80
+      entryProtocol: http
+      targetPort: 80
+      targetProtocol: http

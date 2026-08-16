@@ -18,6 +18,5 @@ entries:
   - kind:DigitalOceanDnsZone
   - kind:DigitalOceanDroplet
   - kind:DigitalOceanKubernetesNodePool
-  - kind:DigitalOceanLoadBalancer
   - kind:DigitalOceanVolume
   - kind:DigitalOceanVpc

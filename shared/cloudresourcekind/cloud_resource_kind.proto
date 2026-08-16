@@ -4623,15 +4623,14 @@ enum CloudResourceKind {
     id_prefix: "doknp"
     prerequisites: [DigitalOceanKubernetesCluster]
   }];
-  // DigitalOceanVpc is a prerequisite because the load balancer spec's vpc
-  // reference is required: the balancer fronts backends over one VPC's
-  // private network, resolved to the DigitalOceanVpc's exported vpc_id
-  // output.
+  // No registry prerequisite: the load balancer's vpc reference is optional
+  // (DigitalOcean places it in the region's default VPC when unset, and
+  // GLOBAL balancers take no VPC at all). Scenarios that exercise VPC
+  // placement declare it per-scenario via the e2e-prerequisites annotation.
   DigitalOceanLoadBalancer = 5010 [(kind_meta) = {
     provider: digital_ocean
     version: "v1alpha1"
     id_prefix: "dolb"
-    prerequisites: [DigitalOceanVpc]
   }];
   DigitalOceanVolume = 5011 [(kind_meta) = {
     provider: digital_ocean

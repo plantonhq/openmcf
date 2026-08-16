@@ -25,7 +25,10 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// LoadBalancerProtocol enumerates the supported protocols for load balancer forwarding and health checks.
+// DigitalOceanLoadBalancerProtocol enumerates the protocols for forwarding
+// rules and health checks. Value names are exactly the DigitalOcean API
+// protocol slugs. http3 is valid only as a forwarding rule's entry
+// protocol; health checks accept only http, https, and tcp.
 type DigitalOceanLoadBalancerProtocol int32
 
 const (
@@ -33,6 +36,9 @@ const (
 	DigitalOceanLoadBalancerProtocol_http                                            DigitalOceanLoadBalancerProtocol = 1
 	DigitalOceanLoadBalancerProtocol_https                                           DigitalOceanLoadBalancerProtocol = 2
 	DigitalOceanLoadBalancerProtocol_tcp                                             DigitalOceanLoadBalancerProtocol = 3
+	DigitalOceanLoadBalancerProtocol_http2                                           DigitalOceanLoadBalancerProtocol = 4
+	DigitalOceanLoadBalancerProtocol_http3                                           DigitalOceanLoadBalancerProtocol = 5
+	DigitalOceanLoadBalancerProtocol_udp                                             DigitalOceanLoadBalancerProtocol = 6
 )
 
 // Enum value maps for DigitalOceanLoadBalancerProtocol.
@@ -42,12 +48,18 @@ var (
 		1: "http",
 		2: "https",
 		3: "tcp",
+		4: "http2",
+		5: "http3",
+		6: "udp",
 	}
 	DigitalOceanLoadBalancerProtocol_value = map[string]int32{
 		"digitalocean_load_balancer_protocol_unspecified": 0,
 		"http":  1,
 		"https": 2,
 		"tcp":   3,
+		"http2": 4,
+		"http3": 5,
+		"udp":   6,
 	}
 )
 
@@ -78,38 +90,122 @@ func (DigitalOceanLoadBalancerProtocol) EnumDescriptor() ([]byte, []int) {
 	return file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_rawDescGZIP(), []int{0}
 }
 
-// DigitalOceanLoadBalancerSpec defines the specification for creating a DigitalOcean Load Balancer.
-// It focuses on essential parameters following the 80/20 principle, including region, VPC placement,
-// target Droplets (by IDs or tag), forwarding rules for traffic, and health checks for backend service health.
-// Note: Either `droplet_ids` or `droplet_tag` may be provided (mutually exclusive). The load balancer must be associated with a VPC.
+// DigitalOceanLoadBalancerSpec models the full digitalocean_loadbalancer
+// resource surface: regional and global balancer types, sizing (slug or
+// scaling units), forwarding rules with TLS termination or passthrough,
+// health checks with full threshold tuning, cookie-based sticky sessions,
+// backend targeting by Droplet references or tag, VPC/subnet placement,
+// network visibility and stack, an LB-level firewall, HTTPS redirect,
+// PROXY protocol, backend keepalive, idle-timeout tuning, TLS cipher
+// policy, project placement, bring-your-own-IP, and the global load
+// balancer's domains, target balancers, CDN, and regional failover
+// settings.
 type DigitalOceanLoadBalancerSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The name of the Load Balancer. Must be unique per account.
+	// The name of the load balancer. Must be unique per account.
 	// Constraints: 1-64 characters, lowercase alphanumeric and hyphens.
 	LoadBalancerName string `protobuf:"bytes,1,opt,name=load_balancer_name,json=loadBalancerName,proto3" json:"load_balancer_name,omitempty"`
-	// The DigitalOcean region where the Load Balancer will be created.
-	// Determines the geographical location of the load balancer.
+	// The DigitalOcean region for a REGIONAL or REGIONAL_NETWORK balancer.
+	// Required for those types and forbidden for GLOBAL balancers, which are
+	// anycast and have no home region. Cannot be changed after creation.
 	Region digitalocean.DigitalOceanRegion `protobuf:"varint,2,opt,name=region,proto3,enum=dev.planton.digitalocean.DigitalOceanRegion" json:"region,omitempty"`
-	// Reference to the DigitalOcean VPC in which to create the Load Balancer.
-	// This should be a foreign key reference to an existing DigitalOceanVpc resource.
+	// (Optional) Reference to the DigitalOcean VPC in which to create the
+	// load balancer. When unset, DigitalOcean places a regional balancer in
+	// the region's default VPC; GLOBAL balancers take no VPC at all. Cannot
+	// be changed after creation.
 	Vpc *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=vpc,proto3" json:"vpc,omitempty"`
-	// A list of forwarding rules that define how traffic is routed from the load balancer to backend Droplets.
-	// Each forwarding rule specifies an incoming port/protocol and a corresponding target port/protocol.
+	// Forwarding rules routing traffic from the balancer to the backends.
+	// The regional balancer's core configuration; mutually exclusive with
+	// glb_settings (global balancers route by domain instead).
 	ForwardingRules []*DigitalOceanLoadBalancerForwardingRule `protobuf:"bytes,4,rep,name=forwarding_rules,json=forwardingRules,proto3" json:"forwarding_rules,omitempty"`
-	// Health check configuration for the load balancer’s backend Droplets.
-	// This defines how the load balancer will probe the Droplets to check their health.
+	// (Optional) Health check probing backend Droplets. When unset,
+	// DigitalOcean applies a TCP check against the first forwarding rule's
+	// target port.
 	HealthCheck *DigitalOceanLoadBalancerHealthCheck `protobuf:"bytes,5,opt,name=health_check,json=healthCheck,proto3" json:"health_check,omitempty"`
-	// A list of specific Droplet IDs to attach to the Load Balancer.
-	// Mutually exclusive with `droplet_tag`. These can be literal IDs or references to Droplet resources.
+	// (Optional) Specific Droplets to attach, as literal numeric Droplet IDs
+	// or references to DigitalOceanDroplet resources. Mutually exclusive with
+	// droplet_tag.
 	DropletIds []*v1.StringValueOrRef `protobuf:"bytes,6,rep,name=droplet_ids,json=dropletIds,proto3" json:"droplet_ids,omitempty"`
-	// A Droplet tag name. All Droplets with this tag in the specified VPC will be attached to the Load Balancer.
-	// Mutually exclusive with `droplet_ids`.
+	// (Optional) A Droplet tag: every Droplet carrying it is attached, and
+	// membership follows the tag automatically as Droplets come and go.
+	// Mutually exclusive with droplet_ids.
 	DropletTag string `protobuf:"bytes,7,opt,name=droplet_tag,json=dropletTag,proto3" json:"droplet_tag,omitempty"`
-	// Enables sticky sessions if true (disabled by default).
-	// When enabled, the load balancer will attempt to direct repeated requests from the same client to the same Droplet.
-	EnableStickySessions bool `protobuf:"varint,8,opt,name=enable_sticky_sessions,json=enableStickySessions,proto3" json:"enable_sticky_sessions,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// (Optional) Cookie-based session affinity. When unset, DigitalOcean
+	// defaults to no sticky sessions ("none").
+	StickySessions *DigitalOceanLoadBalancerStickySessions `protobuf:"bytes,9,opt,name=sticky_sessions,json=stickySessions,proto3" json:"sticky_sessions,omitempty"`
+	// (Optional) The balancer type. REGIONAL (the default when unset) fronts
+	// backends in one region; REGIONAL_NETWORK is the regional network
+	// balancer; GLOBAL is the anycast balancer configured through
+	// glb_settings, domains, and target_load_balancer_ids. Cannot be changed
+	// after creation.
+	Type string `protobuf:"bytes,10,opt,name=type,proto3" json:"type,omitempty"`
+	// (Optional) Balancer size slug. lb-small, lb-medium, and lb-large are
+	// equivalent to size_unit 1, 3, and 6. Mutually exclusive with size_unit;
+	// when both are unset DigitalOcean provisions lb-small.
+	Size string `protobuf:"bytes,11,opt,name=size,proto3" json:"size,omitempty"`
+	// (Optional) Balancer capacity in scaling units (1-200). Finer-grained
+	// than the three size slugs and the only way past lb-large capacity.
+	// Mutually exclusive with size.
+	SizeUnit uint32 `protobuf:"varint,12,opt,name=size_unit,json=sizeUnit,proto3" json:"size_unit,omitempty"`
+	// (Optional) Whether HTTP requests to port 80 are redirected to HTTPS on
+	// port 443. Requires an HTTPS forwarding rule to redirect to.
+	RedirectHttpToHttps bool `protobuf:"varint,13,opt,name=redirect_http_to_https,json=redirectHttpToHttps,proto3" json:"redirect_http_to_https,omitempty"`
+	// (Optional) Whether the PROXY protocol header is sent to the backends,
+	// passing the client's real source address through. Backends must be
+	// configured to accept the header.
+	EnableProxyProtocol bool `protobuf:"varint,14,opt,name=enable_proxy_protocol,json=enableProxyProtocol,proto3" json:"enable_proxy_protocol,omitempty"`
+	// (Optional) Whether HTTP keepalive connections are maintained to target
+	// Droplets.
+	EnableBackendKeepalive bool `protobuf:"varint,15,opt,name=enable_backend_keepalive,json=enableBackendKeepalive,proto3" json:"enable_backend_keepalive,omitempty"`
+	// (Optional) Whether the automatic DNS records for Let's Encrypt
+	// certificates are NOT created. Only meaningful with a Let's Encrypt
+	// certificate on a forwarding rule.
+	DisableLetsEncryptDnsRecords bool `protobuf:"varint,16,opt,name=disable_lets_encrypt_dns_records,json=disableLetsEncryptDnsRecords,proto3" json:"disable_lets_encrypt_dns_records,omitempty"`
+	// (Optional) Seconds an idle HTTP connection stays open (the API accepts
+	// 30-600). 0 (unset) defers to DigitalOcean's default of 60.
+	HttpIdleTimeoutSeconds uint32 `protobuf:"varint,17,opt,name=http_idle_timeout_seconds,json=httpIdleTimeoutSeconds,proto3" json:"http_idle_timeout_seconds,omitempty"`
+	// (Optional) TLS cipher policy for HTTPS/TLS forwarding rules. DEFAULT
+	// accepts a broad cipher set; STRONG restricts to modern ciphers.
+	// When unset, DigitalOcean applies DEFAULT.
+	TlsCipherPolicy string `protobuf:"bytes,18,opt,name=tls_cipher_policy,json=tlsCipherPolicy,proto3" json:"tls_cipher_policy,omitempty"`
+	// (Optional) Network visibility: EXTERNAL (the default when unset) gives
+	// the balancer a public address; INTERNAL keeps it reachable only inside
+	// the VPC. Cannot be changed after creation. Never reported back by the
+	// API, so drift on it is invisible.
+	Network string `protobuf:"bytes,19,opt,name=network,proto3" json:"network,omitempty"`
+	// (Optional) IP stack: IPV4 (the default when unset) or DUALSTACK for
+	// IPv4+IPv6. Cannot be changed after creation. Never reported back by
+	// the API, so drift on it is invisible.
+	NetworkStack string `protobuf:"bytes,20,opt,name=network_stack,json=networkStack,proto3" json:"network_stack,omitempty"`
+	// (Optional) DigitalOcean project UUID to put the balancer in. Literal; a
+	// typed reference lands when the Project kind is forged. When unset, the
+	// account's default project is used.
+	ProjectId string `protobuf:"bytes,21,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	// (Optional) UUID of the DigitalOcean-managed VPC subnet to place the
+	// balancer in. Literal only: subnets are DigitalOcean-assigned network
+	// slices, not a Planton-managed kind. Requires vpc; cannot be changed
+	// after creation.
+	SubnetUuid string `protobuf:"bytes,22,opt,name=subnet_uuid,json=subnetUuid,proto3" json:"subnet_uuid,omitempty"`
+	// (Optional) Bring-your-own IP: an unassigned BYOIP address on the
+	// account, in the balancer's region, assigned at creation. Consumed only
+	// at create time; when unset DigitalOcean allocates the address. The
+	// assigned address is exported as the ip stack output either way.
+	Ip string `protobuf:"bytes,23,opt,name=ip,proto3" json:"ip,omitempty"`
+	// (Optional) For GLOBAL balancers: the regional load balancers that
+	// receive the routed traffic, as literal balancer UUIDs or references to
+	// DigitalOceanLoadBalancer resources.
+	TargetLoadBalancerIds []*v1.StringValueOrRef `protobuf:"bytes,24,rep,name=target_load_balancer_ids,json=targetLoadBalancerIds,proto3" json:"target_load_balancer_ids,omitempty"`
+	// (Optional) Balancer-level firewall controlling which sources may reach
+	// it. When unset, all traffic is admitted.
+	Firewall *DigitalOceanLoadBalancerFirewall `protobuf:"bytes,25,opt,name=firewall,proto3" json:"firewall,omitempty"`
+	// (Optional) For GLOBAL balancers: the domains that ingress traffic to
+	// the balancer.
+	Domains []*DigitalOceanLoadBalancerDomain `protobuf:"bytes,26,rep,name=domains,proto3" json:"domains,omitempty"`
+	// (Optional) For GLOBAL balancers: routing configuration. Mutually
+	// exclusive with forwarding_rules.
+	GlbSettings   *DigitalOceanLoadBalancerGlbSettings `protobuf:"bytes,27,opt,name=glb_settings,json=glbSettings,proto3" json:"glb_settings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DigitalOceanLoadBalancerSpec) Reset() {
@@ -191,28 +287,162 @@ func (x *DigitalOceanLoadBalancerSpec) GetDropletTag() string {
 	return ""
 }
 
-func (x *DigitalOceanLoadBalancerSpec) GetEnableStickySessions() bool {
+func (x *DigitalOceanLoadBalancerSpec) GetStickySessions() *DigitalOceanLoadBalancerStickySessions {
 	if x != nil {
-		return x.EnableStickySessions
+		return x.StickySessions
+	}
+	return nil
+}
+
+func (x *DigitalOceanLoadBalancerSpec) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *DigitalOceanLoadBalancerSpec) GetSize() string {
+	if x != nil {
+		return x.Size
+	}
+	return ""
+}
+
+func (x *DigitalOceanLoadBalancerSpec) GetSizeUnit() uint32 {
+	if x != nil {
+		return x.SizeUnit
+	}
+	return 0
+}
+
+func (x *DigitalOceanLoadBalancerSpec) GetRedirectHttpToHttps() bool {
+	if x != nil {
+		return x.RedirectHttpToHttps
 	}
 	return false
 }
 
-// ForwardingRule represents a single rule for routing traffic from the load balancer to the backend.
+func (x *DigitalOceanLoadBalancerSpec) GetEnableProxyProtocol() bool {
+	if x != nil {
+		return x.EnableProxyProtocol
+	}
+	return false
+}
+
+func (x *DigitalOceanLoadBalancerSpec) GetEnableBackendKeepalive() bool {
+	if x != nil {
+		return x.EnableBackendKeepalive
+	}
+	return false
+}
+
+func (x *DigitalOceanLoadBalancerSpec) GetDisableLetsEncryptDnsRecords() bool {
+	if x != nil {
+		return x.DisableLetsEncryptDnsRecords
+	}
+	return false
+}
+
+func (x *DigitalOceanLoadBalancerSpec) GetHttpIdleTimeoutSeconds() uint32 {
+	if x != nil {
+		return x.HttpIdleTimeoutSeconds
+	}
+	return 0
+}
+
+func (x *DigitalOceanLoadBalancerSpec) GetTlsCipherPolicy() string {
+	if x != nil {
+		return x.TlsCipherPolicy
+	}
+	return ""
+}
+
+func (x *DigitalOceanLoadBalancerSpec) GetNetwork() string {
+	if x != nil {
+		return x.Network
+	}
+	return ""
+}
+
+func (x *DigitalOceanLoadBalancerSpec) GetNetworkStack() string {
+	if x != nil {
+		return x.NetworkStack
+	}
+	return ""
+}
+
+func (x *DigitalOceanLoadBalancerSpec) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
+func (x *DigitalOceanLoadBalancerSpec) GetSubnetUuid() string {
+	if x != nil {
+		return x.SubnetUuid
+	}
+	return ""
+}
+
+func (x *DigitalOceanLoadBalancerSpec) GetIp() string {
+	if x != nil {
+		return x.Ip
+	}
+	return ""
+}
+
+func (x *DigitalOceanLoadBalancerSpec) GetTargetLoadBalancerIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.TargetLoadBalancerIds
+	}
+	return nil
+}
+
+func (x *DigitalOceanLoadBalancerSpec) GetFirewall() *DigitalOceanLoadBalancerFirewall {
+	if x != nil {
+		return x.Firewall
+	}
+	return nil
+}
+
+func (x *DigitalOceanLoadBalancerSpec) GetDomains() []*DigitalOceanLoadBalancerDomain {
+	if x != nil {
+		return x.Domains
+	}
+	return nil
+}
+
+func (x *DigitalOceanLoadBalancerSpec) GetGlbSettings() *DigitalOceanLoadBalancerGlbSettings {
+	if x != nil {
+		return x.GlbSettings
+	}
+	return nil
+}
+
+// DigitalOceanLoadBalancerForwardingRule routes traffic from an entry
+// port/protocol on the balancer to a target port/protocol on the backends.
 type DigitalOceanLoadBalancerForwardingRule struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Port on the load balancer that will listen for incoming traffic.
+	// Port on the load balancer that listens for incoming traffic.
 	EntryPort uint32 `protobuf:"varint,1,opt,name=entry_port,json=entryPort,proto3" json:"entry_port,omitempty"`
-	// Protocol for incoming traffic on the load balancer's entry port (e.g., HTTP, HTTPS, TCP).
+	// Protocol for incoming traffic on the entry port.
 	EntryProtocol DigitalOceanLoadBalancerProtocol `protobuf:"varint,2,opt,name=entry_protocol,json=entryProtocol,proto3,enum=dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerProtocol" json:"entry_protocol,omitempty"`
-	// Port on the Droplet that will receive forwarded traffic.
+	// Port on the backend that receives forwarded traffic.
 	TargetPort uint32 `protobuf:"varint,3,opt,name=target_port,json=targetPort,proto3" json:"target_port,omitempty"`
-	// Protocol for traffic between the load balancer and the Droplet (e.g., HTTP, HTTPS, TCP).
+	// Protocol for traffic between the balancer and the backend. http3 is
+	// not valid here.
 	TargetProtocol DigitalOceanLoadBalancerProtocol `protobuf:"varint,4,opt,name=target_protocol,json=targetProtocol,proto3,enum=dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerProtocol" json:"target_protocol,omitempty"`
-	// The name of a TLS certificate resource uploaded to DigitalOcean.
-	// Required when entry_protocol is HTTPS. The certificate is used for SSL termination.
-	// Use certificate name (not ID) to avoid breaking IaC state when Let's Encrypt auto-renews certificates.
-	CertificateName string `protobuf:"bytes,5,opt,name=certificate_name,json=certificateName,proto3" json:"certificate_name,omitempty"`
+	// (Optional) Whether TLS is passed through to the backends without
+	// termination at the balancer. A passthrough rule carries no certificate.
+	TlsPassthrough bool `protobuf:"varint,6,opt,name=tls_passthrough,json=tlsPassthrough,proto3" json:"tls_passthrough,omitempty"`
+	// (Optional) TLS certificate for SSL termination, as a literal
+	// certificate NAME or a reference to a DigitalOceanCertificate resource.
+	// Required by the API when entry_protocol is https without
+	// tls_passthrough. DigitalOcean identifies certificates by name here
+	// because certificate UUIDs rotate when Let's Encrypt auto-renews;
+	// the referenced kind's certificate_id output carries that stable name.
+	CertificateName *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=certificate_name,json=certificateName,proto3" json:"certificate_name,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -275,25 +505,43 @@ func (x *DigitalOceanLoadBalancerForwardingRule) GetTargetProtocol() DigitalOcea
 	return DigitalOceanLoadBalancerProtocol_digitalocean_load_balancer_protocol_unspecified
 }
 
-func (x *DigitalOceanLoadBalancerForwardingRule) GetCertificateName() string {
+func (x *DigitalOceanLoadBalancerForwardingRule) GetTlsPassthrough() bool {
+	if x != nil {
+		return x.TlsPassthrough
+	}
+	return false
+}
+
+func (x *DigitalOceanLoadBalancerForwardingRule) GetCertificateName() *v1.StringValueOrRef {
 	if x != nil {
 		return x.CertificateName
 	}
-	return ""
+	return nil
 }
 
-// HealthCheck defines how the load balancer checks the health of attached Droplets.
+// DigitalOceanLoadBalancerHealthCheck probes the backends to decide which
+// receive traffic.
 type DigitalOceanLoadBalancerHealthCheck struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The port on the Droplet to which the health check will be performed.
+	// The port on the backend to probe.
 	Port uint32 `protobuf:"varint,1,opt,name=port,proto3" json:"port,omitempty"`
-	// Protocol to use for health checking (HTTP, HTTPS, or TCP).
+	// Protocol to probe with: http, https, or tcp.
 	Protocol DigitalOceanLoadBalancerProtocol `protobuf:"varint,2,opt,name=protocol,proto3,enum=dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerProtocol" json:"protocol,omitempty"`
-	// If using HTTP/HTTPS for health checks, the request path to probe (e.g., "/health").
-	// Ignored for TCP health checks.
+	// Request path for http/https probes (e.g. "/health"). Required for
+	// http/https and not allowed for tcp.
 	Path string `protobuf:"bytes,3,opt,name=path,proto3" json:"path,omitempty"`
-	// Interval (in seconds) between health check probes.
+	// (Optional) Seconds between probes (3-300). 0 (unset) defers to
+	// DigitalOcean's default of 10.
 	CheckIntervalSec uint32 `protobuf:"varint,4,opt,name=check_interval_sec,json=checkIntervalSec,proto3" json:"check_interval_sec,omitempty"`
+	// (Optional) Seconds to wait for a probe response (3-300). 0 (unset)
+	// defers to DigitalOcean's default of 5.
+	ResponseTimeoutSeconds uint32 `protobuf:"varint,5,opt,name=response_timeout_seconds,json=responseTimeoutSeconds,proto3" json:"response_timeout_seconds,omitempty"`
+	// (Optional) Consecutive probe failures (2-10) before a backend stops
+	// receiving traffic. 0 (unset) defers to DigitalOcean's default of 3.
+	UnhealthyThreshold uint32 `protobuf:"varint,6,opt,name=unhealthy_threshold,json=unhealthyThreshold,proto3" json:"unhealthy_threshold,omitempty"`
+	// (Optional) Consecutive probe successes (2-10) before a backend receives
+	// traffic again. 0 (unset) defers to DigitalOcean's default of 5.
+	HealthyThreshold uint32 `protobuf:"varint,7,opt,name=healthy_threshold,json=healthyThreshold,proto3" json:"healthy_threshold,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -356,42 +604,465 @@ func (x *DigitalOceanLoadBalancerHealthCheck) GetCheckIntervalSec() uint32 {
 	return 0
 }
 
+func (x *DigitalOceanLoadBalancerHealthCheck) GetResponseTimeoutSeconds() uint32 {
+	if x != nil {
+		return x.ResponseTimeoutSeconds
+	}
+	return 0
+}
+
+func (x *DigitalOceanLoadBalancerHealthCheck) GetUnhealthyThreshold() uint32 {
+	if x != nil {
+		return x.UnhealthyThreshold
+	}
+	return 0
+}
+
+func (x *DigitalOceanLoadBalancerHealthCheck) GetHealthyThreshold() uint32 {
+	if x != nil {
+		return x.HealthyThreshold
+	}
+	return 0
+}
+
+// DigitalOceanLoadBalancerStickySessions pins repeated requests from one
+// client to one backend via a browser cookie.
+type DigitalOceanLoadBalancerStickySessions struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Affinity mode: cookies pins clients to backends, none disables
+	// affinity (the API default, useful to assert explicitly).
+	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	// Name of the affinity cookie (2-40 characters). Required with type
+	// cookies.
+	CookieName string `protobuf:"bytes,2,opt,name=cookie_name,json=cookieName,proto3" json:"cookie_name,omitempty"`
+	// Lifetime of the affinity cookie in seconds. Required with type cookies.
+	CookieTtlSeconds uint32 `protobuf:"varint,3,opt,name=cookie_ttl_seconds,json=cookieTtlSeconds,proto3" json:"cookie_ttl_seconds,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *DigitalOceanLoadBalancerStickySessions) Reset() {
+	*x = DigitalOceanLoadBalancerStickySessions{}
+	mi := &file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DigitalOceanLoadBalancerStickySessions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DigitalOceanLoadBalancerStickySessions) ProtoMessage() {}
+
+func (x *DigitalOceanLoadBalancerStickySessions) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DigitalOceanLoadBalancerStickySessions.ProtoReflect.Descriptor instead.
+func (*DigitalOceanLoadBalancerStickySessions) Descriptor() ([]byte, []int) {
+	return file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *DigitalOceanLoadBalancerStickySessions) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *DigitalOceanLoadBalancerStickySessions) GetCookieName() string {
+	if x != nil {
+		return x.CookieName
+	}
+	return ""
+}
+
+func (x *DigitalOceanLoadBalancerStickySessions) GetCookieTtlSeconds() uint32 {
+	if x != nil {
+		return x.CookieTtlSeconds
+	}
+	return 0
+}
+
+// DigitalOceanLoadBalancerFirewall controls which sources may reach the
+// balancer. Rules are strings in the provider's own format: "ip:1.2.3.4"
+// or "cidr:1.2.0.0/16".
+type DigitalOceanLoadBalancerFirewall struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Sources ALLOWED to reach the balancer, each "ip:<address>" or
+	// "cidr:<block>". The provider validates nothing here; catching a typo
+	// before apply beats debugging silently-open traffic after.
+	Allow []string `protobuf:"bytes,1,rep,name=allow,proto3" json:"allow,omitempty"`
+	// Sources DENIED from reaching the balancer, each "ip:<address>" or
+	// "cidr:<block>".
+	Deny          []string `protobuf:"bytes,2,rep,name=deny,proto3" json:"deny,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DigitalOceanLoadBalancerFirewall) Reset() {
+	*x = DigitalOceanLoadBalancerFirewall{}
+	mi := &file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DigitalOceanLoadBalancerFirewall) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DigitalOceanLoadBalancerFirewall) ProtoMessage() {}
+
+func (x *DigitalOceanLoadBalancerFirewall) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DigitalOceanLoadBalancerFirewall.ProtoReflect.Descriptor instead.
+func (*DigitalOceanLoadBalancerFirewall) Descriptor() ([]byte, []int) {
+	return file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *DigitalOceanLoadBalancerFirewall) GetAllow() []string {
+	if x != nil {
+		return x.Allow
+	}
+	return nil
+}
+
+func (x *DigitalOceanLoadBalancerFirewall) GetDeny() []string {
+	if x != nil {
+		return x.Deny
+	}
+	return nil
+}
+
+// DigitalOceanLoadBalancerDomain is a domain that ingresses traffic to a
+// GLOBAL load balancer.
+type DigitalOceanLoadBalancerDomain struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The domain name.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// (Optional) Whether the domain is managed by DigitalOcean (a DigitalOcean
+	// DNS zone), letting the balancer manage its records.
+	IsManaged bool `protobuf:"varint,2,opt,name=is_managed,json=isManaged,proto3" json:"is_managed,omitempty"`
+	// (Optional) TLS certificate for the domain's HTTPS handshake, as a
+	// literal certificate NAME or a reference to a DigitalOceanCertificate
+	// resource. DigitalOcean identifies certificates by name because
+	// certificate UUIDs rotate when Let's Encrypt auto-renews; the referenced
+	// kind's certificate_id output carries that stable name.
+	CertificateName *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=certificate_name,json=certificateName,proto3" json:"certificate_name,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *DigitalOceanLoadBalancerDomain) Reset() {
+	*x = DigitalOceanLoadBalancerDomain{}
+	mi := &file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DigitalOceanLoadBalancerDomain) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DigitalOceanLoadBalancerDomain) ProtoMessage() {}
+
+func (x *DigitalOceanLoadBalancerDomain) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DigitalOceanLoadBalancerDomain.ProtoReflect.Descriptor instead.
+func (*DigitalOceanLoadBalancerDomain) Descriptor() ([]byte, []int) {
+	return file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *DigitalOceanLoadBalancerDomain) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *DigitalOceanLoadBalancerDomain) GetIsManaged() bool {
+	if x != nil {
+		return x.IsManaged
+	}
+	return false
+}
+
+func (x *DigitalOceanLoadBalancerDomain) GetCertificateName() *v1.StringValueOrRef {
+	if x != nil {
+		return x.CertificateName
+	}
+	return nil
+}
+
+// DigitalOceanLoadBalancerGlbSettings configures how a GLOBAL load balancer
+// routes to its regional targets.
+type DigitalOceanLoadBalancerGlbSettings struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Protocol used toward the regional targets: http or https.
+	TargetProtocol string `protobuf:"bytes,1,opt,name=target_protocol,json=targetProtocol,proto3" json:"target_protocol,omitempty"`
+	// Port used toward the regional targets: 80 or 443.
+	TargetPort uint32 `protobuf:"varint,2,opt,name=target_port,json=targetPort,proto3" json:"target_port,omitempty"`
+	// (Optional) Priority per region slug (lower is preferred) for steering
+	// traffic across the regional targets.
+	RegionPriorities map[string]uint32 `protobuf:"bytes,3,rep,name=region_priorities,json=regionPriorities,proto3" json:"region_priorities,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	// (Optional) Percentage of failed requests (1-99) that triggers failover
+	// away from a region. The API only reports it back when
+	// region_priorities is also set.
+	FailoverThreshold uint32 `protobuf:"varint,4,opt,name=failover_threshold,json=failoverThreshold,proto3" json:"failover_threshold,omitempty"`
+	// (Optional) CDN caching at the global edge.
+	Cdn           *DigitalOceanLoadBalancerGlbCdn `protobuf:"bytes,5,opt,name=cdn,proto3" json:"cdn,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DigitalOceanLoadBalancerGlbSettings) Reset() {
+	*x = DigitalOceanLoadBalancerGlbSettings{}
+	mi := &file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DigitalOceanLoadBalancerGlbSettings) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DigitalOceanLoadBalancerGlbSettings) ProtoMessage() {}
+
+func (x *DigitalOceanLoadBalancerGlbSettings) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DigitalOceanLoadBalancerGlbSettings.ProtoReflect.Descriptor instead.
+func (*DigitalOceanLoadBalancerGlbSettings) Descriptor() ([]byte, []int) {
+	return file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *DigitalOceanLoadBalancerGlbSettings) GetTargetProtocol() string {
+	if x != nil {
+		return x.TargetProtocol
+	}
+	return ""
+}
+
+func (x *DigitalOceanLoadBalancerGlbSettings) GetTargetPort() uint32 {
+	if x != nil {
+		return x.TargetPort
+	}
+	return 0
+}
+
+func (x *DigitalOceanLoadBalancerGlbSettings) GetRegionPriorities() map[string]uint32 {
+	if x != nil {
+		return x.RegionPriorities
+	}
+	return nil
+}
+
+func (x *DigitalOceanLoadBalancerGlbSettings) GetFailoverThreshold() uint32 {
+	if x != nil {
+		return x.FailoverThreshold
+	}
+	return 0
+}
+
+func (x *DigitalOceanLoadBalancerGlbSettings) GetCdn() *DigitalOceanLoadBalancerGlbCdn {
+	if x != nil {
+		return x.Cdn
+	}
+	return nil
+}
+
+// DigitalOceanLoadBalancerGlbCdn is the global load balancer's edge-cache
+// setting.
+type DigitalOceanLoadBalancerGlbCdn struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Whether edge caching is enabled.
+	IsEnabled     bool `protobuf:"varint,1,opt,name=is_enabled,json=isEnabled,proto3" json:"is_enabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DigitalOceanLoadBalancerGlbCdn) Reset() {
+	*x = DigitalOceanLoadBalancerGlbCdn{}
+	mi := &file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DigitalOceanLoadBalancerGlbCdn) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DigitalOceanLoadBalancerGlbCdn) ProtoMessage() {}
+
+func (x *DigitalOceanLoadBalancerGlbCdn) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DigitalOceanLoadBalancerGlbCdn.ProtoReflect.Descriptor instead.
+func (*DigitalOceanLoadBalancerGlbCdn) Descriptor() ([]byte, []int) {
+	return file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *DigitalOceanLoadBalancerGlbCdn) GetIsEnabled() bool {
+	if x != nil {
+		return x.IsEnabled
+	}
+	return false
+}
+
 var File_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Acatalog/digitalocean/digitaloceanloadbalancer/v1alpha1/spec.proto\x12:dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a!catalog/digitalocean/region.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xa3\x06\n" +
+	"Acatalog/digitalocean/digitaloceanloadbalancer/v1alpha1/spec.proto\x12:dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a!catalog/digitalocean/region.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x8b\x16\n" +
 	"\x1cDigitalOceanLoadBalancerSpec\x12H\n" +
-	"\x12load_balancer_name\x18\x01 \x01(\tB\x1a\xbaH\x17\xc8\x01\x01r\x12\x10\x01\x18@2\f^[a-z0-9-]+$R\x10loadBalancerName\x12L\n" +
-	"\x06region\x18\x02 \x01(\x0e2,.dev.planton.digitalocean.DigitalOceanRegionB\x06\xbaH\x03\xc8\x01\x01R\x06region\x12j\n" +
-	"\x03vpc\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\x94'\x92\xd4a\x15status.outputs.vpc_idR\x03vpc\x12\x9a\x01\n" +
-	"\x10forwarding_rules\x18\x04 \x03(\v2b.dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerForwardingRuleB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\x0fforwardingRules\x12\x82\x01\n" +
+	"\x12load_balancer_name\x18\x01 \x01(\tB\x1a\xbaH\x17\xc8\x01\x01r\x12\x10\x01\x18@2\f^[a-z0-9-]+$R\x10loadBalancerName\x12D\n" +
+	"\x06region\x18\x02 \x01(\x0e2,.dev.planton.digitalocean.DigitalOceanRegionR\x06region\x12d\n" +
+	"\x03vpc\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x94'\x92\xd4a\x15status.outputs.vpc_idR\x03vpc\x12\x8d\x01\n" +
+	"\x10forwarding_rules\x18\x04 \x03(\v2b.dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerForwardingRuleR\x0fforwardingRules\x12\x82\x01\n" +
 	"\fhealth_check\x18\x05 \x01(\v2_.dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerHealthCheckR\vhealthCheck\x12w\n" +
 	"\vdroplet_ids\x18\x06 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x8d'\x92\xd4a\x19status.outputs.droplet_idR\n" +
-	"dropletIds\x12.\n" +
-	"\vdroplet_tag\x18\a \x01(\tB\r\xbaH\n" +
-	"\xd8\x01\x01r\x05\x10\x01\x18\xff\x01R\n" +
-	"dropletTag\x124\n" +
-	"\x16enable_sticky_sessions\x18\b \x01(\bR\x14enableStickySessions\"\xe0\x03\n" +
+	"dropletIds\x12,\n" +
+	"\vdroplet_tag\x18\a \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\x18\xff\x01R\n" +
+	"dropletTag\x12\x8b\x01\n" +
+	"\x0fsticky_sessions\x18\t \x01(\v2b.dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerStickySessionsR\x0estickySessions\x12@\n" +
+	"\x04type\x18\n" +
+	" \x01(\tB,\xbaH)\xd8\x01\x01r$R\bREGIONALR\x06GLOBALR\x10REGIONAL_NETWORKR\x04type\x12;\n" +
+	"\x04size\x18\v \x01(\tB'\xbaH$\xd8\x01\x01r\x1fR\blb-smallR\tlb-mediumR\blb-largeR\x04size\x12*\n" +
+	"\tsize_unit\x18\f \x01(\rB\r\xbaH\n" +
+	"\xd8\x01\x01*\x05\x18\xc8\x01(\x01R\bsizeUnit\x123\n" +
+	"\x16redirect_http_to_https\x18\r \x01(\bR\x13redirectHttpToHttps\x122\n" +
+	"\x15enable_proxy_protocol\x18\x0e \x01(\bR\x13enableProxyProtocol\x128\n" +
+	"\x18enable_backend_keepalive\x18\x0f \x01(\bR\x16enableBackendKeepalive\x12F\n" +
+	" disable_lets_encrypt_dns_records\x18\x10 \x01(\bR\x1cdisableLetsEncryptDnsRecords\x129\n" +
+	"\x19http_idle_timeout_seconds\x18\x11 \x01(\rR\x16httpIdleTimeoutSeconds\x12E\n" +
+	"\x11tls_cipher_policy\x18\x12 \x01(\tB\x19\xbaH\x16\xd8\x01\x01r\x11R\aDEFAULTR\x06STRONGR\x0ftlsCipherPolicy\x126\n" +
+	"\anetwork\x18\x13 \x01(\tB\x1c\xbaH\x19\xd8\x01\x01r\x14R\bEXTERNALR\bINTERNALR\anetwork\x12>\n" +
+	"\rnetwork_stack\x18\x14 \x01(\tB\x19\xbaH\x16\xd8\x01\x01r\x11R\x04IPV4R\tDUALSTACKR\fnetworkStack\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\x15 \x01(\tR\tprojectId\x12\x1f\n" +
+	"\vsubnet_uuid\x18\x16 \x01(\tR\n" +
+	"subnetUuid\x12\x1a\n" +
+	"\x02ip\x18\x17 \x01(\tB\n" +
+	"\xbaH\a\xd8\x01\x01r\x02p\x01R\x02ip\x12\x95\x01\n" +
+	"\x18target_load_balancer_ids\x18\x18 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\x92'\x92\xd4a\x1fstatus.outputs.load_balancer_idR\x15targetLoadBalancerIds\x12x\n" +
+	"\bfirewall\x18\x19 \x01(\v2\\.dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerFirewallR\bfirewall\x12t\n" +
+	"\adomains\x18\x1a \x03(\v2Z.dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerDomainR\adomains\x12\x82\x01\n" +
+	"\fglb_settings\x18\x1b \x01(\v2_.dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerGlbSettingsR\vglbSettings:\x93\x05\xbaH\x8f\x05\x1a\x83\x01\n" +
+	"\x13droplet_ids_xor_tag\x122droplet_ids and droplet_tag are mutually exclusive\x1a8!(this.droplet_ids.size() > 0 && this.droplet_tag != '')\x1a\x9e\x01\n" +
+	"!forwarding_rules_xor_glb_settings\x12;exactly one of forwarding_rules or glb_settings must be set\x1a<(this.forwarding_rules.size() > 0) != has(this.glb_settings)\x1a\x94\x01\n" +
+	"\x0eregion_by_type\x12Eregion must be empty for GLOBAL balancers and set for all other types\x1a;this.type == 'GLOBAL' ? this.region == 0 : this.region != 0\x1ab\n" +
+	"\x13subnet_requires_vpc\x12\"subnet_uuid requires vpc to be set\x1a'this.subnet_uuid == '' || has(this.vpc)\x1ak\n" +
+	"\x12size_xor_size_unit\x12)size and size_unit are mutually exclusive\x1a*!(this.size != '' && this.size_unit != 0u)J\x04\b\b\x10\tR\x16enable_sticky_sessions\"\xc3\x05\n" +
 	"&DigitalOceanLoadBalancerForwardingRule\x12-\n" +
 	"\n" +
 	"entry_port\x18\x01 \x01(\rB\x0e\xbaH\v\xc8\x01\x01*\x06\x18\xff\xff\x03(\x01R\tentryPort\x12\x8b\x01\n" +
 	"\x0eentry_protocol\x18\x02 \x01(\x0e2\\.dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerProtocolB\x06\xbaH\x03\xc8\x01\x01R\rentryProtocol\x12/\n" +
 	"\vtarget_port\x18\x03 \x01(\rB\x0e\xbaH\v\xc8\x01\x01*\x06\x18\xff\xff\x03(\x01R\n" +
 	"targetPort\x12\x8d\x01\n" +
-	"\x0ftarget_protocol\x18\x04 \x01(\x0e2\\.dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerProtocolB\x06\xbaH\x03\xc8\x01\x01R\x0etargetProtocol\x128\n" +
-	"\x10certificate_name\x18\x05 \x01(\tB\r\xbaH\n" +
-	"\xd8\x01\x01r\x05\x10\x01\x18\xff\x01R\x0fcertificateName\"\x96\x02\n" +
+	"\x0ftarget_protocol\x18\x04 \x01(\x0e2\\.dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerProtocolB\x06\xbaH\x03\xc8\x01\x01R\x0etargetProtocol\x12'\n" +
+	"\x0ftls_passthrough\x18\x06 \x01(\bR\x0etlsPassthrough\x12\x85\x01\n" +
+	"\x10certificate_name\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\x95'\x92\xd4a\x1dstatus.outputs.certificate_idR\x0fcertificateName:d\xbaHa\x1a_\n" +
+	"\x18target_protocol_no_http3\x12(http3 is valid only as an entry protocol\x1a\x19this.target_protocol != 5J\x04\b\x05\x10\x06\"\x9f\x06\n" +
 	"#DigitalOceanLoadBalancerHealthCheck\x12\"\n" +
 	"\x04port\x18\x01 \x01(\rB\x0e\xbaH\v\xc8\x01\x01*\x06\x18\xff\xff\x03(\x01R\x04port\x12\x80\x01\n" +
 	"\bprotocol\x18\x02 \x01(\x0e2\\.dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerProtocolB\x06\xbaH\x03\xc8\x01\x01R\bprotocol\x12\x12\n" +
-	"\x04path\x18\x03 \x01(\tR\x04path\x124\n" +
-	"\x12check_interval_sec\x18\x04 \x01(\rB\x06\x92\xa6\x1d\x0210R\x10checkIntervalSec*u\n" +
+	"\x04path\x18\x03 \x01(\tR\x04path\x12A\n" +
+	"\x12check_interval_sec\x18\x04 \x01(\rB\x13\xbaH\n" +
+	"\xd8\x01\x01*\x05\x18\xac\x02(\x03\x92\xa6\x1d\x0210R\x10checkIntervalSec\x12L\n" +
+	"\x18response_timeout_seconds\x18\x05 \x01(\rB\x12\xbaH\n" +
+	"\xd8\x01\x01*\x05\x18\xac\x02(\x03\x92\xa6\x1d\x015R\x16responseTimeoutSeconds\x12B\n" +
+	"\x13unhealthy_threshold\x18\x06 \x01(\rB\x11\xbaH\t\xd8\x01\x01*\x04\x18\n" +
+	"(\x02\x92\xa6\x1d\x013R\x12unhealthyThreshold\x12>\n" +
+	"\x11healthy_threshold\x18\a \x01(\rB\x11\xbaH\t\xd8\x01\x01*\x04\x18\n" +
+	"(\x02\x92\xa6\x1d\x015R\x10healthyThreshold:\xa7\x02\xbaH\xa3\x02\x1a\x91\x01\n" +
+	"\x10path_by_protocol\x12Epath is required for http/https health checks and not allowed for tcp\x1a6this.protocol == 3 ? this.path == '' : this.path != ''\x1a\x8c\x01\n" +
+	"\x17protocol_http_https_tcp\x121health check protocol must be http, https, or tcp\x1a>this.protocol == 1 || this.protocol == 2 || this.protocol == 3\"\xc2\x03\n" +
+	"&DigitalOceanLoadBalancerStickySessions\x12+\n" +
+	"\x04type\x18\x01 \x01(\tB\x17\xbaH\x14\xc8\x01\x01r\x0fR\acookiesR\x04noneR\x04type\x12+\n" +
+	"\vcookie_name\x18\x02 \x01(\tB\n" +
+	"\xbaH\a\xd8\x01\x01r\x02\x18(R\n" +
+	"cookieName\x124\n" +
+	"\x12cookie_ttl_seconds\x18\x03 \x01(\rB\x06\xbaH\x03\xd8\x01\x01R\x10cookieTtlSeconds:\x87\x02\xbaH\x83\x02\x1a\x80\x02\n" +
+	"\x15cookie_leaves_by_type\x12Ptype cookies requires cookie_name and cookie_ttl_seconds; type none forbids them\x1a\x94\x01this.type == 'cookies' ? (this.cookie_name.size() >= 2 && this.cookie_ttl_seconds != 0u) : (this.cookie_name == '' && this.cookie_ttl_seconds == 0u)\"\xd4\x03\n" +
+	" DigitalOceanLoadBalancerFirewall\x12\xd7\x01\n" +
+	"\x05allow\x18\x01 \x03(\tB\xc0\x01\xbaH\xbc\x01\x92\x01\xb8\x01\"\xb5\x01\xba\x01\xb1\x01\n" +
+	"\x0fip_or_cidr_rule\x12(must be 'ip:<address>' or 'cidr:<block>'\x1at(this.startsWith('ip:') && this.substring(3).isIp()) || (this.startsWith('cidr:') && this.substring(5).isIpPrefix())R\x05allow\x12\xd5\x01\n" +
+	"\x04deny\x18\x02 \x03(\tB\xc0\x01\xbaH\xbc\x01\x92\x01\xb8\x01\"\xb5\x01\xba\x01\xb1\x01\n" +
+	"\x0fip_or_cidr_rule\x12(must be 'ip:<address>' or 'cidr:<block>'\x1at(this.startsWith('ip:') && this.substring(3).isIp()) || (this.startsWith('cidr:') && this.substring(5).isIpPrefix())R\x04deny\"\xe7\x01\n" +
+	"\x1eDigitalOceanLoadBalancerDomain\x12\x1e\n" +
+	"\x04name\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02h\x01R\x04name\x12\x1d\n" +
+	"\n" +
+	"is_managed\x18\x02 \x01(\bR\tisManaged\x12\x85\x01\n" +
+	"\x10certificate_name\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\x88\xd4a\x95'\x92\xd4a\x1dstatus.outputs.certificate_idR\x0fcertificateName\"\xaa\x04\n" +
+	"#DigitalOceanLoadBalancerGlbSettings\x12>\n" +
+	"\x0ftarget_protocol\x18\x01 \x01(\tB\x15\xbaH\x12\xc8\x01\x01r\rR\x04httpR\x05httpsR\x0etargetProtocol\x12.\n" +
+	"\vtarget_port\x18\x02 \x01(\rB\r\xbaH\n" +
+	"\xc8\x01\x01*\x050P0\xbb\x03R\n" +
+	"targetPort\x12\xa2\x01\n" +
+	"\x11region_priorities\x18\x03 \x03(\v2u.dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerGlbSettings.RegionPrioritiesEntryR\x10regionPriorities\x12;\n" +
+	"\x12failover_threshold\x18\x04 \x01(\rB\f\xbaH\t\xd8\x01\x01*\x04\x18c(\x01R\x11failoverThreshold\x12l\n" +
+	"\x03cdn\x18\x05 \x01(\v2Z.dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerGlbCdnR\x03cdn\x1aC\n" +
+	"\x15RegionPrioritiesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\rR\x05value:\x028\x01\"?\n" +
+	"\x1eDigitalOceanLoadBalancerGlbCdn\x12\x1d\n" +
+	"\n" +
+	"is_enabled\x18\x01 \x01(\bR\tisEnabled*\x94\x01\n" +
 	" DigitalOceanLoadBalancerProtocol\x123\n" +
 	"/digitalocean_load_balancer_protocol_unspecified\x10\x00\x12\b\n" +
 	"\x04http\x10\x01\x12\t\n" +
 	"\x05https\x10\x02\x12\a\n" +
-	"\x03tcp\x10\x03B\xce\x03\n" +
+	"\x03tcp\x10\x03\x12\t\n" +
+	"\x05http2\x10\x04\x12\t\n" +
+	"\x05http3\x10\x05\x12\a\n" +
+	"\x03udp\x10\x06B\xce\x03\n" +
 	">com.dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1B\tSpecProtoP\x01Ztgithub.com/plantonhq/planton/catalog/digitalocean/digitaloceanloadbalancer/v1alpha1;digitaloceanloadbalancerv1alpha1\xa2\x02\x04DPDD\xaa\x02:Dev.Planton.Digitalocean.Digitaloceanloadbalancer.V1alpha1\xca\x02:Dev\\Planton\\Digitalocean\\Digitaloceanloadbalancer\\V1alpha1\xe2\x02FDev\\Planton\\Digitalocean\\Digitaloceanloadbalancer\\V1alpha1\\GPBMetadata\xea\x02>Dev::Planton::Digitalocean::Digitaloceanloadbalancer::V1alpha1b\x06proto3"
 
 var (
@@ -407,29 +1078,44 @@ func file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_rawD
 }
 
 var file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_goTypes = []any{
 	(DigitalOceanLoadBalancerProtocol)(0),          // 0: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerProtocol
 	(*DigitalOceanLoadBalancerSpec)(nil),           // 1: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerSpec
 	(*DigitalOceanLoadBalancerForwardingRule)(nil), // 2: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerForwardingRule
 	(*DigitalOceanLoadBalancerHealthCheck)(nil),    // 3: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerHealthCheck
-	(digitalocean.DigitalOceanRegion)(0),           // 4: dev.planton.digitalocean.DigitalOceanRegion
-	(*v1.StringValueOrRef)(nil),                    // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*DigitalOceanLoadBalancerStickySessions)(nil), // 4: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerStickySessions
+	(*DigitalOceanLoadBalancerFirewall)(nil),       // 5: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerFirewall
+	(*DigitalOceanLoadBalancerDomain)(nil),         // 6: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerDomain
+	(*DigitalOceanLoadBalancerGlbSettings)(nil),    // 7: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerGlbSettings
+	(*DigitalOceanLoadBalancerGlbCdn)(nil),         // 8: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerGlbCdn
+	nil,                                            // 9: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerGlbSettings.RegionPrioritiesEntry
+	(digitalocean.DigitalOceanRegion)(0),           // 10: dev.planton.digitalocean.DigitalOceanRegion
+	(*v1.StringValueOrRef)(nil),                    // 11: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_depIdxs = []int32{
-	4, // 0: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerSpec.region:type_name -> dev.planton.digitalocean.DigitalOceanRegion
-	5, // 1: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerSpec.vpc:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 2: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerSpec.forwarding_rules:type_name -> dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerForwardingRule
-	3, // 3: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerSpec.health_check:type_name -> dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerHealthCheck
-	5, // 4: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerSpec.droplet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0, // 5: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerForwardingRule.entry_protocol:type_name -> dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerProtocol
-	0, // 6: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerForwardingRule.target_protocol:type_name -> dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerProtocol
-	0, // 7: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerHealthCheck.protocol:type_name -> dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerProtocol
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	10, // 0: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerSpec.region:type_name -> dev.planton.digitalocean.DigitalOceanRegion
+	11, // 1: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerSpec.vpc:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 2: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerSpec.forwarding_rules:type_name -> dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerForwardingRule
+	3,  // 3: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerSpec.health_check:type_name -> dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerHealthCheck
+	11, // 4: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerSpec.droplet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 5: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerSpec.sticky_sessions:type_name -> dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerStickySessions
+	11, // 6: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerSpec.target_load_balancer_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 7: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerSpec.firewall:type_name -> dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerFirewall
+	6,  // 8: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerSpec.domains:type_name -> dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerDomain
+	7,  // 9: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerSpec.glb_settings:type_name -> dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerGlbSettings
+	0,  // 10: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerForwardingRule.entry_protocol:type_name -> dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerProtocol
+	0,  // 11: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerForwardingRule.target_protocol:type_name -> dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerProtocol
+	11, // 12: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerForwardingRule.certificate_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0,  // 13: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerHealthCheck.protocol:type_name -> dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerProtocol
+	11, // 14: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerDomain.certificate_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 15: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerGlbSettings.region_priorities:type_name -> dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerGlbSettings.RegionPrioritiesEntry
+	8,  // 16: dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerGlbSettings.cdn:type_name -> dev.planton.digitalocean.digitaloceanloadbalancer.v1alpha1.DigitalOceanLoadBalancerGlbCdn
+	17, // [17:17] is the sub-list for method output_type
+	17, // [17:17] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_init() }
@@ -443,7 +1129,7 @@ func file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_init
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_rawDesc), len(file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   3,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

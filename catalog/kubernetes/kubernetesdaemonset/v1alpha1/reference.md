@@ -1691,7 +1691,7 @@ Allowed values (use exactly as shown):
 - `DigitalOceanFunction`
 - `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
 - `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
-- `DigitalOceanLoadBalancer` -- DigitalOceanVpc is a prerequisite because the load balancer spec's vpc reference is required: the balancer fronts backends over one VPC's private network, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanLoadBalancer` -- No registry prerequisite: the load balancer's vpc reference is optional (DigitalOcean places it in the region's default VPC when unset, and GLOBAL balancers take no VPC at all). Scenarios that exercise VPC placement declare it per-scenario via the e2e-prerequisites annotation.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
@@ -2564,7 +2564,7 @@ Allowed values (use exactly as shown):
 - `DigitalOceanFunction`
 - `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
 - `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
-- `DigitalOceanLoadBalancer` -- DigitalOceanVpc is a prerequisite because the load balancer spec's vpc reference is required: the balancer fronts backends over one VPC's private network, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanLoadBalancer` -- No registry prerequisite: the load balancer's vpc reference is optional (DigitalOcean places it in the region's default VPC when unset, and GLOBAL balancers take no VPC at all). Scenarios that exercise VPC placement declare it per-scenario via the e2e-prerequisites annotation.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
@@ -4585,7 +4585,7 @@ Allowed values (use exactly as shown):
 - `DigitalOceanFunction`
 - `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
 - `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
-- `DigitalOceanLoadBalancer` -- DigitalOceanVpc is a prerequisite because the load balancer spec's vpc reference is required: the balancer fronts backends over one VPC's private network, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanLoadBalancer` -- No registry prerequisite: the load balancer's vpc reference is optional (DigitalOcean places it in the region's default VPC when unset, and GLOBAL balancers take no VPC at all). Scenarios that exercise VPC placement declare it per-scenario via the e2e-prerequisites annotation.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
@@ -5458,7 +5458,7 @@ Allowed values (use exactly as shown):
 - `DigitalOceanFunction`
 - `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
 - `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
-- `DigitalOceanLoadBalancer` -- DigitalOceanVpc is a prerequisite because the load balancer spec's vpc reference is required: the balancer fronts backends over one VPC's private network, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanLoadBalancer` -- No registry prerequisite: the load balancer's vpc reference is optional (DigitalOcean places it in the region's default VPC when unset, and GLOBAL balancers take no VPC at all). Scenarios that exercise VPC placement declare it per-scenario via the e2e-prerequisites annotation.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
@@ -7522,7 +7522,7 @@ Allowed values (use exactly as shown):
 - `DigitalOceanFunction`
 - `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
 - `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
-- `DigitalOceanLoadBalancer` -- DigitalOceanVpc is a prerequisite because the load balancer spec's vpc reference is required: the balancer fronts backends over one VPC's private network, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanLoadBalancer` -- No registry prerequisite: the load balancer's vpc reference is optional (DigitalOcean places it in the region's default VPC when unset, and GLOBAL balancers take no VPC at all). Scenarios that exercise VPC placement declare it per-scenario via the e2e-prerequisites annotation.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
@@ -8395,7 +8395,7 @@ Allowed values (use exactly as shown):
 - `DigitalOceanFunction`
 - `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
 - `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
-- `DigitalOceanLoadBalancer` -- DigitalOceanVpc is a prerequisite because the load balancer spec's vpc reference is required: the balancer fronts backends over one VPC's private network, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanLoadBalancer` -- No registry prerequisite: the load balancer's vpc reference is optional (DigitalOcean places it in the region's default VPC when unset, and GLOBAL balancers take no VPC at all). Scenarios that exercise VPC placement declare it per-scenario via the e2e-prerequisites annotation.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`

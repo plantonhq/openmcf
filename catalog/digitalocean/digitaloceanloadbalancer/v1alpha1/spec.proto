@@ -7,12 +7,68 @@ import "catalog/digitalocean/region.proto";
 import "shared/foreignkey/v1/foreign_key.proto";
 import "shared/options/options.proto";
 
-// DigitalOceanLoadBalancerSpec defines the specification for creating a DigitalOcean Load Balancer.
-// It focuses on essential parameters following the 80/20 principle, including region, VPC placement,
-// target Droplets (by IDs or tag), forwarding rules for traffic, and health checks for backend service health.
-// Note: Either `droplet_ids` or `droplet_tag` may be provided (mutually exclusive). The load balancer must be associated with a VPC.
+// DigitalOceanLoadBalancerSpec models the full digitalocean_loadbalancer
+// resource surface: regional and global balancer types, sizing (slug or
+// scaling units), forwarding rules with TLS termination or passthrough,
+// health checks with full threshold tuning, cookie-based sticky sessions,
+// backend targeting by Droplet references or tag, VPC/subnet placement,
+// network visibility and stack, an LB-level firewall, HTTPS redirect,
+// PROXY protocol, backend keepalive, idle-timeout tuning, TLS cipher
+// policy, project placement, bring-your-own-IP, and the global load
+// balancer's domains, target balancers, CDN, and regional failover
+// settings.
 message DigitalOceanLoadBalancerSpec {
-  // The name of the Load Balancer. Must be unique per account.
+  // Explicit Droplet references and tag-based membership are mutually
+  // exclusive ways to attach backends; the provider declares the conflict
+  // and the API rejects requests carrying both.
+  option (buf.validate.message).cel = {
+    id: "droplet_ids_xor_tag"
+    message: "droplet_ids and droplet_tag are mutually exclusive"
+    expression: "!(this.droplet_ids.size() > 0 && this.droplet_tag != '')"
+  };
+
+  // Forwarding rules configure a regional balancer; glb_settings configures
+  // a global one. The provider declares them conflicting, and a balancer
+  // with neither is rejected by the API, so exactly one must be present.
+  option (buf.validate.message).cel = {
+    id: "forwarding_rules_xor_glb_settings"
+    message: "exactly one of forwarding_rules or glb_settings must be set"
+    expression: "(this.forwarding_rules.size() > 0) != has(this.glb_settings)"
+  };
+
+  // Mirrors the provider's own type/region check: GLOBAL balancers must not
+  // carry a region, every other type (including unset, which the API treats
+  // as REGIONAL) requires one. 0 is the unspecified region enum value.
+  option (buf.validate.message).cel = {
+    id: "region_by_type"
+    message: "region must be empty for GLOBAL balancers and set for all other types"
+    expression: "this.type == 'GLOBAL' ? this.region == 0 : this.region != 0"
+  };
+
+  // The provider requires vpc_uuid whenever subnet_uuid is set
+  // (RequiredWith).
+  option (buf.validate.message).cel = {
+    id: "subnet_requires_vpc"
+    message: "subnet_uuid requires vpc to be set"
+    expression: "this.subnet_uuid == '' || has(this.vpc)"
+  };
+
+  // size and size_unit express the same capacity two ways (lb-small=1,
+  // lb-medium=3, lb-large=6); the provider's request builder sends exactly
+  // one, preferring size_unit, so carrying both is ambiguous configuration.
+  option (buf.validate.message).cel = {
+    id: "size_xor_size_unit"
+    message: "size and size_unit are mutually exclusive"
+    expression: "!(this.size != '' && this.size_unit != 0u)"
+  };
+
+  // Retired field. enable_sticky_sessions collapsed the provider's
+  // sticky_sessions block (type, cookie name, cookie TTL) into one bool.
+  // Its number and name must never be reused with a different meaning.
+  reserved 8;
+  reserved "enable_sticky_sessions";
+
+  // The name of the load balancer. Must be unique per account.
   // Constraints: 1-64 characters, lowercase alphanumeric and hyphens.
   string load_balancer_name = 1 [
     (buf.validate.field).required = true,
@@ -21,105 +77,456 @@ message DigitalOceanLoadBalancerSpec {
     (buf.validate.field).string.pattern = "^[a-z0-9-]+$"
   ];
 
-  // The DigitalOcean region where the Load Balancer will be created.
-  // Determines the geographical location of the load balancer.
-  DigitalOceanRegion region = 2 [(buf.validate.field).required = true];
+  // The DigitalOcean region for a REGIONAL or REGIONAL_NETWORK balancer.
+  // Required for those types and forbidden for GLOBAL balancers, which are
+  // anycast and have no home region. Cannot be changed after creation.
+  DigitalOceanRegion region = 2;
 
-  // Reference to the DigitalOcean VPC in which to create the Load Balancer.
-  // This should be a foreign key reference to an existing DigitalOceanVpc resource.
+  // (Optional) Reference to the DigitalOcean VPC in which to create the
+  // load balancer. When unset, DigitalOcean places a regional balancer in
+  // the region's default VPC; GLOBAL balancers take no VPC at all. Cannot
+  // be changed after creation.
   dev.planton.shared.foreignkey.v1.StringValueOrRef vpc = 3 [
-    (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanVpc,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
   ];
 
-  // A list of forwarding rules that define how traffic is routed from the load balancer to backend Droplets.
-  // Each forwarding rule specifies an incoming port/protocol and a corresponding target port/protocol.
-  repeated DigitalOceanLoadBalancerForwardingRule forwarding_rules = 4 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).repeated.min_items = 1
-  ];
+  // Forwarding rules routing traffic from the balancer to the backends.
+  // The regional balancer's core configuration; mutually exclusive with
+  // glb_settings (global balancers route by domain instead).
+  repeated DigitalOceanLoadBalancerForwardingRule forwarding_rules = 4;
 
-  // Health check configuration for the load balancer’s backend Droplets.
-  // This defines how the load balancer will probe the Droplets to check their health.
+  // (Optional) Health check probing backend Droplets. When unset,
+  // DigitalOcean applies a TCP check against the first forwarding rule's
+  // target port.
   DigitalOceanLoadBalancerHealthCheck health_check = 5;
 
-  // A list of specific Droplet IDs to attach to the Load Balancer.
-  // Mutually exclusive with `droplet_tag`. These can be literal IDs or references to Droplet resources.
+  // (Optional) Specific Droplets to attach, as literal numeric Droplet IDs
+  // or references to DigitalOceanDroplet resources. Mutually exclusive with
+  // droplet_tag.
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef droplet_ids = 6 [
     (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanDroplet,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.droplet_id"
   ];
 
-  // A Droplet tag name. All Droplets with this tag in the specified VPC will be attached to the Load Balancer.
-  // Mutually exclusive with `droplet_ids`.
+  // (Optional) A Droplet tag: every Droplet carrying it is attached, and
+  // membership follows the tag automatically as Droplets come and go.
+  // Mutually exclusive with droplet_ids.
   string droplet_tag = 7 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string.min_len = 1,
     (buf.validate.field).string.max_len = 255
   ];
 
-  // Enables sticky sessions if true (disabled by default).
-  // When enabled, the load balancer will attempt to direct repeated requests from the same client to the same Droplet.
-  bool enable_sticky_sessions = 8;
+  // (Optional) Cookie-based session affinity. When unset, DigitalOcean
+  // defaults to no sticky sessions ("none").
+  DigitalOceanLoadBalancerStickySessions sticky_sessions = 9;
+
+  // (Optional) The balancer type. REGIONAL (the default when unset) fronts
+  // backends in one region; REGIONAL_NETWORK is the regional network
+  // balancer; GLOBAL is the anycast balancer configured through
+  // glb_settings, domains, and target_load_balancer_ids. Cannot be changed
+  // after creation.
+  string type = 10 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "REGIONAL",
+        "GLOBAL",
+        "REGIONAL_NETWORK"
+      ]
+    }
+  ];
+
+  // (Optional) Balancer size slug. lb-small, lb-medium, and lb-large are
+  // equivalent to size_unit 1, 3, and 6. Mutually exclusive with size_unit;
+  // when both are unset DigitalOcean provisions lb-small.
+  string size = 11 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "lb-small",
+        "lb-medium",
+        "lb-large"
+      ]
+    }
+  ];
+
+  // (Optional) Balancer capacity in scaling units (1-200). Finer-grained
+  // than the three size slugs and the only way past lb-large capacity.
+  // Mutually exclusive with size.
+  uint32 size_unit = 12 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 200
+  ];
+
+  // (Optional) Whether HTTP requests to port 80 are redirected to HTTPS on
+  // port 443. Requires an HTTPS forwarding rule to redirect to.
+  bool redirect_http_to_https = 13;
+
+  // (Optional) Whether the PROXY protocol header is sent to the backends,
+  // passing the client's real source address through. Backends must be
+  // configured to accept the header.
+  bool enable_proxy_protocol = 14;
+
+  // (Optional) Whether HTTP keepalive connections are maintained to target
+  // Droplets.
+  bool enable_backend_keepalive = 15;
+
+  // (Optional) Whether the automatic DNS records for Let's Encrypt
+  // certificates are NOT created. Only meaningful with a Let's Encrypt
+  // certificate on a forwarding rule.
+  bool disable_lets_encrypt_dns_records = 16;
+
+  // (Optional) Seconds an idle HTTP connection stays open (the API accepts
+  // 30-600). 0 (unset) defers to DigitalOcean's default of 60.
+  uint32 http_idle_timeout_seconds = 17;
+
+  // (Optional) TLS cipher policy for HTTPS/TLS forwarding rules. DEFAULT
+  // accepts a broad cipher set; STRONG restricts to modern ciphers.
+  // When unset, DigitalOcean applies DEFAULT.
+  string tls_cipher_policy = 18 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "DEFAULT",
+        "STRONG"
+      ]
+    }
+  ];
+
+  // (Optional) Network visibility: EXTERNAL (the default when unset) gives
+  // the balancer a public address; INTERNAL keeps it reachable only inside
+  // the VPC. Cannot be changed after creation. Never reported back by the
+  // API, so drift on it is invisible.
+  string network = 19 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "EXTERNAL",
+        "INTERNAL"
+      ]
+    }
+  ];
+
+  // (Optional) IP stack: IPV4 (the default when unset) or DUALSTACK for
+  // IPv4+IPv6. Cannot be changed after creation. Never reported back by
+  // the API, so drift on it is invisible.
+  string network_stack = 20 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "IPV4",
+        "DUALSTACK"
+      ]
+    }
+  ];
+
+  // (Optional) DigitalOcean project UUID to put the balancer in. Literal; a
+  // typed reference lands when the Project kind is forged. When unset, the
+  // account's default project is used.
+  string project_id = 21;
+
+  // (Optional) UUID of the DigitalOcean-managed VPC subnet to place the
+  // balancer in. Literal only: subnets are DigitalOcean-assigned network
+  // slices, not a Planton-managed kind. Requires vpc; cannot be changed
+  // after creation.
+  string subnet_uuid = 22;
+
+  // (Optional) Bring-your-own IP: an unassigned BYOIP address on the
+  // account, in the balancer's region, assigned at creation. Consumed only
+  // at create time; when unset DigitalOcean allocates the address. The
+  // assigned address is exported as the ip stack output either way.
+  string ip = 23 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.ip = true
+  ];
+
+  // (Optional) For GLOBAL balancers: the regional load balancers that
+  // receive the routed traffic, as literal balancer UUIDs or references to
+  // DigitalOceanLoadBalancer resources.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef target_load_balancer_ids = 24 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanLoadBalancer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.load_balancer_id"
+  ];
+
+  // (Optional) Balancer-level firewall controlling which sources may reach
+  // it. When unset, all traffic is admitted.
+  DigitalOceanLoadBalancerFirewall firewall = 25;
+
+  // (Optional) For GLOBAL balancers: the domains that ingress traffic to
+  // the balancer.
+  repeated DigitalOceanLoadBalancerDomain domains = 26;
+
+  // (Optional) For GLOBAL balancers: routing configuration. Mutually
+  // exclusive with forwarding_rules.
+  DigitalOceanLoadBalancerGlbSettings glb_settings = 27;
 }
 
-// LoadBalancerProtocol enumerates the supported protocols for load balancer forwarding and health checks.
+// DigitalOceanLoadBalancerProtocol enumerates the protocols for forwarding
+// rules and health checks. Value names are exactly the DigitalOcean API
+// protocol slugs. http3 is valid only as a forwarding rule's entry
+// protocol; health checks accept only http, https, and tcp.
 enum DigitalOceanLoadBalancerProtocol {
   digitalocean_load_balancer_protocol_unspecified = 0; // Default value, should not be used.
   http = 1;
   https = 2;
   tcp = 3;
+  http2 = 4;
+  http3 = 5;
+  udp = 6;
 }
 
-// ForwardingRule represents a single rule for routing traffic from the load balancer to the backend.
+// DigitalOceanLoadBalancerForwardingRule routes traffic from an entry
+// port/protocol on the balancer to a target port/protocol on the backends.
 message DigitalOceanLoadBalancerForwardingRule {
-  // Port on the load balancer that will listen for incoming traffic.
+  // The provider's target protocol list has no http3; it is entry-only.
+  // 5 is the http3 value of DigitalOceanLoadBalancerProtocol.
+  option (buf.validate.message).cel = {
+    id: "target_protocol_no_http3"
+    message: "http3 is valid only as an entry protocol"
+    expression: "this.target_protocol != 5"
+  };
+
+  // Retired field. certificate_name was a plain string; it returns as a
+  // typed reference to the DigitalOceanCertificate kind at a new number,
+  // same name, same meaning.
+  reserved 5;
+
+  // Port on the load balancer that listens for incoming traffic.
   uint32 entry_port = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 65535
   ];
 
-  // Protocol for incoming traffic on the load balancer's entry port (e.g., HTTP, HTTPS, TCP).
+  // Protocol for incoming traffic on the entry port.
   DigitalOceanLoadBalancerProtocol entry_protocol = 2 [(buf.validate.field).required = true];
 
-  // Port on the Droplet that will receive forwarded traffic.
+  // Port on the backend that receives forwarded traffic.
   uint32 target_port = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 65535
   ];
 
-  // Protocol for traffic between the load balancer and the Droplet (e.g., HTTP, HTTPS, TCP).
+  // Protocol for traffic between the balancer and the backend. http3 is
+  // not valid here.
   DigitalOceanLoadBalancerProtocol target_protocol = 4 [(buf.validate.field).required = true];
 
-  // The name of a TLS certificate resource uploaded to DigitalOcean.
-  // Required when entry_protocol is HTTPS. The certificate is used for SSL termination.
-  // Use certificate name (not ID) to avoid breaking IaC state when Let's Encrypt auto-renews certificates.
-  string certificate_name = 5 [
-    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 255
+  // (Optional) Whether TLS is passed through to the backends without
+  // termination at the balancer. A passthrough rule carries no certificate.
+  bool tls_passthrough = 6;
+
+  // (Optional) TLS certificate for SSL termination, as a literal
+  // certificate NAME or a reference to a DigitalOceanCertificate resource.
+  // Required by the API when entry_protocol is https without
+  // tls_passthrough. DigitalOcean identifies certificates by name here
+  // because certificate UUIDs rotate when Let's Encrypt auto-renews;
+  // the referenced kind's certificate_id output carries that stable name.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef certificate_name = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanCertificate,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.certificate_id"
   ];
 }
 
-// HealthCheck defines how the load balancer checks the health of attached Droplets.
+// DigitalOceanLoadBalancerHealthCheck probes the backends to decide which
+// receive traffic.
 message DigitalOceanLoadBalancerHealthCheck {
-  // The port on the Droplet to which the health check will be performed.
+  // Mirrors the provider's own check: http/https probes require a request
+  // path, tcp probes forbid one. 3 is the tcp value of
+  // DigitalOceanLoadBalancerProtocol.
+  option (buf.validate.message).cel = {
+    id: "path_by_protocol"
+    message: "path is required for http/https health checks and not allowed for tcp"
+    expression: "this.protocol == 3 ? this.path == '' : this.path != ''"
+  };
+
+  // Health checks speak only http, https, or tcp (values 1, 2, 3 of
+  // DigitalOceanLoadBalancerProtocol); the forwarding-rule-only protocols
+  // are rejected by the provider.
+  option (buf.validate.message).cel = {
+    id: "protocol_http_https_tcp"
+    message: "health check protocol must be http, https, or tcp"
+    expression: "this.protocol == 1 || this.protocol == 2 || this.protocol == 3"
+  };
+
+  // The port on the backend to probe.
   uint32 port = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).uint32.gte = 1,
     (buf.validate.field).uint32.lte = 65535
   ];
 
-  // Protocol to use for health checking (HTTP, HTTPS, or TCP).
+  // Protocol to probe with: http, https, or tcp.
   DigitalOceanLoadBalancerProtocol protocol = 2 [(buf.validate.field).required = true];
 
-  // If using HTTP/HTTPS for health checks, the request path to probe (e.g., "/health").
-  // Ignored for TCP health checks.
+  // Request path for http/https probes (e.g. "/health"). Required for
+  // http/https and not allowed for tcp.
   string path = 3;
 
-  // Interval (in seconds) between health check probes.
-  uint32 check_interval_sec = 4 [(dev.planton.shared.options.recommended_default) = "10"];
+  // (Optional) Seconds between probes (3-300). 0 (unset) defers to
+  // DigitalOcean's default of 10.
+  uint32 check_interval_sec = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).uint32.gte = 3,
+    (buf.validate.field).uint32.lte = 300,
+    (dev.planton.shared.options.recommended_default) = "10"
+  ];
+
+  // (Optional) Seconds to wait for a probe response (3-300). 0 (unset)
+  // defers to DigitalOcean's default of 5.
+  uint32 response_timeout_seconds = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).uint32.gte = 3,
+    (buf.validate.field).uint32.lte = 300,
+    (dev.planton.shared.options.recommended_default) = "5"
+  ];
+
+  // (Optional) Consecutive probe failures (2-10) before a backend stops
+  // receiving traffic. 0 (unset) defers to DigitalOcean's default of 3.
+  uint32 unhealthy_threshold = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).uint32.gte = 2,
+    (buf.validate.field).uint32.lte = 10,
+    (dev.planton.shared.options.recommended_default) = "3"
+  ];
+
+  // (Optional) Consecutive probe successes (2-10) before a backend receives
+  // traffic again. 0 (unset) defers to DigitalOcean's default of 5.
+  uint32 healthy_threshold = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).uint32.gte = 2,
+    (buf.validate.field).uint32.lte = 10,
+    (dev.planton.shared.options.recommended_default) = "5"
+  ];
+}
+
+// DigitalOceanLoadBalancerStickySessions pins repeated requests from one
+// client to one backend via a browser cookie.
+message DigitalOceanLoadBalancerStickySessions {
+  // Mirrors the provider's own check: cookie-based affinity requires both
+  // cookie leaves; type none forbids them.
+  option (buf.validate.message).cel = {
+    id: "cookie_leaves_by_type"
+    message: "type cookies requires cookie_name and cookie_ttl_seconds; type none forbids them"
+    expression: "this.type == 'cookies' ? (this.cookie_name.size() >= 2 && this.cookie_ttl_seconds != 0u) : (this.cookie_name == '' && this.cookie_ttl_seconds == 0u)"
+  };
+
+  // Affinity mode: cookies pins clients to backends, none disables
+  // affinity (the API default, useful to assert explicitly).
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "cookies",
+        "none"
+      ]
+    }
+  ];
+
+  // Name of the affinity cookie (2-40 characters). Required with type
+  // cookies.
+  string cookie_name = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 40
+  ];
+
+  // Lifetime of the affinity cookie in seconds. Required with type cookies.
+  uint32 cookie_ttl_seconds = 3 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+}
+
+// DigitalOceanLoadBalancerFirewall controls which sources may reach the
+// balancer. Rules are strings in the provider's own format: "ip:1.2.3.4"
+// or "cidr:1.2.0.0/16".
+message DigitalOceanLoadBalancerFirewall {
+  // Sources ALLOWED to reach the balancer, each "ip:<address>" or
+  // "cidr:<block>". The provider validates nothing here; catching a typo
+  // before apply beats debugging silently-open traffic after.
+  repeated string allow = 1 [(buf.validate.field).repeated.items.cel = {
+    id: "ip_or_cidr_rule"
+    message: "must be 'ip:<address>' or 'cidr:<block>'"
+    expression: "(this.startsWith('ip:') && this.substring(3).isIp()) || (this.startsWith('cidr:') && this.substring(5).isIpPrefix())"
+  }];
+
+  // Sources DENIED from reaching the balancer, each "ip:<address>" or
+  // "cidr:<block>".
+  repeated string deny = 2 [(buf.validate.field).repeated.items.cel = {
+    id: "ip_or_cidr_rule"
+    message: "must be 'ip:<address>' or 'cidr:<block>'"
+    expression: "(this.startsWith('ip:') && this.substring(3).isIp()) || (this.startsWith('cidr:') && this.substring(5).isIpPrefix())"
+  }];
+}
+
+// DigitalOceanLoadBalancerDomain is a domain that ingresses traffic to a
+// GLOBAL load balancer.
+message DigitalOceanLoadBalancerDomain {
+  // The domain name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.hostname = true
+  ];
+
+  // (Optional) Whether the domain is managed by DigitalOcean (a DigitalOcean
+  // DNS zone), letting the balancer manage its records.
+  bool is_managed = 2;
+
+  // (Optional) TLS certificate for the domain's HTTPS handshake, as a
+  // literal certificate NAME or a reference to a DigitalOceanCertificate
+  // resource. DigitalOcean identifies certificates by name because
+  // certificate UUIDs rotate when Let's Encrypt auto-renews; the referenced
+  // kind's certificate_id output carries that stable name.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef certificate_name = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanCertificate,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.certificate_id"
+  ];
+}
+
+// DigitalOceanLoadBalancerGlbSettings configures how a GLOBAL load balancer
+// routes to its regional targets.
+message DigitalOceanLoadBalancerGlbSettings {
+  // Protocol used toward the regional targets: http or https.
+  string target_protocol = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "http",
+        "https"
+      ]
+    }
+  ];
+
+  // Port used toward the regional targets: 80 or 443.
+  uint32 target_port = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32 = {
+      in: [
+        80,
+        443
+      ]
+    }
+  ];
+
+  // (Optional) Priority per region slug (lower is preferred) for steering
+  // traffic across the regional targets.
+  map<string, uint32> region_priorities = 3;
+
+  // (Optional) Percentage of failed requests (1-99) that triggers failover
+  // away from a region. The API only reports it back when
+  // region_priorities is also set.
+  uint32 failover_threshold = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).uint32.gte = 1,
+    (buf.validate.field).uint32.lte = 99
+  ];
+
+  // (Optional) CDN caching at the global edge.
+  DigitalOceanLoadBalancerGlbCdn cdn = 5;
+}
+
+// DigitalOceanLoadBalancerGlbCdn is the global load balancer's edge-cache
+// setting.
+message DigitalOceanLoadBalancerGlbCdn {
+  // Whether edge caching is enabled.
+  bool is_enabled = 1;
 }

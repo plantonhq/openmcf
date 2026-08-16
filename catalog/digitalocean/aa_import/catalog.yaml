@@ -28,6 +28,21 @@ spec:
     - terraform_type: digitalocean_loadbalancer
       pulumi_type: digitalocean:index/loadBalancer:LoadBalancer
       id_format: "{load_balancer_id}"
+      # network, network_stack, and tls_cipher_policy are never set by the
+      # provider's Read, so a fresh import leaves them empty regardless of
+      # the live balancer. ip is create-only BYOIP on write but Read always
+      # populates the assigned address, so it needs no tolerance.
+      config_only_attributes: [network, network_stack, tls_cipher_policy]
+      # size and size_unit are an either-or read-back: if SizeUnit > 0 the
+      # provider sets only size_unit and leaves size at its prior state.
+      # glb_settings.target_protocol is lowercased on read.
+      # glb_settings.failover_threshold is only flattened when
+      # region_priorities is also non-empty.
+      write_normalized_attributes:
+        - size
+        - size_unit
+        - glb_settings.target_protocol
+        - glb_settings.failover_threshold
 
     # --- DNS -----------------------------------------------------------------
     - terraform_type: digitalocean_domain

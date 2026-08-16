@@ -1533,10 +1533,10 @@ const (
 	// API-addressed under its owning cluster: the spec's cluster reference is
 	// required and the pool cannot exist first.
 	CloudResourceKind_DigitalOceanKubernetesNodePool CloudResourceKind = 5009
-	// DigitalOceanVpc is a prerequisite because the load balancer spec's vpc
-	// reference is required: the balancer fronts backends over one VPC's
-	// private network, resolved to the DigitalOceanVpc's exported vpc_id
-	// output.
+	// No registry prerequisite: the load balancer's vpc reference is optional
+	// (DigitalOcean places it in the region's default VPC when unset, and
+	// GLOBAL balancers take no VPC at all). Scenarios that exercise VPC
+	// placement declare it per-scenario via the e2e-prerequisites annotation.
 	CloudResourceKind_DigitalOceanLoadBalancer CloudResourceKind = 5010
 	CloudResourceKind_DigitalOceanVolume       CloudResourceKind = 5011
 	CloudResourceKind_DigitalOceanVpc          CloudResourceKind = 5012
@@ -3528,7 +3528,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x94\xbe\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\x90\xbe\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4098,8 +4098,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x14DigitalOceanFirewall\x10\x8e'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04dofw\x121\n" +
 	"\x14DigitalOceanFunction\x10\x8f'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04dofn\x12@\n" +
 	"\x1dDigitalOceanKubernetesCluster\x10\x90'\x1a\x1c\xa2\xf7\x04\x18\b\x11\x12\bv1alpha1\"\x04dokc0\x01:\x02\x94'\x12@\n" +
-	"\x1eDigitalOceanKubernetesNodePool\x10\x91'\x1a\x1b\xa2\xf7\x04\x17\b\x11\x12\bv1alpha1\"\x05doknp:\x02\x90'\x129\n" +
-	"\x18DigitalOceanLoadBalancer\x10\x92'\x1a\x1a\xa2\xf7\x04\x16\b\x11\x12\bv1alpha1\"\x04dolb:\x02\x94'\x120\n" +
+	"\x1eDigitalOceanKubernetesNodePool\x10\x91'\x1a\x1b\xa2\xf7\x04\x17\b\x11\x12\bv1alpha1\"\x05doknp:\x02\x90'\x125\n" +
+	"\x18DigitalOceanLoadBalancer\x10\x92'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04dolb\x120\n" +
 	"\x12DigitalOceanVolume\x10\x93'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05dovol\x12/\n" +
 	"\x0fDigitalOceanVpc\x10\x94'\x1a\x19\xa2\xf7\x04\x15\b\x11\x12\bv1alpha1\"\x05dovpc0\x01\x126\n" +
 	"\x17DigitalOceanCertificate\x10\x95'\x1a\x18\xa2\xf7\x04\x14\b\x11\x12\bv1alpha1\"\x06docert\x12:\n" +

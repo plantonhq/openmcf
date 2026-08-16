@@ -1,0 +1,56 @@
+# Full-surface regional DigitalOceanLoadBalancer: composes the VPC fixture
+# (the spec's vpc is OPTIONAL, so the fixture rides the e2e-prerequisites
+# annotation, never a registry edge) and proves tag-based targeting, an
+# LB-level firewall, cookie sticky sessions, full health-check thresholds,
+# PROXY protocol, backend keepalive, idle-timeout, and size_unit. HTTPS,
+# GLOBAL, BYOIP, and the Pulumi-gap arms are deliberately absent.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanLoadBalancer
+metadata:
+  name: planton-oss-e2e-digitaloceanloadbalancer-full
+  id: planton-oss-e2e-digitaloceanloadbalancer-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanloadbalancer
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "DigitalOceanVpc"
+  tags:
+    - planton-e2e
+spec:
+  loadBalancerName: pltn-e2e-dolb-full
+  region: nyc3
+  vpc:
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: planton-oss-e2e-digitaloceanvpc-prereq
+      fieldPath: status.outputs.vpc_id
+  sizeUnit: 1
+  enableProxyProtocol: true
+  enableBackendKeepalive: true
+  httpIdleTimeoutSeconds: 90
+  dropletTag: planton-e2e-web
+  forwardingRules:
+    - entryPort: 80
+      entryProtocol: http
+      targetPort: 8080
+      targetProtocol: http
+  healthCheck:
+    port: 8080
+    protocol: http
+    path: /health
+    checkIntervalSec: 15
+    responseTimeoutSeconds: 5
+    unhealthyThreshold: 3
+    healthyThreshold: 5
+  stickySessions:
+    type: cookies
+    cookieName: DO-LB
+    cookieTtlSeconds: 300
+  firewall:
+    allow:
+      - cidr:0.0.0.0/0
+    deny:
+      - cidr:192.0.2.0/24

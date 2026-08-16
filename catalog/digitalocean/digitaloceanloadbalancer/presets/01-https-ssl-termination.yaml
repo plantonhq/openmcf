@@ -6,13 +6,25 @@ spec:
   loadBalancerName: my-https-lb
   region: nyc3
   vpc:
-    value: "<vpc-id>"
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: app-network
+      fieldPath: status.outputs.vpc_id
+  redirectHttpToHttps: true
   forwardingRules:
     - entryPort: 443
       entryProtocol: https
       targetPort: 80
       targetProtocol: http
-      certificateName: "<certificate-name>"
+      certificateName:
+        valueFrom:
+          kind: DigitalOceanCertificate
+          name: app-cert
+          fieldPath: status.outputs.certificate_id
+    - entryPort: 80
+      entryProtocol: http
+      targetPort: 80
+      targetProtocol: http
   healthCheck:
     port: 80
     protocol: http

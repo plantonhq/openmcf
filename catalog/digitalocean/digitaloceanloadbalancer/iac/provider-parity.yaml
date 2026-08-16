@@ -27,8 +27,3 @@ resources:
         arg: healthcheck
       - spec: spec.health_check.check_interval_sec
         arg: healthcheck.check_interval_seconds
-      # The spec's single bool drives the sticky-sessions type
-      # (true -> cookies); the cookie detail leaves are honest gaps until
-      # the kind's depth wave models the full block.
-      - spec: spec.enable_sticky_sessions
-        arg: sticky_sessions.type

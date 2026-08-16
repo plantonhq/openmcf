@@ -1,54 +1,37 @@
-# Local variables for computed values and helper functions
-
 locals {
-  # Extract VPC UUID from value or ref (assuming value is provided directly for simplicity)
-  vpc_uuid = var.spec.vpc.value != null ? var.spec.vpc.value : ""
+  # Optional VPC UUID. References are resolved to the literal UUID before
+  # the module runs, so the field arrives as a plain string. Unset means
+  # DigitalOcean places a regional balancer in the region's default VPC
+  # (GLOBAL balancers take no VPC at all).
+  vpc_uuid = try(var.spec.vpc, "") != "" ? var.spec.vpc : null
 
-  # Extract droplet IDs from the list of value/ref objects
-  droplet_ids = var.spec.droplet_ids != null ? [
-    for d in var.spec.droplet_ids : d.value != null ? tonumber(d.value) : 0
-  ] : []
+  # Region is required for REGIONAL / REGIONAL_NETWORK and forbidden for
+  # GLOBAL. The unspecified enum name must never be sent as a slug.
+  region = (
+    try(var.spec.region, "") != "" &&
+    var.spec.region != "digital_ocean_region_unspecified"
+  ) ? var.spec.region : null
 
-  # Filter out any zero values (invalid droplet IDs)
-  valid_droplet_ids = [for id in local.droplet_ids : id if id != 0]
+  type          = try(var.spec.type, "") != "" ? var.spec.type : null
+  size          = try(var.spec.size, "") != "" ? var.spec.size : null
+  size_unit     = try(var.spec.size_unit, 0) > 0 ? var.spec.size_unit : null
+  project_id    = try(var.spec.project_id, "") != "" ? var.spec.project_id : null
+  subnet_uuid   = try(var.spec.subnet_uuid, "") != "" ? var.spec.subnet_uuid : null
+  ip            = try(var.spec.ip, "") != "" ? var.spec.ip : null
+  network       = try(var.spec.network, "") != "" ? var.spec.network : null
+  network_stack = try(var.spec.network_stack, "") != "" ? var.spec.network_stack : null
+  tls_cipher_policy = try(var.spec.tls_cipher_policy, "") != "" ? var.spec.tls_cipher_policy : null
+  droplet_tag   = try(var.spec.droplet_tag, "") != "" ? var.spec.droplet_tag : null
 
-  # Protocol mapping from protobuf enum string to DigitalOcean API format
-  # Expected input: "http", "https", "tcp" (lowercase enum names)
-  # Output: Same format (DigitalOcean uses lowercase)
-  
-  # Convert forwarding rules from spec format to Terraform resource format
-  forwarding_rules = [
-    for rule in var.spec.forwarding_rules : {
-      entry_port       = rule.entry_port
-      entry_protocol   = lower(rule.entry_protocol)
-      target_port      = rule.target_port
-      target_protocol  = lower(rule.target_protocol)
-      certificate_name = rule.certificate_name
-    }
+  # 0 (proto3 unset) defers to DigitalOcean's 60-second default.
+  http_idle_timeout_seconds = try(var.spec.http_idle_timeout_seconds, 0) > 0 ? var.spec.http_idle_timeout_seconds : null
+
+  # Flattened StringValueOrRef list: each entry is already the numeric
+  # Droplet ID string. Empty means tag-managed membership (or none).
+  droplet_ids = [
+    for id in coalesce(var.spec.droplet_ids, []) : tonumber(id)
   ]
+  droplet_ids_or_null = length(local.droplet_ids) > 0 ? local.droplet_ids : null
 
-  # Health check configuration
-  healthcheck = var.spec.health_check != null ? {
-    port                   = var.spec.health_check.port
-    protocol               = lower(var.spec.health_check.protocol)
-    path                   = var.spec.health_check.path
-    check_interval_seconds = var.spec.health_check.check_interval_sec != null ? var.spec.health_check.check_interval_sec : 10
-  } : null
-
-  # Sticky sessions configuration
-  sticky_sessions = var.spec.enable_sticky_sessions ? {
-    type = "cookies"
-  } : null
-
-  # Common tags/labels for the load balancer
-  # DigitalOcean doesn't support tags on load balancers directly,
-  # but we can use them in terraform for organization
-  resource_labels = merge(
-    {
-      "managed-by" = "terraform"
-      "resource"   = "digitalocean-load-balancer"
-    },
-    var.metadata.labels != null ? var.metadata.labels : {}
-  )
+  target_load_balancer_ids = length(coalesce(var.spec.target_load_balancer_ids, [])) > 0 ? var.spec.target_load_balancer_ids : null
 }
-

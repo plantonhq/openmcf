@@ -118,6 +118,15 @@ Reference an output from another manifest as `valueFrom: {kind: DigitalOceanCert
 | `status.outputs.certificate_id` | `string` | certificate_id is the unique identifier of the certificate in DigitalOcean (UUID). |
 | `status.outputs.expiry_rfc3339` | `string` | expiry_rfc3339 is the expiration timestamp of the certificate in RFC 3339 format. |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| DigitalOceanLoadBalancer | `spec.forwardingRules[].certificateName` | `status.outputs.certificate_id` |
+| DigitalOceanLoadBalancer | `spec.domains[].certificateName` | `status.outputs.certificate_id` |
+
 ## See Also
 
 - [Overview](../README.md)

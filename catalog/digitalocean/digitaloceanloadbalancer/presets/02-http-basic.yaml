@@ -6,7 +6,10 @@ spec:
   loadBalancerName: my-http-lb
   region: nyc3
   vpc:
-    value: "<vpc-id>"
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: app-network
+      fieldPath: status.outputs.vpc_id
   forwardingRules:
     - entryPort: 80
       entryProtocol: http
@@ -18,5 +21,11 @@ spec:
     path: /health
     checkIntervalSec: 10
   dropletIds:
-    - value: "<droplet-id-1>"
-    - value: "<droplet-id-2>"
+    - valueFrom:
+        kind: DigitalOceanDroplet
+        name: web-1
+        fieldPath: status.outputs.droplet_id
+    - valueFrom:
+        kind: DigitalOceanDroplet
+        name: web-2
+        fieldPath: status.outputs.droplet_id
