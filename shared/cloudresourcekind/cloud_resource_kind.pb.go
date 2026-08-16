@@ -585,11 +585,13 @@ const (
 	CloudResourceKind_AwsSsmAssociation CloudResourceKind = 1264
 	// THE AWS Organization of the deploying account - creating it makes
 	// the caller the management account. Trusted service access,
-	// delegated administrators, and the org's singleton resource policy
-	// fold in (none has a life of its own; the standalone service-access
-	// resource fights the org's own argument with a perpetual diff).
-	// Deleting this deletes the entire organization. 1270 opens the
-	// Organizations sub-band (1270-1279).
+	// delegated administrators, the org's singleton resource policy, and
+	// centralized root-access management (IAM's organizations features -
+	// a management-account act requiring iam.amazonaws.com trusted
+	// access) fold in (none has a life of its own; the standalone
+	// service-access resource fights the org's own argument with a
+	// perpetual diff). Deleting this deletes the entire organization.
+	// 1270 opens the Organizations sub-band (1270-1279).
 	CloudResourceKind_AwsOrganization CloudResourceKind = 1270
 	// An organizational unit in the org's OU tree. The display name is
 	// an explicit spec field (OU names allow spaces metadata.name cannot
@@ -609,6 +611,45 @@ const (
 	// policies are never adopted. No registry prerequisite by the
 	// schema-required-only rule (attachments are optional).
 	CloudResourceKind_AwsOrganizationPolicy CloudResourceKind = 1273
+	// A Budgets budget (COST/USAGE/RI/Savings Plans coverage and
+	// utilization) with its folded budget actions as name-keyed
+	// satellites - an action exists only on its budget and fires an
+	// IAM-policy application, an SCP attachment, or SSM instance stops
+	// when a threshold breaches. Budgets is account-global (served from
+	// us-east-1; the spec region is the provider endpoint). 1280 opens
+	// the cost-management sub-band (1280-1289).
+	CloudResourceKind_AwsBudget CloudResourceKind = 1280
+	// A Cost Explorer anomaly monitor (DIMENSIONAL over one dimension,
+	// or CUSTOM over a CE expression) with its folded alert
+	// subscriptions - a subscription's monitor list is the structural
+	// edge that makes it this monitor's satellite. Account-global; AWS
+	// identifies both by ARN.
+	CloudResourceKind_AwsCostAnomalyMonitor CloudResourceKind = 1281
+	// A Cost Explorer cost category: ordered rules (regular expression
+	// rules or inherited-value rules) over the recursive CE expression
+	// tree, plus split-charge rules. The account's cost-allocation-tag
+	// activation toggle is deliberately NOT folded here - it is a
+	// per-tag-key account feature with no edge to any category, so many
+	// category instances would fight over one account object.
+	CloudResourceKind_AwsCostCategory CloudResourceKind = 1282
+	// An IAM group with its folded declarative membership (the
+	// authoritative users list) and group policies - name-keyed inline
+	// documents plus managed-policy attachments. IAM is global; identity
+	// is the group name (renames update in place, the ARN recomputes).
+	// 1290 opens the IAM P1 sub-band (1290-1299).
+	CloudResourceKind_AwsIamGroup CloudResourceKind = 1290
+	// An IAM SAML identity provider: the account's federation trust
+	// anchor, created from the IdP's metadata XML (a public document
+	// carrying certificates, not a secret). Identity is the provider
+	// ARN; the name is write-once.
+	CloudResourceKind_AwsIamSamlProvider CloudResourceKind = 1291
+	// Account settings singleton for IAM (a GLOBAL service - one object
+	// per ACCOUNT, not per region): the sign-in alias, the password
+	// policy, and the STS global-endpoint token version. Destroy
+	// contracts DIFFER per arm (each taught on its arm): the alias truly
+	// deletes, the password policy resets to AWS defaults, the STS
+	// preference is a no-op delete that persists.
+	CloudResourceKind_AwsIamAccountSettings CloudResourceKind = 1292
 	// Account/region settings singleton (one SES account object per
 	// account+region): the suppression list and VDM posture. 1360 opens
 	// the SES P1 sub-band (1360-1369).
@@ -2042,6 +2083,12 @@ var (
 		1271: "AwsOrganizationalUnit",
 		1272: "AwsOrganizationAccount",
 		1273: "AwsOrganizationPolicy",
+		1280: "AwsBudget",
+		1281: "AwsCostAnomalyMonitor",
+		1282: "AwsCostCategory",
+		1290: "AwsIamGroup",
+		1291: "AwsIamSamlProvider",
+		1292: "AwsIamAccountSettings",
 		1360: "AwsSesAccountSettings",
 		2000: "AzureResourceGroup",
 		2001: "AzureAksCluster",
@@ -2672,6 +2719,12 @@ var (
 		"AwsOrganizationalUnit":                          1271,
 		"AwsOrganizationAccount":                         1272,
 		"AwsOrganizationPolicy":                          1273,
+		"AwsBudget":                                      1280,
+		"AwsCostAnomalyMonitor":                          1281,
+		"AwsCostCategory":                                1282,
+		"AwsIamGroup":                                    1290,
+		"AwsIamSamlProvider":                             1291,
+		"AwsIamAccountSettings":                          1292,
 		"AwsSesAccountSettings":                          1360,
 		"AzureResourceGroup":                             2000,
 		"AzureAksCluster":                                2001,
@@ -3509,7 +3562,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xf8\xa0\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xa2\xa3\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -3687,7 +3740,19 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x0fAwsOrganization\x10\xf6\t\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awsorg\x127\n" +
 	"\x15AwsOrganizationalUnit\x10\xf7\t\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\bv1alpha1\"\x05awsou:\x02\xf6\t\x127\n" +
 	"\x16AwsOrganizationAccount\x10\xf8\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsoacct\x125\n" +
-	"\x15AwsOrganizationPolicy\x10\xf9\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsopol\x126\n" +
+	"\x15AwsOrganizationPolicy\x10\xf9\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsopol\x12(\n" +
+	"\tAwsBudget\x10\x80\n" +
+	"\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awsbud\x124\n" +
+	"\x15AwsCostAnomalyMonitor\x10\x81\n" +
+	"\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awscam\x12/\n" +
+	"\x0fAwsCostCategory\x10\x82\n" +
+	"\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsccat\x12+\n" +
+	"\vAwsIamGroup\x10\x8a\n" +
+	"\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsiamg\x122\n" +
+	"\x12AwsIamSamlProvider\x10\x8b\n" +
+	"\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawssaml\x126\n" +
+	"\x15AwsIamAccountSettings\x10\x8c\n" +
+	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsiamas\x126\n" +
 	"\x15AwsSesAccountSettings\x10\xd0\n" +
 	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssesas\x121\n" +
 	"\x12AzureResourceGroup\x10\xd0\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\bv1alpha1\"\x04azrg0\x01\x121\n" +

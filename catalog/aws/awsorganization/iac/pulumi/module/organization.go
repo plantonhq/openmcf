@@ -5,13 +5,14 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/iam"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/organizations"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 // organization creates THE organization with its folded service
-// access, delegated administrators, and resource policy, and exports
-// outputs.
+// access, delegated administrators, resource policy, and root-access
+// management, and exports outputs.
 //
 // Lifecycle facts the render below depends on:
 //   - feature_set upgrades apply in place (EnableAllFeatures); the
@@ -25,6 +26,10 @@ import (
 //   - destroy calls DeleteOrganization - the whole organization ends;
 //   - the resource policy is a per-organization SINGLETON
 //     (PutResourcePolicy upserts it), so the arm renders at most one;
+//   - root-access management is per-organization too (its provider ID
+//     is the organization ID) and requires iam.amazonaws.com trusted
+//     access (a spec CEL front-loads it); destroying the arm DISABLES
+//     every enabled feature;
 //   - the organization resource is untaggable; the resource policy is
 //     the kind's one taggable surface.
 func organization(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
@@ -84,6 +89,19 @@ func organization(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) e
 			return errors.Wrap(err, "create resource policy")
 		}
 		resourcePolicyId = createdResourcePolicy.ID().ToStringOutput()
+	}
+
+	// Centralized root-access management: the org-wide IAM features.
+	// The resource depends on the organization's trusted-access list
+	// carrying iam.amazonaws.com, so it parents the organization and
+	// applies after it.
+	if spec.RootAccessManagement != nil {
+		if _, err := iam.NewOrganizationsFeatures(ctx, "root-access-management",
+			&iam.OrganizationsFeaturesArgs{
+				EnabledFeatures: pulumi.ToStringArray(spec.RootAccessManagement.EnabledFeatures),
+			}, pulumi.Provider(provider), pulumi.Parent(createdOrganization)); err != nil {
+			return errors.Wrap(err, "enable root-access management features")
+		}
 	}
 
 	ctx.Export(OpOrganizationId, createdOrganization.ID())

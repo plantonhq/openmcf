@@ -338,6 +338,8 @@ Fields on other kinds that can point at this resource:
 | AwsBedrockFlow | `spec.executionRoleArn` | `status.outputs.role_arn` |
 | AwsBedrockInvocationLogging | `spec.cloudwatch.roleArn` | `status.outputs.role_arn` |
 | AwsBedrockKnowledgeBase | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsBudget | `spec.actions[].executionRoleArn` | `status.outputs.role_arn` |
+| AwsBudget | `spec.actions[].iamActionDefinition.roles` | `status.outputs.role_name` |
 | AwsCloudTrail | `spec.cloudwatchLogs.roleArn` | `status.outputs.role_arn` |
 | AwsCloudwatchLogGroup | `spec.subscriptionFilters[].roleArn` | `status.outputs.role_arn` |
 | AwsCodeBuildProject | `spec.serviceRole` | `status.outputs.role_arn` |

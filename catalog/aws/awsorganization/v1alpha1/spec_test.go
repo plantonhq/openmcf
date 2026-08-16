@@ -77,6 +77,15 @@ var _ = ginkgo.Describe("AwsOrganizationSpec validations", func() {
 			}
 			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 		})
+
+		ginkgo.It("accepts root-access management alongside IAM trusted access", func() {
+			spec := minimalOrganization()
+			spec.AwsServiceAccessPrincipals = []string{"iam.amazonaws.com"}
+			spec.RootAccessManagement = &AwsOrganizationRootAccessManagement{
+				EnabledFeatures: []string{"RootCredentialsManagement", "RootSessions"},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
 	})
 
 	ginkgo.Describe("When invalid input is passed", func() {
@@ -156,6 +165,30 @@ var _ = ginkgo.Describe("AwsOrganizationSpec validations", func() {
 			spec.DelegatedAdministrators = []*AwsOrganizationDelegatedAdministrator{
 				{AccountId: "111111111111", ServicePrincipal: "config.amazonaws.com"},
 				{AccountId: "111111111111", ServicePrincipal: "config.amazonaws.com"},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects root-access management without IAM trusted access", func() {
+			spec := minimalOrganization()
+			spec.RootAccessManagement = &AwsOrganizationRootAccessManagement{
+				EnabledFeatures: []string{"RootCredentialsManagement"},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects root-access management with no features", func() {
+			spec := minimalOrganization()
+			spec.AwsServiceAccessPrincipals = []string{"iam.amazonaws.com"}
+			spec.RootAccessManagement = &AwsOrganizationRootAccessManagement{}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an unknown root-access feature", func() {
+			spec := minimalOrganization()
+			spec.AwsServiceAccessPrincipals = []string{"iam.amazonaws.com"}
+			spec.RootAccessManagement = &AwsOrganizationRootAccessManagement{
+				EnabledFeatures: []string{"RootPasswordRotation"},
 			}
 			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 		})

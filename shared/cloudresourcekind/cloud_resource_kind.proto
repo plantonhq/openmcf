@@ -1671,11 +1671,13 @@ enum CloudResourceKind {
 
   // THE AWS Organization of the deploying account - creating it makes
   // the caller the management account. Trusted service access,
-  // delegated administrators, and the org's singleton resource policy
-  // fold in (none has a life of its own; the standalone service-access
-  // resource fights the org's own argument with a perpetual diff).
-  // Deleting this deletes the entire organization. 1270 opens the
-  // Organizations sub-band (1270-1279).
+  // delegated administrators, the org's singleton resource policy, and
+  // centralized root-access management (IAM's organizations features -
+  // a management-account act requiring iam.amazonaws.com trusted
+  // access) fold in (none has a life of its own; the standalone
+  // service-access resource fights the org's own argument with a
+  // perpetual diff). Deleting this deletes the entire organization.
+  // 1270 opens the Organizations sub-band (1270-1279).
   AwsOrganization = 1270 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
@@ -1714,6 +1716,75 @@ enum CloudResourceKind {
     provider: aws
     version: "v1alpha1"
     id_prefix: "awsopol"
+  }];
+
+  // A Budgets budget (COST/USAGE/RI/Savings Plans coverage and
+  // utilization) with its folded budget actions as name-keyed
+  // satellites - an action exists only on its budget and fires an
+  // IAM-policy application, an SCP attachment, or SSM instance stops
+  // when a threshold breaches. Budgets is account-global (served from
+  // us-east-1; the spec region is the provider endpoint). 1280 opens
+  // the cost-management sub-band (1280-1289).
+  AwsBudget = 1280 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbud"
+  }];
+
+  // A Cost Explorer anomaly monitor (DIMENSIONAL over one dimension,
+  // or CUSTOM over a CE expression) with its folded alert
+  // subscriptions - a subscription's monitor list is the structural
+  // edge that makes it this monitor's satellite. Account-global; AWS
+  // identifies both by ARN.
+  AwsCostAnomalyMonitor = 1281 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awscam"
+  }];
+
+  // A Cost Explorer cost category: ordered rules (regular expression
+  // rules or inherited-value rules) over the recursive CE expression
+  // tree, plus split-charge rules. The account's cost-allocation-tag
+  // activation toggle is deliberately NOT folded here - it is a
+  // per-tag-key account feature with no edge to any category, so many
+  // category instances would fight over one account object.
+  AwsCostCategory = 1282 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsccat"
+  }];
+
+  // An IAM group with its folded declarative membership (the
+  // authoritative users list) and group policies - name-keyed inline
+  // documents plus managed-policy attachments. IAM is global; identity
+  // is the group name (renames update in place, the ARN recomputes).
+  // 1290 opens the IAM P1 sub-band (1290-1299).
+  AwsIamGroup = 1290 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsiamg"
+  }];
+
+  // An IAM SAML identity provider: the account's federation trust
+  // anchor, created from the IdP's metadata XML (a public document
+  // carrying certificates, not a secret). Identity is the provider
+  // ARN; the name is write-once.
+  AwsIamSamlProvider = 1291 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssaml"
+  }];
+
+  // Account settings singleton for IAM (a GLOBAL service - one object
+  // per ACCOUNT, not per region): the sign-in alias, the password
+  // policy, and the STS global-endpoint token version. Destroy
+  // contracts DIFFER per arm (each taught on its arm): the alias truly
+  // deletes, the password policy resets to AWS defaults, the STS
+  // preference is a no-op delete that persists.
+  AwsIamAccountSettings = 1292 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsiamas"
   }];
 
   // Account/region settings singleton (one SES account object per

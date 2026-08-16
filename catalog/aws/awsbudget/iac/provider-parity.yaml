@@ -1,0 +1,158 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_budgets_budget:
+    mappings:
+      # The budget's name is an explicit spec field (names legally carry
+      # spaces metadata.name cannot).
+      - arg: name
+        spec: spec.budget_name
+      # The fixed-limit funding shape is a typed message.
+      - arg: limit_amount
+        spec: spec.limit.amount
+      - arg: limit_unit
+        spec: spec.limit.unit
+      # The provider's singular blocks carry the spec's plural lists.
+      - arg: planned_limit
+        spec: spec.planned_limits
+      - arg: notification
+        spec: spec.notifications
+      - arg: cost_filter
+        spec: spec.cost_filters
+      # Auto-adjustment flattens the provider's one-member
+      # historical_options wrapper.
+      - arg: auto_adjust_data
+        spec: spec.auto_adjust
+      - arg: auto_adjust_data.historical_options.budget_adjustment_period
+        spec: spec.auto_adjust.budget_adjustment_period
+      # The provider's metrics is a single-element list; the spec models
+      # the one metric directly.
+      - arg: metrics
+        spec: spec.metric
+      # The filter tree's leaf blocks are singular in the spec
+      # (dimension/tag/cost_category vs the provider's plural block
+      # names) at every level of the leveled tree.
+      - arg: filter_expression.dimensions
+        spec: spec.filter_expression.dimension
+      - arg: filter_expression.tags
+        spec: spec.filter_expression.tag
+      - arg: filter_expression.cost_categories
+        spec: spec.filter_expression.cost_category
+      - arg: filter_expression.and.dimensions
+        spec: spec.filter_expression.and.dimension
+      - arg: filter_expression.and.tags
+        spec: spec.filter_expression.and.tag
+      - arg: filter_expression.and.cost_categories
+        spec: spec.filter_expression.and.cost_category
+      - arg: filter_expression.or.dimensions
+        spec: spec.filter_expression.or.dimension
+      - arg: filter_expression.or.tags
+        spec: spec.filter_expression.or.tag
+      - arg: filter_expression.or.cost_categories
+        spec: spec.filter_expression.or.cost_category
+      - arg: filter_expression.not.dimensions
+        spec: spec.filter_expression.not.dimension
+      - arg: filter_expression.not.tags
+        spec: spec.filter_expression.not.tag
+      - arg: filter_expression.not.cost_categories
+        spec: spec.filter_expression.not.cost_category
+      - arg: filter_expression.and.and.dimensions
+        spec: spec.filter_expression.and.and.dimension
+      - arg: filter_expression.and.and.tags
+        spec: spec.filter_expression.and.and.tag
+      - arg: filter_expression.and.and.cost_categories
+        spec: spec.filter_expression.and.and.cost_category
+      - arg: filter_expression.and.or.dimensions
+        spec: spec.filter_expression.and.or.dimension
+      - arg: filter_expression.and.or.tags
+        spec: spec.filter_expression.and.or.tag
+      - arg: filter_expression.and.or.cost_categories
+        spec: spec.filter_expression.and.or.cost_category
+      - arg: filter_expression.and.not.dimensions
+        spec: spec.filter_expression.and.not.dimension
+      - arg: filter_expression.and.not.tags
+        spec: spec.filter_expression.and.not.tag
+      - arg: filter_expression.and.not.cost_categories
+        spec: spec.filter_expression.and.not.cost_category
+      - arg: filter_expression.or.and.dimensions
+        spec: spec.filter_expression.or.and.dimension
+      - arg: filter_expression.or.and.tags
+        spec: spec.filter_expression.or.and.tag
+      - arg: filter_expression.or.and.cost_categories
+        spec: spec.filter_expression.or.and.cost_category
+      - arg: filter_expression.or.or.dimensions
+        spec: spec.filter_expression.or.or.dimension
+      - arg: filter_expression.or.or.tags
+        spec: spec.filter_expression.or.or.tag
+      - arg: filter_expression.or.or.cost_categories
+        spec: spec.filter_expression.or.or.cost_category
+      - arg: filter_expression.or.not.dimensions
+        spec: spec.filter_expression.or.not.dimension
+      - arg: filter_expression.or.not.tags
+        spec: spec.filter_expression.or.not.tag
+      - arg: filter_expression.or.not.cost_categories
+        spec: spec.filter_expression.or.not.cost_category
+      - arg: filter_expression.not.and.dimensions
+        spec: spec.filter_expression.not.and.dimension
+      - arg: filter_expression.not.and.tags
+        spec: spec.filter_expression.not.and.tag
+      - arg: filter_expression.not.and.cost_categories
+        spec: spec.filter_expression.not.and.cost_category
+      - arg: filter_expression.not.or.dimensions
+        spec: spec.filter_expression.not.or.dimension
+      - arg: filter_expression.not.or.tags
+        spec: spec.filter_expression.not.or.tag
+      - arg: filter_expression.not.or.cost_categories
+        spec: spec.filter_expression.not.or.cost_category
+      - arg: filter_expression.not.not.dimensions
+        spec: spec.filter_expression.not.not.dimension
+      - arg: filter_expression.not.not.tags
+        spec: spec.filter_expression.not.not.tag
+      - arg: filter_expression.not.not.cost_categories
+        spec: spec.filter_expression.not.not.cost_category
+    exclusions:
+      # Random-suffix naming is an IaC-side convenience superseded by the
+      # explicit budget_name field (Planton names deterministically).
+      - arg: name_prefix
+        reason: generator-side naming convenience; the spec's explicit budget_name is the deterministic form
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+  aws_budgets_budget_action:
+    specRoot: spec.actions
+    mappings:
+      # The action inherits the budget's account scope.
+      - arg: account_id
+        spec: spec.account_id
+      # The provider's definition wrapper flattens onto the action
+      # entry's typed arms.
+      - arg: definition
+        spec: spec.actions
+      # The provider's singular subscriber block carries the entry's
+      # subscribers list.
+      - arg: subscriber
+        spec: spec.actions.subscribers
+    exclusions:
+      # The fold's parent linkage: the module wires the action to the
+      # budget it rides, never a user-facing field.
+      - arg: budget_name
+        reason: module-wired parent linkage (the folded action always targets its own budget)
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+specExclusions:
+  - field: spec.actions.name
+    reason: the fold key - Planton-side identity for the for_each entry and the action_ids output map, never an AWS argument
+  # Budgets is an account-global service: neither consumed resource
+  # carries a region argument. The spec's region drives only the
+  # provider connection.
+  - field: spec.region
+    reason: provider-connection region only -- Budgets is account-global and neither consumed resource has a region argument

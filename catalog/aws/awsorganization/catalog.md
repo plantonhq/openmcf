@@ -29,7 +29,8 @@ delegation policy.
 - The account must NOT already belong to another organization —
   creating this resource makes it a MANAGEMENT account.
 - Advanced arms (service access, policy types, delegated admins, the
-  resource policy) require the ALL feature set — validation enforces
+  resource policy, root-access management) require the ALL feature
+  set — validation enforces
   it.
 
 ## Deploy

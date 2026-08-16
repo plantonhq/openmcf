@@ -18,9 +18,12 @@ first - the delete fails otherwise, by design).
 The organization-wide levers fold in here because none of them has
 a life of its own: trusted service access (the provider's own docs
 warn that managing it anywhere else fights this resource with a
-perpetual diff), delegated administrator registrations, and the
-org's single resource-based delegation policy (AWS keeps exactly
-one per organization - PutResourcePolicy is an upsert).
+perpetual diff), delegated administrator registrations, the org's
+single resource-based delegation policy (AWS keeps exactly one per
+organization - PutResourcePolicy is an upsert), and centralized
+root-access management (IAM's organization features - a
+management-account act that requires iam.amazonaws.com trusted
+access, wired on this very spec).
 
 Organizations is a GLOBAL service scoped to the management account;
 AWS identifies the organization as "o-..." (the import ID).
@@ -30,10 +33,11 @@ AWS identifies the organization as "o-..." (the import ID).
 ```yaml
 # Canonical AwsOrganization example (hack/dev manifest and refgen
 # Example source): an all-features organization with trusted access
-# for CloudTrail and Account Management, SCP + tag policies enabled,
-# one delegated administrator, and the org's resource-based delegation
-# policy. Literal values stand in for a real member account so the
-# offline `tofu plan` renders every arm.
+# for CloudTrail, Account Management, and IAM, SCP + tag policies
+# enabled, one delegated administrator, centralized root-access
+# management, and the org's resource-based delegation policy. Literal
+# values stand in for a real member account so the offline `tofu plan`
+# renders every arm.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsOrganization
 metadata:
@@ -47,12 +51,17 @@ spec:
   awsServiceAccessPrincipals:
     - cloudtrail.amazonaws.com
     - account.amazonaws.com
+    - iam.amazonaws.com
   enabledPolicyTypes:
     - SERVICE_CONTROL_POLICY
     - TAG_POLICY
   delegatedAdministrators:
     - accountId: "111111111111"
       servicePrincipal: config.amazonaws.com
+  rootAccessManagement:
+    enabledFeatures:
+      - RootCredentialsManagement
+      - RootSessions
   resourcePolicy:
     Version: "2012-10-17"
     Statement:
@@ -78,6 +87,8 @@ spec:
 | `spec.delegatedAdministrators[].accountId` | `string` |  |  |  |
 | `spec.delegatedAdministrators[].servicePrincipal` | `string` | yes |  |  |
 | `spec.resourcePolicy` | `object` |  |  |  |
+| `spec.rootAccessManagement` | `AwsOrganizationRootAccessManagement` |  |  |  |
+| `spec.rootAccessManagement.enabledFeatures` | `[]string` | yes |  |  |
 
 ## Field Details
 
@@ -176,6 +187,31 @@ policy per organization - this arm IS that singleton
 (PutResourcePolicy upserts it; removing the arm deletes it). AWS
 identifies it as "rp-..." (the import ID).
 
+### spec.rootAccessManagement
+
+`AwsOrganizationRootAccessManagement`
+
+Centralized root-access management: which IAM organization
+features are enabled across member accounts. Requires
+"iam.amazonaws.com" in aws_service_access_principals. Destroying
+this arm DISABLES every enabled feature (member-account root
+credentials become locally manageable again).
+
+### spec.rootAccessManagement.enabledFeatures
+
+`[]string` · required
+
+The enabled features:
+  - "RootCredentialsManagement": the management account (or a
+    delegated admin) centrally deletes member-account root
+    credentials - the lock-down posture that removes long-lived
+    root passwords/keys from member accounts.
+  - "RootSessions": privileged short-lived root SESSIONS on
+    member accounts for the rare tasks that genuinely need root
+    (deleting a mis-owned S3 bucket policy, ...).
+
+- rule: {"repeated":{"minItems":"1","unique":true,"items":{"string":{"in":["RootCredentialsManagement","RootSessions"]}}}}
+
 ## Validation Rules
 
 - `spec.service_access_requires_all_features`: aws_service_access_principals requires feature_set ALL (consolidated-billing organizations cannot enable trusted service access)
@@ -183,6 +219,7 @@ identifies it as "rp-..." (the import ID).
 - `spec.delegated_admins_require_all_features`: delegated_administrators requires feature_set ALL (consolidated-billing organizations cannot delegate administration)
 - `spec.resource_policy_requires_all_features`: resource_policy requires feature_set ALL (consolidated-billing organizations cannot carry a resource policy)
 - `spec.delegated_administrators_unique`: delegated_administrators entries must have unique (account_id, service_principal) pairs
+- `spec.root_access_requires_iam_trusted_access`: root_access_management requires 'iam.amazonaws.com' in aws_service_access_principals - IAM needs trusted access to manage root credentials across the organization
 
 ## Outputs
 

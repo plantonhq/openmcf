@@ -1,0 +1,44 @@
+# The full category surface live: an expression rule (or-composed
+# dimension + tag), a tag-inherited rule, a default value, and a
+# proportional split-charge rule. Cost categories are free and
+# ARN-keyed (a deleted definition end-dates rather than blocking the
+# name), so the name is fixed. ~$0.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCostCategory
+metadata:
+  name: planton-oss-e2e-awsccat
+  id: planton-oss-e2e-awsccat
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscostcategory
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-east-1
+  categoryName: Planton E2E Cost Center
+  defaultValue: shared
+  rules:
+    - value: platform
+      rule:
+        or:
+          - dimension:
+              key: SERVICE
+              values:
+                - Amazon Simple Storage Service
+          - tag:
+              key: planton.ai/resource-kind
+              values:
+                - AwsS3Bucket
+    - type: INHERITED_VALUE
+      inheritedValue:
+        dimensionName: TAG
+        dimensionKey: planton.ai/organization
+  splitChargeRules:
+    - source: shared
+      targets:
+        - platform
+      method: PROPORTIONAL

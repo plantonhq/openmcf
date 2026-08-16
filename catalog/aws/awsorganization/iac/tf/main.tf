@@ -48,3 +48,17 @@ resource "aws_organizations_resource_policy" "this" {
 
   depends_on = [aws_organizations_organization.this]
 }
+
+# Centralized root-access management: the org-wide IAM features
+# (RootCredentialsManagement / RootSessions). Per-organization (the
+# provider's ID is the organization ID) and requires iam.amazonaws.com
+# trusted access - a spec CEL front-loads it, and the depends_on makes
+# the trusted-access grant land first. Destroying the arm DISABLES
+# every enabled feature.
+resource "aws_iam_organizations_features" "this" {
+  count = var.spec.root_access_management != null ? 1 : 0
+
+  enabled_features = var.spec.root_access_management.enabled_features
+
+  depends_on = [aws_organizations_organization.this]
+}

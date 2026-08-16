@@ -15,9 +15,12 @@ import "google/protobuf/struct.proto";
 // The organization-wide levers fold in here because none of them has
 // a life of its own: trusted service access (the provider's own docs
 // warn that managing it anywhere else fights this resource with a
-// perpetual diff), delegated administrator registrations, and the
-// org's single resource-based delegation policy (AWS keeps exactly
-// one per organization - PutResourcePolicy is an upsert).
+// perpetual diff), delegated administrator registrations, the org's
+// single resource-based delegation policy (AWS keeps exactly one per
+// organization - PutResourcePolicy is an upsert), and centralized
+// root-access management (IAM's organization features - a
+// management-account act that requires iam.amazonaws.com trusted
+// access, wired on this very spec).
 //
 // Organizations is a GLOBAL service scoped to the management account;
 // AWS identifies the organization as "o-..." (the import ID).
@@ -54,6 +57,15 @@ message AwsOrganizationSpec {
     id: "spec.delegated_administrators_unique"
     message: "delegated_administrators entries must have unique (account_id, service_principal) pairs"
     expression: "this.delegated_administrators.map(d, d.account_id + '/' + d.service_principal).unique()"
+  };
+  // Root-access management is an IAM-Organizations integration: AWS
+  // rejects it unless IAM has trusted access to the organization, and
+  // trusted access itself needs ALL features (already enforced
+  // above).
+  option (buf.validate.message).cel = {
+    id: "spec.root_access_requires_iam_trusted_access"
+    message: "root_access_management requires 'iam.amazonaws.com' in aws_service_access_principals - IAM needs trusted access to manage root credentials across the organization"
+    expression: "!has(this.root_access_management) || 'iam.amazonaws.com' in this.aws_service_access_principals"
   };
 
   // The AWS region used by the provider while managing the
@@ -139,6 +151,38 @@ message AwsOrganizationSpec {
   // (PutResourcePolicy upserts it; removing the arm deletes it). AWS
   // identifies it as "rp-..." (the import ID).
   google.protobuf.Struct resource_policy = 6;
+
+  // Centralized root-access management: which IAM organization
+  // features are enabled across member accounts. Requires
+  // "iam.amazonaws.com" in aws_service_access_principals. Destroying
+  // this arm DISABLES every enabled feature (member-account root
+  // credentials become locally manageable again).
+  AwsOrganizationRootAccessManagement root_access_management = 7;
+}
+
+// AwsOrganizationRootAccessManagement enables IAM's centralized
+// root-access features across the organization's member accounts.
+message AwsOrganizationRootAccessManagement {
+  // The enabled features:
+  //   - "RootCredentialsManagement": the management account (or a
+  //     delegated admin) centrally deletes member-account root
+  //     credentials - the lock-down posture that removes long-lived
+  //     root passwords/keys from member accounts.
+  //   - "RootSessions": privileged short-lived root SESSIONS on
+  //     member accounts for the rare tasks that genuinely need root
+  //     (deleting a mis-owned S3 bucket policy, ...).
+  repeated string enabled_features = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    unique: true
+    items: {
+      string: {
+        in: [
+          "RootCredentialsManagement",
+          "RootSessions"
+        ]
+      }
+    }
+  }];
 }
 
 // AwsOrganizationDelegatedAdministrator registers one member account

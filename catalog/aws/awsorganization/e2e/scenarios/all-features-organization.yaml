@@ -1,10 +1,12 @@
-# An all-features organization with trusted access for CloudTrail and
-# Account Management and two policy types enabled. Creating it makes
-# the test account a MANAGEMENT account; destroy deletes the whole
-# organization (legal only because the lane never creates members).
-# The delegated-administrator and resource-policy arms are deliberately
-# absent - both need a REAL second account ID (AWS validates
-# principals). ~$0: organizations are free.
+# An all-features organization with trusted access for CloudTrail,
+# Account Management, and IAM, two policy types enabled, and
+# centralized root-access management. Creating it makes the test
+# account a MANAGEMENT account; destroy deletes the whole organization
+# (legal only because the lane never creates members) and DISABLES the
+# root-access features with it. The delegated-administrator and
+# resource-policy arms are deliberately absent - both need a REAL
+# second account ID (AWS validates principals). ~$0: organizations are
+# free.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsOrganization
 metadata:
@@ -25,6 +27,11 @@ spec:
   awsServiceAccessPrincipals:
     - cloudtrail.amazonaws.com
     - account.amazonaws.com
+    - iam.amazonaws.com
   enabledPolicyTypes:
     - SERVICE_CONTROL_POLICY
     - TAG_POLICY
+  rootAccessManagement:
+    enabledFeatures:
+      - RootCredentialsManagement
+      - RootSessions

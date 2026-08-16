@@ -28,10 +28,10 @@ that has progressed.
 | | |
 |---|---|
 | Provider schema (parity baseline) | `aws@6.58.0` |
-| Kinds in the catalog | 169 |
-| Distinct provider resources consumed | 413 |
-| Spec fields authored across all kinds | 6267 |
-| Module pins on `aws` | `~> 6.58` × 169 |
+| Kinds in the catalog | 175 |
+| Distinct provider resources consumed | 427 |
+| Spec fields authored across all kinds | 6632 |
+| Module pins on `aws` | `~> 6.58` × 175 |
 | Module pins on `time` | `~> 0.13` × 1 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -46,7 +46,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**169 of 169 kinds are at total accounting; 113 proven live.**
+**175 of 175 kinds are at total accounting; 113 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -85,6 +85,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsBedrockModelAccess | 4 | 2 | 1 | 1 | 0 | ✅ | — |
 | AwsBedrockPrompt | 31 | 4 | 24 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBedrockProvisionedThroughput | 6 | 4 | 0 | 2 | 0 | ✅ | — |
+| AwsBudget | 175 | 23 | 146 | 6 | 0 | ✅ | — |
 | AwsCertManagerCert | 18 | 7 | 7 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsClientVpn | 47 | 29 | 7 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCloudFront | 126 | 32 | 88 | 6 | 0 | ✅ | ✅ pulumi, terraform |
@@ -103,6 +104,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsConfigConformancePack | 17 | 9 | 6 | 2 | 0 | ✅ | — |
 | AwsConfigRecorder | 24 | 9 | 11 | 4 | 0 | ✅ | — |
 | AwsConfigRule | 72 | 18 | 44 | 10 | 0 | ✅ | — |
+| AwsCostAnomalyMonitor | 50 | 29 | 15 | 6 | 0 | ✅ | — |
+| AwsCostCategory | 132 | 2 | 127 | 3 | 0 | ✅ | — |
 | AwsDocumentDb | 74 | 40 | 8 | 26 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsDynamodb | 71 | 27 | 38 | 6 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEc2Instance | 92 | 42 | 43 | 7 | 0 | ✅ | ✅ pulumi, terraform |
@@ -137,10 +140,13 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsHttpApiDomain | 26 | 7 | 11 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsHttpApiGateway | 91 | 42 | 11 | 38 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsHttpApiVpcLink | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsIamAccountSettings | 11 | 11 | 0 | 0 | 0 | ✅ | — |
+| AwsIamGroup | 11 | 2 | 3 | 6 | 0 | ✅ | — |
 | AwsIamInstanceProfile | 6 | 2 | 0 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamOidcProvider | 5 | 3 | 0 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamPolicy | 8 | 2 | 1 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamRole | 16 | 5 | 3 | 8 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsIamSamlProvider | 4 | 1 | 0 | 3 | 0 | ✅ | — |
 | AwsIamUser | 15 | 3 | 4 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsInternetGateway | 4 | 2 | 0 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsKinesisFirehose | 337 | 1 | 268 | 68 | 0 | ✅ | ✅ pulumi, terraform |
@@ -165,7 +171,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsNlb | 68 | 10 | 10 | 48 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsOpenSearchDomain | 90 | 51 | 30 | 9 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsOpenSearchServerlessCollection | 24 | 8 | 4 | 12 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsOrganization | 9 | 5 | 1 | 3 | 0 | ✅ | — |
+| AwsOrganization | 10 | 6 | 1 | 3 | 0 | ✅ | — |
 | AwsOrganizationAccount | 31 | 20 | 5 | 6 | 0 | ✅ | — |
 | AwsOrganizationPolicy | 10 | 3 | 2 | 5 | 0 | ✅ | — |
 | AwsOrganizationalUnit | 4 | 1 | 1 | 2 | 0 | ✅ | — |
@@ -226,11 +232,11 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 412 | consumed by a kind's Terraform module today |
+| Modeled | 426 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
-| Composed | 29 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 579 | judged to be covered by a planned kind or planned composition, not built yet |
-| Deferred | 542 | deliberately not offered, each with the recorded reason |
+| Composed | 30 | capability covered through an existing kind's surface rather than a kind of its own |
+| Planned | 562 | judged to be covered by a planned kind or planned composition, not built yet |
+| Deferred | 544 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
 
@@ -239,7 +245,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (412)
+### Modeled (426)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -351,6 +357,11 @@ rather than trusted.
 | `aws_bedrockagentcore_resource_policy` | consumed by AwsBedrockAgentCoreRuntime |
 | `aws_bedrockagentcore_token_vault_cmk` | consumed by AwsBedrockAgentCoreTokenVault |
 | `aws_bedrockagentcore_workload_identity` | consumed by AwsBedrockAgentCoreIdentity |
+| `aws_budgets_budget` | consumed by AwsBudget |
+| `aws_budgets_budget_action` | consumed by AwsBudget |
+| `aws_ce_anomaly_monitor` | consumed by AwsCostAnomalyMonitor |
+| `aws_ce_anomaly_subscription` | consumed by AwsCostAnomalyMonitor |
+| `aws_ce_cost_category` | consumed by AwsCostCategory |
 | `aws_cloudfront_continuous_deployment_policy` | consumed by AwsCloudFront |
 | `aws_cloudfront_distribution` | consumed by AwsCloudFront |
 | `aws_cloudfront_monitoring_subscription` | consumed by AwsCloudFront |
@@ -478,12 +489,21 @@ rather than trusted.
 | `aws_guardduty_publishing_destination` | consumed by AwsGuardDuty |
 | `aws_guardduty_threatintelset` | consumed by AwsGuardDuty |
 | `aws_iam_access_key` | consumed by AwsIamUser |
+| `aws_iam_account_alias` | consumed by AwsIamAccountSettings |
+| `aws_iam_account_password_policy` | consumed by AwsIamAccountSettings |
+| `aws_iam_group` | consumed by AwsIamGroup |
+| `aws_iam_group_membership` | consumed by AwsIamGroup |
+| `aws_iam_group_policy` | consumed by AwsIamGroup |
+| `aws_iam_group_policy_attachment` | consumed by AwsIamGroup |
 | `aws_iam_instance_profile` | consumed by AwsIamInstanceProfile |
 | `aws_iam_openid_connect_provider` | consumed by AwsIamOidcProvider |
+| `aws_iam_organizations_features` | consumed by AwsOrganization |
 | `aws_iam_policy` | consumed by AwsIamPolicy |
 | `aws_iam_role` | consumed by AwsIamRole, AwsPlantonRunner |
 | `aws_iam_role_policy` | consumed by AwsIamRole, AwsPlantonRunner |
 | `aws_iam_role_policy_attachment` | consumed by AwsIamRole, AwsPlantonRunner |
+| `aws_iam_saml_provider` | consumed by AwsIamSamlProvider |
+| `aws_iam_security_token_service_preferences` | consumed by AwsIamAccountSettings |
 | `aws_iam_user` | consumed by AwsIamUser |
 | `aws_iam_user_policy` | consumed by AwsIamUser |
 | `aws_iam_user_policy_attachment` | consumed by AwsIamUser |
@@ -656,7 +676,7 @@ rather than trusted.
 | `aws_wafv2_web_acl_association` | consumed by AwsAlb, AwsAppRunnerService |
 | `aws_wafv2_web_acl_logging_configuration` | consumed by AwsWafWebAcl |
 
-### Composed (29)
+### Composed (30)
 
 | Resource | Recorded reason |
 |---|---|
@@ -668,6 +688,7 @@ rather than trusted.
 | `aws_dynamodb_table_replica` | per-region alternative to the inline replicas AwsDynamodb already models (the standalone resource exists for multi-provider-block management); the spec's replicas cover the same AWS surface |
 | `aws_eip_association` | covered by AwsElasticIp's own association surface (spec.instance / spec.network_interface / spec.associate_with_private_ip -- the provider's inline aws_eip association); the standalone resource adds only allow_reassociation (steal an already-associated address), an adoption-time concern the declarative model expresses by updating the owning EIP instead |
 | `aws_elasticache_user_group_association` | covered by AwsElasticacheUserGroup's declarative user_ids membership -- the standalone one-user-at-a-time association is the imperative alternative to membership the group already owns (the autoscaling-attachment class); it attaches users to GROUPS, not to the Redis kind the prior reason named |
+| `aws_iam_user_group_membership` | the user<->group membership edge seen from the user side; AwsIamGroup's declarative users list covers the same edge group-centric (one declarative representation per relationship) |
 | `aws_internet_gateway_attachment` | covered by AwsInternetGateway's required vpc_id (the attachment IS the gateway's one relationship; vpc_id updates in place, detach+attach); the split-management form exists for adopting gateways created elsewhere, which the declarative model expresses on the gateway itself |
 | `aws_kms_key_policy` | covered by AwsKmsKey spec.policy -- the standalone resource is the detached-management pattern for keys owned elsewhere |
 | `aws_nat_gateway_eip_association` | covered by AwsNatGateway's existing EIP fields -- secondary_allocation_ids (zonal public gateways) and availability_zone_addresses[].allocation_ids (regional gateways) declare the same associations declaratively; the standalone association resource exists for imperatively attaching EIPs to gateways not owned by the same configuration, an anti-pattern for a kind that owns its gateway |
@@ -690,7 +711,7 @@ rather than trusted.
 | `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
 | `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (579)
+### Planned (562)
 
 | Resource | Recorded reason |
 |---|---|
@@ -737,12 +758,7 @@ rather than trusted.
 | `aws_appsync_type` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
 | `aws_athena_data_catalog` | judged as a planned AwsAthenaDataCatalog kind -- a federated catalog is a standalone peer registration queried from any workgroup, not a workgroup satellite |
 | `aws_bcmdataexports_export` | billing data exports fold into the planned cost-reporting kinds (with aws_cur_report_definition) |
-| `aws_budgets_budget` | judged as a planned AwsBudget kind (budgets with actions) |
-| `aws_budgets_budget_action` | judged as a planned AwsBudget kind (budgets with actions) |
-| `aws_ce_anomaly_monitor` | judged as a planned AwsCostAnomalyMonitor kind (monitors with subscriptions) |
-| `aws_ce_anomaly_subscription` | judged as a planned AwsCostAnomalyMonitor kind (monitors with subscriptions) |
-| `aws_ce_cost_allocation_tag` | judged as a planned AwsCostCategory kind (cost categories with allocation tags) |
-| `aws_ce_cost_category` | judged as a planned AwsCostCategory kind (cost categories with allocation tags) |
+| `aws_ce_cost_allocation_tag` | judged as a planned AwsCostAllocationTags account-settings kind: a per-tag-key account activation toggle (delete merely sets Inactive) with no schema edge to any cost category - folding it into the many-instance AwsCostCategory would make instances fight over one account object |
 | `aws_cloudfront_anycast_ip_list` | account-scoped shared Anycast static IP list referenced by many distributions; judged as a planned AwsCloudFrontAnycastIpList kind -- AwsCloudFront models the attachment (anycast_ip_list_id) today |
 | `aws_cloudfront_cache_policy` | account-scoped shared cache policy referenced by many behaviors across distributions; judged as a planned AwsCloudFrontCachePolicy kind -- AwsCloudFront behaviors model the attachment (cache_policy_id) today |
 | `aws_cloudfront_connection_function` | judged as a planned AwsCloudFrontFunction kind (edge functions incl. connection functions and the key-value store); AwsCloudFront models the attachment (connection_function_id) today |
@@ -940,20 +956,8 @@ rather than trusted.
 | `aws_grafana_workspace_saml_configuration` | judged as a planned AwsManagedGrafana kind (workspaces with licenses, SAML, API keys, service accounts) |
 | `aws_grafana_workspace_service_account` | judged as a planned AwsManagedGrafana kind (workspaces with licenses, SAML, API keys, service accounts) |
 | `aws_grafana_workspace_service_account_token` | judged as a planned AwsManagedGrafana kind (workspaces with licenses, SAML, API keys, service accounts) |
-| `aws_iam_account_alias` | judged as a planned AwsIamAccountSettings kind (alias, password policy, STS preferences, organization features) |
-| `aws_iam_account_password_policy` | judged as a planned AwsIamAccountSettings kind (alias, password policy, STS preferences, organization features) |
-| `aws_iam_group` | judged as a planned AwsIamGroup kind (groups, memberships, group policies and attachments) |
-| `aws_iam_group_membership` | judged as a planned AwsIamGroup kind (groups, memberships, group policies and attachments) |
-| `aws_iam_group_policies_exclusive` | judged as a planned AwsIamGroup kind (groups, memberships, group policies and attachments) |
-| `aws_iam_group_policy` | judged as a planned AwsIamGroup kind (groups, memberships, group policies and attachments) |
-| `aws_iam_group_policy_attachment` | judged as a planned AwsIamGroup kind (groups, memberships, group policies and attachments) |
-| `aws_iam_group_policy_attachments_exclusive` | judged as a planned AwsIamGroup kind (groups, memberships, group policies and attachments) |
-| `aws_iam_organizations_features` | judged as a planned AwsIamAccountSettings kind (alias, password policy, STS preferences, organization features) |
-| `aws_iam_saml_provider` | judged as a planned AwsIamSamlProvider kind |
-| `aws_iam_security_token_service_preferences` | judged as a planned AwsIamAccountSettings kind (alias, password policy, STS preferences, organization features) |
 | `aws_iam_service_linked_role` | judged as a planned AwsIamServiceLinkedRole kind -- a standalone role class with its own create API (aws_service_name/custom_suffix, no trust policy, no attachable policies), never a fold into AwsIamRole |
 | `aws_iam_service_specific_credential` | user-scoped service credentials (Bedrock API keys, Cassandra, CodeCommit); folds into AwsIamUser with the Bedrock wave, which brings the demand signal (API keys), the per-credential secret-delivery design, and the live fixtures its proof needs |
-| `aws_iam_user_group_membership` | judged as a planned AwsIamGroup kind (groups, memberships, group policies and attachments) |
 | `aws_identitystore_group` | Identity Center directory objects (users, groups, memberships) fold into the planned AwsIdentityCenterAssignment kind family |
 | `aws_identitystore_group_membership` | Identity Center directory objects (users, groups, memberships) fold into the planned AwsIdentityCenterAssignment kind family |
 | `aws_identitystore_user` | Identity Center directory objects (users, groups, memberships) fold into the planned AwsIdentityCenterAssignment kind family |
@@ -1274,7 +1278,7 @@ rather than trusted.
 | `aws_xray_sampling_rule` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 | `aws_xray_trace_segment_destination` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 
-### Deferred (542)
+### Deferred (544)
 
 | Resource | Recorded reason |
 |---|---|
@@ -1480,6 +1484,8 @@ rather than trusted.
 | `aws_glue_data_quality_ruleset` | Glue ML transforms, data-quality rulesets and UDFs are workload content; deferred |
 | `aws_glue_ml_transform` | Glue ML transforms, data-quality rulesets and UDFs are workload content; deferred |
 | `aws_glue_user_defined_function` | Glue ML transforms, data-quality rulesets and UDFs are workload content; deferred |
+| `aws_iam_group_policies_exclusive` | exclusive-set reconciliation (purges out-of-band inline policies at apply, no-op delete) -- engine-workflow surface, not resource configuration; AwsIamGroup already declares its full intended policy set |
+| `aws_iam_group_policy_attachments_exclusive` | exclusive-set reconciliation (purges out-of-band attachments at apply, no-op delete) -- engine-workflow surface, not resource configuration; AwsIamGroup already declares its full intended policy set |
 | `aws_iam_outbound_web_identity_federation` | human-credential MFA devices and outbound identity federation; deferred pending demand |
 | `aws_iam_role_policies_exclusive` | exclusive-set reconciliation (purges out-of-band inline policies at apply, no-op delete) -- engine-workflow surface, not resource configuration; AwsIamRole already declares its full intended policy set |
 | `aws_iam_role_policy_attachments_exclusive` | exclusive-set reconciliation (purges out-of-band attachments at apply, no-op delete) -- engine-workflow surface, not resource configuration; AwsIamRole already declares its full intended policy set |

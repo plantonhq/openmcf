@@ -7,8 +7,8 @@
 Manage [THE AWS Organization](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_introduction.html)
 of the deploying account — creating it makes that account the
 organization's management account — together with trusted service
-access, delegated administrators, and the org's resource-based
-delegation policy.
+access, delegated administrators, the org's resource-based delegation
+policy, and centralized root-access management.
 
 ## What Gets Managed
 
@@ -27,6 +27,12 @@ delegation policy.
   `{account_id}/{service_principal}`).
 - **The resource policy** folded as a structured document — AWS keeps
   exactly ONE per organization (`rp-...`).
+- **Root-access management** folded as `rootAccessManagement` — IAM's
+  organization features (RootCredentialsManagement / RootSessions),
+  the lock-down posture that removes long-lived root credentials from
+  member accounts. Requires `iam.amazonaws.com` in the trusted-access
+  list (validation enforces it); destroying the arm disables the
+  features.
 
 Destroy deletes the whole organization — AWS requires every member
 account, OU, and policy gone first, by design.

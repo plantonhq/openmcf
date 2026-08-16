@@ -23,6 +23,14 @@ operating an organization in production.
   resource policy per organization (PutResourcePolicy upserts), so a
   standalone kind would be an instances-fight-over-one-object defect —
   the settings-singleton lesson applied inside a fold.
+- **Root-access management folds here, not into the IAM settings
+  kind.** IAM's organization features (RootCredentialsManagement /
+  RootSessions) are a management-account act requiring
+  iam.amazonaws.com trusted access — a field THIS spec models, so the
+  CEL wires the dependency; folding it into an account-local settings
+  kind would strand a permanently management-account-only arm there.
+  Destroying the arm disables every enabled feature (member-account
+  root credentials become locally manageable again).
 - **All-features gates are validation, not surprises.** Trusted
   access, policy types, delegated admins, and the resource policy all
   require `featureSet: ALL` at AWS — four CELs front-load what would

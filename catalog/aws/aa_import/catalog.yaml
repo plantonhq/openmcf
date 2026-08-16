@@ -1428,3 +1428,106 @@ spec:
         list-regions --account-id <id>` shows RegionName + opt
         status). A bare region name imports the caller's own account's
         region instead.
+
+    # --- Budgets (budget + folded actions) -------------------------------------
+    - terraform_type: aws_budgets_budget
+      pulumi_type: aws:budgets/budget:Budget
+      id_format: "{account_id}:{budget_name}"
+      notes: >-
+        Colon-separated account ID and budget name (`aws budgets
+        describe-budgets --account-id <id>` shows BudgetName).
+    - terraform_type: aws_budgets_budget_action
+      pulumi_type: aws:budgets/budgetAction:BudgetAction
+      id_format: "{account_id}:{action_id}:{budget_name}"
+      notes: >-
+        Colon-separated account ID, AWS-generated action ID, and budget
+        name (`aws budgets describe-budget-actions-for-budget
+        --account-id <id> --budget-name <name>` shows ActionId).
+
+    # --- Cost Explorer (anomaly detection + cost categories) ------------------
+    - terraform_type: aws_ce_anomaly_monitor
+      pulumi_type: aws:costexplorer/anomalyMonitor:AnomalyMonitor
+      id_format: "{monitor_arn}"
+      notes: >-
+        The monitor's ARN (`aws ce get-anomaly-monitors` shows
+        MonitorArn).
+    - terraform_type: aws_ce_anomaly_subscription
+      pulumi_type: aws:costexplorer/anomalySubscription:AnomalySubscription
+      id_format: "{subscription_arn}"
+      notes: >-
+        The subscription's ARN (`aws ce get-anomaly-subscriptions`
+        shows SubscriptionArn).
+    - terraform_type: aws_ce_cost_category
+      pulumi_type: aws:costexplorer/costCategory:CostCategory
+      id_format: "{cost_category_arn}"
+      notes: >-
+        The category's ARN (`aws ce list-cost-category-definitions`
+        shows CostCategoryArn).
+
+    # --- IAM group (group + membership + group policies) ----------------------
+    - terraform_type: aws_iam_group
+      pulumi_type: aws:iam/group:Group
+      id_format: "{group_name}"
+      cloud_control_type_name: AWS::IAM::Group
+    - terraform_type: aws_iam_group_membership
+      pulumi_type: aws:iam/groupMembership:GroupMembership
+      # The provider ships no importer for the group-centric membership
+      # resource at the pin (its user-centric sibling
+      # aws_iam_user_group_membership has one; this one has neither an
+      # Importer nor an identity handler). The round-trip skips the
+      # address and proves the adopter's contract instead: the
+      # post-import plan re-creates exactly this membership, an
+      # idempotent PutGroupMembership-equivalent reconcile.
+      not_importable_upstream_reason: >-
+        aws_iam_group_membership ships no import handler at the pinned
+        provider version -- adopters re-apply the declarative users
+        list (idempotent; membership is add/remove reconciliation, not
+        a stateful object).
+    - terraform_type: aws_iam_group_policy
+      pulumi_type: aws:iam/groupPolicy:GroupPolicy
+      id_format: "{group_name}:{inline_policy_name}"
+    - terraform_type: aws_iam_group_policy_attachment
+      pulumi_type: aws:iam/groupPolicyAttachment:GroupPolicyAttachment
+      id_format: "{group_name}/{managed_policy_arn}"
+
+    # --- IAM SAML provider -----------------------------------------------------
+    - terraform_type: aws_iam_saml_provider
+      pulumi_type: aws:iam/samlProvider:SamlProvider
+      id_format: "{provider_arn}"
+      cloud_control_type_name: AWS::IAM::SAMLProvider
+      notes: >-
+        The provider's ARN (`aws iam list-saml-providers` shows Arn).
+
+    # --- IAM account settings (singletons) -------------------------------------
+    - terraform_type: aws_iam_account_alias
+      pulumi_type: aws:iam/accountAlias:AccountAlias
+      id_format: "{account_alias}"
+      notes: >-
+        The alias string itself (`aws iam list-account-aliases` shows
+        it; an account has at most one).
+    - terraform_type: aws_iam_account_password_policy
+      pulumi_type: aws:iam/accountPasswordPolicy:AccountPasswordPolicy
+      # The singleton imports by the provider's literal word (no
+      # placeholder at all) -- the account has exactly one policy.
+      id_format: "iam-account-password-policy"
+    - terraform_type: aws_iam_security_token_service_preferences
+      pulumi_type: aws:iam/securityTokenServicePreferences:SecurityTokenServicePreferences
+      # The provider ships no importer at the pin (SDKv2 resource with
+      # neither an Importer nor an identity handler). The round-trip
+      # skips the address and proves the adopter's contract instead:
+      # the post-import plan re-puts the token version, an idempotent
+      # SetSecurityTokenServicePreferences.
+      not_importable_upstream_reason: >-
+        aws_iam_security_token_service_preferences ships no import
+        handler at the pinned provider version -- adopters re-apply the
+        token version (idempotent set-preferences call, no stateful
+        object to adopt).
+
+    # --- IAM organization features (rides AwsOrganization) ---------------------
+    - terraform_type: aws_iam_organizations_features
+      pulumi_type: aws:iam/organizationsFeatures:OrganizationsFeatures
+      id_format: "{organization_id}"
+      notes: >-
+        The organization's ID ("o-..."; `aws organizations
+        describe-organization` shows Id) -- the resource is the org's
+        root-access-management singleton.

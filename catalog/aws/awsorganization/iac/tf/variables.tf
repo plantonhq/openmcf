@@ -23,5 +23,8 @@ variable "spec" {
       service_principal = string
     })), [])
     resource_policy = optional(any)
+    root_access_management = optional(object({
+      enabled_features = list(string)
+    }))
   })
 }

@@ -52,6 +52,7 @@ import (
 	awsbedrockmodelaccessv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockmodelaccess/v1alpha1"
 	awsbedrockpromptv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockprompt/v1alpha1"
 	awsbedrockprovisionedthroughputv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockprovisionedthroughput/v1alpha1"
+	awsbudgetv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbudget/v1alpha1"
 	awscertmanagercertv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscertmanagercert/v1alpha1"
 	awsclientvpnv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsclientvpn/v1alpha1"
 	awscloudfrontv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudfront/v1alpha1"
@@ -70,6 +71,8 @@ import (
 	awsconfigconformancepackv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsconfigconformancepack/v1alpha1"
 	awsconfigrecorderv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsconfigrecorder/v1alpha1"
 	awsconfigrulev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsconfigrule/v1alpha1"
+	awscostanomalymonitorv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscostanomalymonitor/v1alpha1"
+	awscostcategoryv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscostcategory/v1alpha1"
 	awsdocumentdbv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsdocumentdb/v1alpha1"
 	awsdynamodbv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsdynamodb/v1alpha1"
 	awsec2instancev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsec2instance/v1alpha1"
@@ -104,10 +107,13 @@ import (
 	awshttpapidomainv1alpha1 "github.com/plantonhq/planton/catalog/aws/awshttpapidomain/v1alpha1"
 	awshttpapigatewayv1alpha1 "github.com/plantonhq/planton/catalog/aws/awshttpapigateway/v1alpha1"
 	awshttpapivpclinkv1alpha1 "github.com/plantonhq/planton/catalog/aws/awshttpapivpclink/v1alpha1"
+	awsiamaccountsettingsv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsiamaccountsettings/v1alpha1"
+	awsiamgroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsiamgroup/v1alpha1"
 	awsiaminstanceprofilev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsiaminstanceprofile/v1alpha1"
 	awsiamoidcproviderv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsiamoidcprovider/v1alpha1"
 	awsiampolicyv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsiampolicy/v1alpha1"
 	awsiamrolev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsiamrole/v1alpha1"
+	awsiamsamlproviderv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsiamsamlprovider/v1alpha1"
 	awsiamuserv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsiamuser/v1alpha1"
 	awsinternetgatewayv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsinternetgateway/v1alpha1"
 	awskinesisfirehosev1alpha1 "github.com/plantonhq/planton/catalog/aws/awskinesisfirehose/v1alpha1"
@@ -700,6 +706,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsBedrockModelAccess:                  &awsbedrockmodelaccessv1alpha1.AwsBedrockModelAccess{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockPrompt:                       &awsbedrockpromptv1alpha1.AwsBedrockPrompt{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockProvisionedThroughput:        &awsbedrockprovisionedthroughputv1alpha1.AwsBedrockProvisionedThroughput{},
+	cloudresourcekind.CloudResourceKind_AwsBudget:                              &awsbudgetv1alpha1.AwsBudget{},
 	cloudresourcekind.CloudResourceKind_AwsCertManagerCert:                     &awscertmanagercertv1alpha1.AwsCertManagerCert{},
 	cloudresourcekind.CloudResourceKind_AwsClientVpn:                           &awsclientvpnv1alpha1.AwsClientVpn{},
 	cloudresourcekind.CloudResourceKind_AwsCloudFront:                          &awscloudfrontv1alpha1.AwsCloudFront{},
@@ -718,6 +725,8 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsConfigConformancePack:               &awsconfigconformancepackv1alpha1.AwsConfigConformancePack{},
 	cloudresourcekind.CloudResourceKind_AwsConfigRecorder:                      &awsconfigrecorderv1alpha1.AwsConfigRecorder{},
 	cloudresourcekind.CloudResourceKind_AwsConfigRule:                          &awsconfigrulev1alpha1.AwsConfigRule{},
+	cloudresourcekind.CloudResourceKind_AwsCostAnomalyMonitor:                  &awscostanomalymonitorv1alpha1.AwsCostAnomalyMonitor{},
+	cloudresourcekind.CloudResourceKind_AwsCostCategory:                        &awscostcategoryv1alpha1.AwsCostCategory{},
 	cloudresourcekind.CloudResourceKind_AwsDocumentDb:                          &awsdocumentdbv1alpha1.AwsDocumentDb{},
 	cloudresourcekind.CloudResourceKind_AwsDynamodb:                            &awsdynamodbv1alpha1.AwsDynamodb{},
 	cloudresourcekind.CloudResourceKind_AwsEc2Instance:                         &awsec2instancev1alpha1.AwsEc2Instance{},
@@ -752,10 +761,13 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsHttpApiDomain:                       &awshttpapidomainv1alpha1.AwsHttpApiDomain{},
 	cloudresourcekind.CloudResourceKind_AwsHttpApiGateway:                      &awshttpapigatewayv1alpha1.AwsHttpApiGateway{},
 	cloudresourcekind.CloudResourceKind_AwsHttpApiVpcLink:                      &awshttpapivpclinkv1alpha1.AwsHttpApiVpcLink{},
+	cloudresourcekind.CloudResourceKind_AwsIamAccountSettings:                  &awsiamaccountsettingsv1alpha1.AwsIamAccountSettings{},
+	cloudresourcekind.CloudResourceKind_AwsIamGroup:                            &awsiamgroupv1alpha1.AwsIamGroup{},
 	cloudresourcekind.CloudResourceKind_AwsIamInstanceProfile:                  &awsiaminstanceprofilev1alpha1.AwsIamInstanceProfile{},
 	cloudresourcekind.CloudResourceKind_AwsIamOidcProvider:                     &awsiamoidcproviderv1alpha1.AwsIamOidcProvider{},
 	cloudresourcekind.CloudResourceKind_AwsIamPolicy:                           &awsiampolicyv1alpha1.AwsIamPolicy{},
 	cloudresourcekind.CloudResourceKind_AwsIamRole:                             &awsiamrolev1alpha1.AwsIamRole{},
+	cloudresourcekind.CloudResourceKind_AwsIamSamlProvider:                     &awsiamsamlproviderv1alpha1.AwsIamSamlProvider{},
 	cloudresourcekind.CloudResourceKind_AwsIamUser:                             &awsiamuserv1alpha1.AwsIamUser{},
 	cloudresourcekind.CloudResourceKind_AwsInternetGateway:                     &awsinternetgatewayv1alpha1.AwsInternetGateway{},
 	cloudresourcekind.CloudResourceKind_AwsKinesisFirehose:                     &awskinesisfirehosev1alpha1.AwsKinesisFirehose{},

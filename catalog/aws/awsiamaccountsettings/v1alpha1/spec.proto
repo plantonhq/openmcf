@@ -1,0 +1,137 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsiamaccountsettings.v1alpha1;
+
+import "buf/validate/validate.proto";
+
+// AwsIamAccountSettingsSpec defines IAM's account-level settings.
+//
+// This is a SETTINGS SINGLETON for a GLOBAL service: IAM keeps
+// exactly one of each setting per ACCOUNT (not per region), so deploy
+// at most one instance per account - two instances fight over the
+// same account objects. metadata.name never reaches AWS; the account
+// is the identity.
+//
+// Destroy semantics DIFFER per arm (each taught on its arm):
+//   - account_alias: destroy truly DELETES the alias (sign-in URLs
+//     revert to the bare account ID);
+//   - password_policy: destroy RESETS the policy to AWS's defaults
+//     (6-character minimum, nothing else required);
+//   - sts: destroy is a NO-OP - the last-applied token version
+//     persists (reverting is an apply with the other version).
+message AwsIamAccountSettingsSpec {
+  option (buf.validate.message).cel = {
+    id: "spec.at_least_one_arm"
+    message: "configure at least one of account_alias / password_policy / sts - an instance managing none is dead configuration"
+    expression: "this.account_alias != '' || has(this.password_policy) || has(this.sts)"
+  };
+  // AWS's alias rules beyond the charset: no "--" runs and no
+  // trailing hyphen (the pattern already forbids a leading one).
+  option (buf.validate.message).cel = {
+    id: "spec.alias_no_double_hyphen"
+    message: "account_alias cannot contain consecutive hyphens"
+    expression: "!this.account_alias.contains('--')"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.alias_no_trailing_hyphen"
+    message: "account_alias cannot end with a hyphen"
+    expression: "!this.account_alias.endsWith('-')"
+  };
+
+  // The AWS region used by the provider while managing the settings.
+  // IAM is a global service - these settings are account-wide - but
+  // every AWS API call is still made against a regional endpoint.
+  // Example: "us-east-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The account's sign-in alias: makes the console sign-in URL
+  // https://<alias>.signin.aws.amazon.com/console. An account has
+  // exactly ONE alias, and aliases are GLOBALLY unique across all of
+  // AWS - applying this arm REPLACES whatever alias the account
+  // already had, which changes the sign-in URL everyone uses.
+  // 3-63 characters (the pattern encodes the length): lowercase
+  // letters, digits, and single hyphens. Destroying this arm deletes
+  // the alias (sign-in reverts to the bare account ID).
+  string account_alias = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[0-9a-z][0-9a-z-]{2,62}$"
+  ];
+
+  // The account's password policy for IAM user console passwords.
+  // AWS keeps ONE policy per account and treats every update as a
+  // full replacement: an arm field left unset is AWS's default, not
+  // "keep the current setting". Destroying this arm RESETS the
+  // policy to AWS's defaults (6-character minimum, nothing else
+  // required).
+  AwsIamAccountSettingsPasswordPolicy password_policy = 3;
+
+  // The account's STS settings. Destroying this arm is a NO-OP - the
+  // last-applied token version persists.
+  AwsIamAccountSettingsSts sts = 4;
+}
+
+// AwsIamAccountSettingsPasswordPolicy is the account's IAM user
+// password policy. Unset fields apply AWS's defaults - the policy is
+// replaced whole on every apply, never merged.
+message AwsIamAccountSettingsPasswordPolicy {
+  // Minimum password length, 6-128. Unset = AWS default (6).
+  optional int32 minimum_password_length = 1 [(buf.validate.field).int32 = {
+    gte: 6
+    lte: 128
+  }];
+
+  // Require at least one lowercase letter. Unset/false = not
+  // required (AWS default).
+  bool require_lowercase_characters = 2;
+
+  // Require at least one digit. Unset/false = not required.
+  bool require_numbers = 3;
+
+  // Require at least one non-alphanumeric symbol. Unset/false = not
+  // required.
+  bool require_symbols = 4;
+
+  // Require at least one uppercase letter. Unset/false = not
+  // required.
+  bool require_uppercase_characters = 5;
+
+  // Let users change their own passwords. Unset = AWS default
+  // (true); explicit false forbids self-service changes.
+  optional bool allow_users_to_change_password = 6;
+
+  // Days before a password expires and must be rotated, 1-1095.
+  // Unset = passwords never expire.
+  optional int32 max_password_age = 7 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 1095
+  }];
+
+  // How many previous passwords a new one must differ from, 1-24.
+  // Unset = reuse is not prevented.
+  optional int32 password_reuse_prevention = 8 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 24
+  }];
+
+  // When a password expires, require an administrator reset instead
+  // of letting the user set a new one at sign-in. Unset/false = users
+  // reset their own expired passwords. Only meaningful with
+  // max_password_age.
+  bool hard_expiry = 9;
+}
+
+// AwsIamAccountSettingsSts is the account's STS configuration.
+message AwsIamAccountSettingsSts {
+  // Which token version the GLOBAL STS endpoint
+  // (sts.amazonaws.com) issues. v1Token (the AWS default) is smaller
+  // but only valid in default-enabled regions; v2Token works in ALL
+  // regions including opt-in ones - the recommended posture for
+  // accounts using opt-in regions. Regional endpoints always issue
+  // v2 regardless.
+  string global_endpoint_token_version = 1 [(buf.validate.field).string = {
+    in: [
+      "v1Token",
+      "v2Token"
+    ]
+  }];
+}

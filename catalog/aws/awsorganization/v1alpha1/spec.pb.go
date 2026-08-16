@@ -33,9 +33,12 @@ const (
 // The organization-wide levers fold in here because none of them has
 // a life of its own: trusted service access (the provider's own docs
 // warn that managing it anywhere else fights this resource with a
-// perpetual diff), delegated administrator registrations, and the
-// org's single resource-based delegation policy (AWS keeps exactly
-// one per organization - PutResourcePolicy is an upsert).
+// perpetual diff), delegated administrator registrations, the org's
+// single resource-based delegation policy (AWS keeps exactly one per
+// organization - PutResourcePolicy is an upsert), and centralized
+// root-access management (IAM's organization features - a
+// management-account act that requires iam.amazonaws.com trusted
+// access, wired on this very spec).
 //
 // Organizations is a GLOBAL service scoped to the management account;
 // AWS identifies the organization as "o-..." (the import ID).
@@ -85,8 +88,14 @@ type AwsOrganizationSpec struct {
 	// (PutResourcePolicy upserts it; removing the arm deletes it). AWS
 	// identifies it as "rp-..." (the import ID).
 	ResourcePolicy *structpb.Struct `protobuf:"bytes,6,opt,name=resource_policy,json=resourcePolicy,proto3" json:"resource_policy,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Centralized root-access management: which IAM organization
+	// features are enabled across member accounts. Requires
+	// "iam.amazonaws.com" in aws_service_access_principals. Destroying
+	// this arm DISABLES every enabled feature (member-account root
+	// credentials become locally manageable again).
+	RootAccessManagement *AwsOrganizationRootAccessManagement `protobuf:"bytes,7,opt,name=root_access_management,json=rootAccessManagement,proto3" json:"root_access_management,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *AwsOrganizationSpec) Reset() {
@@ -161,6 +170,67 @@ func (x *AwsOrganizationSpec) GetResourcePolicy() *structpb.Struct {
 	return nil
 }
 
+func (x *AwsOrganizationSpec) GetRootAccessManagement() *AwsOrganizationRootAccessManagement {
+	if x != nil {
+		return x.RootAccessManagement
+	}
+	return nil
+}
+
+// AwsOrganizationRootAccessManagement enables IAM's centralized
+// root-access features across the organization's member accounts.
+type AwsOrganizationRootAccessManagement struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The enabled features:
+	//   - "RootCredentialsManagement": the management account (or a
+	//     delegated admin) centrally deletes member-account root
+	//     credentials - the lock-down posture that removes long-lived
+	//     root passwords/keys from member accounts.
+	//   - "RootSessions": privileged short-lived root SESSIONS on
+	//     member accounts for the rare tasks that genuinely need root
+	//     (deleting a mis-owned S3 bucket policy, ...).
+	EnabledFeatures []string `protobuf:"bytes,1,rep,name=enabled_features,json=enabledFeatures,proto3" json:"enabled_features,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AwsOrganizationRootAccessManagement) Reset() {
+	*x = AwsOrganizationRootAccessManagement{}
+	mi := &file_catalog_aws_awsorganization_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsOrganizationRootAccessManagement) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsOrganizationRootAccessManagement) ProtoMessage() {}
+
+func (x *AwsOrganizationRootAccessManagement) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsorganization_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsOrganizationRootAccessManagement.ProtoReflect.Descriptor instead.
+func (*AwsOrganizationRootAccessManagement) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsorganization_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AwsOrganizationRootAccessManagement) GetEnabledFeatures() []string {
+	if x != nil {
+		return x.EnabledFeatures
+	}
+	return nil
+}
+
 // AwsOrganizationDelegatedAdministrator registers one member account
 // as the delegated administrator for one AWS service.
 type AwsOrganizationDelegatedAdministrator struct {
@@ -178,7 +248,7 @@ type AwsOrganizationDelegatedAdministrator struct {
 
 func (x *AwsOrganizationDelegatedAdministrator) Reset() {
 	*x = AwsOrganizationDelegatedAdministrator{}
-	mi := &file_catalog_aws_awsorganization_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_aws_awsorganization_v1alpha1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -190,7 +260,7 @@ func (x *AwsOrganizationDelegatedAdministrator) String() string {
 func (*AwsOrganizationDelegatedAdministrator) ProtoMessage() {}
 
 func (x *AwsOrganizationDelegatedAdministrator) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsorganization_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_aws_awsorganization_v1alpha1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -203,7 +273,7 @@ func (x *AwsOrganizationDelegatedAdministrator) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use AwsOrganizationDelegatedAdministrator.ProtoReflect.Descriptor instead.
 func (*AwsOrganizationDelegatedAdministrator) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsorganization_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+	return file_catalog_aws_awsorganization_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *AwsOrganizationDelegatedAdministrator) GetAccountId() string {
@@ -224,7 +294,7 @@ var File_catalog_aws_awsorganization_v1alpha1_spec_proto protoreflect.FileDescri
 
 const file_catalog_aws_awsorganization_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"/catalog/aws/awsorganization/v1alpha1/spec.proto\x12(dev.planton.aws.awsorganization.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xed\x0f\n" +
+	"/catalog/aws/awsorganization/v1alpha1/spec.proto\x12(dev.planton.aws.awsorganization.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xa9\x13\n" +
 	"\x13AwsOrganizationSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12D\n" +
 	"\vfeature_set\x18\x02 \x01(\tB#\xbaH \xd8\x01\x01r\x1bR\x03ALLR\x14CONSOLIDATED_BILLINGR\n" +
@@ -233,12 +303,16 @@ const file_catalog_aws_awsorganization_v1alpha1_spec_proto_rawDesc = "" +
 	"\x14enabled_policy_types\x18\x04 \x03(\tB\x9a\x02\xbaH\x96\x02\x92\x01\x92\x02\x18\x01\"\x8d\x02r\x8a\x02R\x16SERVICE_CONTROL_POLICYR\x17RESOURCE_CONTROL_POLICYR\n" +
 	"TAG_POLICYR\rBACKUP_POLICYR\x19AISERVICES_OPT_OUT_POLICYR\x0eCHATBOT_POLICYR\x16DECLARATIVE_POLICY_EC2R\x12SECURITYHUB_POLICYR\x10INSPECTOR_POLICYR\x16UPGRADE_ROLLOUT_POLICYR\x0eBEDROCK_POLICYR\tS3_POLICYR NETWORK_SECURITY_DIRECTOR_POLICYR\x12enabledPolicyTypes\x12\x8a\x01\n" +
 	"\x18delegated_administrators\x18\x05 \x03(\v2O.dev.planton.aws.awsorganization.v1alpha1.AwsOrganizationDelegatedAdministratorR\x17delegatedAdministrators\x12@\n" +
-	"\x0fresource_policy\x18\x06 \x01(\v2\x17.google.protobuf.StructR\x0eresourcePolicy:\xc3\t\xbaH\xbf\t\x1a\x8c\x02\n" +
+	"\x0fresource_policy\x18\x06 \x01(\v2\x17.google.protobuf.StructR\x0eresourcePolicy\x12\x83\x01\n" +
+	"\x16root_access_management\x18\a \x01(\v2M.dev.planton.aws.awsorganization.v1alpha1.AwsOrganizationRootAccessManagementR\x14rootAccessManagement:\xf9\v\xbaH\xf5\v\x1a\x8c\x02\n" +
 	")spec.service_access_requires_all_features\x12\x80\x01aws_service_access_principals requires feature_set ALL (consolidated-billing organizations cannot enable trusted service access)\x1a\\this.feature_set != 'CONSOLIDATED_BILLING' || this.aws_service_access_principals.size() == 0\x1a\xec\x01\n" +
 	"&spec.policy_types_require_all_features\x12menabled_policy_types requires feature_set ALL (consolidated-billing organizations cannot enable policy types)\x1aSthis.feature_set != 'CONSOLIDATED_BILLING' || this.enabled_policy_types.size() == 0\x1a\xfc\x01\n" +
 	"*spec.delegated_admins_require_all_features\x12udelegated_administrators requires feature_set ALL (consolidated-billing organizations cannot delegate administration)\x1aWthis.feature_set != 'CONSOLIDATED_BILLING' || this.delegated_administrators.size() == 0\x1a\xe4\x01\n" +
 	"*spec.resource_policy_requires_all_features\x12lresource_policy requires feature_set ALL (consolidated-billing organizations cannot carry a resource policy)\x1aHthis.feature_set != 'CONSOLIDATED_BILLING' || !has(this.resource_policy)\x1a\xd8\x01\n" +
-	"$spec.delegated_administrators_unique\x12Wdelegated_administrators entries must have unique (account_id, service_principal) pairs\x1aWthis.delegated_administrators.map(d, d.account_id + '/' + d.service_principal).unique()\"\xcd\x01\n" +
+	"$spec.delegated_administrators_unique\x12Wdelegated_administrators entries must have unique (account_id, service_principal) pairs\x1aWthis.delegated_administrators.map(d, d.account_id + '/' + d.service_principal).unique()\x1a\xb3\x02\n" +
+	",spec.root_access_requires_iam_trusted_access\x12\xa2\x01root_access_management requires 'iam.amazonaws.com' in aws_service_access_principals - IAM needs trusted access to manage root credentials across the organization\x1a^!has(this.root_access_management) || 'iam.amazonaws.com' in this.aws_service_access_principals\"\x89\x01\n" +
+	"#AwsOrganizationRootAccessManagement\x12b\n" +
+	"\x10enabled_features\x18\x01 \x03(\tB7\xbaH4\x92\x011\b\x01\x18\x01\"+r)R\x19RootCredentialsManagementR\fRootSessionsR\x0fenabledFeatures\"\xcd\x01\n" +
 	"%AwsOrganizationDelegatedAdministrator\x121\n" +
 	"\n" +
 	"account_id\x18\x01 \x01(\tB\x12\xbaH\x0fr\r2\v^[0-9]{12}$R\taccountId\x12q\n" +
@@ -257,20 +331,22 @@ func file_catalog_aws_awsorganization_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_aws_awsorganization_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awsorganization_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_catalog_aws_awsorganization_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_catalog_aws_awsorganization_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsOrganizationSpec)(nil),                   // 0: dev.planton.aws.awsorganization.v1alpha1.AwsOrganizationSpec
-	(*AwsOrganizationDelegatedAdministrator)(nil), // 1: dev.planton.aws.awsorganization.v1alpha1.AwsOrganizationDelegatedAdministrator
-	(*structpb.Struct)(nil),                       // 2: google.protobuf.Struct
+	(*AwsOrganizationRootAccessManagement)(nil),   // 1: dev.planton.aws.awsorganization.v1alpha1.AwsOrganizationRootAccessManagement
+	(*AwsOrganizationDelegatedAdministrator)(nil), // 2: dev.planton.aws.awsorganization.v1alpha1.AwsOrganizationDelegatedAdministrator
+	(*structpb.Struct)(nil),                       // 3: google.protobuf.Struct
 }
 var file_catalog_aws_awsorganization_v1alpha1_spec_proto_depIdxs = []int32{
-	1, // 0: dev.planton.aws.awsorganization.v1alpha1.AwsOrganizationSpec.delegated_administrators:type_name -> dev.planton.aws.awsorganization.v1alpha1.AwsOrganizationDelegatedAdministrator
-	2, // 1: dev.planton.aws.awsorganization.v1alpha1.AwsOrganizationSpec.resource_policy:type_name -> google.protobuf.Struct
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	2, // 0: dev.planton.aws.awsorganization.v1alpha1.AwsOrganizationSpec.delegated_administrators:type_name -> dev.planton.aws.awsorganization.v1alpha1.AwsOrganizationDelegatedAdministrator
+	3, // 1: dev.planton.aws.awsorganization.v1alpha1.AwsOrganizationSpec.resource_policy:type_name -> google.protobuf.Struct
+	1, // 2: dev.planton.aws.awsorganization.v1alpha1.AwsOrganizationSpec.root_access_management:type_name -> dev.planton.aws.awsorganization.v1alpha1.AwsOrganizationRootAccessManagement
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsorganization_v1alpha1_spec_proto_init() }
@@ -284,7 +360,7 @@ func file_catalog_aws_awsorganization_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsorganization_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awsorganization_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

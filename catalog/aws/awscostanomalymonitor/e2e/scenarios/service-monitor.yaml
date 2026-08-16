@@ -1,0 +1,38 @@
+# The full monitor surface live: the recommended by-service
+# dimensional monitor with one daily email summary subscription above
+# a $50 absolute impact threshold. Anomaly detection is free; a fresh
+# monitor trains silently (no alerts fire within a lane's lifetime),
+# so the example.com address never receives mail. ~$0.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCostAnomalyMonitor
+metadata:
+  name: planton-oss-e2e-awscam
+  id: planton-oss-e2e-awscam
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscostanomalymonitor
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-east-1
+  monitorName: Planton E2E Service Spend Monitor
+  monitorType: DIMENSIONAL
+  monitorDimension: SERVICE
+  subscriptions:
+    - name: planton-e2e-daily-summary
+      frequency: DAILY
+      subscribers:
+        - address:
+            value: finops-e2e@example.com
+          type: EMAIL
+      thresholdExpression:
+        dimension:
+          key: ANOMALY_TOTAL_IMPACT_ABSOLUTE
+          matchOptions:
+            - GREATER_THAN_OR_EQUAL
+          values:
+            - "50"

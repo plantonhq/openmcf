@@ -32,6 +32,12 @@ resources:
       - arg: tags_all
         reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
 
+  aws_iam_organizations_features:
+    # Centralized root-access management folds in as the
+    # root_access_management arm (a management-account act requiring
+    # iam.amazonaws.com trusted access -- wired on this very spec).
+    specRoot: spec.root_access_management
+
 specExclusions:
   # Organizations is a GLOBAL service: none of its resources carries a
   # region argument. The spec's region drives only the provider

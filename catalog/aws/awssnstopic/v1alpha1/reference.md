@@ -458,6 +458,8 @@ Fields on other kinds that can point at this resource:
 | AwsAutoScalingGroup | `spec.lifecycleHooks[].notificationTargetArn` | `status.outputs.topic_arn` |
 | AwsAutoScalingGroup | `spec.notifications.topic` | `status.outputs.topic_arn` |
 | AwsBackupVault | `spec.standard.notifications.snsTopicArn` | `status.outputs.topic_arn` |
+| AwsBudget | `spec.notifications[].subscriberSnsTopicArns` | `status.outputs.topic_arn` |
+| AwsBudget | `spec.actions[].subscribers[].address` | `status.outputs.topic_arn` |
 | AwsCloudTrail | `spec.snsTopicName` | `status.outputs.topic_name` |
 | AwsCloudwatchAlarm | `spec.alarmActions` | `status.outputs.topic_arn` |
 | AwsCloudwatchAlarm | `spec.okActions` | `status.outputs.topic_arn` |
@@ -466,6 +468,7 @@ Fields on other kinds that can point at this resource:
 | AwsCloudwatchCompositeAlarm | `spec.okActions` | `status.outputs.topic_arn` |
 | AwsCloudwatchCompositeAlarm | `spec.insufficientDataActions` | `status.outputs.topic_arn` |
 | AwsConfigRecorder | `spec.deliveryChannel.snsTopicArn` | `status.outputs.topic_arn` |
+| AwsCostAnomalyMonitor | `spec.subscriptions[].subscribers[].address` | `status.outputs.topic_arn` |
 | AwsMemcachedElasticache | `spec.notificationTopicArn` | `status.outputs.topic_arn` |
 | AwsMemorydbCluster | `spec.snsTopicArn` | `status.outputs.topic_arn` |
 | AwsRedisElasticache | `spec.notificationTopicArn` | `status.outputs.topic_arn` |

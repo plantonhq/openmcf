@@ -1,0 +1,44 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBudget
+metadata:
+  name: sandbox-enforced-budget
+spec:
+  region: us-east-1
+  budgetName: Sandbox Enforced Budget
+  budgetType: COST
+  timeUnit: MONTHLY
+  limit:
+    amount: "200"
+    unit: USD
+  metric: UnblendedCost
+  filterExpression:
+    tag:
+      key: environment
+      values:
+        - sandbox
+  notifications:
+    - comparisonOperator: GREATER_THAN
+      notificationType: ACTUAL
+      threshold: 80
+      thresholdType: PERCENTAGE
+      subscriberEmailAddresses:
+        - <platform-team@your-company.com>
+  actions:
+    - name: freeze-sandbox
+      actionType: APPLY_IAM_POLICY
+      approvalModel: AUTOMATIC
+      notificationType: ACTUAL
+      executionRoleArn:
+        value: <arn:aws:iam::123456789012:role/budget-actions>
+      actionThreshold:
+        actionThresholdType: PERCENTAGE
+        actionThresholdValue: 100
+      subscribers:
+        - address:
+            value: <platform-team@your-company.com>
+          subscriptionType: EMAIL
+      iamActionDefinition:
+        policyArn:
+          value: arn:aws:iam::aws:policy/AWSDenyAll
+        groups:
+          - value: <sandbox-users-group>

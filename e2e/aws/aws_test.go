@@ -1505,6 +1505,54 @@ func TestAwsOrganizationPolicy_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsorganizationpolicy", "terraform")
 }
 
+func TestAwsBudget_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbudget", "pulumi")
+}
+
+func TestAwsBudget_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbudget", "terraform")
+}
+
+func TestAwsCostAnomalyMonitor_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscostanomalymonitor", "pulumi")
+}
+
+func TestAwsCostAnomalyMonitor_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscostanomalymonitor", "terraform")
+}
+
+func TestAwsCostCategory_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscostcategory", "pulumi")
+}
+
+func TestAwsCostCategory_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscostcategory", "terraform")
+}
+
+func TestAwsIamGroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsiamgroup", "pulumi")
+}
+
+func TestAwsIamGroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsiamgroup", "terraform")
+}
+
+func TestAwsIamSamlProvider_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsiamsamlprovider", "pulumi")
+}
+
+func TestAwsIamSamlProvider_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsiamsamlprovider", "terraform")
+}
+
+func TestAwsIamAccountSettings_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsiamaccountsettings", "pulumi")
+}
+
+func TestAwsIamAccountSettings_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsiamaccountsettings", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

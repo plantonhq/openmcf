@@ -168,6 +168,14 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.attachments[].targetId` | AwsOrganizationalUnit | `status.outputs.ou_id` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsBudget | `spec.actions[].scpActionDefinition.policyId` | `status.outputs.policy_id` |
+
 ## See Also
 
 - [Overview](../README.md)
