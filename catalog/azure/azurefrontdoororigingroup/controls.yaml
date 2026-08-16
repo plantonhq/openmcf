@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurefrontdoororigingroup
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The origin group is edge-routing configuration; it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Transit posture lives on the neighbors -- the route's forwarding_protocol chooses TLS on the origin leg, and each origin's certificate_name_check_enabled validates the backend's certificate. The group's only protocol choice is the health probe's (health_probe.protocol), which should mirror real traffic, not substitute for it.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The group itself has no reachable surface -- it is a pool definition. Keeping backends off the public internet is each origin's private_link and the backend's own posture, separate kinds.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The group accepts no inbound traffic of its own; client-side ingress filtering lives in the WAF attached via an AzureFrontDoorSecurityPolicy, separate kinds.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: WAF enforcement is attached at the domain/endpoint level by an AzureFrontDoorSecurityPolicy -- separate kinds; the origin group sits behind the edge, not in front of it.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the group exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The group runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane changes land in the Azure Activity Log as subscription-level posture; request access logs are the Front Door profile's diagnostic settings, a separate kind.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The group publishes no spec-configurable metrics export. Its health_probe is rotation health-checking (deciding which origins serve), not observability wiring -- origin health metrics ride the Front Door profile, a separate kind.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless edge configuration -- nothing to back up; the manifest recreates the group declaratively (recreating the group also replaces every origin nested under it).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Front Door is a global anycast service -- the group's load-balancing decisions are made across Microsoft's worldwide edge fleet with no single-zone failure mode of its own. The group is also WHERE cross-backend redundancy is expressed (health probes eject unhealthy origins; priority tiers give active/passive failover), though the backends' own zonal posture belongs to their kinds.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for an origin group (Azure resource locks are subscription-side governance outside the manifest).
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed edge service -- Microsoft operates and patches the Front Door fleet that executes the group's load balancing and probing; no customer-visible patch surface exists.

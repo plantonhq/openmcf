@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuredataprotectionbackuppolicy
+spec:
+  azure:
+    groups:
+      - purpose: ManageBackupPolicy
+        actions:
+          - Microsoft.DataProtection/backupVaults/backupPolicies/read
+          - Microsoft.DataProtection/backupVaults/backupPolicies/write
+          - Microsoft.DataProtection/backupVaults/backupPolicies/delete
+        provenance: derived
+        notes: Covers all six count-gated variant resources (azurerm_data_protection_backup_policy_blob_storage / _disk / _kubernetes_cluster / _mysql_flexible_server / _postgresql_flexible_server / _data_lake_storage) -- exactly one materializes per deployment, and every variant is the same ARM child type under the vault, whichever addressing style its provider resource uses (vault ID, vault name + resource group, or the data-lake argument name). Policies are immutable after create, so the lifecycle is create, read/refresh, and delete-plus-recreate. Backup Contributor on the vault's resource group covers it.

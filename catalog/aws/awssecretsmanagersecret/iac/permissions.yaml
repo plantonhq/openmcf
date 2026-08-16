@@ -1,0 +1,60 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awssecretsmanagersecret
+spec:
+  aws:
+    statements:
+      - sid: ManageSecret
+        actions:
+          - secretsmanager:CreateSecret
+          - secretsmanager:DescribeSecret
+          - secretsmanager:UpdateSecret
+          - secretsmanager:DeleteSecret
+          - secretsmanager:TagResource
+          - secretsmanager:UntagResource
+          - secretsmanager:ReplicateSecretToRegions
+          - secretsmanager:RemoveRegionsFromReplication
+        resources:
+          - arn:aws:secretsmanager:*:*:secret:*
+        provenance: derived
+        notes: Covers aws_secretsmanager_secret -- creation (with tags and replica blocks), reads during plan/refresh, in-place updates (description, KMS key), replica add/remove after creation, and teardown (DeleteSecret honoring spec.recovery_window_in_days, including the modules' create-retry through AWS's "scheduled for deletion" window). Every Secrets Manager action authorizes against the secret ARN -- the service reference's only ARN format.
+      - sid: ManageResourcePolicy
+        actions:
+          - secretsmanager:GetResourcePolicy
+          - secretsmanager:PutResourcePolicy
+          - secretsmanager:DeleteResourcePolicy
+        resources:
+          - arn:aws:secretsmanager:*:*:secret:*
+        provenance: derived
+        notes: Covers aws_secretsmanager_secret_policy -- created only when spec.policy is set, rendered through the standalone policy resource for its typed block_public_policy guard. DeleteResourcePolicy fires when the policy is removed or the secret destroyed.
+      - sid: ManageSecretValue
+        actions:
+          - secretsmanager:PutSecretValue
+          - secretsmanager:GetSecretValue
+          - secretsmanager:UpdateSecretVersionStage
+        resources:
+          - arn:aws:secretsmanager:*:*:secret:*
+        provenance: derived
+        notes: Covers aws_secretsmanager_secret_version -- created only when a value arm (string_value or binary_value) is set. GetSecretValue is the provider's read side during refresh; UpdateSecretVersionStage manages staging labels, including detaching them at version teardown.
+      - sid: ManageRotation
+        actions:
+          - secretsmanager:RotateSecret
+          - secretsmanager:CancelRotateSecret
+        resources:
+          - arn:aws:secretsmanager:*:*:secret:*
+        provenance: derived
+        notes: Covers aws_secretsmanager_secret_rotation -- created only when spec.rotation is set. CancelRotateSecret fires when the rotation block is removed. The rotation Lambda must grant Secrets Manager invoke permission itself (the spec documents this); the runner needs no Lambda actions.
+      - sid: UseCustomerManagedKey
+        actions:
+          - kms:GenerateDataKey
+          - kms:Decrypt
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Needed only when spec.kms_key_id (or a replica's kms_key_id) references a customer-managed key -- Secrets Manager authorizes the CALLING principal for these operations on that key when writing (PutSecretValue) and reading (GetSecretValue) values. The AWS-managed aws/secretsmanager key requires no caller-side KMS grant.

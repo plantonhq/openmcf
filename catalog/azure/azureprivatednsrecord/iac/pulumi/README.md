@@ -24,4 +24,4 @@ Exactly one of the SDK's private DNS record resources: `privatedns.ARecord`, `pr
 
 ## Required Permissions
 
-The deploying principal needs `Microsoft.Network/privateDnsZones/*/write` on the zone's record types (Private DNS Zone Contributor on the resource group covers it).
+Least-privilege runner permissions for this component are declared in [`../permissions.yaml`](../permissions.yaml).

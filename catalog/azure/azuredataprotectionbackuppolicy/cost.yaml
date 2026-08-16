@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuredataprotectionbackuppolicy
+spec:
+  billing_model: free
+  free_tier: The policy is a free configuration object -- a schedule plus retention grammar stored as an ARM child of its vault, whichever of the six datasource variants it carries. Azure meters neither policies nor how many instances bind to one.
+  notes: "No field of this spec buys anything directly, but the policy SHAPES downstream spend: every backup instance bound to it (AzureDataProtectionBackupInstance carries the per-protected-instance fees and the backup-storage GB meters) accumulates recovery points exactly as the variant's schedule intervals and retention durations dictate, on the store each variant pins (operational for disk/AKS, vault for the flexible servers/Data Lake, either or both for blob). Those meters bill on the instances and the vault's redundancy choice, never on the policy."

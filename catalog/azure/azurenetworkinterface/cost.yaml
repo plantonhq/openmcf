@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurenetworkinterface
+spec:
+  billing_model: free
+  free_tier: The network interface itself -- its IP configurations, private addresses, DNS settings, accelerated networking, IP forwarding, and every association it declares -- never bills. Azure has no meter for NICs; accelerated networking (SR-IOV) is likewise free on supported VM sizes.
+  notes: "The NIC is the free attachment point between billable things: the AzureVirtualMachine that consumes it bills compute hours; a public_ip_address_id reference fronts it with an AzurePublicIp that bills its own address rental; load-balancer and Application Gateway pool memberships point at kinds with their own hourly and data meters; and the traffic flowing through the NIC is charged as bandwidth (inter-zone/inter-region/internet egress) on the subscription, not on this resource. The auxiliary_mode/auxiliary_sku NVA acceleration is a preview feature with no published meter of its own today; the appliance VM using it bills as compute."

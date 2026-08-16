@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurevirtualwan
+spec:
+  billing_model: free
+  free_tier: The Virtual WAN object itself -- the type, branch-to-branch policy, Office 365 breakout category, and VPN-encryption switch -- never bills. It is a lightweight container of policy; Azure charges for the hubs and gateways that reference it, never for the umbrella.
+  notes: "No field of this spec buys anything: type gates capability (Standard's full mesh vs the legacy Basic tier), not a fee on the WAN itself. The real spend lives in the resources that hang off it -- virtual hubs bill per deployment hour plus data processing, and the site-to-site/point-to-site VPN and ExpressRoute gateways on those hubs bill by scale unit -- each a separate resource with its own cost profile. An empty WAN (no hubs) costs exactly nothing."

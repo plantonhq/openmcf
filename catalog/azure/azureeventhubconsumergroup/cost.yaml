@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureeventhubconsumergroup
+spec:
+  billing_model: free
+  free_tier: A consumer group is pure configuration -- a named read cursor over the hub's partitions. Azure has no meter for consumer groups; every group up to the tier's quota (none beyond $Default on BASIC, 20 per hub on STANDARD, more on PREMIUM/dedicated) costs nothing.
+  notes: "No field of this spec buys anything: event_hub_id points at an AzureEventHub (itself free -- billing lives on its namespace), consumer_group_name and user_metadata are labels. The reads a group's consumers perform are covered by the parent AzureEventHubNamespace's throughput/processing/capacity units -- egress consumes the capacity the namespace already pays for, and the tier quotas above are limits, not meters."

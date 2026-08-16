@@ -1,0 +1,91 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awssecretsmanagersecret
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every secret value is encrypted under a KMS key before storage -- the account's AWS-managed aws/secretsmanager key when kms_key_id is unset. Secrets Manager cannot store a value unencrypted.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset uses the AWS-managed aws/secretsmanager key; setting it encrypts new versions under the referenced customer-managed key (Secrets Manager tracks the key per version, so existing versions stay readable). Required in practice for cross-account reads -- the AWS-managed key cannot be granted cross-account.
+      notes: Replicas encrypt under their own region's key -- replica_regions entries carry a per-replica kms_key_id, defaulting to that region's AWS-managed key.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All access to the secret is through the Secrets Manager API over TLS-only HTTPS endpoints with SigV4-signed requests; no other transport exists.
+    - control_id: no-public-access
+      status: configurable
+      field_path: block_public_policy
+      evidence:
+        type: spec_default
+        reference: Defaults to true -- PutResourcePolicy rejects any resource policy AWS determines grants public (anonymous) access. Disabling it is a deliberate opt-out, only meaningful together with policy.
+      notes: The secret has no network endpoint of its own; the one path to public exposure is a policy granting anonymous access, which this gate blocks by default.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network ingress surface exists -- reads are IAM-authorized API calls against the regional endpoint. Private connectivity (VPC endpoints) is account-level infrastructure outside this spec.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request-filtering attachment point exists on a secret; requests are authorized API calls, not web traffic.
+    - control_id: rbac
+      status: configurable
+      field_path: policy
+      evidence:
+        type: spec_default
+        reference: Unset leaves access governed solely by IAM identity policies; setting policy adds a resource-based policy that restricts reads to named principals or grants cross-account access. Removing the field deletes the policy.
+      notes: The 03-multi-region-replicated preset restricts reads to a named application role this way.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The secret runs no workloads; it is itself the managed store that lets workloads fetch credentials at runtime through IAM instead of embedding them. The rotation Lambda authenticates through its own execution role.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The Secrets Manager API accepts only SigV4-signed requests over TLS; no legacy or weaker authentication path exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every Secrets Manager API call against the secret -- administrative operations and value reads (GetSecretValue) alike -- is recorded by CloudTrail by default.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All API activity on the secret surfaces through CloudTrail to EventBridge automatically -- rotation, deletion scheduling, and access events can be alerted on without any component switch.
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every value update keeps the previous version recoverable under the AWSPREVIOUS staging label automatically, and a destroyed secret remains restorable through its recovery window (see deletion-protection).
+      notes: replica_regions adds read-only regional copies kept in sync by Secrets Manager -- the disaster-recovery posture for regional outages.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Version retention is not policy-configurable -- Secrets Manager keeps AWSCURRENT/AWSPREVIOUS and deprecates unlabeled versions on its own schedule. The configurable retention surface is the deletion recovery window (see deletion-protection).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Secrets Manager is a Regional service that stores and serves secrets redundantly across the region's Availability Zones; single-zone operation is unrepresentable.
+      notes: replica_regions extends availability across regions.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: recovery_window_in_days
+      evidence:
+        type: spec_default
+        reference: Defaults to 30 -- destroy schedules deletion and the secret stays restorable (name reserved) for the window; 0 deliberately opts into immediate, unrecoverable deletion.
+      notes: For replicated secrets the spec warns that 0 can outrun AWS's asynchronous replica deletion and strand live replicas -- a non-zero window is the safe posture there too.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the Secrets Manager fleet; no customer-visible patch surface exists.

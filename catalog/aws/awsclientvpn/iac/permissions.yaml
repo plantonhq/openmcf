@@ -1,0 +1,68 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsclientvpn
+spec:
+  aws:
+    statements:
+      - sid: ManageClientVpnEndpoint
+        actions:
+          - ec2:CreateClientVpnEndpoint
+          - ec2:ModifyClientVpnEndpoint
+          - ec2:DeleteClientVpnEndpoint
+        resources:
+          - arn:aws:ec2:*:*:client-vpn-endpoint/*
+          - arn:aws:ec2:*:*:security-group/*
+          - arn:aws:ec2:*:*:transit-gateway/*
+          - arn:aws:ec2:*:*:vpc/*
+        provenance: derived
+        notes: Covers aws_ec2_client_vpn_endpoint. The EC2 service reference authorizes CreateClientVpnEndpoint and ModifyClientVpnEndpoint against the endpoint AND the referenced security-group, transit-gateway, and vpc ARN formats -- all four are granted so endpoints with security groups, a VPC attachment, or a transit-gateway attachment all provision. Delete authorizes on the endpoint alone.
+      - sid: TagClientVpnEndpoint
+        actions:
+          - ec2:CreateTags
+          - ec2:DeleteTags
+        resources:
+          - arn:aws:ec2:*:*:client-vpn-endpoint/*
+        provenance: derived
+        notes: The modules tag only the endpoint itself (tag-on-create plus tag updates). ec2:CreateTags/DeleteTags are authorized against many EC2 resource types; the grant is scoped to the one this module tags.
+      - sid: DescribeClientVpnEndpoints
+        actions:
+          - ec2:DescribeClientVpnEndpoints
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side of aws_ec2_client_vpn_endpoint during plan/refresh. The service reference lists no resource types for this Describe, so the wildcard is the narrowest possible scope.
+      - sid: ManageTargetNetworkAssociations
+        actions:
+          - ec2:AssociateClientVpnTargetNetwork
+          - ec2:DisassociateClientVpnTargetNetwork
+          - ec2:DescribeClientVpnTargetNetworks
+        resources:
+          - arn:aws:ec2:*:*:client-vpn-endpoint/*
+          - arn:aws:ec2:*:*:subnet/*
+        provenance: derived
+        notes: Covers aws_ec2_client_vpn_network_association -- one per spec.subnet_ids entry. Associate authorizes against the endpoint and the subnet; Disassociate and the Describe against the endpoint.
+      - sid: ManageAuthorizationRules
+        actions:
+          - ec2:AuthorizeClientVpnIngress
+          - ec2:RevokeClientVpnIngress
+          - ec2:DescribeClientVpnAuthorizationRules
+        resources:
+          - arn:aws:ec2:*:*:client-vpn-endpoint/*
+        provenance: derived
+        notes: Covers aws_ec2_client_vpn_authorization_rule -- one per spec.authorization_rules entry. All three actions authorize on the endpoint.
+      - sid: ManageClientVpnRoutes
+        actions:
+          - ec2:CreateClientVpnRoute
+          - ec2:DeleteClientVpnRoute
+          - ec2:DescribeClientVpnRoutes
+        resources:
+          - arn:aws:ec2:*:*:client-vpn-endpoint/*
+          - arn:aws:ec2:*:*:subnet/*
+        provenance: derived
+        notes: Covers aws_ec2_client_vpn_route -- one per spec.routes entry. Create and Delete authorize against the endpoint and the route's target subnet; the Describe against the endpoint.

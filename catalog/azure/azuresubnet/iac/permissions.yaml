@@ -1,0 +1,35 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuresubnet
+spec:
+  azure:
+    groups:
+      - purpose: ManageSubnet
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/read
+          - Microsoft.Network/virtualNetworks/subnets/write
+          - Microsoft.Network/virtualNetworks/subnets/delete
+          - Microsoft.Network/virtualNetworks/read
+        provenance: derived
+        notes: Covers azurerm_subnet plus the three association resources, which are all writes to the subnet on the PARENT NETWORK's path (the module derives the network name and resource group from virtual_network_id) -- create, read/refresh, in-place updates (prefixes, service endpoints, delegations, policies), attachment writes, and destroy. virtualNetworks/read is exercised on every create and update -- after writing the subnet the provider polls the PARENT network's provisioning state (Get on the virtual network) until it returns to Succeeded before proceeding. Held via Network Contributor, Contributor, or Owner on the parent network.
+      - purpose: AttachRouteTable
+        actions:
+          - Microsoft.Network/routeTables/join/action
+        provenance: derived
+        notes: Required only when route_table_id attaches a table -- azurerm_subnet_route_table_association demands join on the table being attached, which may live in another resource group. Not needed otherwise.
+      - purpose: AttachNetworkSecurityGroup
+        actions:
+          - Microsoft.Network/networkSecurityGroups/join/action
+        provenance: derived
+        notes: Required only when network_security_group_id attaches a group -- azurerm_subnet_network_security_group_association demands join on the group being attached. Not needed otherwise.
+      - purpose: AttachNatGateway
+        actions:
+          - Microsoft.Network/natGateways/join/action
+        provenance: derived
+        notes: Required only when nat_gateway_id attaches a gateway -- azurerm_subnet_nat_gateway_association demands join on the gateway being attached. Not needed otherwise.

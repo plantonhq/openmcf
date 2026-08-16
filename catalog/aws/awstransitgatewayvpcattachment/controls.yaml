@@ -1,0 +1,73 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awstransitgatewayvpcattachment
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The attachment routes packets between a VPC and its Transit Gateway; it stores no customer data at rest -- its only state is declarative configuration, re-creatable from the manifest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Layer-3 routing plumbing -- the attachment neither terminates nor originates sessions, so it has no encryption surface of its own. Encryption in transit belongs to the communicating workloads.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The attachment is private connectivity by construction -- AWS provisions an elastic network interface inside each chosen subnet of the attached VPC, and traffic flows only between that VPC and the gateway. No public endpoint exists and none can be configured.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: default_route_table_propagation
+      evidence:
+        type: spec_default
+        reference: Left unset, the gateway's own default-propagation dial decides whether this VPC's CIDRs are advertised into the default route table -- reachable by every spoke associated with it. Setting it false keeps this VPC out of the default routing domain, confining reachability to explicitly composed AwsTransitGatewayRouteTable resources.
+      notes: default_route_table_association governs the reverse direction -- what this VPC can reach. The 02-segmented-spoke preset turns both off; the 03-inspection-vpc preset turns association off so traffic hairpins through the inspection domain. Per-flow filtering stays with the workloads' security groups and network ACLs.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No web traffic surface -- the attachment forwards packets at Layer 3; WAF-style request filtering applies to Layer-7 entry points, which live on other kinds.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is AWS-account IAM posture, not a component choice; the attachment exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The attachment runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths exist on a routing attachment.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no logging surface. Transit Gateway Flow Logs are enabled on the gateway or attachment outside this component, and management events (create, modify, route-table membership) land in account-wide CloudTrail.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Amazon VPC publishes attachment-level CloudWatch metrics (BytesIn/BytesOut, PacketsIn/PacketsOut, drop counts, per-AZ variants) automatically for every Transit Gateway VPC attachment -- all metrics are always reported and this cannot be disabled.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless routing plumbing -- no data to back up. The configuration itself is declarative and re-creatable from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: subnet_ids
+      evidence:
+        type: spec_validation
+        reference: subnet_ids requires at least one subnet (min_items=1), at most one per Availability Zone -- a single-zone attachment is representable, and the gateway routes traffic only to and from AZs it has an ENI in, so each added subnet extends the attachment into another zone. The subnet set updates in place without replacing the attachment.
+      notes: All three presets place ENIs in two Availability Zones. Cover every AZ your workloads run in, per the spec's own guidance.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag on a Transit Gateway VPC attachment -- the spec and the provider's aws_ec2_transit_gateway_vpc_attachment resource carry none.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the Transit Gateway infrastructure the attachment plugs into; no customer-visible patch surface exists.

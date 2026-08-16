@@ -1,0 +1,33 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsclientvpn
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon Virtual Private Cloud
+      sku_meter: endpoint association hours
+      pricing_unit: hours
+      description: Each associated subnet bills an endpoint-association hour every hour it stays attached, whether or not anyone is connected. An endpoint with zero associations bills nothing -- and routes nothing.
+  cost_drivers:
+    - field_path: subnet_ids
+      sku_meter: endpoint association hours
+      pricing_unit: hours
+      impact: Every subnet in the list is its own hourly association -- associating a second Availability Zone for resilience doubles the standing charge.
+    - field_path: split_tunnel
+      sku_meter: data transfer
+      pricing_unit: GB
+      impact: Full tunnel (false, AWS's default) pushes ALL client traffic through the VPC, so internet-bound bytes ride the attached network's NAT and data-transfer meters; split tunnel (true) keeps internet traffic on the client's own connection.
+    - field_path: connection_log
+      sku_meter: CloudWatch Logs ingestion
+      pricing_unit: GB
+      impact: Connection events (connect, disconnect, authentication failures) bill as CloudWatch Logs ingestion and storage on the destination log group, scaling with workforce churn.
+  estimate_exclusions:
+    - client connection hours bill per concurrently connected client, entirely workforce-dependent -- session_timeout_hours and disconnect_on_session_timeout are the levers on lingering sessions
+    - data transfer out of the VPC (internet, cross-AZ, on-premises) bills at the network components that carry it
+    - full-tunnel internet egress adds NAT gateway data processing on the NAT-ed subnet's own component
+    - connection-log bytes bill to the destination CloudWatch log group, not the endpoint
+  notes: The association hours are the committed floor -- billed whether the VPN is busy or idle. Connection hours are the amplifier at scale, one meter per connected client per hour, and no manifest can know how many people connect.

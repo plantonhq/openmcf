@@ -1,0 +1,66 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurefrontdoorsecret
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The secret stores no key material of its own -- it references a Key Vault certificate by its data-plane identifier (key_vault_certificate_id), and encryption at rest of that material is the vault's posture, a separate catalog kind.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to key (see enc-at-rest); customer-managed-key posture for the certificate material belongs to the Key Vault kind.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The certificate this secret wraps is SERVED by the custom domains that reference it (tls.secret_id) -- the TLS posture itself (always-on termination, TLS 1.2 floor, cipher policy) lives on the AzureFrontDoorCustomDomain kind.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The secret has no reachable surface -- it is a control-plane reference; nothing answers traffic on it.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound traffic exists to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: WAF enforcement is attached by an AzureFrontDoorSecurityPolicy at the domain/endpoint level -- separate kinds; a certificate wrapper carries no request path.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice. The one control-relevant grant -- letting Front Door's service principal read the vault (e.g. the Key Vault Secrets User role) -- is a role assignment on the VAULT, posture of that separate kind.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Front Door reads the Key Vault certificate with Microsoft's own service principal (the Microsoft.AzureFrontDoor-Cdn enterprise application) -- no credential, key, or connection string ever appears in this spec or its state; the one-time prerequisite is a role grant on your vault to that principal, not a stored secret.
+      notes: The spec's only inputs are ARM/data-plane identifiers (profile_id, key_vault_certificate_id); the key material itself never transits the manifest or the IaC runner.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own; vault access rides Front Door's Entra service principal (see workload-identity).
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane changes land in the Azure Activity Log as subscription-level posture; reads of the underlying certificate are auditable in the KEY VAULT's diagnostic logs, posture of that separate kind.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The secret publishes no metrics of its own; certificate-expiry observability belongs to Key Vault and the domains serving it, separate kinds.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless reference configuration -- nothing to back up; the manifest recreates the secret declaratively, and the certificate it points at is safeguarded by Key Vault (its own kind, with its own recovery posture).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Front Door is a global anycast service -- the certificate this secret wraps is distributed to and served from Microsoft's worldwide edge fleet by design, with no single-zone or single-region failure mode of its own.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a Front Door secret (Azure resource locks are subscription-side governance outside the manifest). Note the whole resource is immutable -- any change replaces it -- which is safe because rotation happens inside Key Vault.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed edge service -- Microsoft operates and patches the Front Door fleet that serves the wrapped certificate; no customer-visible patch surface exists.

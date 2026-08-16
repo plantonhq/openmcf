@@ -1,0 +1,57 @@
+# Cost derivation: the machine-executable rules turning any AwsKmsKey
+# manifest's spec values into metered quantities and price choices. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/awskmskey.yaml; a server-side estimator evaluates
+# the same rules against live manifests. Prices live in the provider's
+# price book (../pricebook/). Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awskmskey
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  lines:
+    - sku_meter: customer managed keys
+      quantity:
+        - constant: "1"
+      price_slug: kms-key-us-east-1
+      basis: one customer-managed key holding one billed key-material version from creation, at the monthly per-key rate (AWS prorates it hourly); priced at the us-east-1 rate -- assumed when the manifest leaves region as a placeholder
+  exclusions:
+    - text: API requests bill per 10,000 beyond the 20,000-requests/month free tier (calculated across all regions) -- volume follows the workloads using the key; asymmetric and HMAC keys' requests bill at higher rates and are excluded from the free tier entirely, with key_spec selecting the class
+    - applies_when:
+        - field_path: enable_key_rotation
+          op: equals
+          value: "true"
+      text: each of the first two rotations adds another billed key-material version -- a full additional key-month charge arriving on the rotation_period_in_days cadence; AWS caps the surcharge at the second rotation
+    - applies_when:
+        - field_path: multi_region
+          op: equals
+          value: "true"
+      text: replica keys created from this primary each bill the same monthly key fee in their own regions -- replicas are separate resources outside this manifest
+    - applies_when:
+        - field_path: custom_key_store_id
+          op: is_set
+      text: the CloudHSM cluster or external key manager behind the custom key store is separately billed account-level infrastructure -- with CloudHSM, orders of magnitude larger than the key fee
+  notes:
+    - applies_when:
+        - field_path: disabled
+          op: equals
+          value: "true"
+      text: A disabled key still bills the monthly key fee -- only scheduling deletion stops the charge, and cancelling the deletion reinstates it as though never scheduled.
+    - applies_when:
+        - field_path: enable_key_rotation
+          op: equals
+          value: "true"
+      text: A long-rotated key settles at three key-months of charge per month -- the original version plus the two capped rotation versions.
+    - applies_when:
+        - field_path: aliases
+          op: is_set
+      text: Aliases add no metered charge of their own -- the offer bills keys and API requests only.
+    - applies_when:
+        - field_path: grants
+          op: is_set
+      text: Grants add no metered charge of their own -- the offer bills keys and API requests only.

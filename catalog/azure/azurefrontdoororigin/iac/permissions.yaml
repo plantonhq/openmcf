@@ -1,0 +1,20 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurefrontdoororigin
+spec:
+  azure:
+    groups:
+      - purpose: ManageOrigin
+        actions:
+          - Microsoft.Cdn/profiles/origingroups/origins/read
+          - Microsoft.Cdn/profiles/origingroups/origins/write
+          - Microsoft.Cdn/profiles/origingroups/origins/delete
+          - Microsoft.Cdn/profiles/read
+        provenance: derived
+        notes: Covers azurerm_cdn_frontdoor_origin -- create, read/refresh, in-place updates (weights, ports, private_link), and destroy. The parent origin group is addressed by its ARM ID parsed from the origin_group_id reference. profiles/read is exercised by the provider itself -- on create it Gets the parent profile to check the SKU (private_link is only valid on Premium), and on update it repeats that Get whenever private_link changes. A private_link origin's pending connection is approved by the TARGET resource's owner out of band -- no extra runner permission substitutes for that approval. Held via CDN Profile Contributor, Contributor, or narrower custom roles.

@@ -398,6 +398,78 @@ services:
       - UpdateTrustStore
       - UpdateVpcOrigin
       - VerifyDnsConfiguration
+  - prefix: cloudwatch
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/cloudwatch/cloudwatch.json
+    source_modified: "2026-07-29"
+    retrieved_on: "2026-08-16"
+    actions:
+      - BatchGetServiceLevelIndicatorReport
+      - BatchGetServiceLevelObjectiveBudgetReport
+      - CallWithBearerToken
+      - CreateServiceLevelObjective
+      - DeleteAlarmMuteRule
+      - DeleteAlarms
+      - DeleteAnomalyDetector
+      - DeleteDashboards
+      - DeleteInsightRules
+      - DeleteMetricStream
+      - DeletePipelineRule
+      - DeleteServiceLevelObjective
+      - DescribeAlarmHistory
+      - DescribeAlarms
+      - DescribeAlarmsForMetric
+      - DescribeAnomalyDetectors
+      - DescribeInsightRules
+      - DisableAlarmActions
+      - DisableInsightRules
+      - EnableAlarmActions
+      - EnableInsightRules
+      - EnableTopologyDiscovery
+      - GenerateQuery
+      - GenerateQueryResultsSummary
+      - GetAlarmMuteRule
+      - GetDashboard
+      - GetDataset
+      - GetInsightRuleReport
+      - GetMetricData
+      - GetMetricStatistics
+      - GetMetricStream
+      - GetMetricWidgetImage
+      - GetOTelEnrichment
+      - GetService
+      - GetServiceData
+      - GetServiceLevelObjective
+      - GetTopologyDiscoveryStatus
+      - GetTopologyMap
+      - Link
+      - ListAlarmMuteRules
+      - ListDashboards
+      - ListEntitiesForMetric
+      - ListManagedInsightRules
+      - ListMetricStreams
+      - ListMetrics
+      - ListServiceLevelObjectives
+      - ListServices
+      - ListTagsForResource
+      - PutAlarmMuteRule
+      - PutAnomalyDetector
+      - PutCompositeAlarm
+      - PutDashboard
+      - PutInsightRule
+      - PutLogAlarm
+      - PutManagedInsightRules
+      - PutMetricAlarm
+      - PutMetricData
+      - PutMetricStream
+      - PutPipelineRule
+      - SetAlarmState
+      - StartMetricStreams
+      - StartOTelEnrichment
+      - StopMetricStreams
+      - StopOTelEnrichment
+      - TagResource
+      - UntagResource
+      - UpdateServiceLevelObjective
   - prefix: dynamodb
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/dynamodb/dynamodb.json
     source_modified: "2026-08-05"
@@ -1822,6 +1894,67 @@ services:
       - TagDeliveryStream
       - UntagDeliveryStream
       - UpdateDestination
+  - prefix: globalaccelerator
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/globalaccelerator/globalaccelerator.json
+    source_modified: "2026-03-25"
+    retrieved_on: "2026-08-16"
+    actions:
+      - AddCustomRoutingEndpoints
+      - AddEndpoints
+      - AdvertiseByoipCidr
+      - AllowCustomRoutingTraffic
+      - CreateAccelerator
+      - CreateCrossAccountAttachment
+      - CreateCustomRoutingAccelerator
+      - CreateCustomRoutingEndpointGroup
+      - CreateCustomRoutingListener
+      - CreateEndpointGroup
+      - CreateListener
+      - DeleteAccelerator
+      - DeleteCrossAccountAttachment
+      - DeleteCustomRoutingAccelerator
+      - DeleteCustomRoutingEndpointGroup
+      - DeleteCustomRoutingListener
+      - DeleteEndpointGroup
+      - DeleteListener
+      - DenyCustomRoutingTraffic
+      - DeprovisionByoipCidr
+      - DescribeAccelerator
+      - DescribeAcceleratorAttributes
+      - DescribeCrossAccountAttachment
+      - DescribeCustomRoutingAccelerator
+      - DescribeCustomRoutingAcceleratorAttributes
+      - DescribeCustomRoutingEndpointGroup
+      - DescribeCustomRoutingListener
+      - DescribeEndpointGroup
+      - DescribeListener
+      - ListAccelerators
+      - ListByoipCidrs
+      - ListCrossAccountAttachments
+      - ListCrossAccountResourceAccounts
+      - ListCrossAccountResources
+      - ListCustomRoutingAccelerators
+      - ListCustomRoutingEndpointGroups
+      - ListCustomRoutingListeners
+      - ListCustomRoutingPortMappings
+      - ListCustomRoutingPortMappingsByDestination
+      - ListEndpointGroups
+      - ListListeners
+      - ListTagsForResource
+      - ProvisionByoipCidr
+      - RemoveCustomRoutingEndpoints
+      - RemoveEndpoints
+      - TagResource
+      - UntagResource
+      - UpdateAccelerator
+      - UpdateAcceleratorAttributes
+      - UpdateCrossAccountAttachment
+      - UpdateCustomRoutingAccelerator
+      - UpdateCustomRoutingAcceleratorAttributes
+      - UpdateCustomRoutingListener
+      - UpdateEndpointGroup
+      - UpdateListener
+      - WithdrawByoipCidr
   - prefix: iam
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/iam/iam.json
     source_modified: "2026-08-12"
@@ -3138,7 +3271,7 @@ services:
       - ValidateResourcePolicy
   - prefix: sns
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/sns/sns.json
-    source_modified: "2026-05-29"
+    source_modified: "2026-08-16"
     retrieved_on: "2026-08-16"
     actions:
       - AddPermission

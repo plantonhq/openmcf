@@ -16,8 +16,12 @@ spec:
           - Microsoft.Storage/storageAccounts/write
           - Microsoft.Storage/storageAccounts/delete
           - Microsoft.Storage/storageAccounts/listKeys/action
+          - Microsoft.Storage/storageAccounts/blobServices/read
+          - Microsoft.Storage/storageAccounts/blobServices/write
+          - Microsoft.Storage/storageAccounts/fileServices/read
+          - Microsoft.Storage/storageAccounts/fileServices/write
         provenance: derived
-        notes: Covers azurerm_storage_account -- create, read/refresh, in-place updates (tiers, network rules, blob properties), and destroy. The provider lists account keys to manage data-plane settings (static website) and export connection outputs; with shared keys disabled the static-website sub-resource still configures through the management plane.
+        notes: Covers azurerm_storage_account -- create, read/refresh, in-place updates (tiers, network rules), and destroy. blob_properties and share_properties do NOT ride the account PUT -- the provider writes them through the account's blobServices and fileServices management-plane sub-resources (SetServiceProperties on create and update), and on every read/refresh it Gets both sub-resources to populate state for account kinds that support blob and file (this module's kinds do). listKeys is called on every read to export the keys and connection strings as outputs and to authenticate the provider's data-plane calls (e.g. queue service properties on supporting kinds); the provider tolerates a denied listKeys by skipping those outputs. The module does not use the deprecated inline static_website block, and in the pinned providers static website is a data-plane call anyway, not a management-plane sub-resource.
       - purpose: ManageLifecyclePolicy
         actions:
           - Microsoft.Storage/storageAccounts/managementPolicies/read
@@ -30,8 +34,3 @@ spec:
           - Microsoft.Network/virtualNetworks/subnets/join/action
         provenance: derived
         notes: Required only when network_rules allowlists virtual-network subnets -- binding a subnet service endpoint to the account demands join on each subnet.
-      - purpose: ReadResourceGroup
-        actions:
-          - Microsoft.Resources/subscriptions/resourceGroups/read
-        provenance: derived
-        notes: The provider resolves the target resource group before creating the account in it.

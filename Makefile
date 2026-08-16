@@ -410,12 +410,14 @@ generate-cost-estimates:
 generate-price-book:
 	go run ./pkg/finops/pricebook/fetcher
 
-# Refreshes the committed AWS action-inventory snapshot
-# (pkg/iac/actioninventory/aws.yaml) from AWS's machine-readable service
-# reference, scoped to the services the committed runner permissions
-# manifests reference. Requires network access; CI never fetches -- it
-# validates every manifest action against the committed snapshot (an
-# invented or misspelled action name cannot ship).
+# Refreshes the committed action-inventory snapshots
+# (pkg/iac/actioninventory/{aws,azure}.yaml) from each provider's own
+# published inventory -- AWS's machine-readable service reference and
+# ARM's provider-operations metadata (the Azure arm needs a signed-in
+# Azure CLI for its bearer token) -- scoped to the services the committed
+# runner permissions manifests reference. Requires network access; CI
+# never fetches -- it validates every manifest action against the
+# committed snapshots (an invented or misspelled action name cannot ship).
 .PHONY: generate-action-inventory
 generate-action-inventory:
 	go run ./pkg/iac/actioninventory/fetcher

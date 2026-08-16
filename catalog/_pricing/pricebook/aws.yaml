@@ -910,3 +910,239 @@ spec:
         region_code: us-west-2
         usage_type: USW2-Kafka.m5.large
         operation: RunBroker
+    - name: nlb-hours-us-east-1
+      service_name: Elastic Load Balancing
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.0225"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSELB/20260720184950/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AWSELB
+        region_code: us-east-1
+        usage_type: LoadBalancerUsage
+        operation: LoadBalancing:Network
+    - name: nlb-reserved-lcu-us-east-1
+      service_name: Elastic Load Balancing
+      pricing_unit: LCU-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.006"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSELB/20260720184950/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AWSELB
+        region_code: us-east-1
+        usage_type: ReservedLCUUsage
+        operation: LoadBalancing:Network
+    - name: public-ipv4-idle-us-east-1
+      service_name: Amazon Virtual Private Cloud
+      pricing_unit: IP-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.005"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/20260724154225/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonVPC
+        region_code: us-east-1
+        usage_type: USE1-PublicIPv4:IdleAddress
+    - name: tgw-vpc-attachment-hours-us-east-1
+      service_name: Amazon Virtual Private Cloud
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.05"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/20260724154225/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonVPC
+        region_code: us-east-1
+        usage_type: USE1-TransitGateway-Hours
+        operation: TransitGatewayVPC
+    - name: kms-key-us-east-1
+      service_name: AWS Key Management Service
+      pricing_unit: key-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "1"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/awskms/20250828153913/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: awskms
+        region_code: us-east-1
+        usage_type: us-east-1-KMS-Keys
+    - name: secretsmanager-secret-us-east-1
+      service_name: AWS Secrets Manager
+      pricing_unit: secret-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.4"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSSecretsManager/20250828153804/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AWSSecretsManager
+        region_code: us-east-1
+        usage_type: USE1-AWSSecretsManager-Secrets
+    - name: route53-health-check-non-aws
+      service_name: Amazon Route 53
+      pricing_unit: health-check-months
+      region: global
+      currency: USD
+      list_unit_price: "0.75"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260527092459/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonRoute53
+        region_code: global
+        usage_type: Health-Check-Non-AWS
+    - name: route53-health-check-aws
+      service_name: Amazon Route 53
+      pricing_unit: health-check-months
+      region: global
+      currency: USD
+      list_unit_price: "0.5"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260527092459/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonRoute53
+        region_code: global
+        usage_type: Health-Check-AWS
+        description_contains: additional Health Checks of AWS endpoints
+    - name: route53-health-check-optional-feature-non-aws
+      service_name: Amazon Route 53
+      pricing_unit: feature-months
+      region: global
+      currency: USD
+      list_unit_price: "2"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260527092459/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonRoute53
+        region_code: global
+        usage_type: Health-Check-Option-Non-AWS
+    - name: cloudwatch-standard-alarm-metric-us-east-1
+      service_name: AmazonCloudWatch
+      pricing_unit: alarm-metric-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.1"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonCloudWatch/20260806201840/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonCloudWatch
+        region_code: us-east-1
+        usage_type: CW:AlarmMonitorUsage
+    - name: cloudwatch-highres-alarm-metric-us-east-1
+      service_name: AmazonCloudWatch
+      pricing_unit: alarm-metric-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.3"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonCloudWatch/20260806201840/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonCloudWatch
+        region_code: us-east-1
+        usage_type: CW:HighResAlarmMonitorUsage
+    - name: cloudwatch-composite-alarm-us-east-1
+      service_name: AmazonCloudWatch
+      pricing_unit: alarm-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.5"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonCloudWatch/20260806201840/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonCloudWatch
+        region_code: us-east-1
+        usage_type: CW:CompositeAlarmMonitorUsage
+    - name: kinesis-provisioned-shard-hour-us-east-1
+      service_name: Amazon Kinesis
+      pricing_unit: shard-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.015"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonKinesis/20260813193954/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonKinesis
+        region_code: us-east-1
+        usage_type: Storage-ShardHour
+        operation: shardHourStorage
+    - name: kinesis-extended-retention-shard-hour-us-east-1
+      service_name: Amazon Kinesis
+      pricing_unit: shard-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.02"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonKinesis/20260813193954/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonKinesis
+        region_code: us-east-1
+        usage_type: Extended-ShardHour
+        operation: shardHourStorage
+    - name: kinesis-on-demand-stream-hour-us-east-1
+      service_name: Amazon Kinesis
+      pricing_unit: stream-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.04"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonKinesis/20260813193954/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonKinesis
+        region_code: us-east-1
+        usage_type: OnDemand-StreamHour
+        operation: OnDemandStreamHr
+    - name: client-vpn-endpoint-association-hours-us-east-1
+      service_name: Amazon Virtual Private Cloud
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.1"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/20260724154225/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonVPC
+        region_code: us-east-1
+        usage_type: USE1-ClientVPN-EndpointHours
+        operation: ClientVPNEndpoints
+    - name: global-accelerator-fixed-fee
+      service_name: AWS Global Accelerator
+      pricing_unit: hours
+      region: global
+      currency: USD
+      list_unit_price: "0.025"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSGlobalAccelerator/20230914175116/aws-other/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AWSGlobalAccelerator
+        region_code: aws-other
+        usage_type: Global-Accelerator-fixed-fee
+    - name: waf-web-acl-month-us-east-1
+      service_name: AWS WAF
+      pricing_unit: months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "5"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/awswaf/20260107213453/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: awswaf
+        region_code: us-east-1
+        usage_type: USE1-WebACLV2
+    - name: waf-rule-month-us-east-1
+      service_name: AWS WAF
+      pricing_unit: months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "1"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/awswaf/20260107213453/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: awswaf
+        region_code: us-east-1
+        usage_type: USE1-RuleV2

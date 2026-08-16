@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurerecoveryservicesvault
+spec:
+  azure:
+    groups:
+      - purpose: ManageVault
+        actions:
+          - Microsoft.RecoveryServices/Vaults/read
+          - Microsoft.RecoveryServices/Vaults/write
+          - Microsoft.RecoveryServices/Vaults/delete
+          - Microsoft.RecoveryServices/Vaults/backupconfig/read
+          - Microsoft.RecoveryServices/Vaults/backupconfig/write
+          - Microsoft.RecoveryServices/vaults/replicationVaultSettings/read
+          - Microsoft.RecoveryServices/vaults/replicationVaultSettings/write
+        provenance: derived
+        notes: Covers azurerm_recovery_services_vault. The vault object itself -- including storage_mode_type and cross_region_restore_enabled, which ride the vault PUT/PATCH as VaultProperties.RedundancySettings in both provider vintages (no code path touches the legacy backupstorageconfig sub-resource) -- goes through Vaults read/write/delete. backupconfig is the vault's backup-config sub-resource for soft delete and enhanced security -- the tf-pinned provider (azurerm v5) reads it on every read/refresh, and the Pulumi bridge's azurerm v4 vintage additionally writes it unconditionally after every create and update. replicationVaultSettings is the Site Recovery vault-settings sub-resource -- both vintages call its Get on replicationVaultSettings/default unconditionally on every read/refresh (and create ends with a read), so the read is always needed; the write fires only when classic_vmware_replication_enabled is set, because the create path PUTs the setting. Azure spells the backup surface with capital "Vaults" and the Site Recovery settings surface with lowercase "vaults" (verified against the live Microsoft.RecoveryServices operation inventory). CMK additionally needs wrap/unwrap on the Key Vault key for the VAULT's identity -- a data-plane grant to the vault, not to the deploying principal.
+      - purpose: ManageResourceGuardAssociation
+        actions:
+          - Microsoft.RecoveryServices/Vaults/backupResourceGuardProxies/read
+          - Microsoft.RecoveryServices/Vaults/backupResourceGuardProxies/write
+          - Microsoft.RecoveryServices/Vaults/backupResourceGuardProxies/delete
+          - Microsoft.RecoveryServices/Vaults/backupResourceGuardProxies/unlockDelete/action
+        provenance: derived
+        notes: Covers azurerm_recovery_services_vault_resource_guard_association, created only when spec.resource_guard_id is set (ARM pins the proxy's name to "VaultProxy"). Removing the association is itself a Multi-User-Authorization-guarded operation -- unlockDelete/action is what the guard checks before the proxy may be deleted. The deploying principal also needs read on the referenced guard in the GUARD's scope (Microsoft.DataProtection resourceGuards read -- see the guard component's own permissions profile), which typically lives in a different administrator's resource group by design.

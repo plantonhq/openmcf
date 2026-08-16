@@ -1,0 +1,66 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awskinesisstreamconsumer
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The consumer stores nothing -- it is a registration granting a dedicated read pipe on the referenced stream. Data at rest lives on the AwsKinesisStream, encrypted (or not) by that component's kms_key_id.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest); key choice belongs to the referenced stream.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The consumer's only data plane is the SubscribeToShard API's HTTP/2 push delivery through the service's TLS endpoints -- no plaintext transport option exists anywhere in the spec or modules.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: No network placement -- the consumer is an IAM-governed registration on the stream, never an addressable endpoint.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network ingress surface exists; access control is identity-based (see rbac).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No web-facing request traffic exists to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every SubscribeToShard and DescribeStreamConsumer call is IAM-authorized -- no anonymous path exists to the consumer.
+      notes: resource_policy extends grants directly on the consumer ARN, primarily for cross-account enhanced fan-out without role assumption -- review its principals with the same care as IAM policies.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The consumer registration holds no credentials and runs no workloads; the application reading through it authenticates with its own identity.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No legacy authentication path exists to disable -- the IAM-signed Kinesis API is the only access path.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: No audit-logging configuration of its own; administrative API calls are captured by account-level AWS CloudTrail, outside this component's choices.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The consumer exposes no monitoring configuration -- its three spec fields are region, the stream reference, and an access policy. Read-side visibility (consumer lag via IteratorAgeMilliseconds, per-shard throughput) is configured on the referenced AwsKinesisStream's shard_level_metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stores no data -- what a consumer can re-read is bounded by the referenced stream's retention_period_hours, owned by that component.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A registration on the stream with no infrastructure footprint or placement of its own -- there is no availability topology for a manifest to get right or wrong.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists -- deregistering IS deletion, and the resource is replace-only anyway (name and stream_arn are both ForceNew). Note the referenced stream's enforce_consumer_deletion can deregister this consumer as a side effect of stream deletion.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS manages all internals of the enhanced fan-out pipe; the spec's own doc states there is no configuration beyond the stream reference.

@@ -1,0 +1,24 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureroleassignment
+spec:
+  azure:
+    groups:
+      - purpose: ManageRoleAssignment
+        actions:
+          - Microsoft.Authorization/roleAssignments/read
+          - Microsoft.Authorization/roleAssignments/write
+          - Microsoft.Authorization/roleAssignments/delete
+        provenance: derived
+        notes: Covers azurerm_role_assignment -- create, read/refresh, and destroy (every field is immutable, so updates are replacements). The write must be held AT THE TARGET SCOPE, typically via Owner, User Access Administrator, or Role Based Access Control Administrator; Contributor alone is NOT sufficient -- it manages resources, not authorization, and a deploy failing with AuthorizationFailed almost always means the runner holds Contributor-level rights but no authorization-plane rights at that scope.
+      - purpose: ResolveRoleDefinition
+        actions:
+          - Microsoft.Authorization/roleDefinitions/read
+        provenance: derived
+        notes: When the spec sets role_definition_name, the provider lists role definitions at the target scope to resolve the built-in name to its definition ID before creating the assignment; the same read refreshes a pinned role_definition_id. Included in the same administrator roles that carry the write.

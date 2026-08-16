@@ -2,7 +2,10 @@ load("@rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_library(
     name = "fetcher_lib",
-    srcs = ["main.go"],
+    srcs = [
+        "azure.go",
+        "main.go",
+    ],
     importpath = "github.com/plantonhq/planton/pkg/iac/actioninventory/fetcher",
     visibility = ["//visibility:private"],
     deps = [

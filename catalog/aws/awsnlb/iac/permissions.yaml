@@ -1,0 +1,47 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsnlb
+spec:
+  aws:
+    statements:
+      - sid: ManageLoadBalancer
+        actions:
+          - elasticloadbalancing:CreateLoadBalancer
+          - elasticloadbalancing:DeleteLoadBalancer
+          - elasticloadbalancing:ModifyLoadBalancerAttributes
+          - elasticloadbalancing:SetSecurityGroups
+          - elasticloadbalancing:SetSubnets
+          - elasticloadbalancing:SetIpAddressType
+          - elasticloadbalancing:ModifyCapacityReservation
+          - elasticloadbalancing:AddTags
+          - elasticloadbalancing:RemoveTags
+        resources:
+          - arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*
+        provenance: derived
+        notes: Covers aws_lb with load_balancer_type "network" -- creation with subnet mappings (including Elastic IP allocation ids), attribute updates (cross-zone distribution, deletion protection, zonal shift, IPv6 source-NAT prefix, logging attributes), capacity reservation, and tagging. Every action authorizes on the loadbalancer/net/ ARN format per the service reference; the module touches no other load balancer type.
+      - sid: DescribeLoadBalancers
+        actions:
+          - elasticloadbalancing:DescribeLoadBalancers
+          - elasticloadbalancing:DescribeLoadBalancerAttributes
+          - elasticloadbalancing:DescribeCapacityReservation
+          - elasticloadbalancing:DescribeTags
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side of aws_lb during plan/refresh. Elastic Load Balancing Describe APIs support no resource-level scoping (empty Resources lists in the service reference), so the wildcard is the narrowest possible scope.
+      - sid: ManageDnsAliases
+        actions:
+          - route53:ChangeResourceRecordSets
+          - route53:ListResourceRecordSets
+          - route53:GetChange
+        resources:
+          - arn:aws:route53:::hostedzone/*
+          - arn:aws:route53:::change/*
+        provenance: derived
+        notes: Covers aws_route53_record -- the optional alias records created when spec.dns is enabled. GetChange polls propagation status on the change id.

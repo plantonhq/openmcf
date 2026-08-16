@@ -1,0 +1,61 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureeventhubschemagroup
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The schemas registered in the group are stored inside the parent namespace's schema registry, resting under the NAMESPACE's encryption (Microsoft-managed keys by default, customer-managed via AzureEventHubNamespaceCustomerManagedKey); the group itself exposes no encryption surface.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No encryption surface of its own to key (see enc-at-rest); CMK is the namespace's posture.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Serializers register and resolve schemas against the namespace endpoint, where TLS is enforced -- transport posture belongs to the parent AzureEventHubNamespace.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A schema group has no endpoint; network exposure is the namespace's posture (public network access, private endpoints, IP rules).
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound restriction lives on the namespace's network rule sets, not on a registry collection.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No traffic terminates at a schema group; there is no request-filtering attachment point.
+    - control_id: rbac
+      status: not_applicable
+      notes: The group declares no access rules of its own; registry data-plane access is granted through Entra roles ("Schema Registry Reader/Contributor") on the NAMESPACE via AzureRoleAssignment, a separate kind.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The group runs no workloads and holds no credentials of its own; applications authenticate to the registry through the namespace's authentication paths.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own; the SAS-versus-Entra switch is the namespace's local_authentication_enabled.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Group creation and deletion land in the Azure Activity Log as subscription-level posture; registry access logging is namespace diagnostic-settings territory.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A registry collection emits no metrics of its own; registry request signals surface through the namespace's metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The GROUP is declarative and recreates from the manifest, but the schemas registered inside it at runtime are dropped with it -- Azure offers no schema-registry backup or export API on this resource. That is why the spec treats groups as append-only infrastructure (every field is ForceNew) and why schema sources should live in the producing teams' source control.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Schema groups are namespace metadata stored in the service's replicated control plane, inheriting the namespace's zone posture.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a schema group (Azure resource locks are subscription-side governance outside the manifest) -- deletion drops the registered schemas, so the ForceNew-everything contract deserves operator respect.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed PaaS -- Microsoft operates and patches the schema registry inside the Event Hubs service; no customer-visible patch surface exists.

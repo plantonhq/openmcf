@@ -1,0 +1,18 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureeventhubnamespacecustomermanagedkey
+spec:
+  azure:
+    groups:
+      - purpose: PatchNamespaceEncryption
+        actions:
+          - Microsoft.EventHub/namespaces/read
+          - Microsoft.EventHub/namespaces/write
+        provenance: derived
+        notes: azurerm_eventhub_namespace_customer_managed_key is not its own ARM resource -- it PATCHES the encryption block of the existing namespace (eventhub_namespace_id), so the runner reads and writes the namespace itself. No delete action is needed because the provider's delete is a deliberate no-op (Azure's add-only CMK contract). The runner never touches Key Vault -- Azure's service performs wrap/unwrap with the namespace's managed identity, whose vault access is granted separately via AzureRoleAssignment.

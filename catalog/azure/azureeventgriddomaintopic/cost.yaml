@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureeventgriddomaintopic
+spec:
+  billing_model: free
+  free_tier: A domain topic is pure addressing -- a name under the domain that publishers target and subscribers attach to. It has no endpoint and no meter; creating topics (explicitly here, or via the domain's auto-create) adds nothing to the bill.
+  notes: "The real spend lives on the parent AzureEventgridDomain, a separate catalog kind: every event published to the domain's endpoint and every delivery attempt to subscribers bills on the DOMAIN's per-million-operations meter, whichever topic the event names. Both spec fields are free -- domain_id points at that billed parent, and name is the label publishers put in the event's topic field."

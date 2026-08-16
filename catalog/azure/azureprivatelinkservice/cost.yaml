@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureprivatelinkservice
+spec:
+  billing_model: free
+  free_tier: The Private Link Service itself never bills -- NAT configurations, visibility and auto-approval lists, the PROXY protocol switch, and FQDNs are all free to hold. Azure charges the CONSUMER side of Private Link, never the service object.
+  notes: "No field of this spec buys anything: extra nat_ip_configurations consume subnet addresses, not money. The provider-side spend rides the Standard load balancer the service typically fronts (load_balancer_frontend_ip_configuration_ids) -- rules and data processed, a separate catalog kind; the destination_ip_address shape needs no load balancer at all. Consumers pay for THEIR private endpoints (hourly plus per-GB data processing) in their own subscriptions -- spend this component's owner never sees."

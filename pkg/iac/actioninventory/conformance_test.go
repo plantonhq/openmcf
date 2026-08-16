@@ -36,9 +36,10 @@ func packageDir(t *testing.T) string {
 // IAM's evaluation semantics); wildcard patterns must match at least one
 // published action -- a pattern matching nothing is a fabricated
 // permission wearing a wildcard. Providers without an inventory arm (gcp,
-// azure, kubernetes) are exempt HERE deliberately: their structural
-// validation lives in pkg/iac/permissions, and their existence arms join
-// this gate when their machine-readable inventories are proven.
+// kubernetes) are exempt HERE deliberately: their structural validation
+// lives in pkg/iac/permissions, and their existence arms join this gate
+// when their machine-readable inventories are proven. Azure's arm is
+// TestAzureActionsExist below.
 func TestAwsActionsExist(t *testing.T) {
 	root := repoRoot(t)
 	inv, err := LoadAws(packageDir(t))
@@ -87,6 +88,82 @@ func TestAwsActionsExist(t *testing.T) {
 		if !referenced[svc.Prefix] {
 			t.Errorf("inventory covers service %q which no permissions manifest references -- run `make generate-action-inventory`", svc.Prefix)
 		}
+	}
+}
+
+// TestAzureActionsExist is the Azure arm of the gate: every ARM operation
+// every committed permissions manifest names must exist in ARM's own
+// provider-operations inventory -- ON ITS OWN PLANE. Azure role
+// definitions separate management-plane `actions` from data-plane
+// `dataActions`, the permissions schema mirrors the split, and the
+// snapshot records each plane; an operation that exists only on the other
+// plane is a modeling error the gate names distinctly, because a role
+// definition carrying it would silently grant nothing.
+func TestAzureActionsExist(t *testing.T) {
+	root := repoRoot(t)
+	inv, err := LoadAzure(packageDir(t))
+	if err != nil {
+		t.Fatalf("loading inventory: %v", err)
+	}
+
+	discovered, err := permissions.Discover(root)
+	if err != nil {
+		t.Fatalf("discovering permissions manifests: %v", err)
+	}
+
+	referenced := map[string]bool{}
+	for provider, components := range discovered {
+		for _, component := range components {
+			manifest, err := permissions.Load(root, provider, component)
+			if err != nil {
+				t.Fatalf("loading %s/%s: %v", provider, component, err)
+			}
+			for _, group := range manifest.GetSpec().GetAzure().GetGroups() {
+				checkAzurePlane(t, inv, referenced, provider, component, "actions", group.GetActions(), false)
+				checkAzurePlane(t, inv, referenced, provider, component, "data_actions", group.GetDataActions(), true)
+			}
+		}
+	}
+
+	// The dead-weight rule, as on the AWS arm: a snapshot namespace no
+	// manifest references means the manifests moved and the snapshot did
+	// not.
+	for _, svc := range inv.Services {
+		if !referenced[svc.Prefix] {
+			t.Errorf("inventory covers namespace %q which no permissions manifest references -- run `make generate-action-inventory`", svc.Prefix)
+		}
+	}
+}
+
+// checkAzurePlane holds one manifest field's operations to its plane of
+// the namespace inventory, naming a wrong-plane operation distinctly from
+// a nonexistent one.
+func checkAzurePlane(t *testing.T, inv *Inventory, referenced map[string]bool, provider, component, plane string, operations []string, dataPlane bool) {
+	t.Helper()
+	for _, operation := range operations {
+		namespace, name, found := strings.Cut(operation, "/")
+		if !found {
+			t.Errorf("%s/%s: azure %s entry %q has no namespace segment", provider, component, plane, operation)
+			continue
+		}
+		referenced[namespace] = true
+		svc := inv.Lookup(namespace)
+		if svc == nil {
+			t.Errorf("%s/%s: %s entry %q names namespace %q which the inventory snapshot does not cover -- run `make generate-action-inventory`", provider, component, plane, operation, namespace)
+			continue
+		}
+		own, other := svc.Actions, svc.DataActions
+		if dataPlane {
+			own, other = svc.DataActions, svc.Actions
+		}
+		if MatchAction(own, name) > 0 {
+			continue
+		}
+		if MatchAction(other, name) > 0 {
+			t.Errorf("%s/%s: %s entry %q exists on the OTHER plane -- a role definition carrying it here would grant nothing; move it to the right field", provider, component, plane, operation)
+			continue
+		}
+		t.Errorf("%s/%s: %s entry %q does not exist in ARM's provider operations for %q -- the name is invented or misspelled", provider, component, plane, operation, namespace)
 	}
 }
 
@@ -195,6 +272,86 @@ func TestLoadAwsRefusals(t *testing.T) {
 	}
 }
 
+// TestRenderLoadRoundTripAzure proves the renderer and the strict loader
+// agree on the Azure shape too: split planes, no source_modified (ARM
+// publishes none), byte-stably.
+func TestRenderLoadRoundTripAzure(t *testing.T) {
+	inv := &Inventory{
+		Provider: "azure",
+		Services: []Service{
+			{
+				Prefix:      "Microsoft.Network",
+				SourceURL:   "https://management.azure.com/providers/Microsoft.Authorization/providerOperations/Microsoft.Network?api-version=2022-04-01&$expand=resourceTypes",
+				RetrievedOn: "2026-08-16",
+				Actions:     []string{"dnsZones/read", "dnsZones/write"},
+			},
+			{
+				Prefix:      "Microsoft.Storage",
+				SourceURL:   "https://management.azure.com/providers/Microsoft.Authorization/providerOperations/Microsoft.Storage?api-version=2022-04-01&$expand=resourceTypes",
+				RetrievedOn: "2026-08-16",
+				Actions:     []string{"storageAccounts/read"},
+				DataActions: []string{"storageAccounts/blobServices/containers/blobs/read"},
+			},
+		},
+	}
+	dir := t.TempDir()
+	rendered := Render(inv)
+	if err := writeFile(t, filepath.Join(dir, AzureFileName), rendered); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := LoadAzure(dir)
+	if err != nil {
+		t.Fatalf("round-trip load: %v", err)
+	}
+	if Render(loaded) != rendered {
+		t.Error("render -> load -> render is not byte-stable")
+	}
+}
+
+// TestLoadAzureRefusals pins the Azure loader's structural invariants,
+// including the plane lists' own ordering rules and the
+// at-least-one-plane requirement.
+func TestLoadAzureRefusals(t *testing.T) {
+	base := func() *Inventory {
+		return &Inventory{
+			Provider: "azure",
+			Services: []Service{{
+				Prefix:      "Microsoft.Network",
+				SourceURL:   "https://example.invalid/providerOperations",
+				RetrievedOn: "2026-08-16",
+				Actions:     []string{"dnsZones/read", "dnsZones/write"},
+				DataActions: []string{"someService/data/read"},
+			}},
+		}
+	}
+	cases := []struct {
+		name    string
+		mutate  func(*Inventory)
+		wantErr string
+	}{
+		{"wrong provider", func(i *Inventory) { i.Provider = "aws" }, "provider"},
+		{"unsorted data actions", func(i *Inventory) { i.Services[0].DataActions = []string{"b/read", "a/read"} }, "not sorted"},
+		{"duplicate data action", func(i *Inventory) { i.Services[0].DataActions = []string{"a/read", "a/read"} }, "duplicates"},
+		{"both planes empty", func(i *Inventory) { i.Services[0].Actions = nil; i.Services[0].DataActions = nil }, "no actions"},
+		{"missing provenance", func(i *Inventory) { i.Services[0].RetrievedOn = "" }, "required"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			inv := base()
+			c.mutate(inv)
+			dir := t.TempDir()
+			raw := renderRaw(inv)
+			if err := writeFile(t, filepath.Join(dir, AzureFileName), raw); err != nil {
+				t.Fatal(err)
+			}
+			_, err := LoadAzure(dir)
+			if err == nil || !strings.Contains(err.Error(), c.wantErr) {
+				t.Errorf("LoadAzure error = %v, want it to contain %q", err, c.wantErr)
+			}
+		})
+	}
+}
+
 // renderRaw writes an inventory verbatim, WITHOUT Render's sorting, so
 // refusal tests can present genuinely malformed snapshots.
 func renderRaw(inv *Inventory) string {
@@ -204,15 +361,25 @@ func renderRaw(inv *Inventory) string {
 	for _, svc := range inv.Services {
 		b.WriteString("  - prefix: " + svc.Prefix + "\n")
 		b.WriteString("    source_url: " + svc.SourceURL + "\n")
-		b.WriteString("    source_modified: \"" + svc.SourceModified + "\"\n")
+		if svc.SourceModified != "" {
+			b.WriteString("    source_modified: \"" + svc.SourceModified + "\"\n")
+		}
 		b.WriteString("    retrieved_on: \"" + svc.RetrievedOn + "\"\n")
-		if len(svc.Actions) == 0 {
+		if len(svc.Actions) == 0 && len(svc.DataActions) == 0 {
 			b.WriteString("    actions: []\n")
 			continue
 		}
-		b.WriteString("    actions:\n")
-		for _, action := range svc.Actions {
-			b.WriteString("      - " + action + "\n")
+		if len(svc.Actions) > 0 {
+			b.WriteString("    actions:\n")
+			for _, action := range svc.Actions {
+				b.WriteString("      - " + action + "\n")
+			}
+		}
+		if len(svc.DataActions) > 0 {
+			b.WriteString("    data_actions:\n")
+			for _, action := range svc.DataActions {
+				b.WriteString("      - " + action + "\n")
+			}
 		}
 	}
 	return b.String()

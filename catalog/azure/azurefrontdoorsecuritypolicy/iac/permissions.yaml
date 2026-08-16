@@ -1,0 +1,20 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurefrontdoorsecuritypolicy
+spec:
+  azure:
+    groups:
+      - purpose: ManageSecurityPolicy
+        actions:
+          - Microsoft.Cdn/profiles/securitypolicies/read
+          - Microsoft.Cdn/profiles/securitypolicies/write
+          - Microsoft.Cdn/profiles/securitypolicies/delete
+          - Microsoft.Cdn/profiles/read
+        provenance: derived
+        notes: Covers azurerm_cdn_frontdoor_security_policy -- create, read/refresh, in-place domain-list updates, and destroy. The WAF policy and every protected domain are addressed by ARM IDs carried in the request payload, but the provider does call one other API -- it Gets the parent profile to read its sku_name (the policy payload is expanded and validated differently for Standard vs Premium profiles) before writing the policy, which is what profiles/read covers. Held via CDN Profile Contributor, Contributor, or narrower custom roles.

@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurebackuppolicyvm
+spec:
+  azure:
+    groups:
+      - purpose: ManageBackupPolicy
+        actions:
+          - Microsoft.RecoveryServices/Vaults/backupPolicies/read
+          - Microsoft.RecoveryServices/Vaults/backupPolicies/write
+          - Microsoft.RecoveryServices/Vaults/backupPolicies/delete
+        provenance: derived
+        notes: Covers azurerm_backup_policy_vm -- create, read/refresh, in-place schedule/retention updates, and destroy; the policy is an ARM child of the vault, addressed by (resource group, vault name, policy name). Azure spells the backup surface with capital "Vaults" (verified against the live Microsoft.RecoveryServices operation inventory). Held via Backup Contributor on the vault's resource group, or a narrower custom role.

@@ -1,0 +1,89 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurerecoveryservicesvault
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure Backup encrypts all vault-stored backup data at rest with platform-managed keys; no configuration at any level can disable encryption of vault contents.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: encryption
+      evidence:
+        type: spec_default
+        reference: Unset leaves backup data on Microsoft-managed keys; setting encryption.key_id encrypts it with your own Key Vault key (the vault's identity needs wrap/unwrap on the key), with infrastructure_encryption_enabled adding a second infrastructure-layer pass. Once enabled, CMK can never be disabled and the infrastructure-encryption choice never changes (the provider's own update guards).
+      notes: The 02-immutable-cmk-vault preset enables it with a user-assigned identity and a versionless key reference (rotation propagates automatically). Requires the identity block (spec CEL mirrors the provider's RequiredWith).
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Backup and Site Recovery traffic between protected sources and the vault travels over TLS to Azure service endpoints; no plaintext transfer path to a Recovery Services vault exists.
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_network_access_enabled
+      evidence:
+        type: spec_default
+        reference: Unspecified applies true (the provider's default) -- the vault's endpoints answer the public internet; setting false yields the private-endpoint-only posture.
+      notes: The 02-immutable-cmk-vault preset sets false. Private endpoints themselves are separate resources composed against the vault.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The vault exposes no CIDR/firewall surface -- its network posture is the public/private toggle (see no-public-access) plus private endpoints, which are separate resources.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Not a web-facing component; requests go to Azure's Backup/Site Recovery management endpoints, operated by Microsoft.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is ARM RBAC (subscription/resource-group posture -- Backup Contributor, Backup Operator, and Backup Reader are the service's built-in roles); the vault adds no authentication plane of its own. Multi-User Authorization via resource_guard_id is recorded under deletion-protection.
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: Unset leaves the vault without a managed identity; configuring it attaches a system-assigned and/or user-assigned Azure-managed identity the vault uses to reach your Key Vault key and private-endpoint integrations -- platform-issued and rotated, never a static credential.
+      notes: Required for CMK encryption (spec CEL). The 02-immutable-cmk-vault preset uses USER_ASSIGNED so the Key Vault grant can be composed before the vault exists. Once set, the identity can never be removed or switched to the opposite single flavor (the provider's own guard).
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: All access is Entra-ID-authenticated ARM; the vault exposes no legacy authentication path to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Vault and protection operations land in the Azure Activity Log as subscription-level posture; exporting backup-job and alert logs is a diagnostic-settings resource, not a field of this spec.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: monitoring
+      evidence:
+        type: spec_default
+        reference: All five built-in Azure Monitor alert classes (all job failures, failover issues, replication issues, critical-operation failures, Site Recovery email notifications) default ON -- both the provider's defaults and the service's own posture when nothing is sent; the monitoring block exists only to switch specific classes off.
+      notes: Turning an alert class off is an explicit spec choice. Three of the five switches are new in azurerm v5 and can only be turned OFF through the terraform module (the Pulumi engine's documented PARITY-EXCEPTION).
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The vault IS the backup destination, not a data source -- its contents are the recovery points of other components; what gets backed up (and restored) is declared per item on AzureBackupProtectedVm and AzureBackupProtectedFileShare bindings.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Backup retention lives on the policy children (AzureBackupPolicyVm, AzureBackupPolicyFileShare), not on the vault. The vault's contribution to retention safety is immutability (see deletion-protection), which stops retention being REDUCED.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: storage_mode_type
+      evidence:
+        type: spec_default
+        reference: Unspecified applies GeoRedundant -- backup storage keeps a copy in the paired region (the recommended production posture); ZoneRedundant replicates across availability zones in-region; LocallyRedundant is single-locality. Azure locks the choice once items are protected.
+      notes: cross_region_restore_enabled additionally unlocks restores in the paired region and requires GeoRedundant (spec CEL mirrors the provider's apply-time check; disabling it later replaces the vault). Both presets ship GeoRedundant with cross-region restore on.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: immutability
+      evidence:
+        type: spec_default
+        reference: Unspecified leaves the service default (Disabled); Unlocked stops backup data being deleted and retention being reduced while remaining reversible; Locked makes that permanent (leaving Locked replaces the vault -- the provider stages Locked through Unlocked automatically).
+      notes: Two more layers stack on top -- Azure itself refuses to delete a vault while protected items remain (the modules deliberately leave the provider's purge feature OFF), and resource_guard_id associates a Resource Guard so privileged destructive operations require Multi-User Authorization approval from a separate administrative scope. The 02-immutable-cmk-vault preset sets Unlocked.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed PaaS -- Microsoft operates and patches the Azure Backup and Site Recovery service infrastructure behind the vault; no customer-visible patch surface exists.

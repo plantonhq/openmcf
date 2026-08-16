@@ -78,7 +78,4 @@ module "nsg" {
 
 ## Required Permissions
 
-The deploying credential needs
-`Microsoft.Network/networkSecurityGroups/write` (and
-`securityRules/write`) on the resource group -- held via Network
-Contributor, Contributor, or Owner.
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege action set the deploying principal needs.

@@ -1,9 +1,12 @@
-// Command fetcher refreshes the committed AWS action-inventory snapshot
-// (pkg/iac/actioninventory/aws.yaml) from AWS's machine-readable service
-// reference. It reads the committed runner permissions manifests to learn
-// which service prefixes the catalog actually uses, fetches exactly those
-// services' action lists, and rewrites the snapshot in its canonical form.
-// Deterministic-or-dead: a manifest prefix the reference does not define
+// Command fetcher refreshes the committed action-inventory snapshots from
+// each provider's own published inventory: AWS
+// (pkg/iac/actioninventory/aws.yaml) from the machine-readable service
+// reference, and Azure (azure.yaml) from ARM's provider-operations
+// metadata (see azure.go for its arm and credential contract). It reads
+// the committed runner permissions manifests to learn which service
+// prefixes / namespaces the catalog actually uses, fetches exactly those
+// inventories, and rewrites each snapshot in its canonical form.
+// Deterministic-or-dead: a manifest prefix the provider does not define
 // is a hard error (a genuinely wrong prefix, not a refresh problem), and a
 // service with an empty action list refuses rather than committing an
 // inventory that would fail every action.
@@ -75,6 +78,10 @@ func main() {
 		fatal(err)
 	}
 	fmt.Printf("wrote %d service action list(s) to %s\n", len(inv.Services), out)
+
+	if err := refreshAzure(repoRoot); err != nil {
+		fatal(err)
+	}
 }
 
 // referencedAwsPrefixes collects the distinct AWS service prefixes named by

@@ -1,0 +1,64 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureroledefinition
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A role definition is authorization metadata held by Azure Resource Manager; it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The definition carries no traffic of its own; all interaction with it flows through ARM's TLS-only management API, which is platform posture, not a component choice.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A permission-bundle record has no network endpoint -- nothing exists to reach from the internet.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: The resource is the authoring surface of RBAC itself -- every deployment defines a role. The permissions blocks express least privilege directly (actions and data_actions grant, not_actions and not_data_actions carve back, e.g. everything except Microsoft.Authorization writes), and assignable_scopes pre-authorizes where grants of the role may ever be created (Azure rejects assignments outside it). Creating or updating a definition requires Microsoft.Authorization/roleDefinitions/write at the target scope, so RBAC also governs who may author roles.
+      notes: A definition grants nothing by itself -- binding it to a principal is the separate AzureRoleAssignment kind, keeping role authorship and role granting individually reviewable.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A definition names no principal -- it defines WHAT a role permits; WHO holds it (and whether that holder is a keyless managed identity) is the AzureRoleAssignment kind's choice.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The definition exposes no authentication path of its own to strengthen or disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Creation, update, and deletion of definitions land in the Azure Activity Log automatically as subscription-level posture; no logging toggle exists on this resource.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A permission-bundle record emits no metrics or runtime signals.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless authorization configuration -- nothing to back up; the manifest recreates the definition declaratively (the spec's role_definition_id field can even pin the GUID so the recreated definition keeps its ARM ID for existing assignments).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A definition has no runtime footprint with a zonal failure mode; ARM's authorization store is replicated by Microsoft as platform infrastructure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a role definition (Azure resource locks are subscription-side governance outside the manifest). Azure does refuse to delete a definition that still has role assignments, but that is dependency ordering, not a control.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The authorization engine that stores and evaluates role definitions is Microsoft-operated ARM infrastructure; no customer-visible patch surface exists.

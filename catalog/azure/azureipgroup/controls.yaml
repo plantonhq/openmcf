@@ -1,0 +1,61 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureipgroup
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An IP Group is a named address list held in Azure's control plane; it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: No traffic flows to or through an IP Group; it is referenced by firewall rules, never connected to.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The group has no endpoint and no reachability; internet exposure is created by other kinds.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The group is an INGREDIENT of ingress restriction, not the restriction itself -- Azure Firewall and Firewall Policy rules (separate kinds) reference it as source/destination; the group enforces nothing on its own.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Request filtering belongs to the firewalls and gateways that consume the group; the group carries no filtering logic.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the group exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The group runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Address-list changes land in the Azure Activity Log as subscription-level posture -- worth watching, since an edit here retargets every rule referencing the group; the group itself has no log surface.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A passive address list emits no metrics; traffic hitting rules that reference the group is observed in the consuming firewall's logs and metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless declarative configuration -- the manifest recreates the group and its address entries.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A regional control-plane object with no data path -- there is no zonal failure mode to protect against; firewall policies in any region can reference it.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for an IP Group (Azure resource locks are subscription-side governance outside the manifest). Azure refuses to delete a group still referenced by firewall rules, but that is dependency ordering, not a control.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed control-plane object -- Microsoft operates and patches the infrastructure holding it; no customer-visible patch surface exists.

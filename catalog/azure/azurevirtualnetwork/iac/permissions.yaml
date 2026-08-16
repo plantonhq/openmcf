@@ -17,11 +17,6 @@ spec:
           - Microsoft.Network/virtualNetworks/delete
         provenance: derived
         notes: Covers azurerm_virtual_network -- create, read/refresh, in-place updates (address spaces, DNS, encryption), and destroy. Held via Network Contributor, Contributor, or narrower custom roles, matching the module README's prose.
-      - purpose: ReadResourceGroup
-        actions:
-          - Microsoft.Resources/subscriptions/resourceGroups/read
-        provenance: derived
-        notes: The provider resolves the target resource group before creating the network in it.
       - purpose: AttachDdosPlan
         actions:
           - Microsoft.Network/ddosProtectionPlans/join/action

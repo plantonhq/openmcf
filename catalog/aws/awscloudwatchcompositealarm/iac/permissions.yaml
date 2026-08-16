@@ -1,0 +1,36 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awscloudwatchcompositealarm
+spec:
+  aws:
+    statements:
+      - sid: ManageCompositeAlarm
+        actions:
+          - cloudwatch:PutCompositeAlarm
+          - cloudwatch:DeleteAlarms
+        resources:
+          - arn:aws:cloudwatch:*:*:alarm:*
+        provenance: derived
+        notes: Covers aws_cloudwatch_composite_alarm -- creation, in-place updates (PutCompositeAlarm is also the update call), and deletion. The service reference authorizes PutCompositeAlarm against the alarm ARN format only.
+      - sid: DescribeAlarms
+        actions:
+          - cloudwatch:DescribeAlarms
+        resources:
+          - arn:aws:cloudwatch:*:*:alarm:*
+        provenance: derived
+        notes: Read-side of aws_cloudwatch_composite_alarm during plan/refresh. The service reference authorizes DescribeAlarms against the alarm ARN format.
+      - sid: TagAlarm
+        actions:
+          - cloudwatch:TagResource
+          - cloudwatch:UntagResource
+          - cloudwatch:ListTagsForResource
+        resources:
+          - arn:aws:cloudwatch:*:*:alarm:*
+        provenance: derived
+        notes: Covers the resource-identity tags both modules apply to the composite alarm. Scoped to the alarm ARN format -- the only CloudWatch resource kind this component tags.

@@ -69,8 +69,4 @@ module "zone_link" {
 
 ## Required Permissions
 
-The deploying credential needs
-`Microsoft.Network/privateDnsZones/virtualNetworkLinks/write` on the zone
-and `Microsoft.Network/virtualNetworks/join/action` on the network --
-held via Private DNS Zone Contributor + Network Contributor, or
-Contributor/Owner.
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege control-plane actions the deploying principal needs.

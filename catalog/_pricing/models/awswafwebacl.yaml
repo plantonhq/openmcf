@@ -1,0 +1,88 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. This component is hand-modeled rather than derived: the
+# committed bill is one web-ACL fee plus one rule fee per top-level rule,
+# but the intelligent-threat managed rule groups (Bot Control, ATP, ACFP,
+# anti-DDoS) carry monthly subscriptions the derivation engine cannot
+# detect -- their identity lives inside the repeated rules tree, which
+# conditions cannot traverse -- so per-preset hand verification is the only
+# honest path. Every preset below is verified to reference AWS core managed
+# rule groups only, which carry no subscription (the offer's only
+# managed-group entity fees are Bot Control, ATP, and anti-DDoS).
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awswafwebacl
+spec:
+  presets:
+    - preset: 01-managed-rules-basic
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: web ACL monthly fee
+          price: waf-web-acl-month-us-east-1
+          pricing_quantity: "1"
+          quantity_basis: one web ACL, billed monthly (prorated hourly)
+        - sku_meter: rule monthly fee
+          price: waf-rule-month-us-east-1
+          pricing_quantity: "2"
+          quantity_basis: 2 top-level rules (the Common and KnownBadInputs AWS managed rule groups, each billed as one rule regardless of internal size)
+      exclusions:
+        - requests processed bill per million and follow traffic
+        - CloudWatch metrics and sampled requests (module defaults) add no WAF charge of their own
+      notes: Both managed rule groups are AWS core protection packs with no subscription fee -- the offer's only managed-group entity fees are Bot Control, ATP, and anti-DDoS, none referenced here. No logging is configured, so no delivery charges arise.
+    - preset: 02-rate-limiting-with-managed-rules
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: web ACL monthly fee
+          price: waf-web-acl-month-us-east-1
+          pricing_quantity: "1"
+          quantity_basis: one web ACL, billed monthly (prorated hourly)
+        - sku_meter: rule monthly fee
+          price: waf-rule-month-us-east-1
+          pricing_quantity: "4"
+          quantity_basis: 4 top-level rules (one rate-based rule plus the Common, SQLi, and KnownBadInputs AWS managed rule groups, each group billed as one rule)
+      exclusions:
+        - requests processed bill per million and follow traffic
+        - the rate-based rule's block action adds no charge of its own -- blocked requests still count as processed requests
+      notes: All three managed rule groups are AWS core protection packs with no subscription fee. No logging is configured, so no delivery charges arise.
+    - preset: 03-production-web-app
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: web ACL monthly fee
+          price: waf-web-acl-month-us-east-1
+          pricing_quantity: "1"
+          quantity_basis: one web ACL, billed monthly (prorated hourly)
+        - sku_meter: rule monthly fee
+          price: waf-rule-month-us-east-1
+          pricing_quantity: "7"
+          quantity_basis: 7 top-level rules (rate limit, geo block, and the IP reputation, Anonymous IP, Common, SQLi, and KnownBadInputs AWS managed rule groups, each group billed as one rule)
+      exclusions:
+        - requests processed bill per million and follow traffic
+        - request-log delivery to the CloudWatch log group bills as vended-log ingestion beyond WAF's free allowance of 500 MB per 1 million requests
+      notes: All five managed rule groups are AWS core protection packs with no subscription fee. The custom response body and header redactions add no charge of their own.
+    - preset: 04-cost-controlled-logging
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: web ACL monthly fee
+          price: waf-web-acl-month-us-east-1
+          pricing_quantity: "1"
+          quantity_basis: one web ACL, billed monthly (prorated hourly)
+        - sku_meter: rule monthly fee
+          price: waf-rule-month-us-east-1
+          pricing_quantity: "2"
+          quantity_basis: 2 top-level rules (the Common AWS managed rule group, billed as one rule, plus one rate-based rule)
+      exclusions:
+        - requests processed bill per million and follow traffic
+        - request-log delivery bills as vended-log ingestion beyond WAF's free allowance of 500 MB per 1 million requests -- the preset's filter drops every record where WAF took no action (keeping BLOCK, COUNT, and EXCLUDED_AS_COUNT), which is exactly the logging-cost lever
+      notes: The one managed rule group is an AWS core protection pack with no subscription fee. This preset exists to demonstrate the logging filter -- its committed bill is identical to 01-managed-rules-basic.

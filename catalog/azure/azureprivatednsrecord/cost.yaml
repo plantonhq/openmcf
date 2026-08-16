@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureprivatednsrecord
+spec:
+  billing_model: free
+  free_tier: A record set in a private zone -- one (name, type) pair and all its values, whatever the payload (A, AAAA, CNAME, MX, PTR, SRV, TXT) -- never bills. Azure Private DNS has no per-record meter.
+  notes: "No field of this spec buys anything: the seven typed payloads, ttl_seconds, and tags are all free record-set data. The real spend lives in the private zone the record is created in -- AzurePrivateDnsZone bills a fixed monthly fee per zone plus a per-million-queries rate, and this record's answers count toward that zone's query volume."
