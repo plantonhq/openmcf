@@ -1,0 +1,16 @@
+# The free-plan live arm: manage only fight_mode -- the one Bot Management
+# field every plan carries, and the shape the provider's own state-consistency
+# test proves plans clean on non-entitled zones. Runs FIRST (filename order);
+# revert-off runs last and returns the toggle to off (the no-op-destroy
+# revert discipline).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareBotManagement
+metadata:
+  name: e2e-botmgmt-fight-${E2E_RUN_ID}
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  fight_mode: true

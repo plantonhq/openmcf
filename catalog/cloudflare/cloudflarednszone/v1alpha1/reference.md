@@ -1206,6 +1206,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| CloudflareBotManagement | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareCacheSettings | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareCertificatePack | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareCustomHostname | `spec.zoneId` | `status.outputs.zone_id` |
@@ -1214,9 +1215,15 @@ Fields on other kinds that can point at this resource:
 | CloudflareDnsZone | `spec.dnsSettings.internalDns.referenceZoneId` | `status.outputs.zone_id` |
 | CloudflareEmailRoutingRule | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareEmailRoutingZone | `spec.zoneId` | `status.outputs.zone_id` |
+| CloudflareHealthcheck | `spec.zoneId` | `status.outputs.zone_id` |
+| CloudflareIpAccessRule | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareLoadBalancer | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareR2Bucket | `spec.customDomains[].zoneId` | `status.outputs.zone_id` |
 | CloudflareRuleset | `spec.zoneId` | `status.outputs.zone_id` |
+| CloudflareSnippet | `spec.zoneId` | `status.outputs.zone_id` |
+| CloudflareSnippetRules | `spec.zoneId` | `status.outputs.zone_id` |
+| CloudflareWaitingRoom | `spec.zoneId` | `status.outputs.zone_id` |
+| CloudflareWaitingRoomEvent | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareWorker | `spec.customDomains[].zoneId` | `status.outputs.zone_id` |
 | CloudflareWorker | `spec.routes[].zoneId` | `status.outputs.zone_id` |
 | CloudflareZeroTrustAccessApplication | `spec.zoneId` | `status.outputs.zone_id` |

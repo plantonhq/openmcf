@@ -1,0 +1,176 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarehealthcheck.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// CloudflareHealthcheckSpec defines one standalone health check: Cloudflare
+// probes an origin address on a schedule and records healthy/unhealthy status,
+// with notifications available through Cloudflare's alerting. Standalone health
+// checks need NO load balancer -- they are the monitoring-only sibling of the
+// load-balancer monitor (use CloudflareLoadBalancerMonitor when a load balancer
+// consumes the result; use this kind to watch an origin).
+//
+// Health checks are a paid zone feature (Pro plans and above include a small
+// allotment; Business and Enterprise more). Cloudflare enforces the plan gate at
+// create -- the API, not this spec, is the wall.
+message CloudflareHealthcheckSpec {
+  option (buf.validate.message).cel = {
+    id: "spec.tcp_config_matches_type"
+    message: "tcp_config is only valid when type is TCP -- for HTTP/HTTPS checks use http_config"
+    expression: "!has(this.tcp_config) || this.type == 'TCP'"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.http_config_matches_type"
+    message: "http_config is only valid when type is HTTP or HTTPS (the default type is HTTP) -- for TCP checks use tcp_config"
+    expression: "!has(this.http_config) || this.type == '' || this.type == 'HTTP' || this.type == 'HTTPS'"
+  };
+
+  // The zone the health check belongs to.
+  // When using value_from, defaults to CloudflareDnsZone kind and status.outputs.zone_id field path.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef zone_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareDnsZone,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // A short name for the health check (shown in the dashboard and alerts).
+  string name = 2 [(buf.validate.field).string.min_len = 1];
+
+  // The origin being probed: a hostname or IP address.
+  string address = 3 [(buf.validate.field).required = true];
+
+  // The probe protocol. Cloudflare's own schema accepts any string here and
+  // rejects bad values only at the API -- this wall (HTTP, HTTPS, TCP) is a
+  // deliberate tightening to the documented protocol set.
+  optional string type = 4 [
+    (dev.planton.shared.options.default) = "HTTP",
+    (buf.validate.field).string = {
+      in: [
+        "HTTP",
+        "HTTPS",
+        "TCP"
+      ]
+    }
+  ];
+
+  // Regions to probe from. Unset lets Cloudflare pick a default region.
+  // ALL_REGIONS (Enterprise only) probes from everywhere.
+  repeated string check_regions = 5 [(buf.validate.field).repeated.items.string = {
+    in: [
+      "WNAM",
+      "ENAM",
+      "WEU",
+      "EEU",
+      "NSAM",
+      "SSAM",
+      "OC",
+      "ME",
+      "NAF",
+      "SAF",
+      "IN",
+      "SEAS",
+      "NEAS",
+      "ALL_REGIONS"
+    ]
+  }];
+
+  // Consecutive failed probes before the origin is marked unhealthy
+  // (Cloudflare's default: 1).
+  optional int32 consecutive_fails = 6 [(buf.validate.field).int32.gt = 0];
+
+  // Consecutive successful probes before the origin is marked healthy again
+  // (Cloudflare's default: 1).
+  optional int32 consecutive_successes = 7 [(buf.validate.field).int32.gt = 0];
+
+  // Seconds between probes (Cloudflare's default: 60). Shorter intervals give
+  // faster detection at the cost of more origin traffic; plan limits govern the
+  // minimum.
+  optional int32 interval = 8 [(buf.validate.field).int32.gt = 0];
+
+  // Retries attempted (immediately, not on the interval) when a probe times out
+  // before it counts as failed (Cloudflare's default: 2).
+  optional int32 retries = 9 [(buf.validate.field).int32.gt = 0];
+
+  // Probe timeout in seconds (Cloudflare's default: 5).
+  optional int32 timeout = 10 [(buf.validate.field).int32.gt = 0];
+
+  // Pause probing without deleting the check's configuration or history.
+  optional bool suspended = 11;
+
+  // HTTP/HTTPS probe details. Only valid when type is HTTP or HTTPS.
+  CloudflareHealthcheckHttpConfig http_config = 12;
+
+  // TCP probe details. Only valid when type is TCP.
+  CloudflareHealthcheckTcpConfig tcp_config = 13;
+}
+
+// CloudflareHealthcheckHttpConfig configures an HTTP/HTTPS probe.
+message CloudflareHealthcheckHttpConfig {
+  // The HTTP method (Cloudflare's default: GET).
+  optional string method = 1 [
+    (dev.planton.shared.options.default) = "GET",
+    (buf.validate.field).string = {
+      in: [
+        "GET",
+        "HEAD"
+      ]
+    }
+  ];
+
+  // The path probed (Cloudflare's default: /).
+  optional string path = 2;
+
+  // The port probed (Cloudflare's default: 80 -- set 443 explicitly for HTTPS
+  // checks on the standard port).
+  optional int32 port = 3 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 65535
+  }];
+
+  // Response codes counted as healthy. Accepts exact codes ("200") and
+  // wildcard families ("2xx"). Unset means Cloudflare's default of 200.
+  repeated string expected_codes = 4;
+
+  // A substring the response body must contain to count as healthy. Cloudflare
+  // reads only the first 10 KiB of the body.
+  string expected_body = 5;
+
+  // Follow up to 5 redirects before evaluating the response.
+  optional bool follow_redirects = 6;
+
+  // Accept the origin's TLS certificate without validating it (self-signed
+  // origins). Only meaningful for HTTPS probes.
+  optional bool allow_insecure = 7;
+
+  // Extra request headers, each with one or more values (e.g. a Host header for
+  // name-based virtual hosts). The map value is a list wrapper because one
+  // header can carry multiple values.
+  map<string, CloudflareHealthcheckHeaderValues> headers = 8;
+}
+
+// CloudflareHealthcheckHeaderValues wraps the values of one request header.
+message CloudflareHealthcheckHeaderValues {
+  // The header's values (a single-value header is a one-element list).
+  repeated string values = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// CloudflareHealthcheckTcpConfig configures a TCP probe.
+message CloudflareHealthcheckTcpConfig {
+  // The probe method. Cloudflare supports only connection_established (a
+  // successful TCP handshake counts as healthy).
+  optional string method = 1 [
+    (dev.planton.shared.options.default) = "connection_established",
+    (buf.validate.field).string = {
+      in: ["connection_established"]
+    }
+  ];
+
+  // The port probed (Cloudflare's default: 80).
+  optional int32 port = 2 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 65535
+  }];
+}

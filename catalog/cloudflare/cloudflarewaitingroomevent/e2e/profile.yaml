@@ -1,0 +1,21 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarewaitingroomevent
+spec:
+  # Waiting room events under live E2E: the harness deploys the
+  # CloudflareWaitingRoom prerequisite (whose own chain brings the run-scoped
+  # zone), resolves waiting_room_id and zone_id, creates the event, verifies
+  # via the room's events API, destroys (real delete, honest 404). The
+  # scenario's window is fixed far-future (2030) -- deterministic, always
+  # valid against the API's start-before-end and prequeue rules, and the
+  # event never activates during a lane. Overrides are null-means-inherit;
+  # the scenario sets the users pair (both together -- the API requires it)
+  # to prove overrides live. Events are free-plan objects on the room,
+  # created in seconds.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10

@@ -5582,6 +5582,69 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"list_id"},
 		},
 		{
+			name: "CloudflareIpAccessRule",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareIpAccessRule,
+			rawOutputs: map[string]interface{}{
+				"rule_id":    "2661fcac0be5a0bb64583f83b6709d4d",
+				"zone_id":    "0da42c8d2132a9ddaf714f9e7c920711",
+				"account_id": "023e105f4ecef8ad9ca31a8372d0c353",
+			},
+			mustPopulate: []string{"rule_id"},
+		},
+		{
+			name: "CloudflareBotManagement",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareBotManagement,
+			rawOutputs: map[string]interface{}{
+				"zone_id": "0da42c8d2132a9ddaf714f9e7c920711",
+			},
+			mustPopulate: []string{"zone_id"},
+		},
+		{
+			name: "CloudflareSnippet",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareSnippet,
+			rawOutputs: map[string]interface{}{
+				"snippet_name": "redirect_legacy_urls",
+				"zone_id":      "0da42c8d2132a9ddaf714f9e7c920711",
+			},
+			mustPopulate: []string{"snippet_name", "zone_id"},
+		},
+		{
+			name: "CloudflareSnippetRules",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareSnippetRules,
+			rawOutputs: map[string]interface{}{
+				"zone_id": "0da42c8d2132a9ddaf714f9e7c920711",
+			},
+			mustPopulate: []string{"zone_id"},
+		},
+		{
+			name: "CloudflareHealthcheck",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareHealthcheck,
+			rawOutputs: map[string]interface{}{
+				"healthcheck_id": "f174e90a-fafe-4643-bbbc-4a0ed4fc8415",
+				"zone_id":        "0da42c8d2132a9ddaf714f9e7c920711",
+			},
+			mustPopulate: []string{"healthcheck_id", "zone_id"},
+		},
+		{
+			name: "CloudflareWaitingRoom",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareWaitingRoom,
+			rawOutputs: map[string]interface{}{
+				"waiting_room_id": "4ae2018d-4a8e-4a1d-88e3-2a3a56d67057",
+				"zone_id":         "0da42c8d2132a9ddaf714f9e7c920711",
+			},
+			mustPopulate: []string{"waiting_room_id", "zone_id"},
+		},
+		{
+			name: "CloudflareWaitingRoomEvent",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareWaitingRoomEvent,
+			rawOutputs: map[string]interface{}{
+				"event_id":        "25756c26-6616-4ea9-bbb5-f06974fdaa39",
+				"waiting_room_id": "4ae2018d-4a8e-4a1d-88e3-2a3a56d67057",
+				"zone_id":         "0da42c8d2132a9ddaf714f9e7c920711",
+			},
+			mustPopulate: []string{"event_id", "waiting_room_id", "zone_id"},
+		},
+		{
 			// AzureResourceGroup: flat scalar outputs from both engines (ARM id,
 			// name, region) must each land on the StackOutputs proto --
 			// resource_group_name is the FK target every other Azure kind

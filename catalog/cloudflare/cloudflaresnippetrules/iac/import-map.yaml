@@ -1,0 +1,16 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflaresnippetrules
+spec:
+  # Zone singleton. Import populates only zone_id; the provider's Read
+  # discards the response body, so re-assert the rule list from
+  # configuration after import.
+  values:
+    - name: zone_id
+      derivations:
+        - from_stack_output: zone_id
+      where_to_find: >-
+        Cloudflare dashboard -> the zone's Overview page (Zone ID in the
+        right-hand API panel), or `GET /zones?name=<domain>` on the
+        Cloudflare v4 API (the id field).

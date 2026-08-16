@@ -1152,6 +1152,13 @@ violations:
   - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork:missing-control-profile
   - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork:missing-cost-profile
+  - catalog/cloudflare/cloudflarebotmanagement/iac:missing-permissions
+  - catalog/cloudflare/cloudflarehealthcheck/iac:missing-permissions
+  - catalog/cloudflare/cloudflareipaccessrule/iac:missing-permissions
+  - catalog/cloudflare/cloudflaresnippet/iac:missing-permissions
+  - catalog/cloudflare/cloudflaresnippetrules/iac:missing-permissions
+  - catalog/cloudflare/cloudflarewaitingroom/iac:missing-permissions
+  - catalog/cloudflare/cloudflarewaitingroomevent/iac:missing-permissions
   - catalog/cloudflare/cloudflarezonesettings/iac:missing-permissions
   - catalog/cloudflare/cloudflarezonetlssettings/iac:missing-permissions
   - catalog/digitalocean/digitaloceanappplatformservice/iac:missing-permissions

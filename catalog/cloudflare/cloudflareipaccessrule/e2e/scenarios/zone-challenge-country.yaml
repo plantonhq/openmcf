@@ -1,0 +1,21 @@
+# The zone-scoped arm: a managed challenge on one country, on the run-scoped
+# fixture zone. The zone is a SCENARIO-declared prerequisite (the annotation
+# below) because the kind has no registry prerequisite -- account scope is the
+# canonical case and a zone is not structurally required.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareIpAccessRule
+metadata:
+  name: e2e-ipar-zone-${E2E_RUN_ID}
+  annotations:
+    planton.dev/e2e-prerequisites: "CloudflareDnsZone"
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  mode: managed_challenge
+  configuration:
+    target: country
+    value: "T1"
+  notes: "planton-e2e zone-scoped Tor challenge"

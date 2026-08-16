@@ -340,6 +340,55 @@ func TestCloudflareZeroTrustList_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "cloudflarezerotrustlist", "terraform")
 }
 
+func TestCloudflareIpAccessRule_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflareipaccessrule", "pulumi")
+}
+func TestCloudflareIpAccessRule_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflareipaccessrule", "terraform")
+}
+
+func TestCloudflareBotManagement_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarebotmanagement", "pulumi")
+}
+func TestCloudflareBotManagement_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarebotmanagement", "terraform")
+}
+
+func TestCloudflareSnippet_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflaresnippet", "pulumi")
+}
+func TestCloudflareSnippet_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflaresnippet", "terraform")
+}
+
+func TestCloudflareSnippetRules_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflaresnippetrules", "pulumi")
+}
+func TestCloudflareSnippetRules_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflaresnippetrules", "terraform")
+}
+
+func TestCloudflareHealthcheck_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarehealthcheck", "pulumi")
+}
+func TestCloudflareHealthcheck_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarehealthcheck", "terraform")
+}
+
+func TestCloudflareWaitingRoom_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarewaitingroom", "pulumi")
+}
+func TestCloudflareWaitingRoom_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarewaitingroom", "terraform")
+}
+
+func TestCloudflareWaitingRoomEvent_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarewaitingroomevent", "pulumi")
+}
+func TestCloudflareWaitingRoomEvent_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarewaitingroomevent", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a
 // Cloudflare component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {

@@ -114,15 +114,9 @@ resources:
   - resource: cloudflare_zone_lockdown
     disposition: model-planned
     reason: "judged as a planned CloudflareZoneLockdown kind (URL lockdown rules, many per zone with independent lifecycle)"
-  - resource: cloudflare_access_rule
-    disposition: model-planned
-    reason: "judged as a planned CloudflareIpAccessRule kind (IP/ASN/country allow-block rules; named to avoid collision with the Zero Trust Access namespace)"
   - resource: cloudflare_user_agent_blocking_rule
     disposition: model-planned
     reason: "judged as a planned CloudflareUserAgentBlockingRule kind (standalone user-agent blocking rule object)"
-  - resource: cloudflare_bot_management
-    disposition: model-planned
-    reason: "judged as a planned CloudflareBotManagement kind (zone-singleton bot management configuration)"
   - resource: cloudflare_leaked_credential_check
     disposition: model-planned
     reason: "judged as a planned CloudflareLeakedCredentialCheck kind (enablement plus custom detection rules in one kind)"
@@ -138,31 +132,16 @@ resources:
   - resource: cloudflare_page_shield_policy
     disposition: deferred
     reason: "Enterprise add-on entitlement: Page Shield CSP policies"
-  - resource: cloudflare_snippet
-    disposition: model-planned
-    reason: "judged as a planned CloudflareSnippet kind (edge code unit with its own upload lifecycle)"
-  - resource: cloudflare_snippet_rules
-    disposition: model-planned
-    reason: "judged as a planned CloudflareSnippetRules kind (the zone's snippet routing table, referencing many snippets and outliving any one of them)"
   # ---- Load balancing & health -----------------------------------------------
+  # cloudflare_healthcheck is census-consumed by CloudflareHealthcheck.
   - resource: cloudflare_load_balancer_monitor_group
     disposition: model-planned
     reason: "judged as a planned CloudflareLoadBalancerMonitorGroup kind (monitor groups referenced by pools)"
-  - resource: cloudflare_healthcheck
-    disposition: model-planned
-    reason: "judged as a planned CloudflareHealthcheck kind (standalone zone health checks, no load balancer required)"
   # ---- Waiting room -----------------------------------------------------------
-  - resource: cloudflare_waiting_room
-    disposition: model-planned
-    reason: "judged as a planned CloudflareWaitingRoom kind (the room itself)"
-  - resource: cloudflare_waiting_room_event
-    disposition: model-planned
-    reason: "judged as a planned CloudflareWaitingRoomEvent kind (scheduled events created and deleted on their own cadence per launch)"
-  - resource: cloudflare_waiting_room_rules
-    disposition: model-planned
-    reason: "folds into the planned CloudflareWaitingRoom kind (the room's singleton bypass-rule list)"
-  # (cloudflare_waiting_room_settings is consumed by CloudflareZoneSettings --
-  # census-proven, so absent here.)
+  # cloudflare_waiting_room, cloudflare_waiting_room_event, and
+  # cloudflare_waiting_room_rules are census-consumed by CloudflareWaitingRoom
+  # and CloudflareWaitingRoomEvent. cloudflare_waiting_room_settings is
+  # consumed by CloudflareZoneSettings. All four are absent here.
   # ---- Workers platform --------------------------------------------------------
   - resource: cloudflare_worker
     disposition: model-planned

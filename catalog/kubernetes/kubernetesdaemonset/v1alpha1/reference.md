@@ -1783,6 +1783,13 @@ Allowed values (use exactly as shown):
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
 - `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareIpAccessRule` -- No prerequisites: IP Access rules are account-scoped in the canonical case (the zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareBotManagement` -- CloudflareDnsZone is a prerequisite because Bot Management is zone-singleton configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippet` -- CloudflareDnsZone is a prerequisite because snippets deploy to a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippetRules` -- CloudflareDnsZone and CloudflareSnippet are prerequisites: the rules table is zone-scoped and every rule invokes a snippet by name.
+- `CloudflareWaitingRoom` -- CloudflareDnsZone is a prerequisite because waiting rooms sit on a zone's host+path -- the spec's zone_id reference must resolve first.
+- `CloudflareWaitingRoomEvent` -- CloudflareWaitingRoom is a prerequisite because events run on a room (and the room's own chain brings the zone).
+- `CloudflareHealthcheck` -- CloudflareDnsZone is a prerequisite because standalone health checks are zone-scoped -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
 - `Auth0EventStream`
@@ -2579,6 +2586,13 @@ Allowed values (use exactly as shown):
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
 - `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareIpAccessRule` -- No prerequisites: IP Access rules are account-scoped in the canonical case (the zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareBotManagement` -- CloudflareDnsZone is a prerequisite because Bot Management is zone-singleton configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippet` -- CloudflareDnsZone is a prerequisite because snippets deploy to a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippetRules` -- CloudflareDnsZone and CloudflareSnippet are prerequisites: the rules table is zone-scoped and every rule invokes a snippet by name.
+- `CloudflareWaitingRoom` -- CloudflareDnsZone is a prerequisite because waiting rooms sit on a zone's host+path -- the spec's zone_id reference must resolve first.
+- `CloudflareWaitingRoomEvent` -- CloudflareWaitingRoom is a prerequisite because events run on a room (and the room's own chain brings the zone).
+- `CloudflareHealthcheck` -- CloudflareDnsZone is a prerequisite because standalone health checks are zone-scoped -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
 - `Auth0EventStream`
@@ -4523,6 +4537,13 @@ Allowed values (use exactly as shown):
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
 - `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareIpAccessRule` -- No prerequisites: IP Access rules are account-scoped in the canonical case (the zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareBotManagement` -- CloudflareDnsZone is a prerequisite because Bot Management is zone-singleton configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippet` -- CloudflareDnsZone is a prerequisite because snippets deploy to a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippetRules` -- CloudflareDnsZone and CloudflareSnippet are prerequisites: the rules table is zone-scoped and every rule invokes a snippet by name.
+- `CloudflareWaitingRoom` -- CloudflareDnsZone is a prerequisite because waiting rooms sit on a zone's host+path -- the spec's zone_id reference must resolve first.
+- `CloudflareWaitingRoomEvent` -- CloudflareWaitingRoom is a prerequisite because events run on a room (and the room's own chain brings the zone).
+- `CloudflareHealthcheck` -- CloudflareDnsZone is a prerequisite because standalone health checks are zone-scoped -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
 - `Auth0EventStream`
@@ -5319,6 +5340,13 @@ Allowed values (use exactly as shown):
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
 - `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareIpAccessRule` -- No prerequisites: IP Access rules are account-scoped in the canonical case (the zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareBotManagement` -- CloudflareDnsZone is a prerequisite because Bot Management is zone-singleton configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippet` -- CloudflareDnsZone is a prerequisite because snippets deploy to a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippetRules` -- CloudflareDnsZone and CloudflareSnippet are prerequisites: the rules table is zone-scoped and every rule invokes a snippet by name.
+- `CloudflareWaitingRoom` -- CloudflareDnsZone is a prerequisite because waiting rooms sit on a zone's host+path -- the spec's zone_id reference must resolve first.
+- `CloudflareWaitingRoomEvent` -- CloudflareWaitingRoom is a prerequisite because events run on a room (and the room's own chain brings the zone).
+- `CloudflareHealthcheck` -- CloudflareDnsZone is a prerequisite because standalone health checks are zone-scoped -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
 - `Auth0EventStream`
@@ -7306,6 +7334,13 @@ Allowed values (use exactly as shown):
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
 - `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareIpAccessRule` -- No prerequisites: IP Access rules are account-scoped in the canonical case (the zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareBotManagement` -- CloudflareDnsZone is a prerequisite because Bot Management is zone-singleton configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippet` -- CloudflareDnsZone is a prerequisite because snippets deploy to a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippetRules` -- CloudflareDnsZone and CloudflareSnippet are prerequisites: the rules table is zone-scoped and every rule invokes a snippet by name.
+- `CloudflareWaitingRoom` -- CloudflareDnsZone is a prerequisite because waiting rooms sit on a zone's host+path -- the spec's zone_id reference must resolve first.
+- `CloudflareWaitingRoomEvent` -- CloudflareWaitingRoom is a prerequisite because events run on a room (and the room's own chain brings the zone).
+- `CloudflareHealthcheck` -- CloudflareDnsZone is a prerequisite because standalone health checks are zone-scoped -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
 - `Auth0EventStream`
@@ -8102,6 +8137,13 @@ Allowed values (use exactly as shown):
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
 - `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareIpAccessRule` -- No prerequisites: IP Access rules are account-scoped in the canonical case (the zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareBotManagement` -- CloudflareDnsZone is a prerequisite because Bot Management is zone-singleton configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippet` -- CloudflareDnsZone is a prerequisite because snippets deploy to a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareSnippetRules` -- CloudflareDnsZone and CloudflareSnippet are prerequisites: the rules table is zone-scoped and every rule invokes a snippet by name.
+- `CloudflareWaitingRoom` -- CloudflareDnsZone is a prerequisite because waiting rooms sit on a zone's host+path -- the spec's zone_id reference must resolve first.
+- `CloudflareWaitingRoomEvent` -- CloudflareWaitingRoom is a prerequisite because events run on a room (and the room's own chain brings the zone).
+- `CloudflareHealthcheck` -- CloudflareDnsZone is a prerequisite because standalone health checks are zone-scoped -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
 - `Auth0EventStream`

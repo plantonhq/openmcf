@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarewaitingroomevent
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The event stores a time window and optional overrides at Cloudflare, not customer data this component encrypts.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-managed key surface (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Event management traffic to the Cloudflare API is HTTPS. The component has no toggle that would send the window in the clear.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The event is a scheduled override on a waiting room, not a public endpoint this component exposes.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Ingress (bypass rules, host+path) lives on CloudflareWaitingRoom, not on the event.
+    - control_id: edge-protection
+      status: configurable
+      field_path: turnstile_action
+      evidence:
+        type: spec_default
+        reference: turnstile_action and turnstile_mode overrides temporarily replace the room's bot check for the window. Unset inherits the room.
+      notes: Advanced overrides (infinite_queue, non-off modes) need the same Waiting Room Advanced add-on the room needs.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is Cloudflare account-membership posture; the event exposes no data plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component holds no credentials.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records event changes in the account audit log unconditionally -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No monitoring signal to switch. Queue analytics stay on the room.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration, fully re-creatable from the manifest. The room survives event destroy.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Zone-scoped event on a zone-scoped room, served by Cloudflare's global edge.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Destroy is a real delete of the event; the room is untouched. Set suspended true to cancel a window without losing the ID. Delete events before destroying the room.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Cloudflare operates waiting-room events; no customer-visible patch surface exists.

@@ -1,0 +1,21 @@
+# The live arm: a one-rule table invoking the snippet fixture by reference.
+# The rule omits enabled -- proving the spec's enabled-defaults-TRUE promise
+# (Cloudflare's own default is false; the module makes ours real).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareSnippetRules
+metadata:
+  name: e2e-sniprules-minimal-${E2E_RUN_ID}
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  rules:
+    - expression: 'http.request.uri.path starts_with "/planton-e2e"'
+      snippet_name:
+        valueFrom:
+          kind: CloudflareSnippet
+          name: planton-oss-e2e-cloudflaresnippet-prereq
+          fieldPath: status.outputs.snippet_name
+      description: "planton-e2e routing rule"

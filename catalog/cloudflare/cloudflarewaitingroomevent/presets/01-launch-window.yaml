@@ -1,0 +1,12 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareWaitingRoomEvent
+metadata:
+  name: launch
+spec:
+  waiting_room_id:
+    value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d" # replace with your waiting room id
+  zone_id:
+    value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d" # replace with your zone id
+  name: launch
+  event_start_time: "2026-09-01T10:00:00Z" # replace with your start (RFC3339)
+  event_end_time: "2026-09-01T14:00:00Z"   # replace with your end (RFC3339)

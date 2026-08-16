@@ -111,24 +111,36 @@ func (c *Client) ResourcePresent(ctx context.Context, path string, opts verify.E
 
 	switch resp.StatusCode {
 	case http.StatusOK:
-		if !opts.SoftDeleted && len(opts.AbsentStatuses) == 0 {
+		if !opts.SoftDeleted && len(opts.AbsentStatuses) == 0 && !opts.EmptyResultArray {
 			return true, nil
 		}
 		var envelope struct {
-			Result struct {
-				DeletedAt *string `json:"deleted_at"`
-				Status    string  `json:"status"`
-			} `json:"result"`
+			Result json.RawMessage `json:"result"`
 		}
 		if err := json.Unmarshal(body, &envelope); err != nil {
 			return false, errors.Errorf("GET %s returned 200 with an unparseable body: %s", path, body)
 		}
-		if opts.SoftDeleted && envelope.Result.DeletedAt != nil && *envelope.Result.DeletedAt != "" {
-			return false, nil
-		}
-		for _, status := range opts.AbsentStatuses {
-			if envelope.Result.Status == status {
+		if opts.EmptyResultArray {
+			var items []json.RawMessage
+			if err := json.Unmarshal(envelope.Result, &items); err == nil && len(items) == 0 {
 				return false, nil
+			}
+		}
+		if opts.SoftDeleted || len(opts.AbsentStatuses) > 0 {
+			var object struct {
+				DeletedAt *string `json:"deleted_at"`
+				Status    string  `json:"status"`
+			}
+			if err := json.Unmarshal(envelope.Result, &object); err != nil {
+				return false, errors.Errorf("GET %s returned 200 with an unparseable result object: %s", path, body)
+			}
+			if opts.SoftDeleted && object.DeletedAt != nil && *object.DeletedAt != "" {
+				return false, nil
+			}
+			for _, status := range opts.AbsentStatuses {
+				if object.Status == status {
+					return false, nil
+				}
 			}
 		}
 		return true, nil

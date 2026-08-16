@@ -1,0 +1,24 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarewaitingroom
+spec:
+  # Waiting rooms under live E2E: the harness deploys the CloudflareDnsZone
+  # prerequisite, resolves zone_id, creates the room (host = the run-scoped
+  # fixture domain -- the same ${E2E_RUN_ID} token both manifests expand),
+  # verifies via the zone's waiting_rooms API, destroys (real delete, honest
+  # 404). The folded bypass-rules list rides the room's lane: Cloudflare
+  # replaces the per-room list WHOLE on every apply, and the rules resource's
+  # destroy PUTs [] -- on the run-scoped fixture zone that wipe is exactly
+  # the zero-orphan behavior the lane wants. Watch items for the proving
+  # session: (a) the live arm stays free-plan-safe -- Advanced-subscription
+  # fields are plan-proven offline at e2e/advanced-plan.yaml and live proof
+  # waits for the add-on (a recorded deferral); (b) the room needs no
+  # traffic to prove its lifecycle -- thresholds at Cloudflare's floor of
+  # 200 keep the object inert. Rooms create in seconds at zero cost.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10

@@ -29,11 +29,11 @@ that has progressed.
 |---|---|
 | Provider schema | `aws@6.58.0` |
 | Provider schema (parity baseline) | `cloudflare@5.23.0` |
-| Kinds in the catalog | 37 |
-| Distinct provider resources consumed | 72 |
-| Spec fields authored across all kinds | 1509 |
+| Kinds in the catalog | 44 |
+| Distinct provider resources consumed | 80 |
+| Spec fields authored across all kinds | 1606 |
 | Module pins on `aws` | `~> 5.0` × 1 |
-| Module pins on `cloudflare` | `~> 5.23` × 37 |
+| Module pins on `cloudflare` | `~> 5.23` × 44 |
 | Module pins on `tls` | `~> 4.0` × 1 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -48,10 +48,11 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**37 of 37 kinds are at total accounting; 0 proven live.**
+**44 of 44 kinds are at total accounting; 0 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
+| CloudflareBotManagement | 16 | 16 | 0 | 0 | 0 | ✅ | — |
 | CloudflareCacheSettings | 12 | 6 | 6 | 0 | 0 | ✅ | — |
 | CloudflareCertificatePack | 7 | 7 | 0 | 0 | 0 | ✅ | — |
 | CloudflareCustomHostname | 6 | 5 | 1 | 0 | 0 | ✅ | — |
@@ -62,7 +63,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | CloudflareEmailRoutingAddress | 3 | 3 | 0 | 0 | 0 | ✅ | — |
 | CloudflareEmailRoutingRule | 8 | 4 | 2 | 2 | 0 | ✅ | — |
 | CloudflareEmailRoutingZone | 10 | 3 | 4 | 3 | 0 | ✅ | — |
+| CloudflareHealthcheck | 14 | 11 | 2 | 1 | 0 | ✅ | — |
 | CloudflareHyperdriveConfig | 6 | 3 | 3 | 0 | 0 | ✅ | — |
+| CloudflareIpAccessRule | 5 | 4 | 1 | 0 | 0 | ✅ | — |
 | CloudflareKvNamespace | 2 | 1 | 1 | 0 | 0 | ✅ | — |
 | CloudflareList | 5 | 4 | 0 | 1 | 0 | ✅ | — |
 | CloudflareListItem | 7 | 5 | 2 | 0 | 0 | ✅ | — |
@@ -74,7 +77,11 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | CloudflareQueue | 9 | 5 | 2 | 2 | 0 | ✅ | — |
 | CloudflareR2Bucket | 34 | 22 | 12 | 0 | 0 | ✅ | — |
 | CloudflareRuleset | 7 | 5 | 2 | 0 | 0 | ✅ | — |
+| CloudflareSnippet | 4 | 2 | 2 | 0 | 0 | ✅ | — |
+| CloudflareSnippetRules | 2 | 1 | 1 | 0 | 0 | ✅ | — |
 | CloudflareTurnstileWidget | 9 | 9 | 0 | 0 | 0 | ✅ | — |
+| CloudflareWaitingRoom | 25 | 21 | 3 | 1 | 0 | ✅ | — |
+| CloudflareWaitingRoomEvent | 17 | 17 | 0 | 0 | 0 | ✅ | — |
 | CloudflareWorker | 40 | 10 | 20 | 10 | 0 | ✅ | — |
 | CloudflareWorkersKvPair | 5 | 5 | 0 | 0 | 0 | ✅ | — |
 | CloudflareZeroTrustAccessApplication | 39 | 29 | 10 | 0 | 0 | ✅ | — |
@@ -96,10 +103,10 @@ All resources of `cloudflare@5.23.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 70 | consumed by a kind's Terraform module today |
+| Modeled | 78 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 0 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 135 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 127 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 45 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 7 | deprecated or superseded provider surface |
 | **Total** | **257** | |
@@ -109,12 +116,14 @@ All resources of `cloudflare@5.23.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (70)
+### Modeled (78)
 
 | Resource | Consuming kinds |
 |---|---|
+| `cloudflare_access_rule` | consumed by CloudflareIpAccessRule |
 | `cloudflare_argo_smart_routing` | consumed by CloudflareCacheSettings |
 | `cloudflare_argo_tiered_caching` | consumed by CloudflareCacheSettings |
+| `cloudflare_bot_management` | consumed by CloudflareBotManagement |
 | `cloudflare_certificate_authorities_hostname_associations` | consumed by CloudflareZoneTlsSettings |
 | `cloudflare_certificate_pack` | consumed by CloudflareCertificatePack |
 | `cloudflare_custom_hostname` | consumed by CloudflareCustomHostname |
@@ -126,6 +135,7 @@ rather than trusted.
 | `cloudflare_email_routing_dns` | consumed by CloudflareEmailRoutingZone |
 | `cloudflare_email_routing_rule` | consumed by CloudflareEmailRoutingRule |
 | `cloudflare_email_routing_settings` | consumed by CloudflareEmailRoutingZone |
+| `cloudflare_healthcheck` | consumed by CloudflareHealthcheck |
 | `cloudflare_hostname_tls_setting` | consumed by CloudflareZoneTlsSettings |
 | `cloudflare_hyperdrive_config` | consumed by CloudflareHyperdriveConfig |
 | `cloudflare_list` | consumed by CloudflareList |
@@ -150,11 +160,16 @@ rather than trusted.
 | `cloudflare_r2_managed_domain` | consumed by CloudflareR2Bucket |
 | `cloudflare_regional_tiered_cache` | consumed by CloudflareCacheSettings |
 | `cloudflare_ruleset` | consumed by CloudflareRuleset |
+| `cloudflare_snippet` | consumed by CloudflareSnippet |
+| `cloudflare_snippet_rules` | consumed by CloudflareSnippetRules |
 | `cloudflare_tiered_cache` | consumed by CloudflareCacheSettings |
 | `cloudflare_total_tls` | consumed by CloudflareZoneTlsSettings |
 | `cloudflare_turnstile_widget` | consumed by CloudflareTurnstileWidget |
 | `cloudflare_universal_ssl_setting` | consumed by CloudflareZoneTlsSettings |
 | `cloudflare_url_normalization_settings` | consumed by CloudflareZoneSettings |
+| `cloudflare_waiting_room` | consumed by CloudflareWaitingRoom |
+| `cloudflare_waiting_room_event` | consumed by CloudflareWaitingRoomEvent |
+| `cloudflare_waiting_room_rules` | consumed by CloudflareWaitingRoom |
 | `cloudflare_waiting_room_settings` | consumed by CloudflareZoneSettings |
 | `cloudflare_workers_cron_trigger` | consumed by CloudflareWorker |
 | `cloudflare_workers_custom_domain` | consumed by CloudflareWorker |
@@ -184,11 +199,10 @@ rather than trusted.
 | `cloudflare_zone_setting` | consumed by CloudflareZoneSettings |
 | `cloudflare_zone_subscription` | consumed by CloudflareDnsZone |
 
-### Planned (135)
+### Planned (127)
 
 | Resource | Recorded reason |
 |---|---|
-| `cloudflare_access_rule` | judged as a planned CloudflareIpAccessRule kind (IP/ASN/country allow-block rules; named to avoid collision with the Zero Trust Access namespace) |
 | `cloudflare_account` | judged as a planned CloudflareAccount kind (foundational for multi-account and MSP automation) |
 | `cloudflare_account_dns_settings` | judged as a planned CloudflareAccountDnsSettings kind (account-level DNS settings singleton with apply/revert semantics) |
 | `cloudflare_account_member` | judged as a planned CloudflareAccountMember kind (memberships with roles) |
@@ -207,7 +221,6 @@ rather than trusted.
 | `cloudflare_authenticated_origin_pulls_certificate` | judged as a planned CloudflareAuthenticatedOriginPullsCertificate kind (uploaded client certificate with independent rotation lifecycle) |
 | `cloudflare_authenticated_origin_pulls_hostname_certificate` | folds into the planned CloudflareAuthenticatedOriginPullsCertificate kind (hostname-scoped variant of the same certificate upload) |
 | `cloudflare_authenticated_origin_pulls_settings` | folds into the planned CloudflareAuthenticatedOriginPulls kind (settings of the enablement surface) |
-| `cloudflare_bot_management` | judged as a planned CloudflareBotManagement kind (zone-singleton bot management configuration) |
 | `cloudflare_calls_sfu_app` | judged as a planned CloudflareCallsSfuApp kind (realtime SFU application credentials provisioned per application) |
 | `cloudflare_calls_turn_app` | judged as a planned CloudflareCallsTurnApp kind (TURN service credentials provisioned per application) |
 | `cloudflare_client_certificate` | judged as a planned CloudflareClientCertificate kind (Cloudflare-issued client certificates for API Shield mTLS) |
@@ -224,7 +237,6 @@ rather than trusted.
 | `cloudflare_flagship_app` | judged as a planned CloudflareFlagshipApp kind (feature-flags application container) |
 | `cloudflare_flagship_flag` | judged as a planned CloudflareFlagshipFlag kind (flags with independent lifecycle referenced by SDKs) |
 | `cloudflare_google_tag_gateway` | judged as a planned CloudflareGoogleTagGateway kind (zone-singleton tag-gateway configuration) |
-| `cloudflare_healthcheck` | judged as a planned CloudflareHealthcheck kind (standalone zone health checks, no load balancer required) |
 | `cloudflare_image_variant` | judged as a planned CloudflareImagesVariant kind (named transformation preset referenced by delivery URLs) |
 | `cloudflare_leaked_credential_check` | judged as a planned CloudflareLeakedCredentialCheck kind (enablement plus custom detection rules in one kind) |
 | `cloudflare_leaked_credential_check_rule` | folds into the planned CloudflareLeakedCredentialCheck kind (detection rows are meaningless without the check) |
@@ -251,8 +263,6 @@ rather than trusted.
 | `cloudflare_share` | judged as a planned CloudflareShare kind (cross-account resource sharing) |
 | `cloudflare_share_recipient` | folds into the planned CloudflareShare kind (recipient rows of the share) |
 | `cloudflare_share_resource` | folds into the planned CloudflareShare kind (resource rows of the share) |
-| `cloudflare_snippet` | judged as a planned CloudflareSnippet kind (edge code unit with its own upload lifecycle) |
-| `cloudflare_snippet_rules` | judged as a planned CloudflareSnippetRules kind (the zone's snippet routing table, referencing many snippets and outliving any one of them) |
 | `cloudflare_spectrum_application` | judged as a planned CloudflareSpectrumApplication kind (TCP/UDP proxying applications) |
 | `cloudflare_stream_key` | judged as a planned CloudflareStreamSigningKey kind (signing key referenced by application code for signed playback URLs) |
 | `cloudflare_stream_live_input` | judged as a planned CloudflareStreamLiveInput kind (live ingest endpoint with keys and independent lifecycle) |
@@ -263,9 +273,6 @@ rather than trusted.
 | `cloudflare_user_agent_blocking_rule` | judged as a planned CloudflareUserAgentBlockingRule kind (standalone user-agent blocking rule object) |
 | `cloudflare_user_group` | judged as a planned CloudflareUserGroup kind (permission groups referenced by policies) |
 | `cloudflare_user_group_members` | folds into the planned CloudflareUserGroup kind (membership rows of the group) |
-| `cloudflare_waiting_room` | judged as a planned CloudflareWaitingRoom kind (the room itself) |
-| `cloudflare_waiting_room_event` | judged as a planned CloudflareWaitingRoomEvent kind (scheduled events created and deleted on their own cadence per launch) |
-| `cloudflare_waiting_room_rules` | folds into the planned CloudflareWaitingRoom kind (the room's singleton bypass-rule list) |
 | `cloudflare_web_analytics_rule` | folds into the planned CloudflareWebAnalyticsSite kind (path rules of the site) |
 | `cloudflare_web_analytics_site` | judged as a planned CloudflareWebAnalyticsSite kind (real-user-monitoring site) |
 | `cloudflare_worker` | folds into the existing CloudflareWorker kind's planned depth expansion (the modern script-settings surface of the worker the kind already owns) |

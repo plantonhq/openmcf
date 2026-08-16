@@ -1884,6 +1884,27 @@ const (
 	// CloudflareDnsZone is a prerequisite because cache settings configure an
 	// existing zone -- the spec's zone_id reference must resolve first.
 	CloudResourceKind_CloudflareCacheSettings CloudResourceKind = 7181
+	// No prerequisites: IP Access rules are account-scoped in the canonical case
+	// (the zone scope is a per-manifest choice, not a structural dependency).
+	CloudResourceKind_CloudflareIpAccessRule CloudResourceKind = 7210
+	// CloudflareDnsZone is a prerequisite because Bot Management is zone-singleton
+	// configuration -- the spec's zone_id reference must resolve first.
+	CloudResourceKind_CloudflareBotManagement CloudResourceKind = 7211
+	// CloudflareDnsZone is a prerequisite because snippets deploy to a zone --
+	// the spec's zone_id reference must resolve first.
+	CloudResourceKind_CloudflareSnippet CloudResourceKind = 7212
+	// CloudflareDnsZone and CloudflareSnippet are prerequisites: the rules table
+	// is zone-scoped and every rule invokes a snippet by name.
+	CloudResourceKind_CloudflareSnippetRules CloudResourceKind = 7213
+	// CloudflareDnsZone is a prerequisite because waiting rooms sit on a zone's
+	// host+path -- the spec's zone_id reference must resolve first.
+	CloudResourceKind_CloudflareWaitingRoom CloudResourceKind = 7240
+	// CloudflareWaitingRoom is a prerequisite because events run on a room (and
+	// the room's own chain brings the zone).
+	CloudResourceKind_CloudflareWaitingRoomEvent CloudResourceKind = 7241
+	// CloudflareDnsZone is a prerequisite because standalone health checks are
+	// zone-scoped -- the spec's zone_id reference must resolve first.
+	CloudResourceKind_CloudflareHealthcheck CloudResourceKind = 7400
 	// 8000–8999: Auth0 resources
 	CloudResourceKind_Auth0Connection     CloudResourceKind = 8000
 	CloudResourceKind_Auth0Client         CloudResourceKind = 8001
@@ -2524,6 +2545,13 @@ var (
 		7150: "CloudflareZoneTlsSettings",
 		7180: "CloudflareZoneSettings",
 		7181: "CloudflareCacheSettings",
+		7210: "CloudflareIpAccessRule",
+		7211: "CloudflareBotManagement",
+		7212: "CloudflareSnippet",
+		7213: "CloudflareSnippetRules",
+		7240: "CloudflareWaitingRoom",
+		7241: "CloudflareWaitingRoomEvent",
+		7400: "CloudflareHealthcheck",
 		8000: "Auth0Connection",
 		8001: "Auth0Client",
 		8002: "Auth0EventStream",
@@ -3157,6 +3185,13 @@ var (
 		"CloudflareZoneTlsSettings":                      7150,
 		"CloudflareZoneSettings":                         7180,
 		"CloudflareCacheSettings":                        7181,
+		"CloudflareIpAccessRule":                         7210,
+		"CloudflareBotManagement":                        7211,
+		"CloudflareSnippet":                              7212,
+		"CloudflareSnippetRules":                         7213,
+		"CloudflareWaitingRoom":                          7240,
+		"CloudflareWaitingRoomEvent":                     7241,
+		"CloudflareHealthcheck":                          7400,
 		"Auth0Connection":                                8000,
 		"Auth0Client":                                    8001,
 		"Auth0EventStream":                               8002,
@@ -3546,7 +3581,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x8d\xa3\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xa5\xa6\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4209,7 +4244,14 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x17CloudflareZeroTrustList\x10\x957\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfztl\x12;\n" +
 	"\x19CloudflareZoneTlsSettings\x10\xee7\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x05cftls:\x02\xd86\x129\n" +
 	"\x16CloudflareZoneSettings\x10\x8c8\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x06cfzset:\x02\xd86\x12;\n" +
-	"\x17CloudflareCacheSettings\x10\x8d8\x1a\x1d\xa2\xf7\x04\x19\b\x0f\x12\bv1alpha1\"\acfcache:\x02\xd86\x12.\n" +
+	"\x17CloudflareCacheSettings\x10\x8d8\x1a\x1d\xa2\xf7\x04\x19\b\x0f\x12\bv1alpha1\"\acfcache:\x02\xd86\x125\n" +
+	"\x16CloudflareIpAccessRule\x10\xaa8\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfipar\x129\n" +
+	"\x17CloudflareBotManagement\x10\xab8\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x05cfbot:\x02\xd86\x124\n" +
+	"\x11CloudflareSnippet\x10\xac8\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x06cfsnip:\x02\xd86\x12<\n" +
+	"\x16CloudflareSnippetRules\x10\xad8\x1a\x1f\xa2\xf7\x04\x1b\b\x0f\x12\bv1alpha1\"\acfsnipr:\x04\xd86\xac8\x129\n" +
+	"\x15CloudflareWaitingRoom\x10\xc88\x1a\x1d\xa2\xf7\x04\x19\b\x0f\x12\bv1alpha1\"\acfwroom:\x02\xd86\x12=\n" +
+	"\x1aCloudflareWaitingRoomEvent\x10\xc98\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x06cfwrev:\x02\xc88\x126\n" +
+	"\x15CloudflareHealthcheck\x10\xe89\x1a\x1a\xa2\xf7\x04\x16\b\x0f\x12\bv1alpha1\"\x04cfhc:\x02\xd86\x12.\n" +
 	"\x0fAuth0Connection\x10\xc0>\x1a\x18\xa2\xf7\x04\x14\b\x15\x12\bv1alpha1\"\x06a0conn\x12)\n" +
 	"\vAuth0Client\x10\xc1>\x1a\x17\xa2\xf7\x04\x13\b\x15\x12\bv1alpha1\"\x05a0cli\x12-\n" +
 	"\x10Auth0EventStream\x10\xc2>\x1a\x16\xa2\xf7\x04\x12\b\x15\x12\bv1alpha1\"\x04a0es\x120\n" +

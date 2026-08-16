@@ -32,6 +32,11 @@ type EnvelopePresence struct {
 	// absent (certificate packs, custom hostnames, fallback origin --
 	// pending_deletion / deleted).
 	AbsentStatuses []string
+	// EmptyResultArray: a 200 whose result is an empty JSON array counts as
+	// absent. Used by whole-collection resources whose destroy empties the
+	// list while the endpoint keeps answering (snippet rules -- a zone
+	// singleton whose Delete wipes every rule and GET then returns []).
+	EmptyResultArray bool
 }
 
 // API is the surface verifiers need from the harness client: an
@@ -95,6 +100,10 @@ type apiPathVerifier struct {
 	// single GET immediately after destroy races the 404. Zero/one means
 	// a single probe (everyone else's default).
 	absentRetries int
+	// emptyResultArray opts into the empty-collection absence probe: a
+	// 200 whose result is [] counts as gone (snippet rules -- destroy
+	// empties the zone's table and the GET keeps answering).
+	emptyResultArray bool
 }
 
 // IDOutputKey returns the last output key -- the resource's own identifier
@@ -153,10 +162,11 @@ func (v *apiPathVerifier) VerifyAbsent(ctx context.Context, api API, outputs map
 // probe selects the existence check: the plain status-code probe, or the
 // envelope-aware one for soft-deleting / status-enum families.
 func (v *apiPathVerifier) probe(ctx context.Context, api API, path string) (bool, error) {
-	if v.softDeleted || len(v.absentStatuses) > 0 {
+	if v.softDeleted || len(v.absentStatuses) > 0 || v.emptyResultArray {
 		return api.ResourcePresent(ctx, path, EnvelopePresence{
-			SoftDeleted:    v.softDeleted,
-			AbsentStatuses: v.absentStatuses,
+			SoftDeleted:      v.softDeleted,
+			AbsentStatuses:   v.absentStatuses,
+			EmptyResultArray: v.emptyResultArray,
 		})
 	}
 	return api.ResourceExists(ctx, path)
@@ -472,6 +482,55 @@ var verifiers = map[string]Verifier{
 		pathFormat:    "accounts/%s/gateway/lists/%s",
 		outputKeys:    []string{"list_id"},
 		accountScoped: true,
+	},
+	// IP Access rules delete for real and 404 honestly. Live scenarios
+	// are account-scoped (the zone arm is scenario-edged).
+	"cloudflareipaccessrule": &apiPathVerifier{
+		component:     "cloudflareipaccessrule",
+		pathFormat:    "accounts/%s/firewall/access_rules/rules/%s",
+		outputKeys:    []string{"rule_id"},
+		accountScoped: true,
+	},
+	// Bot Management is a zone settings singleton: destroy is a NO-OP
+	// (empty Delete body). Verify-absent asserts the surface still
+	// answers -- the settings-singleton class.
+	"cloudflarebotmanagement": &settingsSingletonVerifier{
+		component:  "cloudflarebotmanagement",
+		pathFormat: "zones/%s/bot_management",
+	},
+	// Snippets delete for real (by name) and 404 honestly.
+	"cloudflaresnippet": &apiPathVerifier{
+		component:  "cloudflaresnippet",
+		pathFormat: "zones/%s/snippets/%s",
+		outputKeys: []string{"zone_id", "snippet_name"},
+	},
+	// Snippet rules are a zone singleton whose destroy empties the
+	// table. GET keeps answering 200 with an empty result array -- a
+	// plain existence probe would false-fail verify-absent.
+	"cloudflaresnippetrules": &apiPathVerifier{
+		component:        "cloudflaresnippetrules",
+		pathFormat:       "zones/%s/snippets/snippet_rules",
+		outputKeys:       []string{"zone_id"},
+		emptyResultArray: true,
+	},
+	// Standalone health checks delete for real and 404 honestly.
+	"cloudflarehealthcheck": &apiPathVerifier{
+		component:  "cloudflarehealthcheck",
+		pathFormat: "zones/%s/healthchecks/%s",
+		outputKeys: []string{"zone_id", "healthcheck_id"},
+	},
+	// Waiting rooms delete for real and 404 honestly. The folded
+	// bypass-rules list dies with the room.
+	"cloudflarewaitingroom": &apiPathVerifier{
+		component:  "cloudflarewaitingroom",
+		pathFormat: "zones/%s/waiting_rooms/%s",
+		outputKeys: []string{"zone_id", "waiting_room_id"},
+	},
+	// Waiting-room events delete for real and 404 honestly.
+	"cloudflarewaitingroomevent": &apiPathVerifier{
+		component:  "cloudflarewaitingroomevent",
+		pathFormat: "zones/%s/waiting_rooms/%s/events/%s",
+		outputKeys: []string{"zone_id", "waiting_room_id", "event_id"},
 	},
 }
 

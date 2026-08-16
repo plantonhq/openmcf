@@ -1,0 +1,10 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarewaitingroomevent
+spec:
+  billing_model: free
+  notes: Waiting room events ride the room -- creating an event creates no charge of its own. Advanced overrides (custom_page_html, infinite_queue, non-default queueing_method) need the same Waiting Room Advanced add-on the room needs, billed on the zone, never through this component. Applying an Advanced override without the add-on fails the apply rather than incurring cost.

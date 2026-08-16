@@ -1,0 +1,41 @@
+# Offline-plan arm: the Waiting Rooms Advanced fields (additional routes,
+# custom queue page, JSON responses, session-renewal freeze, non-default
+# queueing, turnstile). NEVER a live scenario on a plan without the add-on --
+# the API rejects the entitlement, not the shape. Plan-proven offline so the
+# surface stays representable; live proof waits for the add-on (a recorded
+# deferral).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareWaitingRoom
+metadata:
+  name: e2e-wroom-advanced-plan
+spec:
+  zone_id:
+    value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  name: onsale-queue-advanced
+  host: tickets.example.com
+  path: /onsale
+  new_users_per_minute: 500
+  total_active_users: 2000
+  session_duration: 10
+  queueing_method: random
+  queueing_status_code: 202
+  cookie_attributes:
+    samesite: lax
+    secure: always
+  cookie_suffix: onsale
+  custom_page_html: "<html><body><h1>You're in line</h1>{{#waitTimeKnown}}<p>~{{waitTime}} min</p>{{/waitTimeKnown}}</body></html>"
+  default_template_language: de-DE
+  description: "Advanced-subscription arm, plan-proven offline"
+  disable_session_renewal: true
+  json_response_enabled: true
+  additional_routes:
+    - host: www.example.com
+      path: /onsale
+  enabled_origin_commands:
+    - revoke
+  turnstile_action: infinite_queue
+  turnstile_mode: visible_managed
+  bypass_rules:
+    - expression: 'http.request.uri.path eq "/healthz"'
+      description: "health endpoint skips the queue"
+      enabled: true

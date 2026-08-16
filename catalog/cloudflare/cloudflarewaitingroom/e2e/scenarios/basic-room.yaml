@@ -1,0 +1,23 @@
+# The free-plan live arm: a basic room with one bypass rule (proving the
+# folded per-room rules list live). The host is the run-scoped fixture zone's
+# own domain -- both manifests expand the same ${E2E_RUN_ID} token, so they
+# always agree within a lane.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareWaitingRoom
+metadata:
+  name: e2e-wroom-basic-${E2E_RUN_ID}
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  name: e2e-wroom-basic-${E2E_RUN_ID}
+  host: planton-e2e-${E2E_RUN_ID}.com
+  path: /queue
+  new_users_per_minute: 200
+  total_active_users: 200
+  session_duration: 5
+  bypass_rules:
+    - expression: 'ip.src in {203.0.113.0/24}'
+      description: "planton-e2e bypass rule"

@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarebotmanagement.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarebotmanagement/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarebotmanagement/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareBotManagement is a KRM-style resource for managing a zone's Bot
+// Management configuration -- the singleton switchboard for automated-traffic
+// handling, from free Bot Fight Mode through Enterprise Bot Management and the
+// AI-crawler controls.
+message CloudflareBotManagement {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareBotManagement'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareBotManagementSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareBotManagementStatus status = 5;
+}
+
+// CloudflareBotManagementStatus represents the observed state of the zone's Bot
+// Management configuration.
+message CloudflareBotManagementStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareBotManagementStackOutputs outputs = 1;
+}

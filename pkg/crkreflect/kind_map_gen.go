@@ -366,6 +366,7 @@ import (
 	azurevpnserverconfigurationv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevpnserverconfiguration/v1alpha1"
 	azurevpnsitev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevpnsite/v1alpha1"
 	azurewebapplicationfirewallpolicyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurewebapplicationfirewallpolicy/v1alpha1"
+	cloudflarebotmanagementv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarebotmanagement/v1alpha1"
 	cloudflarecachesettingsv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarecachesettings/v1alpha1"
 	cloudflarecertificatepackv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarecertificatepack/v1alpha1"
 	cloudflarecustomhostnamev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarecustomhostname/v1alpha1"
@@ -376,7 +377,9 @@ import (
 	cloudflareemailroutingaddressv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareemailroutingaddress/v1alpha1"
 	cloudflareemailroutingrulev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareemailroutingrule/v1alpha1"
 	cloudflareemailroutingzonev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareemailroutingzone/v1alpha1"
+	cloudflarehealthcheckv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarehealthcheck/v1alpha1"
 	cloudflarehyperdriveconfigv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarehyperdriveconfig/v1alpha1"
+	cloudflareipaccessrulev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareipaccessrule/v1alpha1"
 	cloudflarekvnamespacev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarekvnamespace/v1alpha1"
 	cloudflarelistv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarelist/v1alpha1"
 	cloudflarelistitemv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarelistitem/v1alpha1"
@@ -388,7 +391,11 @@ import (
 	cloudflarequeuev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarequeue/v1alpha1"
 	cloudflarer2bucketv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarer2bucket/v1alpha1"
 	cloudflarerulesetv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareruleset/v1alpha1"
+	cloudflaresnippetv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflaresnippet/v1alpha1"
+	cloudflaresnippetrulesv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflaresnippetrules/v1alpha1"
 	cloudflareturnstilewidgetv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareturnstilewidget/v1alpha1"
+	cloudflarewaitingroomv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarewaitingroom/v1alpha1"
+	cloudflarewaitingroomeventv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarewaitingroomevent/v1alpha1"
 	cloudflareworkerv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareworker/v1alpha1"
 	cloudflareworkerskvpairv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareworkerskvpair/v1alpha1"
 	cloudflarezerotrustaccessapplicationv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessapplication/v1alpha1"
@@ -1023,6 +1030,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 }
 
 var ProviderCloudflareMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
+	cloudresourcekind.CloudResourceKind_CloudflareBotManagement:                   &cloudflarebotmanagementv1alpha1.CloudflareBotManagement{},
 	cloudresourcekind.CloudResourceKind_CloudflareCacheSettings:                   &cloudflarecachesettingsv1alpha1.CloudflareCacheSettings{},
 	cloudresourcekind.CloudResourceKind_CloudflareCertificatePack:                 &cloudflarecertificatepackv1alpha1.CloudflareCertificatePack{},
 	cloudresourcekind.CloudResourceKind_CloudflareCustomHostname:                  &cloudflarecustomhostnamev1alpha1.CloudflareCustomHostname{},
@@ -1033,7 +1041,9 @@ var ProviderCloudflareMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_CloudflareEmailRoutingAddress:             &cloudflareemailroutingaddressv1alpha1.CloudflareEmailRoutingAddress{},
 	cloudresourcekind.CloudResourceKind_CloudflareEmailRoutingRule:                &cloudflareemailroutingrulev1alpha1.CloudflareEmailRoutingRule{},
 	cloudresourcekind.CloudResourceKind_CloudflareEmailRoutingZone:                &cloudflareemailroutingzonev1alpha1.CloudflareEmailRoutingZone{},
+	cloudresourcekind.CloudResourceKind_CloudflareHealthcheck:                     &cloudflarehealthcheckv1alpha1.CloudflareHealthcheck{},
 	cloudresourcekind.CloudResourceKind_CloudflareHyperdriveConfig:                &cloudflarehyperdriveconfigv1alpha1.CloudflareHyperdriveConfig{},
+	cloudresourcekind.CloudResourceKind_CloudflareIpAccessRule:                    &cloudflareipaccessrulev1alpha1.CloudflareIpAccessRule{},
 	cloudresourcekind.CloudResourceKind_CloudflareKvNamespace:                     &cloudflarekvnamespacev1alpha1.CloudflareKvNamespace{},
 	cloudresourcekind.CloudResourceKind_CloudflareList:                            &cloudflarelistv1alpha1.CloudflareList{},
 	cloudresourcekind.CloudResourceKind_CloudflareListItem:                        &cloudflarelistitemv1alpha1.CloudflareListItem{},
@@ -1045,7 +1055,11 @@ var ProviderCloudflareMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_CloudflareQueue:                           &cloudflarequeuev1alpha1.CloudflareQueue{},
 	cloudresourcekind.CloudResourceKind_CloudflareR2Bucket:                        &cloudflarer2bucketv1alpha1.CloudflareR2Bucket{},
 	cloudresourcekind.CloudResourceKind_CloudflareRuleset:                         &cloudflarerulesetv1alpha1.CloudflareRuleset{},
+	cloudresourcekind.CloudResourceKind_CloudflareSnippet:                         &cloudflaresnippetv1alpha1.CloudflareSnippet{},
+	cloudresourcekind.CloudResourceKind_CloudflareSnippetRules:                    &cloudflaresnippetrulesv1alpha1.CloudflareSnippetRules{},
 	cloudresourcekind.CloudResourceKind_CloudflareTurnstileWidget:                 &cloudflareturnstilewidgetv1alpha1.CloudflareTurnstileWidget{},
+	cloudresourcekind.CloudResourceKind_CloudflareWaitingRoom:                     &cloudflarewaitingroomv1alpha1.CloudflareWaitingRoom{},
+	cloudresourcekind.CloudResourceKind_CloudflareWaitingRoomEvent:                &cloudflarewaitingroomeventv1alpha1.CloudflareWaitingRoomEvent{},
 	cloudresourcekind.CloudResourceKind_CloudflareWorker:                          &cloudflareworkerv1alpha1.CloudflareWorker{},
 	cloudresourcekind.CloudResourceKind_CloudflareWorkersKvPair:                   &cloudflareworkerskvpairv1alpha1.CloudflareWorkersKvPair{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessApplication:      &cloudflarezerotrustaccessapplicationv1alpha1.CloudflareZeroTrustAccessApplication{},

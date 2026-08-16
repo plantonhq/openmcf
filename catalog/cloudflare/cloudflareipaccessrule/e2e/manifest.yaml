@@ -1,0 +1,14 @@
+# A complete, protovalidate-valid CloudflareIpAccessRule example: an
+# account-wide managed challenge on a suspicious network range. Exactly one
+# scope (account_id or zone_id) is set -- the spec enforces it.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareIpAccessRule
+metadata:
+  name: challenge-suspicious-range
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  mode: managed_challenge
+  configuration:
+    target: ip_range
+    value: "203.0.113.0/24"
+  notes: "Repeated credential-stuffing attempts from this range"

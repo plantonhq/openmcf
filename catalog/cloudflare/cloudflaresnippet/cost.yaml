@@ -1,0 +1,10 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflaresnippet
+spec:
+  billing_model: free
+  notes: Snippets are included on every plan. Creating a snippet creates no charge of its own. Cloudflare caps snippet COUNT per zone (a small number on free plans; more on higher plans) and code size per snippet -- the API enforces both at create. Plan upgrades that raise the count bill on the zone, never through this component.

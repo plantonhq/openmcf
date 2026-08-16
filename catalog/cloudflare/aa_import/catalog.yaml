@@ -455,3 +455,41 @@ spec:
         document only this form), while "{zone_id}/{mtls_certificate_id}"
         imports an mTLS certificate's own hostname list. Use the form
         matching the row being adopted.
+    # --- Zone security ------------------------------------------------------------
+    # Access rules are dual-scope: the documented import ID carries a literal
+    # "accounts/" or "zones/" prefix. Live scenarios are account-scoped.
+    - terraform_type: cloudflare_access_rule
+      pulumi_type: cloudflare:index/accessRule:AccessRule
+      id_format: "accounts/{account_id}/{rule_id}"
+    - terraform_type: cloudflare_bot_management
+      pulumi_type: cloudflare:index/botManagement:BotManagement
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_snippet
+      pulumi_type: cloudflare:index/snippet:Snippet
+      id_format: "{zone_id}/{snippet_name}"
+    - terraform_type: cloudflare_snippet_rules
+      pulumi_type: cloudflare:index/snippetRules:SnippetRules
+      id_format: "{zone_id}"
+      notes: >-
+        Import populates only zone_id. The provider's Read discards the
+        response body (rules carry a no_refresh tag), so a blind
+        round-trip must re-assert the rule list from configuration --
+        safe, because the write is a full-replacement PUT.
+    # --- Health -------------------------------------------------------------------
+    - terraform_type: cloudflare_healthcheck
+      pulumi_type: cloudflare:index/healthcheck:Healthcheck
+      id_format: "{zone_id}/{healthcheck_id}"
+    # --- Waiting room -------------------------------------------------------------
+    - terraform_type: cloudflare_waiting_room
+      pulumi_type: cloudflare:index/waitingRoom:WaitingRoom
+      id_format: "{zone_id}/{waiting_room_id}"
+    - terraform_type: cloudflare_waiting_room_rules
+      pulumi_type: cloudflare:index/waitingRoomRules:WaitingRoomRules
+      id_format: "{zone_id}/{waiting_room_id}"
+      notes: >-
+        Import never populates the vestigial top-level id. Re-assert the
+        bypass-rule list from configuration -- the write is a
+        full-replacement PUT of the room's entire rule set.
+    - terraform_type: cloudflare_waiting_room_event
+      pulumi_type: cloudflare:index/waitingRoomEvent:WaitingRoomEvent
+      id_format: "{zone_id}/{waiting_room_id}/{event_id}"

@@ -1,0 +1,34 @@
+# A complete, protovalidate-valid CloudflareHealthcheck example: an HTTPS
+# probe with response assertions and a Host header. Health checks are a paid
+# zone feature (Pro and above); the plan gate is Cloudflare's, at create.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareHealthcheck
+metadata:
+  name: origin-https-probe
+spec:
+  zone_id:
+    value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  name: origin-https
+  address: origin.example.com
+  type: HTTPS
+  check_regions:
+    - WEU
+    - ENAM
+  consecutive_fails: 2
+  consecutive_successes: 2
+  interval: 60
+  retries: 2
+  timeout: 5
+  http_config:
+    method: GET
+    path: /healthz
+    port: 443
+    expected_codes:
+      - "200"
+    expected_body: ok
+    follow_redirects: false
+    allow_insecure: false
+    headers:
+      Host:
+        values:
+          - origin.example.com

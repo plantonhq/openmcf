@@ -5449,6 +5449,73 @@ enum CloudResourceKind {
     prerequisites: [CloudflareDnsZone]
   }];
 
+  // --- 7210-7239: Cloudflare zone-security sub-band ---
+
+  // No prerequisites: IP Access rules are account-scoped in the canonical case
+  // (the zone scope is a per-manifest choice, not a structural dependency).
+  CloudflareIpAccessRule = 7210 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfipar"
+  }];
+  // CloudflareDnsZone is a prerequisite because Bot Management is zone-singleton
+  // configuration -- the spec's zone_id reference must resolve first.
+  CloudflareBotManagement = 7211 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfbot"
+    prerequisites: [CloudflareDnsZone]
+  }];
+  // CloudflareDnsZone is a prerequisite because snippets deploy to a zone --
+  // the spec's zone_id reference must resolve first.
+  CloudflareSnippet = 7212 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfsnip"
+    prerequisites: [CloudflareDnsZone]
+  }];
+  // CloudflareDnsZone and CloudflareSnippet are prerequisites: the rules table
+  // is zone-scoped and every rule invokes a snippet by name.
+  CloudflareSnippetRules = 7213 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfsnipr"
+    prerequisites: [
+      CloudflareDnsZone,
+      CloudflareSnippet
+    ]
+  }];
+
+  // --- 7240-7249: Cloudflare waiting-room sub-band ---
+
+  // CloudflareDnsZone is a prerequisite because waiting rooms sit on a zone's
+  // host+path -- the spec's zone_id reference must resolve first.
+  CloudflareWaitingRoom = 7240 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfwroom"
+    prerequisites: [CloudflareDnsZone]
+  }];
+  // CloudflareWaitingRoom is a prerequisite because events run on a room (and
+  // the room's own chain brings the zone).
+  CloudflareWaitingRoomEvent = 7241 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfwrev"
+    prerequisites: [CloudflareWaitingRoom]
+  }];
+
+  // --- 7400-7409: Cloudflare load-balancing & health completions sub-band ---
+
+  // CloudflareDnsZone is a prerequisite because standalone health checks are
+  // zone-scoped -- the spec's zone_id reference must resolve first.
+  CloudflareHealthcheck = 7400 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfhc"
+    prerequisites: [CloudflareDnsZone]
+  }];
+
   // 8000–8999: Auth0 resources
   Auth0Connection = 8000 [(kind_meta) = {
     provider: auth0

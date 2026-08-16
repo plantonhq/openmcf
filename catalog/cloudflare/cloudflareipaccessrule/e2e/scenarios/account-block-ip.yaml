@@ -1,0 +1,14 @@
+# The account-scoped arm: block a single documentation-range IP account-wide.
+# No fixture needed -- account rules are the kind's canonical, dependency-free
+# shape. Real delete: verify-absent expects an honest 404.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareIpAccessRule
+metadata:
+  name: e2e-ipar-account-${E2E_RUN_ID}
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  mode: block
+  configuration:
+    target: ip
+    value: "203.0.113.61"
+  notes: "planton-e2e account-scoped block"

@@ -1,0 +1,10 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarewaitingroom
+spec:
+  billing_model: free
+  notes: A basic waiting room (host, path, 200/200 floors, fifo) is included on every plan and creating this resource creates no charge of its own. Waiting Rooms Advanced is a paid add-on billed on the zone -- additional_routes, custom_page_html, disable_session_renewal, json_response_enabled, a non-default queueing_method, infinite_queue, and non-off turnstile modes fail the apply on a zone without the add-on rather than incurring cost through this component.
