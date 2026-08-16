@@ -1,0 +1,93 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kuberneteskarpenterec2nodeclass
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: block_device_mappings.ebs.encrypted
+      evidence:
+        type: spec_default
+        reference: Empty block_device_mappings inherit the AMI family's defaults (and the account's EBS-encryption-by-default setting, if enabled); declaring mappings with encrypted true encrypts every node's volumes at launch.
+      notes: The 02-bottlerocket-encrypted preset encrypts both the OS and data volumes. The template governs the NODE disks; the control applies to the instances launched from it.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: block_device_mappings.ebs.kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset encrypted volumes use the account's default aws/ebs key; kms_key_id (id, alias, or ARN) switches node volumes to a customer-managed KMS key.
+      notes: The 02-bottlerocket-encrypted preset sets kms_key_id on both volumes alongside encrypted true.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A node template terminates no connections; traffic encryption is the property of the workloads and control-plane components running on the launched nodes.
+    - control_id: no-public-access
+      status: configurable
+      field_path: associate_public_ip_address
+      evidence:
+        type: spec_default
+        reference: Unset defers to each launch subnet's own setting (public subnets assign a public IPv4, private do not); setting false forces nodes private regardless of subnet, and true forces public assignment.
+      notes: In the standard EKS pattern the subnet_selector_terms discovery tags (karpenter.sh/discovery) select private subnets, so nodes launch without public addresses; this field exists to override the subnet default deliberately.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_selector_terms
+      evidence:
+        type: spec_validation
+        reference: The spec requires at least one security-group selector term (repeated min_items 1, and each term must carry id, name, or tags), so every node's ENIs always attach explicitly declared security groups.
+      notes: The selected groups' RULES decide what inbound traffic nodes accept -- the groups themselves are AWS resources declared outside this spec. Presets select groups by the karpenter.sh/discovery tag convention.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Nodes serve no HTTP edge traffic of their own -- web application firewalls apply to the load balancers and ingress layers in front of workloads, not to the machine template.
+    - control_id: rbac
+      status: not_applicable
+      notes: The object's management plane is the target cluster's Kubernetes RBAC (EC2NodeClass is cluster-scoped, so changing it needs cluster-level rights). The nodes' AWS-side permissions are the IAM role's policies -- see workload-identity.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: The spec.role_xor_instance_profile validation rule requires exactly one of role or instance_profile, so every launched node authenticates to AWS through an IAM instance profile's short-lived STS credentials -- there is no arm for static access keys.
+      notes: The metadata_options defaults (http_tokens required, hop limit 1) additionally keep pods from reaching the node's instance credentials -- see no-legacy-auth. With role, Karpenter manages the instance profile (needs iam:PassRole on the controller); instance_profile brings a pre-existing one.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: metadata_options.http_tokens defaults to "required" -- IMDSv2 only, with the v1 fallback ("optional") an explicit opt-in -- and http_put_response_hop_limit defaults to 1 so pods cannot reach the node's instance credentials; http_protocol_ipv6 defaults to disabled.
+      notes: These are the CRD's own defaults, mirrored in this spec -- the EKS security best practice. The 02-bottlerocket-encrypted preset writes them out explicitly.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the EC2NodeClass are Kubernetes API operations captured by the target cluster's audit policy, and the EC2 actions Karpenter performs from it (RunInstances, CreateLaunchTemplate) land in the AWS account's CloudTrail -- both owned outside this spec.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: detailed_monitoring
+      evidence:
+        type: spec_default
+        reference: False (the default) leaves launched instances on standard 5-minute CloudWatch metrics; true enables detailed 1-minute CloudWatch monitoring on every node launched from this class.
+      notes: Cluster-level node observability (node-exporter, kubelet metrics) is the observability stack's own component; this field governs only the EC2-native metrics granularity.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Nodes launched from this template are disposable capacity -- Karpenter replaces them rather than restoring them, and durable state belongs on persistent volumes owned by the workloads. There is nothing here to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist for this component (see backup-recovery), so retention has nothing to govern.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: subnet_selector_terms
+      evidence:
+        type: spec_default
+        reference: Karpenter spreads launches across the selected subnets' availability zones -- tag-based selection (the karpenter.sh/discovery convention) typically matches subnets in every zone, while selecting a single subnet id pins nodes to one zone.
+      notes: This gives the node FLEET zone diversity; spreading workload replicas across those zones is the workloads' scheduling posture (topology spread constraints), owned by their components.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on EC2NodeClass; deleting one that NodePools still reference breaks their ability to launch nodes. Protection is operational (cluster RBAC, change review).
+    - control_id: managed-patching
+      status: configurable
+      field_path: ami_selector_terms
+      evidence:
+        type: spec_default
+        reference: An alias pinned to "latest" (e.g. bottlerocket@latest) tracks each new EKS-optimized AMI release, and Karpenter drifts nodes onto it -- a managed node-image patch channel; pinning a release ("al2023@v20240807") makes image updates a deliberate change instead.
+      notes: The presets use "latest" aliases with an explicit pin-in-production warning -- latest is the managed channel, pinning is the change-control posture; choose per environment. Custom-AMI pipelines patch through their own ssm_parameter or tag selection.

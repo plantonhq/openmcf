@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesistiobasecrds
+spec:
+  billing_model: free
+  free_tier: The Istio base CRD bundle -- the CustomResourceDefinitions for the networking, security, and telemetry APIs, installed WITHOUT istiod or any controller -- never bills. CRDs are API schema objects in the cluster's control plane; nothing meters their existence.
+  notes: "The spec is deliberately empty: it has no fields at all (the installed CRD schema is pinned to the Istio release the typed SDK was generated against), so there is nothing that could move a bill. Installing the CRDs alone runs nothing. Real spend appears only when an Istio control plane and its data plane (istiod, sidecars or ambient waypoints) are installed -- separate components whose pods consume cluster capacity billed there."

@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesclustersecretstore
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The store holds no secret values -- they stay in the external backend, encrypted under that backend's regime (owned by its own account and components). Any static credential Secret the module materializes rests in the cluster's etcd, whose encryption belongs to the cluster component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys apply to the external backend's storage (e.g. a KMS key on AWS Secrets Manager) and are configured there, not in this connection declaration.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The store is a connection declaration, not an endpoint. ESO reaches the cloud secret-manager backends over their TLS-only public APIs; for a Vault backend the transport follows the configured server URL. This spec carries no TLS toggle of its own.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The store is not a network endpoint; nothing here is reachable. Reachability of the backend is the backend's own posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: There is no inbound network traffic to restrict. The store's access fence is namespace-based (see rbac), not network-based.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The store serves no traffic; web application firewalls have no meaning for a backend-connection record.
+    - control_id: rbac
+      status: configurable
+      field_path: conditions
+      evidence:
+        type: spec_default
+        reference: With no conditions, EVERY namespace's ExternalSecrets may sync from this cluster-scoped store; conditions restrict access to namespaces matched by exact name, label selector, or name regex -- the multi-tenancy fence for a store holding production credentials.
+      notes: The four presets ship without conditions (platform-wide backends); fencing is the deliberate hardening step for stores that should not be readable from every namespace. Access to the store object itself is the target cluster's Kubernetes RBAC.
+    - control_id: workload-identity
+      status: configurable
+      field_path: config
+      evidence:
+        type: spec_default
+        reference: Every cloud backend authenticates keylessly when its static credential fields stay empty and a service_account_name is set -- AWS via IRSA, GCP via GKE Workload Identity, Azure via AKS Workload Identity -- and a Vault backend can use Vault's Kubernetes auth method; static keys (access_key_id/secret_access_key, service_account_key_json, client_secret, tokens) are the explicit alternative, and the spec forbids setting both paths at once.
+      notes: All four presets are keyless -- 01-aws-secrets-manager-irsa, 02-gcp-secret-manager-workload-identity, and 03-azure-key-vault-workload-identity bind ServiceAccounts, and 04-vault-kubernetes-auth uses the ServiceAccount-token auth method.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The backends offer no legacy authentication protocol to disable; the meaningful credential choice -- static keys versus platform-issued identity -- is covered under workload-identity.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the store and its credential Secret are Kubernetes API operations captured by the target cluster's audit policy; reads against the backend appear in the backend's own audit trail (e.g. CloudTrail for Secrets Manager), owned by that account.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The store emits no metrics of its own; sync and backend-error metrics come from the External Secrets Operator's telemetry, owned by the KubernetesExternalSecretsOperator component.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The store is stateless declarative configuration reproducible from its manifest; the secret values it brokers live in the external backend, whose durability and backup posture belong to that system.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The store is an API-server record replicated by the cluster's control plane; availability of the secrets themselves is the external backend's own regional posture.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor ESO offers a deletion-protection flag on ClusterSecretStore; protection is operational (RBAC on cluster-scoped resources, change review). Deleting the store breaks future syncs but destroys no secret values -- they remain in the backend.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software here to patch -- the resource is data. The External Secrets Operator is patched through its own component's lifecycle.

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetespriorityclass
+spec:
+  billing_model: free
+  free_tier: A PriorityClass is a cluster-scoped scheduling configuration object -- one rung of the cluster's workload importance ladder. It reserves no node capacity and no cloud SKU bills for it.
+  notes: "No field of this spec buys anything: value and preemption_policy decide WHICH pods hold node capacity when it is scarce (and which get evicted to make room), never how much capacity exists or bills. Real spend lives in the cluster's nodes and in the workloads that reference this class through their priority_class_name -- separate catalog kinds with their own cost profiles."

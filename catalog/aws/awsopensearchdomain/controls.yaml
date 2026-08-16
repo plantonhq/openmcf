@@ -1,0 +1,108 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsopensearchdomain
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: encrypt_at_rest_enabled
+      evidence:
+        type: spec_default
+        reference: Carries declared default true (secure by default) -- indices and automated snapshots encrypt at rest; one-way, since disabling it forces domain recreation.
+      notes: All three presets set it true explicitly; only legacy Elasticsearch versions that cannot encrypt justify an explicit false.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset uses the AWS-managed aws/es key; setting kms_key_id encrypts under the referenced customer-managed key. ForceNew -- the key cannot be changed after creation, so it is a create-time decision.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: domain_endpoint_options.enforce_https
+      evidence:
+        type: spec_default
+        reference: Carries declared default true -- the endpoint rejects plain HTTP; node_to_node_encryption_enabled (also default true, one-way) covers intra-cluster traffic the same way.
+      notes: The production presets pair it with tls_security_policy Policy-Min-TLS-1-2-PFS-2023-10 to also raise the TLS floor.
+    - control_id: no-public-access
+      status: configurable
+      field_path: vpc_options
+      evidence:
+        type: spec_default
+        reference: Unset deploys a public endpoint governed only by access policies; providing vpc_options places the domain's ENIs in VPC subnets, unreachable from the internet. ForceNew -- adding or removing VPC placement recreates the domain.
+      notes: The production and analytics presets are VPC domains; the dev preset is public for reachability and leans on access policies.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: vpc_options.security_group_ids
+      evidence:
+        type: spec_default
+        reference: On a VPC domain the attached security groups are the inbound surface (they must open 443 to intended clients); empty falls back to the VPC's default security group.
+      notes: Public domains have no security-group surface -- access_policies (IAM conditions) are their only ingress restriction.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: AWS WAF has no attachment point on an OpenSearch domain endpoint; request filtering belongs to a fronting proxy or API tier when one exists.
+    - control_id: rbac
+      status: configurable
+      field_path: advanced_security_options.enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to off; enabling fine-grained access control brings role-based, index-level permissions with IAM, internal-database, JWT, or SAML principals mapped to roles. One-way -- FGAC cannot be disabled once on.
+      notes: Both production-shaped presets enable it with the internal user database; SAML and Identity Center integrations ride on it.
+    - control_id: workload-identity
+      status: configurable
+      field_path: advanced_security_options.master_user_arn
+      evidence:
+        type: spec_default
+        reference: Designating an IAM role as the FGAC master user means callers authenticate with short-lived SigV4 credentials instead of a static master password; the alternative master_user_password is marked sensitive and mutually exclusive.
+      notes: The presets use the internal user database (master_user_name/password) instead -- choose the IAM arm for keyless access.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: domain_endpoint_options.tls_security_policy
+      evidence:
+        type: spec_default
+        reference: Unset keeps the provider default, which still admits TLS 1.0 handshakes; the Policy-Min-TLS-1-2 policies disable the legacy protocol paths, and anonymous_auth_enabled stays false unless deliberately enabled at FGAC turn-on.
+      notes: Both production presets pin Policy-Min-TLS-1-2-PFS-2023-10.
+    - control_id: audit-logging
+      status: configurable
+      field_path: log_publishing_options
+      evidence:
+        type: spec_default
+        reference: Empty publishes nothing; the AUDIT_LOGS log type streams the fine-grained access control audit trail to a CloudWatch log group (CEL requires FGAC enabled for it).
+      notes: The analytics preset publishes slow logs and application logs; management-plane actions land in account-level CloudTrail regardless.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every domain publishes CloudWatch metrics (cluster status, JVM memory pressure, latency, storage) automatically; nothing in the spec can disable the stream.
+      notes: log_publishing_options adds slow-log and application-log streams on top.
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The service takes automated snapshots on every modern engine (hourly on Elasticsearch 5.3+ and all OpenSearch versions), stores them free of charge, and retains them 14 days for restore; nothing in the spec can turn them off.
+      notes: automated_snapshot_start_hour only shifts the daily snapshot on pre-5.3 engines; manual snapshots to your own S3 repositories extend recovery beyond 14 days.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Automated snapshot retention is fixed by the service at 14 days -- no spec field tunes it. Organizational retention policy is expressed through manual snapshots into your own S3 repositories, registered and scheduled outside this component.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: cluster_config.zone_awareness_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to false (single-AZ); true distributes data nodes and replicas across 2 or 3 availability zones (availability_zone_count), and multi_az_with_standby_enabled upgrades to the 99.99%-SLA standby posture.
+      notes: Both production presets run 3-AZ zone awareness with node counts in AZ multiples.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: OpenSearch domains have no termination-protection switch -- deletion is governed by IAM permissions on the caller, and the module wires no guard the spec could express.
+    - control_id: managed-patching
+      status: configurable
+      field_path: auto_software_update_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to false (both engines send the setting explicitly, so false actively turns auto-updates off); true lets AWS apply service software updates automatically during the off-peak window.
+      notes: off_peak_window_options controls when updates land; engine_version upgrades remain deliberate manifest changes applied in place.

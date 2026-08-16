@@ -1,0 +1,75 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsmemorydbcluster
+spec:
+  presets:
+    - preset: 01-dev-single-shard
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon MemoryDB
+          sku_meter: node hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one primary node per shard (num_shards, the provider default 1 when unset) x 730 hours at the node_type and engine rate
+          list_unit_price: "0.0336"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMemoryDB/20260717175640/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "24.5280"
+      total_list_cost: "24.5280"
+      exclusions:
+        - data written is free up to 10 TB/month on Valkey and bills per GB above it -- pure write-traffic cost
+        - data transfer between AZs for client traffic and out of the region follows standard AWS rates
+      notes: Estimated at the declared topology -- shards and replicas both scale in place.
+    - preset: 02-production-ha
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon MemoryDB
+          sku_meter: node hours
+          pricing_unit: hours
+          pricing_quantity: "4380"
+          quantity_basis: one primary node per shard (num_shards, the provider default 1 when unset) x 730 hours at the node_type and engine rate; the declared replicas -- num_shards x num_replicas_per_shard nodes -- x 730 hours at the same node rate; an explicit 0 honestly contributes nothing
+          list_unit_price: "0.2163"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMemoryDB/20260717175640/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "947.3940"
+      total_list_cost: "947.3940"
+      exclusions:
+        - data written is free up to 10 TB/month on Valkey and bills per GB above it -- pure write-traffic cost
+        - snapshot storage beyond the free allowance (the cluster's total storage) grows with dataset size and retention
+        - data transfer between AZs for client traffic and out of the region follows standard AWS rates
+      notes: Estimated at the declared topology -- shards and replicas both scale in place.
+    - preset: 03-high-throughput
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon MemoryDB
+          sku_meter: node hours
+          pricing_unit: hours
+          pricing_quantity: "8760"
+          quantity_basis: one primary node per shard (num_shards, the provider default 1 when unset) x 730 hours at the node_type and engine rate; the declared replicas -- num_shards x num_replicas_per_shard nodes -- x 730 hours at the same node rate; an explicit 0 honestly contributes nothing
+          list_unit_price: "0.926"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMemoryDB/20260717175640/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "8111.7600"
+      total_list_cost: "8111.7600"
+      exclusions:
+        - every gigabyte written to the cluster bills at the Redis OSS data-written rate -- pure write-traffic cost
+        - snapshot storage beyond the free allowance (the cluster's total storage) grows with dataset size and retention
+        - data transfer between AZs for client traffic and out of the region follows standard AWS rates
+      notes: Estimated at the declared topology -- shards and replicas both scale in place. The r6gd node rate carries the local NVMe SSD data-tiering capacity.

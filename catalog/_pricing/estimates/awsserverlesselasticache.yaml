@@ -1,0 +1,95 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsserverlesselasticache
+spec:
+  presets:
+    - preset: 01-redis-minimal
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon ElastiCache
+          sku_meter: cached data storage
+          pricing_unit: GB-hours
+          pricing_quantity: "730"
+          quantity_basis: with no configured minimum, every Redis serverless cache is metered for at least 1 GB of data stored -- 1 GB x 730 hours at the Redis storage rate
+          list_unit_price: "0.125"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonElastiCache/20260813190319/us-west-2/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "91.2500"
+      total_list_cost: "91.2500"
+      exclusions:
+        - ECPU consumption is entirely request-driven -- reads and writes meter roughly 1 ECPU per KB transferred (more for vCPU-heavy commands), and an idle cache pays none
+        - data stored above the estimated floor grows with the working set and bills per GB-hour
+        - cross-AZ data transfer applies only when clients sit in AZs other than the cache's VPC endpoints
+      notes: Estimated at the engine's minimum metered storage -- the floor an idle cache bills with no configured limits.
+    - preset: 02-memcached-with-limits
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon ElastiCache
+          sku_meter: cached data storage
+          pricing_unit: GB-hours
+          pricing_quantity: "730"
+          quantity_basis: the configured data_storage_min_gb is guaranteed capacity AWS bills every hour even when the data stored is below it -- minimum GB x 730 hours at the engine's storage rate
+          list_unit_price: "0.125"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonElastiCache/20260813190319/us-west-2/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "91.2500"
+        - service_name: Amazon ElastiCache
+          sku_meter: ECPU consumption
+          pricing_unit: ECPUs
+          pricing_quantity: "2628000000"
+          quantity_basis: a configured ecpu_min bills around the clock even with zero requests -- minimum ECPUs/second x 3600 seconds x 730 hours at the engine's per-ECPU rate; zero (no configured minimum) commits nothing
+          list_unit_price: "0.0000000034"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonElastiCache/20260813190319/us-west-2/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "8.9352"
+      total_list_cost: "100.1852"
+      exclusions:
+        - ECPU consumption above the committed ecpu_min floor is request-driven and bills at the same per-ECPU rate
+        - data stored above the estimated floor grows with the working set and bills per GB-hour
+        - cross-AZ data transfer applies only when clients sit in AZs other than the cache's VPC endpoints
+      notes: Estimated at the configured storage minimum -- guaranteed capacity that bills whether or not data fills it. The pre-scaled ECPU floor bills even when no requests arrive; lower ecpu_min to zero to return compute to pure pay-per-request.
+    - preset: 03-redis-production
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon ElastiCache
+          sku_meter: cached data storage
+          pricing_unit: GB-hours
+          pricing_quantity: "3650"
+          quantity_basis: the configured data_storage_min_gb is guaranteed capacity AWS bills every hour even when the data stored is below it -- minimum GB x 730 hours at the engine's storage rate
+          list_unit_price: "0.125"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonElastiCache/20260813190319/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "456.2500"
+        - service_name: Amazon ElastiCache
+          sku_meter: ECPU consumption
+          pricing_unit: ECPUs
+          pricing_quantity: "13140000000"
+          quantity_basis: a configured ecpu_min bills around the clock even with zero requests -- minimum ECPUs/second x 3600 seconds x 730 hours at the engine's per-ECPU rate; zero (no configured minimum) commits nothing
+          list_unit_price: "0.0000000034"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonElastiCache/20260813190319/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "44.6760"
+      total_list_cost: "500.9260"
+      exclusions:
+        - ECPU consumption above the committed ecpu_min floor is request-driven and bills at the same per-ECPU rate
+        - data stored above the estimated floor grows with the working set and bills per GB-hour
+        - daily snapshot backup storage bills per GB-month across the retention window and depends on data size
+        - cross-AZ data transfer applies only when clients sit in AZs other than the cache's VPC endpoints
+      notes: Estimated at the configured storage minimum -- guaranteed capacity that bills whether or not data fills it. The pre-scaled ECPU floor bills even when no requests arrive; lower ecpu_min to zero to return compute to pure pay-per-request.

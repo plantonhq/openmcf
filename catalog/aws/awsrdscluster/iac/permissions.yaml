@@ -1,0 +1,123 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsrdscluster
+spec:
+  aws:
+    statements:
+      - sid: ManageDbCluster
+        actions:
+          - rds:CreateDBCluster
+          - rds:DeleteDBCluster
+          - rds:ModifyDBCluster
+          - rds:DescribeDBClusters
+          - rds:RestoreDBClusterFromSnapshot
+          - rds:RestoreDBClusterToPointInTime
+          - rds:RestoreDBClusterFromS3
+          - rds:AddTagsToResource
+          - rds:RemoveTagsFromResource
+          - rds:ListTagsForResource
+        resources:
+          - arn:aws:rds:*:*:cluster:*
+          - arn:aws:rds:*:*:cluster-pg:*
+          - arn:aws:rds:*:*:subgrp:*
+          - arn:aws:rds:*:*:og:*
+          - arn:aws:rds:*:*:cluster-snapshot:*
+          - arn:aws:rds:*:*:snapshot:*
+          - arn:aws:rds:*:*:cluster-auto-backup:*
+          - arn:aws:rds:*:*:global-cluster:*
+          - arn:aws:rds:*:*:db:*
+          - arn:aws:rds:*:*:cluster-endpoint:*
+        provenance: derived
+        notes: Covers aws_rds_cluster across its create shapes -- fresh cluster, snapshot restore, point-in-time restore/clone, and the aurora-mysql S3 XtraBackup import (s3_import) -- plus modify, tagging, and teardown. CreateDBCluster and the Restore* calls authorize against the cluster parameter group, subnet group, and option group ARNs resolved for the request (defaults included), the source snapshot on snapshot restores (snapshot_identifier accepts cluster or instance snapshots), the retained automated backup on source_cluster_resource_id restores, and the global cluster when global_cluster_identifier is set -- omitting those formats denies the create. Tagging (AddTagsToResource et al.) also authorizes against the instance (db), subnet-group, parameter-group, and custom-endpoint ARNs the module tags.
+      - sid: ManageClusterInstances
+        actions:
+          - rds:CreateDBInstance
+          - rds:DeleteDBInstance
+          - rds:ModifyDBInstance
+          - rds:DescribeDBInstances
+        resources:
+          - arn:aws:rds:*:*:db:*
+          - arn:aws:rds:*:*:cluster:*
+          - arn:aws:rds:*:*:pg:*
+          - arn:aws:rds:*:*:og:*
+          - arn:aws:rds:*:*:subgrp:*
+        provenance: derived
+        notes: Covers aws_rds_cluster_instance -- one per spec.instances entry. CreateDBInstance/ModifyDBInstance authorize against the db and cluster ARNs plus the instance parameter group (db_parameter_group_name, or the engine default), option group, and subnet group resolved for the request -- defaults included, so the pg/og/subgrp formats are required even when the spec leaves them unset.
+      - sid: ManageClusterSnapshotsOnLifecycle
+        actions:
+          - rds:CreateDBClusterSnapshot
+          - rds:DeleteDBClusterSnapshot
+          - rds:DescribeDBClusterSnapshots
+        resources:
+          - arn:aws:rds:*:*:cluster-snapshot:*
+          - arn:aws:rds:*:*:cluster:*
+        provenance: derived
+        notes: Final snapshots on teardown (skip_final_snapshot=false) and reads of the source snapshot for restore-based creates.
+      - sid: ManageSubnetAndParameterGroups
+        actions:
+          - rds:CreateDBSubnetGroup
+          - rds:DeleteDBSubnetGroup
+          - rds:ModifyDBSubnetGroup
+          - rds:DescribeDBSubnetGroups
+          - rds:CreateDBClusterParameterGroup
+          - rds:DeleteDBClusterParameterGroup
+          - rds:ModifyDBClusterParameterGroup
+          - rds:DescribeDBClusterParameterGroups
+          - rds:DescribeDBClusterParameters
+        resources:
+          - arn:aws:rds:*:*:subgrp:*
+          - arn:aws:rds:*:*:cluster-pg:*
+        provenance: derived
+        notes: Covers the conditional aws_db_subnet_group and aws_rds_cluster_parameter_group satellites -- each created only when the spec provides subnets or inline parameters.
+      - sid: ManageCustomEndpoints
+        actions:
+          - rds:CreateDBClusterEndpoint
+          - rds:DeleteDBClusterEndpoint
+          - rds:ModifyDBClusterEndpoint
+          - rds:DescribeDBClusterEndpoints
+        resources:
+          - arn:aws:rds:*:*:cluster-endpoint:*
+          - arn:aws:rds:*:*:cluster:*
+        provenance: derived
+        notes: Covers aws_rds_cluster_endpoint -- one per spec.custom_endpoints entry.
+      - sid: ManageActivityStream
+        actions:
+          - rds:StartActivityStream
+          - rds:StopActivityStream
+        resources:
+          - arn:aws:rds:*:*:cluster:*
+        provenance: derived
+        notes: Covers aws_rds_cluster_activity_stream (spec.activity_stream) -- start on create, stop on destroy or any field change. The stream's KMS grant rides the UseCustomerManagedKeys statement.
+      - sid: DescribeVpcContext
+        actions:
+          - ec2:DescribeSubnets
+          - ec2:DescribeSecurityGroups
+          - ec2:DescribeVpcs
+        resources:
+          - "*"
+        provenance: derived
+        notes: Subnet-group creation and security-group attachment validate their references. EC2 Describe APIs support no resource-level scoping, so the wildcard is the narrowest possible scope.
+      - sid: ManageIamRoleAssociations
+        actions:
+          - rds:AddRoleToDBCluster
+          - rds:RemoveRoleFromDBCluster
+          - iam:PassRole
+        resources:
+          - arn:aws:rds:*:*:cluster:*
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: Covers aws_rds_cluster_role_association (spec.iam_roles, and s3_import's ingestion role) plus monitoring_role_arn for Enhanced Monitoring -- RDS assumes the referenced roles, and associating them passes them. Narrow the role ARN in a hardened deployment.
+      - sid: UseCustomerManagedKeys
+        actions:
+          - kms:DescribeKey
+          - kms:CreateGrant
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Required only when kms_key_id, master_user_secret_kms_key_id, performance_insights_kms_key_id, or activity_stream.kms_key_id selects a customer-managed key -- RDS creates grants against the key during cluster create/modify and activity-stream start.

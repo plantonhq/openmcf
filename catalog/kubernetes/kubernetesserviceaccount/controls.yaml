@@ -1,0 +1,66 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesserviceaccount
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A ServiceAccount stores no data -- image_pull_secrets entries are name references to Secret objects in the same namespace, never the credential material itself.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Nothing is stored, so no key could apply (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A ServiceAccount is not a network endpoint. The API traffic pods send while authenticating as it runs over the cluster's TLS-secured connections, owned by the cluster.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: An identity object is not reachable from any network; it exists only at the Kubernetes API.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound network path exists to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No HTTP traffic is served; there is nothing for a request filter to protect.
+    - control_id: rbac
+      status: not_applicable
+      notes: The ServiceAccount is the SUBJECT permissions attach to, not the grant -- RBAC bindings reference it as system:serviceaccount:<namespace>:<name> and live in separate RBAC resources. It carries zero permissions until a grant names it, and management of the object itself is the cluster's Kubernetes RBAC.
+    - control_id: workload-identity
+      status: configurable
+      field_path: workload_identity
+      evidence:
+        type: spec_default
+        reference: Omitted means the ServiceAccount is an in-cluster identity only, with no path to cloud APIs. Setting the gke, eks, or aks arm annotates it for GKE Workload Identity, EKS IRSA, or Azure AD Workload Identity, so pods running as it reach cloud APIs keylessly -- no long-lived credentials anywhere in the cluster -- with the cloud-side trust (IAM binding, trust policy, or federated credential) owned by the referenced cloud identity resource.
+      notes: The 02-workload-identity-gke and 03-workload-identity-eks-irsa presets bind GKE and EKS identities. On AKS, pods using the identity must also carry the azure.workload.identity/use pod label, which lives on the workload, not this object.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: The spec deliberately omits the upstream secrets list -- its only remaining behavior is deprecated since Kubernetes v1.32, and long-lived token secrets are superseded by the short-lived TokenRequest API -- so the modeled surface cannot attach a legacy token Secret to the identity.
+      notes: automount_service_account_token set to false (the 04-image-pull-secrets preset sets it) removes even the projected token from pods that never talk to the API server. A long-lived token can still be minted against this identity by a KubernetesSecret of the service-account-token type -- a deliberate, separate opt-in tracked on that component.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the object are Kubernetes API operations captured by the target cluster's audit policy; the identity itself emits nothing.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: An identity object has no runtime and produces no metrics or signals to export.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A declarative object the IaC modules recreate from its manifest; there is no data to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Durability of the object is the control plane's etcd replication, owned by the target cluster; an identity has no replicas of its own.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on ServiceAccounts. Deleting one strands the pods and RBAC bindings that reference it by name -- protection is operational (namespace RBAC, change review).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: No software runs here; there is nothing to patch or upgrade.

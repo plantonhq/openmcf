@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesserviceentry
+spec:
+  billing_model: free
+  free_tier: A ServiceEntry adds entries to Istio's internal service registry -- hosts, ports, resolution mode, and optional static endpoints for services outside the mesh's own discovery. It is configuration istiod consumes; no compute runs for it and no provider meters it.
+  notes: "No field of this spec buys anything: hosts/addresses/ports describe where traffic may go, and resolution only tells the proxies how to find it. The spend near a ServiceEntry rides the traffic itself -- egress to the external services it registers bills as data transfer in the cloud account carrying the cluster -- and on the proxies doing the routing (sidecars, waypoints, egress gateways), which are other components' compute."

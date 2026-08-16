@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesstorageclass
+spec:
+  billing_model: free
+  free_tier: The StorageClass itself -- the provisioner choice, its parameters, and the lifecycle policies -- never bills. It is the cluster's storage menu, not the meal; a cluster full of classes with zero claims costs nothing.
+  notes: "The loud caveat: every PersistentVolumeClaim that names this class provisions a REAL cloud volume (EBS gp3, GCE PD-SSD, Azure Premium_LRS in the presets) that bills per GB-month and performance tier in the cloud account -- the claims bill, not the class, and the class's parameters (disk type, IOPS) set the unit economics every claim inherits. Decommission trap worth knowing: reclaim_policy set to retain keeps the backing volume -- and its bill -- alive after the claim is deleted until someone reclaims it manually; the delete default removes the disk with the claim."

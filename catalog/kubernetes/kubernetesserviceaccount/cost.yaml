@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesserviceaccount
+spec:
+  billing_model: free
+  free_tier: A ServiceAccount is the in-cluster identity pods run as -- an API object with annotations, pull-secret references, and a token-automount setting. Like an IAM role, it is pure identity configuration; no provider meters it.
+  notes: "No field of this spec buys anything: image_pull_secrets are name references to existing Secrets, workload_identity only writes the annotation a cloud's federation webhook expects, and automount_service_account_token toggles a token mount. The cloud-side half of workload identity (the IAM role, GCP service account, or Entra identity and its trust configuration) is owned by the referenced cloud identity resource -- any cost story it has lives on that component, and identity objects carry none of the cluster's compute spend."

@@ -1,0 +1,72 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsmemcachedelasticache
+spec:
+  presets:
+    - preset: 01-single-node-dev
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon ElastiCache
+          sku_meter: cache node hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: every cache node (num_cache_nodes, the provider default 1 when unset) x 730 hours at the node_type's Memcached rate
+          list_unit_price: "0.017"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonElastiCache/20260813190319/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "12.4100"
+      total_list_cost: "12.4100"
+      exclusions:
+        - data transfer out of the region follows standard AWS rates
+      notes: Estimated at the declared node count -- the fleet is the entire bill, since Memcached has no persistence, snapshots, or replicas.
+    - preset: 02-multi-node-cross-az
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon ElastiCache
+          sku_meter: cache node hours
+          pricing_unit: hours
+          pricing_quantity: "2190"
+          quantity_basis: every cache node (num_cache_nodes, the provider default 1 when unset) x 730 hours at the node_type's Memcached rate
+          list_unit_price: "0.068"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonElastiCache/20260813190319/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "148.9200"
+      total_list_cost: "148.9200"
+      exclusions:
+        - cross-AZ client traffic to nodes in other Availability Zones bills standard inter-AZ data transfer
+        - data transfer out of the region follows standard AWS rates
+      notes: Estimated at the declared node count -- the fleet is the entire bill, since Memcached has no persistence, snapshots, or replicas.
+    - preset: 03-production-encrypted
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon ElastiCache
+          sku_meter: cache node hours
+          pricing_unit: hours
+          pricing_quantity: "2190"
+          quantity_basis: every cache node (num_cache_nodes, the provider default 1 when unset) x 730 hours at the node_type's Memcached rate
+          list_unit_price: "0.219"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonElastiCache/20260813190319/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "479.6100"
+      total_list_cost: "479.6100"
+      exclusions:
+        - cross-AZ client traffic to nodes in other Availability Zones bills standard inter-AZ data transfer
+        - data transfer out of the region follows standard AWS rates
+      notes: Estimated at the declared node count -- the fleet is the entire bill, since Memcached has no persistence, snapshots, or replicas. In-transit TLS adds no charge.

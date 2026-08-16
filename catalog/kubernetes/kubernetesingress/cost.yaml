@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesingress
+spec:
+  billing_model: free
+  free_tier: The Ingress itself -- a networking/v1 API object declaring host rules, path matches, TLS termination, and Service backends -- never bills. It is inert configuration until an ingress controller claims it, and even then the object itself has no metered existence.
+  notes: "No field of this spec buys anything: rules and default_backend steer requests to Services, tls names certificate Secrets, and ingress_class_name selects which controller serves it -- all pure declaration. The real spend lives in the exposure path the Ingress rides: the ingress controller's pods consume cluster capacity, the controller's external Service typically fronts a cloud load balancer billed by the cloud provider, and the backend workloads bill through their own components."

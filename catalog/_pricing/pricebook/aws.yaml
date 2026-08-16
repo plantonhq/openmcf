@@ -294,3 +294,619 @@ spec:
         offer_code: AWSLambda
         region_code: us-east-1
         usage_type: Lambda-Event-Poller-Unit-Hour
+    - name: docdb-db-r6g-large-us-west-2
+      service_name: Amazon DocumentDB (with MongoDB compatibility)
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.26315"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonDocDB/20260710172257/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonDocDB
+        region_code: us-west-2
+        usage_type: USW2-InstanceUsage:db.r6g.large
+        operation: CreateDBInstance:0023
+    - name: docdb-serverless-dcu-us-west-2
+      service_name: Amazon DocumentDB (with MongoDB compatibility)
+      pricing_unit: DCU-hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.0822"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonDocDB/20260710172257/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonDocDB
+        region_code: us-west-2
+        usage_type: USW2-DocumentDB:ServerlessUsage
+        operation: CreateDBInstance:0023
+    - name: neptune-db-r6g-large-us-west-2
+      service_name: Amazon Neptune
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.3287"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonNeptune/20260806223459/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonNeptune
+        region_code: us-west-2
+        usage_type: USW2-InstanceUsage:db.r6g.large
+        operation: CreateDBInstance:0022
+    - name: neptune-serverless-ncu-us-west-2
+      service_name: Amazon Neptune
+      pricing_unit: NCU-hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.1608"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonNeptune/20260806223459/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonNeptune
+        region_code: us-west-2
+        usage_type: USW2-Neptune:ServerlessUsage
+        operation: CreateDBInstance:0022
+    - name: rds-db-r6g-large-aurora-mysql-us-west-2
+      service_name: Amazon Relational Database Service
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.26"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonRDS
+        region_code: us-west-2
+        usage_type: USW2-InstanceUsage:db.r6g.large
+        operation: CreateDBInstance:0016
+    - name: rds-db-r6g-large-aurora-postgresql-us-west-2
+      service_name: Amazon Relational Database Service
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.26"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonRDS
+        region_code: us-west-2
+        usage_type: USW2-InstanceUsage:db.r6g.large
+        operation: CreateDBInstance:0021
+    - name: ec2-c6i-large-us-east-1
+      service_name: Amazon Elastic Compute Cloud
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.085"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/20260814185001/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        instance_type: c6i.large
+    - name: ec2-t4g-medium-us-east-1
+      service_name: Amazon Elastic Compute Cloud
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.0336"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/20260814185001/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        instance_type: t4g.medium
+    - name: ec2-t4g-small-us-east-1
+      service_name: Amazon Elastic Compute Cloud
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.0168"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/20260814185001/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        instance_type: t4g.small
+    - name: opensearch-gp3-storage-us-east-1
+      service_name: Amazon OpenSearch Service
+      pricing_unit: GB-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.122"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonES/20260709090858/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        storage_media: gp3
+      aws_selector:
+        offer_code: AmazonES
+        region_code: us-east-1
+        usage_type: ES:GP3-Storage
+        operation: ESDomain
+    - name: opensearch-gp3-storage-us-west-2
+      service_name: Amazon OpenSearch Service
+      pricing_unit: GB-months
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.122"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonES/20260709090858/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        storage_media: gp3
+      aws_selector:
+        offer_code: AmazonES
+        region_code: us-west-2
+        usage_type: USW2-ES:GP3-Storage
+        operation: ESDomain
+    - name: opensearch-r6g-large-us-east-1
+      service_name: Amazon OpenSearch Service
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.167"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonES/20260709090858/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        instance_type: r6g.large.search
+      aws_selector:
+        offer_code: AmazonES
+        region_code: us-east-1
+        usage_type: ESInstance:r6g.large
+        operation: ESDomain
+    - name: opensearch-t3-small-us-west-2
+      service_name: Amazon OpenSearch Service
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.036"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonES/20260709090858/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        instance_type: t3.small.search
+      aws_selector:
+        offer_code: AmazonES
+        region_code: us-west-2
+        usage_type: USW2-ESInstance:t3.small
+        operation: ESDomain
+    - name: redshift-ra3-4xlarge-us-west-2
+      service_name: Amazon Redshift
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "3.26"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRedshift/20260814134227/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        node_type: ra3.4xlarge
+      aws_selector:
+        offer_code: AmazonRedshift
+        region_code: us-west-2
+        usage_type: USW2-Node:ra3.4xlarge
+        operation: RunComputeNode:0001
+    - name: redshift-ra3-large-us-west-2
+      service_name: Amazon Redshift
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.543"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRedshift/20260814134227/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        node_type: ra3.large
+      aws_selector:
+        offer_code: AmazonRedshift
+        region_code: us-west-2
+        usage_type: USW2-Node:ra3.large
+        operation: RunComputeNode:0001
+    - name: redshift-ra3-xlplus-us-west-2
+      service_name: Amazon Redshift
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "1.086"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRedshift/20260814134227/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        node_type: ra3.xlplus
+      aws_selector:
+        offer_code: AmazonRedshift
+        region_code: us-west-2
+        usage_type: USW2-Node:ra3.xlplus
+        operation: RunComputeNode:0001
+    - name: elasticache-cache-r7g-large-memcached-us-east-1
+      service_name: Amazon ElastiCache
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.219"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonElastiCache/20260813190319/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        engine: memcached
+        node_type: cache.r7g.large
+      aws_selector:
+        offer_code: AmazonElastiCache
+        region_code: us-east-1
+        usage_type: NodeUsage:cache.r7g.large
+        operation: CreateCacheCluster:0001
+    - name: elasticache-cache-t3-medium-memcached-us-east-1
+      service_name: Amazon ElastiCache
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.068"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonElastiCache/20260813190319/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        engine: memcached
+        node_type: cache.t3.medium
+      aws_selector:
+        offer_code: AmazonElastiCache
+        region_code: us-east-1
+        usage_type: NodeUsage:cache.t3.medium
+        operation: CreateCacheCluster:0001
+    - name: elasticache-cache-t3-micro-memcached-us-east-1
+      service_name: Amazon ElastiCache
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.017"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonElastiCache/20260813190319/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        engine: memcached
+        node_type: cache.t3.micro
+      aws_selector:
+        offer_code: AmazonElastiCache
+        region_code: us-east-1
+        usage_type: NodeUsage:cache.t3.micro
+        operation: CreateCacheCluster:0001
+    - name: memorydb-db-r6gd-xlarge-redis-us-east-1
+      service_name: Amazon MemoryDB
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.926"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMemoryDB/20260717175640/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        engine: redis
+        node_type: db.r6gd.xlarge
+      aws_selector:
+        offer_code: AmazonMemoryDB
+        region_code: us-east-1
+        usage_type: USE1-NodeUsage:db.r6gd.xlarge
+        operation: CreateCluster
+    - name: memorydb-db-r7g-large-valkey-us-east-1
+      service_name: Amazon MemoryDB
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.2163"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMemoryDB/20260717175640/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        engine: valkey
+        node_type: db.r7g.large
+      aws_selector:
+        offer_code: AmazonMemoryDB
+        region_code: us-east-1
+        usage_type: USE1-NodeUsage:db.r7g.large:Valkey
+        operation: CreateCluster
+    - name: memorydb-db-t4g-small-valkey-us-east-1
+      service_name: Amazon MemoryDB
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.0336"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMemoryDB/20260717175640/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        engine: valkey
+        node_type: db.t4g.small
+      aws_selector:
+        offer_code: AmazonMemoryDB
+        region_code: us-east-1
+        usage_type: USE1-NodeUsage:db.t4g.small:Valkey
+        operation: CreateCluster
+    - name: msk-broker-storage-us-east-1
+      service_name: Amazon Managed Streaming for Apache Kafka
+      pricing_unit: GB-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.1"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMSK/20260729211408/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        storage_media: gp2
+      aws_selector:
+        offer_code: AmazonMSK
+        region_code: us-east-1
+        usage_type: USE1-Kafka.Storage.GP2
+        operation: RunVolume
+    - name: msk-kafka-m5-large-us-east-1
+      service_name: Amazon Managed Streaming for Apache Kafka
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.21"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMSK/20260729211408/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        instance_type: kafka.m5.large
+      aws_selector:
+        offer_code: AmazonMSK
+        region_code: us-east-1
+        usage_type: USE1-Kafka.m5.large
+        operation: RunBroker
+    - name: msk-kafka-m7g-xlarge-us-east-1
+      service_name: Amazon Managed Streaming for Apache Kafka
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.408"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMSK/20260729211408/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        instance_type: kafka.m7g.xlarge
+      aws_selector:
+        offer_code: AmazonMSK
+        region_code: us-east-1
+        usage_type: USE1-Kafka.m7g.xlarge
+        operation: RunBroker
+    - name: msk-kafka-t3-small-us-east-1
+      service_name: Amazon Managed Streaming for Apache Kafka
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.0456"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMSK/20260729211408/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        instance_type: kafka.t3.small
+      aws_selector:
+        offer_code: AmazonMSK
+        region_code: us-east-1
+        usage_type: USE1-Kafka.t3.small
+        operation: RunBroker
+    - name: aoss-indexing-ocu-us-east-1
+      service_name: Amazon OpenSearch Service
+      pricing_unit: OCU-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.24"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonES/20260709090858/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonES
+        region_code: us-east-1
+        usage_type: USE1-IndexingOCU
+        operation: IndexingOCU
+    - name: aoss-search-ocu-us-east-1
+      service_name: Amazon OpenSearch Service
+      pricing_unit: OCU-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.24"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonES/20260709090858/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonES
+        region_code: us-east-1
+        usage_type: USE1-SearchOCU
+        operation: SearchOCU
+    - name: elasticache-serverless-ecpu-memcached-us-west-2
+      service_name: Amazon ElastiCache
+      pricing_unit: ECPUs
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.0000000034"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonElastiCache/20260813190319/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        engine: memcached
+      aws_selector:
+        offer_code: AmazonElastiCache
+        region_code: us-west-2
+        usage_type: USW2-ElastiCacheProcessingUnits:Memcached
+        operation: CreateServerlessCache
+    - name: elasticache-serverless-ecpu-redis-us-east-1
+      service_name: Amazon ElastiCache
+      pricing_unit: ECPUs
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.0000000034"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonElastiCache/20260813190319/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        engine: redis
+      aws_selector:
+        offer_code: AmazonElastiCache
+        region_code: us-east-1
+        usage_type: USE1-ElastiCacheProcessingUnits:Redis
+        operation: CreateServerlessCache
+    - name: elasticache-serverless-storage-memcached-us-west-2
+      service_name: Amazon ElastiCache
+      pricing_unit: GB-hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.125"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonElastiCache/20260813190319/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        engine: memcached
+      aws_selector:
+        offer_code: AmazonElastiCache
+        region_code: us-west-2
+        usage_type: USW2-CachedData:Memcached
+        operation: CreateServerlessCache
+    - name: elasticache-serverless-storage-redis-us-east-1
+      service_name: Amazon ElastiCache
+      pricing_unit: GB-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.125"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonElastiCache/20260813190319/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        engine: redis
+      aws_selector:
+        offer_code: AmazonElastiCache
+        region_code: us-east-1
+        usage_type: USE1-CachedData:Redis
+        operation: CreateServerlessCache
+    - name: elasticache-serverless-storage-redis-us-west-2
+      service_name: Amazon ElastiCache
+      pricing_unit: GB-hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.125"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonElastiCache/20260813190319/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        engine: redis
+      aws_selector:
+        offer_code: AmazonElastiCache
+        region_code: us-west-2
+        usage_type: USW2-CachedData:Redis
+        operation: CreateServerlessCache
+    - name: mwaa-environment-mw1-large-us-east-1
+      service_name: Amazon Managed Workflows for Apache Airflow
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.99"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMWAA/20260420214526/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        component: environment
+        environment_class: mw1.large
+      aws_selector:
+        offer_code: AmazonMWAA
+        region_code: us-east-1
+        usage_type: USE1-Airflow-LargeEnvironment
+    - name: mwaa-environment-mw1-medium-us-east-1
+      service_name: Amazon Managed Workflows for Apache Airflow
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.74"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMWAA/20260420214526/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        component: environment
+        environment_class: mw1.medium
+      aws_selector:
+        offer_code: AmazonMWAA
+        region_code: us-east-1
+        usage_type: USE1-Airflow-MediumEnvironment
+    - name: mwaa-environment-mw1-small-us-east-1
+      service_name: Amazon Managed Workflows for Apache Airflow
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.49"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMWAA/20260420214526/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        component: environment
+        environment_class: mw1.small
+      aws_selector:
+        offer_code: AmazonMWAA
+        region_code: us-east-1
+        usage_type: USE1-Airflow-SmallEnvironment
+    - name: mwaa-scheduler-mw1-large-us-east-1
+      service_name: Amazon Managed Workflows for Apache Airflow
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.22"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMWAA/20260420214526/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        component: scheduler
+        environment_class: mw1.large
+      aws_selector:
+        offer_code: AmazonMWAA
+        region_code: us-east-1
+        usage_type: USE1-Airflow-LargeScheduler
+    - name: mwaa-scheduler-mw1-medium-us-east-1
+      service_name: Amazon Managed Workflows for Apache Airflow
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.11"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMWAA/20260420214526/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        component: scheduler
+        environment_class: mw1.medium
+      aws_selector:
+        offer_code: AmazonMWAA
+        region_code: us-east-1
+        usage_type: USE1-Airflow-MediumScheduler
+    - name: mwaa-worker-mw1-medium-us-east-1
+      service_name: Amazon Managed Workflows for Apache Airflow
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.11"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMWAA/20260420214526/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        component: worker
+        environment_class: mw1.medium
+      aws_selector:
+        offer_code: AmazonMWAA
+        region_code: us-east-1
+        usage_type: USE1-Airflow-MediumWorker
+    - name: msk-private-connectivity-hours-us-east-1
+      service_name: Amazon Managed Streaming for Apache Kafka
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.0225"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMSK/20260729211408/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonMSK
+        region_code: us-east-1
+        usage_type: USE1-Kafka.PrivateConnectivityHours
+        operation: PrivateConnectivity
+    - name: msk-provisioned-throughput-us-east-1
+      service_name: Amazon Managed Streaming for Apache Kafka
+      pricing_unit: MiBps-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.08"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMSK/20260729211408/us-east-1/index.json
+      retrieved_on: "2026-08-16"
+      aws_selector:
+        offer_code: AmazonMSK
+        region_code: us-east-1
+        usage_type: USE1-Kafka.Throughput
+        operation: RunVolume
+    - name: msk-broker-storage-us-west-2
+      service_name: Amazon Managed Streaming for Apache Kafka
+      pricing_unit: GB-months
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.1"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMSK/20260729211408/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        storage_media: gp2
+      aws_selector:
+        offer_code: AmazonMSK
+        region_code: us-west-2
+        usage_type: USW2-Kafka.Storage.GP2
+        operation: RunVolume
+    - name: msk-kafka-m5-large-us-west-2
+      service_name: Amazon Managed Streaming for Apache Kafka
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.21"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMSK/20260729211408/us-west-2/index.json
+      retrieved_on: "2026-08-16"
+      attributes:
+        instance_type: kafka.m5.large
+      aws_selector:
+        offer_code: AmazonMSK
+        region_code: us-west-2
+        usage_type: USW2-Kafka.m5.large
+        operation: RunBroker

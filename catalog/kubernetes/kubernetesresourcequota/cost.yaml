@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesresourcequota
+spec:
+  billing_model: free
+  free_tier: A ResourceQuota (and the optional companion LimitRange rendered from limit_defaults) is a Kubernetes governance object -- aggregate caps and per-object defaults for one namespace. Both are API objects that reserve no node capacity; no cloud SKU bills for them.
+  notes: "No field of this spec buys anything -- this kind is a brake on spend, not a source of it: hard caps what the namespace may consume in total, scopes and scope_selector filter what the quota tracks, and limit_defaults injects requests/limits into workloads that omit them. Real spend lives in the workloads inside the governed namespace, whose resource requests reserve cluster node capacity through their own catalog kinds."

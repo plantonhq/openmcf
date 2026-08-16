@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesservice
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A Service stores no data -- it is a routing rule (a virtual IP, DNS name, and endpoint selection) with nothing at rest beyond its own definition in the cluster's etcd.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Nothing is stored, so no key could apply (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A Service is layer-4 forwarding that terminates nothing -- TLS, when present, runs end-to-end between the client and the backend pods. The per-port app_protocol field is only a hint richer dataplanes use to pick proxying behavior; it neither adds nor removes encryption.
+    - control_id: no-public-access
+      status: configurable
+      field_path: type
+      evidence:
+        type: spec_default
+        reference: type defaults to cluster_ip -- a cluster-internal virtual IP reachable only from inside the cluster. node_port additionally opens a static port on every node (reachable at NodeIP:NodePort), and load_balancer provisions an external cloud load balancer routing to the same endpoints.
+      notes: "The 02-public-load-balancer preset is deliberately public (an AWS NLB with an external-dns hostname); the other presets stay internal. A LoadBalancer service can remain private via the provider's internal-LB annotations documented on the annotations field (aws-load-balancer-internal, cloud.google.com/load-balancer-type: Internal, azure-load-balancer-internal)."
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: load_balancer_source_ranges
+      evidence:
+        type: spec_default
+        reference: An empty list means the provisioned load balancer is open to all sources; CIDR entries restrict which client ranges may reach it -- only meaningful for LoadBalancer services, and only enforced by cloud providers that support it.
+      notes: No preset sets source ranges. Restricting the in-cluster network path to the backing pods is NetworkPolicy, a separate resource.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A Service forwards at layer 4; web application firewalls filter HTTP and attach at layer-7 entry points (Ingress, Gateway, or the cloud load balancer's own WAF integration), outside this spec.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may create or change the Service is the target cluster's Kubernetes RBAC on the services resource; the object itself carries no access-control plane.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A Service calls no cloud APIs as an identity -- the cloud-provider work its annotations trigger runs under the cluster's own controllers and their identities.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: A Service performs no authentication at all; there is no auth path, legacy or otherwise, to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the Service are Kubernetes API operations captured by the target cluster's audit policy; the object emits nothing itself.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A Service exposes no metrics of its own; dataplane signals come from kube-proxy, the endpoints controllers, or the provisioned load balancer, all owned elsewhere.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A Service is a declarative object the IaC modules recreate from its manifest; there is no data to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The virtual IP is cluster-wide by construction -- availability is the backing pods' spread across zones, owned by the workload behind the selector. traffic_distribution only expresses a topology routing preference (prefer_same_zone, prefer_same_node); it neither creates nor removes replication.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on Services. Worth knowing when deleting -- removing a LoadBalancer service also deprovisions the cloud load balancer it programmed.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: No software runs here; the forwarding dataplane (kube-proxy, cloud LB) is patched by the cluster and the provider.

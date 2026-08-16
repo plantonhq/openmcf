@@ -1,0 +1,90 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsopensearchdomain
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Amazon OpenSearch Service
+      sku_meter: data node hours
+      pricing_unit: hours
+      description: Every data node bills hourly from domain creation whether or not a single document is indexed; the rate follows cluster_config.instance_type.
+    - service_name: Amazon OpenSearch Service
+      sku_meter: EBS storage
+      pricing_unit: GB-months
+      description: Each data node's EBS volume bills per GB-month at the volume_type's rate from creation, full or empty -- total storage is volume_size x instance_count.
+  cost_drivers:
+    - field_path: cluster_config.instance_type
+      sku_meter: data node hours
+      pricing_unit: hours
+      impact: The data node instance type sets the hourly rate per node -- the dominant term of the bill.
+    - field_path: cluster_config.instance_count
+      sku_meter: data node hours
+      pricing_unit: hours
+      impact: Every data node is a full billed instance, and every node multiplies the EBS storage too.
+    - field_path: cluster_config.dedicated_master_enabled
+      sku_meter: dedicated master node hours
+      pricing_unit: hours
+      impact: Dedicated masters add three (typically) more billed instances that hold no data -- cluster stability bought at the master type's hourly rate.
+    - field_path: cluster_config.dedicated_master_type
+      sku_meter: dedicated master node hours
+      pricing_unit: hours
+      impact: Sets the hourly rate of each master node; masters need no EBS storage line of their own.
+    - field_path: cluster_config.dedicated_master_count
+      sku_meter: dedicated master node hours
+      pricing_unit: hours
+      impact: Each master is a full billed instance; AWS recommends 3 for quorum.
+    - field_path: cluster_config.warm_enabled
+      sku_meter: UltraWarm node hours
+      pricing_unit: hours
+      impact: UltraWarm nodes bill hourly per node on top of the data tier -- cheaper per stored GB than hot storage, but a new always-on instance line.
+    - field_path: cluster_config.warm_type
+      sku_meter: UltraWarm node hours
+      pricing_unit: hours
+      impact: Sets the hourly rate of each UltraWarm node.
+    - field_path: cluster_config.warm_count
+      sku_meter: UltraWarm node hours
+      pricing_unit: hours
+      impact: Each UltraWarm node is a full billed instance (minimum 2 when enabled).
+    - field_path: cluster_config.cold_storage_enabled
+      sku_meter: cold storage
+      pricing_unit: GB-months
+      impact: Cold storage bills per GB-month of data actually parked in the S3-backed tier -- the cheapest shelf, paid only for what sits on it.
+    - field_path: cluster_config.node_options
+      sku_meter: coordinator node hours
+      pricing_unit: hours
+      impact: Each enabled coordinator pool adds count more billed instances at the pool's instance rate.
+    - field_path: ebs_options.volume_size
+      sku_meter: EBS storage
+      pricing_unit: GB-months
+      impact: Every allocated gigabyte bills monthly per data node regardless of what the domain actually stores.
+    - field_path: ebs_options.volume_type
+      sku_meter: EBS storage
+      pricing_unit: GB-months
+      impact: Picks the per-GB rate class; gp3 includes a 3000-IOPS/125-MiB-s baseline per volume before the paid performance dials apply.
+    - field_path: ebs_options.iops
+      sku_meter: provisioned IOPS
+      pricing_unit: IOPS-months
+      impact: Provisioned IOPS above the gp3 included baseline bill monthly, per data node volume.
+    - field_path: ebs_options.throughput
+      sku_meter: provisioned throughput
+      pricing_unit: MiBps-months
+      impact: Provisioned throughput above the gp3 included 125 MiB/s bills monthly, per data node volume.
+    - field_path: cluster_config.multi_az_with_standby_enabled
+      sku_meter: data node hours
+      pricing_unit: hours
+      impact: Multi-AZ with Standby dedicates one of the three required AZs' nodes to standby duty -- all nodes in instance_count bill, including the standby capacity, buying the 99.99% SLA.
+    - field_path: log_publishing_options
+      sku_meter: log ingestion
+      pricing_unit: GB
+      impact: Each published log type bills CloudWatch Logs ingestion and storage at the destination log group.
+  free_tier: ""
+  estimate_exclusions:
+    - UltraWarm and cold managed storage bill per GB-month of data actually stored in those tiers
+    - gp3 IOPS and throughput above the included baselines bill as monthly surcharges set by the provisioned dials
+    - published logs bill CloudWatch ingestion by query and indexing traffic
+    - data transfer out of the region is traffic-dependent
+  notes: "Node hours -- data, masters, UltraWarm, coordinators -- plus per-node EBS storage are the certainties at manifest time. Automated snapshots are stored free by the service; traffic between nodes in the domain, including cross-AZ, carries no transfer charge."

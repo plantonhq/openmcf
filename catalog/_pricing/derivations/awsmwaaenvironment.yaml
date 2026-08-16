@@ -1,0 +1,599 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsMwaaEnvironment manifest's spec values into metered quantities and
+# price choices. The committed cost is the environment fee (the class
+# rate, every hour) plus the scaling floors: the environment fee already
+# includes one worker, two schedulers, and two web servers, so only the
+# instances a manifest holds BEYOND those bill as additional-instance
+# hours. The derivation schema expresses quantities as products (no
+# subtraction), so the "beyond the included" counts are enumerated as
+# sibling rules over the spec's validated ranges -- min_workers 2..25
+# (AWS's default worker quota), schedulers 3..5, min_webservers 3..5.
+# All rates are selected by environment_class through the price book's
+# attribute identities. The estimate generator replays the catalog
+# presets through these rules to emit ../estimates/awsmwaaenvironment.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsmwaaenvironment
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  lines:
+    - sku_meter: environment instance hours
+      quantity:
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: environment
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: one environment billed at its class rate every hour of the month -- the fee includes one worker, two schedulers, and two web servers; AWS defaults the class to mw1.small when the manifest does not state it
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "2"
+      quantity:
+        - constant: "1"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 2 always-on workers; the environment fee includes one, so 1 additional worker bills every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "3"
+      quantity:
+        - constant: "2"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 3 always-on workers; the environment fee includes one, so 2 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "4"
+      quantity:
+        - constant: "3"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 4 always-on workers; the environment fee includes one, so 3 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "5"
+      quantity:
+        - constant: "4"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 5 always-on workers; the environment fee includes one, so 4 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "6"
+      quantity:
+        - constant: "5"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 6 always-on workers; the environment fee includes one, so 5 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "7"
+      quantity:
+        - constant: "6"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 7 always-on workers; the environment fee includes one, so 6 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "8"
+      quantity:
+        - constant: "7"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 8 always-on workers; the environment fee includes one, so 7 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "9"
+      quantity:
+        - constant: "8"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 9 always-on workers; the environment fee includes one, so 8 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "10"
+      quantity:
+        - constant: "9"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 10 always-on workers; the environment fee includes one, so 9 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "11"
+      quantity:
+        - constant: "10"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 11 always-on workers; the environment fee includes one, so 10 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "12"
+      quantity:
+        - constant: "11"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 12 always-on workers; the environment fee includes one, so 11 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "13"
+      quantity:
+        - constant: "12"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 13 always-on workers; the environment fee includes one, so 12 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "14"
+      quantity:
+        - constant: "13"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 14 always-on workers; the environment fee includes one, so 13 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "15"
+      quantity:
+        - constant: "14"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 15 always-on workers; the environment fee includes one, so 14 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "16"
+      quantity:
+        - constant: "15"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 16 always-on workers; the environment fee includes one, so 15 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "17"
+      quantity:
+        - constant: "16"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 17 always-on workers; the environment fee includes one, so 16 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "18"
+      quantity:
+        - constant: "17"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 18 always-on workers; the environment fee includes one, so 17 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "19"
+      quantity:
+        - constant: "18"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 19 always-on workers; the environment fee includes one, so 18 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "20"
+      quantity:
+        - constant: "19"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 20 always-on workers; the environment fee includes one, so 19 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "21"
+      quantity:
+        - constant: "20"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 21 always-on workers; the environment fee includes one, so 20 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "22"
+      quantity:
+        - constant: "21"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 22 always-on workers; the environment fee includes one, so 21 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "23"
+      quantity:
+        - constant: "22"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 23 always-on workers; the environment fee includes one, so 22 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "24"
+      quantity:
+        - constant: "23"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 24 always-on workers; the environment fee includes one, so 23 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional worker instance hours
+      applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "25"
+      quantity:
+        - constant: "24"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: worker
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_workers holds 25 always-on workers; the environment fee includes one, so 24 additional workers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional scheduler instance hours
+      applies_when:
+        - field_path: schedulers
+          op: equals
+          value: "3"
+      quantity:
+        - constant: "1"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: scheduler
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: 3 schedulers run for the environment's lifetime; the environment fee includes two, so 1 additional scheduler bills every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional scheduler instance hours
+      applies_when:
+        - field_path: schedulers
+          op: equals
+          value: "4"
+      quantity:
+        - constant: "2"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: scheduler
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: 4 schedulers run for the environment's lifetime; the environment fee includes two, so 2 additional schedulers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional scheduler instance hours
+      applies_when:
+        - field_path: schedulers
+          op: equals
+          value: "5"
+      quantity:
+        - constant: "3"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: scheduler
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: 5 schedulers run for the environment's lifetime; the environment fee includes two, so 3 additional schedulers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional web server instance hours
+      applies_when:
+        - field_path: min_webservers
+          op: equals
+          value: "3"
+      quantity:
+        - constant: "1"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: webserver
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_webservers holds 3 always-on web servers; the environment fee includes two, so 1 additional web server bills every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional web server instance hours
+      applies_when:
+        - field_path: min_webservers
+          op: equals
+          value: "4"
+      quantity:
+        - constant: "2"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: webserver
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_webservers holds 4 always-on web servers; the environment fee includes two, so 2 additional web servers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+    - sku_meter: additional web server instance hours
+      applies_when:
+        - field_path: min_webservers
+          op: equals
+          value: "5"
+      quantity:
+        - constant: "3"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Workflows for Apache Airflow
+        pricing_unit: hours
+        attributes:
+          - key: component
+            constant: webserver
+          - key: environment_class
+            from_field: environment_class
+            assumption_when_unset: mw1.small
+      basis: min_webservers holds 5 always-on web servers; the environment fee includes two, so 3 additional web servers bill every hour of the month at the class rate (class assumed mw1.small when unset)
+  exclusions:
+    - text: autoscaled workers between the min_workers floor and the max_workers ceiling bill per hour only while task queue depth demands them
+    - text: autoscaled web servers between the min_webservers floor and the max_webservers ceiling bill per hour only while UI and REST-API load demands them
+    - text: metadata database storage bills per GB-month as workflow history accumulates
+    - applies_when:
+        - field_path: logging_configuration
+          op: is_set
+      text: CloudWatch Logs ingestion and storage for the enabled log modules depend on log level and DAG volume
+    - text: the DAG source bucket, execution role, and KMS key bill on their own components
+  notes:
+    - text: Estimated at the scaling floors -- the committed always-on spend; the environment fee already includes one worker, two schedulers, and two web servers.
+    - applies_when:
+        - field_path: min_workers
+          op: equals
+          value: "0"
+      text: min_workers is unset, so AWS's default floor of one worker applies -- exactly the worker the environment fee includes, committing nothing extra.
+    - applies_when:
+        - field_path: environment_class
+          op: equals
+          value: mw1.micro
+      text: mw1.micro runs a single combined worker/scheduler and one web server and does not auto-scale -- the environment fee is the whole bill.

@@ -1,0 +1,95 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsec2instance
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: root_block_device.encrypted
+      evidence:
+        type: spec_default
+        reference: Defaults to false (the AMI mapping decides); true encrypts the root volume at rest -- a create-time decision, since flipping encryption replaces the instance.
+      notes: Every preset that reshapes the root volume sets encrypted true; each ebs_block_devices entry carries its own encrypted flag, and an account-level EBS-encryption-by-default setting encrypts everything regardless.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: root_block_device.kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset with encrypted true uses the AWS-managed aws/ebs key; setting kms_key_id encrypts the volume under the referenced customer-managed key, adding revocation and cross-account control.
+      notes: Data volumes take their own kms_key_id per ebs_block_devices entry.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: An EC2 instance is raw compute -- it terminates whatever protocols the workload runs. Transport encryption belongs to the software on the instance and the load balancers in front of it, not to the instance resource itself.
+    - control_id: no-public-access
+      status: configurable
+      field_path: associate_public_ip_address
+      evidence:
+        type: spec_default
+        reference: Tri-state -- unset inherits the subnet's map-public-IP-on-launch setting; an explicit false guarantees no public IPv4 at launch, and an explicit true attaches one.
+      notes: Every preset launches into a private subnet placeholder and leaves the field unset; reachability is ultimately the subnet's routing plus the attached security groups.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_default
+        reference: The attached security groups are the complete inbound surface; unset falls back to the VPC's default security group -- not a production posture, per the spec's own doc.
+      notes: Presets attach an explicit security-group placeholder; the ENI-identity preset carries its groups on the pre-provisioned interface instead.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: AWS WAF attaches to Layer-7 entry points (ALB, CloudFront, API Gateway), not to a raw instance; request filtering belongs to the tier routing traffic here.
+    - control_id: rbac
+      status: configurable
+      field_path: instance_profile
+      evidence:
+        type: spec_default
+        reference: The attached instance profile's IAM role is the instance's entire AWS API identity -- every permission the workload holds is whatever that role grants; no profile means no AWS API access at all.
+      notes: Management-plane actions on the instance itself (start, stop, terminate) are governed by IAM on the caller's side, outside this spec.
+    - control_id: workload-identity
+      status: configurable
+      field_path: instance_profile
+      evidence:
+        type: spec_default
+        reference: An attached instance profile serves short-lived role credentials through the instance metadata service, so on-instance workloads call AWS APIs without any static access key.
+      notes: All presets attach a profile placeholder; pairing it with metadata_options.http_tokens "required" protects those credentials from SSRF theft.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: metadata_options.http_tokens
+      evidence:
+        type: spec_default
+        reference: The AWS default is "optional" (IMDSv1 and v2 both answer); "required" disables the legacy no-token IMDSv1 path -- the single most effective hardening against credential-stealing SSRF.
+      notes: Every preset sets http_tokens required. SSH-versus-SSM is the other legacy-auth axis -- leaving key_name unset removes the static SSH key path in favor of SSM Session Manager.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Management-plane actions on the instance land in account-level CloudTrail outside this component, and OS-level audit logs belong to agents the workload runs; the spec wires no instance-scoped audit log stream.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: detailed_monitoring
+      evidence:
+        type: spec_default
+        reference: Defaults to false -- basic 5-minute CloudWatch metrics flow automatically; true enables 1-minute detailed monitoring so alarms and autoscaling react meaningfully faster.
+      notes: Memory and disk-space metrics require the CloudWatch agent on the instance either way.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The module wires no snapshot automation -- EBS snapshot policies (Data Lifecycle Manager, AWS Backup) are separate resources that target the instance's volumes by tag from outside this component.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Retention lives with the snapshot policy resource (DLM / AWS Backup), not on the instance; this spec has no backup surface to tune.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A standalone instance lives in exactly one availability zone by definition -- this kind is the pet, and multi-AZ resilience is the fleet concern AwsAutoScalingGroup owns. auto_recovery restarts the instance on impaired hardware within its zone, which is recovery, not zone redundancy.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: disable_api_termination
+      evidence:
+        type: spec_default
+        reference: Defaults to false; when true, the EC2 API refuses to terminate the instance until protection is explicitly lifted (force_destroy lets a deliberate teardown lift it declaratively).
+      notes: The SSM-managed and launch-template presets enable it; disable_api_stop additionally guards against stops.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: OS and package patching on EC2 is the customer's side of the shared-responsibility line -- compose SSM Patch Manager through the instance profile, or bake patched AMIs and replace. The spec has no managed patch channel to configure.

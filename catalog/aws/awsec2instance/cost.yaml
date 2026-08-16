@@ -1,0 +1,82 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsec2instance
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Amazon Elastic Compute Cloud
+      sku_meter: instance hours
+      pricing_unit: hours
+      description: The instance bills every hour it runs, from launch, whether or not anything uses it; the rate follows instance_type, the AMI's platform, tenancy, and the purchase market.
+    - service_name: Amazon Elastic Block Store
+      sku_meter: EBS storage
+      pricing_unit: GB-months
+      description: Every attached EBS volume -- the root volume plus any data volumes -- bills per GB-month from creation, full or empty, and keeps billing while the instance is stopped.
+  cost_drivers:
+    - field_path: instance_type
+      sku_meter: instance hours
+      pricing_unit: hours
+      impact: The instance type sets the hourly rate -- the dominant term of the bill.
+    - field_path: market_type
+      sku_meter: instance hours
+      impact: Selects the purchase market -- On-Demand (unset), the fluctuating Spot market, or a pre-purchased Capacity Block / Capacity Reservation whose committed price was set at purchase.
+    - field_path: spot_options
+      sku_meter: instance hours
+      impact: Presence turns the launch into a Spot request -- the market sets the hourly rate under the On-Demand ceiling, in exchange for two-minute-notice interruptions.
+    - field_path: launch_template
+      sku_meter: instance hours
+      pricing_unit: hours
+      impact: The referenced template can supply the instance type and block devices -- the rate and storage those choices carry live on the template, not in this manifest.
+    - field_path: placement.tenancy
+      sku_meter: instance hours
+      pricing_unit: hours
+      impact: Dedicated tenancy bills higher single-tenant rates plus a per-region fee; host tenancy moves billing to the Dedicated Host itself.
+    - field_path: root_block_device.volume_size_gb
+      sku_meter: EBS storage
+      pricing_unit: GB-months
+      impact: Every gigabyte of the root volume bills monthly regardless of what the instance actually stores.
+    - field_path: root_block_device.volume_type
+      sku_meter: EBS storage
+      pricing_unit: GB-months
+      impact: Picks the per-GB rate class; gp3 includes a 3000-IOPS/125-MiB-s baseline before the paid performance dials apply.
+    - field_path: root_block_device.iops
+      sku_meter: provisioned IOPS
+      pricing_unit: IOPS-months
+      impact: Provisioned IOPS bill monthly on io1/io2 (required) and on gp3 above its included 3000 baseline.
+    - field_path: root_block_device.throughput_mibps
+      sku_meter: provisioned throughput
+      pricing_unit: MiBps-months
+      impact: gp3 throughput above the included 125 MiB/s bills monthly.
+    - field_path: ebs_block_devices
+      sku_meter: EBS storage
+      pricing_unit: GB-months
+      impact: Each additional data volume is a full billed EBS volume with its own size, type, and performance dials.
+    - field_path: associate_public_ip_address
+      sku_meter: public IPv4 address usage
+      pricing_unit: IP-hours
+      impact: AWS bills every public IPv4 address hourly; unset inherits the subnet's map-public-IP setting, so the charge can arrive silently from the subnet.
+    - field_path: detailed_monitoring
+      sku_meter: detailed monitoring metrics
+      pricing_unit: metric-months
+      impact: 1-minute CloudWatch metrics bill per instance-metric per month; the 5-minute default is free.
+    - field_path: cpu_credits
+      sku_meter: surplus CPU credits
+      pricing_unit: vCPU-hours
+      impact: On burstable (T-family) types, "unlimited" keeps bursting past the credit balance and bills the surplus per vCPU-hour; "standard" throttles instead of spending.
+    - field_path: ebs_optimized
+      sku_meter: EBS-optimized surcharge
+      pricing_unit: hours
+      impact: Only legacy instance types charge an hourly fee for dedicated EBS bandwidth -- current generations include it in the instance rate.
+  free_tier: ""
+  estimate_exclusions:
+    - the AMI's platform is not declared in the manifest -- Windows and commercial-Linux AMIs bill license-included rates above the Linux/UNIX price
+    - Spot instances bill the fluctuating market rate, not a committed list price
+    - data transfer between AZs and out of the region is traffic-dependent
+    - surplus CPU credits on burstable types depend on actual load
+    - detailed monitoring bills per metric actually published
+    - EBS snapshots taken of the volumes bill per GB-month outside this component
+  notes: "Instance hours and attached EBS storage are the certainties at manifest time. A stopped instance stops the instance-hours meter but keeps every EBS volume billing; volumes with delete_on_termination false outlive the instance and keep billing after it is gone."

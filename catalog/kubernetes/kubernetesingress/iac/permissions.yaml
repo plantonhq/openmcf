@@ -1,0 +1,25 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesingress
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - networking.k8s.io
+        resources:
+          - ingresses
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_ingress_v1.ingress -- the module's only resource, managing one Ingress (networking.k8s.io/v1) in the spec's namespace (wait_for_load_balancer is false, so no additional read surface is needed).

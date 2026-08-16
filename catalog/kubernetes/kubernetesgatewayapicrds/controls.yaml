@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesgatewayapicrds
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: CRDs are API-server schema records persisted in the cluster's etcd, whose encryption at rest is the target cluster's control-plane posture; there is no component data to encrypt.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); customer-managed keys for etcd belong to the cluster component.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: CRDs serve no connections; they extend the Kubernetes API schema, and all API traffic rides the cluster's own TLS.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: CRDs are not network endpoints; they are reachable only through the Kubernetes API. Public exposure questions arrive with the Gateway resources these CRDs enable, on their own components.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: There is no inbound traffic to restrict on schema definitions.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: CRDs serve no traffic; web application firewalls have no meaning for API schema extensions.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may install CRDs and who may then create Gateway API resources is the target cluster's Kubernetes RBAC (CRD installation requires cluster-admin-grade rights); the CRDs themselves carry no access-control surface.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component calls no cloud APIs -- the module fetches the CRD manifests from the upstream GitHub release over HTTPS and applies them to the cluster; no cloud credential is involved.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: CRDs have no authentication path of any kind.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: CRD installs, updates, and deletions are Kubernetes API operations captured by the target cluster's audit policy; the definitions produce no events of their own.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Schema definitions emit no operational metrics; API-server metrics about CRD-backed resources belong to the cluster's control-plane monitoring.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The CRDs are fully reproducible by re-applying the pinned upstream release -- there is no data to back up. (The custom resources STORED under these CRDs are other components' concern.)
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: CRDs are control-plane records replicated by the cluster's etcd; there is no per-resource replication or zonal knob.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on CustomResourceDefinition; protection is operational (cluster RBAC, change review). The stakes are high -- deleting a CRD cascades deletion of every custom resource of that kind cluster-wide.
+    - control_id: managed-patching
+      status: configurable
+      field_path: version
+      evidence:
+        type: spec_default
+        reference: version defaults to v1.6.1 and pins which official upstream release the module fetches and applies; upgrading is a deliberate spec change that re-applies the new release's manifests through the same server-side-apply lane.
+      notes: The 01-standard and 02-experimental presets rely on the default version and differ only in install_channel. Version changes are deliberate rather than automatic -- there is no auto-upgrade channel.

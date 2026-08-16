@@ -1,0 +1,81 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsmemcachedelasticache
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Memcached is a pure volatile in-memory cache -- no persistence, no snapshots, no disk -- so the component holds no data at rest to encrypt, and ElastiCache offers no at-rest encryption for the Memcached engine.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With no at-rest encryption surface on the Memcached engine, there is nothing for a customer-managed key to key.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: transit_encryption_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to false; true enables TLS on all client connections, and requires Memcached engine version 1.6.12 or later (AWS rejects it on earlier versions).
+      notes: The 03-production-encrypted preset enables it on engine 1.6.22; the module renders the flag only when enabled, matching the AWS-off default.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: ElastiCache clusters live only on VPC subnet groups with private addressing -- no public endpoint option exists for this resource class.
+      notes: Reachability is governed entirely by subnet placement and the attached security groups.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_default
+        reference: The attached security groups control network-level access to the Memcached endpoint -- and because Memcached has no authentication, they are the PRIMARY access control mechanism, as the spec itself states.
+      notes: Attach a client-scoped security group on anything beyond throwaway development; the cache port opens only to the sources the referenced groups declare.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A Memcached-protocol cache endpoint has no WAF attachment point; request filtering belongs to the application tier in front of it.
+    - control_id: rbac
+      status: not_applicable
+      notes: Memcached has no authentication or authorization mechanism of any kind -- no users, no ACLs, no AUTH command. Access control is entirely network-level (see restricted-ingress).
+    - control_id: workload-identity
+      status: not_applicable
+      notes: With no authentication surface at all, there is no identity -- keyless or otherwise -- for a workload to present.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: There is no authentication surface, so there is no legacy authentication path to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: ElastiCache offers no data-plane log delivery for the Memcached engine (the Redis/Valkey slow-log and engine-log delivery does not exist here); control-plane calls land in CloudTrail regardless.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every cluster publishes host and cache metrics (CPU, memory, evictions, connections) to CloudWatch automatically; no configuration can turn the metric stream off.
+      notes: notification_topic_arn additionally routes cluster events (node additions, removals, maintenance) to an SNS topic.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Memcached supports no snapshots and no persistence of any kind -- the cache is repopulated from the system of record, which is where backup responsibility lives.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: There are no backups to retain.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: az_mode
+      evidence:
+        type: spec_default
+        reference: Defaults to single-az; cross-az distributes the nodes across Availability Zones (requiring num_cache_nodes > 1, CEL-enforced), so a zone failure takes only that zone's share of the keyspace.
+      notes: This is blast-radius reduction, not replication -- Memcached never replicates, so keys on a lost node are gone until re-cached. Presets 02 and 03 run three nodes cross-az.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: ElastiCache offers no deletion-protection flag for cache clusters; a deleted cluster is recreated from the manifest, and as a volatile cache it loses only re-cachable data.
+    - control_id: managed-patching
+      status: configurable
+      field_path: auto_minor_version_upgrade
+      evidence:
+        type: spec_default
+        reference: AWS enables minor-version auto-upgrade by default and the field is presence-typed -- unset is forwarded as "let AWS decide" (enabled), explicit false pins the running minor version, and the recommended default is true.
+      notes: The 03 preset opts in explicitly; engine_version left empty tracks the AWS default version so an unpinned manifest never goes stale.

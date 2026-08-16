@@ -1,0 +1,92 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsmwaaenvironment
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: MWAA encrypts environment data at rest (metadata database, logs, SQS queue) with AWS KMS on every environment -- the aws/airflow service key when no customer key is given; encryption cannot be disabled.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Unset means the AWS-managed aws/airflow key; setting kms_key_arn encrypts the environment's data under the referenced customer-managed key. ForceNew -- changing the key replaces the environment.
+      notes: The production preset selects a customer-managed key.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Airflow web server is served exclusively over HTTPS in both access modes, and MWAA components exchange data over TLS within the service-managed VPC endpoints.
+    - control_id: no-public-access
+      status: configurable
+      field_path: webserver_access_mode
+      evidence:
+        type: spec_default
+        reference: Defaults to PRIVATE_ONLY -- the Airflow UI is reachable only through the VPC endpoint; PUBLIC_ONLY and PUBLIC_AND_PRIVATE expose an internet-reachable (still IAM-authenticated) endpoint. Workers, schedulers, and the metadata database always live in the two private subnets.
+      notes: Two of three presets keep PRIVATE_ONLY; the plugins preset opts into PUBLIC_ONLY for internet UI access.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_default
+        reference: The attached security groups are the complete inbound surface of the environment's VPC endpoints -- the spec requires at least one, and the referenced groups carry the self-referencing intercommunication rule plus HTTPS ingress for UI access.
+      notes: Ingress is composed on the referenced AwsSecurityGroup nodes, never embedded in this module.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The Airflow web server endpoint is service-managed with no WAF attachment point; request filtering would ride a fronting proxy outside this component.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every web UI login and CLI/API call is IAM-authorized (web login and CLI tokens minted through the airflow API) and mapped to an Airflow RBAC role -- there is no local Airflow user store.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: execution_role_arn is required by the spec -- every DAG task's AWS access flows through the execution role's short-lived credentials; no static keys are ever provisioned into the environment.
+      notes: Secrets pasted into airflow_configuration_options would undercut this -- the spec doc steers real credentials to Secrets Manager-backed Airflow connections instead.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No non-IAM authentication path exists to disable -- webserver access always authenticates through IAM-issued tokens, with no basic-auth or local-user fallback in MWAA.
+    - control_id: audit-logging
+      status: configurable
+      field_path: logging_configuration.webserver_logs.enabled
+      evidence:
+        type: spec_default
+        reference: Web server access and error logs are off by default; enabling the module streams them to CloudWatch Logs (/aws/mwaa/<environment>/webserver). Management operations land in CloudTrail regardless.
+      notes: The production and plugins presets enable all five log modules.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: MWAA publishes environment metrics to CloudWatch automatically; the per-module Airflow logs join them when logging_configuration enables delivery.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The metadata database is AWS-operated with no user-facing backup or restore surface. The pipeline source of record -- DAGs, plugins, requirements -- lives in the versioned S3 bucket referenced by source_bucket_arn, whose posture is its own component's concern.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: There is no backup surface to set retention on (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: subnet_ids requires exactly two private subnets in different Availability Zones (repeated.min_items=2, AWS-enforced AZ spread), and MWAA distributes schedulers and workers across them.
+      notes: mw1.micro weakens this -- it runs a single combined worker/scheduler container and does not auto-scale.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: MWAA offers no deletion-protection flag -- DeleteEnvironment proceeds immediately once authorized; the S3 artifacts survive deletion.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AWS patches Apache Airflow and the underlying Fargate fleet during the weekly maintenance window; minor Airflow versions upgrade in place.
+      notes: weekly_maintenance_window_start picks the window; airflow_version pins the minor line, and major version changes replace the environment.

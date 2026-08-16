@@ -1,0 +1,100 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsopensearchserverlesscollection
+spec:
+  presets:
+    - preset: 01-dev-search
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon OpenSearch Service
+          sku_meter: indexing OCU hours
+          pricing_unit: OCU-hours
+          pricing_quantity: "365"
+          quantity_basis: without standby replicas (the dev/test posture), the minimum indexing floor is 0.5 OCU billed every hour of the month
+          list_unit_price: "0.24"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonES/20260709090858/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "87.6000"
+        - service_name: Amazon OpenSearch Service
+          sku_meter: search and query OCU hours
+          pricing_unit: OCU-hours
+          pricing_quantity: "365"
+          quantity_basis: without standby replicas (the dev/test posture), the minimum search floor is 0.5 OCU billed every hour of the month
+          list_unit_price: "0.24"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonES/20260709090858/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "87.6000"
+      total_list_cost: "175.2000"
+      exclusions:
+        - OCU usage above the minimum floor scales with indexing and query load and bills at the same per-OCU-hour rate
+        - managed storage bills per GB-month and grows with the indexed data -- zero at creation, unbounded without retention_rules
+      notes: The OCU floor is account-scoped -- collections encrypted with the same KMS key share one OCU pool, so this estimate carries the full floor as if this collection is the first on its key; sibling collections on the same key add usage, not a second floor. Standby replicas are disabled -- half the floor cost, single-AZ compute; storage durability remains multi-AZ. The choice is fixed at create time.
+    - preset: 02-production-timeseries
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon OpenSearch Service
+          sku_meter: indexing OCU hours
+          pricing_unit: OCU-hours
+          pricing_quantity: "730"
+          quantity_basis: with standby replicas enabled (the AWS default), the minimum indexing floor is 1 OCU (0.5 primary + 0.5 standby) billed every hour of the month
+          list_unit_price: "0.24"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonES/20260709090858/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "175.2000"
+        - service_name: Amazon OpenSearch Service
+          sku_meter: search and query OCU hours
+          pricing_unit: OCU-hours
+          pricing_quantity: "730"
+          quantity_basis: with standby replicas enabled (the AWS default), the minimum search floor is 1 OCU (0.5 active + 0.5 replica) billed every hour of the month
+          list_unit_price: "0.24"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonES/20260709090858/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "175.2000"
+      total_list_cost: "350.4000"
+      exclusions:
+        - OCU usage above the minimum floor scales with indexing and query load and bills at the same per-OCU-hour rate
+        - managed storage bills per GB-month and grows with the indexed data -- zero at creation, unbounded without retention_rules
+      notes: The OCU floor is account-scoped -- collections encrypted with the same KMS key share one OCU pool, so this estimate carries the full floor as if this collection is the first on its key; sibling collections on the same key add usage, not a second floor.
+    - preset: 03-bedrock-vector-store
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon OpenSearch Service
+          sku_meter: indexing OCU hours
+          pricing_unit: OCU-hours
+          pricing_quantity: "365"
+          quantity_basis: without standby replicas (the dev/test posture), the minimum indexing floor is 0.5 OCU billed every hour of the month
+          list_unit_price: "0.24"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonES/20260709090858/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "87.6000"
+        - service_name: Amazon OpenSearch Service
+          sku_meter: search and query OCU hours
+          pricing_unit: OCU-hours
+          pricing_quantity: "365"
+          quantity_basis: without standby replicas (the dev/test posture), the minimum search floor is 0.5 OCU billed every hour of the month
+          list_unit_price: "0.24"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonES/20260709090858/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "87.6000"
+      total_list_cost: "175.2000"
+      exclusions:
+        - OCU usage above the minimum floor scales with indexing and query load and bills at the same per-OCU-hour rate
+        - managed storage bills per GB-month and grows with the indexed data -- zero at creation, unbounded without retention_rules
+      notes: The OCU floor is account-scoped -- collections encrypted with the same KMS key share one OCU pool, so this estimate carries the full floor as if this collection is the first on its key; sibling collections on the same key add usage, not a second floor. VECTORSEARCH collections pool their OCUs separately from search and time-series collections, even on the same KMS key -- the first vector collection starts its own floor. Standby replicas are disabled -- half the floor cost, single-AZ compute; storage durability remains multi-AZ. The choice is fixed at create time.

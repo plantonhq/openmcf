@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetespeerauthentication
+spec:
+  billing_model: free
+  free_tier: A PeerAuthentication is an Istio policy object -- a declaration of the mTLS requirements istiod pushes to the sidecars of the workloads it selects. The custom resource itself reserves no node capacity and no cloud SKU bills for it.
+  notes: "No field of this spec buys anything: mtls.mode and port_level_mtls tell the mesh which connections must be mutual-TLS tunnels; the tunneling itself is performed by the Istio control plane (istiod) and the sidecar proxies already attached to the workloads. That mesh compute -- and the workloads it fronts -- is where real spend lives, in separate catalog kinds with their own cost profiles."

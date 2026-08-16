@@ -1,0 +1,46 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsserverlesselasticache
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon ElastiCache
+      sku_meter: cached data storage
+      pricing_unit: GB-hours
+      description: Every serverless cache meters data storage every hour from creation -- at least 1 GB for Redis and Memcached and 100 MB for Valkey, even when the cache is empty.
+  cost_drivers:
+    - field_path: engine
+      sku_meter: cached data storage
+      pricing_unit: GB-hours
+      impact: The engine picks both rates and the metering floor -- Valkey bills roughly 33% less per GB-hour and per ECPU than Redis or Memcached, and its minimum metered storage is 100 MB instead of 1 GB.
+    - field_path: data_storage_min_gb
+      sku_meter: cached data storage
+      pricing_unit: GB-hours
+      impact: A configured storage minimum is guaranteed capacity that bills every hour even when the data stored is below it -- the pre-scaling dial that turns storage into committed spend.
+    - field_path: data_storage_max_gb
+      sku_meter: cached data storage
+      pricing_unit: GB-hours
+      impact: The storage ceiling is a budget lever, not a charge -- growth stops (with evictions or write rejections) rather than billing past it.
+    - field_path: ecpu_min
+      sku_meter: ECPU consumption
+      pricing_unit: ECPUs
+      impact: A configured minimum ECPUs/second bills around the clock even with zero requests -- the other pre-scaling dial that turns request capacity into committed spend.
+    - field_path: ecpu_max
+      sku_meter: ECPU consumption
+      pricing_unit: ECPUs
+      impact: The ECPU ceiling caps throughput (requests throttle past it) rather than billing -- the budget lever for request cost.
+    - field_path: snapshot_retention_limit
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: Daily automatic snapshots (Redis/Valkey only) bill per GB-month for the retained copies -- longer retention on a larger dataset accumulates billable backup storage.
+  free_tier: ""
+  estimate_exclusions:
+    - ECPU consumption above any configured minimum is entirely request-driven -- reads and writes meter roughly 1 ECPU per KB transferred, more for vCPU-heavy commands
+    - data stored above the metering floor grows with the working set and bills per GB-hour
+    - snapshot backup storage depends on data size and the retention window
+    - cross-AZ data transfer applies only when clients sit in AZs other than the cache's VPC endpoints
+  notes: "An idle serverless cache is never free: the storage metering floor (1 GB for Redis/Memcached, 100 MB for Valkey) bills every hour from creation. The committed-spend surfaces beyond that floor -- data_storage_min_gb and ecpu_min -- are visible in the manifest, and usage above every minimum bills at the same regular rates."

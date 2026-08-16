@@ -1,0 +1,40 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesrbac
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_role_v1.role and kubernetes_role_binding_v1.binding -- created in the grant's namespace when namespace_scope is chosen (the role only with create_role, the binding only when subjects are present).
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_cluster_role_v1.cluster_role and kubernetes_cluster_role_binding_v1.cluster_binding -- created when cluster_scope is chosen (the role only with create_role, the binding only when subjects are present). Beyond these verbs, Kubernetes' RBAC escalation check requires the runner to already hold (or be allowed to escalate to) every permission a created role grants and every role it binds -- a grant can never exceed the runner's own authority.

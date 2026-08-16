@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetessecret
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The secret's data rests in the target cluster's etcd, where Kubernetes stores it base64-encoded -- an encoding, not encryption. Whether etcd encrypts at rest is a property of the cluster's control plane (its encryption configuration or the managed provider's default), owned by the cluster, with no seam in this spec.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for etcd encryption are configured on the target cluster's control plane (see enc-at-rest); this spec has no field for them.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A Secret serves no traffic of its own. Reads and writes travel over the cluster's TLS-secured Kubernetes API connections, and delivery into pods is a kubelet mount -- both owned by the cluster, not by this object.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A Secret is not a network endpoint. It is reachable only through the Kubernetes API, whose exposure is the cluster's posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound network path exists to restrict -- the object is data at the API server, not a listener.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A Secret serves no HTTP traffic; web application firewalls have nothing to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may read or change the Secret is decided by the target cluster's Kubernetes RBAC on the secrets resource -- grants live in Role/RoleBinding objects outside this spec. The object carries data; it grants nothing itself.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A Secret calls no cloud APIs -- it IS stored credential material. The keyless alternative to embedding long-lived cloud keys in a Secret is syncing through a secret store component, a different kind entirely.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: service_account_token
+      evidence:
+        type: spec_default
+        reference: Every secret_data variant except service_account_token mints no API credential; selecting service_account_token asks the cluster's token controller to populate a long-lived, non-expiring API token bound to a ServiceAccount -- the pattern Kubernetes has superseded with short-lived projected tokens since v1.24, which the spec reserves for integrations that genuinely cannot refresh.
+      notes: None of the presets use it -- they cover opaque, tls, and docker-registry data. Creating a non-expiring token is a deliberate, reviewable spec choice, never a default.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Creating, reading, or changing the Secret are Kubernetes API operations, captured (or not) by the target cluster's audit policy. The object itself emits nothing.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A Secret has no runtime and produces no metrics or signals to export.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A Secret is a declarative object the IaC modules recreate from its manifest; there is no dataset to back up beyond the source of truth that declares it.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Durability of the object is the control plane's etcd replication, owned entirely by the target cluster.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on Secrets. The spec's immutable field freezes the DATA against accidental updates -- a change-safety guard -- but it does not block deletion of the object.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: No software runs here; there is nothing to patch or upgrade.

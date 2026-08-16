@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesnetworkpolicy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A NetworkPolicy stores no data -- it is a firewall rule set in etcd, whose encryption is owned by the target cluster.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With nothing stored (see enc-at-rest), there is no at-rest key to manage.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A NetworkPolicy decides WHETHER traffic may flow, never whether it is encrypted -- Kubernetes NetworkPolicy has no TLS semantics. Transit encryption belongs to the workloads or a service mesh policy such as PeerAuthentication.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The policy is not an endpoint -- it has nothing to expose. It constrains reachability of the pods it selects, but those pods' public exposure is decided by the Services, Ingresses, and Gateways in front of them.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: ingress_rules
+      evidence:
+        type: spec_default
+        reference: Once a policy with ingress in policy_types selects a pod, all inbound traffic is denied except what ingress_rules allow -- each rule enumerates declared sources (pod selectors, namespace selectors, ip_block CIDRs) and ports, and an empty rule list denies everything inbound.
+      notes: "This component IS the in-cluster ingress-restriction instrument. Presets: 01-default-deny-all denies both directions namespace-wide, 02-allow-same-namespace and 03-allow-from-namespace layer targeted allows on top; egress_rules restrict outbound the same way (04-allow-dns-egress). Two caveats a reviewer should hear: policies are additive-allow across all policies selecting the same pods, and enforcement requires a CNI that implements NetworkPolicy -- on a CNI that ignores them (including default kind/kindnet clusters) the object exists but all traffic still flows."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A NetworkPolicy filters at L3/L4 (peers and ports), not at the request layer -- it inspects no HTTP. WAF-style filtering belongs to edge components in front of the workloads.
+    - control_id: rbac
+      status: not_applicable
+      notes: Access to the NetworkPolicy object is governed by the target cluster's Kubernetes RBAC; the spec defines no access-control surface of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A NetworkPolicy authenticates to no cloud API -- it is configuration enforced by the cluster's CNI.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The policy performs no authentication; there is no legacy authentication path to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the policy are Kubernetes API operations, captured by the target cluster's audit policy. Allowed/denied connection logging is a CNI capability outside this spec.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A configuration object emits no operational metrics. Policy hit/drop metrics, where they exist, come from the CNI.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: There is no data to back up -- the policy is fully described by its declarative spec, re-appliable at any time.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backups (see backup-recovery), there is no retention length to configure.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The policy is an API object with no running replicas; the CNI enforces it on every node wherever the selected pods run.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on NetworkPolicy objects. Deleting a deny policy FAILS OPEN -- previously blocked traffic flows again -- so protection is operational (namespace RBAC, change review).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software to patch -- the policy is configuration; the CNI that enforces it is patched with the cluster.

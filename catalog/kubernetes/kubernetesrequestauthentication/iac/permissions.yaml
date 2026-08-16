@@ -1,0 +1,25 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesrequestauthentication
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - security.istio.io
+        resources:
+          - requestauthentications
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubectl_manifest.request_authentication -- the module's only resource, applying one RequestAuthentication (security.istio.io/v1) into spec.namespace via server-side apply.

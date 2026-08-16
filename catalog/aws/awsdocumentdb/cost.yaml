@@ -1,0 +1,47 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsdocumentdb
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon DocumentDB (with MongoDB compatibility)
+      sku_meter: instance hours
+      pricing_unit: hours
+      description: Every instance in the cluster bills hourly from creation whether or not a single query runs; the rate follows each entry's instance_class.
+  cost_drivers:
+    - field_path: instances
+      sku_meter: instance hours
+      pricing_unit: hours
+      impact: Each entry is a full billed DB instance -- the dominant term of the bill scales linearly with the writer plus every reader.
+    - field_path: serverless_v2_scaling.min_capacity
+      sku_meter: serverless capacity
+      pricing_unit: DCU-hours
+      impact: The floor every db.serverless instance bills even when idle -- DocumentDB Serverless does not pause to zero, so the 0.5-DCU minimum is committed spend every hour.
+    - field_path: serverless_v2_scaling.max_capacity
+      sku_meter: serverless capacity
+      pricing_unit: DCU-hours
+      impact: The per-instance spend ceiling -- under load each db.serverless instance can bill up to this many DCUs every hour.
+    - field_path: storage_type
+      sku_meter: storage I/O
+      pricing_unit: I/O requests
+      impact: Standard storage bills every I/O request; iopt1 (I/O-Optimized) removes the per-I/O charge but raises the instance-hour and per-GB rates -- it pays off for I/O-heavy workloads.
+    - field_path: backup_retention_period
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: Backup storage is free up to the cluster's storage size; longer retention on a churning cluster accumulates billable backup beyond it.
+    - field_path: enabled_cloudwatch_logs_exports
+      sku_meter: log export ingestion
+      pricing_unit: GB
+      impact: Each exported log type (audit, profiler) bills CloudWatch Logs ingestion and storage.
+  free_tier: ""
+  estimate_exclusions:
+    - cluster storage bills per consumed GB-month and grows with data -- no manifest can predict it
+    - storage I/O requests on standard (non-I/O-Optimized) storage are workload-dependent
+    - backup storage beyond the free allowance grows with churn and retention
+    - CloudWatch ingestion for exported audit and profiler logs depends on database activity
+    - data transfer between AZs and out of the region is traffic-dependent
+  notes: "Instance hours are the certainty at manifest time -- each instances entry (or the serverless DCU floor) bills every hour. Shared cluster storage is never allocated up front, so storage and I/O follow consumption. Per-instance Performance Insights is free at the default 7-day retention."

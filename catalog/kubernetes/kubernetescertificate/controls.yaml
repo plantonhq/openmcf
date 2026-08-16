@@ -1,0 +1,62 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetescertificate
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The issued certificate and private key rest in the output Kubernetes Secret (secret_name), persisted in the cluster's etcd -- encryption at rest for that material is the target cluster's etcd/KMS posture, owned by the cluster component, not by this spec.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for etcd (where the output Secret rests) belong to the cluster component; this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: The resource exists to provision in-transit encryption material and keep it fresh without operator action -- every Certificate is issued as a signed X.509 keypair and auto-renewed (duration defaults to 2160h, renewal defaults upstream to a third of the lifetime, and private_key.rotation_policy defaults to "always", generating a new key at each renewal).
+      notes: The encryption itself happens at the consumers that present the certificate (gateway listeners, ingress TLS blocks, workload mounts); this resource guarantees they always have valid, rotating material. rotation_policy "never" is an explicit opt-out for key-pinning setups.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The Certificate is not a network endpoint. Its only external interaction is the issuer's challenge flow (e.g. ACME), which is configured on the issuer resource, not here.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: There is no inbound traffic to restrict -- the resource is a declarative request the cert-manager controller reconciles.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The Certificate serves no traffic; web application firewalls have no meaning for a certificate request record.
+    - control_id: rbac
+      status: not_applicable
+      notes: Access to the Certificate and to the output Secret holding the private key is governed by the target cluster's Kubernetes RBAC -- restricting who can read secret_name's Secret in this namespace is the real access-control task, and it lives outside this spec.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The Certificate itself calls no cloud APIs. Cloud credentials for DNS-01 challenges (including keyless paths) are configured on the issuer (KubernetesClusterIssuer / KubernetesIssuer), not here.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The resource has no authentication path of its own. Weak-crypto choices exist as explicit opt-ins (keystores.pkcs12.profile "legacy_rc2"/"legacy_des" for legacy consumers), but they concern output packaging, not an authentication path this control speaks about.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the Certificate are Kubernetes API operations captured by the target cluster's audit policy. revision_history_limit retains recent CertificateRequest resources (upstream default 1) as an issuance trail, but that is object retention, not a provider audit log.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The Certificate emits no metrics of its own; expiry and issuance metrics come from the cert-manager controller's Prometheus endpoint, owned by the KubernetesCertManager component.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The certificate is re-issuable machinery, not primary data -- deleting the Secret triggers reissuance from the manifest and issuer. There is nothing that needs backup to be recoverable.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The Certificate and its Secret are API-server records replicated by the cluster's control plane; there is no per-resource replication or zonal knob.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor cert-manager offers a deletion-protection flag on Certificate; protection is operational (namespace RBAC, change review). A deleted Certificate stops renewals -- consumers keep working until the last issued Secret expires.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software here to patch -- the resource is data, and its automatic renewal (see enc-in-transit) is credential rotation, not patching. cert-manager itself is patched through the KubernetesCertManager component.

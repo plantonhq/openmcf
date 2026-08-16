@@ -1,0 +1,62 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetestlsroute
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A route stores no data beyond its own definition in the cluster's etcd; there is nothing at rest to encrypt.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Nothing is stored, so no key could apply (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: A TLSRoute exists only for TLS traffic -- hostnames match the SNI attribute of the TLS ClientHello during the handshake, and the single rule forwards the connection unmodified to its backends (TLS passthrough). Traffic stays encrypted end to end from the client to the backend; the Gateway never terminates the session or holds the certificate.
+      notes: Certificate management, protocol versions, and cipher policy live on the backend that terminates the TLS. Spec validation additionally rejects IP-address hostnames, mirroring RFC 6066's rule that SNI names cannot be IPs.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A route carries no exposure of its own -- it attaches to a Gateway listener through parent_refs, and whether that listener faces the internet is the Gateway's posture, examined on that component.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The route's only match is the SNI hostname, which selects WHICH connections it handles, not which network sources may connect. Source restrictions live on the Gateway and the load balancer in front of it; which routes may attach is the listener's allowed-routes policy plus ReferenceGrant rules.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A passthrough route never sees inside the encrypted stream; request filtering can only happen where TLS terminates, outside this spec.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may create or change the route is the target cluster's Kubernetes RBAC on the CR; the object grants nothing itself.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A route calls no cloud APIs; it is configuration a Gateway controller consumes.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The route performs no authentication; there is no auth path, legacy or otherwise, to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the route are Kubernetes API operations captured by the target cluster's audit policy; the object emits nothing itself.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Traffic metrics for forwarded connections come from the Gateway's data plane, owned by the Gateway implementation; the route produces no signals.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A declarative object the IaC modules recreate from its manifest; there is no data to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A route has no replicas; availability of the data plane that executes it is the Gateway implementation's, and of the backends the workloads'.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on the CR. Deleting the route stops forwarding for its SNI hostnames -- protection is operational (namespace RBAC, change review).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: No software runs here; the Gateway controller and data plane are patched through their own components.
