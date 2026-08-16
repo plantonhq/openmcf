@@ -1,53 +1,40 @@
 variable "metadata" {
-  description = "Metadata for the resource, including name and labels"
+  description = "Cloud resource metadata"
   type = object({
-    name    = string
-    id      = optional(string)
-    org     = optional(string)
-    env     = optional(string)
-    labels  = optional(map(string))
-    tags    = optional(list(string))
-    version = optional(object({ id = string, message = string }))
+    name = string
+    id = optional(string, "")
+    org = optional(string, "")
+    env = optional(string, "")
+    labels = optional(map(string), {})
+    annotations = optional(map(string), {})
+    tags = optional(list(string), [])
   })
 }
 
 variable "spec" {
-  description = "DigitalOcean Droplet specification"
+  description = "DigitalOceanDroplet specification"
   type = object({
-    droplet_name        = string
-    region              = string
-    size                = string
-    image               = string
-    ssh_keys            = list(string)
-    vpc                 = optional(object({
-      value                       = optional(string)
-      value_from_resource_output = optional(object({
-        resource_id_ref = object({
-          name = string
-        })
-        output_key = string
-      }))
+    droplet_name = string
+    region = optional(string, "")
+    size = string
+    image = string
+    vpc = optional(string, "")
+    enable_ipv6 = optional(bool, false)
+    enable_backups = optional(bool, false)
+    volume_ids = optional(list(string), [])
+    tags = optional(list(string), [])
+    user_data = optional(string, "")
+    monitoring = optional(bool, false)
+    ssh_keys = optional(list(string), [])
+    backup_policy = optional(object({
+      plan = optional(string, "")
+      weekday = optional(string, "")
+      hour = optional(number, 0)
     }))
-    enable_ipv6        = optional(bool)
-    enable_backups     = optional(bool)
-    disable_monitoring = optional(bool)
-    volume_ids         = optional(list(object({
-      value                       = optional(string)
-      value_from_resource_output = optional(object({
-        resource_id_ref = object({
-          name = string
-        })
-        output_key = string
-      }))
-    })))
-    tags      = optional(list(string))
-    user_data = optional(string)
-    timezone  = optional(string)
+    droplet_agent = optional(bool)
+    graceful_shutdown = optional(bool, false)
+    resize_disk = optional(bool)
+    public_networking = optional(bool)
+    gpu_partition_mode = optional(string, "")
   })
-}
-
-variable "digitalocean_token" {
-  description = "DigitalOcean API token for authentication"
-  type        = string
-  sensitive   = true
 }

@@ -404,9 +404,9 @@ spec:
 | `spec.databases[].dbUser` | `string` |  |  |  |
 | `spec.domains` | `[]DigitalOceanAppDomain` |  |  |  |
 | `spec.domains[].name` | `string` | yes |  |  |
-| `spec.domains[].type` | `enum` |  |  |  |
 | `spec.domains[].wildcard` | `bool` |  |  |  |
 | `spec.domains[].zone` | `string \| valueFrom` |  |  | DigitalOceanDnsZone (`status.outputs.zone_name`) |
+| `spec.domains[].type` | `string` |  |  |  |
 | `spec.envs` | `[]DigitalOceanAppEnvVar` |  |  |  |
 | `spec.envs[].key` | `string` | yes |  |  |
 | `spec.envs[].plaintext` | `string` |  |  |  |
@@ -489,6 +489,11 @@ Allowed values (use exactly as shown):
 - `tor1` -- toronto 1
 - `blr1` -- bangalore 1
 - `ams3` -- amsterdam 3
+- `nyc1` -- new york 1
+- `nyc2` -- new york 2
+- `sfo2` -- san francisco 2
+- `syd1` -- sydney 1
+- `atl1` -- atlanta 1
 
 ### spec.services
 
@@ -2515,17 +2520,6 @@ Hostname, for example www.example.com
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
-### spec.domains[].type
-
-`enum`
-
-Allowed values (use exactly as shown):
-
-- `digital_ocean_app_domain_type_unspecified`
-- `default`
-- `primary`
-- `alias`
-
 ### spec.domains[].wildcard
 
 `bool`
@@ -2539,6 +2533,15 @@ the domain is managed elsewhere and you will create records yourself.
 
 - references: DigitalOceanDnsZone (`status.outputs.zone_name`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: DigitalOceanDnsZone, name: <that resource's name>, fieldPath: status.outputs.zone_name}} -- a bare string does not parse
+
+### spec.domains[].type
+
+`string`
+
+(Optional) The role of the domain, as the provider's own tokens.
+When unset, App Platform treats the domain as DEFAULT.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["DEFAULT","PRIMARY","ALIAS"]}}
 
 ### spec.envs
 

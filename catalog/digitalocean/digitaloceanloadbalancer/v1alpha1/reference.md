@@ -169,6 +169,11 @@ Allowed values (use exactly as shown):
 - `tor1` -- toronto 1
 - `blr1` -- bangalore 1
 - `ams3` -- amsterdam 3
+- `nyc1` -- new york 1
+- `nyc2` -- new york 2
+- `sfo2` -- san francisco 2
+- `syd1` -- sydney 1
+- `atl1` -- atlanta 1
 
 ### spec.vpc
 
@@ -559,8 +564,11 @@ it. When unset, all traffic is admitted.
 Sources ALLOWED to reach the balancer, each "ip:<address>" or
 "cidr:<block>". The provider validates nothing here; catching a typo
 before apply beats debugging silently-open traffic after.
+matches() only: substring() is a Go-CEL extension and does not compile
+on protovalidate-java (the control-plane engine). IPv4 is range-checked;
+IPv6 is colon-hex (the provider accepts both).
 
-- rule: {"repeated":{"items":{"cel":[{"id":"ip_or_cidr_rule","message":"must be 'ip:<address>' or 'cidr:<block>'","expression":"(this.startsWith('ip:') && this.substring(3).isIp()) || (this.startsWith('cidr:') && this.substring(5).isIpPrefix())"}]}}}
+- rule: {"repeated":{"items":{"cel":[{"id":"ip_or_cidr_rule","message":"must be 'ip:<address>' or 'cidr:<block>'","expression":"this.matches('^ip:((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$') || this.matches('^ip:[0-9a-fA-F:]*:[0-9a-fA-F:]+$') || this.matches('^cidr:((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/(3[0-2]|[12]?[0-9])$') || this.matches('^cidr:[0-9a-fA-F:]*:[0-9a-fA-F:]+/[0-9]{1,3}$')"}]}}}
 
 ### spec.firewall.deny
 
@@ -569,7 +577,7 @@ before apply beats debugging silently-open traffic after.
 Sources DENIED from reaching the balancer, each "ip:<address>" or
 "cidr:<block>".
 
-- rule: {"repeated":{"items":{"cel":[{"id":"ip_or_cidr_rule","message":"must be 'ip:<address>' or 'cidr:<block>'","expression":"(this.startsWith('ip:') && this.substring(3).isIp()) || (this.startsWith('cidr:') && this.substring(5).isIpPrefix())"}]}}}
+- rule: {"repeated":{"items":{"cel":[{"id":"ip_or_cidr_rule","message":"must be 'ip:<address>' or 'cidr:<block>'","expression":"this.matches('^ip:((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$') || this.matches('^ip:[0-9a-fA-F:]*:[0-9a-fA-F:]+$') || this.matches('^cidr:((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/(3[0-2]|[12]?[0-9])$') || this.matches('^cidr:[0-9a-fA-F:]*:[0-9a-fA-F:]+/[0-9]{1,3}$')"}]}}}
 
 ### spec.domains
 

@@ -443,10 +443,13 @@ message DigitalOceanLoadBalancerFirewall {
   // Sources ALLOWED to reach the balancer, each "ip:<address>" or
   // "cidr:<block>". The provider validates nothing here; catching a typo
   // before apply beats debugging silently-open traffic after.
+  // matches() only: substring() is a Go-CEL extension and does not compile
+  // on protovalidate-java (the control-plane engine). IPv4 is range-checked;
+  // IPv6 is colon-hex (the provider accepts both).
   repeated string allow = 1 [(buf.validate.field).repeated.items.cel = {
     id: "ip_or_cidr_rule"
     message: "must be 'ip:<address>' or 'cidr:<block>'"
-    expression: "(this.startsWith('ip:') && this.substring(3).isIp()) || (this.startsWith('cidr:') && this.substring(5).isIpPrefix())"
+    expression: "this.matches('^ip:((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$') || this.matches('^ip:[0-9a-fA-F:]*:[0-9a-fA-F:]+$') || this.matches('^cidr:((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/(3[0-2]|[12]?[0-9])$') || this.matches('^cidr:[0-9a-fA-F:]*:[0-9a-fA-F:]+/[0-9]{1,3}$')"
   }];
 
   // Sources DENIED from reaching the balancer, each "ip:<address>" or
@@ -454,7 +457,7 @@ message DigitalOceanLoadBalancerFirewall {
   repeated string deny = 2 [(buf.validate.field).repeated.items.cel = {
     id: "ip_or_cidr_rule"
     message: "must be 'ip:<address>' or 'cidr:<block>'"
-    expression: "(this.startsWith('ip:') && this.substring(3).isIp()) || (this.startsWith('cidr:') && this.substring(5).isIpPrefix())"
+    expression: "this.matches('^ip:((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$') || this.matches('^ip:[0-9a-fA-F:]*:[0-9a-fA-F:]+$') || this.matches('^cidr:((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/(3[0-2]|[12]?[0-9])$') || this.matches('^cidr:[0-9a-fA-F:]*:[0-9a-fA-F:]+/[0-9]{1,3}$')"
   }];
 }
 

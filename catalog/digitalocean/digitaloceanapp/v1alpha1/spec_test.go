@@ -140,7 +140,7 @@ var _ = ginkgo.Describe("DigitalOceanAppSpec", func() {
 		app.Spec.Domains = []*digitalocean.DigitalOceanAppDomain{
 			{
 				Name: "www.example.com",
-				Type: digitalocean.DigitalOceanAppDomainType_primary,
+				Type: "PRIMARY",
 				Zone: &foreignkeyv1.StringValueOrRef{
 					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "example.com"},
 				},

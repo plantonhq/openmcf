@@ -21,18 +21,24 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// DigitalOceanDropletStackOutputs captures the resulting Droplet info after provisioning.
+// DigitalOceanDropletStackOutputs captures the resulting Droplet info after
+// provisioning. Live state (status, locked) is deliberately not exported:
+// apply-time snapshots go stale, and verification reads the live API.
 type DigitalOceanDropletStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// droplet unique identifier (DigitalOcean ID)
+	// droplet unique identifier (DigitalOcean's integer id, as a string)
 	DropletId string `protobuf:"bytes,1,opt,name=droplet_id,json=dropletId,proto3" json:"droplet_id,omitempty"`
-	// primary IPv4 address (public if available, otherwise private)
+	// public IPv4 address
 	Ipv4Address string `protobuf:"bytes,2,opt,name=ipv4_address,json=ipv4Address,proto3" json:"ipv4_address,omitempty"`
-	// IPv6 address (if IPv6 was enabled)
+	// public IPv6 address (empty unless enable_ipv6 is set)
 	Ipv6Address string `protobuf:"bytes,3,opt,name=ipv6_address,json=ipv6Address,proto3" json:"ipv6_address,omitempty"`
-	// image ID of the droplet’s base image
-	ImageId int64 `protobuf:"varint,6,opt,name=image_id,json=imageId,proto3" json:"image_id,omitempty"`
-	// VPC network UUID in which the droplet resides
+	// private IPv4 address inside the droplet's VPC
+	Ipv4AddressPrivate string `protobuf:"bytes,4,opt,name=ipv4_address_private,json=ipv4AddressPrivate,proto3" json:"ipv4_address_private,omitempty"`
+	// uniform resource name, e.g. "do:droplet:12345" — the form other
+	// DigitalOcean APIs (projects, firewalls) accept as a member reference
+	Urn string `protobuf:"bytes,5,opt,name=urn,proto3" json:"urn,omitempty"`
+	// UUID of the VPC the droplet landed in — the region's default VPC when
+	// spec.vpc was omitted
 	VpcUuid       string `protobuf:"bytes,7,opt,name=vpc_uuid,json=vpcUuid,proto3" json:"vpc_uuid,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -89,11 +95,18 @@ func (x *DigitalOceanDropletStackOutputs) GetIpv6Address() string {
 	return ""
 }
 
-func (x *DigitalOceanDropletStackOutputs) GetImageId() int64 {
+func (x *DigitalOceanDropletStackOutputs) GetIpv4AddressPrivate() string {
 	if x != nil {
-		return x.ImageId
+		return x.Ipv4AddressPrivate
 	}
-	return 0
+	return ""
+}
+
+func (x *DigitalOceanDropletStackOutputs) GetUrn() string {
+	if x != nil {
+		return x.Urn
+	}
+	return ""
 }
 
 func (x *DigitalOceanDropletStackOutputs) GetVpcUuid() string {
@@ -107,14 +120,15 @@ var File_catalog_digitalocean_digitaloceandroplet_v1alpha1_outputs_proto protore
 
 const file_catalog_digitalocean_digitaloceandroplet_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"?catalog/digitalocean/digitaloceandroplet/v1alpha1/outputs.proto\x125dev.planton.digitalocean.digitaloceandroplet.v1alpha1\"\xbc\x01\n" +
+	"?catalog/digitalocean/digitaloceandroplet/v1alpha1/outputs.proto\x125dev.planton.digitalocean.digitaloceandroplet.v1alpha1\"\xf5\x01\n" +
 	"\x1fDigitalOceanDropletStackOutputs\x12\x1d\n" +
 	"\n" +
 	"droplet_id\x18\x01 \x01(\tR\tdropletId\x12!\n" +
 	"\fipv4_address\x18\x02 \x01(\tR\vipv4Address\x12!\n" +
-	"\fipv6_address\x18\x03 \x01(\tR\vipv6Address\x12\x19\n" +
-	"\bimage_id\x18\x06 \x01(\x03R\aimageId\x12\x19\n" +
-	"\bvpc_uuid\x18\a \x01(\tR\avpcUuidB\xae\x03\n" +
+	"\fipv6_address\x18\x03 \x01(\tR\vipv6Address\x120\n" +
+	"\x14ipv4_address_private\x18\x04 \x01(\tR\x12ipv4AddressPrivate\x12\x10\n" +
+	"\x03urn\x18\x05 \x01(\tR\x03urn\x12\x19\n" +
+	"\bvpc_uuid\x18\a \x01(\tR\avpcUuidJ\x04\b\x06\x10\aR\bimage_idB\xae\x03\n" +
 	"9com.dev.planton.digitalocean.digitaloceandroplet.v1alpha1B\fOutputsProtoP\x01Zjgithub.com/plantonhq/planton/catalog/digitalocean/digitaloceandroplet/v1alpha1;digitaloceandropletv1alpha1\xa2\x02\x04DPDD\xaa\x025Dev.Planton.Digitalocean.Digitaloceandroplet.V1alpha1\xca\x025Dev\\Planton\\Digitalocean\\Digitaloceandroplet\\V1alpha1\xe2\x02ADev\\Planton\\Digitalocean\\Digitaloceandroplet\\V1alpha1\\GPBMetadata\xea\x029Dev::Planton::Digitalocean::Digitaloceandroplet::V1alpha1b\x06proto3"
 
 var (

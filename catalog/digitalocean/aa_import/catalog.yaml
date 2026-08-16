@@ -71,16 +71,20 @@ spec:
         The provider's custom importer takes the plain integer droplet id and
         seeds image + resize_disk into state; the normal Read deliberately
         never re-reads image (slugs drift to newer image ids upstream).
-      # None of these have a readable API counterpart: ssh_keys and
-      # user_data are write-only at create (user_data is stored hashed),
-      # and the rest are pure provider behavior flags.
+      # ssh_keys and user_data are write-only at create (user_data is stored
+      # hashed). droplet_agent, graceful_shutdown, and backup_policy have no
+      # readable API counterpart -- Read never sets them.
       config_only_attributes:
         - ssh_keys
         - user_data
-        - resize_disk
         - droplet_agent
         - graceful_shutdown
         - backup_policy
+      # Read always d.Set("resize_disk", true), so a configured false
+      # comes back as true after import/refresh. The importer also seeds
+      # true. Semantically "grow the disk on resize", textually different.
+      write_normalized_attributes:
+        - resize_disk
     - terraform_type: digitalocean_volume
       pulumi_type: digitalocean:index/volume:Volume
       id_format: "{volume_id}"

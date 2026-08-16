@@ -1518,10 +1518,8 @@ const (
 	CloudResourceKind_DigitalOceanContainerRegistry CloudResourceKind = 5002
 	CloudResourceKind_DigitalOceanDatabaseCluster   CloudResourceKind = 5003
 	CloudResourceKind_DigitalOceanDnsZone           CloudResourceKind = 5004
-	// DigitalOceanVpc is a prerequisite because the droplet spec's vpc
-	// reference is required: every droplet attaches its private network
-	// interface into one VPC, resolved to the DigitalOceanVpc's exported
-	// vpc_id output.
+	// No VPC prerequisite: the droplet spec's vpc reference is optional —
+	// an omitted vpc places the droplet in the region's default VPC.
 	CloudResourceKind_DigitalOceanDroplet  CloudResourceKind = 5005
 	CloudResourceKind_DigitalOceanFirewall CloudResourceKind = 5006
 	CloudResourceKind_DigitalOceanFunction CloudResourceKind = 5007
@@ -3528,7 +3526,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x90\xbe\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\x8c\xbe\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4093,8 +4091,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x12DigitalOceanBucket\x10\x89'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05dobkt\x12:\n" +
 	"\x1dDigitalOceanContainerRegistry\x10\x8a'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04docr\x128\n" +
 	"\x1bDigitalOceanDatabaseCluster\x10\x8b'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04dodb\x123\n" +
-	"\x13DigitalOceanDnsZone\x10\x8c'\x1a\x19\xa2\xf7\x04\x15\b\x11\x12\bv1alpha1\"\x05dodns0\x01\x126\n" +
-	"\x13DigitalOceanDroplet\x10\x8d'\x1a\x1c\xa2\xf7\x04\x18\b\x11\x12\bv1alpha1\"\x06dodrop:\x02\x94'\x121\n" +
+	"\x13DigitalOceanDnsZone\x10\x8c'\x1a\x19\xa2\xf7\x04\x15\b\x11\x12\bv1alpha1\"\x05dodns0\x01\x122\n" +
+	"\x13DigitalOceanDroplet\x10\x8d'\x1a\x18\xa2\xf7\x04\x14\b\x11\x12\bv1alpha1\"\x06dodrop\x121\n" +
 	"\x14DigitalOceanFirewall\x10\x8e'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04dofw\x121\n" +
 	"\x14DigitalOceanFunction\x10\x8f'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04dofn\x12@\n" +
 	"\x1dDigitalOceanKubernetesCluster\x10\x90'\x1a\x1c\xa2\xf7\x04\x18\b\x11\x12\bv1alpha1\"\x04dokc0\x01:\x02\x94'\x12@\n" +

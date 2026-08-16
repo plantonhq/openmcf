@@ -444,20 +444,18 @@ message DigitalOceanAppIngress {
 // Domains and in-app databases
 // -----------------------------------------------------------------------------
 
-enum DigitalOceanAppDomainType {
-  digital_ocean_app_domain_type_unspecified = 0;
-  default = 1;
-  primary = 2;
-  alias = 3;
-}
-
 message DigitalOceanAppDomain {
+  // Retired field. type was a DigitalOceanAppDomainType enum whose "default"
+  // value collided with the Java keyword and could never compile on the Java
+  // stub path; it returns as a string of the provider's own uppercase tokens
+  // at a new number, same name, same meaning.
+  reserved 2;
+
   // Hostname, for example www.example.com
   string name = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1
   ];
-  DigitalOceanAppDomainType type = 2;
   bool wildcard = 3;
   // DigitalOcean-managed DNS zone that should receive the records. Omit when
   // the domain is managed elsewhere and you will create records yourself.
@@ -466,6 +464,19 @@ message DigitalOceanAppDomain {
     (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_name",
     (dev.planton.shared.options.diagram_label) = "dns zone"
+  ];
+
+  // (Optional) The role of the domain, as the provider's own tokens.
+  // When unset, App Platform treats the domain as DEFAULT.
+  string type = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "DEFAULT",
+        "PRIMARY",
+        "ALIAS"
+      ]
+    }
   ];
 }
 

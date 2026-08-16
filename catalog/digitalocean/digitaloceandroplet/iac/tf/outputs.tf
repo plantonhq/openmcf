@@ -1,54 +1,33 @@
-# Output the Droplet ID
+# Stack outputs, exactly the DigitalOceanDropletStackOutputs contract.
+# Live state (status, locked) is deliberately not exported: apply-time
+# snapshots go stale, and verification reads the live API.
+
 output "droplet_id" {
   description = "The unique identifier of the created Droplet"
-  value       = digitalocean_droplet.droplet.id
+  value       = digitalocean_droplet.this.id
 }
 
-# Output the IPv4 address
 output "ipv4_address" {
   description = "The public IPv4 address of the Droplet"
-  value       = digitalocean_droplet.droplet.ipv4_address
+  value       = digitalocean_droplet.this.ipv4_address
 }
 
-# Output the IPv6 address (if enabled)
 output "ipv6_address" {
-  description = "The public IPv6 address of the Droplet (null if IPv6 not enabled)"
-  value       = digitalocean_droplet.droplet.ipv6_address
+  description = "The public IPv6 address (empty unless IPv6 is enabled)"
+  value       = digitalocean_droplet.this.ipv6_address
 }
 
-# Output the private IPv4 address (VPC)
 output "ipv4_address_private" {
-  description = "The private IPv4 address within the VPC"
-  value       = digitalocean_droplet.droplet.ipv4_address_private
+  description = "The private IPv4 address inside the Droplet's VPC"
+  value       = digitalocean_droplet.this.ipv4_address_private
 }
 
-# Output the image ID
-output "image_id" {
-  description = "The image ID or slug used to create the Droplet"
-  value       = digitalocean_droplet.droplet.image
-}
-
-# Output the VPC UUID
-output "vpc_uuid" {
-  description = "The VPC UUID the Droplet is assigned to"
-  value       = digitalocean_droplet.droplet.vpc_uuid
-}
-
-# Output the Droplet URN
 output "urn" {
-  description = "The uniform resource name (URN) of the Droplet"
-  value       = digitalocean_droplet.droplet.urn
+  description = "The uniform resource name, accepted by projects and firewalls as a member reference"
+  value       = digitalocean_droplet.this.urn
 }
 
-# Output status
-output "status" {
-  description = "The status of the Droplet (active, off, archive)"
-  value       = digitalocean_droplet.droplet.status
+output "vpc_uuid" {
+  description = "The UUID of the VPC the Droplet landed in (the region's default VPC when spec.vpc was omitted)"
+  value       = digitalocean_droplet.this.vpc_uuid
 }
-
-# Output all tags
-output "tags" {
-  description = "The tags applied to the Droplet"
-  value       = digitalocean_droplet.droplet.tags
-}
-

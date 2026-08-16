@@ -18,7 +18,6 @@ resources:
         arg: ipv6
       - spec: spec.enable_backups
         arg: backups
-      # The spec inverts the provider default: monitoring is on unless
-      # disabled, so the module maps disable_monitoring = !monitoring.
-      - spec: spec.disable_monitoring
-        arg: monitoring
+    exclusions:
+      - arg: ipv6_address
+        reason: Optional in the schema but inert at the pin -- the provider never expands it into any create or update API call; only Read writes it back from live state, so a spec field would be a do-nothing knob. The address is exported as the ipv6_address stack output.

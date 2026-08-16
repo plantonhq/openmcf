@@ -1,0 +1,51 @@
+# Full-surface DigitalOceanDroplet: composes the VPC fixture (the spec's
+# vpc is OPTIONAL, so the fixture rides the e2e-prerequisites annotation,
+# never a registry edge) and proves weekly backups with a policy window,
+# the monitoring and web-console agents, IPv6, tags, cloud-init user data,
+# graceful shutdown, and an explicit resize_disk=false (the reversible
+# CPU/RAM-only resize mode). ssh_keys, volume_ids, gpu_partition_mode, and
+# public_networking=false are deliberately absent (deferred arms -- see
+# profile.yaml).
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDroplet
+metadata:
+  name: planton-oss-e2e-digitaloceandroplet-full
+  id: planton-oss-e2e-digitaloceandroplet-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandroplet
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "DigitalOceanVpc"
+  tags:
+    - planton-e2e
+spec:
+  dropletName: pltn-e2e-dodrop-full
+  region: nyc3
+  size: s-1vcpu-1gb
+  image: ubuntu-24-04-x64
+  vpc:
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: planton-oss-e2e-digitaloceanvpc-prereq
+      fieldPath: status.outputs.vpc_id
+  enableIpv6: true
+  enableBackups: true
+  backupPolicy:
+    plan: weekly
+    weekday: SUN
+    hour: 4
+  monitoring: true
+  dropletAgent: true
+  gracefulShutdown: true
+  resizeDisk: false
+  tags:
+    - planton-e2e-web
+    - env:e2e
+  userData: |
+    #cloud-config
+    package_update: true
+    runcmd:
+      - echo "planton e2e droplet ready" > /var/tmp/planton-e2e

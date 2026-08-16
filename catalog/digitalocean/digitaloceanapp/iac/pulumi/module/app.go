@@ -702,8 +702,8 @@ func buildDomains(in []*do.DigitalOceanAppDomain) digitalocean.AppSpecDomainName
 			Name:     pulumi.String(d.GetName()),
 			Wildcard: pulumi.Bool(d.GetWildcard()),
 		}
-		if t := providerEnum(d.GetType().String()); t != "" {
-			args.Type = pulumi.String(t)
+		if d.GetType() != "" {
+			args.Type = pulumi.String(d.GetType())
 		}
 		if d.GetZone() != nil && d.GetZone().GetValue() != "" {
 			args.Zone = pulumi.String(d.GetZone().GetValue())

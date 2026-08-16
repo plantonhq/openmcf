@@ -1822,7 +1822,7 @@ Allowed values (use exactly as shown):
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet` -- DigitalOceanVpc is a prerequisite because the droplet spec's vpc reference is required: every droplet attaches its private network interface into one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanDroplet` -- No VPC prerequisite: the droplet spec's vpc reference is optional — an omitted vpc places the droplet in the region's default VPC.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
 - `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
@@ -2695,7 +2695,7 @@ Allowed values (use exactly as shown):
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet` -- DigitalOceanVpc is a prerequisite because the droplet spec's vpc reference is required: every droplet attaches its private network interface into one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanDroplet` -- No VPC prerequisite: the droplet spec's vpc reference is optional — an omitted vpc places the droplet in the region's default VPC.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
 - `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
@@ -4721,7 +4721,7 @@ Allowed values (use exactly as shown):
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet` -- DigitalOceanVpc is a prerequisite because the droplet spec's vpc reference is required: every droplet attaches its private network interface into one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanDroplet` -- No VPC prerequisite: the droplet spec's vpc reference is optional — an omitted vpc places the droplet in the region's default VPC.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
 - `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
@@ -5594,7 +5594,7 @@ Allowed values (use exactly as shown):
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet` -- DigitalOceanVpc is a prerequisite because the droplet spec's vpc reference is required: every droplet attaches its private network interface into one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanDroplet` -- No VPC prerequisite: the droplet spec's vpc reference is optional — an omitted vpc places the droplet in the region's default VPC.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
 - `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
@@ -7656,7 +7656,7 @@ Allowed values (use exactly as shown):
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet` -- DigitalOceanVpc is a prerequisite because the droplet spec's vpc reference is required: every droplet attaches its private network interface into one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanDroplet` -- No VPC prerequisite: the droplet spec's vpc reference is optional — an omitted vpc places the droplet in the region's default VPC.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
 - `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
@@ -8529,7 +8529,7 @@ Allowed values (use exactly as shown):
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet` -- DigitalOceanVpc is a prerequisite because the droplet spec's vpc reference is required: every droplet attaches its private network interface into one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanDroplet` -- No VPC prerequisite: the droplet spec's vpc reference is optional — an omitted vpc places the droplet in the region's default VPC.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
 - `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.

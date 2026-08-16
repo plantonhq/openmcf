@@ -700,6 +700,9 @@ type DigitalOceanLoadBalancerFirewall struct {
 	// Sources ALLOWED to reach the balancer, each "ip:<address>" or
 	// "cidr:<block>". The provider validates nothing here; catching a typo
 	// before apply beats debugging silently-open traffic after.
+	// matches() only: substring() is a Go-CEL extension and does not compile
+	// on protovalidate-java (the control-plane engine). IPv4 is range-checked;
+	// IPv6 is colon-hex (the provider accepts both).
 	Allow []string `protobuf:"bytes,1,rep,name=allow,proto3" json:"allow,omitempty"`
 	// Sources DENIED from reaching the balancer, each "ip:<address>" or
 	// "cidr:<block>".
@@ -1029,12 +1032,12 @@ const file_catalog_digitalocean_digitaloceanloadbalancer_v1alpha1_spec_proto_raw
 	"\xbaH\a\xd8\x01\x01r\x02\x18(R\n" +
 	"cookieName\x124\n" +
 	"\x12cookie_ttl_seconds\x18\x03 \x01(\rB\x06\xbaH\x03\xd8\x01\x01R\x10cookieTtlSeconds:\x87\x02\xbaH\x83\x02\x1a\x80\x02\n" +
-	"\x15cookie_leaves_by_type\x12Ptype cookies requires cookie_name and cookie_ttl_seconds; type none forbids them\x1a\x94\x01this.type == 'cookies' ? (this.cookie_name.size() >= 2 && this.cookie_ttl_seconds != 0u) : (this.cookie_name == '' && this.cookie_ttl_seconds == 0u)\"\xd4\x03\n" +
-	" DigitalOceanLoadBalancerFirewall\x12\xd7\x01\n" +
-	"\x05allow\x18\x01 \x03(\tB\xc0\x01\xbaH\xbc\x01\x92\x01\xb8\x01\"\xb5\x01\xba\x01\xb1\x01\n" +
-	"\x0fip_or_cidr_rule\x12(must be 'ip:<address>' or 'cidr:<block>'\x1at(this.startsWith('ip:') && this.substring(3).isIp()) || (this.startsWith('cidr:') && this.substring(5).isIpPrefix())R\x05allow\x12\xd5\x01\n" +
-	"\x04deny\x18\x02 \x03(\tB\xc0\x01\xbaH\xbc\x01\x92\x01\xb8\x01\"\xb5\x01\xba\x01\xb1\x01\n" +
-	"\x0fip_or_cidr_rule\x12(must be 'ip:<address>' or 'cidr:<block>'\x1at(this.startsWith('ip:') && this.substring(3).isIp()) || (this.startsWith('cidr:') && this.substring(5).isIpPrefix())R\x04deny\"\xe7\x01\n" +
+	"\x15cookie_leaves_by_type\x12Ptype cookies requires cookie_name and cookie_ttl_seconds; type none forbids them\x1a\x94\x01this.type == 'cookies' ? (this.cookie_name.size() >= 2 && this.cookie_ttl_seconds != 0u) : (this.cookie_name == '' && this.cookie_ttl_seconds == 0u)\"\xb0\a\n" +
+	" DigitalOceanLoadBalancerFirewall\x12\xc5\x03\n" +
+	"\x05allow\x18\x01 \x03(\tB\xae\x03\xbaH\xaa\x03\x92\x01\xa6\x03\"\xa3\x03\xba\x01\x9f\x03\n" +
+	"\x0fip_or_cidr_rule\x12(must be 'ip:<address>' or 'cidr:<block>'\x1a\xe1\x02this.matches('^ip:((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$') || this.matches('^ip:[0-9a-fA-F:]*:[0-9a-fA-F:]+$') || this.matches('^cidr:((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/(3[0-2]|[12]?[0-9])$') || this.matches('^cidr:[0-9a-fA-F:]*:[0-9a-fA-F:]+/[0-9]{1,3}$')R\x05allow\x12\xc3\x03\n" +
+	"\x04deny\x18\x02 \x03(\tB\xae\x03\xbaH\xaa\x03\x92\x01\xa6\x03\"\xa3\x03\xba\x01\x9f\x03\n" +
+	"\x0fip_or_cidr_rule\x12(must be 'ip:<address>' or 'cidr:<block>'\x1a\xe1\x02this.matches('^ip:((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$') || this.matches('^ip:[0-9a-fA-F:]*:[0-9a-fA-F:]+$') || this.matches('^cidr:((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/(3[0-2]|[12]?[0-9])$') || this.matches('^cidr:[0-9a-fA-F:]*:[0-9a-fA-F:]+/[0-9]{1,3}$')R\x04deny\"\xe7\x01\n" +
 	"\x1eDigitalOceanLoadBalancerDomain\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02h\x01R\x04name\x12\x1d\n" +

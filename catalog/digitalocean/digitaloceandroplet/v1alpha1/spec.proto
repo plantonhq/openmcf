@@ -7,66 +7,192 @@ import "catalog/digitalocean/region.proto";
 import "shared/foreignkey/v1/foreign_key.proto";
 import "shared/options/options.proto";
 
-// Timezone options for Droplet’s system clock.
-enum DigitalOceanDropletTimezone {
-  utc = 0; // coordinated universal time
-  local = 1; // local timezone
-}
-
-// DigitalOceanDropletSpec defines the user configuration for a DigitalOcean Droplet (VM).
+// DigitalOceanDropletSpec models the full digitalocean_droplet resource
+// surface: base image and sizing, region and VPC placement, SSH key
+// injection, automated backups with a weekly/daily policy window, IPv6 and
+// public-network toggles, the monitoring and web-console agents, block
+// volume attachments, cloud-init user data, tags, GPU partitioning, and the
+// resize/shutdown behavior flags.
 message DigitalOceanDropletSpec {
-  // droplet hostname (DNS-compatible, <=63 chars)
+  // A backup policy describes WHEN backups run, so it is only meaningful
+  // when automated backups are enabled; the provider rejects a policy on a
+  // droplet with backups disabled at create time.
+  option (buf.validate.message).cel = {
+    id: "backup_policy_requires_backups"
+    message: "backup_policy can only be set when enable_backups is true"
+    expression: "!has(this.backup_policy) || this.enable_backups"
+  };
+
+  // Retired fields. disable_monitoring inverted the provider's monitoring
+  // toggle (and its default); timezone mapped to nothing in the provider —
+  // a droplet's clock is configured through cloud-init user_data, not the
+  // API. Their numbers and names must never be reused with a different
+  // meaning.
+  reserved 9, 13;
+  reserved "disable_monitoring", "timezone";
+
+  // Droplet name, shown in the control panel and used as the instance
+  // hostname. DigitalOcean accepts hostname-style names: letters, digits,
+  // hyphens, and dots, up to 255 characters. Renaming updates in place.
   string droplet_name = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.pattern = "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
-    (buf.validate.field).string.max_len = 63
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$",
+    (buf.validate.field).string.max_len = 255
   ];
 
-  // region slug (datacenter location for the droplet)
-  DigitalOceanRegion region = 2 [(buf.validate.field).required = true];
+  // (Optional) The region to create the droplet in. When unset, DigitalOcean
+  // chooses a region with available capacity. Cannot be changed after
+  // creation.
+  DigitalOceanRegion region = 2;
 
-  // Droplet size slug, e.g. "s-2vcpu-4gb" or "g-8vcpu-32gb".
-  // Valid values: must match the regexp "^[a-z0-9]+(-[a-z0-9]+)+$" and
-  // must be accepted by the DigitalOcean /v2/sizes API at creation time.
+  // Droplet size slug, e.g. "s-1vcpu-1gb" or "g-8vcpu-32gb". Changing the
+  // size resizes the droplet (it is powered off during the resize); whether
+  // the resize permanently grows the disk is governed by resize_disk.
   string size = 3 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.pattern = "^[a-z0-9]+(-[a-z0-9]+)+$"
   ];
 
-  // image slug for the droplet base image (e.g. "ubuntu-22-04-x64")
+  // Base image: an OS image slug (e.g. "ubuntu-24-04-x64"), a custom image
+  // ID, or a droplet snapshot ID (both numeric). Cannot be changed after
+  // creation.
   string image = 4 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.pattern = "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
   ];
 
-  // target vpc network uuid for the droplet
+  // (Optional) Reference to the DigitalOcean VPC to attach the droplet's
+  // private network interface to. When unset, the droplet lands in the
+  // region's default VPC (the resulting UUID is exported as the vpc_uuid
+  // output either way). Cannot be changed after creation.
   dev.planton.shared.foreignkey.v1.StringValueOrRef vpc = 6 [
-    (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanVpc,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
   ];
 
-  // enable IPv6 networking (disabled by default)
+  // Enable public IPv6 networking. Enabling on an existing droplet updates
+  // in place; disabling it forces the droplet to be recreated.
   bool enable_ipv6 = 7;
 
-  // enable automated backups (disabled by default)
+  // Enable automated backups. Toggling updates in place. The backup window
+  // is configured via backup_policy; without one, DigitalOcean defaults to
+  // a daily plan.
   bool enable_backups = 8;
 
-  // disable digitalocean monitoring agent (monitoring on by default)
-  bool disable_monitoring = 9;
-
-  // block storage volumes to attach (must reside in same region)
+  // Block storage volumes to attach, referencing DigitalOceanVolume
+  // resources in the same region. Attachment changes update in place.
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef volume_ids = 10 [
     (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanVolume,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.volume_id"
   ];
 
-  // tags to apply to the droplet (must be unique)
-  repeated string tags = 11 [(buf.validate.field).repeated.unique = true];
+  // (Optional) Tags applied to the droplet in DigitalOcean, in addition to
+  // the standard Planton labels both provisioners always apply. Tags are
+  // how firewalls and load balancers target droplet groups.
+  repeated string tags = 11 [
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.items.string.pattern = "^[a-zA-Z0-9:\\-_]{1,255}$"
+  ];
 
-  // cloud-init user data script (<=32 KiB)
+  // (Optional) Cloud-init user data executed on first boot (<= 32 KiB).
+  // Cannot be changed after creation; DigitalOcean stores only a hash of it.
   string user_data = 12 [(buf.validate.field).string.max_bytes = 32768];
 
-  // timezone setting for the droplet's clock (default: UTC)
-  optional DigitalOceanDropletTimezone timezone = 13 [(dev.planton.shared.options.default) = "UTC"];
+  // Install the DigitalOcean monitoring agent for enhanced graphs and
+  // monitor alert policies. Defaults OFF, matching the provider. Cannot be
+  // changed after creation.
+  bool monitoring = 14;
+
+  // (Optional) SSH keys to inject at creation — the standard access path to
+  // a droplet. Each entry is the ID or fingerprint of an SSH key already
+  // registered on the DigitalOcean account. Keys cannot be added or removed
+  // after creation: any change forces the droplet to be recreated.
+  repeated string ssh_keys = 15 [
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.items.string.min_len = 1
+  ];
+
+  // (Optional) When and how often automated backups run. Requires
+  // enable_backups; omitted with backups enabled, DigitalOcean defaults to
+  // a daily plan in a window it picks.
+  DigitalOceanDropletBackupPolicy backup_policy = 16;
+
+  // (Optional) Install the DigitalOcean agent that powers the web console
+  // in the control panel. Unset, DigitalOcean installs it where the image
+  // supports it and silently skips otherwise; explicit true makes an
+  // installation failure fatal; explicit false prevents installation.
+  // Cannot be changed after creation.
+  optional bool droplet_agent = 17;
+
+  // Gracefully shut the droplet down (ACPI power-off, letting the OS flush
+  // and stop services) before it is destroyed, instead of the default
+  // immediate power-off. Updates in place; it only affects destroy-time
+  // behavior.
+  bool graceful_shutdown = 18;
+
+  // Whether a size change also permanently grows the disk. DigitalOcean
+  // defaults this ON (unset defers to that): the resize applies fully and
+  // cannot be reverted to a smaller size later. Set false for a CPU/RAM-only
+  // resize that stays reversible.
+  optional bool resize_disk = 19 [(dev.planton.shared.options.recommended_default) = "true"];
+
+  // (Optional) Public networking is enabled on every new droplet by
+  // default; set explicit false to create a droplet with NO public network
+  // interface at all (reachable only inside its VPC). Cannot be changed
+  // after creation.
+  optional bool public_networking = 20;
+
+  // (Optional) Partition mode for a GPU droplet, only supported on GPU
+  // sizes that advertise it. Omit for a full GPU (equivalent to
+  // PARTITION_MODE_SPX_NPS1). Cannot be changed after creation.
+  string gpu_partition_mode = 21 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "PARTITION_MODE_SPX_NPS1",
+        "PARTITION_MODE_DPX_NPS2"
+      ]
+    }
+  ];
+}
+
+// DigitalOceanDropletBackupPolicy is the weekly or daily window in which
+// DigitalOcean runs automated backups. A droplet has exactly one policy;
+// DigitalOcean picks a daily window automatically when none is set.
+message DigitalOceanDropletBackupPolicy {
+  // Backup plan: "daily" or "weekly".
+  string plan = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "daily",
+        "weekly"
+      ]
+    }
+  ];
+
+  // Day of the week a weekly backup runs, as the API's three-letter
+  // uppercase token.
+  string weekday = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "SUN",
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT"
+      ]
+    }
+  ];
+
+  // Hour of the day the backup window starts (0-20, mirroring the
+  // provider's own bounds). The API schedules windows on a four-hour grid:
+  // 0, 4, 8, 12, 16, or 20.
+  int32 hour = 3 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 20
+  ];
 }

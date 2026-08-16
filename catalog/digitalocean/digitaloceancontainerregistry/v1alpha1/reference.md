@@ -79,6 +79,11 @@ Allowed values (use exactly as shown):
 - `tor1` -- toronto 1
 - `blr1` -- bangalore 1
 - `ams3` -- amsterdam 3
+- `nyc1` -- new york 1
+- `nyc2` -- new york 2
+- `sfo2` -- san francisco 2
+- `syd1` -- sydney 1
+- `atl1` -- atlanta 1
 
 ### spec.garbageCollectionEnabled
 

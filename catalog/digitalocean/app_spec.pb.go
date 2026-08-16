@@ -360,58 +360,6 @@ func (DigitalOceanAppAlertWindow) EnumDescriptor() ([]byte, []int) {
 	return file_catalog_digitalocean_app_spec_proto_rawDescGZIP(), []int{5}
 }
 
-type DigitalOceanAppDomainType int32
-
-const (
-	DigitalOceanAppDomainType_digital_ocean_app_domain_type_unspecified DigitalOceanAppDomainType = 0
-	DigitalOceanAppDomainType_default                                   DigitalOceanAppDomainType = 1
-	DigitalOceanAppDomainType_primary                                   DigitalOceanAppDomainType = 2
-	DigitalOceanAppDomainType_alias                                     DigitalOceanAppDomainType = 3
-)
-
-// Enum value maps for DigitalOceanAppDomainType.
-var (
-	DigitalOceanAppDomainType_name = map[int32]string{
-		0: "digital_ocean_app_domain_type_unspecified",
-		1: "default",
-		2: "primary",
-		3: "alias",
-	}
-	DigitalOceanAppDomainType_value = map[string]int32{
-		"digital_ocean_app_domain_type_unspecified": 0,
-		"default": 1,
-		"primary": 2,
-		"alias":   3,
-	}
-)
-
-func (x DigitalOceanAppDomainType) Enum() *DigitalOceanAppDomainType {
-	p := new(DigitalOceanAppDomainType)
-	*p = x
-	return p
-}
-
-func (x DigitalOceanAppDomainType) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (DigitalOceanAppDomainType) Descriptor() protoreflect.EnumDescriptor {
-	return file_catalog_digitalocean_app_spec_proto_enumTypes[6].Descriptor()
-}
-
-func (DigitalOceanAppDomainType) Type() protoreflect.EnumType {
-	return &file_catalog_digitalocean_app_spec_proto_enumTypes[6]
-}
-
-func (x DigitalOceanAppDomainType) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use DigitalOceanAppDomainType.Descriptor instead.
-func (DigitalOceanAppDomainType) EnumDescriptor() ([]byte, []int) {
-	return file_catalog_digitalocean_app_spec_proto_rawDescGZIP(), []int{6}
-}
-
 type DigitalOceanAppDatabaseEngine int32
 
 const (
@@ -460,11 +408,11 @@ func (x DigitalOceanAppDatabaseEngine) String() string {
 }
 
 func (DigitalOceanAppDatabaseEngine) Descriptor() protoreflect.EnumDescriptor {
-	return file_catalog_digitalocean_app_spec_proto_enumTypes[7].Descriptor()
+	return file_catalog_digitalocean_app_spec_proto_enumTypes[6].Descriptor()
 }
 
 func (DigitalOceanAppDatabaseEngine) Type() protoreflect.EnumType {
-	return &file_catalog_digitalocean_app_spec_proto_enumTypes[7]
+	return &file_catalog_digitalocean_app_spec_proto_enumTypes[6]
 }
 
 func (x DigitalOceanAppDatabaseEngine) Number() protoreflect.EnumNumber {
@@ -473,7 +421,7 @@ func (x DigitalOceanAppDatabaseEngine) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use DigitalOceanAppDatabaseEngine.Descriptor instead.
 func (DigitalOceanAppDatabaseEngine) EnumDescriptor() ([]byte, []int) {
-	return file_catalog_digitalocean_app_spec_proto_rawDescGZIP(), []int{7}
+	return file_catalog_digitalocean_app_spec_proto_rawDescGZIP(), []int{6}
 }
 
 type DigitalOceanAppEgressType int32
@@ -509,11 +457,11 @@ func (x DigitalOceanAppEgressType) String() string {
 }
 
 func (DigitalOceanAppEgressType) Descriptor() protoreflect.EnumDescriptor {
-	return file_catalog_digitalocean_app_spec_proto_enumTypes[8].Descriptor()
+	return file_catalog_digitalocean_app_spec_proto_enumTypes[7].Descriptor()
 }
 
 func (DigitalOceanAppEgressType) Type() protoreflect.EnumType {
-	return &file_catalog_digitalocean_app_spec_proto_enumTypes[8]
+	return &file_catalog_digitalocean_app_spec_proto_enumTypes[7]
 }
 
 func (x DigitalOceanAppEgressType) Number() protoreflect.EnumNumber {
@@ -522,7 +470,7 @@ func (x DigitalOceanAppEgressType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use DigitalOceanAppEgressType.Descriptor instead.
 func (DigitalOceanAppEgressType) EnumDescriptor() ([]byte, []int) {
-	return file_catalog_digitalocean_app_spec_proto_rawDescGZIP(), []int{8}
+	return file_catalog_digitalocean_app_spec_proto_rawDescGZIP(), []int{7}
 }
 
 // One environment variable on an app or a component.
@@ -2313,12 +2261,14 @@ func (x *DigitalOceanAppIngress) GetSecureHeader() *DigitalOceanAppSecureHeader 
 type DigitalOceanAppDomain struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Hostname, for example www.example.com
-	Name     string                    `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Type     DigitalOceanAppDomainType `protobuf:"varint,2,opt,name=type,proto3,enum=dev.planton.digitalocean.DigitalOceanAppDomainType" json:"type,omitempty"`
-	Wildcard bool                      `protobuf:"varint,3,opt,name=wildcard,proto3" json:"wildcard,omitempty"`
+	Name     string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Wildcard bool   `protobuf:"varint,3,opt,name=wildcard,proto3" json:"wildcard,omitempty"`
 	// DigitalOcean-managed DNS zone that should receive the records. Omit when
 	// the domain is managed elsewhere and you will create records yourself.
-	Zone          *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=zone,proto3" json:"zone,omitempty"`
+	Zone *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=zone,proto3" json:"zone,omitempty"`
+	// (Optional) The role of the domain, as the provider's own tokens.
+	// When unset, App Platform treats the domain as DEFAULT.
+	Type          string `protobuf:"bytes,5,opt,name=type,proto3" json:"type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2360,13 +2310,6 @@ func (x *DigitalOceanAppDomain) GetName() string {
 	return ""
 }
 
-func (x *DigitalOceanAppDomain) GetType() DigitalOceanAppDomainType {
-	if x != nil {
-		return x.Type
-	}
-	return DigitalOceanAppDomainType_digital_ocean_app_domain_type_unspecified
-}
-
 func (x *DigitalOceanAppDomain) GetWildcard() bool {
 	if x != nil {
 		return x.Wildcard
@@ -2379,6 +2322,13 @@ func (x *DigitalOceanAppDomain) GetZone() *v1.StringValueOrRef {
 		return x.Zone
 	}
 	return nil
+}
+
+func (x *DigitalOceanAppDomain) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
 }
 
 // In-app database attachment. A non-production database is created and
@@ -2700,13 +2650,13 @@ const file_catalog_digitalocean_app_spec_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\"\xc0\x01\n" +
 	"\x16DigitalOceanAppIngress\x12J\n" +
 	"\x05rules\x18\x01 \x03(\v24.dev.planton.digitalocean.DigitalOceanAppIngressRuleR\x05rules\x12Z\n" +
-	"\rsecure_header\x18\x02 \x01(\v25.dev.planton.digitalocean.DigitalOceanAppSecureHeaderR\fsecureHeader\"\x97\x02\n" +
+	"\rsecure_header\x18\x02 \x01(\v25.dev.planton.digitalocean.DigitalOceanAppSecureHeaderR\fsecureHeader\"\x8b\x02\n" +
 	"\x15DigitalOceanAppDomain\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12G\n" +
-	"\x04type\x18\x02 \x01(\x0e23.dev.planton.digitalocean.DigitalOceanAppDomainTypeR\x04type\x12\x1a\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12\x1a\n" +
 	"\bwildcard\x18\x03 \x01(\bR\bwildcard\x12y\n" +
-	"\x04zone\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xb2\xa6\x1d\bdns zone\x88\xd4a\x8c'\x92\xd4a\x18status.outputs.zone_name\x98\xd4a\x01R\x04zone\"\xf2\x02\n" +
+	"\x04zone\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xb2\xa6\x1d\bdns zone\x88\xd4a\x8c'\x92\xd4a\x18status.outputs.zone_name\x98\xd4a\x01R\x04zone\x125\n" +
+	"\x04type\x18\x05 \x01(\tB!\xbaH\x1e\xd8\x01\x01r\x19R\aDEFAULTR\aPRIMARYR\x05ALIASR\x04typeJ\x04\b\x02\x10\x03\"\xf2\x02\n" +
 	"\x17DigitalOceanAppDatabase\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12O\n" +
 	"\x06engine\x18\x02 \x01(\x0e27.dev.planton.digitalocean.DigitalOceanAppDatabaseEngineR\x06engine\x12\x18\n" +
@@ -2758,12 +2708,7 @@ const file_catalog_digitalocean_app_spec_proto_rawDesc = "" +
 	"\ffive_minutes\x10\x01\x12\x0f\n" +
 	"\vten_minutes\x10\x02\x12\x12\n" +
 	"\x0ethirty_minutes\x10\x03\x12\f\n" +
-	"\bone_hour\x10\x04*o\n" +
-	"\x19DigitalOceanAppDomainType\x12-\n" +
-	")digital_ocean_app_domain_type_unspecified\x10\x00\x12\v\n" +
-	"\adefault\x10\x01\x12\v\n" +
-	"\aprimary\x10\x02\x12\t\n" +
-	"\x05alias\x10\x03*\xa4\x01\n" +
+	"\bone_hour\x10\x04*\xa4\x01\n" +
 	"\x1dDigitalOceanAppDatabaseEngine\x121\n" +
 	"-digital_ocean_app_database_engine_unspecified\x10\x00\x12\t\n" +
 	"\x05mysql\x10\x01\x12\x06\n" +
@@ -2794,7 +2739,7 @@ func file_catalog_digitalocean_app_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_digitalocean_app_spec_proto_rawDescData
 }
 
-var file_catalog_digitalocean_app_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
+var file_catalog_digitalocean_app_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
 var file_catalog_digitalocean_app_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
 var file_catalog_digitalocean_app_spec_proto_goTypes = []any{
 	(DigitalOceanAppEnvScope)(0),               // 0: dev.planton.digitalocean.DigitalOceanAppEnvScope
@@ -2803,72 +2748,70 @@ var file_catalog_digitalocean_app_spec_proto_goTypes = []any{
 	(DigitalOceanAppComponentAlertRule)(0),     // 3: dev.planton.digitalocean.DigitalOceanAppComponentAlertRule
 	(DigitalOceanAppAlertOperator)(0),          // 4: dev.planton.digitalocean.DigitalOceanAppAlertOperator
 	(DigitalOceanAppAlertWindow)(0),            // 5: dev.planton.digitalocean.DigitalOceanAppAlertWindow
-	(DigitalOceanAppDomainType)(0),             // 6: dev.planton.digitalocean.DigitalOceanAppDomainType
-	(DigitalOceanAppDatabaseEngine)(0),         // 7: dev.planton.digitalocean.DigitalOceanAppDatabaseEngine
-	(DigitalOceanAppEgressType)(0),             // 8: dev.planton.digitalocean.DigitalOceanAppEgressType
-	(*DigitalOceanAppEnvVar)(nil),              // 9: dev.planton.digitalocean.DigitalOceanAppEnvVar
-	(*DigitalOceanAppGitSource)(nil),           // 10: dev.planton.digitalocean.DigitalOceanAppGitSource
-	(*DigitalOceanAppGithubSource)(nil),        // 11: dev.planton.digitalocean.DigitalOceanAppGithubSource
-	(*DigitalOceanAppGitlabSource)(nil),        // 12: dev.planton.digitalocean.DigitalOceanAppGitlabSource
-	(*DigitalOceanAppBitbucketSource)(nil),     // 13: dev.planton.digitalocean.DigitalOceanAppBitbucketSource
-	(*DigitalOceanAppImageSource)(nil),         // 14: dev.planton.digitalocean.DigitalOceanAppImageSource
-	(*DigitalOceanAppHealthCheck)(nil),         // 15: dev.planton.digitalocean.DigitalOceanAppHealthCheck
-	(*DigitalOceanAppAutoscaling)(nil),         // 16: dev.planton.digitalocean.DigitalOceanAppAutoscaling
-	(*DigitalOceanAppTermination)(nil),         // 17: dev.planton.digitalocean.DigitalOceanAppTermination
-	(*DigitalOceanAppSlackWebhook)(nil),        // 18: dev.planton.digitalocean.DigitalOceanAppSlackWebhook
-	(*DigitalOceanAppAlertDestinations)(nil),   // 19: dev.planton.digitalocean.DigitalOceanAppAlertDestinations
-	(*DigitalOceanAppAlert)(nil),               // 20: dev.planton.digitalocean.DigitalOceanAppAlert
-	(*DigitalOceanAppComponentAlert)(nil),      // 21: dev.planton.digitalocean.DigitalOceanAppComponentAlert
-	(*DigitalOceanAppPapertrailLog)(nil),       // 22: dev.planton.digitalocean.DigitalOceanAppPapertrailLog
-	(*DigitalOceanAppDatadogLog)(nil),          // 23: dev.planton.digitalocean.DigitalOceanAppDatadogLog
-	(*DigitalOceanAppLogtailLog)(nil),          // 24: dev.planton.digitalocean.DigitalOceanAppLogtailLog
-	(*DigitalOceanAppOpenSearchBasicAuth)(nil), // 25: dev.planton.digitalocean.DigitalOceanAppOpenSearchBasicAuth
-	(*DigitalOceanAppOpenSearchLog)(nil),       // 26: dev.planton.digitalocean.DigitalOceanAppOpenSearchLog
-	(*DigitalOceanAppLogDestination)(nil),      // 27: dev.planton.digitalocean.DigitalOceanAppLogDestination
-	(*DigitalOceanAppCorsAllowOrigins)(nil),    // 28: dev.planton.digitalocean.DigitalOceanAppCorsAllowOrigins
-	(*DigitalOceanAppCors)(nil),                // 29: dev.planton.digitalocean.DigitalOceanAppCors
-	(*DigitalOceanAppIngressMatch)(nil),        // 30: dev.planton.digitalocean.DigitalOceanAppIngressMatch
-	(*DigitalOceanAppIngressComponent)(nil),    // 31: dev.planton.digitalocean.DigitalOceanAppIngressComponent
-	(*DigitalOceanAppIngressRedirect)(nil),     // 32: dev.planton.digitalocean.DigitalOceanAppIngressRedirect
-	(*DigitalOceanAppIngressRule)(nil),         // 33: dev.planton.digitalocean.DigitalOceanAppIngressRule
-	(*DigitalOceanAppSecureHeader)(nil),        // 34: dev.planton.digitalocean.DigitalOceanAppSecureHeader
-	(*DigitalOceanAppIngress)(nil),             // 35: dev.planton.digitalocean.DigitalOceanAppIngress
-	(*DigitalOceanAppDomain)(nil),              // 36: dev.planton.digitalocean.DigitalOceanAppDomain
-	(*DigitalOceanAppDatabase)(nil),            // 37: dev.planton.digitalocean.DigitalOceanAppDatabase
-	(*DigitalOceanAppMaintenance)(nil),         // 38: dev.planton.digitalocean.DigitalOceanAppMaintenance
-	(*v1.StringValueOrRef)(nil),                // 39: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(DigitalOceanAppDatabaseEngine)(0),         // 6: dev.planton.digitalocean.DigitalOceanAppDatabaseEngine
+	(DigitalOceanAppEgressType)(0),             // 7: dev.planton.digitalocean.DigitalOceanAppEgressType
+	(*DigitalOceanAppEnvVar)(nil),              // 8: dev.planton.digitalocean.DigitalOceanAppEnvVar
+	(*DigitalOceanAppGitSource)(nil),           // 9: dev.planton.digitalocean.DigitalOceanAppGitSource
+	(*DigitalOceanAppGithubSource)(nil),        // 10: dev.planton.digitalocean.DigitalOceanAppGithubSource
+	(*DigitalOceanAppGitlabSource)(nil),        // 11: dev.planton.digitalocean.DigitalOceanAppGitlabSource
+	(*DigitalOceanAppBitbucketSource)(nil),     // 12: dev.planton.digitalocean.DigitalOceanAppBitbucketSource
+	(*DigitalOceanAppImageSource)(nil),         // 13: dev.planton.digitalocean.DigitalOceanAppImageSource
+	(*DigitalOceanAppHealthCheck)(nil),         // 14: dev.planton.digitalocean.DigitalOceanAppHealthCheck
+	(*DigitalOceanAppAutoscaling)(nil),         // 15: dev.planton.digitalocean.DigitalOceanAppAutoscaling
+	(*DigitalOceanAppTermination)(nil),         // 16: dev.planton.digitalocean.DigitalOceanAppTermination
+	(*DigitalOceanAppSlackWebhook)(nil),        // 17: dev.planton.digitalocean.DigitalOceanAppSlackWebhook
+	(*DigitalOceanAppAlertDestinations)(nil),   // 18: dev.planton.digitalocean.DigitalOceanAppAlertDestinations
+	(*DigitalOceanAppAlert)(nil),               // 19: dev.planton.digitalocean.DigitalOceanAppAlert
+	(*DigitalOceanAppComponentAlert)(nil),      // 20: dev.planton.digitalocean.DigitalOceanAppComponentAlert
+	(*DigitalOceanAppPapertrailLog)(nil),       // 21: dev.planton.digitalocean.DigitalOceanAppPapertrailLog
+	(*DigitalOceanAppDatadogLog)(nil),          // 22: dev.planton.digitalocean.DigitalOceanAppDatadogLog
+	(*DigitalOceanAppLogtailLog)(nil),          // 23: dev.planton.digitalocean.DigitalOceanAppLogtailLog
+	(*DigitalOceanAppOpenSearchBasicAuth)(nil), // 24: dev.planton.digitalocean.DigitalOceanAppOpenSearchBasicAuth
+	(*DigitalOceanAppOpenSearchLog)(nil),       // 25: dev.planton.digitalocean.DigitalOceanAppOpenSearchLog
+	(*DigitalOceanAppLogDestination)(nil),      // 26: dev.planton.digitalocean.DigitalOceanAppLogDestination
+	(*DigitalOceanAppCorsAllowOrigins)(nil),    // 27: dev.planton.digitalocean.DigitalOceanAppCorsAllowOrigins
+	(*DigitalOceanAppCors)(nil),                // 28: dev.planton.digitalocean.DigitalOceanAppCors
+	(*DigitalOceanAppIngressMatch)(nil),        // 29: dev.planton.digitalocean.DigitalOceanAppIngressMatch
+	(*DigitalOceanAppIngressComponent)(nil),    // 30: dev.planton.digitalocean.DigitalOceanAppIngressComponent
+	(*DigitalOceanAppIngressRedirect)(nil),     // 31: dev.planton.digitalocean.DigitalOceanAppIngressRedirect
+	(*DigitalOceanAppIngressRule)(nil),         // 32: dev.planton.digitalocean.DigitalOceanAppIngressRule
+	(*DigitalOceanAppSecureHeader)(nil),        // 33: dev.planton.digitalocean.DigitalOceanAppSecureHeader
+	(*DigitalOceanAppIngress)(nil),             // 34: dev.planton.digitalocean.DigitalOceanAppIngress
+	(*DigitalOceanAppDomain)(nil),              // 35: dev.planton.digitalocean.DigitalOceanAppDomain
+	(*DigitalOceanAppDatabase)(nil),            // 36: dev.planton.digitalocean.DigitalOceanAppDatabase
+	(*DigitalOceanAppMaintenance)(nil),         // 37: dev.planton.digitalocean.DigitalOceanAppMaintenance
+	(*v1.StringValueOrRef)(nil),                // 38: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_digitalocean_app_spec_proto_depIdxs = []int32{
 	0,  // 0: dev.planton.digitalocean.DigitalOceanAppEnvVar.scope:type_name -> dev.planton.digitalocean.DigitalOceanAppEnvScope
 	1,  // 1: dev.planton.digitalocean.DigitalOceanAppImageSource.registry_type:type_name -> dev.planton.digitalocean.DigitalOceanAppRegistryType
-	18, // 2: dev.planton.digitalocean.DigitalOceanAppAlertDestinations.slack_webhooks:type_name -> dev.planton.digitalocean.DigitalOceanAppSlackWebhook
+	17, // 2: dev.planton.digitalocean.DigitalOceanAppAlertDestinations.slack_webhooks:type_name -> dev.planton.digitalocean.DigitalOceanAppSlackWebhook
 	2,  // 3: dev.planton.digitalocean.DigitalOceanAppAlert.rule:type_name -> dev.planton.digitalocean.DigitalOceanAppAlertRule
-	19, // 4: dev.planton.digitalocean.DigitalOceanAppAlert.destinations:type_name -> dev.planton.digitalocean.DigitalOceanAppAlertDestinations
+	18, // 4: dev.planton.digitalocean.DigitalOceanAppAlert.destinations:type_name -> dev.planton.digitalocean.DigitalOceanAppAlertDestinations
 	3,  // 5: dev.planton.digitalocean.DigitalOceanAppComponentAlert.rule:type_name -> dev.planton.digitalocean.DigitalOceanAppComponentAlertRule
 	4,  // 6: dev.planton.digitalocean.DigitalOceanAppComponentAlert.operator:type_name -> dev.planton.digitalocean.DigitalOceanAppAlertOperator
 	5,  // 7: dev.planton.digitalocean.DigitalOceanAppComponentAlert.window:type_name -> dev.planton.digitalocean.DigitalOceanAppAlertWindow
-	19, // 8: dev.planton.digitalocean.DigitalOceanAppComponentAlert.destinations:type_name -> dev.planton.digitalocean.DigitalOceanAppAlertDestinations
-	25, // 9: dev.planton.digitalocean.DigitalOceanAppOpenSearchLog.basic_auth:type_name -> dev.planton.digitalocean.DigitalOceanAppOpenSearchBasicAuth
-	22, // 10: dev.planton.digitalocean.DigitalOceanAppLogDestination.papertrail:type_name -> dev.planton.digitalocean.DigitalOceanAppPapertrailLog
-	23, // 11: dev.planton.digitalocean.DigitalOceanAppLogDestination.datadog:type_name -> dev.planton.digitalocean.DigitalOceanAppDatadogLog
-	24, // 12: dev.planton.digitalocean.DigitalOceanAppLogDestination.logtail:type_name -> dev.planton.digitalocean.DigitalOceanAppLogtailLog
-	26, // 13: dev.planton.digitalocean.DigitalOceanAppLogDestination.open_search:type_name -> dev.planton.digitalocean.DigitalOceanAppOpenSearchLog
-	28, // 14: dev.planton.digitalocean.DigitalOceanAppCors.allow_origins:type_name -> dev.planton.digitalocean.DigitalOceanAppCorsAllowOrigins
-	30, // 15: dev.planton.digitalocean.DigitalOceanAppIngressRule.match:type_name -> dev.planton.digitalocean.DigitalOceanAppIngressMatch
-	31, // 16: dev.planton.digitalocean.DigitalOceanAppIngressRule.component:type_name -> dev.planton.digitalocean.DigitalOceanAppIngressComponent
-	32, // 17: dev.planton.digitalocean.DigitalOceanAppIngressRule.redirect:type_name -> dev.planton.digitalocean.DigitalOceanAppIngressRedirect
-	29, // 18: dev.planton.digitalocean.DigitalOceanAppIngressRule.cors:type_name -> dev.planton.digitalocean.DigitalOceanAppCors
-	33, // 19: dev.planton.digitalocean.DigitalOceanAppIngress.rules:type_name -> dev.planton.digitalocean.DigitalOceanAppIngressRule
-	34, // 20: dev.planton.digitalocean.DigitalOceanAppIngress.secure_header:type_name -> dev.planton.digitalocean.DigitalOceanAppSecureHeader
-	6,  // 21: dev.planton.digitalocean.DigitalOceanAppDomain.type:type_name -> dev.planton.digitalocean.DigitalOceanAppDomainType
-	39, // 22: dev.planton.digitalocean.DigitalOceanAppDomain.zone:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 23: dev.planton.digitalocean.DigitalOceanAppDatabase.engine:type_name -> dev.planton.digitalocean.DigitalOceanAppDatabaseEngine
-	39, // 24: dev.planton.digitalocean.DigitalOceanAppDatabase.cluster_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	25, // [25:25] is the sub-list for method output_type
-	25, // [25:25] is the sub-list for method input_type
-	25, // [25:25] is the sub-list for extension type_name
-	25, // [25:25] is the sub-list for extension extendee
-	0,  // [0:25] is the sub-list for field type_name
+	18, // 8: dev.planton.digitalocean.DigitalOceanAppComponentAlert.destinations:type_name -> dev.planton.digitalocean.DigitalOceanAppAlertDestinations
+	24, // 9: dev.planton.digitalocean.DigitalOceanAppOpenSearchLog.basic_auth:type_name -> dev.planton.digitalocean.DigitalOceanAppOpenSearchBasicAuth
+	21, // 10: dev.planton.digitalocean.DigitalOceanAppLogDestination.papertrail:type_name -> dev.planton.digitalocean.DigitalOceanAppPapertrailLog
+	22, // 11: dev.planton.digitalocean.DigitalOceanAppLogDestination.datadog:type_name -> dev.planton.digitalocean.DigitalOceanAppDatadogLog
+	23, // 12: dev.planton.digitalocean.DigitalOceanAppLogDestination.logtail:type_name -> dev.planton.digitalocean.DigitalOceanAppLogtailLog
+	25, // 13: dev.planton.digitalocean.DigitalOceanAppLogDestination.open_search:type_name -> dev.planton.digitalocean.DigitalOceanAppOpenSearchLog
+	27, // 14: dev.planton.digitalocean.DigitalOceanAppCors.allow_origins:type_name -> dev.planton.digitalocean.DigitalOceanAppCorsAllowOrigins
+	29, // 15: dev.planton.digitalocean.DigitalOceanAppIngressRule.match:type_name -> dev.planton.digitalocean.DigitalOceanAppIngressMatch
+	30, // 16: dev.planton.digitalocean.DigitalOceanAppIngressRule.component:type_name -> dev.planton.digitalocean.DigitalOceanAppIngressComponent
+	31, // 17: dev.planton.digitalocean.DigitalOceanAppIngressRule.redirect:type_name -> dev.planton.digitalocean.DigitalOceanAppIngressRedirect
+	28, // 18: dev.planton.digitalocean.DigitalOceanAppIngressRule.cors:type_name -> dev.planton.digitalocean.DigitalOceanAppCors
+	32, // 19: dev.planton.digitalocean.DigitalOceanAppIngress.rules:type_name -> dev.planton.digitalocean.DigitalOceanAppIngressRule
+	33, // 20: dev.planton.digitalocean.DigitalOceanAppIngress.secure_header:type_name -> dev.planton.digitalocean.DigitalOceanAppSecureHeader
+	38, // 21: dev.planton.digitalocean.DigitalOceanAppDomain.zone:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 22: dev.planton.digitalocean.DigitalOceanAppDatabase.engine:type_name -> dev.planton.digitalocean.DigitalOceanAppDatabaseEngine
+	38, // 23: dev.planton.digitalocean.DigitalOceanAppDatabase.cluster_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // [24:24] is the sub-list for method output_type
+	24, // [24:24] is the sub-list for method input_type
+	24, // [24:24] is the sub-list for extension type_name
+	24, // [24:24] is the sub-list for extension extendee
+	0,  // [0:24] is the sub-list for field type_name
 }
 
 func init() { file_catalog_digitalocean_app_spec_proto_init() }
@@ -2888,7 +2831,7 @@ func file_catalog_digitalocean_app_spec_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_digitalocean_app_spec_proto_rawDesc), len(file_catalog_digitalocean_app_spec_proto_rawDesc)),
-			NumEnums:      9,
+			NumEnums:      8,
 			NumMessages:   30,
 			NumExtensions: 0,
 			NumServices:   0,

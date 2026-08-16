@@ -4584,15 +4584,12 @@ enum CloudResourceKind {
     id_prefix: "dodns"
     container_kind: true
   }];
-  // DigitalOceanVpc is a prerequisite because the droplet spec's vpc
-  // reference is required: every droplet attaches its private network
-  // interface into one VPC, resolved to the DigitalOceanVpc's exported
-  // vpc_id output.
+  // No VPC prerequisite: the droplet spec's vpc reference is optional —
+  // an omitted vpc places the droplet in the region's default VPC.
   DigitalOceanDroplet = 5005 [(kind_meta) = {
     provider: digital_ocean
     version: "v1alpha1"
     id_prefix: "dodrop"
-    prerequisites: [DigitalOceanVpc]
   }];
   DigitalOceanFirewall = 5006 [(kind_meta) = {
     provider: digital_ocean

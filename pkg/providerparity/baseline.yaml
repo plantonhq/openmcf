@@ -16,7 +16,6 @@ entries:
   - kind:DigitalOceanCertificate
   - kind:DigitalOceanContainerRegistry
   - kind:DigitalOceanDnsZone
-  - kind:DigitalOceanDroplet
   - kind:DigitalOceanKubernetesNodePool
   - kind:DigitalOceanVolume
   - kind:DigitalOceanVpc

@@ -6,35 +6,69 @@
 
 **apiVersion**: `digital-ocean.planton.dev/v1alpha1`
 
-DigitalOceanDropletSpec defines the user configuration for a DigitalOcean Droplet (VM).
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
+DigitalOceanDropletSpec models the full digitalocean_droplet resource
+surface: base image and sizing, region and VPC placement, SSH key
+injection, automated backups with a weekly/daily policy window, IPv6 and
+public-network toggles, the monitoring and web-console agents, block
+volume attachments, cloud-init user data, tags, GPU partitioning, and the
+resize/shutdown behavior flags.
 
 ## Example
 
 ```yaml
+# Example DigitalOceanDroplet manifests.
+#
+# Deploy with: planton apply -f manifest.yaml
+#
+# The first document is the smallest real droplet (name + size + image;
+# DigitalOcean chooses the region and uses its default VPC). The second
+# exercises the full surface: explicit region and VPC, SSH keys, weekly
+# backups with a policy window, the monitoring and web-console agents,
+# IPv6, tags, cloud-init user data, graceful shutdown, and the reversible
+# resize mode.
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDroplet
 metadata:
-  name: first-droplet                        # Kubernetes object name
+  name: example-dodrop-minimal
 spec:
-  dropletName: first-droplet                         # droplet hostname
-  region: blr1                             # NYC3 | SFO3 | FRA1 etc.
-  size: s-2vcpu-4gb                        # enum value
-  image: ubuntu-22-04-x64                  # official Ubuntu image slug
+  dropletName: example-dodrop-minimal
+  size: s-1vcpu-1gb
+  image: ubuntu-24-04-x64
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDroplet
+metadata:
+  name: example-dodrop-full
+spec:
+  dropletName: web-1.example.com
+  region: nyc3
+  size: s-2vcpu-4gb
+  image: ubuntu-24-04-x64
   vpc:
-    value: b5648f9e-a28a-4760-bb87-b2fad07ae295                           # UUID or ref to DigitalOceanVpc
-  enableIpv6: false                         # optional
-  enableBackups: false                     # optional
-  disableMonitoring: false                 # keep DO monitoring agent
-#  volumeIds:                               # optional block‑volume attachment(s)
-#    - value: 93a7a5b4-62ce-11f0-b9db-0a58ac1466b2                      # UUID or ref to DigitalOceanVolume
-  tags:                                    # unique,  ≤ .64 .chars each
-    - planton
-  userData: |                              # cloud‑init (≤32 .KiB)
+    value: b5648f9e-a28a-4760-bb87-b2fad07ae295
+  sshKeys:
+    - "12345678"
+    - "3b:16:bf:e4:8b:00:8b:b8:59:8c:a9:d3:f0:19:45:fa"
+  enableIpv6: true
+  enableBackups: true
+  backupPolicy:
+    plan: weekly
+    weekday: SUN
+    hour: 4
+  monitoring: true
+  dropletAgent: true
+  gracefulShutdown: true
+  resizeDisk: false
+  tags:
+    - web
+    - env:prod
+  userData: |
     #cloud-config
     package_update: true
     runcmd:
       - apt-get install -y nginx
-  timezone: utc                            # utc (default) | local
 ```
 
 ## Spec Fields
@@ -42,17 +76,26 @@ spec:
 | Path | Type | Required | Default | References |
 |---|---|---|---|---|
 | `spec.dropletName` | `string` | yes |  |  |
-| `spec.region` | `enum` | yes |  |  |
+| `spec.region` | `enum` |  |  |  |
 | `spec.size` | `string` | yes |  |  |
 | `spec.image` | `string` | yes |  |  |
-| `spec.vpc` | `string \| valueFrom` | yes |  | DigitalOceanVpc (`status.outputs.vpc_id`) |
+| `spec.vpc` | `string \| valueFrom` |  |  | DigitalOceanVpc (`status.outputs.vpc_id`) |
 | `spec.enableIpv6` | `bool` |  |  |  |
 | `spec.enableBackups` | `bool` |  |  |  |
-| `spec.disableMonitoring` | `bool` |  |  |  |
 | `spec.volumeIds` | `[]string \| valueFrom` |  |  | DigitalOceanVolume (`status.outputs.volume_id`) |
 | `spec.tags` | `[]string` |  |  |  |
 | `spec.userData` | `string` |  |  |  |
-| `spec.timezone` | `enum` |  | `UTC` |  |
+| `spec.monitoring` | `bool` |  |  |  |
+| `spec.sshKeys` | `[]string` |  |  |  |
+| `spec.backupPolicy` | `DigitalOceanDropletBackupPolicy` |  |  |  |
+| `spec.backupPolicy.plan` | `string` |  |  |  |
+| `spec.backupPolicy.weekday` | `string` |  |  |  |
+| `spec.backupPolicy.hour` | `int32` |  |  |  |
+| `spec.dropletAgent` | `bool` |  |  |  |
+| `spec.gracefulShutdown` | `bool` |  |  |  |
+| `spec.resizeDisk` | `bool` |  | `true` |  |
+| `spec.publicNetworking` | `bool` |  |  |  |
+| `spec.gpuPartitionMode` | `string` |  |  |  |
 
 ## Field Details
 
@@ -60,17 +103,19 @@ spec:
 
 `string` · required
 
-droplet hostname (DNS-compatible, <=63 chars)
+Droplet name, shown in the control panel and used as the instance
+hostname. DigitalOcean accepts hostname-style names: letters, digits,
+hyphens, and dots, up to 255 characters. Renaming updates in place.
 
-- rule: {"required":true,"string":{"maxLen":"63","pattern":"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"}}
+- rule: {"required":true,"string":{"maxLen":"255","pattern":"^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$"}}
 
 ### spec.region
 
-`enum` · required
+`enum`
 
-region slug (datacenter location for the droplet)
-
-- rule: {"required":true}
+(Optional) The region to create the droplet in. When unset, DigitalOcean
+chooses a region with available capacity. Cannot be changed after
+creation.
 
 Allowed values (use exactly as shown):
 
@@ -83,14 +128,19 @@ Allowed values (use exactly as shown):
 - `tor1` -- toronto 1
 - `blr1` -- bangalore 1
 - `ams3` -- amsterdam 3
+- `nyc1` -- new york 1
+- `nyc2` -- new york 2
+- `sfo2` -- san francisco 2
+- `syd1` -- sydney 1
+- `atl1` -- atlanta 1
 
 ### spec.size
 
 `string` · required
 
-Droplet size slug, e.g. "s-2vcpu-4gb" or "g-8vcpu-32gb".
-Valid values: must match the regexp "^[a-z0-9]+(-[a-z0-9]+)+$" and
-must be accepted by the DigitalOcean /v2/sizes API at creation time.
+Droplet size slug, e.g. "s-1vcpu-1gb" or "g-8vcpu-32gb". Changing the
+size resizes the droplet (it is powered off during the resize); whether
+the resize permanently grows the disk is governed by resize_disk.
 
 - rule: {"required":true,"string":{"pattern":"^[a-z0-9]+(-[a-z0-9]+)+$"}}
 
@@ -98,43 +148,45 @@ must be accepted by the DigitalOcean /v2/sizes API at creation time.
 
 `string` · required
 
-image slug for the droplet base image (e.g. "ubuntu-22-04-x64")
+Base image: an OS image slug (e.g. "ubuntu-24-04-x64"), a custom image
+ID, or a droplet snapshot ID (both numeric). Cannot be changed after
+creation.
 
 - rule: {"required":true,"string":{"pattern":"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"}}
 
 ### spec.vpc
 
-`string | valueFrom` · required
+`string | valueFrom`
 
-target vpc network uuid for the droplet
+(Optional) Reference to the DigitalOcean VPC to attach the droplet's
+private network interface to. When unset, the droplet lands in the
+region's default VPC (the resulting UUID is exported as the vpc_uuid
+output either way). Cannot be changed after creation.
 
 - references: DigitalOceanVpc (`status.outputs.vpc_id`)
-- rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: DigitalOceanVpc, name: <that resource's name>, fieldPath: status.outputs.vpc_id}} -- a bare string does not parse
 
 ### spec.enableIpv6
 
 `bool`
 
-enable IPv6 networking (disabled by default)
+Enable public IPv6 networking. Enabling on an existing droplet updates
+in place; disabling it forces the droplet to be recreated.
 
 ### spec.enableBackups
 
 `bool`
 
-enable automated backups (disabled by default)
-
-### spec.disableMonitoring
-
-`bool`
-
-disable digitalocean monitoring agent (monitoring on by default)
+Enable automated backups. Toggling updates in place. The backup window
+is configured via backup_policy; without one, DigitalOcean defaults to
+a daily plan.
 
 ### spec.volumeIds
 
 `[]string | valueFrom`
 
-block storage volumes to attach (must reside in same region)
+Block storage volumes to attach, referencing DigitalOceanVolume
+resources in the same region. Attachment changes update in place.
 
 - references: DigitalOceanVolume (`status.outputs.volume_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: DigitalOceanVolume, name: <that resource's name>, fieldPath: status.outputs.volume_id}} -- a bare string does not parse
@@ -143,30 +195,127 @@ block storage volumes to attach (must reside in same region)
 
 `[]string`
 
-tags to apply to the droplet (must be unique)
+(Optional) Tags applied to the droplet in DigitalOcean, in addition to
+the standard Planton labels both provisioners always apply. Tags are
+how firewalls and load balancers target droplet groups.
 
-- rule: {"repeated":{"unique":true}}
+- rule: {"repeated":{"unique":true,"items":{"string":{"pattern":"^[a-zA-Z0-9:\\-_]{1,255}$"}}}}
 
 ### spec.userData
 
 `string`
 
-cloud-init user data script (<=32 KiB)
+(Optional) Cloud-init user data executed on first boot (<= 32 KiB).
+Cannot be changed after creation; DigitalOcean stores only a hash of it.
 
 - rule: {"string":{"maxBytes":"32768"}}
 
-### spec.timezone
+### spec.monitoring
 
-`enum` · optional (explicit presence)
+`bool`
 
-timezone setting for the droplet's clock (default: UTC)
+Install the DigitalOcean monitoring agent for enhanced graphs and
+monitor alert policies. Defaults OFF, matching the provider. Cannot be
+changed after creation.
 
-- default: `UTC`
+### spec.sshKeys
 
-Allowed values (use exactly as shown):
+`[]string`
 
-- `utc`
-- `local`
+(Optional) SSH keys to inject at creation — the standard access path to
+a droplet. Each entry is the ID or fingerprint of an SSH key already
+registered on the DigitalOcean account. Keys cannot be added or removed
+after creation: any change forces the droplet to be recreated.
+
+- rule: {"repeated":{"unique":true,"items":{"string":{"minLen":"1"}}}}
+
+### spec.backupPolicy
+
+`DigitalOceanDropletBackupPolicy`
+
+(Optional) When and how often automated backups run. Requires
+enable_backups; omitted with backups enabled, DigitalOcean defaults to
+a daily plan in a window it picks.
+
+### spec.backupPolicy.plan
+
+`string`
+
+Backup plan: "daily" or "weekly".
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["daily","weekly"]}}
+
+### spec.backupPolicy.weekday
+
+`string`
+
+Day of the week a weekly backup runs, as the API's three-letter
+uppercase token.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["SUN","MON","TUE","WED","THU","FRI","SAT"]}}
+
+### spec.backupPolicy.hour
+
+`int32`
+
+Hour of the day the backup window starts (0-20, mirroring the
+provider's own bounds). The API schedules windows on a four-hour grid:
+0, 4, 8, 12, 16, or 20.
+
+- rule: {"int32":{"lte":20,"gte":0}}
+
+### spec.dropletAgent
+
+`bool` · optional (explicit presence)
+
+(Optional) Install the DigitalOcean agent that powers the web console
+in the control panel. Unset, DigitalOcean installs it where the image
+supports it and silently skips otherwise; explicit true makes an
+installation failure fatal; explicit false prevents installation.
+Cannot be changed after creation.
+
+### spec.gracefulShutdown
+
+`bool`
+
+Gracefully shut the droplet down (ACPI power-off, letting the OS flush
+and stop services) before it is destroyed, instead of the default
+immediate power-off. Updates in place; it only affects destroy-time
+behavior.
+
+### spec.resizeDisk
+
+`bool` · optional (explicit presence)
+
+Whether a size change also permanently grows the disk. DigitalOcean
+defaults this ON (unset defers to that): the resize applies fully and
+cannot be reverted to a smaller size later. Set false for a CPU/RAM-only
+resize that stays reversible.
+
+- default: `true`
+
+### spec.publicNetworking
+
+`bool` · optional (explicit presence)
+
+(Optional) Public networking is enabled on every new droplet by
+default; set explicit false to create a droplet with NO public network
+interface at all (reachable only inside its VPC). Cannot be changed
+after creation.
+
+### spec.gpuPartitionMode
+
+`string`
+
+(Optional) Partition mode for a GPU droplet, only supported on GPU
+sizes that advertise it. Omit for a full GPU (equivalent to
+PARTITION_MODE_SPX_NPS1). Cannot be changed after creation.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["PARTITION_MODE_SPX_NPS1","PARTITION_MODE_DPX_NPS2"]}}
+
+## Validation Rules
+
+- `backup_policy_requires_backups`: backup_policy can only be set when enable_backups is true
 
 ## Outputs
 
@@ -174,11 +323,12 @@ Reference an output from another manifest as `valueFrom: {kind: DigitalOceanDrop
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.droplet_id` | `string` | droplet unique identifier (DigitalOcean ID) |
-| `status.outputs.ipv4_address` | `string` | primary IPv4 address (public if available, otherwise private) |
-| `status.outputs.ipv6_address` | `string` | IPv6 address (if IPv6 was enabled) |
-| `status.outputs.image_id` | `int64` | image ID of the droplet’s base image |
-| `status.outputs.vpc_uuid` | `string` | VPC network UUID in which the droplet resides |
+| `status.outputs.droplet_id` | `string` | droplet unique identifier (DigitalOcean's integer id, as a string) |
+| `status.outputs.ipv4_address` | `string` | public IPv4 address |
+| `status.outputs.ipv6_address` | `string` | public IPv6 address (empty unless enable_ipv6 is set) |
+| `status.outputs.ipv4_address_private` | `string` | private IPv4 address inside the droplet's VPC |
+| `status.outputs.urn` | `string` | uniform resource name, e.g. "do:droplet:12345" — the form other DigitalOcean APIs (projects, firewalls) accept as a member reference |
+| `status.outputs.vpc_uuid` | `string` | UUID of the VPC the droplet landed in — the region's default VPC when spec.vpc was omitted |
 
 ## References
 

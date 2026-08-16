@@ -2,20 +2,33 @@ syntax = "proto3";
 
 package dev.planton.digitalocean.digitaloceandroplet.v1alpha1;
 
-// DigitalOceanDropletStackOutputs captures the resulting Droplet info after provisioning.
+// DigitalOceanDropletStackOutputs captures the resulting Droplet info after
+// provisioning. Live state (status, locked) is deliberately not exported:
+// apply-time snapshots go stale, and verification reads the live API.
 message DigitalOceanDropletStackOutputs {
-  // droplet unique identifier (DigitalOcean ID)
+  // Retired output. image_id claimed the numeric image ID but neither
+  // engine could deliver it (the provider echoes back the configured slug);
+  // the number must never be reused with a different meaning.
+  reserved 6;
+  reserved "image_id";
+
+  // droplet unique identifier (DigitalOcean's integer id, as a string)
   string droplet_id = 1;
 
-  // primary IPv4 address (public if available, otherwise private)
+  // public IPv4 address
   string ipv4_address = 2;
 
-  // IPv6 address (if IPv6 was enabled)
+  // public IPv6 address (empty unless enable_ipv6 is set)
   string ipv6_address = 3;
 
-  // image ID of the droplet’s base image
-  int64 image_id = 6;
+  // private IPv4 address inside the droplet's VPC
+  string ipv4_address_private = 4;
 
-  // VPC network UUID in which the droplet resides
+  // uniform resource name, e.g. "do:droplet:12345" — the form other
+  // DigitalOcean APIs (projects, firewalls) accept as a member reference
+  string urn = 5;
+
+  // UUID of the VPC the droplet landed in — the region's default VPC when
+  // spec.vpc was omitted
   string vpc_uuid = 7;
 }

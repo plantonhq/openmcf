@@ -657,7 +657,7 @@ resource "digitalocean_app" "main" {
       for_each = var.spec.domains
       content {
         name     = domain.value.name
-        type     = (domain.value.type == "" || endswith(domain.value.type, "_unspecified")) ? null : upper(domain.value.type)
+        type     = domain.value.type != "" ? domain.value.type : null
         wildcard = domain.value.wildcard
         zone     = domain.value.zone != "" ? domain.value.zone : null
       }
