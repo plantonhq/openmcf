@@ -85,10 +85,14 @@ spec:
         untagged: the provider adds the terraform:default-node-pool tag to a
         single-pool cluster automatically and refuses multi-pool clusters
         until one pool is tagged manually.
-      # Provider behavior flags with no API counterpart.
+      # destroy_all_associated_resources and kubeconfig_expire_seconds are
+      # provider behavior flags with no API counterpart; registry_integration
+      # is an account-level association the provider's Read never fetches
+      # (its own import test ignores it).
       config_only_attributes:
         - destroy_all_associated_resources
         - kubeconfig_expire_seconds
+        - registry_integration
     - terraform_type: digitalocean_kubernetes_node_pool
       pulumi_type: digitalocean:index/kubernetesNodePool:KubernetesNodePool
       id_format: "{node_pool_id}"

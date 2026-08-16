@@ -1,45 +1,43 @@
 locals {
-  # Cluster name from spec
-  cluster_name = var.spec.cluster_name
-  
-  # Region from spec
-  region = var.spec.region
-  
-  # Kubernetes version
-  kubernetes_version = var.spec.kubernetes_version
-  
-  # VPC UUID
-  vpc_uuid = var.spec.vpc.value
-  
-  # HA control plane flag
-  highly_available = var.spec.highly_available
-  
-  # Auto-upgrade settings
-  auto_upgrade = var.spec.auto_upgrade
-  surge_upgrade = !var.spec.disable_surge_upgrade
-  
-  # Registry integration
-  registry_integration = var.spec.registry_integration
-  
-  # Maintenance window (only if specified)
-  maintenance_window = var.spec.maintenance_window != "" ? var.spec.maintenance_window : null
-  
-  # Control plane firewall (only if IPs specified)
-  has_firewall_ips = length(var.spec.control_plane_firewall_allowed_ips) > 0
-  firewall_ips = var.spec.control_plane_firewall_allowed_ips
-  
-  # Tags - merge spec tags with metadata tags
-  all_tags = concat(
-    var.spec.tags,
-    var.metadata.tags != null ? var.metadata.tags : []
-  )
-  
-  # Node pool configuration
-  node_pool_name = "default"
-  node_pool_size = var.spec.default_node_pool.size
-  node_pool_count = var.spec.default_node_pool.node_count
-  node_pool_auto_scale = var.spec.default_node_pool.auto_scale
-  node_pool_min_nodes = var.spec.default_node_pool.min_nodes
-  node_pool_max_nodes = var.spec.default_node_pool.max_nodes
-}
+  # Create-only network placement. The provider validates the CIDRs and
+  # rejects empty strings, so unset must arrive as null, not "".
+  cluster_subnet     = try(var.spec.cluster_subnet, "") != "" ? var.spec.cluster_subnet : null
+  service_subnet     = try(var.spec.service_subnet, "") != "" ? var.spec.service_subnet : null
+  worker_subnet_uuid = try(var.spec.worker_subnet_uuid, "") != "" ? var.spec.worker_subnet_uuid : null
 
+  # 0 (proto3 unset) means DigitalOcean's 7-day default; keep it out of
+  # state rather than pinning an explicit zero.
+  kubeconfig_expire_seconds = var.spec.kubeconfig_expire_seconds > 0 ? var.spec.kubeconfig_expire_seconds : null
+
+  # Standard Planton labels rendered as DigitalOcean "key:value" tags —
+  # the exact set and key spelling the Pulumi module applies, so both
+  # provisioners tag identically.
+  planton_tags = concat(
+    [
+      "planton-ai_resource:true",
+      "planton-ai_name:${var.metadata.name}",
+      "planton-ai_kind:DigitalOceanKubernetesCluster",
+    ],
+    try(var.metadata.org, "") != "" && var.metadata.org != null ? ["planton-ai_organization:${var.metadata.org}"] : [],
+    try(var.metadata.env, "") != "" && var.metadata.env != null ? ["planton-ai_environment:${var.metadata.env}"] : [],
+    try(var.metadata.id, "") != "" && var.metadata.id != null ? ["planton-ai_id:${var.metadata.id}"] : [],
+  )
+
+  tags = distinct(concat(coalesce(var.spec.tags, []), local.planton_tags))
+
+  # The same Planton identity as Kubernetes node labels on the default
+  # pool, with user labels winning on key collisions — the exact map the
+  # Pulumi module applies.
+  planton_labels = merge(
+    {
+      "planton-ai_resource" = "true"
+      "planton-ai_name"     = var.metadata.name
+      "planton-ai_kind"     = "DigitalOceanKubernetesCluster"
+    },
+    try(var.metadata.org, "") != "" && var.metadata.org != null ? { "planton-ai_organization" = var.metadata.org } : {},
+    try(var.metadata.env, "") != "" && var.metadata.env != null ? { "planton-ai_environment" = var.metadata.env } : {},
+    try(var.metadata.id, "") != "" && var.metadata.id != null ? { "planton-ai_id" = var.metadata.id } : {},
+  )
+
+  default_node_pool_labels = merge(local.planton_labels, coalesce(var.spec.default_node_pool.labels, {}))
+}

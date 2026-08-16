@@ -17,7 +17,6 @@ entries:
   - kind:DigitalOceanContainerRegistry
   - kind:DigitalOceanDnsZone
   - kind:DigitalOceanDroplet
-  - kind:DigitalOceanKubernetesCluster
   - kind:DigitalOceanKubernetesNodePool
   - kind:DigitalOceanLoadBalancer
   - kind:DigitalOceanVolume

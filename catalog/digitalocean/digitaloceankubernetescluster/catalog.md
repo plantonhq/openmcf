@@ -1,17 +1,19 @@
 # Kubernetes Cluster on DigitalOcean
 
-Deploys a managed Kubernetes cluster (DOKS) on DigitalOcean with configurable node sizing, optional high availability, automatic patch upgrades, control plane firewall restrictions, container registry integration, and VPC networking. Integrates with Planton's Provider Connections for DigitalOcean API token management and ValueFromRef for VPC dependency wiring.
+Deploys a managed Kubernetes cluster (DOKS) on DigitalOcean with the full provider surface: configurable node sizing with labels, taints, and autoscaling, optional high availability, surge and automatic upgrades with a maintenance policy, a control-plane firewall, custom pod/service subnets, SSO, cluster-autoscaler tuning, container registry integration, and managed addon toggles. Integrates with Planton's Provider Connections for DigitalOcean API token management and ValueFromRef for VPC dependency wiring.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **DigitalOcean Kubernetes Cluster** -- a managed DOKS cluster in the specified region and VPC, using the configured Kubernetes version, with optional HA control plane, auto-upgrade, and surge upgrade settings
-- **Default Node Pool** -- worker nodes with the configured instance size, node count, and optional autoscaling between `minNodes` and `maxNodes`
-- **Control Plane Firewall** -- created only when `controlPlaneFirewallAllowedIps` are provided; restricts API server access to the specified CIDR blocks
-- **Maintenance Policy** -- created only when `maintenanceWindow` is provided; schedules cluster updates during the specified window
-- **Container Registry Integration** -- configured only when `registryIntegration` is enabled; provisions imagePullSecrets for DigitalOcean Container Registry
-- **DigitalOcean Tags** -- user-supplied tags applied to the cluster for resource organization
+- **DigitalOcean Kubernetes Cluster** -- a managed DOKS cluster in the specified region and VPC, at the configured Kubernetes version, with optional HA control plane, surge and auto upgrades, custom subnets, and SSO
+- **Default Node Pool** -- worker nodes with the configured instance size, node count, optional autoscaling between `minNodes` and `maxNodes`, Kubernetes node labels and taints, and pool tags
+- **Control Plane Firewall** -- created only when `controlPlaneFirewall` is provided; restricts API server access to the listed IPs and CIDR blocks
+- **Maintenance Policy** -- created only when `maintenancePolicy` is provided; pins maintenance and auto-upgrades to a weekly slot
+- **Cluster Autoscaler Configuration** -- created only when `clusterAutoscalerConfiguration` is provided; tunes scale-down behavior and expander strategies
+- **Managed Addons** -- routing agent, CoreDNS autoscaler, GPU device plugins/DRA drivers, RDMA, and P2P OCI registry toggles, each asserted only when set
+- **Container Registry Integration** -- configured only when `registryIntegration` is enabled; wires the account's DigitalOcean Container Registry into the cluster
+- **DigitalOcean Tags** -- your `tags` plus resource metadata tags (organization, environment, resource kind) applied automatically for tracking
 
 ## Before You Deploy
 
@@ -22,21 +24,21 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### DigitalOcean Account
 
-- **A VPC network** in the target region. Provide the VPC name directly or reference a DigitalOceanVpc Cloud Resource via ValueFromRef.
-- **A supported Kubernetes version** -- check available versions via the DigitalOcean CLI (`doctl kubernetes options versions`) or the DOKS documentation. Specify the version string (e.g., `"1.31"`).
+- **A VPC network** in the target region (required). Provide the VPC UUID directly or reference a DigitalOceanVpc Cloud Resource via ValueFromRef.
+- **A supported Kubernetes version** -- check available version slugs via `doctl kubernetes options versions`. A full slug (`"1.33.1-do.3"`) pins the exact starting point; a prefix (`"1.33"`) lets DigitalOcean pick the patch.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Kubernetes Cluster on DigitalOcean**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Production HA** preset in the [Presets](#presets) tab for a resilient multi-node configuration with autoscaling.
+Open the deployment store, find **Kubernetes Cluster on DigitalOcean**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Production HA** preset in the [Presets](#presets) tab for a resilient configuration with autoscaling and an API firewall.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: digitalocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanKubernetesCluster
 metadata:
   name: app-cluster
@@ -44,10 +46,10 @@ metadata:
   env: prod
 spec:
   clusterName: app-cluster
-  region: nyc1
-  kubernetesVersion: "1.31"
+  region: nyc3
+  kubernetesVersion: "1.33.1-do.3"
   vpc:
-    value: "app-network"
+    value: b5648f9e-a28a-4760-bb87-b2fad07ae295
   defaultNodePool:
     size: s-4vcpu-8gb
     nodeCount: 3
@@ -57,7 +59,7 @@ spec:
 planton apply -f do-k8s-cluster.yaml
 ```
 
-This creates a 3-node Kubernetes cluster in the NYC1 region. No HA, auto-upgrade, autoscaling, or API server firewall is configured. A Stack Job tracks the provisioning in real time.
+This creates a 3-node Kubernetes cluster in the NYC3 region with everything else at DigitalOcean defaults. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -69,7 +71,7 @@ spec:
     valueFrom:
       kind: DigitalOceanVpc
       name: app-network
-      fieldPath: metadata.name
+      fieldPath: status.outputs.vpc_id
 ```
 
 The InfraPipeline resolves the dependency graph, deploys the VPC first, then provisions the Kubernetes cluster on it.
@@ -78,13 +80,15 @@ The InfraPipeline resolves the dependency graph, deploys the VPC first, then pro
 
 These are the most important decisions when configuring a DOKS cluster. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**High availability** -- Set `highlyAvailable: true` to provision multiple control plane replicas for fault tolerance. Without HA, a single control plane failure takes the cluster offline. HA increases cost but is required for production SLAs.
+**High availability** -- Set `highlyAvailable: true` to provision multiple control-plane replicas for fault tolerance. HA increases cost, is required for production SLAs, and is one-way: it cannot be turned off once enabled.
 
-**Node pool sizing and autoscaling** -- The `defaultNodePool.size` field sets the instance type (e.g., `"s-2vcpu-4gb"` for development, `"s-4vcpu-8gb"` for production). Enable `autoScale` with `minNodes` and `maxNodes` to let DOKS adjust node count based on pod scheduling pressure.
+**Node pool sizing and autoscaling** -- `defaultNodePool.size` sets the instance type (`"s-2vcpu-4gb"` for development, `"s-4vcpu-8gb"` for production). Changing it later replaces the entire cluster, so size deliberately and grow with separate `DigitalOceanKubernetesNodePool` resources. Enable `autoScale` with `minNodes` and `maxNodes` to let DOKS adjust node count with scheduling pressure.
 
-**Automatic upgrades** -- Set `autoUpgrade: true` to let DigitalOcean apply Kubernetes patch updates during the maintenance window. Combine with `maintenanceWindow` (e.g., `"sunday=03:00"`) to control when upgrades occur.
+**Automatic upgrades** -- Set `autoUpgrade: true` to let DigitalOcean apply Kubernetes patch updates, and pin them to a weekly slot with `maintenancePolicy` (`day` plus `startTime` in UTC). `kubernetesVersion` is the creation pin only; both provisioners deliberately ignore later drift on it.
 
-**API server firewall** -- Populate `controlPlaneFirewallAllowedIps` with CIDR blocks to restrict who can reach the Kubernetes API server. When empty, the API server is publicly accessible. Restrict to VPN or office CIDRs for production.
+**Control-plane firewall** -- Provide `controlPlaneFirewall` with `enabled: true` and the IPs/CIDRs allowed to reach the Kubernetes API server. When omitted, the API server is publicly accessible. Restrict to VPN or office CIDRs for production -- and make sure the list includes wherever the provisioner runs.
+
+**Terraform-only surfaces** -- `sso`, `isolatedWorkers`, `workerSubnetUuid`, `gpuPartitionMode`, and the addon toggles beyond `routingAgent` have no Pulumi bridge counterpart yet (v4.49.0); the Pulumi provisioner rejects them loudly rather than dropping them.
 
 ## Outputs and Dependencies
 
@@ -92,7 +96,7 @@ These are the most important decisions when configuring a DOKS cluster. Explore 
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
-| **DigitalOceanVpc** | `vpc` | `metadata.name` |
+| **DigitalOceanVpc** | `vpc` | `status.outputs.vpc_id` |
 
 ### What This Component Provides
 
@@ -100,18 +104,23 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `cluster_id` | Unique cluster identifier (UUID) on DigitalOcean | DigitalOcean API operations, monitoring dashboards |
-| `kubeconfig` | Base64-encoded kubeconfig for cluster access | Kubernetes Provider Connections, CI/CD pipeline configuration |
+| `cluster_id` | Unique cluster identifier (UUID) on DigitalOcean | Node pool attachment, DigitalOcean API operations, monitoring |
+| `kubeconfig` | Raw kubeconfig YAML for cluster access (sensitive) | Kubernetes Provider Connections, CI/CD pipeline configuration |
 | `api_server_endpoint` | Kubernetes API server endpoint URL | kubectl configuration, application health checks |
+| `urn` | `do:kubernetes:<cluster_id>` | DigitalOcean project attachment |
+| `ipv4_address` | Control plane public IPv4 (empty on HA clusters) | Network allowlists |
+| `default_node_pool_id` | The inline default pool's UUID | DigitalOcean API operations on the pool |
+| `cluster_subnet` / `service_subnet` | Pod and service CIDR blocks in effect | VPC peering and routing plans |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Production HA cluster** -- HA control plane, autoscaling node pool (2-5 nodes), automatic patch upgrades with a Sunday maintenance window, container registry integration, and API server firewall restrictions. Start from the **Production HA** preset.
+**Production HA cluster** -- HA control plane, autoscaling node pool (2-5 nodes), automatic patch upgrades in a Sunday maintenance window, container registry integration, and a control-plane firewall. Start from the **Production HA** preset.
 
-**Development cluster** -- Non-HA control plane, 2 fixed-size nodes with smaller instances, no auto-upgrade or API firewall. Minimal cost for dev/test and feature branch clusters. Start from the **Development** preset.
+**Development cluster** -- Non-HA control plane, 2 fixed-size nodes with smaller instances, no auto-upgrade or API firewall. Minimal cost for dev/test and feature-branch clusters. Start from the **Development** preset.
 
 ## Works With
 
-- [**DigitalOcean VPC**](/cloud-catalog/digital-ocean-vpc) -- provides the VPC network for cluster placement
+- [**DigitalOcean VPC**](/cloud-catalog/digital-ocean-vpc) -- provides the VPC network for cluster placement (required)
+- [**DigitalOcean Kubernetes Node Pool**](/cloud-catalog/digital-ocean-kubernetes-node-pool) -- adds independently sized worker pools to the cluster

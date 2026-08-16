@@ -8,42 +8,77 @@ import (
 )
 
 // kubernetesClusterVerifier verifies a DigitalOceanKubernetesCluster via
-// GET /v2/kubernetes/clusters/{id}.
+// GET /v2/kubernetes/clusters/{id}. Beyond existence, it asserts the live
+// cluster is running and checks the API endpoint the module CLAIMS in its
+// stack outputs against the live cluster -- outputs are contractually
+// identical across both engines, so one assertion protects both, and an
+// absent output simply means "not claimed" and is skipped. Status is always
+// read live, never from an output: an apply-time snapshot goes stale
+// immediately.
 type kubernetesClusterVerifier struct{}
 
 func (*kubernetesClusterVerifier) IDOutputKey() string { return "cluster_id" }
 
 func (*kubernetesClusterVerifier) VerifyExists(ctx context.Context, client *godo.Client, id string) error {
-	exists, err := kubernetesClusterExists(ctx, client, id)
-	if err != nil {
-		return pkgerrors.Wrapf(err, "digitaloceankubernetescluster verify-exists failed for %q", id)
-	}
-	if !exists {
-		return pkgerrors.Errorf("digitaloceankubernetescluster %q not found after deploy", id)
-	}
-	return nil
+	_, err := getKubernetesCluster(ctx, client, id)
+	return err
 }
 
 func (*kubernetesClusterVerifier) VerifyAbsent(ctx context.Context, client *godo.Client, id string) error {
-	exists, err := kubernetesClusterExists(ctx, client, id)
-	if err != nil {
-		return pkgerrors.Wrapf(err, "digitaloceankubernetescluster verify-absent failed for %q", id)
-	}
-	if exists {
-		return pkgerrors.Errorf("digitaloceankubernetescluster %q still exists after destroy", id)
-	}
-	return nil
-}
-
-func kubernetesClusterExists(ctx context.Context, client *godo.Client, id string) (bool, error) {
 	_, _, err := client.Kubernetes.Get(ctx, id)
 	if err != nil {
 		if isNotFound(err) {
-			return false, nil
+			return nil
 		}
-		return false, err
+		return pkgerrors.Wrapf(err, "digitaloceankubernetescluster verify-absent failed for %q", id)
 	}
-	return true, nil
+	return pkgerrors.Errorf("digitaloceankubernetescluster %q still exists after destroy", id)
+}
+
+func (v *kubernetesClusterVerifier) VerifyExistsFromOutputs(ctx context.Context, client *godo.Client, outputs map[string]interface{}) error {
+	id := StringOutput(outputs, "cluster_id")
+	if id == "" {
+		return pkgerrors.New("cluster_id output missing after deploy")
+	}
+
+	cluster, err := getKubernetesCluster(ctx, client, id)
+	if err != nil {
+		return err
+	}
+
+	if cluster.Status == nil || cluster.Status.State != godo.KubernetesClusterStatusRunning {
+		state := "unknown"
+		if cluster.Status != nil {
+			state = string(cluster.Status.State)
+		}
+		return pkgerrors.Errorf("digitaloceankubernetescluster %q status is %q, want running", id, state)
+	}
+
+	if endpoint := StringOutput(outputs, "api_server_endpoint"); endpoint != "" && cluster.Endpoint != endpoint {
+		return pkgerrors.Errorf("digitaloceankubernetescluster %q api_server_endpoint mismatch: output %q, live %q",
+			id, endpoint, cluster.Endpoint)
+	}
+
+	return nil
+}
+
+func (v *kubernetesClusterVerifier) VerifyAbsentFromOutputs(ctx context.Context, client *godo.Client, outputs map[string]interface{}) error {
+	id := StringOutput(outputs, "cluster_id")
+	if id == "" {
+		return pkgerrors.New("cluster_id output missing for destroy verification")
+	}
+	return v.VerifyAbsent(ctx, client, id)
+}
+
+func getKubernetesCluster(ctx context.Context, client *godo.Client, id string) (*godo.KubernetesCluster, error) {
+	cluster, _, err := client.Kubernetes.Get(ctx, id)
+	if err != nil {
+		if isNotFound(err) {
+			return nil, pkgerrors.Errorf("digitaloceankubernetescluster %q not found after deploy", id)
+		}
+		return nil, pkgerrors.Wrapf(err, "digitaloceankubernetescluster verify-exists failed for %q", id)
+	}
+	return cluster, nil
 }
 
 // kubernetesNodePoolVerifier verifies a DigitalOceanKubernetesNodePool. The
