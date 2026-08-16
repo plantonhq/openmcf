@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+package dev.planton.iac.componentpermissions.v1;
+
+// ComponentPermissionsSpec holds per-provider permission manifests. A
+// component fills exactly the sections its modules touch: an AWS component
+// fills aws; a Kubernetes component fills kubernetes (and a cloud section
+// too if its modules also call cloud APIs, e.g. for workload-identity
+// wiring). An absent section means "the modules touch no such API", which
+// is itself a claim the conformance and capture gates hold the component
+// to.
+message ComponentPermissionsSpec {
+  AwsPermissions aws = 1;
+  GcpPermissions gcp = 2;
+  AzurePermissions azure = 3;
+  KubernetesPermissions kubernetes = 4;
+}
+
+// Provenance says how a permission entry was established.
+enum Provenance {
+  provenance_unspecified = 0;
+  // Derived by static analysis of the official module sources: the entry
+  // covers the module's declared resources but has not been observed
+  // against a live cloud account.
+  derived = 1;
+  // Observed from live provisioning runs (API-call capture during e2e).
+  // The strongest claim: the run happened, these calls were made.
+  proven = 2;
+}
+
+// AwsPermissions is the least-privilege IAM policy material for the runner's
+// AWS principal, expressed as policy-ready statements.
+message AwsPermissions {
+  repeated AwsStatement statements = 1;
+}
+
+// AwsStatement is one IAM policy statement: a set of actions over a
+// resource scope. Group actions the way a policy author would -- one
+// statement per service concern, not one per action.
+message AwsStatement {
+  // Statement id, PascalCase, unique within the component (e.g.
+  // "ManageTable", "ReadVpcContext"). Becomes the Sid in generated
+  // policies.
+  string sid = 1;
+  // IAM actions in the provider's exact "service:Action" spelling.
+  // Wildcards only where the service demands them (e.g. paired
+  // Describe*/List* calls a provider SDK issues internally) -- the point
+  // of this file is least privilege, and every wildcard must be defended
+  // in notes.
+  repeated string actions = 2;
+  // Resource ARNs or ARN patterns the actions are scoped to. "*" only when
+  // the API genuinely supports no resource scoping; defend it in notes.
+  repeated string resources = 3;
+  Provenance provenance = 4;
+  // For derived entries: which module resources this statement covers
+  // (terraform type names are the useful vocabulary). Also the home for
+  // wildcard defenses.
+  string notes = 5;
+}
+
+// GcpPermissions is the least-privilege permission material for the
+// runner's GCP principal.
+message GcpPermissions {
+  repeated GcpPermissionGroup groups = 1;
+}
+
+// GcpPermissionGroup is one coherent set of IAM permissions (the units a
+// custom role is built from).
+message GcpPermissionGroup {
+  // What the group covers, in the same spirit as an AWS Sid (e.g.
+  // "ManageCluster").
+  string purpose = 1;
+  // GCP IAM permissions in exact dotted form, e.g.
+  // "container.clusters.create".
+  repeated string permissions = 2;
+  Provenance provenance = 3;
+  // For derived entries: which module resources this group covers.
+  string notes = 4;
+}
+
+// AzurePermissions is the least-privilege RBAC material for the runner's
+// Azure principal.
+message AzurePermissions {
+  repeated AzureActionGroup groups = 1;
+}
+
+// AzureActionGroup is one coherent set of Azure RBAC actions (the units a
+// custom role definition is built from).
+message AzureActionGroup {
+  // What the group covers (e.g. "ManageCluster").
+  string purpose = 1;
+  // Control-plane actions in exact provider form, e.g.
+  // "Microsoft.ContainerService/managedClusters/write".
+  repeated string actions = 2;
+  // Data-plane actions (dataActions in a role definition), when the
+  // modules touch data-plane APIs.
+  repeated string data_actions = 3;
+  Provenance provenance = 4;
+  // For derived entries: which module resources this group covers.
+  string notes = 5;
+}
+
+// KubernetesPermissions is the least-privilege RBAC material for the
+// runner's cluster credential, expressed as policy rules (the units a Role
+// or ClusterRole is built from).
+message KubernetesPermissions {
+  repeated KubernetesRule rules = 1;
+}
+
+// KubernetesRule is one RBAC policy rule.
+message KubernetesRule {
+  // API groups the rule covers ("" for core).
+  repeated string api_groups = 1;
+  // Resource types within those groups, lowercase plural ("statefulsets",
+  // "secrets").
+  repeated string resources = 2;
+  // Verbs the runner needs ("get", "create", "delete", ...). Wildcards are
+  // never acceptable here.
+  repeated string verbs = 3;
+  // True when the rule requires cluster scope (CRDs, namespaces,
+  // cluster-scoped operators); false when namespace scope suffices.
+  bool cluster_scoped = 4;
+  Provenance provenance = 5;
+  // For derived entries: which module resources this rule covers.
+  string notes = 6;
+}

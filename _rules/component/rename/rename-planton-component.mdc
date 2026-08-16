@@ -51,8 +51,8 @@ From the Planton architecture:
 ## High-fan-in renames (script scope + manual fan-in)
 
 The rename script (`rename_component.py`) **only** renames the component
-directory, applies in-tree content replacements, renames the provider icon folder,
-and updates `site/public/docs/`. It does **not** call `update_registry_entry()` or
+directory and applies in-tree content replacements. It does **not** call
+`update_registry_entry()` or
 `run_build_pipeline()` today (those functions exist but are dead code — main exits
 with `success: true` without running them). **High-fan-in renames cannot rely on the
 script alone.**
@@ -168,9 +168,7 @@ Replacement Patterns (7 patterns):
 
 Files will be modified in:
   - Component directory (copied to new name)
-  - Documentation (site/public/docs/)
   - Registry (cloud_resource_kind.proto)
-  - Icon folder (site/public/images/providers/{provider}/{component}/, if exists)
 
 Build pipeline will run:
   1. make protos
@@ -188,12 +186,10 @@ If you confirm, the rule will:
 2. **Copy** - Copy old component directory to new name
 3. **Replace** - Apply all 7 naming pattern replacements
 4. **Update Registry** - Modify `cloud_resource_kind.proto`
-5. **Update Docs** - Update `site/public/docs/` references
-6. **Rename Icon Folder** - Rename `site/public/images/providers/{provider}/{component}/` if exists
-7. **Delete Source** - Remove old component directory
-8. **Build** - Run `make protos`
-9. **Verify** - Run `go build ./catalog/<provider>/<component>/...`
-10. **Test** - Run `go test -v ./catalog/<provider>/<component>/...`
+5. **Delete Source** - Remove old component directory
+6. **Build** - Run `make protos`
+7. **Verify** - Run `go build ./catalog/<provider>/<component>/...`
+8. **Test** - Run `go test -v ./catalog/<provider>/<component>/...`
 
 ### Step 4: Results
 
@@ -315,8 +311,6 @@ kubernetesmicroservice → kubernetesdeployment
 🔄 **ID prefix** - Optional: `k8sms` → `k8sdpl` (or keep existing)
 🔄 **Directory names** - `kubernetesmicroservice/` → `kubernetesdeployment/`
 🔄 **All code references** - Via 7 replacement patterns
-🔄 **Documentation** - All mentions in `site/public/docs/`
-🔄 **Icon folder** - `site/public/images/providers/{provider}/{oldname}/` → `{newname}/` (if exists)
 
 ## Safety Features
 
@@ -393,16 +387,10 @@ Proceed? yes
 [Executes rename]
 
 ✅ Success! 247 files modified, 1834 replacements made.
-✅ Icon folder renamed: kubernetes/kubernetesmicroservice → kubernetes/kubernetesdeployment
 ✅ Build pipeline passed (protos, build, test).
 
 Automatically creating changelog...
 @create-planton-changelog
-```
-
-**Note**: If the icon folder doesn't exist, you'll see:
-```
-ℹ️ Icon folder not found (skipped): site/public/images/providers/kubernetes/kubernetesmicroservice
 ```
 
 **Result**: Component renamed, all tests pass, changelog created.
@@ -480,11 +468,6 @@ Before renaming:
    - Process all files recursively
    - Apply 7 naming patterns
    - Skip binary files
-
-3. **Apply replacements in docs**
-   - Search `site/public/docs/` recursively
-   - Apply same 7 patterns
-   - Update all references
 
 ### Phase 3: Registry Update
 
@@ -653,9 +636,8 @@ If fix includes renaming:
 
 1. ✅ **Review git diff** - Verify changes make sense
 2. ✅ **Run tests manually** - Extra verification
-3. ✅ **Check documentation** - Site docs updated?
-4. ✅ **Create changelog** - Document the why
-5. ✅ **Commit with good message** - Explain reasoning
+3. ✅ **Create changelog** - Document the why
+4. ✅ **Commit with good message** - Explain reasoning
 
 ## Commit Message Format
 

@@ -1,3 +1,0 @@
-name: oci-file-system
-runtime: go
-description: OCI File Storage file system component

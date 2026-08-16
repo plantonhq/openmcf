@@ -1,0 +1,45 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awssnstopic
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: fifo_topic
+      sku_meter: publish requests
+      pricing_unit: requests
+      impact: FIFO topics bill publishes and deliveries per message AND per payload volume, where standard topics bill per request -- ordering changes the pricing shape, not just the rate.
+    - field_path: archive_policy
+      sku_meter: message archive storage
+      pricing_unit: GB-months
+      impact: A FIFO archive retains every published message for the declared window, billing per GB-month stored -- and replays bill again per GB retrieved.
+    - field_path: data_protection_policy
+      sku_meter: data protection scanning
+      pricing_unit: GB
+      impact: Message data protection inspects every published payload for the policy's identifiers, billing per GB scanned.
+    - field_path: kms_key_id
+      sku_meter: KMS requests
+      pricing_unit: requests
+      impact: An encrypted topic calls KMS for data keys on publish and delivery -- each call bills at KMS request rates.
+    - field_path: delivery_feedback
+      sku_meter: delivery status log ingestion
+      pricing_unit: GB
+      impact: Per-protocol delivery status logging writes a CloudWatch Logs record for each sampled delivery at standard ingestion rates -- sample rate times traffic sets the volume.
+    - field_path: delivery_policy
+      sku_meter: publish requests
+      pricing_unit: requests
+      impact: The HTTP retry policy multiplies delivery attempts to failing endpoints -- every retry is a billed delivery.
+    - field_path: tracing_config
+      sku_meter: trace records
+      pricing_unit: traces
+      impact: Active tracing records an X-Ray trace segment per published message at X-Ray's per-trace rates.
+  free_tier: The first 1 million standard publish requests each month are free; HTTP and Lambda deliveries carry their own monthly free allowances.
+  estimate_exclusions:
+    - publish and delivery volume is entirely workload-driven -- an idle topic bills nothing
+    - per-protocol delivery rates (HTTP, email, SMS, mobile push) bill on the AwsSnsSubscription components that attach endpoints to this topic
+    - archive storage grows with published traffic and the retention window -- unknowable from the manifest
+    - data transfer out of the region bills per GB
+  notes: "A topic's existence is free -- the bill starts with the first publish. Delivery-side cost belongs to subscriptions; this manifest's own opt-ins (archive, data protection, delivery-status logging) are the levers that add topic-side meters."

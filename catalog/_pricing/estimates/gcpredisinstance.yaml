@@ -1,0 +1,68 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpredisinstance
+spec:
+  presets:
+    - preset: 01-basic-cache
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloud Memorystore for Redis
+          sku_meter: provisioned capacity
+          pricing_unit: GiB-hours
+          pricing_quantity: "730"
+          quantity_basis: 1 GiB provisioned x 730 hours at the BASIC tier's M1 band rate (1-4 GiB)
+          list_unit_price: "0.049"
+          price_source: https://cloudbilling.googleapis.com/v1/services/5AF5-2C11-D467/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "35.7700"
+      total_list_cost: "35.7700"
+      exclusions:
+        - network egress follows client placement; in-region VPC traffic is free
+      notes: A BASIC instance is a single node -- no replica, no failover -- so the capacity line is the entire bill.
+    - preset: 02-ha-production
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloud Memorystore for Redis
+          sku_meter: provisioned capacity
+          pricing_unit: GiB-hours
+          pricing_quantity: "3650"
+          quantity_basis: 5 GiB provisioned x 730 hours at the STANDARD_HA tier's M2 band rate (5-10 GiB) -- the rate already includes the synchronized failover replica
+          list_unit_price: "0.054"
+          price_source: https://cloudbilling.googleapis.com/v1/services/5AF5-2C11-D467/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "197.1000"
+      total_list_cost: "197.1000"
+      exclusions:
+        - network egress follows client placement
+        - RDB snapshot storage is included in the instance price
+      notes: STANDARD_HA bills one capacity line at the HA rate (exactly twice the per-node rate) rather than itemizing the failover node.
+    - preset: 03-private-services-access
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloud Memorystore for Redis
+          sku_meter: provisioned capacity
+          pricing_unit: GiB-hours
+          pricing_quantity: "21900"
+          quantity_basis: read replicas switch billing to per-node -- 3 nodes (1 primary + 2 replicas) x 10 GiB each x 730 hours at the per-node M2 band rate (half the STANDARD_HA rate, which is that same rate twice)
+          list_unit_price: "0.027"
+          price_source: https://cloudbilling.googleapis.com/v1/services/5AF5-2C11-D467/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "591.3000"
+      total_list_cost: "591.3000"
+      exclusions:
+        - network egress follows client placement
+      notes: With READ_REPLICAS_ENABLED every node bills the full provisioned capacity -- read scale is bought in whole copies of the dataset.

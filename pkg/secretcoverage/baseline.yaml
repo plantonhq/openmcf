@@ -29,7 +29,7 @@
 #   (C)  Service env-var secret maps. Governed by the env-resolution path and the
 #        still-open reference-only (allow_literals) decision; annotating here would
 #        pre-empt that decision (PO-13).
-#   (D)  Secret-holder kinds (KubernetesSecret, OciVaultSecret) whose purpose is to
+#   (D)  Secret-holder kinds (e.g. KubernetesSecret) whose purpose is to
 #        materialize a secret. Reference-only is the right end state but a
 #        fundamental UX shift; needs its own design slice.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -40,6 +40,3 @@ gaps:
   - KubernetesSecret:spec.basic_auth.password
   - KubernetesSecret:spec.docker_config_json.password
   - KubernetesSecret:spec.ssh_auth.ssh_private_key
-  - OciVaultSecret:spec.secret_generation_context.secret_template
-  - OciVaultSecret:spec.secret_metadata
-  - OciVaultSecret:spec.secret_rules.secret_version_expiry_interval

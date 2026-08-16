@@ -1,0 +1,35 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: azurednszone
+spec:
+  presets:
+    - preset: 01-public-zone
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: hosted zone
+          price: dns-public-zone
+          pricing_quantity: "1"
+          quantity_basis: one public zone billed per month at the first-25-zones list rate (the rate steps down from the 26th zone in the subscription)
+      exclusions:
+        - query volume bills per million queries answered and follows traffic
+      notes: The zone fee is the whole committed spend; queries are the variable the manifest cannot know.
+    - preset: 02-delegation-ready-zone
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: hosted zone
+          price: dns-public-zone
+          pricing_quantity: "1"
+          quantity_basis: one public zone billed per month at the first-25-zones list rate; SOA tuning changes resolver behavior, not the fee
+      exclusions:
+        - query volume bills per million queries answered and follows traffic
+      notes: Delegation readiness is configuration, not cost -- the fee is identical to the bare zone.

@@ -1,0 +1,160 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsrdsinstance
+spec:
+  presets:
+    - preset: 01-postgresql-production
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Relational Database Service
+          sku_meter: instance hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one instance with multi_az true -- the Multi-AZ rate carries the synchronous standby -- billed every hour of the month
+          list_unit_price: "0.318"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "232.1400"
+        - service_name: Amazon Relational Database Service
+          sku_meter: provisioned storage
+          pricing_unit: GB-months
+          pricing_quantity: "50"
+          quantity_basis: allocated_storage_gb at the Multi-AZ storage rate (the standby doubles storage inside the rate)
+          list_unit_price: "0.23"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "11.5000"
+      total_list_cost: "243.6400"
+      exclusions:
+        - storage autoscaling can grow the volume toward max_allocated_storage_gb, multiplying the storage line
+        - backup storage beyond the free allowance grows with churn across the retention window
+        - CloudWatch ingestion for the exported logs is load-dependent
+      notes: Estimated at the allocated floor. Performance Insights stays in its free 7-day tier.
+    - preset: 02-mysql-production
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Relational Database Service
+          sku_meter: instance hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one instance with multi_az true -- the Multi-AZ rate carries the synchronous standby -- billed every hour of the month
+          list_unit_price: "0.304"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "221.9200"
+        - service_name: Amazon Relational Database Service
+          sku_meter: provisioned storage
+          pricing_unit: GB-months
+          pricing_quantity: "50"
+          quantity_basis: allocated_storage_gb at the Multi-AZ storage rate (the standby doubles storage inside the rate)
+          list_unit_price: "0.23"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "11.5000"
+      total_list_cost: "233.4200"
+      exclusions:
+        - storage autoscaling can grow the volume toward max_allocated_storage_gb, multiplying the storage line
+        - backup storage beyond the free allowance grows with churn across the retention window
+        - CloudWatch ingestion for the exported logs is load-dependent
+        - blue_green_update_enabled runs a temporary synchronized duplicate environment for the length of each update window
+      notes: Estimated at the allocated floor. Performance Insights stays in its free 7-day tier.
+    - preset: 03-read-replica
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Relational Database Service
+          sku_meter: instance hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one read replica instance (single-AZ), billed every hour of the month on top of its source instance's own bill; the engine is inherited from the source -- assumed PostgreSQL when the manifest does not state it
+          list_unit_price: "0.159"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "116.0700"
+        - service_name: Amazon Relational Database Service
+          sku_meter: provisioned storage
+          pricing_unit: GB-months
+          pricing_quantity: "50"
+          quantity_basis: the replica provisions its own volume matching the source's allocation -- assumed 50 GB on gp3 at the single-AZ storage rate when the manifest does not state it
+          list_unit_price: "0.115"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "5.7500"
+      total_list_cost: "121.8200"
+      exclusions:
+        - the source instance bills separately -- this estimate covers only the replica
+      notes: Performance Insights stays in its free 7-day tier. A read replica is a full additional billed instance on top of its source.
+    - preset: 04-oracle-enterprise
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Relational Database Service
+          sku_meter: instance hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one instance under the declared license model with multi_az true, billed every hour at the licensed Multi-AZ rate
+          list_unit_price: "0.466"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "340.1800"
+        - service_name: Amazon Relational Database Service
+          sku_meter: provisioned storage
+          pricing_unit: GB-months
+          pricing_quantity: "200"
+          quantity_basis: allocated_storage_gb at the Multi-AZ storage rate (the standby doubles storage inside the rate)
+          list_unit_price: "0.23"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "46.0000"
+      total_list_cost: "386.1800"
+      exclusions:
+        - storage autoscaling can grow the volume toward max_allocated_storage_gb, multiplying the storage line
+        - backup storage beyond the free allowance grows with churn across the retention window
+        - the engine license is NOT in this price -- bring-your-own-license moves it onto your own license agreement
+      notes: Estimated at the allocated floor.
+    - preset: 05-mysql-s3-migration
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Relational Database Service
+          sku_meter: instance hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one instance with multi_az true -- the Multi-AZ rate carries the synchronous standby -- billed every hour of the month
+          list_unit_price: "0.304"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "221.9200"
+        - service_name: Amazon Relational Database Service
+          sku_meter: provisioned storage
+          pricing_unit: GB-months
+          pricing_quantity: "200"
+          quantity_basis: allocated_storage_gb at the Multi-AZ storage rate (the standby doubles storage inside the rate)
+          list_unit_price: "0.23"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "46.0000"
+      total_list_cost: "267.9200"
+      exclusions:
+        - storage autoscaling can grow the volume toward max_allocated_storage_gb, multiplying the storage line
+        - backup storage beyond the free allowance grows with churn across the retention window
+        - the one-time S3 restore transfer and the source backup bucket's storage bill outside this component
+      notes: Estimated at the allocated floor. The migration itself is a create-time event, not a recurring charge.

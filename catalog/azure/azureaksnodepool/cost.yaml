@@ -1,0 +1,59 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureaksnodepool
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Virtual Machines
+      sku_meter: node compute
+      pricing_unit: hours
+      description: Every node the pool keeps running bills its VM size by the hour as an ordinary virtual machine -- AKS adds no markup on nodes.
+    - service_name: Storage
+      sku_meter: node OS disk
+      pricing_unit: disk-months
+      description: Each node carries a managed OS disk billed monthly at its performance tier unless the pool uses free ephemeral OS disks.
+  cost_drivers:
+    - field_path: vm_size
+      sku_meter: node compute
+      pricing_unit: hours
+      impact: The single biggest lever -- the VM size fixes the hourly rate (and GPU sizes like the NC family carry their accelerator in the machine price).
+    - field_path: min_count
+      sku_meter: node compute
+      pricing_unit: hours
+      impact: The autoscaling floor is the committed always-on spend -- the pool never bills below it; a floor of zero makes the idle pool free.
+    - field_path: max_count
+      sku_meter: node compute
+      pricing_unit: hours
+      impact: The ceiling bounds the worst-case bill under load; it costs nothing until the autoscaler actually scales.
+    - field_path: node_count
+      sku_meter: node compute
+      pricing_unit: hours
+      impact: A fixed-size pool bills exactly this many nodes around the clock -- no floor/ceiling spread.
+    - field_path: priority
+      sku_meter: node compute
+      pricing_unit: hours
+      impact: SPOT nodes bill at floating market rates capped by spot_max_price, well under the on-demand price, in exchange for eviction; REGULAR (the default) is the list rate.
+    - field_path: os_disk_size_gb
+      sku_meter: node OS disk
+      pricing_unit: disk-months
+      impact: Managed OS disks bill by the performance tier the size lands in (the 128 GiB default is a P10); bigger sizes step up tiers.
+    - field_path: os_disk_type
+      sku_meter: node OS disk
+      pricing_unit: disk-months
+      impact: EPHEMERAL uses the VM's local storage and bills nothing; MANAGED (the default) bills the tiered disk price per node.
+    - field_path: scale_down_mode
+      sku_meter: node OS disk
+      pricing_unit: disk-months
+      impact: DEALLOCATE keeps stopped nodes' disks (still billed) for faster scale-up; DELETE (the default) removes them with the node.
+    - field_path: ultra_ssd_enabled
+      sku_meter: Ultra SSD compatibility
+      impact: Enabling Ultra SSD compatibility adds a per-hour surcharge on zone-deployed nodes even before any Ultra disk attaches.
+  estimate_exclusions:
+    - autoscaling above the floor bills each additional node while it runs
+    - spot market pricing floats below the on-demand ceiling and is never a list price
+    - network egress and any data disks the workloads attach follow workload behavior
+  notes: "The node pool is where an AKS architecture's real money lives -- the cluster bills a flat uptime fee, the nodes bill like the VM fleet they are. Azure prices whole instances per hour (unlike GCP's per-vCPU metering), so the estimate arithmetic is nodes times hours times the VM rate, plus a tiered OS disk per node."

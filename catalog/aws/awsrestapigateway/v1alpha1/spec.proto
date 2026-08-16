@@ -220,7 +220,9 @@ message AwsRestApiGatewaySpec {
   option (buf.validate.message).cel = {
     id: "route_path_depth_max_five"
     message: "route paths support at most five segments - use a greedy-proxy tail ({proxy+}) for deeper hierarchies"
-    expression: "this.routes.all(r, r.path == '/' || r.path.split('/').size() <= 6)"
+    // Portable form (protovalidate standard library only): six or more
+    // slash-led segments means depth six or more, which is out of contract.
+    expression: "this.routes.all(r, r.path == '/' || !r.path.matches('(/[^/]*){6}'))"
   };
 
   // Names are how routes address satellites - duplicates make the

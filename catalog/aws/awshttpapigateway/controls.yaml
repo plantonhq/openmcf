@@ -1,0 +1,86 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awshttpapigateway
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: API Gateway stores only configuration (routes, integrations, authorizer definitions) and buffers requests transiently; that service-side state is encrypted at rest by the managed service -- the API holds no customer data store.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-key surface exists for HTTP APIs -- there is no data store to key; payloads land in the backend components, which own their at-rest posture.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: HTTP API endpoints serve HTTPS only (TLS 1.2 minimum) -- plaintext HTTP is not offered, and integration calls to AWS backends ride TLS.
+    - control_id: no-public-access
+      status: configurable
+      field_path: disable_execute_api_endpoint
+      evidence:
+        type: spec_default
+        reference: The default execute-api endpoint is publicly reachable (authorization still applies per route); disabling it confines the API to custom domains or private paths, and is the standard hardening when a fronting CDN owns the public surface.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: routes.authorization_type
+      evidence:
+        type: spec_default
+        reference: Unset means a route is open; JWT, AWS_IAM, or CUSTOM authorization demands verified identity per request -- ingress restriction on an API is per-route authorization, not CIDR.
+      notes: The 03 preset shows the split -- a public route beside JWT-protected routes with declared scopes.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: AWS WAF does not attach to HTTP APIs (a REST API or a fronting CloudFront distribution carries the web ACL); throttling here is quota control, not request inspection.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: API management is IAM-authorized; data-plane calls are governed per route by the declared authorization type, including AWS_IAM SigV4 authorization.
+    - control_id: workload-identity
+      status: configurable
+      field_path: routes.integration.credentials_arn
+      evidence:
+        type: spec_default
+        reference: AWS-service integrations assume the referenced role (credentials_arn) for each call -- short-lived credentials, no static keys. Lambda-proxy integrations instead rely on the function's own resource policy, declared through the AwsLambda component's invoke_permissions.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: HTTP APIs refuse TLS below 1.2 and offer no API-key or legacy authentication path -- the weaker mechanisms of REST APIs simply do not exist on this surface.
+    - control_id: audit-logging
+      status: configurable
+      field_path: stage.access_log
+      evidence:
+        type: spec_default
+        reference: Unset means no access logs; the access_log block writes a per-request record in the declared format to the referenced CloudWatch log group. Management calls are in CloudTrail by default regardless.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: API Gateway publishes request count, 4xx/5xx rates, latency, and integration latency to CloudWatch automatically per API; detailed_metrics_enabled deepens this to per-route, per-method resolution.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The API is stateless configuration recreated from the manifest -- there is no data to back up; auto_deploy keeps the stage converged with the declared routes.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No stored data means no retention surface; access-log retention is governed on the referenced log group.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: HTTP APIs are served by regional, multi-AZ managed infrastructure; no single-zone deployment mode exists.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists for HTTP APIs; a deleted API is recreated from the manifest, though its generated endpoint id changes.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the gateway fleet; no customer-visible patch surface exists.

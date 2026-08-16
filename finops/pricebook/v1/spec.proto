@@ -1,0 +1,200 @@
+syntax = "proto3";
+
+package dev.planton.finops.pricebook.v1;
+
+// PriceBookSpec holds one provider's pinned unit prices. Authoring
+// contract: every monetary value is a decimal STRING (never a YAML float --
+// floats corrupt cents), every price names its source URL and retrieval
+// date, and entry slugs are unique within the book -- estimate models
+// reference them by name.
+message PriceBookSpec {
+  // The pinned prices, one per provider SKU/meter the catalog estimates
+  // from. Keep the book minimal: an entry no estimate model references is
+  // dead weight, and the estimate generator's coherence checks reject it.
+  repeated PriceBookEntry entries = 1;
+}
+
+// PriceBookEntry pins one unit price: what one provider meter costs today
+// at published list prices, where that figure was read, and (when a
+// machine selector is present) exactly how to read it again.
+message PriceBookEntry {
+  // The entry's slug identity, unique within this book, referenced by
+  // estimate model quantity lines (e.g. "alb-hours-us-east-1"). Name the
+  // provider SKU and its pricing scope, not any component: many components
+  // may cite one entry.
+  string name = 1;
+
+  // The provider offering that bills (FOCUS ServiceName), exactly as
+  // component cost profiles declare it, e.g. "Elastic Load Balancing".
+  string service_name = 2;
+
+  // The unit the price is quoted in (FOCUS PricingUnit), e.g. "hours",
+  // "WCU-hours", "disk-months". Must agree with the pricing_unit that
+  // component cost profiles declare for meters priced by this entry; the
+  // estimate generator enforces the agreement.
+  string pricing_unit = 3;
+
+  // The pricing scope the price was verified for: a provider region code
+  // ("us-east-1", "eastus") for regionally priced SKUs, or "global" when
+  // the provider prices the SKU identically everywhere. List prices vary
+  // by region; an unpinned price is not reproducible.
+  string region = 4;
+
+  // ISO 4217 currency of list_unit_price ("USD").
+  string currency = 5;
+
+  // The provider's published list price per pricing_unit, as a decimal
+  // string (FOCUS ListUnitPrice), e.g. "0.0225".
+  string list_unit_price = 6;
+
+  // URL the unit price was read from. Prefer a URL that can be fetched
+  // again and still show this price: a versioned price-API document beats
+  // a live API query, which beats a human pricing page.
+  string price_source = 7;
+
+  // The date the unit price was read from price_source (YYYY-MM-DD).
+  // Prices drift; a dated price is a fact, an undated price is a rumor.
+  string retrieved_on = 8;
+
+  // The entry's decomposed identity, for value-keyed lookups: the spec
+  // values that select this price, in the catalog's own vocabulary
+  // (e.g. instance_class: db.m6g.large, engine: postgres, deployment:
+  // multi-az). A component's cost derivation binds these keys from
+  // manifest values to pick the entry, so slugs stay human naming while
+  // attributes are the machine join. Entries carrying attributes must
+  // be unique per (service_name, pricing_unit, region, attributes) --
+  // the conformance gate enforces it, and a lookup matching zero or
+  // several entries is a refusal, never a pick. Empty for entries only
+  // referenced by slug.
+  map<string, string> attributes = 12;
+
+  // How the price-book fetcher re-reads this price from the provider's
+  // public price API. At most one selector, matching the book's own
+  // provider (the conformance gate enforces the pairing; the oneof makes
+  // a second selector structurally impossible). Entries without a
+  // selector are refreshed by hand and the fetcher leaves them untouched.
+  oneof selector {
+    // Locates the price in the AWS Price List bulk API.
+    AwsPriceSelector aws_selector = 9;
+    // Locates the price in the Azure Retail Prices API.
+    AzurePriceSelector azure_selector = 10;
+    // Locates the price in the GCP Cloud Billing Catalog API.
+    GcpPriceSelector gcp_selector = 11;
+  }
+}
+
+// AwsPriceSelector locates one price dimension in the AWS Price List bulk
+// API (the public, unauthenticated offer files at
+// pricing.us-east-1.amazonaws.com). The fetcher resolves the offer's
+// current version, downloads the small regional offer file, and matches
+// products by attribute -- a selector that matches zero or several price
+// dimensions is a hard error, never a guess.
+message AwsPriceSelector {
+  // The offer code naming the service's price file, e.g. "AWSELB",
+  // "AmazonDynamoDB", "AmazonVPC" (the offer index at
+  // /offers/v1.0/aws/index.json lists them all).
+  string offer_code = 1;
+
+  // The region whose offer file is read, e.g. "us-east-1". Regional files
+  // are small (tens of KB); the all-region file can be enormous.
+  string region_code = 2;
+
+  // The product's exact "usagetype" attribute in the regional offer file,
+  // including any region prefix the file carries (e.g. "LoadBalancerUsage",
+  // "USE1-PublicIPv4:InUseAddress"). Recorded verbatim -- exactness beats
+  // normalization.
+  string usage_type = 3;
+
+  // The product's "operation" attribute (e.g. "LoadBalancing:Application",
+  // "CommittedThroughput"). Empty when the product carries none.
+  string operation = 4;
+
+  // Disambiguates tiered on-demand price dimensions within the matched
+  // product: the dimension whose description contains this substring is
+  // the one priced (e.g. "beyond the free tier" skips the $0.00 free-tier
+  // tier -- list-price semantics never net free tiers out). Empty when the
+  // product has exactly one dimension.
+  string description_contains = 5;
+}
+
+// AzurePriceSelector locates one meter in the Azure Retail Prices API
+// (the public, unauthenticated endpoint at prices.azure.com). The fetcher
+// composes an OData $filter from the populated fields, requests USD
+// consumption prices, and requires the matches to agree on exactly one
+// price -- the API repeats a meter once per display region, so several
+// rows carrying one identical price are that one price, while rows
+// disagreeing on price or unit are a hard error, never a guess. Field
+// names mirror the API's own filter vocabulary verbatim; values are
+// CASE-SENSITIVE (the fetcher pins api-version=2023-01-01-preview, where
+// filters match exactly).
+message AzurePriceSelector {
+  // The API's serviceName filter, e.g. "Virtual Machines", "Azure DNS".
+  string service_name = 1;
+
+  // The API's armRegionName filter, e.g. "eastus" -- or "Global" for
+  // meters Azure prices identically everywhere (matching the entry's
+  // region "global").
+  string arm_region_name = 2;
+
+  // The API's armSkuName filter, e.g. "Standard_D4s_v5". Empty when the
+  // meter carries no ARM SKU (many non-compute meters).
+  string arm_sku_name = 3;
+
+  // The API's meterName filter, e.g. "D4s v5", "P10 LRS Disk". The most
+  // precise meter identity; prefer it over productName when both would
+  // work.
+  string meter_name = 4;
+
+  // The API's productName filter, e.g. "Virtual Machines Dsv5 Series" --
+  // needed when meterName alone is ambiguous (Windows vs Linux product
+  // lines share meter names).
+  string product_name = 5;
+
+  // The API's skuName filter, e.g. "Standard". A further disambiguator
+  // when meter and product names still match several items.
+  string sku_name = 6;
+
+  // The API's priceType filter. Empty means "Consumption" (pay-as-you-go
+  // list price) -- reservations and savings plans are never list prices.
+  string price_type = 7;
+
+  // Picks one tier of a tiered meter by its tierMinimumUnits value
+  // (decimal string, e.g. "0", "25"). The Azure analog of the AWS
+  // selector's description_contains: list-price semantics price the
+  // standard tier, never a free or volume-discount tier. Empty when the
+  // meter has exactly one tier.
+  string tier_minimum_units = 8;
+
+  // The meter's stable GUID (the API's meterId) -- the strongest anchor,
+  // for meters the name filters cannot isolate (e.g. globally priced
+  // meters whose commercial-cloud row carries an EMPTY armRegionName,
+  // where a name filter would also match sovereign-cloud twins). When
+  // set, the fetcher filters by meterId alone and the name fields above
+  // are the human-readable record of what it identifies.
+  string meter_id = 9;
+}
+
+// GcpPriceSelector locates one SKU in the GCP Cloud Billing Catalog API
+// (cloudbilling.googleapis.com, authenticated -- see the fetcher for the
+// credential contract). Google assigns every price a stable SKU ID, so
+// selection is direct rather than attribute matching; the fetcher verifies
+// the SKU still serves the entry's region and converts the API's exact
+// units+nanos price to the decimal string -- floats never touch the money.
+message GcpPriceSelector {
+  // The Cloud Billing service identity that owns the SKU, e.g.
+  // "6F81-5844-456A" (Compute Engine). The services list at
+  // /v1/services names them all; recorded so the fetcher queries one
+  // service's SKU pages, never the whole catalog.
+  string service_id = 1;
+
+  // The SKU's stable identifier within the service, e.g.
+  // "2E27-4F75-95CD". The deterministic anchor: a missing sku_id in the
+  // service's live SKU list is a hard error.
+  string sku_id = 2;
+
+  // Picks one tiered rate of the SKU's pricing expression by its
+  // startUsageAmount (decimal string, e.g. "0"). List-price semantics:
+  // price the standard rate, never a free tier. Empty when the SKU has
+  // exactly one rate.
+  string start_usage_amount = 3;
+}

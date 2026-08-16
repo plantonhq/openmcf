@@ -1,3 +1,0 @@
-name: scalewaymongodbinstance-pulumi-project
-runtime:
-  name: go

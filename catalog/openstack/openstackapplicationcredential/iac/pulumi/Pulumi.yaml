@@ -1,3 +1,0 @@
-name: openstack-application-credential
-runtime: go
-description: Pulumi module for OpenStackApplicationCredential

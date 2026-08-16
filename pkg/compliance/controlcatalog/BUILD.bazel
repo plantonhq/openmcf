@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "controlcatalog",
+    srcs = ["controlcatalog.go"],
+    importpath = "github.com/plantonhq/planton/pkg/compliance/controlcatalog",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//compliance/controlcatalog/v1:controlcatalog",
+        "//compliance/frameworkcrosswalk/v1:frameworkcrosswalk",
+        "//pkg/protobufyaml",
+        "@com_github_pkg_errors//:errors",
+    ],
+)
+
+go_test(
+    name = "controlcatalog_test",
+    srcs = ["conformance_test.go"],
+    embed = [":controlcatalog"],
+    deps = ["//compliance/controlcatalog/v1:controlcatalog"],
+)

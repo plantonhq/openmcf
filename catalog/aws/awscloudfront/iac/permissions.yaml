@@ -1,0 +1,54 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awscloudfront
+spec:
+  aws:
+    statements:
+      - sid: ManageDistribution
+        actions:
+          - cloudfront:CreateDistribution
+          - cloudfront:GetDistribution
+          - cloudfront:UpdateDistribution
+          - cloudfront:DeleteDistribution
+          - cloudfront:TagResource
+          - cloudfront:UntagResource
+          - cloudfront:ListTagsForResource
+        resources:
+          - arn:aws:cloudfront::*:distribution/*
+        provenance: derived
+        notes: Covers aws_cloudfront_distribution -- create, read, converge, tag, and the disable-then-delete teardown. CloudFront is a global service; the distribution id is the ARN's variable part.
+      - sid: ManageOriginAccessControl
+        actions:
+          - cloudfront:CreateOriginAccessControl
+          - cloudfront:GetOriginAccessControl
+          - cloudfront:UpdateOriginAccessControl
+          - cloudfront:DeleteOriginAccessControl
+        resources:
+          - arn:aws:cloudfront::*:origin-access-control/*
+        provenance: derived
+        notes: Covers aws_cloudfront_origin_access_control, created for each S3 origin with create_origin_access_control true so the bucket accepts only this distribution's signed requests.
+      - sid: ManageContinuousDeploymentPolicy
+        actions:
+          - cloudfront:CreateContinuousDeploymentPolicy
+          - cloudfront:GetContinuousDeploymentPolicy
+          - cloudfront:UpdateContinuousDeploymentPolicy
+          - cloudfront:DeleteContinuousDeploymentPolicy
+        resources:
+          - arn:aws:cloudfront::*:continuous-deployment-policy/*
+        provenance: derived
+        notes: Covers aws_cloudfront_continuous_deployment_policy, created only when spec.continuous_deployment wires a staging distribution for weighted or header-routed canary traffic.
+      - sid: ManageMonitoringSubscription
+        actions:
+          - cloudfront:CreateMonitoringSubscription
+          - cloudfront:GetMonitoringSubscription
+          - cloudfront:DeleteMonitoringSubscription
+        resources:
+          - arn:aws:cloudfront::*:distribution/*
+        provenance: derived
+        notes: Covers aws_cloudfront_monitoring_subscription, created only when enable_additional_metrics is true -- the subscription is addressed by the distribution's own ARN.

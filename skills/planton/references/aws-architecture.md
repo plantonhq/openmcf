@@ -13,7 +13,7 @@ default to the heaviest thing the user mentioned:
 
 | Requirement smells like | Reach for | Not | Why |
 |---|---|---|---|
-| A containerized web service or API, no k8s requirement | ECS on Fargate | EKS | No control-plane fee, no nodes to manage; EKS costs ~$73/mo before one pod runs |
+| A containerized web service or API, no k8s requirement | ECS on Fargate | EKS | No control-plane fee, no nodes to manage; EKS bills an always-on control-plane charge before one pod runs (the figure is in its cost fact-sheet) |
 | Team already lives in Kubernetes, or needs k8s-native tooling (Istio, operators, Helm ecosystems) | EKS | ECS | The ecosystem is the requirement |
 | Event-driven, bursty, or request-scale-to-zero | Lambda (+ API Gateway/ALB) | always-on containers | Pay per request; zero idle cost |
 | Static site / SPA | S3 + CloudFront | anything with servers | Cents per month |
@@ -32,7 +32,8 @@ choose.
   data. Databases never get public IPs.
 - NAT: single gateway for dev (per-AZ only for production), and question
   whether NAT is needed at all — a workload that only serves inbound traffic
-  through an ALB may not need any egress path worth $32/month.
+  through an ALB may not need a standing egress path at all, and every NAT
+  gateway bills around the clock (its cost fact-sheet has the figure).
 - Security groups: least privilege between tiers (ALB → service port only,
   service → database port only). Never 0.0.0.0/0 ingress except 80/443 on the
   public-facing load balancer.

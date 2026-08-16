@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpcloudsql
+spec:
+  gcp:
+    groups:
+      - purpose: EnableSqlAdminApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling sqladmin.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageInstance
+        permissions:
+          - cloudsql.instances.create
+          - cloudsql.instances.get
+          - cloudsql.instances.update
+          - cloudsql.instances.delete
+        provenance: derived
+        notes: Covers google_sql_database_instance for primaries, read replicas, and read pools alike -- create, read/refresh, in-place updates (tier, disk, backup, network), and destroy. The provider polls the operations each mutation returns under the same instance-scoped authorization.
+      - purpose: PeerPrivateNetwork
+        permissions:
+          - servicenetworking.services.get
+        provenance: derived
+        notes: Required only when network.private_network attaches the instance to a VPC over private service access -- the provider verifies the service-networking connection exists. Creating that connection itself (the PSA range and peering) is a separate prerequisite resource, not this module.

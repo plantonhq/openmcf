@@ -92,8 +92,6 @@ rename_component.py (Python Script)
       ↓
    [Update Registry]
       ↓
-   [Update Docs]
-      ↓
    [Delete Old Directory]
       ↓
    [Run: make protos]
@@ -262,27 +260,11 @@ catalog/{provider}/{new_folder}/
   - `pulumi/` (Pulumi implementation)
   - `tf/` (Terraform implementation)
 
-### Icon Folder (if exists)
-
-```
-site/public/images/providers/{provider}/{old_folder}/
-                                               ↓
-site/public/images/providers/{provider}/{new_folder}/
-```
-
-**Location**: `site/public/images/providers/{provider}/{component_folder}/logo.svg`
-
-**Note**: Not all components have icon folders. If missing, the rename operation will log a warning and continue.
-
 ### What Gets Replaced In
 
-**1. New Component Directory** (all files)
+**New Component Directory** (all files)
 
 Every file in the new component directory gets processed for all 7 naming patterns.
-
-**2. Documentation Directory** (`site/public/docs/`)
-
-All markdown files in the documentation site get processed to update references to the renamed component.
 
 ### What Gets Updated
 
@@ -326,18 +308,6 @@ KubernetesDeployment = 810 [(kind_meta) = {
 **What's updated**:
 - Enum name (KubernetesMicroservice → KubernetesDeployment)
 - ID prefix (only if explicitly provided)
-
-**Icon Folder (site/public/images/providers/)**
-
-The icon folder gets renamed to match the new component name:
-
-- Provider directories use the base provider name (e.g., `kubernetes` not `kubernetes/workload`)
-- Folder structure and `logo.svg` file are preserved
-- If icon folder doesn't exist, the operation continues with a warning
-
-Example:
-- Before: `site/public/images/providers/kubernetes/kubernetesmicroservice/logo.svg`
-- After: `site/public/images/providers/kubernetes/kubernetesdeployment/logo.svg`
 
 ### What Gets Deleted
 
@@ -541,14 +511,10 @@ Copying directory...
 
 Applying replacements...
   ✓ 1834 replacements in component directory
-  ✓ 67 replacements in documentation
 
 Updating registry...
   ✓ Enum name updated
   ✓ ID prefix updated
-
-Renaming icon folder...
-  ✓ Icon folder renamed: kubernetes/kubernetesmicroservice → kubernetes/kubernetesdeployment
 
 Deleting old directory...
   ✓ Old component removed
@@ -810,19 +776,6 @@ git commit -m "temp: save changes"
 # Then rename
 ```
 
-### Warning: Icon Folder Not Found
-
-```
-Warning: Icon folder not found: site/public/images/providers/kubernetes/kubernetesmicroservice
-Skipping icon folder rename...
-```
-
-**Not an error** - Some components don't have icon folders yet.
-
-**If icon should exist**:
-- Add it manually after the rename completes
-- Follow the pattern: `site/public/images/providers/{provider}/{componentname}/logo.svg`
-
 ## Real-World Case Study: Workload Naming Refactoring
 
 In November 2025, all 23 Kubernetes workload components were renamed:
@@ -876,7 +829,6 @@ In November 2025, all 23 Kubernetes workload components were renamed:
 
 - ✅ Review git diff comprehensively
 - ✅ Run tests manually as extra verification
-- ✅ Check documentation renders correctly
 - ✅ Create changelog documenting motivation
 - ✅ Write informative commit message
 - ✅ Update any external references (outside repo)
@@ -888,8 +840,6 @@ A rename is successful when:
 - ✅ Component directory renamed
 - ✅ All 7 naming patterns applied
 - ✅ Registry updated correctly
-- ✅ Documentation updated
-- ✅ Icon folder renamed (if exists)
 - ✅ Old directory deleted
 - ✅ `make protos` passes
 - ✅ `go build ./catalog/...` passes

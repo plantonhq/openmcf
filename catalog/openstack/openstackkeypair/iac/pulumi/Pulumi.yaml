@@ -1,3 +1,0 @@
-name: openstack-keypair
-runtime: go
-description: Pulumi module for OpenStackKeypair

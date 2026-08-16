@@ -43,7 +43,6 @@ Based on the conversation context and affected files, automatically infer labels
 - `shared/**`, `qa/**`, `iac/**` → `area/apis`
 - `tools/**` → `area/tooling`
 - `.cursor/**` → `area/dx`
-- `site/**` → `area/site`
 - `docs/**` → `area/docs`
 - `_rules/component/forge/**` → `area/forge`
 

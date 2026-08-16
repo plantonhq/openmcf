@@ -520,13 +520,13 @@ const file_catalog_aws_awsrestapiusageplan_v1alpha1_spec_proto_rawDesc = "" +
 	"\x05limit\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\x05limit\x12/\n" +
 	"\x06period\x18\x02 \x01(\tB\x17\xbaH\x14r\x12R\x03DAYR\x04WEEKR\x05MONTHR\x06period\x12\x1f\n" +
 	"\x06offset\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x06offset:\x9a\x02\xbaH\x96\x02\x1a\x93\x02\n" +
-	"\x14offset_within_period\x12@quota offset must be 0 for DAY, 0-6 for WEEK, and 0-27 for MONTH\x1a\xb8\x01!(this.period in ['DAY', 'WEEK', 'MONTH']) || (this.period == 'DAY' && this.offset == 0) || (this.period == 'WEEK' && this.offset <= 6) || (this.period == 'MONTH' && this.offset <= 27)\"\xa9\x02\n" +
+	"\x14offset_within_period\x12@quota offset must be 0 for DAY, 0-6 for WEEK, and 0-27 for MONTH\x1a\xb8\x01!(this.period in ['DAY', 'WEEK', 'MONTH']) || (this.period == 'DAY' && this.offset == 0) || (this.period == 'WEEK' && this.offset <= 6) || (this.period == 'MONTH' && this.offset <= 27)\"\xab\x02\n" +
 	"\x1bAwsRestApiUsagePlanThrottle\x12(\n" +
 	"\vburst_limit\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\n" +
 	"burstLimit\x12-\n" +
 	"\n" +
-	"rate_limit\x18\x02 \x01(\x01B\x0e\xbaH\v\x12\t)\x00\x00\x00\x00\x00\x00\x00\x00R\trateLimit:\xb0\x01\xbaH\xac\x01\x1a\xa9\x01\n" +
-	"\x1dthrottle_at_least_one_ceiling\x12[set at least one of burst_limit or rate_limit (omit throttle entirely for account defaults)\x1a+this.burst_limit > 0 || this.rate_limit > 0\"\xd9\x01\n" +
+	"rate_limit\x18\x02 \x01(\x01B\x0e\xbaH\v\x12\t)\x00\x00\x00\x00\x00\x00\x00\x00R\trateLimit:\xb2\x01\xbaH\xae\x01\x1a\xab\x01\n" +
+	"\x1dthrottle_at_least_one_ceiling\x12[set at least one of burst_limit or rate_limit (omit throttle entirely for account defaults)\x1a-this.burst_limit > 0 || this.rate_limit > 0.0\"\xd9\x01\n" +
 	"\x19AwsRestApiUsagePlanApiKey\x12\x1b\n" +
 	"\x04name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04name\x12*\n" +
 	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\vdescription\x12\x1d\n" +

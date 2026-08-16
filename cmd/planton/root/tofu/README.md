@@ -1,6 +1,5 @@
 # OpenTofu Commands - Technical Reference
 
-> **📖 For the best reading experience**, view the comprehensive guide on the [Planton website](https://planton.dev/docs/cli/tofu-commands).
 
 Technical reference for the `planton tofu` command group.
 
@@ -227,8 +226,7 @@ planton tofu plan --manifest resource.yaml
 
 ## Related Documentation
 
-- [OpenTofu Commands Guide](https://planton.dev/docs/cli/tofu-commands) - User-facing comprehensive guide
-- [Manifest Structure](/docs/guides/manifests) - Understanding manifests
+- [CLI Documentation](https://planton.ai/docs/cli) - User-facing guide
 - [IaC Module Structure](../../pkg/iac/tofu/tofumodule/README.md) - How modules are executed
 
 ## Contributing

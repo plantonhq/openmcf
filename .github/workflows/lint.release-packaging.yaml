@@ -8,8 +8,8 @@
 #      packager hard-fails on an empty selection, so a directory rename can
 #      never ship a silently empty (or silently shrunken) zip.
 #   2. The _test provider never reaches a user surface: it carries the full
-#      per-kind file shape as permanent test infrastructure, and packaging,
-#      the catalog site, and module auto-tagging all exclude it explicitly.
+#      per-kind file shape as permanent test infrastructure, and packaging
+#      and module auto-tagging both exclude it explicitly.
 #      See hack/guards/ensure_test_provider_stays_internal.sh for the
 #      contract.
 # =============================================================================
@@ -21,7 +21,6 @@ on:
     paths:
       - 'catalog/**'
       - 'tools/ci/release/**'
-      - 'site/scripts/copy-component-docs.ts'
       - '.github/workflows/auto-tag.yaml'
       - 'hack/guards/ensure_test_provider_stays_internal.sh'
       - '.github/workflows/lint.release-packaging.yaml'
@@ -31,7 +30,6 @@ on:
     paths:
       - 'catalog/**'
       - 'tools/ci/release/**'
-      - 'site/scripts/copy-component-docs.ts'
       - '.github/workflows/auto-tag.yaml'
       - 'hack/guards/ensure_test_provider_stays_internal.sh'
       - '.github/workflows/lint.release-packaging.yaml'

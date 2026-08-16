@@ -1,0 +1,43 @@
+# Crosswalk: CIS Amazon Web Services Foundations Benchmark v3.0.0 onto the
+# Planton Control Catalog. Covers the benchmark recommendations that map to
+# per-component technical controls; account-wide recommendations (IAM
+# hygiene, CloudTrail plumbing, Config) are platform/organization posture,
+# not component posture, and are deliberately absent. A mapping says catalog
+# controls SERVE a recommendation -- it never declares a component or
+# deployment "CIS-compliant". Schema: compliance/frameworkcrosswalk/v1.
+apiVersion: compliance.planton.dev/v1
+kind: FrameworkCrosswalk
+metadata:
+  name: cis-aws
+spec:
+  framework_name: CIS Amazon Web Services Foundations Benchmark
+  framework_version: v3.0.0
+  mappings:
+    - requirement_id: "2.1.1"
+      requirement_name: Ensure S3 Bucket Policy is set to deny HTTP requests
+      control_ids: [enc-in-transit]
+    - requirement_id: "2.1.4"
+      requirement_name: Ensure that S3 Buckets are configured with 'Block public access (bucket settings)'
+      control_ids: [no-public-access]
+    - requirement_id: "2.2.1"
+      requirement_name: Ensure EBS Volume Encryption is Enabled in all Regions
+      control_ids: [enc-at-rest]
+    - requirement_id: "2.3.1"
+      requirement_name: Ensure that encryption-at-rest is enabled for RDS Instances
+      control_ids: [enc-at-rest]
+    - requirement_id: "2.3.2"
+      requirement_name: Ensure Auto Minor Version Upgrade feature is Enabled for RDS Instances
+      control_ids: [managed-patching]
+    - requirement_id: "2.3.3"
+      requirement_name: Ensure that public access is not given to RDS Instance
+      control_ids: [no-public-access]
+    - requirement_id: "3.1"
+      requirement_name: Ensure CloudTrail is enabled in all regions
+      control_ids: [audit-logging]
+      notes: CloudTrail itself is account posture; component-level audit-logging serves the same intent for resource access events.
+    - requirement_id: "5.2"
+      requirement_name: Ensure no security groups allow ingress from 0.0.0.0/0 to remote server administration ports
+      control_ids: [restricted-ingress]
+    - requirement_id: "5.3"
+      requirement_name: Ensure no security groups allow ingress from ::/0 to remote server administration ports
+      control_ids: [restricted-ingress]

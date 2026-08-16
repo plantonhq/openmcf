@@ -34,7 +34,6 @@ go_deps.gazelle_override(
     build_file_generation = "clean",
     path = "github.com/stigmer/stigmer/sdk/go/v3",
 )
-
 use_repo(
     go_deps,
     "build_buf_gen_go_bufbuild_protovalidate_protocolbuffers_go",
@@ -54,11 +53,13 @@ use_repo(
     "com_github_aws_aws_sdk_go_v2_service_bedrockagentcorecontrol",
     "com_github_aws_aws_sdk_go_v2_service_cloudcontrol",
     "com_github_aws_aws_sdk_go_v2_service_cloudfront",
+    "com_github_aws_aws_sdk_go_v2_service_cloudtrail",
     "com_github_aws_aws_sdk_go_v2_service_cloudwatch",
     "com_github_aws_aws_sdk_go_v2_service_cloudwatchlogs",
     "com_github_aws_aws_sdk_go_v2_service_codebuild",
     "com_github_aws_aws_sdk_go_v2_service_codepipeline",
     "com_github_aws_aws_sdk_go_v2_service_cognitoidentityprovider",
+    "com_github_aws_aws_sdk_go_v2_service_configservice",
     "com_github_aws_aws_sdk_go_v2_service_docdb",
     "com_github_aws_aws_sdk_go_v2_service_dynamodb",
     "com_github_aws_aws_sdk_go_v2_service_ec2",
@@ -73,6 +74,7 @@ use_repo(
     "com_github_aws_aws_sdk_go_v2_service_fsx",
     "com_github_aws_aws_sdk_go_v2_service_globalaccelerator",
     "com_github_aws_aws_sdk_go_v2_service_glue",
+    "com_github_aws_aws_sdk_go_v2_service_guardduty",
     "com_github_aws_aws_sdk_go_v2_service_iam",
     "com_github_aws_aws_sdk_go_v2_service_kafka",
     "com_github_aws_aws_sdk_go_v2_service_kinesis",
@@ -121,28 +123,19 @@ use_repo(
     "com_github_onsi_gomega",
     "com_github_pkg_errors",
     "com_github_pseudomuto_protoc_gen_doc",
-    "com_github_pulumi_pulumi_alicloud_sdk_v3",
     "com_github_pulumi_pulumi_auth0_sdk_v3",
     "com_github_pulumi_pulumi_aws_native_sdk",
     "com_github_pulumi_pulumi_aws_sdk_v7",
     "com_github_pulumi_pulumi_azure_native_sdk_machinelearningservices_v3",
     "com_github_pulumi_pulumi_azure_native_sdk_v3",
     "com_github_pulumi_pulumi_azure_sdk_v6",
-    "com_github_pulumi_pulumi_civo_sdk_v2",
     "com_github_pulumi_pulumi_cloudflare_sdk_v6",
-    "com_github_pulumi_pulumi_confluentcloud_sdk_v2",
     "com_github_pulumi_pulumi_digitalocean_sdk_v4",
     "com_github_pulumi_pulumi_gcp_sdk_v9",
-    "com_github_pulumi_pulumi_hcloud_sdk",
     "com_github_pulumi_pulumi_kubernetes_sdk_v4",
-    "com_github_pulumi_pulumi_mongodbatlas_sdk_v3",
-    "com_github_pulumi_pulumi_oci_sdk_v4",
-    "com_github_pulumi_pulumi_openstack_sdk_v5",
     "com_github_pulumi_pulumi_random_sdk_v4",
     "com_github_pulumi_pulumi_sdk_v3",
-    "com_github_pulumi_pulumi_snowflake_sdk_v2",
     "com_github_pulumi_pulumi_tls_sdk_v4",
-    "com_github_pulumiverse_pulumi_scaleway_sdk",
     "com_github_sirupsen_logrus",
     "com_github_spf13_cobra",
     "com_github_spf13_pflag",
@@ -176,10 +169,14 @@ maven.install(
     name = "maven",
     artifacts = [
         "javax.annotation:javax.annotation-api:1.3.2",
-        "com.google.protobuf:protobuf-java:4.30.1",
-        "io.grpc:grpc-api:1.66.0",
-        "io.grpc:grpc-stub:1.66.0",
-        "io.grpc:grpc-protobuf:1.66.0",
+        # protobuf-java and io.grpc track the protoc / protoc-gen-grpc-java
+        # pins in the Makefile's proto toolchain section, which are cross-repo
+        # lockstepped with planton-platform (see the CROSS-REPO LOCKSTEP note
+        # there). The platform runs this exact stack in production.
+        "com.google.protobuf:protobuf-java:4.34.0",
+        "io.grpc:grpc-api:1.79.0",
+        "io.grpc:grpc-stub:1.79.0",
+        "io.grpc:grpc-protobuf:1.79.0",
         # Pinned to the version the platform's control plane resolves (its
         # api-state pin test holds 1.1.1): the Java conformance gate below
         # hack/javagate proves every catalog CEL rule compiles on the exact

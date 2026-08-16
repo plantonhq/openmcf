@@ -1,0 +1,36 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsnatgateway
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon Virtual Private Cloud
+      sku_meter: NAT gateway hours
+      pricing_unit: hours
+      description: The gateway bills hourly from creation, idle or busy -- and a regional gateway bills those hours once per Availability Zone it spans.
+  cost_drivers:
+    - field_path: availability_mode
+      sku_meter: NAT gateway hours
+      pricing_unit: hours
+      impact: The biggest multiplier in the spec -- regional runs the gateway in every AZ of the VPC and bills per AZ-hour, so a three-AZ VPC roughly triples the standing charge of the default zonal mode.
+    - field_path: connectivity_type
+      sku_meter: public IPv4 address usage
+      pricing_unit: IP-hours
+      impact: public requires Elastic IPs, each a billed public IPv4 address (charged on the referenced AwsElasticIp components, or AWS-managed addresses in regional mode); private drops the addresses and keeps only the NAT rates.
+    - field_path: secondary_allocation_ids
+      sku_meter: public IPv4 address usage
+      pricing_unit: IP-hours
+      impact: Each additional Elastic IP on a public gateway is another billed public IPv4 address, on its own component.
+    - field_path: availability_zone_addresses
+      sku_meter: NAT gateway hours
+      pricing_unit: hours
+      impact: Pinning zones on a regional gateway sets exactly how many AZ-hours bill -- and how many addresses it carries.
+  estimate_exclusions:
+    - data processing bills every byte that flows through the gateway, in both directions -- the dominant real-world cost for chatty private-subnet workloads, and no spec field caps it
+    - the Elastic IPs a public gateway uses bill on their own AwsElasticIp components (AWS-managed addresses in regional mode bill per address)
+    - cross-AZ data transfer applies when traffic reaches a gateway in another zone
+  notes: "The hourly charge is the certainty; the per-GB data-processing charge is the silent amplifier. Zonal-versus-regional is availability economics: one gateway-hour per month versus one per AZ, against the blast radius of losing a zone."

@@ -1,0 +1,52 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsvpc
+spec:
+  aws:
+    statements:
+      - sid: ManageVpc
+        actions:
+          - ec2:CreateVpc
+          - ec2:DeleteVpc
+          - ec2:ModifyVpcAttribute
+          - ec2:CreateTags
+          - ec2:DeleteTags
+        resources:
+          - arn:aws:ec2:*:*:vpc/*
+        provenance: derived
+        notes: Covers aws_vpc -- creation with tenancy and CIDR settings, the DNS and NAU attribute toggles (each a ModifyVpcAttribute call), tagging, and teardown.
+      - sid: DescribeVpcs
+        actions:
+          - ec2:DescribeVpcs
+          - ec2:DescribeVpcAttribute
+          - ec2:DescribeSecurityGroups
+          - ec2:DescribeNetworkAcls
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side of aws_vpc during plan/refresh; the provider also reads the VPC's default security group and network ACL it adopts into state. EC2 Describe APIs support no resource-level scoping, so the wildcard is the narrowest possible scope.
+      - sid: ManageCidrAssociations
+        actions:
+          - ec2:AssociateVpcCidrBlock
+          - ec2:DisassociateVpcCidrBlock
+        resources:
+          - arn:aws:ec2:*:*:vpc/*
+          - arn:aws:ec2:*:*:ipv6pool-ec2/*
+        provenance: derived
+        notes: Covers aws_vpc_ipv4_cidr_block_association and aws_vpc_ipv6_cidr_block_association -- the secondary CIDR growth path, including IPAM-sourced and BYOIP IPv6 pool blocks.
+      - sid: ManageEncryptionControl
+        actions:
+          - ec2:CreateVpcEncryptionControl
+          - ec2:DeleteVpcEncryptionControl
+          - ec2:ModifyVpcEncryptionControl
+          - ec2:DescribeVpcEncryptionControls
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_vpc_encryption_control -- created only when spec.encryption_control is set. Action names verified against the AWS Service Authorization Reference for EC2; the resource type carries no documented ARN scoping, so the wildcard is the narrowest expressible scope.

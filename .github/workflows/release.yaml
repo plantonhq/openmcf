@@ -22,6 +22,8 @@
 #   - Pulumi modules -> Cloudflare R2 (downloads.planton.dev/releases/{tag}/modules/pulumi/)
 #   - Terraform zips -> Cloudflare R2 (downloads.planton.dev/releases/{tag}/modules/terraform/)
 #   - Content zips   -> Cloudflare R2 (downloads.planton.dev/releases/{tag}/content/)
+#   - Stub SDKs      -> Cloudflare R2 (downloads.planton.dev/releases/{tag}/stubs/)
+#   - Buf module     -> BSR (buf.build/planton/planton, labeled with the tag)
 #   - Chart catalog  -> GitHub Release (infra-charts.zip + .sha256 + version.txt)
 #   - Definitions    -> Cloudflare R2 (downloads.planton.dev/releases/{tag}/definitions/)
 #
@@ -98,6 +100,28 @@ jobs:
   content:
     needs: github-release
     uses: ./.github/workflows/release.content.yaml
+    secrets:
+      CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+      CLOUDFLARE_R2_ENDPOINT: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
+
+  # ============================================================================
+  # BSR Push - the buf module with the release tag as label; the platform's
+  # label-pinned buf dep resolves upstream proto imports from it
+  # ============================================================================
+  buf-push:
+    needs: github-release
+    uses: ./.github/workflows/release.buf-push.yaml
+    secrets:
+      BUF_TOKEN: ${{ secrets.BUF_TOKEN }}
+
+  # ============================================================================
+  # Stub SDKs - prebuilt Java + TypeScript stub trees the platform repo
+  # extracts instead of regenerating (uploads to Cloudflare R2)
+  # ============================================================================
+  stub-sdks:
+    needs: github-release
+    uses: ./.github/workflows/release.stub-sdks.yaml
     secrets:
       CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
       CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}

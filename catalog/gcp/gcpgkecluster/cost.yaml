@@ -1,0 +1,58 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpgkecluster
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Google Kubernetes Engine
+      sku_meter: cluster management fee
+      pricing_unit: hours
+      description: Flat per-cluster fee for the managed control plane, accruing from creation regardless of workloads -- the same rate for zonal, regional, and Autopilot clusters.
+  cost_drivers:
+    - field_path: enable_autopilot
+      sku_meter: Autopilot pod resources
+      pricing_unit: vCPU-hours and GiB-hours
+      impact: Autopilot replaces node VMs with per-pod billing -- running pods bill for the vCPU, memory, and ephemeral storage they request, per second. A Standard cluster bills nothing here; its compute lives in GcpGkeNodePool resources.
+    - field_path: cluster_autoscaling.resource_limits
+      sku_meter: auto-provisioned node compute
+      impact: With node auto-provisioning enabled, GKE creates node pools billed as Compute Engine VMs; the resource limits are the cost brake -- they bound the worst-case compute spend NAP can reach.
+    - field_path: cluster_autoscaling.auto_provisioning_defaults.disk_size_gb
+      sku_meter: node boot disk storage
+      pricing_unit: GB-months
+      impact: Every auto-provisioned node carries a boot disk of this size (default 100 GB); disk_type picks the price class (pd-standard, pd-balanced, pd-ssd).
+    - field_path: release_channel
+      sku_meter: extended support cluster management fee
+      pricing_unit: hours
+      impact: The EXTENDED channel adds a per-cluster extended-support fee on top of the management fee once the version leaves standard support -- six times the base fee in total. Other channels never incur it.
+    - field_path: location
+      sku_meter: cluster management fee
+      impact: The management fee is identical for zonal and regional clusters, but the monthly free-tier credit applies only to zonal and Autopilot clusters -- a regional cluster always bills the full fee.
+    - field_path: logging.components
+      sku_meter: Cloud Logging ingestion
+      pricing_unit: GiB
+      impact: Every component list entry beyond system logging (workloads, API server, scheduler) increases log volume ingested into Cloud Logging, billed per GiB.
+    - field_path: monitoring.managed_prometheus_enabled
+      sku_meter: Managed Service for Prometheus samples
+      pricing_unit: millions of samples
+      impact: Managed Prometheus (on by default when monitoring is configured) bills per million metric samples ingested; workload metric volume drives it.
+    - field_path: security_posture.mode
+      sku_meter: Security Posture dashboard tier
+      impact: BASIC is free; ENTERPRISE is a paid GKE Enterprise capability billed per vCPU under management.
+    - field_path: dns_config.cluster_dns
+      sku_meter: Cloud DNS zones and queries
+      pricing_unit: zones and millions of queries
+      impact: Selecting CLOUD_DNS moves cluster DNS onto Cloud DNS, which bills per managed zone and per million queries; KUBE_DNS runs on cluster capacity instead.
+    - field_path: total_egress_bandwidth_tier
+      sku_meter: Tier_1 networking premium
+      impact: TIER_1 egress bandwidth is a premium networking capability billed on top of standard egress rates.
+  free_tier: The GKE free tier credits $74.40 per month per billing account -- one zonal or Autopilot cluster's management fee. The credit never applies to regional clusters and unused credit does not roll over.
+  estimate_exclusions:
+    - node compute for Standard clusters -- node pools are separate GcpGkeNodePool resources with their own cost profiles
+    - Autopilot pod charges depend on what workloads run and what they request
+    - Cloud Logging and Managed Prometheus volume depends on workload chatter
+    - network egress and Cloud DNS query volume are traffic-dependent
+  notes: "The cluster resource itself is deliberately thin on cost: the management fee is the only certainty at manifest time. The real money follows the compute -- GcpGkeNodePool resources on Standard clusters, pod requests on Autopilot."

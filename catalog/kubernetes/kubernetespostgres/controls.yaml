@@ -1,0 +1,94 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetespostgres
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The database's data rests on the PersistentVolumes the target cluster's storage class provisions; encryption at rest is a property of that storage (cloud-managed disks typically encrypt by default), owned by the cluster and its storage classes, not by this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for the underlying volumes are configured on the cluster's storage class or the cloud disk encryption set (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: CloudNativePG self-signs a CA and server certificate for every cluster the modules render, so client connections are served over TLS without any configuration; certificates.server_tls_secret swaps in a cert-manager-issued chain for an organization-trusted CA.
+      notes: monitoring.tls_enabled extends TLS to the metrics endpoint.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The modules render no external exposure -- CloudNativePG creates only ClusterIP services (read-write, read-only, read), so the database is reachable solely inside the cluster network.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: postgresql.pg_hba
+      evidence:
+        type: spec_default
+        reference: Unset applies CloudNativePG's default host-based access rules for in-cluster clients; pg_hba entries prepend custom rules restricting which sources and auth methods may connect.
+      notes: Kubernetes NetworkPolicies (separate resources) restrict the network path itself; pg_hba governs the database's own accept/reject decisions.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A database serves no HTTP edge traffic -- web application firewalls do not apply. Client access control is pg_hba and network policy (see restricted-ingress).
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Database access is governed by PostgreSQL's role system -- the initdb bootstrap creates a least-privilege application owner role, superuser access is disabled by default, and the roles field manages further roles declaratively (ensure present/absent, membership, connection limits).
+      notes: Management-plane access (the Cluster resource itself) is governed by the target cluster's Kubernetes RBAC.
+    - control_id: workload-identity
+      status: configurable
+      field_path: workload_identity
+      evidence:
+        type: spec_default
+        reference: Unset means backup object stores authenticate with provided static keys (or not at all); workload_identity annotates the cluster's service account for keyless cloud access -- EKS IRSA, GKE Workload Identity, or AKS Workload Identity -- so backups reach object storage without stored credentials.
+      notes: The 02-production-ha preset uses keyless IRSA for its S3 backups; 03-s3-compatible-backups uses static MinIO keys by necessity (no cloud identity to federate).
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: superuser.enabled defaults to false -- the postgres superuser password is blanked and every connection runs through the application owner role or declared roles; enabling superuser SQL access is an explicit opt-in.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Instance activity logs stream as JSON to stdout for the cluster's log collector; a provider-style audit trail (pgAudit) is not modeled in this spec. Changes to the cluster's own configuration are Kubernetes API operations, captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Every instance serves a Prometheus metrics endpoint with CloudNativePG's default query set enabled; monitoring.disable_default_queries opts out and monitoring.tls_enabled hardens the endpoint.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: backup
+      evidence:
+        type: spec_default
+        reference: Unset means no backups exist; configuring backup.object_store with schedules ships continuous WAL archives and scheduled base backups to S3, GCS, or Azure Blob object storage, restorable through the recovery bootstrap.
+      notes: The 02-production-ha and 03-s3-compatible-backups presets back up daily with WAL archiving; 01-dev-single-instance deliberately has none.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: backup.retention_policy
+      evidence:
+        type: spec_default
+        reference: Empty retains backups forever; retention_policy ("30d", "8w", "6m") prunes the archive to organizational policy.
+      notes: Both backup-enabled presets set 30d.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: instances
+      evidence:
+        type: spec_default
+        reference: instances defaults to 1 (no failover); 3 runs a primary and two streaming replicas with automated failover, and scheduling.anti_affinity_type=required forces the instances onto distinct nodes or zones via the declared topology key.
+      notes: The 02-production-ha and 03-s3-compatible-backups presets run 3 instances; 02 additionally requires anti-affinity. postgresql.synchronous adds zero-data-loss guarantees on top.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor CloudNativePG offers a deletion-protection flag on the Cluster resource; protection is operational (namespace RBAC, change review). The default PodDisruptionBudget (enable_pdb defaults to true) guards the primary against voluntary eviction, not deletion.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: primary_update_strategy defaults to unsupervised -- the operator rolls image and configuration updates through replicas and the primary automatically; supervised waits for a manual promotion, and pinning image_name makes version changes deliberate.
+      notes: The 02-production-ha preset selects primary_update_method=switchover to shorten the write outage during updates.

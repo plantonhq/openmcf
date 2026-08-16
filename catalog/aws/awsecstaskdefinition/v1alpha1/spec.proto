@@ -619,7 +619,6 @@ message AwsEcsTaskDefinitionS3FilesVolume {
   dev.planton.shared.foreignkey.v1.StringValueOrRef file_system_arn = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
-    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_arn"
   ];
 

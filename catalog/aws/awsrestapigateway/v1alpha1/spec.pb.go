@@ -2013,7 +2013,7 @@ var File_catalog_aws_awsrestapigateway_v1alpha1_spec_proto protoreflect.FileDesc
 
 const file_catalog_aws_awsrestapigateway_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"1catalog/aws/awsrestapigateway/v1alpha1/spec.proto\x12*dev.planton.aws.awsrestapigateway.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x82,\n" +
+	"1catalog/aws/awsrestapigateway/v1alpha1/spec.proto\x12*dev.planton.aws.awsrestapigateway.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x83,\n" +
 	"\x15AwsRestApiGatewaySpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12*\n" +
 	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\vdescription\x12\x97\x01\n" +
@@ -2034,10 +2034,10 @@ const file_catalog_aws_awsrestapigateway_v1alpha1_spec_proto_rawDesc = "" +
 	"\vauthorizers\x18\x0f \x03(\v2G.dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayAuthorizerR\vauthorizers\x12y\n" +
 	"\x11gateway_responses\x18\x10 \x03(\v2L.dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayGatewayResponseR\x10gatewayResponses\x12X\n" +
 	"\x05stage\x18\x11 \x01(\v2B.dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStageR\x05stage\x12p\n" +
-	"\rdocumentation\x18\x12 \x01(\v2J.dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayDocumentationR\rdocumentation:\xf9\x1b\xbaH\xf5\x1b\x1a\xa0\x01\n" +
+	"\rdocumentation\x18\x12 \x01(\v2J.dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayDocumentationR\rdocumentation:\xfa\x1b\xbaH\xf6\x1b\x1a\xa0\x01\n" +
 	"\x1ddefinition_exactly_one_source\x12Pdefine the API with exactly one of routes (typed) or openapi (imported document)\x1a-(this.routes.size() > 0) != has(this.openapi)\x1a\xf2\x01\n" +
-	"\x18route_path_method_unique\x12oroute path+method pairs must be unique - two routes with the same path and method would conflict in API Gateway\x1aethis.routes.all(r1, this.routes.filter(r2, r2.path == r1.path && r2.method == r1.method).size() == 1)\x1a\xc6\x01\n" +
-	"\x19route_path_depth_max_five\x12eroute paths support at most five segments - use a greedy-proxy tail ({proxy+}) for deeper hierarchies\x1aBthis.routes.all(r, r.path == '/' || r.path.split('/').size() <= 6)\x1aw\n" +
+	"\x18route_path_method_unique\x12oroute path+method pairs must be unique - two routes with the same path and method would conflict in API Gateway\x1aethis.routes.all(r1, this.routes.filter(r2, r2.path == r1.path && r2.method == r1.method).size() == 1)\x1a\xc7\x01\n" +
+	"\x19route_path_depth_max_five\x12eroute paths support at most five segments - use a greedy-proxy tail ({proxy+}) for deeper hierarchies\x1aCthis.routes.all(r, r.path == '/' || !r.path.matches('(/[^/]*){6}'))\x1aw\n" +
 	"\x12model_names_unique\x12<model names must be unique - routes reference models by name\x1a#this.models.map(m, m.name).unique()\x1a\x9f\x01\n" +
 	"\x1erequest_validator_names_unique\x12Lrequest validator names must be unique - routes reference validators by name\x1a/this.request_validators.map(v, v.name).unique()\x1a\x8b\x01\n" +
 	"\x17authorizer_names_unique\x12Fauthorizer names must be unique - routes reference authorizers by name\x1a(this.authorizers.map(a, a.name).unique()\x1a\x99\x01\n" +

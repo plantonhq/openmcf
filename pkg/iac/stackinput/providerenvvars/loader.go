@@ -143,26 +143,10 @@ func loadProviderEnvVars(providerConfigYaml []byte, provider cloudresourcekind.C
 		return loadGcpEnvVars(providerConfigYaml)
 	case cloudresourcekind.CloudResourceProvider_azure:
 		return loadAzureEnvVars(providerConfigYaml)
-	case cloudresourcekind.CloudResourceProvider_atlas:
-		return loadAtlasEnvVars(providerConfigYaml)
 	case cloudresourcekind.CloudResourceProvider_auth0:
 		return loadAuth0EnvVars(providerConfigYaml)
-	case cloudresourcekind.CloudResourceProvider_confluent:
-		return loadConfluentEnvVars(providerConfigYaml)
 	case cloudresourcekind.CloudResourceProvider_kubernetes:
 		return loadKubernetesEnvVars(providerConfigYaml, opts.FileCacheLoc)
-	case cloudresourcekind.CloudResourceProvider_snowflake:
-		return loadSnowflakeEnvVars(providerConfigYaml)
-	case cloudresourcekind.CloudResourceProvider_openstack:
-		return loadOpenStackEnvVars(providerConfigYaml)
-	case cloudresourcekind.CloudResourceProvider_scaleway:
-		return loadScalewayEnvVars(providerConfigYaml)
-	case cloudresourcekind.CloudResourceProvider_alicloud:
-		return loadAliCloudEnvVars(providerConfigYaml)
-	case cloudresourcekind.CloudResourceProvider_oci:
-		return loadOciEnvVars(providerConfigYaml)
-	case cloudresourcekind.CloudResourceProvider_hetzner_cloud:
-		return loadHetznerCloudEnvVars(providerConfigYaml)
 	case cloudresourcekind.CloudResourceProvider_cloudflare:
 		return loadCloudflareEnvVars(providerConfigYaml)
 	case cloudresourcekind.CloudResourceProvider_digital_ocean:

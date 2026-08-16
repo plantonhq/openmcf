@@ -1,8 +1,0 @@
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsBedrockInferenceProfile
-metadata:
-  name: assistant-claude-xr
-spec:
-  region: us-west-2
-  description: Assistant traffic riding AWS cross-region capacity for Claude
-  sourceArn: arn:aws:bedrock:us-west-2:123456789012:inference-profile/us.anthropic.claude-3-5-haiku-20241022-v1:0

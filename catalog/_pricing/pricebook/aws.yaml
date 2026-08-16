@@ -1,0 +1,296 @@
+# The AWS price book: every AWS unit price the catalog's cost estimates
+# cite, pinned with source URL and retrieval date. Entries are referenced
+# by slug from the estimate models under ../models/ and selected by
+# value-keyed attribute identity from the cost derivations under
+# ../derivations/ (the attributes map is hand-authored lookup identity in
+# the catalog's own vocabulary; the fetcher preserves it verbatim).
+# Entries carrying an aws_selector are refreshed by
+# `make generate-price-book` from the public AWS Price List bulk API
+# (the price_source pins the exact versioned offer document the price was
+# read from). Schema: finops/pricebook/v1.
+apiVersion: finops.planton.dev/v1
+kind: PriceBook
+metadata:
+  name: aws
+spec:
+  entries:
+    - name: alb-hours-us-east-1
+      service_name: Elastic Load Balancing
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.0225"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSELB/20260720184950/us-east-1/index.json
+      retrieved_on: "2026-08-14"
+      aws_selector:
+        offer_code: AWSELB
+        region_code: us-east-1
+        usage_type: LoadBalancerUsage
+        operation: LoadBalancing:Application
+    - name: alb-reserved-lcu-us-east-1
+      service_name: Elastic Load Balancing
+      pricing_unit: LCU-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.008"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSELB/20260720184950/us-east-1/index.json
+      retrieved_on: "2026-08-14"
+      aws_selector:
+        offer_code: AWSELB
+        region_code: us-east-1
+        usage_type: ReservedLCUUsage
+        operation: LoadBalancing:Application
+    - name: public-ipv4-in-use-us-east-1
+      service_name: Amazon Virtual Private Cloud
+      pricing_unit: IP-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.005"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/20260724154225/us-east-1/index.json
+      retrieved_on: "2026-08-14"
+      aws_selector:
+        offer_code: AmazonVPC
+        region_code: us-east-1
+        usage_type: USE1-PublicIPv4:InUseAddress
+    - name: dynamodb-provisioned-wcu-us-east-1
+      service_name: Amazon DynamoDB
+      pricing_unit: WCU-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.00065"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonDynamoDB/20260804204051/us-east-1/index.json
+      retrieved_on: "2026-08-14"
+      aws_selector:
+        offer_code: AmazonDynamoDB
+        region_code: us-east-1
+        usage_type: WriteCapacityUnit-Hrs
+        operation: CommittedThroughput
+        description_contains: beyond the free tier
+    - name: eks-cluster-fee-us-east-1
+      service_name: Amazon Elastic Kubernetes Service
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.1"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEKS/20260804224832/us-east-1/index.json
+      retrieved_on: "2026-08-14"
+      aws_selector:
+        offer_code: AmazonEKS
+        region_code: us-east-1
+        usage_type: USE1-AmazonEKS-Hours:perCluster
+        operation: CreateOperation
+    - name: ec2-m6i-large-us-east-1
+      service_name: Amazon Elastic Compute Cloud
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.096"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/20260814011739/us-east-1/index.json
+      retrieved_on: "2026-08-14"
+      attributes:
+        instance_type: m6i.large
+    - name: ec2-m6i-xlarge-us-east-1
+      service_name: Amazon Elastic Compute Cloud
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.192"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/20260814011739/us-east-1/index.json
+      retrieved_on: "2026-08-14"
+      attributes:
+        instance_type: m6i.xlarge
+    - name: ebs-gp3-storage-us-east-1
+      service_name: Amazon Elastic Block Store
+      pricing_unit: GB-months
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.08"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/20260814011739/us-east-1/index.json
+      retrieved_on: "2026-08-14"
+    - name: nat-gateway-hours-us-west-2
+      service_name: Amazon Virtual Private Cloud
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.045"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/20260814011739/us-west-2/index.json
+      retrieved_on: "2026-08-14"
+    - name: rds-db-m6g-large-postgres-multi-az-us-west-2
+      service_name: Amazon Relational Database Service
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.318"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
+      retrieved_on: "2026-08-14"
+      attributes:
+        deployment: multi-az
+        engine: postgres
+        instance_class: db.m6g.large
+      aws_selector:
+        offer_code: AmazonRDS
+        region_code: us-west-2
+        usage_type: USW2-Multi-AZUsage:db.m6g.large
+        operation: CreateDBInstance:0014
+    - name: rds-db-m6g-large-postgres-us-west-2
+      service_name: Amazon Relational Database Service
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.159"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
+      retrieved_on: "2026-08-14"
+      attributes:
+        deployment: single-az
+        engine: postgres
+        instance_class: db.m6g.large
+      aws_selector:
+        offer_code: AmazonRDS
+        region_code: us-west-2
+        usage_type: USW2-InstanceUsage:db.m6g.large
+        operation: CreateDBInstance:0014
+    - name: rds-db-m6g-large-mysql-multi-az-us-west-2
+      service_name: Amazon Relational Database Service
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.304"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
+      retrieved_on: "2026-08-14"
+      attributes:
+        deployment: multi-az
+        engine: mysql
+        instance_class: db.m6g.large
+      aws_selector:
+        offer_code: AmazonRDS
+        region_code: us-west-2
+        usage_type: USW2-Multi-AZUsage:db.m6g.large
+        operation: CreateDBInstance:0002
+    - name: rds-db-r6i-large-oracle-ee-byol-multi-az-us-west-2
+      service_name: Amazon Relational Database Service
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.466"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
+      retrieved_on: "2026-08-14"
+      attributes:
+        deployment: multi-az
+        engine: oracle-ee
+        instance_class: db.r6i.large
+        license: bring-your-own-license
+      aws_selector:
+        offer_code: AmazonRDS
+        region_code: us-west-2
+        usage_type: USW2-Multi-AZUsage:db.r6i.large
+        operation: CreateDBInstance:0005
+    - name: rds-gp3-storage-multi-az-us-west-2
+      service_name: Amazon Relational Database Service
+      pricing_unit: GB-months
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.23"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
+      retrieved_on: "2026-08-14"
+      attributes:
+        deployment: multi-az
+        storage_type: gp3
+      aws_selector:
+        offer_code: AmazonRDS
+        region_code: us-west-2
+        usage_type: USW2-RDS:Multi-AZ-GP3-Storage
+        operation: CreateDBInstance:0014
+    - name: rds-gp3-storage-us-west-2
+      service_name: Amazon Relational Database Service
+      pricing_unit: GB-months
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.115"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
+      retrieved_on: "2026-08-14"
+      attributes:
+        deployment: single-az
+        storage_type: gp3
+      aws_selector:
+        offer_code: AmazonRDS
+        region_code: us-west-2
+        usage_type: USW2-RDS:GP3-Storage
+        operation: CreateDBInstance:0014
+    - name: elasticache-cache-t3-micro-redis-us-west-2
+      service_name: Amazon ElastiCache
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.017"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonElastiCache/20260813190319/us-west-2/index.json
+      retrieved_on: "2026-08-14"
+      aws_selector:
+        offer_code: AmazonElastiCache
+        region_code: us-west-2
+        usage_type: USW2-NodeUsage:cache.t3.micro
+        operation: CreateCacheCluster:0002
+    - name: elasticache-cache-r7g-large-redis-us-west-2
+      service_name: Amazon ElastiCache
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.219"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonElastiCache/20260813190319/us-west-2/index.json
+      retrieved_on: "2026-08-14"
+      aws_selector:
+        offer_code: AmazonElastiCache
+        region_code: us-west-2
+        usage_type: USW2-NodeUsage:cache.r7g.large
+        operation: CreateCacheCluster:0002
+    - name: elasticache-cache-r7g-xlarge-redis-us-west-2
+      service_name: Amazon ElastiCache
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.437"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonElastiCache/20260813190319/us-west-2/index.json
+      retrieved_on: "2026-08-14"
+      aws_selector:
+        offer_code: AmazonElastiCache
+        region_code: us-west-2
+        usage_type: USW2-NodeUsage:cache.r7g.xlarge
+        operation: CreateCacheCluster:0002
+    - name: route53-hosted-zone
+      service_name: Amazon Route 53
+      pricing_unit: zone-months
+      region: global
+      currency: USD
+      list_unit_price: "0.5"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260527092459/index.json
+      retrieved_on: "2026-08-14"
+      aws_selector:
+        offer_code: AmazonRoute53
+        region_code: global
+        usage_type: HostedZone
+        description_contains: first 25 Hosted Zones
+    - name: dynamodb-provisioned-rcu-us-east-1
+      service_name: Amazon DynamoDB
+      pricing_unit: RCU-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.00013"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonDynamoDB/20260804204051/us-east-1/index.json
+      retrieved_on: "2026-08-14"
+      aws_selector:
+        offer_code: AmazonDynamoDB
+        region_code: us-east-1
+        usage_type: ReadCapacityUnit-Hrs
+        operation: CommittedThroughput
+        description_contains: beyond the free tier
+    - name: lambda-event-poller-unit-us-east-1
+      service_name: AWS Lambda
+      pricing_unit: EPU-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.185"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSLambda/20260810200249/us-east-1/index.json
+      retrieved_on: "2026-08-14"
+      aws_selector:
+        offer_code: AWSLambda
+        region_code: us-east-1
+        usage_type: Lambda-Event-Poller-Unit-Hour

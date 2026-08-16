@@ -1,0 +1,26 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "costprofile",
+    srcs = ["costprofile.go"],
+    importpath = "github.com/plantonhq/planton/pkg/finops/costprofile",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//finops/componentcostprofile/v1:componentcostprofile",
+        "//pkg/protobufyaml",
+        "@com_github_pkg_errors//:errors",
+    ],
+)
+
+go_test(
+    name = "costprofile_test",
+    srcs = ["conformance_test.go"],
+    embed = [":costprofile"],
+    deps = [
+        "//finops/componentcostprofile/v1:componentcostprofile",
+        "//pkg/crkreflect",
+        "//pkg/specpath",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+    ],
+)

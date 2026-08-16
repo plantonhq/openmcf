@@ -1,0 +1,76 @@
+# The Planton Control Catalog: the single controlled vocabulary of technical
+# controls the catalog speaks about. Component control profiles
+# (catalog/<provider>/<kind>/controls.yaml) reference these ids; framework
+# crosswalks (frameworks/*.yaml) map external requirements onto them. Ids are
+# immutable once published -- the conformance gate enforces referential
+# integrity in both directions. Schema: compliance/controlcatalog/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ControlCatalog
+metadata:
+  name: planton-controls
+spec:
+  controls:
+    - id: enc-at-rest
+      name: Encryption at rest
+      statement: Data the component stores is encrypted at rest.
+      category: data_protection
+    - id: enc-at-rest-cmk
+      name: Customer-managed encryption keys
+      statement: Data at rest can be encrypted with a customer-managed key instead of a provider-managed key.
+      category: data_protection
+    - id: enc-in-transit
+      name: Encryption in transit
+      statement: Connections to and from the component are encrypted in transit.
+      category: data_protection
+    - id: no-public-access
+      name: No public exposure
+      statement: The component is not reachable from the public internet.
+      category: network_exposure
+    - id: restricted-ingress
+      name: Restricted ingress
+      statement: Inbound access is restricted to declared network sources.
+      category: network_exposure
+    - id: edge-protection
+      name: Edge request filtering
+      statement: A web application firewall or equivalent request filter protects the component's inbound traffic.
+      category: network_exposure
+    - id: rbac
+      name: Role-based access control
+      statement: Access to the component's management and data planes is governed by role-based access control.
+      category: identity_access
+    - id: workload-identity
+      name: Keyless workload identity
+      statement: Workloads authenticate to cloud APIs through short-lived platform-issued identities instead of static credentials.
+      category: identity_access
+    - id: no-legacy-auth
+      name: Legacy authentication disabled
+      statement: Legacy or weaker authentication paths are disabled.
+      category: identity_access
+    - id: audit-logging
+      name: Audit logging
+      statement: Administrative and access events are captured in provider audit or access logs.
+      category: observability
+    - id: monitoring-integration
+      name: Monitoring integration
+      statement: Operational metrics and security-relevant runtime signals are exported to a monitoring system.
+      category: observability
+    - id: backup-recovery
+      name: Automated backup and recovery
+      statement: The component's data is backed up automatically and can be restored.
+      category: resilience
+    - id: backup-retention-policy
+      name: Backup retention policy
+      statement: Backup retention length is configurable to organizational policy.
+      category: resilience
+    - id: multi-zone-ha
+      name: Multi-zone high availability
+      statement: The component can run replicated across availability zones or failure domains.
+      category: resilience
+    - id: deletion-protection
+      name: Deletion protection
+      statement: The component refuses deletion until protection is explicitly lifted.
+      category: change_safety
+    - id: managed-patching
+      name: Managed patching
+      statement: Security patches and version upgrades are applied through a managed channel.
+      category: change_safety

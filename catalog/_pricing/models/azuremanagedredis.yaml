@@ -1,0 +1,48 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: azuremanagedredis
+spec:
+  presets:
+    - preset: 01-keyless-balanced
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: cache instance
+          price: managed-redis-balanced-b1-eastus
+          pricing_quantity: "730"
+          quantity_basis: one BALANCED_B1 (1 GB) instance x 730 hours -- the listed rate includes the high-availability replicated pair, on by default
+      exclusions:
+        - network egress follows client placement
+      notes: The SKU-hour is the entire bill -- keyless authentication and eviction policy change posture, not price.
+    - preset: 02-search-json-enterprise
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: cache instance
+          price: managed-redis-memory-optimized-m10-eastus
+          pricing_quantity: "730"
+          quantity_basis: one MEMORY_OPTIMIZED_M10 (10 GB) instance x 730 hours with HA included -- the RediSearch and RedisJSON modules add no charge
+      exclusions:
+        - network egress follows client placement
+      notes: Modules are free capabilities on the same SKU rate; the memory-optimized family buys RAM headroom for index-heavy workloads.
+    - preset: 03-geo-replicated
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: cache instance
+          price: managed-redis-balanced-b3-eastus
+          pricing_quantity: "730"
+          quantity_basis: one BALANCED_B3 (the geo-replication SKU floor) x 730 hours -- this manifest is one member of the geo group and bills only itself
+      exclusions:
+        - every other member of the geo-replication group is its own component billing its own SKU-hour
+        - cross-region replication traffic follows the group's write volume
+      notes: Active geo-replication is priced as the sum of the members -- each instance carries its own line, so the group's total lives across the composed components.

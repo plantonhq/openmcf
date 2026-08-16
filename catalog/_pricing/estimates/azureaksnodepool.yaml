@@ -1,0 +1,78 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azureaksnodepool
+spec:
+  presets:
+    - preset: 01-on-demand-general
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Virtual Machines
+          sku_meter: node compute
+          pricing_unit: hours
+          pricing_quantity: "1460"
+          quantity_basis: 2 Standard_D4s_v5 nodes at the autoscaling floor x 730 hours -- min_count is the pool-wide committed size, spread across the three declared zones
+          list_unit_price: "0.192"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Machines' and armRegionName eq 'eastus' and armSkuName eq 'Standard_D4s_v5' and meterName eq 'D4s v5' and productName eq 'Virtual Machines Dsv5 Series' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "280.3200"
+        - service_name: Storage
+          sku_meter: node OS disk
+          pricing_unit: disk-months
+          pricing_quantity: "2"
+          quantity_basis: 2 nodes x one managed OS disk each -- os_disk_size_gb is unset, so AKS provisions the 128 GiB default, which lands in the P10 premium tier
+          list_unit_price: "19.71"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Storage' and armRegionName eq 'eastus' and meterName eq 'P10 LRS Disk' and productName eq 'Premium SSD Managed Disks' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "39.4200"
+      total_list_cost: "319.7400"
+      exclusions:
+        - autoscaling above the 2-node floor bills each additional node (up to 10) at the same per-node rates while it runs
+        - network egress and any data disks the workloads attach follow workload behavior
+      notes: Estimated at the autoscaling floor -- the committed always-on spend. The ceiling at max_count=10 is roughly five times every line.
+    - preset: 02-spot-cost-optimized
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the pool scales to zero (min_count 0), so the committed always-on spend is exactly zero
+        - while scaled up, SPOT Standard_D4s_v5 nodes bill at floating market rates below the on-demand price (spot_max_price unset means capped only at the on-demand rate) -- a market rate is not a list price, so no dollar figure is honest here
+        - each running node also bills its default 128 GiB P10 managed OS disk per disk-month
+      notes: Scale-to-zero spot capacity is the cheapest honest shape -- zero committed, market-priced when busy, evictable by design.
+    - preset: 03-gpu-or-windows
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Virtual Machines
+          sku_meter: node compute
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: 1 fixed Standard_NC4as_T4_v3 node (nodeCount 1, no autoscaling) x 730 hours -- the Linux on-demand rate, with the T4 GPU embedded in the machine price
+          list_unit_price: "0.526"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Machines' and armRegionName eq 'eastus' and armSkuName eq 'Standard_NC4as_T4_v3' and meterName eq 'NC4as T4 v3' and productName eq 'Virtual Machines NCasT4 v3 Series' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "383.9800"
+        - service_name: Storage
+          sku_meter: node OS disk
+          pricing_unit: disk-months
+          pricing_quantity: "1"
+          quantity_basis: 1 node x one managed OS disk -- os_disk_size_gb is unset, so the 128 GiB default lands in the P10 premium tier
+          list_unit_price: "19.71"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Storage' and armRegionName eq 'eastus' and meterName eq 'P10 LRS Disk' and productName eq 'Premium SSD Managed Disks' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "19.7100"
+      total_list_cost: "403.6900"
+      exclusions:
+        - network egress and any data disks the workloads attach follow workload behavior
+      notes: A fixed single-node GPU pool bills around the clock -- the preset trades elasticity for driver and scheduling simplicity, and the estimate is the whole committed spend.

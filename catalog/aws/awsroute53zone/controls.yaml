@@ -1,0 +1,86 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsroute53zone
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A hosted zone holds public DNS routing data served from AWS's managed authoritative fleet; it exposes no customer at-rest encryption surface.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No at-rest encryption surface to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Standard DNS resolution is a plaintext protocol by design; the zone exposes no transport-encryption control. DNSSEC (below, under no-legacy-auth) adds response authenticity, not confidentiality.
+    - control_id: no-public-access
+      status: configurable
+      field_path: is_private
+      evidence:
+        type: spec_default
+        reference: Defaults to false (a public zone, resolvable from the whole internet); setting is_private=true makes the zone resolvable only inside its associated VPCs, with at least one association required at creation.
+      notes: The 02-private-vpc-zone preset enables it. Public zones are the normal choice for internet-facing domains -- their exposure is the product, not a defect.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: vpc_associations
+      evidence:
+        type: spec_default
+        reference: For private zones, the associated VPCs are the complete list of networks that can resolve the zone; every association must be same-account and DNS-enabled, and public zones must leave the list empty (CEL-enforced in both directions).
+      notes: Resolution scope is the zone's ingress surface -- a private zone answers only the VPCs declared here.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: DNS queries are answered by AWS's authoritative edge; there is no request-filtering attachment point on a hosted zone.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is AWS-account IAM posture, not a component choice; the zone exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The zone runs no workloads and holds no credentials of its own. The DNSSEC signing key is a referenced AwsKmsKey with its own posture.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: dnssec
+      evidence:
+        type: spec_default
+        reference: Omitted means unsigned DNS (the AWS default), where resolvers cannot verify response authenticity; configuring dnssec creates the key-signing key and the module hardcodes signing_status=SIGNING, so a configured zone is always actually signed.
+      notes: DNSSEC retires trust in unauthenticated DNS responses -- the protocol's legacy trust model -- for resolvers that validate. The 03-dnssec-signed-zone preset enables it.
+    - control_id: audit-logging
+      status: configurable
+      field_path: query_logging
+      evidence:
+        type: spec_default
+        reference: Unset means no query logging; configuring it delivers every answered query (source, name, type, response code) to the referenced CloudWatch Logs group. Public zones only, CEL-enforced.
+      notes: The account-level CloudWatch Logs resource policy for route53.amazonaws.com is a deliberate prerequisite (max 10 policies per region), documented in the spec rather than created per zone.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Route 53 automatically publishes hosted-zone query metrics (DNSQueries) and DNSSEC health metrics to CloudWatch for every public hosted zone -- no configuration, no charge, viewable in us-east-1.
+      notes: Private zones receive no query metrics; their in-VPC resolution is monitored on the resolver side.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Zone contents are declarative record manifests (AwsRoute53DnsRecord kinds) recreated from source control; AWS operates the authoritative store redundantly. No customer backup surface exists.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Route 53 is a global anycast service -- every zone is served from a worldwide fleet of authoritative name servers with a 100% availability SLA; single-zone operation is unrepresentable.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: force_destroy
+      evidence:
+        type: spec_default
+        reference: Defaults to false, which refuses to destroy a zone that still carries records (beyond the NS/SOA pair); force_destroy=true lets teardown purge all records and disable DNSSEC first.
+      notes: The default-false posture is the protective one -- a populated production zone cannot be deleted by accident.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the authoritative DNS fleet; no customer-visible patch surface exists.

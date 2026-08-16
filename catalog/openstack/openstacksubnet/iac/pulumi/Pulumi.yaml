@@ -1,3 +1,0 @@
-name: openstack-subnet
-runtime: go
-description: Pulumi module for OpenStackSubnet

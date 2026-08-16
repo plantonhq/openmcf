@@ -1,0 +1,110 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpcloudsql
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloud SQL encrypts instance storage, temporary files, and backups at rest with Google-managed keys on every instance without configuration.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: encryption_key_name
+      evidence:
+        type: spec_default
+        reference: Unset means Google-managed encryption; naming a Cloud KMS key at creation encrypts the instance and its backups with the customer-managed key. The choice is immutable for the instance's life.
+      notes: No preset enables CMK. The Cloud SQL service agent needs encrypt/decrypt on the key as a prerequisite.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: network.ssl_mode
+      evidence:
+        type: spec_default
+        reference: Unset allows both encrypted and cleartext client connections; ENCRYPTED_ONLY rejects unencrypted ones, and TRUSTED_CLIENT_CERTIFICATE_REQUIRED additionally demands mutual TLS.
+      notes: All three presets pin ENCRYPTED_ONLY. connector_enforcement=REQUIRED goes further by requiring the Cloud SQL connectors' identity-bound TLS.
+    - control_id: no-public-access
+      status: configurable
+      field_path: network.private_network
+      evidence:
+        type: spec_default
+        reference: Declaring a private network gives the instance a private-service-access address; leaving network.ipv4_enabled unset (false) means no public IP at all. Public IPv4 is an explicit opt-in.
+      notes: The 01-postgres-production-private and 03-postgres-read-replica presets are private-only. The 02-mysql-high-availability preset deliberately enables public IPv4 behind ENCRYPTED_ONLY and authorized networks.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: network.authorized_networks
+      evidence:
+        type: spec_default
+        reference: For instances with a public address, the authorized-network CIDRs are the complete allowlist of sources that may connect; an empty list on a public instance admits no direct client.
+      notes: Private-only instances restrict ingress by network topology instead -- only the peered VPC reaches them.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A managed database endpoint is protected by TLS, IAM, and network scoping rather than a WAF; no request-filtering attachment point exists.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management-plane access is governed by Cloud SQL IAM roles, and database-plane access by the engine's own grant system; both are always active. Entra-free IAM database authentication is additionally available to PostgreSQL and MySQL.
+      notes: password_validation_policy hardens built-in database accounts; the entra_id block covers SQL Server's directory integration.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloud SQL IAM database authentication and the Cloud SQL connectors let workloads authenticate with short-lived IAM credentials instead of static passwords; the surface is always present on supported engines.
+      notes: connector_enforcement=REQUIRED makes the identity-bound path the only path.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: network.ssl_mode
+      evidence:
+        type: spec_default
+        reference: The legacy-weak path is cleartext database protocol over the network, permitted when ssl_mode is unset; ENCRYPTED_ONLY (all presets) retires it.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Administrative actions on the instance land in Cloud Audit Logs unconditionally; database error and slow-query logs flow to Cloud Logging per engine defaults.
+      notes: SQL Server offers sql_server_audit_config for statement-level auditing; PostgreSQL's pgAudit is a database flag outside this spec's scope.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloud SQL publishes instance metrics (CPU, memory, storage, connections, replication lag) to Cloud Monitoring for every instance without configuration.
+      notes: insights_config (enabled in all three presets) adds per-query performance telemetry on top.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: backup.enabled
+      evidence:
+        type: spec_default
+        reference: Unset means no automated backups; enabling schedules daily backups from backup.start_time, and backup.point_in_time_recovery_enabled (PostgreSQL) or binary logs (MySQL) add continuous recovery inside the log-retention window.
+      notes: The 01 and 02 presets enable backups with PITR and binary logs respectively; the read replica relies on its primary's backups, and final_backup can preserve a last copy at deletion.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: backup.retained_backups
+      evidence:
+        type: spec_default
+        reference: Sets how many automated backups are kept (preset 01 keeps 30, preset 02 keeps 14); transaction_log_retention_days bounds the point-in-time window, and retain_backups_on_delete preserves backups past instance deletion.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: availability_type
+      evidence:
+        type: spec_default
+        reference: ZONAL (the default) is a single-zone instance; REGIONAL provisions a synchronously replicated standby in another zone with automatic failover.
+      notes: Presets 01 and 02 are REGIONAL. Read replicas (preset 03) add read scale, not failover -- the control is the primary's availability_type.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_protection_enabled
+      evidence:
+        type: spec_default
+        reference: Off by default; when set, the Cloud SQL API itself refuses to delete the instance until the flag is lifted. The sibling deletion_protection field is the engine-side (Terraform/Pulumi) refusal, and presets 01 and 02 set both.
+      notes: retain_backups_on_delete (preset 01) softens the blast radius of a deliberate deletion.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloud SQL applies database minor versions and security patches through managed maintenance; maintenance_window and deny_maintenance_period only steer when, never whether.
+      notes: auto_upgrade_enabled extends the channel to major versions where supported.

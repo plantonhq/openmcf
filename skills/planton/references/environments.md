@@ -28,8 +28,8 @@ two-chart pattern in `kubernetes-architecture.md`). The reasoning, worth
 saying out loud:
 
 - AWS manages the EKS control plane for high availability in exchange for its
-  flat ~$73/month — the resilience a second cluster would buy is largely
-  already paid for.
+  flat monthly control-plane fee (the EKS cost fact-sheet has the figure) —
+  the resilience a second cluster would buy is largely already paid for.
 - A second cluster roughly doubles the always-on bill (control plane, nodes,
   NAT) to buy isolation most solo and small-team setups do not need.
 - Namespaces + the gateway's per-hostname routes keep dev and prod cleanly

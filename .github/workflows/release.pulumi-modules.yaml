@@ -77,23 +77,14 @@ jobs:
       max-parallel: 72
       matrix:
         provider:
-          - alicloud
-          - atlas
           - auth0
           - aws
           - azure
-          - civo
           - cloudflare
-          - confluent
           - digitalocean
           - gcp
-          - hetznercloud
           - kubernetes
-          - oci
           - openfga
-          - openstack
-          - scaleway
-          - snowflake
         platform:
           - goos: linux
             goarch: amd64

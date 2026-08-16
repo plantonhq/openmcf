@@ -1,9 +1,0 @@
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciDynamicGroup
-metadata:
-  name: my-functions-workload-identity
-spec:
-  compartmentId:
-    value: <tenancy-ocid>
-  description: Dynamic group matching all OCI Functions in the target compartment for serverless workload identity
-  matchingRule: "All {resource.type = 'fnfunc', resource.compartment.id = '<compartment-ocid>'}"

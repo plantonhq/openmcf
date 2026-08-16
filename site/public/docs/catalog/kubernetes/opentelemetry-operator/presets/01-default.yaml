@@ -1,8 +1,0 @@
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesOtelOperator
-metadata:
-  name: otel-operator
-spec:
-  namespace:
-    value: otel-operator
-  createNamespace: true

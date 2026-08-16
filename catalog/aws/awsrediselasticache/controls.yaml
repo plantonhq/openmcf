@@ -1,0 +1,106 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsrediselasticache
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: at_rest_encryption_enabled
+      evidence:
+        type: spec_default
+        reference: Carries recommended_default=true; presence-typed so unset defers to the engine's own default, and a create-time (ForceNew) decision. Presets 01-03 pin it true.
+      notes: The global-datastore secondary inherits encryption from its primary, which is why the field tolerates absence.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset means the AWS-managed key; setting kms_key_id encrypts at rest under the referenced customer-managed key (create-time only).
+      notes: The 03-redis-clustered-production preset sets it.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: transit_encryption_enabled
+      evidence:
+        type: spec_default
+        reference: Carries recommended_default=true; transit_encryption_mode then chooses preferred (mixed) or required (TLS-only), with CEL forbidding the mode unless encryption is explicitly on.
+      notes: The HA and clustered presets pin required -- plaintext clients are refused.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: ElastiCache endpoints are only reachable inside the VPC through the group's subnet group; the service offers no public endpoint at all.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_default
+        reference: The attached security groups are the complete inbound surface -- the cache port opens only to the sources those groups declare.
+      notes: The HA and clustered presets attach an explicit cache security group.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A VPC-internal cache endpoint has no WAF attachment point; request filtering belongs to the application tier.
+    - control_id: rbac
+      status: configurable
+      field_path: user_group_ids
+      evidence:
+        type: spec_default
+        reference: Unset leaves engine-default access; attaching RBAC user groups puts every connection under per-user access strings -- the spec's stated recommended model over the single shared auth_token.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The cache holds no cloud credentials of its own; caller identity is the RBAC/auth layer above, and callers authenticate to AWS with their own identities.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: user_group_ids
+      evidence:
+        type: spec_default
+        reference: RBAC user groups supersede the legacy single shared auth_token; the two are mutually exclusive (CEL-enforced), so adopting RBAC structurally retires the shared-secret path.
+      notes: auth_token remains supported for compatibility and is marked sensitive; rotation rides auth_token_update_strategy.
+    - control_id: audit-logging
+      status: configurable
+      field_path: log_delivery_configurations
+      evidence:
+        type: spec_default
+        reference: Unset delivers no logs; configuring slow-log and engine-log delivery streams engine events to CloudWatch Logs or Kinesis Firehose.
+      notes: The clustered production preset delivers the slow log to CloudWatch in JSON.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: ElastiCache publishes node and engine metrics (CPU, memory, evictions, replication lag) to CloudWatch automatically for every cluster; this cannot be disabled.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: snapshot_retention_limit
+      evidence:
+        type: spec_default
+        reference: 0 (the default) disables automatic snapshots; any positive value enables daily snapshots retained that many days, restorable into a new group.
+      notes: The HA preset retains 7 days, the clustered preset 14; snapshot_window pins the backup hour.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: snapshot_retention_limit
+      evidence:
+        type: spec_validation
+        reference: Retention is a first-class dial (0-35 days), so organizational snapshot policy is expressed directly in the manifest.
+      notes: final_snapshot_identifier can additionally capture a last snapshot at teardown.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: multi_az_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to false; true (with automatic_failover_enabled and at least one replica) spreads primaries and replicas across AZs with automatic failover.
+      notes: The HA, clustered, and global-secondary presets all enable it.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: ElastiCache offers no deletion-protection flag; final_snapshot_identifier is the teardown safety net, preserving data rather than blocking the delete.
+    - control_id: managed-patching
+      status: configurable
+      field_path: auto_minor_version_upgrade
+      evidence:
+        type: spec_default
+        reference: Presence-typed; unset defers to AWS's enabled-by-default minor-version patching in the maintenance window, and explicit false pins the running version.
+      notes: maintenance_window schedules when patches land; major engine upgrades are deliberate manifest changes.

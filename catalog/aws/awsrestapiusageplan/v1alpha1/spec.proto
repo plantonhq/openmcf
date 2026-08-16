@@ -146,7 +146,7 @@ message AwsRestApiUsagePlanThrottle {
   option (buf.validate.message).cel = {
     id: "throttle_at_least_one_ceiling"
     message: "set at least one of burst_limit or rate_limit (omit throttle entirely for account defaults)"
-    expression: "this.burst_limit > 0 || this.rate_limit > 0"
+    expression: "this.burst_limit > 0 || this.rate_limit > 0.0"
   };
 }
 

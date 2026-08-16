@@ -1,0 +1,31 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurenatgateway
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: NAT Gateway
+      sku_meter: gateway hours
+      pricing_unit: hours
+      description: The gateway bills a flat hourly rate from creation, idle or busy -- the certainty in every deployment.
+  cost_drivers:
+    - field_path: sku_name
+      sku_meter: gateway hours
+      pricing_unit: hours
+      impact: STANDARD is the published hourly rate; STANDARD_V2 (zone-redundant by design) is a newer SKU whose gateway-hour meter is not yet published in Azure's price API -- its estimate stays honest by omission until Microsoft publishes it.
+    - field_path: public_ip_ids
+      sku_meter: public IP addresses
+      pricing_unit: IP-hours
+      impact: Each attached public IP bills hourly on its own referenced component; the gateway itself adds no per-IP charge.
+    - field_path: public_ip_prefix_ids
+      sku_meter: public IP addresses
+      pricing_unit: IP-hours
+      impact: An attached prefix bills every address it contains, hourly, on the referenced prefix component.
+  estimate_exclusions:
+    - data processing bills every GB the gateway translates, in both directions -- the dominant real-world cost for chatty private workloads
+    - the attached public IPs and prefixes bill on their own referenced components
+  notes: "Azure NAT is the flat-fee shape: one always-on gateway-hour meter plus per-GB data processing, with the addresses billing where they live -- on the referenced IP components. Zonal pinning and idle timeouts move behavior, not money."

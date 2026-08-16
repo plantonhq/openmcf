@@ -417,7 +417,7 @@ Next Steps:
 
 **Fix:**
 ```bash
-@fix-planton-component AtlasMongodb --explain "spec.proto missing 'region' field which is essential for cluster deployment"
+@fix-planton-component CloudflareD1Database --explain "spec.proto missing 'region' field which is essential for cluster deployment"
 ```
 
 **Actions:**
@@ -712,25 +712,25 @@ Total: 8 minutes
 ### Example 4: Fix Test Logic
 
 ```bash
-@fix-planton-component AtlasMongodb --explain "test expects error for empty cluster_tier but proto has no validation rule"
+@fix-planton-component CloudflareD1Database --explain "test expects error for empty location but proto has no validation rule"
 ```
 
 **What happens:**
 ```
 1. Analysis
-   - Reads spec.proto: No required rule on cluster_tier
-   - Reads test: Expects error for empty cluster_tier
+   - Reads spec.proto: No required rule on location
+   - Reads test: Expects error for empty location
    - Decision needed: Should it be required?
 
 2. Source Code Fix (assuming should be required)
    - Add validation to spec.proto:
-     string cluster_tier = 3 [(buf.validate.field).required = true];
+     string location = 3 [(buf.validate.field).required = true];
    - Regenerate stubs
    - Test now correct (no changes needed)
 
 3. Documentation Update
-   - Examples: Ensure all have cluster_tier
-   - README: Note cluster_tier is required
+   - Examples: Ensure all have location
+   - README: Note location is required
    - Docs: Update if relevant
 
 4. Validation

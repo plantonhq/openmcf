@@ -1,0 +1,69 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpgkenodepool
+spec:
+  presets:
+    - preset: 01-on-demand-autoscaling
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Compute Engine
+          sku_meter: node vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "2920"
+          quantity_basis: 1 n2-standard-4 node at the autoscaling floor x 4 vCPUs x 730 hours -- min_nodes counts per zone and the zone list comes from the referenced cluster, so a single-zone placement is assumed; a three-zone regional pool triples every line
+          list_unit_price: "0.031611"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "92.30412"
+        - service_name: Compute Engine
+          sku_meter: node memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "11680"
+          quantity_basis: 1 node x 16 GiB (the n2-standard-4 ratio) x 730 hours at the floor, single-zone assumption as above
+          list_unit_price: "0.004237"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "49.48816"
+        - service_name: Compute Engine
+          sku_meter: node boot disk storage
+          pricing_unit: GiB-months
+          pricing_quantity: "100"
+          quantity_basis: 1 node x the preset's 100 GiB pd-balanced boot disk, billed per GiB-month
+          list_unit_price: "0.1"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "10.0000"
+      total_list_cost: "151.79228"
+      exclusions:
+        - autoscaling above the 1-node floor bills each additional node (up to 5 per zone) at the same per-node rates while it runs
+        - network egress and any local or ephemeral storage beyond the boot disk follow workload behavior
+      notes: Estimated at the autoscaling floor -- the committed always-on spend. The ceiling at max_nodes=5 per zone is roughly five times every line.
+    - preset: 02-spot-cost-optimized
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the pool scales to zero (min_nodes 0), so the committed always-on spend is exactly zero
+        - while scaled up, spot e2-standard-4 nodes bill at floating market rates below the on-demand price -- a market rate is not a list price, so no dollar figure is honest here
+        - each running node also bills its 100 GiB pd-balanced boot disk per GiB-month
+      notes: Scale-to-zero spot capacity is the cheapest honest shape -- zero committed, market-priced when busy, preemptible by design.
+    - preset: 03-gpu-accelerated
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the pool scales to zero (min_nodes 0), so the committed always-on spend is exactly zero
+        - while scaled up, each g2-standard-8 node bills the G2 machine rates (which embed the NVIDIA L4) plus its 200 GiB pd-ssd boot disk
+      notes: GPU capacity that scales to zero -- the preset's own comment says why -- so the estimate is zero committed and the real spend follows queued ML work.

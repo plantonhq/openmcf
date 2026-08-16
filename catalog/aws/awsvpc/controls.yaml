@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsvpc
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A VPC is a software-defined network container; it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: encryption_control
+      evidence:
+        type: spec_default
+        reference: Omitted means VPC Encryption Control is off (the AWS default); configuring it with mode=monitor audits unencrypted in-VPC traffic, and mode=enforce blocks resources that would carry it, with per-path exclusions for gateways that cannot encrypt.
+      notes: The 03-ipam-grown-network preset enforces it with internet-gateway and NAT exclusions. Enforce mode on an existing VPC requires passing through monitor mode first.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The VPC itself has no public reachability -- internet exposure is created by separate components (internet gateways, public subnets, NAT gateways, load balancers), each carrying its own posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Ingress restriction lives on security groups, network ACLs, and subnet routing -- separate catalog kinds that attach into the VPC.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Request filtering attaches to edge components (load balancers, CloudFront, API gateways), not to the network container.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is AWS-account IAM posture, not a component choice; the VPC exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The VPC runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Network traffic audit (VPC Flow Logs) is its own resource that attaches to a VPC, subnet, or interface -- not a field of this spec. Control-plane changes to the VPC land in CloudTrail as account-level posture.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: enable_network_address_usage_metrics
+      evidence:
+        type: spec_default
+        reference: Defaults to false; enabling publishes network address usage metrics for the VPC to CloudWatch.
+      notes: NAU metrics are the VPC's own monitoring surface -- capacity visibility against the CIDR before address exhaustion becomes an outage.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless network configuration -- nothing to back up; the manifest recreates the VPC declaratively.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A VPC is a regional construct spanning every Availability Zone in its region by design; zone placement happens at the subnet level, and the VPC itself has no single-zone failure mode.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor this spec offers a deletion-protection flag for a VPC. In practice a VPC with resources in it refuses deletion until they are removed, but that is dependency ordering, not a control.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed software-defined networking -- AWS operates and patches the underlying network fabric; no customer-visible patch surface exists.

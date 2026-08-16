@@ -1,0 +1,51 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azurestorageaccount
+spec:
+  presets:
+    - preset: 01-general-purpose-v2
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - an empty account bills nothing -- storage accrues per GB-month at the HOT LRS rate as workloads write, and versioning plus the 7-day soft-delete windows keep noncurrent data billing until it ages out
+        - operations and network egress follow access patterns
+      notes: Creation is free; the estimate is zero because the manifest commits no bytes, not because storage is free.
+    - preset: 02-production-locked-down
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - stored bytes bill at GZRS rates (roughly double LRS -- zone redundancy plus a geo-secondary) as data arrives, with the lifecycle rule tiering to COOL at 30 days, ARCHIVE at 180, and deleting at 730
+        - geo-replication data transfer bills per GB written
+        - operations and egress follow access patterns; the 30-day soft-delete windows extend how long deleted data bills
+      notes: Zero committed at creation -- the redundancy and lifecycle choices set the rates the first byte will meet.
+    - preset: 03-data-lake-gen2
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Storage
+          sku_meter: SFTP endpoint
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: the enabled SFTP endpoint bills every hour it stays on, independent of transfer volume
+          list_unit_price: "0.30"
+          price_source: https://learn.microsoft.com/en-us/azure/storage/blobs/secure-file-transfer-protocol-support
+          retrieved_on: "2026-08-14"
+          list_cost: "219.0000"
+      total_list_cost: "219.0000"
+      exclusions:
+        - stored bytes bill at ZRS rates as pipelines write; the raw/ lifecycle rule cools at 30 days and deletes at 365
+        - operations and egress follow the lake's traffic
+      notes: The SFTP endpoint is the preset's one committed line -- hierarchical namespace and the lake layout are free capabilities on the same rate card.

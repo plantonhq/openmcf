@@ -1,9 +1,0 @@
-apiVersion: azure.planton.dev/v1alpha1
-kind: AzureVirtualWan
-metadata:
-  name: my-wan
-spec:
-  region: <azure-region>
-  resourceGroup:
-    value: "<your-resource-group-name>"
-  name: my-wan

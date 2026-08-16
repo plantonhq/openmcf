@@ -78,7 +78,7 @@ Use fix when you need to:
 
 **Fix missing field:**
 ```bash
-@fix-planton-component AtlasMongodb --explain "spec.proto is missing 'region' field which is essential for multi-region deployments"
+@fix-planton-component CloudflareD1Database --explain "spec.proto is missing 'region' field which is essential for multi-region deployments"
 ```
 
 **Fix test failures:**
@@ -370,7 +370,7 @@ Next Steps:
 
 **Example:**
 ```bash
-@fix-planton-component AtlasMongodb --explain "spec_test.go validation test expects error when cluster_tier is empty but validation rule doesn't exist in spec.proto"
+@fix-planton-component CloudflareD1Database --explain "spec_test.go validation test expects error when location is empty but validation rule doesn't exist in spec.proto"
 ```
 
 **Actions:**
@@ -379,7 +379,7 @@ Next Steps:
    - If validation SHOULD exist: Add to spec.proto, fix test
    - If validation SHOULDN'T exist: Fix test to not expect error
 3. If proto changed: Run `make protos` to regenerate stubs
-4. Run component tests: `go test ./catalog/atlas/atlasmongodb/v1alpha1/`
+4. Run component tests: `go test ./catalog/cloudflare/cloudflared1database/v1alpha1/`
 5. Run build: `go build ./catalog/<provider>/<component>/...`
 6. Update examples if validation behavior changed
 7. Update README if validation rules mentioned
@@ -1001,14 +1001,14 @@ git restore .
 ### Example 4: Fix Test Failures
 
 ```bash
-@fix-planton-component AtlasMongodb --explain "spec_test.go expects validation error for empty cluster_tier but validation rule is missing"
+@fix-planton-component CloudflareD1Database --explain "spec_test.go expects validation error for empty location but validation rule is missing"
 
 # Fix executes:
 # 1. Read spec.proto (check if validation exists)
-# 2. Decision: Add validation rule (cluster_tier required)
+# 2. Decision: Add validation rule (location required)
 # 3. Update spec.proto (add required validation)
 # 4. Regenerate stubs
-# 5. Update examples (ensure cluster_tier present)
+# 5. Update examples (ensure location present)
 # 6. Run tests (should pass now)
 
 # Result:

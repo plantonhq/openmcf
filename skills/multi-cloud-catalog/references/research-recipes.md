@@ -69,6 +69,36 @@ rg 'to: "KubernetesValkey"' _docs/reference-graph.yaml      # every field that c
 rg -A 3 'from: "AwsEcsService"' _docs/reference-graph.yaml  # everything it can reference
 ```
 
+## What a component costs, enforces, and needs (the fact-sheets)
+
+Covered components carry three sidecars plus a generated estimate document;
+all are small YAML files meant to be read whole:
+
+```
+cat aws/awsalb/cost.yaml                    # billing model, baseline charges,
+                                            # the spec fields that move the bill
+cat _pricing/estimates/awsalb.yaml          # per-preset dollar estimates:
+                                            # exact quantities, unit prices,
+                                            # source URL + verification date
+cat aws/awsalb/controls.yaml                # posture on every catalog control
+cat aws/awsalb/iac/permissions.yaml         # least-privilege runner manifest
+```
+
+- A missing file means the release publishes no verified data for that kind
+  yet -- say "not yet published", never $0 and never a memory-recalled rate.
+- Estimate money fields (`list_unit_price`, `list_cost`, totals) are exact
+  decimal strings -- quote them verbatim; each line's `price_source` +
+  `retrieved_on` is the citation to hand the user.
+- Resolve `control_id` values against `_compliance/controls-catalog.yaml`
+  (names + statements); framework questions read
+  `_compliance/frameworks/<framework>.yaml` on top. Posture is never
+  "compliant" -- see the honesty grammar in SKILL.md.
+- Which kinds are covered at a glance:
+
+```
+rg -l 'kind: ComponentCostProfile' -g 'cost.yaml' .
+```
+
 ## Where judgment has been written
 
 A page that has authored wisdom links it in its head:

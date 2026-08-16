@@ -101,7 +101,7 @@ Use update when you need to:
 **When:** Component is incomplete, audit shows missing items
 
 ```
-@update-planton-component AtlasMongodb --scenario fill-gaps
+@update-planton-component CloudflareD1Database --scenario fill-gaps
 ```
 
 **What it does:**
@@ -132,9 +132,9 @@ Use update when you need to:
    - Checks the LAYOUT first: presets must be flat `{NN}-{name}.yaml` + `{NN}-{name}.md`
      pairs directly under `presets/` (rule 018's convention). A legacy
      subdirectory layout (`{NN}-{name}/manifest.yaml` + `README.md`) is invisible
-     to the public-site catalog mirror (its preset scanner only reads the flat
-     pairs), so the presets silently never publish — flatten them as part of the
-     update. Also verify every preset carries the spec's required fields (e.g.
+     to the downstream preset consumers (the catalog bundle and content packaging
+     scan the flat pairs), so the presets silently never publish — flatten them as
+     part of the update. Also verify every preset carries the spec's required fields (e.g.
      `region`): presets predating a requiredness change can be invalid without
      anything failing until a user copies one.
    - Checks for renamed fields (preset uses old field names that no longer exist in spec.proto)
@@ -332,7 +332,7 @@ misconfigurations fail at validation rather than at deploy.
 **When:** You're not sure what scenario applies
 
 ```
-@update-planton-component AtlasMongodb
+@update-planton-component CloudflareD1Database
 ```
 
 **What it does:**
@@ -882,6 +882,16 @@ After all updates, **execute validation commands in sequence**:
 3. **If Pulumi/Go code changed**: Run `go build ./catalog/<provider>/<component>/...` to validate build (rule 016)
 4. **Always run component tests**: Run `go test -v ./catalog/<provider>/<component>/...` to validate tests (rule 017)
 5. **If proto files changed and presets exist**: Verify all preset YAML field names exist in current spec.proto, all StringValueOrRef fields use `value:` wrapper, and apiVersion/kind still match api.proto
+5b. **If the spec surface or the module's resource set changed and the component
+   ships catalog data sidecars** (`cost.yaml`, `controls.yaml`,
+   `iac/permissions.yaml`): refresh them in the same change -- renamed or removed
+   spec fields orphan the field paths in `cost.yaml`/`controls.yaml` (the
+   `lint.catalog-data` gate fails on any path that no longer resolves), new
+   billing-relevant fields need cost-driver entries, new security-relevant fields
+   may move a control from not_applicable to configurable, and added/removed
+   module resources change the derived permission statements (update the notes
+   citing the terraform resource types). Validate with
+   `go test ./pkg/finops/... ./pkg/compliance/... ./pkg/iac/permissions/...`.
 6. **If the Terraform module's resource set changed and the component ships import
    recipes** (`iac/import-map.yaml`): update the provider catalog
    (`aa_import/catalog.yaml`) and the component map for the added/removed resource
@@ -906,11 +916,8 @@ After all updates, **execute validation commands in sequence**:
    If the provider has a committed parity page (`catalog/<provider>/terraform-parity.md`),
    regenerate it in the same change -- `make generate-provider-parity-report` -- the
    page's drift test fails CI when the accounting moved and the page did not.
-8. **If any docs/catalog.md changed**: Run `yarn copy-docs && yarn generate-structure`
-   in `site/` so the built catalog reflects the update (the copy script self-cleans
-   provider directories; the site build does NOT pick up doc changes on its own)
-9. Generate update report
-10. Recommend running audit to verify improvements
+8. Generate update report
+9. Recommend running audit to verify improvements
 
 ### Step 5: Report Results
 
@@ -926,7 +933,7 @@ Show:
 
 ```
 # First run audit
-@audit-planton-component AtlasMongodb
+@audit-planton-component CloudflareD1Database
 
 # Audit shows 65% complete, missing:
 # - Terraform module
@@ -935,7 +942,7 @@ Show:
 # - Presets
 
 # Run update to fill gaps
-@update-planton-component AtlasMongodb --scenario fill-gaps
+@update-planton-component CloudflareD1Database --scenario fill-gaps
 
 # Update executes:
 # - Rules 012-013 (Terraform module + README)
@@ -1019,7 +1026,7 @@ Provide context for the update:
 ### --dry-run
 Show what would be updated without making changes:
 ```
-@update-planton-component AtlasMongodb --scenario fill-gaps --dry-run
+@update-planton-component CloudflareD1Database --scenario fill-gaps --dry-run
 ```
 
 ### --backup
@@ -1031,7 +1038,7 @@ Create backup before making changes:
 ### --resume-from <rule-number>
 Resume from a specific rule (if previous update failed):
 ```
-@update-planton-component AtlasMongodb --resume-from 012
+@update-planton-component CloudflareD1Database --resume-from 012
 ```
 
 ## Error Handling
@@ -1061,13 +1068,13 @@ If update would overwrite custom changes:
 Use `--backup` flag to create backup OUTSIDE the catalog (the anatomy gate keeps the
 component file set closed -- never write backup dirs into `catalog/`):
 ```
-/tmp/planton-backups/atlasmongodb-backup-2025-11-13-143022/
+/tmp/planton-backups/cloudflared1database-backup-2025-11-13-143022/
 ```
 
 ### Dry-Run Mode
 Use `--dry-run` to preview changes:
 ```
-📋 Update Plan for AtlasMongodb
+📋 Update Plan for CloudflareD1Database
 
 Scenario: fill-gaps
 Identified Gaps (from audit):
@@ -1130,7 +1137,7 @@ regenerating the CI matrix.
 Update provides real-time progress:
 
 ```
-🔄 Update: AtlasMongodb (fill-gaps)
+🔄 Update: CloudflareD1Database (fill-gaps)
 
 Current State (from audit):
   Overall: 65% complete
@@ -1158,7 +1165,7 @@ Phase 3: Final Validation
 Before: 65% complete
 After: 98% complete (+33%)
 
-Next step: Run @audit-planton-component AtlasMongodb to verify
+Next step: Run @audit-planton-component CloudflareD1Database to verify
 ```
 
 ## Integration with Other Rules
@@ -1166,19 +1173,19 @@ Next step: Run @audit-planton-component AtlasMongodb to verify
 ### After Audit
 ```
 # Audit identifies gaps
-@audit-planton-component AtlasMongodb
+@audit-planton-component CloudflareD1Database
 
 # Update fills gaps
-@update-planton-component AtlasMongodb --scenario fill-gaps
+@update-planton-component CloudflareD1Database --scenario fill-gaps
 ```
 
 ### Before Audit
 ```
 # Update component
-@update-planton-component AtlasMongodb --explain "added multi-region support"
+@update-planton-component CloudflareD1Database --explain "added multi-region support"
 
 # Verify no regressions
-@audit-planton-component AtlasMongodb
+@audit-planton-component CloudflareD1Database
 ```
 
 ### With Forge
@@ -1225,7 +1232,7 @@ Next step: Run @audit-planton-component AtlasMongodb to verify
 ## Troubleshooting
 
 ### "Component not found"
-**Error:** `Component AtlasMongodb not found in cloud_resource_kind.proto`
+**Error:** `Component CloudflareD1Database not found in cloud_resource_kind.proto`
 
 **Solution:** Check component name spelling, or use `@forge-planton-component` to create it.
 
@@ -1359,13 +1366,10 @@ conventions). A rename keeps the enum **number** — only the name changes every
    `iac/tf/README.md`, preset `.md` files. Provider *service* names in prose stay
    natural; only the kind/type identity changes.
 7. **Cross-references in OTHER components**: `git grep -i <oldname>` across the repo —
-   catalog page links (use directory-name-based `/docs/catalog/<provider>/<newkind>`
-   links; the site build rewrites them to slugs), example manifests in docs, and proto
+   example manifests in docs, and proto
    comments that name the kind.
 8. **Regenerate**: `make protos` -> `make generate-cloud-resource-kind-map` ->
-   `make reset-gazelle` (the Go package path changed) -> `yarn copy-docs &&
-   yarn generate-structure` in `site/` (the copy script clears provider dirs first, so
-   the old slug's built output disappears on its own).
+   `make reset-gazelle` (the Go package path changed).
 9. **Validate**: component spec tests, targeted package builds
    (`go build ./catalog/<provider>/<kind>/...` — NEVER a repo-root
    `go build ./...`, which compiles 70+ component modules at once and halts the machine;

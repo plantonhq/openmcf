@@ -1,0 +1,43 @@
+# Java stub SDK template -- release cargo for the platform repo.
+#
+# Built by `make build-stub-sdks` and shipped at
+# downloads.planton.dev/releases/{tag}/stubs/stubs-java.zip. The platform
+# extracts this tree into product/apis/stubs/java/src/main/java instead of
+# cloning this repo and regenerating, so the managed-mode config below MUST
+# stay byte-equivalent to what the platform's retired local generation
+# produced: java_package_prefix `protos` for this module (classes land at
+# protos.dev.planton.*), multiple files, no utf8 check, SPEED. The plugin
+# versions are the cross-repo lockstepped pins in the Makefile's proto
+# toolchain section -- see the CROSS-REPO LOCKSTEP note there.
+version: v2
+managed:
+  enabled: true
+  disable:
+    - file_option: java_package
+      module: google/protobuf/empty
+    - file_option: java_package
+      module: google/protobuf/timestamp
+    # The protovalidate Maven artifact (build.buf:protovalidate) uses
+    # build.buf.validate as its Java package; managed mode must not rewrite it.
+    - file_option: java_package
+      module: buf.build/bufbuild/protovalidate
+  override:
+    - file_option: java_multiple_files
+      value: true
+    - file_option: java_string_check_utf8
+      value: false
+    - file_option: optimize_for
+      value: SPEED
+    - file_option: java_package_prefix
+      value: build.buf.gen
+    - file_option: java_package_prefix
+      value: protos
+      module: buf.build/planton/planton
+plugins:
+  - protoc_builtin: java
+    protoc_path: .tools/protoc/bin/protoc
+    out: generated/stub-sdks/java
+  - local: .tools/protoc-gen-grpc-java
+    out: generated/stub-sdks/java
+inputs:
+  - directory: .

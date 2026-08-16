@@ -1,0 +1,105 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpgkecluster
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Google Cloud encrypts customer content at rest by default -- the cluster's control-plane storage (etcd) and node boot disks are encrypted with Google-managed keys without any configuration.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: database_encryption.key_name
+      evidence:
+        type: spec_default
+        reference: Unset means Google-managed encryption; setting database_encryption with state=ENCRYPTED and a Cloud KMS key_name encrypts Kubernetes Secrets in etcd with the customer-managed key.
+      notes: user_managed_keys.control_plane_disk_encryption_key extends CMK to control-plane disks, and cluster_autoscaling.auto_provisioning_defaults.boot_disk_kms_key covers auto-provisioned node boot disks. No preset enables CMK.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Kubernetes API endpoint serves TLS only, and GKE encrypts control-plane-to-node communication on every cluster; neither can be disabled.
+      notes: in_transit_encryption adds transparent encryption of inter-node pod traffic on top of the always-on control-plane paths.
+    - control_id: no-public-access
+      status: configurable
+      field_path: private_cluster.enable_private_endpoint
+      evidence:
+        type: spec_default
+        reference: Unset provisions a public API endpoint; enable_private_endpoint=true removes public API access entirely, and enable_private_nodes=true gives nodes internal IPs only. The private control-plane placement is immutable at creation.
+      notes: The 01-private-standard and 02-autopilot presets enable private nodes and keep a restricted public endpoint for administration; private nodes need Cloud NAT on the network for outbound internet.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: master_authorized_networks
+      evidence:
+        type: spec_default
+        reference: Unset leaves the public API endpoint reachable from any source IP (subject to TLS and IAM); declaring master_authorized_networks.cidr_blocks restricts API access to exactly the listed CIDRs.
+      notes: The 01-private-standard and 02-autopilot presets restrict the endpoint to an example admin CIDR. gcp_public_cidrs_access_enabled tightens the same surface further.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The cluster's API endpoint is protected by TLS, IAM, and authorized networks rather than a WAF; request filtering for workloads belongs to the load balancers provisioned in front of them (separate kinds).
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Kubernetes RBAC is active on every GKE cluster and cannot be turned off; the legacy ABAC alternative stays disabled unless enable_legacy_abac explicitly opts in.
+      notes: authenticator_security_group adds Google Groups to RBAC subjects; rbac_binding_config can forbid insecure bindings to system:authenticated/system:unauthenticated.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: workload_identity_enabled defaults to true, enabling Workload Identity Federation (PROJECT_ID.svc.id.goog) so pods exchange Kubernetes service accounts for short-lived Google credentials instead of exported keys; Autopilot clusters have it always on.
+      notes: Standard clusters can explicitly disable it; the modules suppress the config block on Autopilot where it is unconditional.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: issue_client_certificate is unset by default (GKE issues no legacy client certificate -- certificate auth bypasses IAM and cannot be revoked short of rotating the cluster CA) and enable_legacy_abac defaults to false; both legacy paths require explicit opt-in.
+      notes: anonymous_authentication_mode=LIMITED additionally restricts unauthenticated API access to health endpoints.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: GKE writes Admin Activity audit logs -- administrative actions against the cluster and the Kubernetes API -- to Cloud Audit Logs for every cluster; they cannot be disabled.
+      notes: logging.components can add API-server, controller-manager, and scheduler logs to Cloud Logging for deeper forensics.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: New clusters default to Cloud Logging and Cloud Monitoring for system components when logging and monitoring are unconfigured; opting out requires an explicit empty components list.
+      notes: The 01-private-standard preset pins explicit logging (system + workloads) and monitoring components rather than relying on the default.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: addons.gke_backup_agent_enabled
+      evidence:
+        type: spec_default
+        reference: Off by default; enabling installs the Backup for GKE agent, the prerequisite for backup plans that snapshot workloads and persistent volumes.
+      notes: No preset enables it. Backup plans themselves (what to back up, on what schedule) are separate Backup for GKE resources.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Retention length is a property of Backup for GKE backup plans, which are separate resources; this spec only installs the agent (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: location
+      evidence:
+        type: spec_default
+        reference: A region in location provisions a regional cluster with the control plane replicated across three zones; a zone provisions a single-zone control plane. The location is immutable at creation.
+      notes: The 01-private-standard and 02-autopilot presets are regional; 03-dev-zonal is deliberately zonal. Worker HA is owned by node pools (GcpGkeNodePool) and node_locations.
+    - control_id: deletion-protection
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: deletion_protection defaults to true; while set, a destroy plan fails before touching the cluster.
+      notes: The 03-dev-zonal preset disables it deliberately for disposable environments. deletion_policy=PREVENT layers an engine-side stance under it.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: release_channel defaults to REGULAR, keeping the control plane and channel-managed node pools on Google-managed upgrades inside the declared maintenance windows; NONE opts out of channel management.
+      notes: maintenance_policy windows and exclusions bound when disruption may happen; gke_auto_upgrade_patch_mode=ACCELERATED speeds patch rollout.

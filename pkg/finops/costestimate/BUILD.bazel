@@ -1,0 +1,24 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "costestimate",
+    srcs = ["costestimate.go"],
+    importpath = "github.com/plantonhq/planton/pkg/finops/costestimate",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//finops/componentcostestimate/v1:componentcostestimate",
+        "//pkg/protobufyaml",
+        "@com_github_pkg_errors//:errors",
+    ],
+)
+
+go_test(
+    name = "costestimate_test",
+    srcs = ["conformance_test.go"],
+    embed = [":costestimate"],
+    deps = [
+        "//finops/componentcostestimate/v1:componentcostestimate",
+        "//finops/componentcostprofile/v1:componentcostprofile",
+        "//pkg/finops/costprofile",
+    ],
+)

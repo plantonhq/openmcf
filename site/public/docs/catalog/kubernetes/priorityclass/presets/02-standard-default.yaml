@@ -1,9 +1,0 @@
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesPriorityClass
-metadata:
-  name: standard-default
-spec:
-  name: standard-default
-  value: 1000
-  global_default: true
-  description: Cluster default for workloads that do not choose a priority class.

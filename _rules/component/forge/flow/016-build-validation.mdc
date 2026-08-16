@@ -183,11 +183,11 @@ On error:
 Compilation failed with X errors:
 
 1. File: iac/pulumi/module/network.go:45
-   Error: undefined: networking.NewNetwork
+   Error: undefined: digitalocean.NewVpc
    
    Suggested fix:
    Check the import path. The correct import is:
-   "github.com/pulumi/pulumi-openstack/sdk/v5/go/openstack/networking"
+   "github.com/pulumi/pulumi-digitalocean/sdk/v4/go/digitalocean"
 
 Next steps:
 1. Fix the errors listed above

@@ -92,32 +92,23 @@ require (
 	github.com/onsi/gomega v1.38.2
 	github.com/pkg/errors v0.9.1
 	github.com/pseudomuto/protoc-gen-doc v1.5.1
-	github.com/pulumi/pulumi-alicloud/sdk/v3 v3.95.0
 	github.com/pulumi/pulumi-auth0/sdk/v3 v3.35.0
 	github.com/pulumi/pulumi-aws-native/sdk v1.14.0
 	github.com/pulumi/pulumi-aws/sdk/v7 v7.41.0
 	github.com/pulumi/pulumi-azure-native-sdk/machinelearningservices/v3 v3.12.1
 	github.com/pulumi/pulumi-azure-native-sdk/v3 v3.12.1
 	github.com/pulumi/pulumi-azure/sdk/v6 v6.38.0
-	github.com/pulumi/pulumi-civo/sdk/v2 v2.4.8
 	github.com/pulumi/pulumi-cloudflare/sdk/v6 v6.17.0
-	github.com/pulumi/pulumi-confluentcloud/sdk/v2 v2.49.0
 	github.com/pulumi/pulumi-digitalocean/sdk/v4 v4.49.0
 	github.com/pulumi/pulumi-gcp/sdk/v9 v9.29.0
-	github.com/pulumi/pulumi-hcloud/sdk v1.32.1
 	github.com/pulumi/pulumi-kubernetes/sdk/v4 v4.33.0
-	github.com/pulumi/pulumi-mongodbatlas/sdk/v3 v3.36.1
-	github.com/pulumi/pulumi-oci/sdk/v4 v4.0.0-20260214044446-b221312c8fd5
-	github.com/pulumi/pulumi-openstack/sdk/v5 v5.4.1
 	github.com/pulumi/pulumi-random/sdk/v4 v4.16.7
-	github.com/pulumi/pulumi-snowflake/sdk/v2 v2.9.1
 	github.com/pulumi/pulumi-tls/sdk/v4 v4.11.1
 	github.com/pulumi/pulumi/sdk/v3 v3.256.0
-	github.com/pulumiverse/pulumi-scaleway/sdk v1.43.0
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
-	github.com/stigmer/stigmer/sdk/go/v3 v3.10.0
+	github.com/stigmer/stigmer/sdk/go/v3 v3.12.4
 	github.com/stretchr/testify v1.11.1
 	github.com/zclconf/go-cty v1.16.3
 	github.com/zyedidia/clipboard v1.0.4

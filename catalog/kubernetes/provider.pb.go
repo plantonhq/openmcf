@@ -28,8 +28,8 @@ const (
 // A value earns its place here when the platform brings its own credential shape:
 // the selected provider determines which sub-message of KubernetesProviderConfig
 // holds the connection details. Platforms that authenticate through a plain
-// kubeconfig (local development clusters, on-prem, bare metal, and managed
-// platforms like Civo or Scaleway that simply hand out a kubeconfig) share the
+// kubeconfig (local development clusters, on-prem, bare metal, and any managed
+// platform that simply hands out a kubeconfig) share the
 // single self_managed value rather than one value per platform.
 type KubernetesProvider int32
 
@@ -39,7 +39,7 @@ const (
 	KubernetesProvider_aws_eks                         KubernetesProvider = 2 // Amazon Elastic Kubernetes Service (EKS) - A managed Kubernetes service by AWS that simplifies the deployment and management of Kubernetes clusters.
 	KubernetesProvider_azure_aks                       KubernetesProvider = 3 // Azure Kubernetes Service (AKS) - A managed Kubernetes service by Microsoft Azure that provides Kubernetes cluster orchestration and management.
 	KubernetesProvider_digital_ocean_doks              KubernetesProvider = 4 // DigitalOcean Kubernetes Service (DOKS) - A managed Kubernetes service by DigitalOcean that simplifies the deployment and management of Kubernetes clusters.
-	KubernetesProvider_self_managed                    KubernetesProvider = 5 // A cluster on no credential-bearing managed platform: kind/minikube/k3s, on-prem, bare metal, vSphere, and kubeconfig-only clouds (Civo, Scaleway). Connects through a plain kubeconfig.
+	KubernetesProvider_self_managed                    KubernetesProvider = 5 // A cluster on no credential-bearing managed platform: kind/minikube/k3s, on-prem, bare metal, vSphere, and any kubeconfig-only cloud. Connects through a plain kubeconfig.
 )
 
 // Enum value maps for KubernetesProvider.
@@ -108,7 +108,7 @@ type KubernetesProviderConfig struct {
 	AzureAks         *KubernetesProviderConfigAzureAks         `protobuf:"bytes,4,opt,name=azure_aks,json=azureAks,proto3" json:"azure_aks,omitempty"`
 	DigitalOceanDoks *KubernetesProviderConfigDigitalOceanDoks `protobuf:"bytes,5,opt,name=digital_ocean_doks,json=digitalOceanDoks,proto3" json:"digital_ocean_doks,omitempty"`
 	// Connection specification for self-managed clusters (kind, minikube, k3s, on-prem,
-	// bare metal, vSphere, and kubeconfig-only clouds such as Civo and Scaleway).
+	// bare metal, vSphere, and any kubeconfig-only cloud).
 	SelfManaged   *KubernetesProviderConfigSelfManaged `protobuf:"bytes,6,opt,name=self_managed,json=selfManaged,proto3" json:"self_managed,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -528,7 +528,7 @@ func (x *KubernetesProviderConfigDigitalOceanDoks) GetKubeConfig() string {
 // KubernetesProviderConfigSelfManaged carries the connection for any cluster that
 // authenticates through a plain kubeconfig: local development clusters (kind,
 // minikube, k3s, Docker Desktop), on-prem and bare-metal clusters, vSphere, and
-// managed platforms that simply hand out a kubeconfig (Civo, Scaleway). The file
+// any managed platform that simply hands out a kubeconfig. The file
 // bundles endpoint, CA data, and credential; there is no token to refresh and
 // therefore nothing else to configure.
 type KubernetesProviderConfigSelfManaged struct {

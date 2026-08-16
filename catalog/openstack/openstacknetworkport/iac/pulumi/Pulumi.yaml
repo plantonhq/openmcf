@@ -1,3 +1,0 @@
-name: openstack-network-port
-runtime: go
-description: Pulumi module for OpenStackNetworkPort

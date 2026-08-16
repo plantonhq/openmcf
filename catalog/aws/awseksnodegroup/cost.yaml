@@ -1,0 +1,58 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awseksnodegroup
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon Elastic Compute Cloud
+      sku_meter: node instance hours
+      pricing_unit: hours
+      description: Every node is an EC2 instance billing hourly around the clock -- at least the scaling floor (min_size) is always running. The node group itself carries no EKS-side fee.
+    - service_name: Amazon Elastic Block Store
+      sku_meter: node root volumes
+      pricing_unit: GB-months
+      description: Each node carries a root EBS volume of disk_size_gb, billed per GB-month while the node (or a pooled warm instance) exists.
+  cost_drivers:
+    - field_path: instance_types
+      sku_meter: node instance hours
+      pricing_unit: hours
+      impact: The instance type sets the per-node hourly rate -- the dominant dial. Empty means AWS's t3.medium default; On-Demand uses the first type, and multiple types diversify Spot pools.
+    - field_path: scaling.min_size
+      sku_meter: node instance hours
+      pricing_unit: hours
+      impact: The floor that always bills -- the committed spend. min_size 0 makes the pool scale-to-zero.
+    - field_path: scaling.max_size
+      sku_meter: node instance hours
+      pricing_unit: hours
+      impact: Bounds the worst-case hourly spend when autoscaling adds nodes.
+    - field_path: scaling.desired_size
+      sku_meter: node instance hours
+      pricing_unit: hours
+      impact: Where the pool starts between the bounds; cluster autoscaling moves it afterward.
+    - field_path: capacity_type
+      sku_meter: node instance hours
+      pricing_unit: hours
+      impact: on_demand (the recommended default) bills the published list rate; spot bills the fluctuating market rate at a steep discount in exchange for interruption; capacity_block bills reserved GPU capacity on its own terms.
+    - field_path: disk_size_gb
+      sku_meter: node root volumes
+      pricing_unit: GB-months
+      impact: Sets each node's root volume size (the catalog recommends 100 GiB against AWS's 20 GiB default -- a 5x storage line for real image and log headroom).
+    - field_path: launch_template
+      sku_meter: node instance hours
+      impact: Delegates instance type, disk, and AMI -- and therefore the node rate and storage cost -- to the referenced AwsLaunchTemplate; only the node-count bounds remain priceable on this manifest.
+    - field_path: warm_pool_config
+      sku_meter: node root volumes
+      pricing_unit: GB-months
+      impact: Pooled standby instances bill by pool_state -- STOPPED and HIBERNATED keep only their EBS volumes billing, RUNNING bills full instance price for instant scale-out.
+    - field_path: ami_type
+      sku_meter: node instance hours
+      impact: GPU and Windows AMI families imply pricier instance types, and Windows doubles the AWS default root volume.
+  estimate_exclusions:
+    - autoscaled nodes above the floor are workload-dependent, bounded by max_size
+    - data transfer between AZs and out of the region follows pod traffic
+    - the cluster's management fee bills on the AwsEksCluster component
+  notes: "This component is pure EC2 economics: nodes x instance rate plus root volumes, with no EKS-side charge of its own. Spot moves the rate to the market; a launch template moves the rate decision onto another component entirely."

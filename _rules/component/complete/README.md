@@ -18,17 +18,17 @@ While audit and update are powerful when used separately, most of the time you w
 
 ```bash
 # 1. Check status
-@audit-planton-component AtlasMongodb
+@audit-planton-component CloudflareD1Database
 # Output: 65% complete, missing Terraform, docs, examples
 
 # 2. Read report, decide what to do
 
 # 3. Fill gaps
-@update-planton-component AtlasMongodb --scenario fill-gaps
+@update-planton-component CloudflareD1Database --scenario fill-gaps
 # Wait 15-20 minutes
 
 # 4. Verify
-@audit-planton-component AtlasMongodb
+@audit-planton-component CloudflareD1Database
 # Output: 98% complete
 
 # Time: 20+ minutes + manual steps
@@ -37,7 +37,7 @@ While audit and update are powerful when used separately, most of the time you w
 ### Complete Workflow (1 Command)
 
 ```bash
-@complete-planton-component AtlasMongodb
+@complete-planton-component CloudflareD1Database
 
 # Automatically:
 # - Audits (65% complete)
@@ -142,7 +142,7 @@ Complete is specifically for **filling gaps**, not other updates:
 ### With Dry-Run
 
 ```bash
-@complete-planton-component AtlasMongodb --dry-run
+@complete-planton-component CloudflareD1Database --dry-run
 ```
 
 **Shows:**
@@ -179,12 +179,12 @@ Complete is specifically for **filling gaps**, not other updates:
 **Scenario:** Legacy component at 60% completion
 
 ```bash
-@complete-planton-component AtlasMongodb
+@complete-planton-component CloudflareD1Database
 ```
 
 **Output:**
 ```
-🎯 Complete: AtlasMongodb
+🎯 Complete: CloudflareD1Database
 
 Step 1/3: Initial Audit
   Current: 65%
@@ -297,7 +297,7 @@ Duration: 12 minutes (extra time for polish items)
 
 ```bash
 # Complete all SaaS platform components
-for component in AtlasMongodb ConfluentKafka SnowflakeDatabase; do
+for component in CloudflareD1Database Auth0Client CloudflareDnsZone; do
   echo "=== Completing $component ==="
   @complete-planton-component $component
   echo ""
@@ -306,13 +306,13 @@ done
 
 **Output:**
 ```
-=== Completing AtlasMongodb ===
+=== Completing CloudflareD1Database ===
 ✅ 65% → 98% (+33%) in 18 min
 
-=== Completing ConfluentKafka ===
+=== Completing Auth0Client ===
 ✅ Already complete (97%)
 
-=== Completing SnowflakeDatabase ===
+=== Completing CloudflareDnsZone ===
 ✅ 70% → 95% (+25%) in 22 min
 
 Summary: 3 components processed, 2 improved, 1 already complete
@@ -650,7 +650,7 @@ Difference:
 #!/bin/bash
 # complete-all-saas.sh
 
-COMPONENTS=(AtlasMongodb ConfluentKafka SnowflakeDatabase)
+COMPONENTS=(CloudflareD1Database Auth0Client CloudflareDnsZone)
 
 for component in "${COMPONENTS[@]}"; do
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -675,11 +675,11 @@ echo "Batch completion finished!"
 
 ```bash
 # Complete and capture metrics
-BEFORE=$(@audit-planton-component AtlasMongodb --score-only)
+BEFORE=$(@audit-planton-component CloudflareD1Database --score-only)
 
-@complete-planton-component AtlasMongodb
+@complete-planton-component CloudflareD1Database
 
-AFTER=$(@audit-planton-component AtlasMongodb --score-only)
+AFTER=$(@audit-planton-component CloudflareD1Database --score-only)
 
 echo "Improvement: $BEFORE% → $AFTER% (+$(($AFTER - $BEFORE))%)"
 ```

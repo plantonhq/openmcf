@@ -9,9 +9,9 @@ enum CostClass {
   cost_class_unspecified = 0;
   // Local infrastructure only (kind clusters, local containers). $0.
   free_local = 1;
-  // Cloud free tiers (Cloudflare Workers Free, Auth0 free, OCI Always Free, Atlas M0). $0.
+  // Cloud free tiers (Cloudflare Workers Free, Auth0 free). $0.
   free_cloud = 2;
-  // Low-cost VPS providers (DigitalOcean, Civo, Hetzner, Scaleway). ~$1-5/provider/month.
+  // Low-cost VPS providers (DigitalOcean). ~$1-5/provider/month.
   cheap_ephemeral = 3;
   // Major cloud non-free resources (AWS, GCP, Azure compute/storage). ~$25-200/provider/month.
   paid_ephemeral = 4;

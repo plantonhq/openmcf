@@ -12,8 +12,11 @@
 #   proto-source.zip      -- Raw proto source (spec, api, input, outputs)
 #   reference-pack.zip    -- The component reference pack: generated reference
 #                            pages, catalog indexes, the cross-reference graph,
-#                            the commons page, and the authored GUIDE.md /
-#                            patterns wisdom layer
+#                            the commons page, the authored GUIDE.md / patterns
+#                            wisdom layer, and the verified fact-sheet layer
+#                            (per-component cost/controls/permissions sidecars,
+#                            the generated per-preset cost estimates, and the
+#                            central compliance catalog + framework crosswalks)
 #   conversion-corpus.zip -- The golden conversion corpus: every authored
 #                            ConversionSpec plus its testdata fixtures. Gates
 #                            every conversion engine (in-repo and external) --
@@ -192,6 +195,18 @@ fi
 # the same file an agent reads -- no renames between source and artifact),
 # pinned by the reference generator's contract tests. Name-based selection
 # also survives api-version directory renames, which path patterns would not.
+#
+# The fact-sheet layer rides the same pack: the per-component sidecar names
+# (cost.yaml, controls.yaml, iac/permissions.yaml) are anatomy-enforced and
+# unique to fact-sheets, and the central trees (_pricing/estimates/ for the
+# generated per-preset dollar estimates, _compliance/ for the control catalog
+# and framework crosswalks) are selected by path like _patterns/. Coverage is
+# presence-based -- only covered components carry sidecars -- so absence in
+# the pack means "not yet published", never zero.
+#
+# This selection MUST stay mirrored with the self-contained catalog skill's
+# assembly (pkg/skills/defspack/catalogpack.go) -- the skill and this zip are
+# the same pack on two transports.
 if wants reference-pack; then
   echo "Reference pack..."
   find "$CATALOG_ROOT" \( \
@@ -200,7 +215,12 @@ if wants reference-pack; then
       -o -name 'reference-index.md' \
       -o -name 'reference-graph.yaml' \
       -o -name 'reference-commons.md' \
+      -o -name 'cost.yaml' \
+      -o -name 'controls.yaml' \
+      -o -name 'permissions.yaml' \
       -o -path "$CATALOG_ROOT/_patterns/*.md" \
+      -o -path "$CATALOG_ROOT/_pricing/estimates/*.yaml" \
+      -o -path "$CATALOG_ROOT/_compliance/*.yaml" \
     \) ! -path '*/_test/*' | create_zip "reference-pack.zip" "reference pack"
 fi
 

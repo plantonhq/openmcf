@@ -1,0 +1,96 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpredisinstance
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Memorystore encrypts instance data at rest -- including RDB snapshots -- with Google-managed keys on every instance without configuration.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: customer_managed_key
+      evidence:
+        type: spec_default
+        reference: Unset means Google-managed encryption; naming a Cloud KMS key at creation encrypts the instance's data with the customer-managed key. The 03-private-services-access preset sets it.
+      notes: The Memorystore service agent needs encrypt/decrypt on the key as a prerequisite.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: transit_encryption_mode
+      evidence:
+        type: spec_default
+        reference: DISABLED (the provider default when unset) serves plaintext Redis protocol inside the VPC; SERVER_AUTHENTICATION enables TLS with a Google-managed server certificate.
+      notes: The 02-ha-production preset enables it. TLS adds client-side CA management and some latency -- the spec comments call the trade-off out.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A Memorystore instance is only ever reachable at a private address inside the authorized VPC network -- no public endpoint exists in the API at all.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: authorized_network
+      evidence:
+        type: spec_default
+        reference: The authorized network is the complete reachability scope -- only clients inside (or peered into) that VPC can connect; connect_mode chooses direct peering or private service access as the wiring.
+      notes: Redis AUTH (auth_enabled, presets 02 and 03) layers credential access on top of the network boundary.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A private in-VPC cache has no inbound internet surface to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is project IAM posture. The data plane speaks the Redis protocol, whose only native gate is the AUTH string (auth_enabled) -- role-based data-plane access arrives with the Valkey-based successor product, a separate kind.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The instance runs no workloads and holds no cloud credentials; clients authenticate with the Redis AUTH string, not identities.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: auth_enabled
+      evidence:
+        type: spec_default
+        reference: Off by default -- any client that can reach the private endpoint may speak to the cache; enabling AUTH requires the instance's generated credential on every connection.
+      notes: Presets 02 and 03 enable it. Network scoping remains the primary boundary either way.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Administrative actions on the instance (create, resize, failover, delete) land in Cloud Audit Logs unconditionally; the Redis data plane itself has no per-command audit surface.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Memorystore publishes instance metrics (memory usage, hit ratio, connections, replication lag) to Cloud Monitoring for every instance without configuration.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: persistence_config.persistence_mode
+      evidence:
+        type: spec_default
+        reference: DISABLED (the default) keeps the cache purely in memory -- contents are lost on eviction or failure; RDB schedules periodic snapshots the service restores from after a restart.
+      notes: The 02-ha-production preset snapshots every 12 hours. RDB is durability for a cache, not a backup you can browse or export.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: RDB keeps the latest snapshot for recovery; there is no retention schedule to configure on this API (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: tier
+      evidence:
+        type: spec_default
+        reference: BASIC is a single node in a single zone; STANDARD_HA adds a synchronously replicated failover replica in another zone (location_id and alternative_location_id pin the spread) with automatic failover behind a stable endpoint.
+      notes: Presets 02 and 03 are STANDARD_HA; read replicas (preset 03) add read scale on top of, not instead of, the HA pair's failover.
+    - control_id: deletion-protection
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: deletion_protection defaults to true in this spec -- destroy plans fail before touching the instance until the flag is lifted.
+      notes: The 01-basic-cache preset disables it deliberately for a disposable dev cache.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Google patches and upgrades the Redis engine through managed maintenance; maintenance_window steers when disruption may happen, never whether patching occurs.

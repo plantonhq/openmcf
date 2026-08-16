@@ -1,0 +1,32 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpgkecluster
+spec:
+  gcp:
+    groups:
+      - purpose: EnableContainerApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling container.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageCluster
+        permissions:
+          - container.clusters.create
+          - container.clusters.get
+          - container.clusters.update
+          - container.clusters.delete
+          - container.operations.get
+        provenance: derived
+        notes: Covers google_container_cluster -- create, read/refresh, in-place updates, and destroy, plus polling the long-running operations every mutation returns.
+      - purpose: ActAsNodeServiceAccount
+        permissions:
+          - iam.serviceAccounts.actAs
+        provenance: derived
+        notes: Required only when cluster_autoscaling.auto_provisioning_defaults.service_account selects a custom node service account -- GKE demands actAs on that account before it will provision nodes running as it. Not needed when node identity is left to the provider default.
