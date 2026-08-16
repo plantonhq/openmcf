@@ -1,0 +1,21 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSsmPatchBaseline
+metadata:
+  name: al2023-security
+spec:
+  region: <aws-region>
+  operatingSystem: AMAZON_LINUX_2023
+  description: AL2023 security patches after a 7-day soak
+  approvalRules:
+    - patchFilters:
+        - key: CLASSIFICATION
+          values:
+            - Security
+        - key: SEVERITY
+          values:
+            - Critical
+            - Important
+      approveAfterDays: 7
+      complianceLevel: CRITICAL
+  patchGroups:
+    - <patch-group-name>

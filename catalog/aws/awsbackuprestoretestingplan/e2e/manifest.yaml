@@ -1,0 +1,29 @@
+# Canonical AwsBackupRestoreTestingPlan example (hack/dev manifest and
+# refgen Example source): weekly random drills over every vault with
+# one EBS selection. Literal ARNs stand in for composed references so
+# the offline `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupRestoreTestingPlan
+metadata:
+  name: weekly-restore-drills
+  id: weekly-restore-drills
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  planName: weekly_restore_drills
+  scheduleExpression: cron(0 5 ? * MON *)
+  scheduleExpressionTimezone: Etc/UTC
+  startWindowHours: 8
+  recoveryPointSelection:
+    algorithm: RANDOM_WITHIN_WINDOW
+    includeVaults: ["*"]
+    recoveryPointTypes: ["SNAPSHOT"]
+    selectionWindowDays: 30
+  selections:
+    - name: ebs_volumes
+      protectedResourceType: EBS
+      iamRoleArn:
+        value: arn:aws:iam::123456789012:role/restore-testing-role
+      protectedResourceArns: ["*"]
+      validationWindowHours: 4

@@ -1,0 +1,20 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSsmAssociation
+metadata:
+  name: nightly-patch-scan
+spec:
+  region: <aws-region>
+  documentName:
+    value: AWS-RunPatchBaseline
+  associationName: nightly-patch-scan
+  parameters:
+    Operation: Scan
+  targets:
+    - key: tag:env
+      values:
+        - prod
+  scheduleExpression: cron(0 2 ? * * *)
+  applyOnlyAtCronInterval: true
+  complianceSeverity: HIGH
+  maxConcurrency: 10%
+  maxErrors: 5%

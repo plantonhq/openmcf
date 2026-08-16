@@ -1353,6 +1353,126 @@ func TestAwsGuardDuty_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsguardduty", "terraform")
 }
 
+func TestAwsCloudTrailEventDataStore_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudtraileventdatastore", "pulumi")
+}
+
+func TestAwsCloudTrailEventDataStore_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudtraileventdatastore", "terraform")
+}
+
+func TestAwsConfigAggregator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsconfigaggregator", "pulumi")
+}
+
+func TestAwsConfigAggregator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsconfigaggregator", "terraform")
+}
+
+func TestAwsConfigConformancePack_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsconfigconformancepack", "pulumi")
+}
+
+func TestAwsConfigConformancePack_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsconfigconformancepack", "terraform")
+}
+
+func TestAwsGuardDutyMalwareProtectionPlan_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsguarddutymalwareprotectionplan", "pulumi")
+}
+
+func TestAwsGuardDutyMalwareProtectionPlan_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsguarddutymalwareprotectionplan", "terraform")
+}
+
+func TestAwsBackupVault_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupvault", "pulumi")
+}
+
+func TestAwsBackupVault_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupvault", "terraform")
+}
+
+func TestAwsBackupPlan_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupplan", "pulumi")
+}
+
+func TestAwsBackupPlan_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupplan", "terraform")
+}
+
+func TestAwsBackupFramework_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupframework", "pulumi")
+}
+
+func TestAwsBackupFramework_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupframework", "terraform")
+}
+
+func TestAwsBackupReportPlan_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupreportplan", "pulumi")
+}
+
+func TestAwsBackupReportPlan_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupreportplan", "terraform")
+}
+
+func TestAwsBackupRestoreTestingPlan_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackuprestoretestingplan", "pulumi")
+}
+
+func TestAwsBackupRestoreTestingPlan_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackuprestoretestingplan", "terraform")
+}
+
+func TestAwsBackupSettings_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupsettings", "pulumi")
+}
+
+func TestAwsBackupSettings_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupsettings", "terraform")
+}
+
+func TestAwsSsmParameter_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmparameter", "pulumi")
+}
+
+func TestAwsSsmParameter_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmparameter", "terraform")
+}
+
+func TestAwsSsmDocument_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmdocument", "pulumi")
+}
+
+func TestAwsSsmDocument_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmdocument", "terraform")
+}
+
+func TestAwsSsmAssociation_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmassociation", "pulumi")
+}
+
+func TestAwsSsmAssociation_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmassociation", "terraform")
+}
+
+func TestAwsSsmMaintenanceWindow_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmmaintenancewindow", "pulumi")
+}
+
+func TestAwsSsmMaintenanceWindow_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmmaintenancewindow", "terraform")
+}
+
+func TestAwsSsmPatchBaseline_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmpatchbaseline", "pulumi")
+}
+
+func TestAwsSsmPatchBaseline_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmpatchbaseline", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

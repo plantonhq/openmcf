@@ -1,0 +1,45 @@
+# The standard arm's full free surface: service-key encryption, a
+# GOVERNANCE-mode lock (no changeable_for_days -- compliance mode is
+# IRREVERSIBLE after its window and never belongs in a lane), an
+# access policy, and notifications to the SNS topic fixture. An empty
+# vault costs nothing and deletes cleanly; no recovery points are ever
+# created (no plan targets it in the lane window), so force_destroy
+# stays false and the destroy is a plain empty-vault delete.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupVault
+metadata:
+  name: planton-oss-e2e-awsbkv
+  id: planton-oss-e2e-awsbkv
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbackupvault
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsSnsTopic"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  standard:
+    lock:
+      minRetentionDays: 1
+      maxRetentionDays: 365
+    policy:
+      Version: "2012-10-17"
+      Statement:
+        - Sid: DenyCopyIntoFromOutside
+          Effect: Deny
+          Principal: "*"
+          Action: backup:CopyIntoBackupVault
+          Resource: "*"
+    notifications:
+      snsTopicArn:
+        valueFrom:
+          kind: AwsSnsTopic
+          name: planton-oss-e2e-awsbkv-events
+          fieldPath: status.outputs.topic_arn
+      events:
+        - BACKUP_JOB_FAILED
+        - RESTORE_JOB_FAILED

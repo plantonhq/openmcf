@@ -995,6 +995,20 @@ spec:
         The delegated administrator's 12-digit AWS account id (`aws
         organizations list-delegated-administrators
         --service-principal cloudtrail.amazonaws.com`).
+    - terraform_type: aws_cloudtrail_event_data_store
+      pulumi_type: aws:cloudtrail/eventDataStore:EventDataStore
+      id_format: "{event_data_store_arn}"
+      # "suspend" is write-only at AWS (never returned by the API, never
+      # set during the provider's Read) -- a freshly imported store shows
+      # it unset and the first apply re-asserts it as a server-side no-op.
+      config_only_attributes:
+        - suspend
+      notes: >-
+        The event data store's ARN (`aws cloudtrail
+        list-event-data-stores` shows EventDataStoreArn). A store
+        created WITHOUT explicit selectors carries the server-default
+        all-management-events selector after import (the argument is
+        Optional+Computed -- no drift).
 
     # --- AWS Config (recorder posture) --------------------------------------
     # The recorder family are region singletons importing by their
@@ -1039,6 +1053,45 @@ spec:
       notes: >-
         The remediation imports by its rule's name (`aws configservice
         describe-remediation-configurations --config-rule-names ...`).
+
+    # --- AWS Config (aggregation) ---------------------------------------------
+    - terraform_type: aws_config_configuration_aggregator
+      pulumi_type: aws:cfg/configurationAggregator:ConfigurationAggregator
+      id_format: "{aggregator_name}"
+      notes: >-
+        The aggregator's name (`aws configservice
+        describe-configuration-aggregators`).
+    - terraform_type: aws_config_aggregate_authorization
+      pulumi_type: aws:cfg/aggregateAuthorization:AggregateAuthorization
+      # The provider composes "{account_id}:{authorized_aws_region}" --
+      # exactly the key the modules give each grant instance, so the
+      # address key IS the import ID.
+      id_format: "{authorization_key}"
+      notes: >-
+        The aggregator's 12-digit account id and home region, joined by
+        ":" (`aws configservice describe-aggregation-authorizations` in
+        the SOURCE account shows both).
+
+    # --- AWS Config (conformance packs) ----------------------------------------
+    # Both scopes import by the pack name. AWS never reports the
+    # template back (the provider's own importIgnore) -- the first
+    # post-import apply re-asserts it as a server-side no-op.
+    - terraform_type: aws_config_conformance_pack
+      pulumi_type: aws:cfg/conformancePack:ConformancePack
+      id_format: "{pack_name}"
+      config_only_attributes:
+        - template_body
+        - template_s3_uri
+    - terraform_type: aws_config_organization_conformance_pack
+      pulumi_type: aws:cfg/organizationConformancePack:OrganizationConformancePack
+      id_format: "{pack_name}"
+      config_only_attributes:
+        - template_body
+        - template_s3_uri
+      notes: >-
+        The organization pack's name (`aws configservice
+        describe-organization-conformance-packs`, from the management
+        or delegated-admin account).
 
     # --- GuardDuty -----------------------------------------------------------
     # The detector id is the composition key for every satellite; the
@@ -1101,3 +1154,187 @@ spec:
     - terraform_type: aws_guardduty_organization_configuration
       pulumi_type: aws:guardduty/organizationConfiguration:OrganizationConfiguration
       id_format: "{detector_id}"
+    - terraform_type: aws_guardduty_malware_protection_plan
+      pulumi_type: aws:guardduty/malwareProtectionPlan:MalwareProtectionPlan
+      id_format: "{malware_protection_plan_id}"
+      notes: >-
+        The plan's generated id -- NOT a detector satellite (`aws
+        guardduty list-malware-protection-plans` shows
+        MalwareProtectionPlanId).
+    # --- AWS Backup ------------------------------------------------------------
+    # The vault NAME is the import identity for both vault types and all
+    # three standard-vault satellites (they attach by name). Plans are the
+    # one UUID-identified surface; restore testing is name-identified with
+    # a REVERSED composite on its selections.
+    - terraform_type: aws_backup_vault
+      pulumi_type: aws:backup/vault:Vault
+      id_format: "{vault_name}"
+      # force_destroy is deploy-side delete behavior, never returned by
+      # AWS or set during the provider's Read -- a freshly imported vault
+      # always shows it false.
+      config_only_attributes:
+        - force_destroy
+      notes: >-
+        The vault's name (`aws backup list-backup-vaults` shows
+        BackupVaultName).
+    - terraform_type: aws_backup_logically_air_gapped_vault
+      pulumi_type: aws:backup/logicallyAirGappedVault:LogicallyAirGappedVault
+      id_format: "{vault_name}"
+      notes: >-
+        The vault's name (`aws backup list-backup-vaults
+        --by-vault-type LOGICALLY_AIR_GAPPED_BACKUP_VAULT` shows
+        BackupVaultName).
+    - terraform_type: aws_backup_vault_lock_configuration
+      pulumi_type: aws:backup/vaultLockConfiguration:VaultLockConfiguration
+      id_format: "{vault_name}"
+      # changeable_for_days (the compliance-mode opt-in) is write-only at
+      # AWS -- never returned, never set during Read; a freshly imported
+      # lock shows it unset and the first apply re-asserts it.
+      config_only_attributes:
+        - changeable_for_days
+      notes: >-
+        The locked vault's name (`aws backup describe-backup-vault`
+        shows Locked/MinRetentionDays/MaxRetentionDays).
+    - terraform_type: aws_backup_vault_policy
+      pulumi_type: aws:backup/vaultPolicy:VaultPolicy
+      id_format: "{vault_name}"
+      notes: >-
+        The vault's name (`aws backup get-backup-vault-access-policy`
+        shows the policy).
+    - terraform_type: aws_backup_vault_notifications
+      pulumi_type: aws:backup/vaultNotifications:VaultNotifications
+      id_format: "{vault_name}"
+      notes: >-
+        The vault's name (`aws backup get-backup-vault-notifications`
+        shows SNSTopicArn/BackupVaultEvents).
+    - terraform_type: aws_backup_plan
+      pulumi_type: aws:backup/plan:Plan
+      id_format: "{plan_id}"
+      notes: >-
+        The plan's AWS-generated UUID, not its name (`aws backup
+        list-backup-plans` shows BackupPlanId).
+    - terraform_type: aws_backup_selection
+      pulumi_type: aws:backup/selection:Selection
+      id_format: "{plan_id}|{selection_id}"
+      notes: >-
+        Pipe-separated plan id and selection id (`aws backup
+        list-backup-selections --backup-plan-id <id>` shows
+        SelectionId).
+    - terraform_type: aws_backup_framework
+      pulumi_type: aws:backup/framework:Framework
+      id_format: "{framework_name}"
+      notes: >-
+        The framework's name (`aws backup list-frameworks` shows
+        FrameworkName).
+    - terraform_type: aws_backup_report_plan
+      pulumi_type: aws:backup/reportPlan:ReportPlan
+      id_format: "{report_plan_name}"
+      notes: >-
+        The report plan's name (`aws backup list-report-plans` shows
+        ReportPlanName).
+    - terraform_type: aws_backup_restore_testing_plan
+      pulumi_type: aws:backup/restoreTestingPlan:RestoreTestingPlan
+      id_format: "{restore_testing_plan_name}"
+      notes: >-
+        The plan's name (`aws backup list-restore-testing-plans` shows
+        RestoreTestingPlanName).
+    - terraform_type: aws_backup_restore_testing_selection
+      pulumi_type: aws:backup/restoreTestingSelection:RestoreTestingSelection
+      id_format: "{selection_name}:{restore_testing_plan_name}"
+      notes: >-
+        Colon-separated selection name and plan name -- REVERSED
+        relative to the parent (`aws backup
+        list-restore-testing-selections` shows
+        RestoreTestingSelectionName).
+    - terraform_type: aws_backup_global_settings
+      pulumi_type: aws:backup/globalSettings:GlobalSettings
+      id_format: "{account_id}"
+      notes: >-
+        The AWS account ID -- the account-wide singleton's identity
+        (`aws sts get-caller-identity` shows Account).
+    - terraform_type: aws_backup_region_settings
+      pulumi_type: aws:backup/regionSettings:RegionSettings
+      id_format: "{region}"
+      notes: >-
+        The region string (e.g. us-west-2) -- the regional singleton's
+        identity.
+    # --- SSM ---------------------------------------------------------------------
+    - terraform_type: aws_ssm_parameter
+      pulumi_type: aws:ssm/parameter:Parameter
+      id_format: "{parameter_name}"
+      # overwrite is deploy-side first-create behavior, never returned by
+      # AWS or set during the provider's Read -- a freshly imported
+      # parameter always shows it false.
+      config_only_attributes:
+        - overwrite
+      notes: >-
+        The parameter's name including any hierarchical path (`aws ssm
+        describe-parameters` shows Name); a full parameter ARN imports
+        too.
+    - terraform_type: aws_ssm_document
+      pulumi_type: aws:ssm/document:Document
+      id_format: "{document_name}"
+      # No SSM API returns attachment metadata -- a freshly imported
+      # document shows no attachments_source and the first apply
+      # re-asserts it (the provider's own import test ignores it).
+      config_only_attributes:
+        - attachments_source
+      notes: >-
+        The document's name (`aws ssm list-documents` shows Name).
+    - terraform_type: aws_ssm_association
+      pulumi_type: aws:ssm/association:Association
+      id_format: "{association_id}"
+      # wait_for_success_timeout_seconds is a create-time wait never read
+      # back. AWS materializes the document's declared parameter defaults
+      # into the stored parameters map, so a faithful import plans a
+      # semantically identical parameters reconcile (the provider's own
+      # import test ignores both).
+      config_only_attributes:
+        - wait_for_success_timeout_seconds
+      write_normalized_attributes:
+        - parameters
+      notes: >-
+        The association's AWS-generated UUID (`aws ssm
+        list-associations` shows AssociationId) -- the document name is
+        NOT the identity.
+    - terraform_type: aws_ssm_maintenance_window
+      pulumi_type: aws:ssm/maintenanceWindow:MaintenanceWindow
+      id_format: "{window_id}"
+      notes: >-
+        The window's AWS-generated ID (`aws ssm
+        describe-maintenance-windows` shows WindowId, "mw-...").
+    - terraform_type: aws_ssm_maintenance_window_target
+      pulumi_type: aws:ssm/maintenanceWindowTarget:MaintenanceWindowTarget
+      id_format: "{window_id}/{target_id}"
+      notes: >-
+        Slash-separated window id and target registration id (`aws ssm
+        describe-maintenance-window-targets --window-id <id>` shows
+        WindowTargetId).
+    - terraform_type: aws_ssm_maintenance_window_task
+      pulumi_type: aws:ssm/maintenanceWindowTask:MaintenanceWindowTask
+      id_format: "{window_id}/{task_id}"
+      notes: >-
+        Slash-separated window id and task registration id (`aws ssm
+        describe-maintenance-window-tasks --window-id <id>` shows
+        WindowTaskId).
+    - terraform_type: aws_ssm_patch_baseline
+      pulumi_type: aws:ssm/patchBaseline:PatchBaseline
+      id_format: "{baseline_id}"
+      notes: >-
+        The baseline's AWS-generated ID (`aws ssm
+        describe-patch-baselines` shows BaselineId, "pb-...").
+    - terraform_type: aws_ssm_patch_group
+      pulumi_type: aws:ssm/patchGroup:PatchGroup
+      id_format: "{patch_group},{baseline_id}"
+      notes: >-
+        Comma-separated patch-group name and baseline id -- the GROUP
+        comes first (`aws ssm describe-patch-groups` shows PatchGroup +
+        BaselineIdentity).
+    - terraform_type: aws_ssm_default_patch_baseline
+      pulumi_type: aws:ssm/defaultPatchBaseline:DefaultPatchBaseline
+      id_format: "{operating_system}"
+      notes: >-
+        The operating-system string (e.g. AMAZON_LINUX_2023) -- the
+        designation's stable identity (a baseline id or ARN imports
+        too; `aws ssm get-default-patch-baseline
+        --operating-system <os>` shows the holder).

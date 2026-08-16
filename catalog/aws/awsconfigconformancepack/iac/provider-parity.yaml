@@ -1,0 +1,45 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# One spec, two scopes: spec.organization_scope picks which of the two
+# provider resources renders. Neither resource carries tags (the one
+# untaggable surface in the Config family).
+
+resources:
+  aws_config_conformance_pack:
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      - arg: input_parameter.parameter_name
+        spec: spec.input_parameters.parameter_name
+      - arg: input_parameter.parameter_value
+        spec: spec.input_parameters.parameter_value
+    exclusions:
+      - arg: name
+        reason: metadata.name is the pack name on both engines -- never free-form spec surface
+
+  aws_config_organization_conformance_pack:
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: input_parameter.parameter_name
+        spec: spec.input_parameters.parameter_name
+      - arg: input_parameter.parameter_value
+        spec: spec.input_parameters.parameter_value
+    exclusions:
+      - arg: name
+        reason: metadata.name is the pack name on both engines -- never free-form spec surface
+
+specExclusions:
+  # The scope selector: picks WHICH of the two provider resources
+  # renders (account or organization pack) -- a platform-side switch
+  # with no argument leaf of its own.
+  - field: spec.organization_scope
+    reason: selects between aws_config_conformance_pack and aws_config_organization_conformance_pack -- the resource choice IS the value; no argument leaf exists to map

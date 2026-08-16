@@ -1,0 +1,14 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupFramework
+metadata:
+  name: backup-coverage-audit
+spec:
+  region: <aws-region>
+  frameworkName: backup_coverage_audit
+  description: Are resources protected by a plan and retained long enough
+  controls:
+    - name: BACKUP_RESOURCES_PROTECTED_BY_BACKUP_PLAN
+    - name: BACKUP_RECOVERY_POINT_MINIMUM_RETENTION_CHECK
+      inputParameters:
+        - name: requiredRetentionDays
+          value: "35"

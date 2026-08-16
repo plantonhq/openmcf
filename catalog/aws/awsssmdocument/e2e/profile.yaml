@@ -1,0 +1,29 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsssmdocument
+spec:
+  # A customer-owned Command document under live E2E: JSON content
+  # with a declared parameter, a version label, and a target-type
+  # restriction; destroy exercises the asynchronous DeleteDocument
+  # (the scenario name is run-scoped for exactly that reason). ~$0:
+  # documents are free.
+  #
+  # Deliberately not exercised live:
+  #   - share_with_account_ids -- sharing needs a second, existing
+  #     account (sharing with self is rejected). Unblock: an org
+  #     sibling account decision (the standing org-wall class).
+  #   - attachment_sources -- import-invisible at the provider
+  #     (declared config-only) and needs a hosted artifact. Unblock: a
+  #     lane S3 fixture carrying the artifact when the proof queue
+  #     wants the Package-document path.
+  #   - content UPDATE (the new-version + default-promotion path) --
+  #     single-apply lanes never update. Unblock: rides any future
+  #     update-phase harness arm.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q42
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

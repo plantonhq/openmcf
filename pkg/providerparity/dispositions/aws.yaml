@@ -311,45 +311,6 @@ resources:
   - resource: aws_autoscalingplans_scaling_plan
     disposition: excluded-deprecated
     reason: "AutoScaling Plans is the legacy predictive-scaling path, superseded by ASG predictive scaling policies"
-  - resource: aws_backup_framework
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupPlan kind (plans, selections, frameworks, report and restore-testing plans)"
-  - resource: aws_backup_global_settings
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in)"
-  - resource: aws_backup_logically_air_gapped_vault
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in)"
-  - resource: aws_backup_plan
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupPlan kind (plans, selections, frameworks, report and restore-testing plans)"
-  - resource: aws_backup_region_settings
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in)"
-  - resource: aws_backup_report_plan
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupPlan kind (plans, selections, frameworks, report and restore-testing plans)"
-  - resource: aws_backup_restore_testing_plan
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupPlan kind (plans, selections, frameworks, report and restore-testing plans)"
-  - resource: aws_backup_restore_testing_selection
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupPlan kind (plans, selections, frameworks, report and restore-testing plans)"
-  - resource: aws_backup_selection
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupPlan kind (plans, selections, frameworks, report and restore-testing plans)"
-  - resource: aws_backup_vault
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in)"
-  - resource: aws_backup_vault_lock_configuration
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in)"
-  - resource: aws_backup_vault_notifications
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in)"
-  - resource: aws_backup_vault_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in)"
   - resource: aws_bcmdataexports_export
     disposition: model-planned
     reason: "billing data exports fold into the planned cost-reporting kinds (with aws_cur_report_definition)"
@@ -524,9 +485,6 @@ resources:
   - resource: aws_cloudsearch_domain_service_access_policy
     disposition: excluded-deprecated
     reason: "CloudSearch is legacy, superseded by OpenSearch (covered by AwsOpenSearchDomain)"
-  - resource: aws_cloudtrail_event_data_store
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudTrailEventDataStore kind: CloudTrail Lake carries no trail edge -- it deploys with zero trails and owns its own billing mode, retention, and termination protection (re-judged 2026-08-14 out of the AwsCloudTrail fold by the standalone-vs-satellite test)"
   - resource: aws_cloudwatch_alarm_mute_rule
     disposition: model-planned
     reason: "judged as a planned AwsCloudwatchAlarmMuteRule kind: one rule mutes up to 100 alarms on a recurring schedule -- multi-alarm scope, not per-alarm configuration, so a fold onto AwsCloudwatchAlarm would misrepresent it (the CloudFront-companion class)"
@@ -707,18 +665,6 @@ resources:
   - resource: aws_computeoptimizer_recommendation_preferences
     disposition: deferred
     reason: "Compute Optimizer is a read-mostly advisory service; deferred"
-  - resource: aws_config_aggregate_authorization
-    disposition: model-planned
-    reason: "judged as a planned AwsConfigAggregator kind: the reciprocal grant of cross-account aggregation -- no recorder edge (re-judged 2026-08-14 out of the AwsConfigRecorder fold by the standalone-vs-satellite test)"
-  - resource: aws_config_configuration_aggregator
-    disposition: model-planned
-    reason: "judged as a planned AwsConfigAggregator kind: aggregation references no recorder and works in an account with zero recorders (re-judged 2026-08-14 out of the AwsConfigRecorder fold by the standalone-vs-satellite test)"
-  - resource: aws_config_conformance_pack
-    disposition: model-planned
-    reason: "judged as a planned AwsConfigConformancePack kind: a pack is a template bundle that creates its own rules with its own delivery bucket -- no config-rule edge (re-judged 2026-08-14 out of the AwsConfigRule fold by the standalone-vs-satellite test)"
-  - resource: aws_config_organization_conformance_pack
-    disposition: model-planned
-    reason: "judged as a planned AwsConfigConformancePack kind: the org-scoped arm of the pack bundle -- no config-rule edge (re-judged 2026-08-14 out of the AwsConfigRule fold by the standalone-vs-satellite test)"
   - resource: aws_connect_bot_association
     disposition: deferred
     reason: "contact-center vertical (Amazon Connect); deferred pending demand"
@@ -1589,9 +1535,6 @@ resources:
   - resource: aws_grafana_workspace_service_account_token
     disposition: model-planned
     reason: "judged as a planned AwsManagedGrafana kind (workspaces with licenses, SAML, API keys, service accounts)"
-  - resource: aws_guardduty_malware_protection_plan
-    disposition: model-planned
-    reason: "judged as a planned AwsGuardDutyMalwareProtectionPlan kind: the plan carries no detector_id anywhere in its schema -- it protects an S3 bucket, not a detector (re-judged 2026-08-14 out of the AwsGuardDuty fold by the standalone-vs-satellite test)"
   - resource: aws_iam_account_alias
     disposition: model-planned
     reason: "judged as a planned AwsIamAccountSettings kind (alias, password policy, STS preferences, organization features)"
@@ -3328,40 +3271,13 @@ resources:
     reason: "out-of-band delivery of the queue's RedrivePolicy attribute, which AwsSqsQueue.spec.dead_letter_config models inline (chart-wired deadLetterTargetArn + maxReceiveCount) -- same single-attribute upsert, same mixing conflict (the attribute-splitter class)"
   - resource: aws_ssm_activation
     disposition: model-planned
-    reason: "SSM account-level plumbing (hybrid activations, resource data syncs, service settings); folds into the planned SSM kind family led by AwsSsmDocument"
-  - resource: aws_ssm_association
-    disposition: model-planned
-    reason: "judged as a planned AwsSsmDocument kind (documents with associations)"
-  - resource: aws_ssm_default_patch_baseline
-    disposition: model-planned
-    reason: "judged as a planned AwsSsmPatchBaseline kind (baselines, groups, defaults)"
-  - resource: aws_ssm_document
-    disposition: model-planned
-    reason: "judged as a planned AwsSsmDocument kind (documents with associations)"
-  - resource: aws_ssm_maintenance_window
-    disposition: model-planned
-    reason: "judged as a planned AwsSsmMaintenanceWindow kind (windows, targets, tasks)"
-  - resource: aws_ssm_maintenance_window_target
-    disposition: model-planned
-    reason: "judged as a planned AwsSsmMaintenanceWindow kind (windows, targets, tasks)"
-  - resource: aws_ssm_maintenance_window_task
-    disposition: model-planned
-    reason: "judged as a planned AwsSsmMaintenanceWindow kind (windows, targets, tasks)"
-  - resource: aws_ssm_parameter
-    disposition: model-planned
-    reason: "judged as a planned AwsSsmParameter kind"
-  - resource: aws_ssm_patch_baseline
-    disposition: model-planned
-    reason: "judged as a planned AwsSsmPatchBaseline kind (baselines, groups, defaults)"
-  - resource: aws_ssm_patch_group
-    disposition: model-planned
-    reason: "judged as a planned AwsSsmPatchBaseline kind (baselines, groups, defaults)"
+    reason: "judged as a planned AwsSsmActivation kind (hybrid managed-node activation with its own registration lifecycle and tags; no edge to any SSM quartet kind)"
   - resource: aws_ssm_resource_data_sync
     disposition: model-planned
-    reason: "SSM account-level plumbing (hybrid activations, resource data syncs, service settings); folds into the planned SSM kind family led by AwsSsmDocument"
+    reason: "judged as a planned AwsSsmResourceDataSync kind (inventory/compliance sync to S3; standalone S3-destination lifecycle, no edge to any SSM quartet kind)"
   - resource: aws_ssm_service_setting
     disposition: model-planned
-    reason: "SSM account-level plumbing (hybrid activations, resource data syncs, service settings); folds into the planned SSM kind family led by AwsSsmDocument"
+    reason: "judged as a planned AwsSsmAccountSettings kind (account/region SSM feature settings - the settings-singleton class; no edge to any SSM quartet kind)"
   - resource: aws_ssmcontacts_contact
     disposition: deferred
     reason: "incident-management and quick-setup surface; deferred pending demand"

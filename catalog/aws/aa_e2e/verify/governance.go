@@ -6,9 +6,11 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail"
+	cloudtrailtypes "github.com/aws/aws-sdk-go-v2/service/cloudtrail/types"
 	"github.com/aws/aws-sdk-go-v2/service/configservice"
 	configtypes "github.com/aws/aws-sdk-go-v2/service/configservice/types"
 	"github.com/aws/aws-sdk-go-v2/service/guardduty"
+	guarddutytypes "github.com/aws/aws-sdk-go-v2/service/guardduty/types"
 	"github.com/pkg/errors"
 )
 
@@ -309,4 +311,231 @@ func (*guardDutyVerifier) VerifyAbsent(ctx context.Context, cfg aws.Config, id, 
 		return nil
 	}
 	return errors.Wrap(err, "GetDetector")
+}
+
+// eventDataStoreVerifier verifies AwsCloudTrailEventDataStore via
+// GetEventDataStore, keyed on event_data_store_arn. The scenario's
+// posture: single-region, 7-day retention, termination protection OFF
+// (the single-step-destroy posture), one narrow selector, ingestion
+// suspended.
+type eventDataStoreVerifier struct{}
+
+func (*eventDataStoreVerifier) IDOutputKey() string { return "event_data_store_arn" }
+
+func (*eventDataStoreVerifier) VerifyExists(ctx context.Context, cfg aws.Config, id, region string) error {
+	store, err := cloudtrail.NewFromConfig(cfg, func(o *cloudtrail.Options) {
+		if region != "" {
+			o.Region = region
+		}
+	}).GetEventDataStore(ctx, &cloudtrail.GetEventDataStoreInput{EventDataStore: &id})
+	if err != nil {
+		return errors.Wrap(err, "GetEventDataStore")
+	}
+	// "suspend" lands as STOPPED_INGESTION once AWS processes it;
+	// ENABLED is the moments-earlier echo of the same healthy store.
+	if store.Status != cloudtrailtypes.EventDataStoreStatusStoppedIngestion && store.Status != cloudtrailtypes.EventDataStoreStatusEnabled {
+		return errors.Errorf("event data store (%s) is %s after deploy", id, store.Status)
+	}
+	if store.RetentionPeriod == nil || *store.RetentionPeriod != 7 {
+		return errors.Errorf("event data store (%s) does not carry the declared 7-day retention after deploy", id)
+	}
+	if store.TerminationProtectionEnabled == nil || *store.TerminationProtectionEnabled {
+		return errors.Errorf("event data store (%s) has termination protection ON after deploy (the scenario declares it off)", id)
+	}
+	if store.MultiRegionEnabled == nil || *store.MultiRegionEnabled {
+		return errors.Errorf("event data store (%s) is multi-region after deploy (the scenario declares single-region)", id)
+	}
+	if len(store.AdvancedEventSelectors) != 1 {
+		return errors.Errorf("event data store (%s) reports %d selectors after deploy (expected the 1 declared)", id, len(store.AdvancedEventSelectors))
+	}
+	return nil
+}
+
+func (*eventDataStoreVerifier) VerifyAbsent(ctx context.Context, cfg aws.Config, id, region string) error {
+	store, err := cloudtrail.NewFromConfig(cfg, func(o *cloudtrail.Options) {
+		if region != "" {
+			o.Region = region
+		}
+	}).GetEventDataStore(ctx, &cloudtrail.GetEventDataStoreInput{EventDataStore: &id})
+	if err != nil {
+		if strings.Contains(err.Error(), "EventDataStoreNotFound") {
+			return nil
+		}
+		return errors.Wrap(err, "GetEventDataStore")
+	}
+	// A deleted store stays describable in PENDING_DELETION for 7 days
+	// (its name reserved) before the purge -- the soft-deleted state,
+	// not an orphan.
+	if store.Status == cloudtrailtypes.EventDataStoreStatusPendingDeletion {
+		return nil
+	}
+	return errors.Errorf("event data store (%s) still exists after destroy (state %s)", id, store.Status)
+}
+
+// configAggregatorVerifier verifies AwsConfigAggregator via
+// DescribeConfigurationAggregators + DescribeAggregationAuthorizations,
+// keyed on aggregator_name. The scenario declares BOTH arms, so both
+// are asserted.
+type configAggregatorVerifier struct{}
+
+func (*configAggregatorVerifier) IDOutputKey() string { return "aggregator_name" }
+
+func (*configAggregatorVerifier) VerifyExists(ctx context.Context, cfg aws.Config, id, region string) error {
+	client := configservice.NewFromConfig(cfg, func(o *configservice.Options) {
+		if region != "" {
+			o.Region = region
+		}
+	})
+	aggregators, err := client.DescribeConfigurationAggregators(ctx, &configservice.DescribeConfigurationAggregatorsInput{
+		ConfigurationAggregatorNames: []string{id},
+	})
+	if err != nil {
+		return errors.Wrap(err, "DescribeConfigurationAggregators")
+	}
+	if len(aggregators.ConfigurationAggregators) != 1 {
+		return errors.Errorf("configuration aggregator (%s) not found after deploy", id)
+	}
+	// The scenario's account-source posture (the org source is the
+	// recorded single-account deferral).
+	if len(aggregators.ConfigurationAggregators[0].AccountAggregationSources) == 0 {
+		return errors.Errorf("configuration aggregator (%s) reports no account aggregation source after deploy", id)
+	}
+	grants, err := client.DescribeAggregationAuthorizations(ctx, &configservice.DescribeAggregationAuthorizationsInput{})
+	if err != nil {
+		return errors.Wrap(err, "DescribeAggregationAuthorizations")
+	}
+	if len(grants.AggregationAuthorizations) == 0 {
+		return errors.Errorf("aggregation authorization for (%s) not found after deploy", id)
+	}
+	return nil
+}
+
+func (*configAggregatorVerifier) VerifyAbsent(ctx context.Context, cfg aws.Config, id, region string) error {
+	client := configservice.NewFromConfig(cfg, func(o *configservice.Options) {
+		if region != "" {
+			o.Region = region
+		}
+	})
+	aggregators, err := client.DescribeConfigurationAggregators(ctx, &configservice.DescribeConfigurationAggregatorsInput{
+		ConfigurationAggregatorNames: []string{id},
+	})
+	if err == nil && len(aggregators.ConfigurationAggregators) != 0 {
+		return errors.Errorf("configuration aggregator (%s) still exists after destroy", id)
+	}
+	if err != nil && !strings.Contains(err.Error(), "NoSuchConfigurationAggregator") {
+		return errors.Wrap(err, "DescribeConfigurationAggregators")
+	}
+	grants, err := client.DescribeAggregationAuthorizations(ctx, &configservice.DescribeAggregationAuthorizationsInput{})
+	if err != nil {
+		return errors.Wrap(err, "DescribeAggregationAuthorizations")
+	}
+	if len(grants.AggregationAuthorizations) != 0 {
+		return errors.Errorf("aggregation authorization (%s) still exists after destroy", id)
+	}
+	return nil
+}
+
+// conformancePackVerifier verifies AwsConfigConformancePack via
+// DescribeConformancePacks + DescribeConformancePackStatus, keyed on
+// pack_name (the account-scoped scenario; organization packs are the
+// recorded single-account deferral).
+type conformancePackVerifier struct{}
+
+func (*conformancePackVerifier) IDOutputKey() string { return "pack_name" }
+
+func (*conformancePackVerifier) VerifyExists(ctx context.Context, cfg aws.Config, id, region string) error {
+	client := configservice.NewFromConfig(cfg, func(o *configservice.Options) {
+		if region != "" {
+			o.Region = region
+		}
+	})
+	packs, err := client.DescribeConformancePacks(ctx, &configservice.DescribeConformancePacksInput{
+		ConformancePackNames: []string{id},
+	})
+	if err != nil {
+		return errors.Wrap(err, "DescribeConformancePacks")
+	}
+	if len(packs.ConformancePackDetails) != 1 {
+		return errors.Errorf("conformance pack (%s) not found after deploy", id)
+	}
+	// CREATE_COMPLETE is the provider's own create waiter target -- it
+	// means the pack's rules materialized.
+	status, err := client.DescribeConformancePackStatus(ctx, &configservice.DescribeConformancePackStatusInput{
+		ConformancePackNames: []string{id},
+	})
+	if err != nil {
+		return errors.Wrap(err, "DescribeConformancePackStatus")
+	}
+	if len(status.ConformancePackStatusDetails) != 1 || status.ConformancePackStatusDetails[0].ConformancePackState != configtypes.ConformancePackStateCreateComplete {
+		return errors.Errorf("conformance pack (%s) is not CREATE_COMPLETE after deploy", id)
+	}
+	return nil
+}
+
+func (*conformancePackVerifier) VerifyAbsent(ctx context.Context, cfg aws.Config, id, region string) error {
+	packs, err := configservice.NewFromConfig(cfg, func(o *configservice.Options) {
+		if region != "" {
+			o.Region = region
+		}
+	}).DescribeConformancePacks(ctx, &configservice.DescribeConformancePacksInput{
+		ConformancePackNames: []string{id},
+	})
+	if err != nil {
+		if strings.Contains(err.Error(), "NoSuchConformancePack") {
+			return nil
+		}
+		return errors.Wrap(err, "DescribeConformancePacks")
+	}
+	if len(packs.ConformancePackDetails) != 0 {
+		return errors.Errorf("conformance pack (%s) still exists after destroy", id)
+	}
+	return nil
+}
+
+// malwareProtectionPlanVerifier verifies AwsGuardDutyMalwareProtectionPlan
+// via GetMalwareProtectionPlan, keyed on malware_protection_plan_id.
+type malwareProtectionPlanVerifier struct{}
+
+func (*malwareProtectionPlanVerifier) IDOutputKey() string { return "malware_protection_plan_id" }
+
+func (*malwareProtectionPlanVerifier) VerifyExists(ctx context.Context, cfg aws.Config, id, region string) error {
+	plan, err := guardduty.NewFromConfig(cfg, func(o *guardduty.Options) {
+		if region != "" {
+			o.Region = region
+		}
+	}).GetMalwareProtectionPlan(ctx, &guardduty.GetMalwareProtectionPlanInput{MalwareProtectionPlanId: &id})
+	if err != nil {
+		return errors.Wrap(err, "GetMalwareProtectionPlan")
+	}
+	// ERROR is the failed posture; ACTIVE is steady state and WARNING
+	// the transient EventBridge-wiring echo AWS documents.
+	if plan.Status == guarddutytypes.MalwareProtectionPlanStatusError {
+		return errors.Errorf("malware protection plan (%s) is ERROR after deploy", id)
+	}
+	if plan.ProtectedResource == nil || plan.ProtectedResource.S3Bucket == nil || plan.ProtectedResource.S3Bucket.BucketName == nil || *plan.ProtectedResource.S3Bucket.BucketName == "" {
+		return errors.Errorf("malware protection plan (%s) reports no protected bucket after deploy", id)
+	}
+	// The scenario declares prefix scoping and verdict tagging.
+	if len(plan.ProtectedResource.S3Bucket.ObjectPrefixes) == 0 {
+		return errors.Errorf("malware protection plan (%s) reports no object prefixes after deploy (the scenario declares one)", id)
+	}
+	if plan.Actions == nil || plan.Actions.Tagging == nil || plan.Actions.Tagging.Status != guarddutytypes.MalwareProtectionPlanTaggingActionStatusEnabled {
+		return errors.Errorf("malware protection plan (%s) does not report verdict tagging ENABLED after deploy", id)
+	}
+	return nil
+}
+
+func (*malwareProtectionPlanVerifier) VerifyAbsent(ctx context.Context, cfg aws.Config, id, region string) error {
+	_, err := guardduty.NewFromConfig(cfg, func(o *guardduty.Options) {
+		if region != "" {
+			o.Region = region
+		}
+	}).GetMalwareProtectionPlan(ctx, &guardduty.GetMalwareProtectionPlanInput{MalwareProtectionPlanId: &id})
+	if err == nil {
+		return errors.Errorf("malware protection plan (%s) still exists after destroy", id)
+	}
+	if strings.Contains(err.Error(), "ResourceNotFound") || strings.Contains(err.Error(), "NotFound") {
+		return nil
+	}
+	return errors.Wrap(err, "GetMalwareProtectionPlan")
 }

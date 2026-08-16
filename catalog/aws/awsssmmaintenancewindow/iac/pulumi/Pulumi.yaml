@@ -1,0 +1,3 @@
+name: awsssmmaintenancewindow
+runtime: go
+description: Pulumi module to manage an AWS SSM maintenance window with its folded targets and tasks

@@ -1,0 +1,3 @@
+name: awsconfigaggregator
+runtime:
+  name: go

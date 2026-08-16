@@ -1,0 +1,26 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupRestoreTestingPlan
+metadata:
+  name: critical-restore-drills
+spec:
+  region: <aws-region>
+  planName: critical_restore_drills
+  scheduleExpression: cron(0 4 1 * ? *)
+  recoveryPointSelection:
+    algorithm: LATEST_WITHIN_WINDOW
+    includeVaults: ["*"]
+    recoveryPointTypes: ["SNAPSHOT", "CONTINUOUS"]
+    selectionWindowDays: 7
+  selections:
+    - name: critical_tagged
+      protectedResourceType: EBS
+      iamRoleArn:
+        valueFrom:
+          kind: AwsIamRole
+          name: <restore-testing-role>
+          fieldPath: status.outputs.role_arn
+      protectedResourceConditions:
+        stringEquals:
+          - key: aws:ResourceTag/tier
+            value: critical
+      validationWindowHours: 8

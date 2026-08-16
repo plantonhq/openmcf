@@ -1,0 +1,14 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsconfigconformancepack
+spec:
+  values:
+    - name: pack_name
+      derivations:
+        # The pack's name IS metadata.name at either scope.
+        - from_metadata_name: true
+      where_to_find: >-
+        Config console -> Conformance packs (the pack's name), or
+        `aws configservice describe-conformance-packs` /
+        `describe-organization-conformance-packs` (organization scope).

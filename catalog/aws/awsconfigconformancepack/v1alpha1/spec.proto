@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsconfigconformancepack.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsConfigConformancePackSpec defines the desired configuration for
+// an AWS Config conformance pack - a template bundle that deploys a
+// set of Config rules (and optional remediations) as one unit.
+//
+// A pack references no standalone Config rules: the template CREATES
+// its own rules, prefixed with the pack name and managed by the pack
+// service-linked role. Deploying a pack DOES require a Config
+// recorder to already be running in the region (AWS rejects the
+// deployment without one) - pair it with an AwsConfigRecorder.
+//
+// The pack deploys at one of two scopes: this account only (the
+// default), or every account in the AWS Organization
+// (organization_scope = true, run from the management account or a
+// delegated Config administrator). The pack's name is metadata.name
+// (letters, digits, hyphens, starting with a letter; AWS caps account
+// packs at 256 characters and ORGANIZATION packs at 128).
+//
+// Destroying this component deletes the pack and every rule it
+// created (a real delete; organization packs unwind from all member
+// accounts, which can take several minutes).
+message AwsConfigConformancePackSpec {
+  // The AWS region the pack deploys in.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Deploy to every account in the AWS Organization instead of just
+  // this one. Requires the management account or a delegated Config
+  // administrator, with the Config service enabled for the
+  // organization.
+  bool organization_scope = 2;
+
+  // S3 bucket where AWS Config stores the pack's compliance
+  // evaluation results. Unset = AWS keeps results queryable through
+  // the Config APIs only. ORGANIZATION packs require the bucket name
+  // to start with "awsconfigconforms" (an AWS naming contract the
+  // deploy enforces).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef delivery_s3_bucket = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // Key prefix for the delivered results inside the bucket.
+  string delivery_s3_key_prefix = 4 [(buf.validate.field).string.max_len = 1024];
+
+  // The pack template, inline (YAML or JSON, the CloudFormation-like
+  // conformance pack schema). Mutually exclusive with
+  // template_s3_uri on organization packs; account packs accept both
+  // set at once, in which case AWS prefers the S3 template. AWS never
+  // reports the template back, so imports re-assert it on the first
+  // apply.
+  string template_body = 5 [(buf.validate.field).string.max_len = 51200];
+
+  // The pack template as an S3 object ("s3://bucket/key"). The
+  // deploying principal must be able to read it.
+  string template_s3_uri = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 1024
+      pattern: "^s3://"
+    }
+  ];
+
+  // Values for the template's parameters (each template declares its
+  // own). At most 60.
+  repeated AwsConfigConformancePackInputParameter input_parameters = 7 [(buf.validate.field).repeated.max_items = 60];
+
+  // Organization-scope only: member accounts to SKIP when deploying
+  // the pack. At most 1000.
+  repeated string excluded_accounts = 8 [(buf.validate.field).repeated = {
+    max_items: 1000
+    unique: true
+    items: {
+      string: {pattern: "^[0-9]{12}$"}
+    }
+  }];
+
+  // A pack without a template deploys nothing - AWS requires one
+  // (the provider under-checks this for organization packs; the
+  // server does not).
+  option (buf.validate.message).cel = {
+    id: "template_required"
+    message: "set template_body or template_s3_uri"
+    expression: "this.template_body != '' || this.template_s3_uri != ''"
+  };
+
+  // Organization packs accept exactly one template form.
+  option (buf.validate.message).cel = {
+    id: "org_template_exactly_one"
+    message: "organization packs accept template_body or template_s3_uri, not both"
+    expression: "!this.organization_scope || this.template_body == '' || this.template_s3_uri == ''"
+  };
+
+  // Account exclusions only mean something at organization scope.
+  option (buf.validate.message).cel = {
+    id: "excluded_accounts_org_only"
+    message: "excluded_accounts requires organization_scope = true"
+    expression: "size(this.excluded_accounts) == 0 || this.organization_scope"
+  };
+}
+
+// AwsConfigConformancePackInputParameter is one template parameter
+// value.
+message AwsConfigConformancePackInputParameter {
+  // The parameter name, as the template declares it.
+  string parameter_name = 1 [(buf.validate.field).required = true];
+
+  // The parameter value.
+  string parameter_value = 2 [(buf.validate.field).required = true];
+}

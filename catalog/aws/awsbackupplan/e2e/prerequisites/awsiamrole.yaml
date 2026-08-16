@@ -1,0 +1,33 @@
+# Consumer-scoped AwsIamRole install profile for the plan kind's
+# selections: AWS validates at CreateBackupSelection that the role
+# trusts backup.amazonaws.com (a trust-policy-gated server-side check
+# -- the RDS role-association lesson). AWS's managed backup-service
+# policy carries the job permissions; the lane never runs a job, but
+# the honest fixture is the role a customer would use. Scoping the
+# fixture here keeps the chain off the shared fixed-name set.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-awsbkp-role
+  id: planton-oss-e2e-awsbkp-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E role AWS Backup assumes for the plan kind's selection fixture
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: backup.amazonaws.com
+        Action: sts:AssumeRole

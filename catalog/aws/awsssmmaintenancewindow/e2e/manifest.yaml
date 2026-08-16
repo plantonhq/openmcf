@@ -1,0 +1,94 @@
+# Canonical AwsSsmMaintenanceWindow example (hack/dev manifest and
+# refgen Example source): a Sunday-night window with one tag-based
+# target and all four task types, so the offline `tofu plan` renders
+# every invocation arm (run-command with CloudWatch + SNS delivery,
+# automation, lambda, step-functions). Literal ARNs stand in for
+# composed references.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSsmMaintenanceWindow
+metadata:
+  name: sunday-patching
+  id: sunday-patching
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  schedule: cron(0 2 ? * SUN *)
+  duration: 4
+  cutoff: 1
+  description: Sunday 02:00 patching window
+  scheduleTimezone: America/Los_Angeles
+  allowUnassociatedTargets: false
+  targets:
+    - name: prod-instances
+      resourceType: INSTANCE
+      targets:
+        - key: tag:env
+          values:
+            - prod
+      description: Production fleet by tag
+  tasks:
+    - name: patch-scan
+      taskType: RUN_COMMAND
+      taskArn:
+        value: AWS-RunPatchBaseline
+      priority: 1
+      targets:
+        - key: WindowTargetIds
+          values:
+            - example-window-target-id
+      maxConcurrency: 10%
+      maxErrors: "1"
+      cutoffBehavior: CANCEL_TASK
+      invocation:
+        runCommand:
+          comment: Weekly patch scan
+          documentVersion: $DEFAULT
+          timeoutSeconds: 600
+          parameters:
+            - name: Operation
+              values:
+                - Scan
+          outputS3Bucket:
+            value: patching-output-bucket
+          outputS3KeyPrefix: mw/patch-scan
+          cloudwatchConfig:
+            cloudwatchLogGroupName: /aws/ssm/sunday-patching
+            cloudwatchOutputEnabled: true
+          notificationConfig:
+            notificationArn:
+              value: arn:aws:sns:us-west-2:123456789012:mw-events
+            notificationEvents:
+              - Success
+              - Failed
+            notificationType: Command
+    - name: restart-runbook
+      taskType: AUTOMATION
+      taskArn:
+        value: AWS-RestartEC2Instance
+      priority: 2
+      invocation:
+        automation:
+          documentVersion: $LATEST
+          parameters:
+            - name: InstanceId
+              values:
+                - i-0123456789abcdef0
+    - name: notify-function
+      taskType: LAMBDA
+      taskArn:
+        value: arn:aws:lambda:us-west-2:123456789012:function:mw-notify
+      priority: 3
+      invocation:
+        lambda:
+          payload: '{"source":"maintenance-window"}'
+          qualifier: live
+    - name: orchestrate-deploy
+      taskType: STEP_FUNCTIONS
+      taskArn:
+        value: arn:aws:states:us-west-2:123456789012:stateMachine:mw-deploy
+      priority: 4
+      invocation:
+        stepFunctions:
+          input: '{"window":"sunday-patching"}'
+          name: mw-run

@@ -1,0 +1,27 @@
+# The plain arm live: a flat String parameter carrying readable
+# configuration (the insecure_value render path), with the validation
+# pattern, text data type, and overwrite exercised. ~$0: Standard-tier
+# parameters are free.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSsmParameter
+metadata:
+  name: planton-oss-e2e-awsssmp-plain
+  id: planton-oss-e2e-awsssmp-plain
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsssmparameter
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  parameterName: planton-oss-e2e-awsssmp-log-level
+  type: String
+  value: info
+  description: E2E plain config parameter
+  allowedPattern: "^(debug|info|warn|error)$"
+  dataType: text
+  overwrite: true

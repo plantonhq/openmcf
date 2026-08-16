@@ -1,0 +1,23 @@
+# Canonical AwsBackupSettings example (hack/dev manifest and refgen
+# Example source): both arms -- the region's opt-in posture and the
+# account's cross-account switch.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupSettings
+metadata:
+  name: backup-settings
+  id: backup-settings
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  global:
+    settings:
+      isCrossAccountBackupEnabled: "true"
+  regionSettings:
+    resourceTypeOptInPreference:
+      EBS: true
+      EC2: true
+      RDS: true
+      S3: false
+    resourceTypeManagementPreference:
+      DynamoDB: true

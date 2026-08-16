@@ -1,0 +1,47 @@
+# Canonical AwsBackupPlan example (hack/dev manifest and refgen
+# Example source): a daily rule with lifecycle and a copy action, plus
+# a tag-driven selection. Literal ARNs/names stand in for composed
+# references so the offline `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupPlan
+metadata:
+  name: daily-backup-plan
+  id: daily-backup-plan
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  rules:
+    - name: daily
+      targetVaultName:
+        value: app-backup-vault
+      schedule: cron(0 5 ? * * *)
+      scheduleExpressionTimezone: Etc/UTC
+      startWindowMinutes: 60
+      completionWindowMinutes: 180
+      lifecycle:
+        coldStorageAfterDays: 30
+        deleteAfterDays: 365
+      copyActions:
+        - destinationVaultArn:
+            value: arn:aws:backup:us-east-1:123456789012:backup-vault:dr-backup-vault
+          lifecycle:
+            deleteAfterDays: 365
+      recoveryPointTags:
+        source-plan: daily-backup-plan
+  advancedBackupSettings:
+    - resourceType: EC2
+      backupOptions:
+        WindowsVSS: enabled
+  selections:
+    - name: tagged
+      iamRoleArn:
+        value: arn:aws:iam::123456789012:role/backup-service-role
+      selectionTags:
+        - type: STRINGEQUALS
+          key: backup
+          value: "true"
+      conditions:
+        stringLike:
+          - key: aws:ResourceTag/environment
+            value: prod*

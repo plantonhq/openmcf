@@ -1,0 +1,38 @@
+# Consumer-scoped AwsConfigRecorder install profile: AWS refuses
+# conformance-pack deployment without an ACTIVE recorder in the region
+# -- the same regional singleton the AwsConfigRecorder kind manages,
+# scoped here to the cheapest possible recording surface, and placed in
+# us-east-2 so it can never collide with the us-west-2 Config lanes'
+# recorder singleton.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsConfigRecorder
+metadata:
+  name: planton-oss-e2e-awscfgcp-recorder
+  id: planton-oss-e2e-awscfgcp-recorder
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsconfigrecorder
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-east-2
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-awscfgcp-role
+      fieldPath: status.outputs.role_arn
+  recordingGroup:
+    allSupported: false
+    resourceTypes:
+      - AWS::S3::Bucket
+    recordingStrategy: INCLUSION_BY_RESOURCE_TYPES
+  deliveryChannel:
+    s3BucketName:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: planton-oss-e2e-awscfgcp-history
+        fieldPath: status.outputs.bucket_id

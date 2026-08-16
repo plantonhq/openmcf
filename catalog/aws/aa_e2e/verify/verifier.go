@@ -158,10 +158,28 @@ var verifiers = map[string]Verifier{
 
 	// The governance family (audit/compliance posture; per-kind
 	// contracts in governance.go).
-	"awscloudtrail":     &cloudTrailVerifier{},
-	"awsconfigrecorder": &configRecorderVerifier{},
-	"awsconfigrule":     &configRuleVerifier{},
-	"awsguardduty":      &guardDutyVerifier{},
+	"awscloudtrail":                     &cloudTrailVerifier{},
+	"awsconfigrecorder":                 &configRecorderVerifier{},
+	"awsconfigrule":                     &configRuleVerifier{},
+	"awsguardduty":                      &guardDutyVerifier{},
+	"awscloudtraileventdatastore":       &eventDataStoreVerifier{},
+	"awsconfigaggregator":               &configAggregatorVerifier{},
+	"awsconfigconformancepack":          &conformancePackVerifier{},
+	"awsguarddutymalwareprotectionplan": &malwareProtectionPlanVerifier{},
+
+	// The AWS Backup family (data-protection posture; per-kind
+	// contracts in backup.go).
+	"awsbackupvault":              &backupVaultVerifier{},
+	"awsbackupplan":               &backupPlanVerifier{},
+	"awsbackupframework":          &backupFrameworkVerifier{},
+	"awsbackupreportplan":         &backupReportPlanVerifier{},
+	"awsbackuprestoretestingplan": &restoreTestingPlanVerifier{},
+	"awsbackupsettings":           &backupSettingsVerifier{},
+	"awsssmparameter":             &ssmParameterVerifier{},
+	"awsssmdocument":              &ssmDocumentVerifier{},
+	"awsssmassociation":           &ssmAssociationVerifier{},
+	"awsssmmaintenancewindow":     &ssmMaintenanceWindowVerifier{},
+	"awsssmpatchbaseline":         &ssmPatchBaselineVerifier{},
 
 	"awstransitgateway":              &transitGatewayVerifier{},
 	"awstransitgatewayvpcattachment": &transitGatewayVpcAttachmentVerifier{},

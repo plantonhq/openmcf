@@ -1,0 +1,29 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbackupvault
+spec:
+  # A backup vault under live E2E: two scenarios prove both union arms
+  # -- the standard vault's full free surface (governance lock, access
+  # policy, SNS notifications via the consumer-scoped topic fixture)
+  # and the air-gapped vault at its 7-day retention floor. Empty
+  # vaults cost nothing; both destroys are plain empty-vault deletes.
+  #
+  # Deliberately not exercised live:
+  #   - compliance-mode lock (changeable_for_days) -- IRREVERSIBLE
+  #     after its cooling-off window; a lane can never honestly create
+  #     one. Unblock: none by design -- taught in the GUIDE, asserted
+  #     write-only in the import catalog.
+  #   - force_destroy's recovery-point drain -- the lane never creates
+  #     recovery points to drain. Unblock: a composed plan+vault
+  #     scenario that runs a real backup job (wall-clock heavy).
+  #   - kms_key_arn / encryption_key_arn -- fixed-at-creation key
+  #     references. Unblock: fold a KMS fixture in when the proof lane
+  #     wants the arm.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q41
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 30

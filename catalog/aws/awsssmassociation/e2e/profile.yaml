@@ -1,0 +1,29 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsssmassociation
+spec:
+  # A State Manager association under live E2E: the AWS-managed
+  # AWS-RunPatchBaseline document bound to a tag that matches nothing
+  # on a nightly cron with apply_only_at_cron_interval - no command
+  # ever runs, no user document exists anywhere (the kind's founding
+  # case), and the lane bills nothing.
+  #
+  # Deliberately not exercised live:
+  #   - a customer-document reference (the SVOR valueFrom arm) -- the
+  #     chart-wiring path; the literal arm is the harder live truth.
+  #     Unblock: an AwsSsmDocument fixture via scenario annotations.
+  #   - output_location -- needs a bucket fixture for output nothing
+  #     ever writes. Unblock: an AwsS3Bucket fixture via scenario
+  #     annotations.
+  #   - wait_for_success_timeout_seconds -- with no matching targets
+  #     the wait always times out (config-only in the import map).
+  #     Unblock: a managed-instance fixture (the standing
+  #     no-instances-in-lanes class).
+  #
+  # pending_proof: forged this session to the full offline bar -- Q42
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

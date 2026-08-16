@@ -1,0 +1,26 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbackuprestoretestingplan
+spec:
+  # A restore testing plan under live E2E: weekly random drills over
+  # every vault plus one EBS selection on the consumer-scoped restore
+  # role. The schedule never fires in a lane window and the account
+  # holds no recovery points, so no test restore ever runs (~$0).
+  #
+  # Deliberately not exercised live:
+  #   - an actual restore test run -- needs a real recovery point and
+  #     bills as a real restore. Unblock: a composed vault+plan+drill
+  #     scenario with a near-future cron when the proof lane wants the
+  #     run path.
+  #   - tag-conditioned selections -- the ARNs arm proves the
+  #     exactly-one contract's other side offline (spec suite) and the
+  #     structure is provider-normalized either way. Unblock: swap the
+  #     scenario arm in a future mutation pass.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q41
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

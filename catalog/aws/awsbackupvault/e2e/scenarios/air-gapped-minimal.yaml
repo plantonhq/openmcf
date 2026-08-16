@@ -1,0 +1,25 @@
+# The air-gapped arm at its floor: 7-day minimum retention (the AWS
+# floor for this vault type), max at the same floor, AWS-owned-key
+# encryption. An empty air-gapped vault costs nothing and deletes
+# cleanly -- recovery points would make it undeletable until they age
+# out, and the lane never creates any. No fixtures: the vault is
+# self-contained.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupVault
+metadata:
+  name: planton-oss-e2e-awsbkv-lag
+  id: planton-oss-e2e-awsbkv-lag
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbackupvault
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  airGapped:
+    minRetentionDays: 7
+    maxRetentionDays: 7

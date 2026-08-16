@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbackupframework.v1alpha1;
+
+import "buf/validate/validate.proto";
+
+// AwsBackupFrameworkSpec defines a Backup Audit Manager framework: a
+// set of controls that continuously evaluate the account's backup
+// posture (are resources covered by a plan, are retention minimums
+// met, are recovery points encrypted, ...).
+//
+// Framework evaluations run on AWS Config: the region needs an
+// ACTIVE Config recorder recording the backup resource types, or the
+// framework's deployment lands FAILED (the provider treats a FAILED
+// deployment as a completed apply - the failure shows in
+// deployment_status, not as an error).
+//
+// AWS framework names forbid hyphens (letter first, then letters,
+// digits, and underscores), which is stricter than metadata.name
+// conventions - so the name is an explicit field rather than
+// metadata.name. Changing it forces replacement.
+message AwsBackupFrameworkSpec {
+  // Control names are for_each keys on both engines - duplicates
+  // would silently collapse entries.
+  option (buf.validate.message).cel = {
+    id: "spec.control_names_unique"
+    message: "controls entries must have unique names"
+    expression: "this.controls.map(c, c.name).unique()"
+  };
+
+  // The AWS region the framework lives in.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The framework's name in AWS: a letter followed by up to 255
+  // letters, digits, or underscores (NO hyphens). Changing it forces
+  // replacement.
+  string framework_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+    pattern: "^[A-Za-z][0-9A-Za-z_]{0,255}$"
+  }];
+
+  // What the framework audits, shown in the Backup console.
+  string description = 3 [(buf.validate.field).string.max_len = 1024];
+
+  // The controls the framework evaluates. Control names come from
+  // AWS's Backup Audit Manager control vocabulary (e.g.
+  // BACKUP_RESOURCES_PROTECTED_BY_BACKUP_PLAN,
+  // BACKUP_RECOVERY_POINT_MINIMUM_RETENTION_CHECK).
+  repeated AwsBackupFrameworkControl controls = 4 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsBackupFrameworkControl is one audit control and its scope.
+message AwsBackupFrameworkControl {
+  // The AWS control name (Backup Audit Manager's vocabulary).
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+  }];
+
+  // The control's parameters (e.g. requiredRetentionDays for the
+  // minimum-retention check). Parameterless controls omit this.
+  repeated AwsBackupFrameworkControlInputParameter input_parameters = 2;
+
+  // Which resources the control evaluates. Omit to evaluate
+  // everything the control applies to.
+  AwsBackupFrameworkControlScope scope = 3;
+}
+
+// AwsBackupFrameworkControlInputParameter is one control parameter.
+message AwsBackupFrameworkControlInputParameter {
+  // The parameter's name (defined by the control).
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The parameter's value.
+  string value = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsBackupFrameworkControlScope narrows a control to specific
+// resources. AWS keeps scope values once set - clearing a list
+// requires recreating the control entry.
+message AwsBackupFrameworkControlScope {
+  // Specific resource IDs to evaluate (at most 100).
+  repeated string compliance_resource_ids = 1 [(buf.validate.field).repeated = {
+    max_items: 100
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // Resource types to evaluate (e.g. "EBS", "RDS").
+  repeated string compliance_resource_types = 2 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Scope by tag - AWS accepts AT MOST ONE key/value pair here (the
+  // provider documents the single-pair limit).
+  map<string, string> tags = 3 [(buf.validate.field).map.max_pairs = 1];
+}

@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbackupvault.v1alpha1;
+
+// AwsBackupVaultStackOutputs captures the observable state of the
+// backup vault after apply.
+message AwsBackupVaultStackOutputs {
+  // The vault's ARN (either arm) - what backup plan copy actions and
+  // air-gapped targeting reference.
+  string vault_arn = 1;
+
+  // The vault's name (also the provider's import ID on either arm) -
+  // what backup plan rules target.
+  string vault_name = 2;
+}

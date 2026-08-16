@@ -1,0 +1,35 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_ssm_document:
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The provider's singular block is the spec's plural list.
+      - arg: attachments_source.key
+        spec: spec.attachment_sources.key
+      - arg: attachments_source.name
+        spec: spec.attachment_sources.name
+      - arg: attachments_source.values
+        spec: spec.attachment_sources.values
+      # The provider's flat share map {type: "Share", account_ids:
+      # "<comma-joined>"} is the spec's typed account-ID list -- "Share"
+      # is the map's only legal type (the provider validates it), so the
+      # type key carries no configuration.
+      - arg: permissions
+        spec: spec.share_with_account_ids
+    exclusions:
+      - arg: name
+        reason: metadata.name is the document name on both engines -- never free-form spec surface
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

@@ -1,0 +1,30 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSsmDocument
+metadata:
+  name: install-app-agent
+spec:
+  region: <aws-region>
+  documentType: Command
+  documentFormat: JSON
+  content: |
+    {
+      "schemaVersion": "2.2",
+      "description": "Install the app agent on managed nodes",
+      "parameters": {
+        "AgentVersion": {
+          "type": "String",
+          "description": "Agent version to install",
+          "default": "latest"
+        }
+      },
+      "mainSteps": [
+        {
+          "action": "aws:runShellScript",
+          "name": "installAgent",
+          "inputs": {
+            "runCommand": ["curl -fsSL https://example.com/agent-{{AgentVersion}}.sh | bash"]
+          }
+        }
+      ]
+    }
+  targetType: /AWS::EC2::Instance

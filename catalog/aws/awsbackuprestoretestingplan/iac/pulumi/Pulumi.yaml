@@ -1,0 +1,3 @@
+name: awsbackuprestoretestingplan
+runtime: go
+description: Pulumi module to manage an AWS Backup restore testing plan with its folded selections

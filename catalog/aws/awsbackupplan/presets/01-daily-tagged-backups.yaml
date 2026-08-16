@@ -1,0 +1,27 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupPlan
+metadata:
+  name: daily-backups
+spec:
+  region: <aws-region>
+  rules:
+    - name: daily
+      targetVaultName:
+        valueFrom:
+          kind: AwsBackupVault
+          name: <backup-vault>
+          fieldPath: status.outputs.vault_name
+      schedule: cron(0 5 ? * * *)
+      lifecycle:
+        deleteAfterDays: 35
+  selections:
+    - name: tagged
+      iamRoleArn:
+        valueFrom:
+          kind: AwsIamRole
+          name: <backup-service-role>
+          fieldPath: status.outputs.role_arn
+      selectionTags:
+        - type: STRINGEQUALS
+          key: backup
+          value: "true"

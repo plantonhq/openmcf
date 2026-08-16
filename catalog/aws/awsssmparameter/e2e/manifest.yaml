@@ -1,0 +1,20 @@
+# Canonical AwsSsmParameter example (hack/dev manifest and refgen
+# Example source): a hierarchical SecureString sourced from the secret
+# arm with an explicit KMS key. Literal values stand in for composed
+# references so the offline `tofu plan` renders the secret path.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSsmParameter
+metadata:
+  name: prod-db-password
+  id: prod-db-password
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  parameterName: /prod/payments/db-password
+  type: SecureString
+  secureValue: example-secret-value
+  description: Payments database password, rotated by the platform
+  keyId:
+    value: alias/prod-secrets
+  tier: Standard

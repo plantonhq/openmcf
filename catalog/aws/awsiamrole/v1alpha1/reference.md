@@ -319,6 +319,9 @@ Fields on other kinds that can point at this resource:
 | AwsAppRunnerService | `spec.instanceRoleArn` | `status.outputs.role_arn` |
 | AwsAthenaWorkgroup | `spec.executionRole` | `status.outputs.role_arn` |
 | AwsAutoScalingGroup | `spec.lifecycleHooks[].roleArn` | `status.outputs.role_arn` |
+| AwsBackupPlan | `spec.scanSetting.scannerRoleArn` | `status.outputs.role_arn` |
+| AwsBackupPlan | `spec.selections[].iamRoleArn` | `status.outputs.role_arn` |
+| AwsBackupRestoreTestingPlan | `spec.selections[].iamRoleArn` | `status.outputs.role_arn` |
 | AwsBatchComputeEnvironment | `spec.serviceRole` | `status.outputs.role_arn` |
 | AwsBatchComputeEnvironment | `spec.computeResources.spotIamFleetRole` | `status.outputs.role_arn` |
 | AwsBatchJobDefinition | `spec.container.jobRole` | `status.outputs.role_arn` |
@@ -348,6 +351,7 @@ Fields on other kinds that can point at this resource:
 | AwsCognitoUserPool | `spec.smsConfiguration.snsCallerArn` | `status.outputs.role_arn` |
 | AwsCognitoUserPool | `spec.userGroups[].roleArn` | `status.outputs.role_arn` |
 | AwsCognitoUserPoolClient | `spec.analyticsConfiguration.roleArn` | `status.outputs.role_arn` |
+| AwsConfigAggregator | `spec.aggregation.organizationSource.roleArn` | `status.outputs.role_arn` |
 | AwsConfigRecorder | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsEcsCluster | `spec.managedInstancesCapacityProviders[].infrastructureRoleArn` | `status.outputs.role_arn` |
 | AwsEcsService | `spec.loadBalancers[].advancedConfiguration.roleArn` | `status.outputs.role_arn` |
@@ -366,6 +370,7 @@ Fields on other kinds that can point at this resource:
 | AwsEksNodeGroup | `spec.nodeRoleArn` | `status.outputs.role_arn` |
 | AwsEventBridgeRule | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsEventBridgeRule | `spec.targets[].roleArn` | `status.outputs.role_arn` |
+| AwsGuardDutyMalwareProtectionPlan | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsHttpApiGateway | `spec.routes[].integration.credentialsArn` | `status.outputs.role_arn` |
 | AwsHttpApiGateway | `spec.authorizers[].authorizerCredentialsArn` | `status.outputs.role_arn` |
 | AwsIamInstanceProfile | `spec.role` | `status.outputs.role_name` |
@@ -463,6 +468,8 @@ Fields on other kinds that can point at this resource:
 | AwsSnsTopic | `spec.deliveryFeedback.lambda.failureFeedbackRole` | `status.outputs.role_arn` |
 | AwsSnsTopic | `spec.deliveryFeedback.sqs.successFeedbackRole` | `status.outputs.role_arn` |
 | AwsSnsTopic | `spec.deliveryFeedback.sqs.failureFeedbackRole` | `status.outputs.role_arn` |
+| AwsSsmMaintenanceWindow | `spec.tasks[].serviceRoleArn` | `status.outputs.role_arn` |
+| AwsSsmMaintenanceWindow | `spec.tasks[].invocation.runCommand.serviceRoleArn` | `status.outputs.role_arn` |
 | AwsStepFunction | `spec.roleArn` | `status.outputs.role_arn` |
 | KubernetesCertManager | `spec.workloadIdentity.eks.roleArn` | `status.outputs.role_arn` |
 | KubernetesClusterSecretStore | `spec.config.aws.role` | `status.outputs.role_arn` |

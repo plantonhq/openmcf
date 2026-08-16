@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsconfigconformancepack.v1alpha1;
+
+// AwsConfigConformancePackStackOutputs captures the observable state
+// of the conformance pack after apply.
+message AwsConfigConformancePackStackOutputs {
+  // The pack's name (also the provider's import ID, at either scope).
+  string pack_name = 1;
+
+  // The pack's ARN (the account-scope or organization-scope ARN,
+  // whichever this instance deployed).
+  string pack_arn = 2;
+}

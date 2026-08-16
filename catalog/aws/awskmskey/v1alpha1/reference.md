@@ -400,6 +400,8 @@ Fields on other kinds that can point at this resource:
 | AwsAthenaWorkgroup | `spec.customerContentEncryptionKmsKey` | `status.outputs.key_arn` |
 | AwsAthenaWorkgroup | `spec.monitoring.managedLogging.kmsKey` | `status.outputs.key_arn` |
 | AwsAthenaWorkgroup | `spec.monitoring.s3Logging.kmsKey` | `status.outputs.key_arn` |
+| AwsBackupVault | `spec.standard.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsBackupVault | `spec.airGapped.encryptionKeyArn` | `status.outputs.key_arn` |
 | AwsBedrockAgent | `spec.customerEncryptionKeyArn` | `status.outputs.key_arn` |
 | AwsBedrockAgentCoreEvaluation | `spec.evaluators[].kmsKeyArn` | `status.outputs.key_arn` |
 | AwsBedrockAgentCoreGateway | `spec.kmsKeyArn` | `status.outputs.key_arn` |
@@ -413,6 +415,7 @@ Fields on other kinds that can point at this resource:
 | AwsBedrockKnowledgeBase | `spec.dataSources[].kmsKeyArn` | `status.outputs.key_arn` |
 | AwsBedrockPrompt | `spec.customerEncryptionKeyArn` | `status.outputs.key_arn` |
 | AwsCloudTrail | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsCloudTrailEventDataStore | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsCloudwatchLogGroup | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsCodeBuildProject | `spec.encryptionKey` | `status.outputs.key_arn` |
 | AwsCodePipeline | `spec.artifactStores[].encryptionKeyId` | `status.outputs.key_arn` |
@@ -500,6 +503,7 @@ Fields on other kinds that can point at this resource:
 | AwsServerlessElasticache | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsSnsTopic | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsSqsQueue | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsSsmParameter | `spec.keyId` | `status.outputs.key_arn` |
 | AwsStepFunction | `spec.encryption.kmsKeyId` | `status.outputs.key_arn` |
 
 ## See Also
