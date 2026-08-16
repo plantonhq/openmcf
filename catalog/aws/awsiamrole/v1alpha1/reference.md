@@ -314,14 +314,31 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsApiGatewayAccountSettings | `spec.cloudwatchRoleArn` | `status.outputs.role_arn` |
 | AwsAppRunnerService | `spec.imageSource.accessRoleArn` | `status.outputs.role_arn` |
 | AwsAppRunnerService | `spec.instanceRoleArn` | `status.outputs.role_arn` |
 | AwsAthenaWorkgroup | `spec.executionRole` | `status.outputs.role_arn` |
 | AwsAutoScalingGroup | `spec.lifecycleHooks[].roleArn` | `status.outputs.role_arn` |
+| AwsBackupPlan | `spec.scanSetting.scannerRoleArn` | `status.outputs.role_arn` |
+| AwsBackupPlan | `spec.selections[].iamRoleArn` | `status.outputs.role_arn` |
+| AwsBackupRestoreTestingPlan | `spec.selections[].iamRoleArn` | `status.outputs.role_arn` |
 | AwsBatchComputeEnvironment | `spec.serviceRole` | `status.outputs.role_arn` |
 | AwsBatchComputeEnvironment | `spec.computeResources.spotIamFleetRole` | `status.outputs.role_arn` |
 | AwsBatchJobDefinition | `spec.container.jobRole` | `status.outputs.role_arn` |
 | AwsBatchJobDefinition | `spec.container.executionRole` | `status.outputs.role_arn` |
+| AwsBedrockAgent | `spec.agentResourceRoleArn` | `status.outputs.role_arn` |
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].executionRoleArn` | `status.outputs.role_arn` |
+| AwsBedrockAgentCoreEvaluation | `spec.onlineEvaluationConfigs[].executionRoleArn` | `status.outputs.role_arn` |
+| AwsBedrockAgentCoreGateway | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsBedrockAgentCoreMemory | `spec.executionRoleArn` | `status.outputs.role_arn` |
+| AwsBedrockAgentCoreRuntime | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsBedrockAgentCoreTools | `spec.browsers[].executionRoleArn` | `status.outputs.role_arn` |
+| AwsBedrockAgentCoreTools | `spec.codeInterpreters[].executionRoleArn` | `status.outputs.role_arn` |
+| AwsBedrockCustomModel | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsBedrockFlow | `spec.executionRoleArn` | `status.outputs.role_arn` |
+| AwsBedrockInvocationLogging | `spec.cloudwatch.roleArn` | `status.outputs.role_arn` |
+| AwsBedrockKnowledgeBase | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsCloudTrail | `spec.cloudwatchLogs.roleArn` | `status.outputs.role_arn` |
 | AwsCloudwatchLogGroup | `spec.subscriptionFilters[].roleArn` | `status.outputs.role_arn` |
 | AwsCodeBuildProject | `spec.serviceRole` | `status.outputs.role_arn` |
 | AwsCodeBuildProject | `spec.buildBatchConfig.serviceRole` | `status.outputs.role_arn` |
@@ -334,6 +351,8 @@ Fields on other kinds that can point at this resource:
 | AwsCognitoUserPool | `spec.smsConfiguration.snsCallerArn` | `status.outputs.role_arn` |
 | AwsCognitoUserPool | `spec.userGroups[].roleArn` | `status.outputs.role_arn` |
 | AwsCognitoUserPoolClient | `spec.analyticsConfiguration.roleArn` | `status.outputs.role_arn` |
+| AwsConfigAggregator | `spec.aggregation.organizationSource.roleArn` | `status.outputs.role_arn` |
+| AwsConfigRecorder | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsEcsCluster | `spec.managedInstancesCapacityProviders[].infrastructureRoleArn` | `status.outputs.role_arn` |
 | AwsEcsService | `spec.loadBalancers[].advancedConfiguration.roleArn` | `status.outputs.role_arn` |
 | AwsEcsService | `spec.deploymentConfiguration.lifecycleHooks[].roleArn` | `status.outputs.role_arn` |
@@ -351,6 +370,7 @@ Fields on other kinds that can point at this resource:
 | AwsEksNodeGroup | `spec.nodeRoleArn` | `status.outputs.role_arn` |
 | AwsEventBridgeRule | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsEventBridgeRule | `spec.targets[].roleArn` | `status.outputs.role_arn` |
+| AwsGuardDutyMalwareProtectionPlan | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsHttpApiGateway | `spec.routes[].integration.credentialsArn` | `status.outputs.role_arn` |
 | AwsHttpApiGateway | `spec.authorizers[].authorizerCredentialsArn` | `status.outputs.role_arn` |
 | AwsIamInstanceProfile | `spec.role` | `status.outputs.role_name` |
@@ -394,6 +414,7 @@ Fields on other kinds that can point at this resource:
 | AwsNeptuneCluster | `spec.iamRoles` | `status.outputs.role_arn` |
 | AwsOpenSearchDomain | `spec.advancedSecurityOptions.masterUserArn` | `status.outputs.role_arn` |
 | AwsOpenSearchDomain | `spec.cognitoOptions.roleArn` | `status.outputs.role_arn` |
+| AwsOpenSearchServerlessCollection | `spec.dataAccess[].principals` | `status.outputs.role_arn` |
 | AwsPlantonRunner | `spec.taskRole` | `status.outputs.role_arn` |
 | AwsRdsCluster | `spec.instances[].monitoringRoleArn` | `status.outputs.role_arn` |
 | AwsRdsCluster | `spec.iamRoles[].role` | `status.outputs.role_arn` |
@@ -407,6 +428,8 @@ Fields on other kinds that can point at this resource:
 | AwsRedshiftCluster | `spec.scheduledActions[].iamRoleArn` | `status.outputs.role_arn` |
 | AwsRedshiftServerlessNamespace | `spec.iamRoles` | `status.outputs.role_arn` |
 | AwsRedshiftServerlessNamespace | `spec.defaultIamRoleArn` | `status.outputs.role_arn` |
+| AwsRestApiGateway | `spec.routes[].integration.credentialsArn` | `status.outputs.role_arn` |
+| AwsRestApiGateway | `spec.authorizers[].credentialsArn` | `status.outputs.role_arn` |
 | AwsS3Bucket | `spec.replication.roleArn` | `status.outputs.role_arn` |
 | AwsSagemakerDomain | `spec.defaultUserSettings.executionRoleArn` | `status.outputs.role_arn` |
 | AwsSagemakerDomain | `spec.defaultUserSettings.jupyterLabAppSettings.emrSettings.assumableRoleArns` | `status.outputs.role_arn` |
@@ -424,6 +447,15 @@ Fields on other kinds that can point at this resource:
 | AwsSagemakerDomain | `spec.userProfiles[].userSettings.canvasAppSettings.emrServerlessSettings.executionRoleArn` | `status.outputs.role_arn` |
 | AwsSagemakerDomain | `spec.userProfiles[].userSettings.canvasAppSettings.generativeAiBedrockRoleArn` | `status.outputs.role_arn` |
 | AwsSagemakerDomain | `spec.userProfiles[].userSettings.canvasAppSettings.timeSeriesForecastingSettings.amazonForecastRoleArn` | `status.outputs.role_arn` |
+| AwsSagemakerEndpoint | `spec.executionRoleArn` | `status.outputs.role_arn` |
+| AwsSagemakerFeatureGroup | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsSagemakerImage | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsSagemakerMlflowApp | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsSagemakerMlflowServer | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsSagemakerModel | `spec.executionRoleArn` | `status.outputs.role_arn` |
+| AwsSagemakerNotebookInstance | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsSagemakerPipeline | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsSecretsManagerSecret | `spec.rotation.externalRotationRoleArn` | `status.outputs.role_arn` |
 | AwsSesConfigurationSet | `spec.eventDestinations[].firehose.iamRole` | `status.outputs.role_arn` |
 | AwsSnsSubscription | `spec.subscriptionRoleArn` | `status.outputs.role_arn` |
 | AwsSnsTopic | `spec.deliveryFeedback.application.successFeedbackRole` | `status.outputs.role_arn` |
@@ -436,6 +468,8 @@ Fields on other kinds that can point at this resource:
 | AwsSnsTopic | `spec.deliveryFeedback.lambda.failureFeedbackRole` | `status.outputs.role_arn` |
 | AwsSnsTopic | `spec.deliveryFeedback.sqs.successFeedbackRole` | `status.outputs.role_arn` |
 | AwsSnsTopic | `spec.deliveryFeedback.sqs.failureFeedbackRole` | `status.outputs.role_arn` |
+| AwsSsmMaintenanceWindow | `spec.tasks[].serviceRoleArn` | `status.outputs.role_arn` |
+| AwsSsmMaintenanceWindow | `spec.tasks[].invocation.runCommand.serviceRoleArn` | `status.outputs.role_arn` |
 | AwsStepFunction | `spec.roleArn` | `status.outputs.role_arn` |
 | KubernetesCertManager | `spec.workloadIdentity.eks.roleArn` | `status.outputs.role_arn` |
 | KubernetesClusterSecretStore | `spec.config.aws.role` | `status.outputs.role_arn` |

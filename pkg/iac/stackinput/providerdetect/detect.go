@@ -60,20 +60,14 @@ func requiresProviderConfig(provider cloudresourcekind.CloudResourceProvider) bo
 // ProviderDisplayName returns a human-friendly display name for the provider.
 func ProviderDisplayName(provider cloudresourcekind.CloudResourceProvider) string {
 	switch provider {
-	case cloudresourcekind.CloudResourceProvider_atlas:
-		return "MongoDB Atlas"
 	case cloudresourcekind.CloudResourceProvider_auth0:
 		return "Auth0"
 	case cloudresourcekind.CloudResourceProvider_aws:
 		return "AWS"
 	case cloudresourcekind.CloudResourceProvider_azure:
 		return "Azure"
-	case cloudresourcekind.CloudResourceProvider_civo:
-		return "Civo"
 	case cloudresourcekind.CloudResourceProvider_cloudflare:
 		return "Cloudflare"
-	case cloudresourcekind.CloudResourceProvider_confluent:
-		return "Confluent"
 	case cloudresourcekind.CloudResourceProvider_digital_ocean:
 		return "DigitalOcean"
 	case cloudresourcekind.CloudResourceProvider_gcp:
@@ -82,18 +76,6 @@ func ProviderDisplayName(provider cloudresourcekind.CloudResourceProvider) strin
 		return "Kubernetes"
 	case cloudresourcekind.CloudResourceProvider_openfga:
 		return "OpenFGA"
-	case cloudresourcekind.CloudResourceProvider_snowflake:
-		return "Snowflake"
-	case cloudresourcekind.CloudResourceProvider_openstack:
-		return "OpenStack"
-	case cloudresourcekind.CloudResourceProvider_scaleway:
-		return "Scaleway"
-	case cloudresourcekind.CloudResourceProvider_alicloud:
-		return "Alibaba Cloud"
-	case cloudresourcekind.CloudResourceProvider_oci:
-		return "OCI"
-	case cloudresourcekind.CloudResourceProvider_hetzner_cloud:
-		return "Hetzner Cloud"
 	default:
 		return provider.String()
 	}

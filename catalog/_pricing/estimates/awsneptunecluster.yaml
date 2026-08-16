@@ -1,0 +1,57 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsneptunecluster
+spec:
+  presets:
+    - preset: 01-production-graph
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Neptune
+          sku_meter: instance hours
+          pricing_unit: hours
+          pricing_quantity: "1460"
+          quantity_basis: 2 instances (writer + reader-1, both db.r6g.large) x 730 hours
+          list_unit_price: "0.3287"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonNeptune/20260806223459/us-west-2/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "479.9020"
+      total_list_cost: "479.9020"
+      exclusions:
+        - cluster storage bills per consumed GB-month and grows with data
+        - storage I/O requests on standard (non-I/O-Optimized) storage are workload-dependent
+        - backup storage beyond the free allowance grows with churn across the 7-day retention window
+        - CloudWatch ingestion for the exported audit logs depends on database activity
+        - data transfer between AZs and out of the region
+      notes: IAM database authentication and deletion protection add no charge of their own.
+    - preset: 02-serverless
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Neptune
+          sku_meter: serverless capacity
+          pricing_unit: NCU-hours
+          pricing_quantity: "730"
+          quantity_basis: 1 db.serverless instance at the 1-NCU scaling floor (min_capacity 1) x 730 hours -- the capacity that always bills; Neptune Serverless does not pause to zero
+          list_unit_price: "0.1608"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonNeptune/20260806223459/us-west-2/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "117.3840"
+      total_list_cost: "117.3840"
+      exclusions:
+        - NCU-hours above the 1-NCU floor are demand-driven, up to the 32-NCU ceiling per hour
+        - cluster storage bills per consumed GB-month and grows with data
+        - storage I/O requests on standard storage are workload-dependent
+        - backup storage beyond the free allowance grows with churn across the 7-day retention window
+        - data transfer between AZs and out of the region
+      notes: Estimated at the scaling floor -- the committed always-on spend. Worst-case compute at the 32-NCU ceiling is 32x this estimate.

@@ -1,0 +1,33 @@
+# The report plan's cost-floored surface: a BACKUP_JOB_REPORT (no
+# framework needed) into the consumer-scoped bucket fixture whose
+# policy grants the Backup report service write access. Reports run on
+# AWS's daily cadence -- none fires inside a lane window, so the lane
+# bills nothing beyond the empty bucket.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupReportPlan
+metadata:
+  name: planton-oss-e2e-awsbkrp
+  id: planton-oss-e2e-awsbkrp
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbackupreportplan
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  reportPlanName: planton_oss_e2e_awsbkrp
+  description: Planton E2E daily backup job report
+  deliveryChannel:
+    s3BucketName:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: planton-oss-e2e-awsbkrp-reports
+        fieldPath: status.outputs.bucket_id
+    s3KeyPrefix: backup-reports
+    formats: ["CSV", "JSON"]
+  reportSetting:
+    reportTemplate: BACKUP_JOB_REPORT

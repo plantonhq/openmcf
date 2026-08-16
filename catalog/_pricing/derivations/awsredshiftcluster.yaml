@@ -1,0 +1,96 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsRedshiftCluster manifest's spec values into metered quantities and
+# price choices. Node hours are the committed spend: number_of_nodes x 730
+# at the node_type's On-Demand rate, doubled when multi_az provisions the
+# equal second-AZ node set (AWS bills the same rate for double the
+# compute). RA3 managed storage, concurrency scaling, and Spectrum bill on
+# usage no manifest can know -- exclusions, never guessed numbers. A
+# cluster with scheduled actions REFUSES: pause/resume/resize crons change
+# the billed hours and topology in ways these rules cannot evaluate. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/awsredshiftcluster.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsredshiftcluster
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  refusals:
+    - when:
+        - field_path: scheduled_actions
+          op: is_set
+      reason: scheduled actions pause, resume, or resize the cluster on cron schedules -- the monthly node-hours and topology depend on evaluating those crons, which these rules cannot do, so a 730-hour estimate would overstate a paused warehouse and a resize schedule makes the billed node count indeterminate
+  lines:
+    - sku_meter: node hours
+      applies_when:
+        - field_path: multi_az
+          op: not_equals
+          value: "true"
+      quantity:
+        - field_value:
+            field_path: number_of_nodes
+            default_when_unset: "1"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Redshift
+        pricing_unit: hours
+        attributes:
+          - key: node_type
+            from_field: node_type
+      basis: number_of_nodes (the AWS default 1, a single-node cluster, when unset) x 730 hours at the node_type's On-Demand rate
+    - sku_meter: node hours
+      applies_when:
+        - field_path: multi_az
+          op: equals
+          value: "true"
+      quantity:
+        - constant: "2"
+        - field_value:
+            field_path: number_of_nodes
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Redshift
+        pricing_unit: hours
+        attributes:
+          - key: node_type
+            from_field: node_type
+      basis: Multi-AZ provisions an equal number of compute nodes in a second availability zone at the same rate -- AWS bills double the compute -- so 2 x number_of_nodes x 730 hours
+  exclusions:
+    - text: RA3 managed storage bills per GB-month of data actually stored -- workload-dependent, invisible at manifest time
+    - text: concurrency scaling bills per-second above the free daily credits when bursts spill onto transient clusters
+    - text: Redshift Spectrum bills per TB scanned in S3
+    - applies_when:
+        - field_path: automated_snapshot_retention_period
+          op: not_equals
+          value: "0"
+      text: backup storage beyond the free allowance grows with churn across the retention window
+    - applies_when:
+        - field_path: snapshot_copy
+          op: is_set
+      text: cross-region snapshot copy bills destination-region snapshot storage plus the data transfer to get there
+    - applies_when:
+        - field_path: logging
+          op: is_set
+      text: audit log delivery bills the destination -- CloudWatch ingestion and storage, or the S3 bucket's storage -- and its volume follows query traffic
+    - applies_when:
+        - field_path: publicly_accessible
+          op: equals
+          value: "true"
+      text: the public leader-node IPv4 address bills hourly under Amazon VPC public-IPv4 pricing
+    - text: data transfer out of the region and cross-region datasharing follow query and consumer traffic
+  notes:
+    - text: Estimated at the declared node topology running all 730 hours -- the committed always-on spend.
+    - applies_when:
+        - field_path: multi_az
+          op: equals
+          value: "true"
+      text: Multi-AZ doubles compute, not storage -- managed storage is shared across both availability zones.
+    - applies_when:
+        - field_path: usage_limits
+          op: is_set
+      text: usage_limits caps what Spectrum, concurrency scaling, and cross-region datasharing may spend -- a governor on the excluded usage meters, not a charge of its own.

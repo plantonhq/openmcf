@@ -1,0 +1,23 @@
+# AwsSagemakerFeatureGroup — Pulumi module (Go)
+
+Deploys an Amazon SageMaker Feature Store feature group
+(`sagemaker.FeatureGroup`) with its online and/or offline store.
+
+Module facts worth knowing before editing:
+
+- **Almost everything is create-time only** (schema, stores, role) —
+  the ONLY in-place updates are the online store's TTL and the
+  throughput settings.
+- **The component's name IS the feature group name** — derived from
+  `metadata.name`, no override.
+- **The provider's `CollectionConfig` has exactly one member**
+  (`VectorConfig`) — rendered exactly when the dimension is set (the
+  spec pairs it with the Vector collection type).
+- **Provisioned capacity units are sent only in Provisioned mode** —
+  the throughput render mirrors the provider's create behavior
+  (spec-validated pairing).
+- **Collection types require InMemory online storage** —
+  server-enforced by AWS, not rendered by the module.
+
+Outputs mirror the Terraform module key-for-key: `feature_group_name`,
+`feature_group_arn`.

@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesingress
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An Ingress stores no data beyond its own definition in the cluster's etcd; the certificate Secrets its tls block names are separate resources whose at-rest posture belongs to the cluster's Secret storage.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest), so customer-managed keys have no meaning here.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: tls
+      evidence:
+        type: spec_default
+        reference: With no tls entries the controller serves the declared hosts over plain HTTP (or its own default certificate, controller-dependent); each tls entry terminates TLS on port 443 for its hosts using the named kubernetes.io/tls certificate Secret, multiplexed by SNI.
+      notes: The 02-tls-cert-manager preset pairs the tls block with a cert-manager.io/cluster-issuer annotation so cert-manager materializes the certificate Secret under exactly the declared name. Whether plain HTTP redirects to HTTPS is controller behavior (e.g. ingress-nginx redirects by default; the ssl-redirect annotation opts out).
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Whether the declared hosts are internet-reachable is decided by the ingress controller's own Service exposure (internet-facing versus internal load balancer), owned by the controller's component. This object only declares host and path routing and is inert until a controller claims it via ingress_class_name.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: rules
+      evidence:
+        type: spec_default
+        reference: Host rules bound what this object serves -- each rule matches the request's Host header (precise or single-label wildcard) and then its declared HTTP paths, and validation rejects an Ingress with neither rules nor default_backend, so the object always declares its inbound scope.
+      notes: This is host/path scoping, not network-source restriction. Source-CIDR allowlists are controller-specific annotations carried in the annotations field (e.g. ingress-nginx whitelist-source-range), and the network path itself is restricted with Kubernetes NetworkPolicies on the controller and backends.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The Ingress API has no first-class web application firewall seam. Request filtering arrives through controller-specific machinery -- annotations wiring the controller's own filters or a WAF in front of the controller's load balancer -- owned outside this spec.
+    - control_id: rbac
+      status: not_applicable
+      notes: The object's only access plane is the Kubernetes API -- who may create or change the Ingress (and thereby what gets exposed) is the target cluster's own RBAC, not something this spec configures.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The Ingress authenticates to nothing -- it holds no credentials and calls no cloud APIs. Cloud identities used by controllers (e.g. an ALB controller's IAM role) belong to those controller components.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The Ingress itself performs no authentication; any auth the controller enforces on requests (basic auth, OIDC) is controller-specific annotation behavior owned by the controller.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the Ingress are Kubernetes API operations, captured by the target cluster's audit policy; request access logs are emitted by the ingress controller's data plane, not by this object.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The Ingress has no runtime behavior of its own to monitor; per-host and per-path traffic metrics are emitted by the ingress controller.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The object is fully declarative and holds no data -- re-applying the manifest reconstructs it exactly. There is nothing to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist for this object (see backup-recovery), so retention has nothing to govern.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: An Ingress has no runtime footprint to replicate. Availability of the traffic path is a property of the ingress controller's replicas and its load balancer, plus the backend Services.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on Ingress; deleting it withdraws the exposure (and DNS/certificate automation reacting to it) without destroying data. Protection is operational (cluster RBAC, change review).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Nothing runs here to patch. The ingress controller serving this object is installed, versioned, and patched through its own component.

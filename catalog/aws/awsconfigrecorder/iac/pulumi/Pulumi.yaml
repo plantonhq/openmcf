@@ -1,0 +1,3 @@
+name: awsconfigrecorder
+runtime:
+  name: go

@@ -1,0 +1,58 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurepostgresqlflexibleserver
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Azure Database for PostgreSQL
+      sku_meter: server compute
+      pricing_unit: hours
+      description: The server's compute SKU bills by the hour from creation; the sku_name string (tier_Standard_size) fixes the rate.
+    - service_name: Azure Database for PostgreSQL
+      sku_meter: server storage
+      pricing_unit: GB-months
+      description: Provisioned storage bills per GiB-month whether used or empty; storage only ever grows.
+  cost_drivers:
+    - field_path: sku_name
+      sku_meter: server compute
+      pricing_unit: hours
+      impact: The dominant lever -- Burstable B-series is the budget tier, General Purpose D-series the production tier, Memory Optimized E-series the RAM-heavy tier, each size with its own hourly rate.
+    - field_path: high_availability
+      sku_meter: server compute
+      pricing_unit: hours
+      impact: Presence provisions a synchronized standby billed at the same compute AND storage rates as the primary -- Microsoft bills an HA server as double the provisioned compute and double the provisioned storage.
+    - field_path: storage_mb
+      sku_meter: server storage
+      pricing_unit: GB-months
+      impact: Provisioned GiB on the fixed ladder (32 GiB to 32 TiB), billed monthly whether used or not; it can never shrink.
+    - field_path: storage_tier
+      sku_meter: provisioned IOPS
+      impact: Raising the IOPS tier above the size's default adds a monthly per-IOPS scaling charge.
+    - field_path: auto_grow_enabled
+      sku_meter: server storage
+      pricing_unit: GB-months
+      impact: On, storage steps up the ladder automatically under pressure and the bill follows; there is no configurable ceiling.
+    - field_path: backup_retention_days
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: Backup storage up to 100% of provisioned storage is free; longer retention (up to 35 days) grows consumed backup GiB past that free allowance on busy databases.
+    - field_path: geo_redundant_backup_enabled
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: Geo-redundant backups bill at roughly double the local backup rate and cannot be toggled after creation.
+    - field_path: cluster.size
+      sku_meter: server compute
+      pricing_unit: hours
+      impact: An elastic cluster multiplies the sku_name's compute by its node count (1-20 nodes).
+    - field_path: create_mode
+      sku_meter: server compute
+      pricing_unit: hours
+      impact: REPLICA creates a full server billed at its own compute and storage rates; the primary it follows bills separately on its own component.
+  estimate_exclusions:
+    - backup storage beyond the free allowance (100% of provisioned storage) follows database churn and retention settings
+    - network egress follows client placement
+  notes: "Azure bills the flexible server as machine-plus-disk: an hourly compute SKU and a provisioned-GiB storage line. High availability is the honest doubler -- Microsoft's own pricing FAQ states an HA server bills both replicas' compute and storage -- so the availability decision is a 2x line item, visible in the estimate, not a footnote."

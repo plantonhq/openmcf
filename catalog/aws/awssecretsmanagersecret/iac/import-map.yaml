@@ -1,0 +1,25 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awssecretsmanagersecret
+spec:
+  # Every resource in this module rides the secret's ARN (the module names
+  # the secret after the Planton resource -- locals.tf: secret_name =
+  # var.metadata.name -- but the ARN carries AWS's random 6-character
+  # suffix, so the ARN itself is the import identity, never derivable from
+  # the name alone). The version adds its version id.
+  values:
+    - name: secret_arn
+      derivations:
+        - from_stack_output: secret_arn
+        - from_arn_part: arn
+      where_to_find: >-
+        Secrets Manager console -> Secrets -> <secret> (the Secret ARN), or
+        `aws secretsmanager describe-secret --secret-id <name>` (ARN).
+        Paste the full ARN -- it ends with a random 6-character suffix.
+    - name: version_id
+      derivations:
+        - from_stack_output: version_id
+      where_to_find: >-
+        `aws secretsmanager list-secret-version-ids --secret-id <arn>` --
+        the VersionId carrying the AWSCURRENT staging label.

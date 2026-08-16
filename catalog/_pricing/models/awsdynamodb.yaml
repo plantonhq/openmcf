@@ -1,0 +1,70 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Presets with no quantity lines have no committed always-on
+# spend and estimate to zero. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awsdynamodb
+spec:
+  presets:
+    - preset: 01-on-demand-simple
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - per-request read/write charges are traffic-dependent (PAY_PER_REQUEST bills only what runs)
+        - storage consumed grows with the data the application writes
+        - point-in-time recovery bills per GB-month of table data
+      notes: On-demand capacity mode has zero idle cost -- an empty, unused table bills nothing at manifest time.
+    - preset: 02-provisioned-production
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: provisioned write capacity
+          price: dynamodb-provisioned-wcu-us-east-1
+          pricing_quantity: "25550"
+          quantity_basis: table 25 WCU + GSI gsi1 10 WCU = 35 WCU x 730 hours
+        - sku_meter: provisioned read capacity
+          price: dynamodb-provisioned-rcu-us-east-1
+          pricing_quantity: "25550"
+          quantity_basis: table 25 RCU + GSI gsi1 10 RCU = 35 RCU x 730 hours
+      exclusions:
+        - storage consumed (GB-month) grows with the data the application writes
+        - point-in-time recovery bills per GB-month of table data
+        - KMS request charges for the customer-managed key path
+        - CloudWatch Contributor Insights rules bill per matched event
+      notes: List-price semantics -- the account-level free tier (25 RCU and 25 WCU always free per region) is not netted out.
+    - preset: 03-global-table
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - per-request read/write charges are traffic-dependent
+        - every write is also billed as a replicated write to the replica region
+        - storage is consumed twice (table and replica), growing with application data
+        - cross-region replication data transfer
+        - point-in-time recovery bills per GB-month in both regions
+        - stream consumers bill stream read request units
+      notes: On-demand mode keeps idle cost at zero, but the replica doubles every usage-driven dimension the moment traffic starts.
+    - preset: 04-provisioned-autoscaled
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: provisioned write capacity
+          price: dynamodb-provisioned-wcu-us-east-1
+          pricing_quantity: "3650"
+          quantity_basis: autoscaling write floor (min_capacity 5 WCU) x 730 hours -- the capacity that always bills
+        - sku_meter: provisioned read capacity
+          price: dynamodb-provisioned-rcu-us-east-1
+          pricing_quantity: "3650"
+          quantity_basis: autoscaling read floor (min_capacity 5 RCU) x 730 hours -- the capacity that always bills
+      exclusions:
+        - autoscaled capacity above the floor is traffic-dependent (ceilings 100 RCU / 50 WCU bound it)
+        - the scheduled action raises the read floor to 20 RCU on weekday business hours, above this base-floor estimate
+        - storage consumed and point-in-time recovery grow with application data
+      notes: Estimated at the autoscaling floor -- the committed always-on spend. Worst-case provisioned spend at the ceilings (100 RCU / 50 WCU) is about $33.22 per month, roughly 12x the floor.

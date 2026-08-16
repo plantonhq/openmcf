@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesrequestauthentication
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A RequestAuthentication stores no data -- it is an Istio policy object in etcd, whose encryption is owned by the target cluster.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With nothing stored (see enc-at-rest), there is no at-rest key to manage.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The policy validates JWTs; it neither requires nor provides transport encryption. mTLS requirements are PeerAuthentication -- a separate kind.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The policy is not an endpoint -- it has nothing to expose. It governs which tokens the selected workloads accept, not where they are reachable from.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The policy filters by token validity, not by network source. Source restriction is NetworkPolicy or Istio AuthorizationPolicy -- separate kinds.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: JWT validation is authentication, not request filtering -- the policy inspects tokens, not attack payloads. WAF-style filtering belongs to edge components.
+    - control_id: rbac
+      status: not_applicable
+      notes: The policy performs the AUTHENTICATION half of request security -- a valid token's identity is extracted and made available to authorization policies. The authorization decisions themselves are Istio AuthorizationPolicy, a separate kind; access to the policy object is the cluster's Kubernetes RBAC.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The control concerns workloads authenticating to CLOUD APIs. This policy validates tokens presented BY CLIENTS to the workloads; it issues and holds no credentials itself.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: jwt_rules
+      evidence:
+        type: spec_default
+        reference: Empty jwt_rules installs no JWT requirements (the policy is a no-op until rules are added); each rule declares the accepted issuer and key set (jwks_uri or inline jwks -- validation requires at least an issuer or a jwks_uri), so tokens from undeclared issuers or failing signature validation are rejected at the selected workloads' proxies.
+      notes: "The honest boundary, straight from the upstream contract: a request with NO token is allowed by RequestAuthentication alone -- pair it with an AuthorizationPolicy requiring a principal to close the unauthenticated path. Presets: 01-namespace-jwt-validation validates one issuer namespace-wide; 02-workload-jwt-with-claim-headers scopes to one workload and copies verified claims to headers. Enforcement reaches only workloads with Istio sidecars."
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the policy are Kubernetes API operations, captured by the target cluster's audit policy. Per-request authentication outcomes, where logged, come from the sidecars' access logs.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A policy object emits no operational metrics. Request authentication outcomes surface in the Istio sidecars' and control plane's metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: There is no data to back up -- the policy is fully described by its declarative spec, re-appliable at any time.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backups (see backup-recovery), there is no retention length to configure.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The policy is an API object with no running replicas; istiod distributes it to sidecars wherever the selected workloads run.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on Istio policy objects. Deleting the policy removes the JWT validation requirement -- previously rejected tokens pass unexamined -- so protection is operational (namespace RBAC, change review).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software to patch -- the policy is configuration consumed by istiod; mesh version lifecycle belongs to the Istio installation.

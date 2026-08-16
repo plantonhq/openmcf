@@ -39,11 +39,7 @@ Per-provider images with pre-warmed Go caches for fast cold starts.
 | `pulumi-kubernetes-v0.0.1` | Kubernetes | Go 1.25 + Pulumi + K8s SDK cache |
 | `pulumi-cloudflare-v0.0.1` | Cloudflare | Go 1.25 + Pulumi + Cloudflare SDK cache |
 | `pulumi-digitalocean-v0.0.1` | DigitalOcean | Go 1.25 + Pulumi + DO SDK cache |
-| `pulumi-atlas-v0.0.1` | MongoDB Atlas | Go 1.25 + Pulumi + Atlas SDK cache |
 | `pulumi-auth0-v0.0.1` | Auth0 | Go 1.25 + Pulumi + Auth0 SDK cache |
-| `pulumi-civo-v0.0.1` | Civo | Go 1.25 + Pulumi + Civo SDK cache |
-| `pulumi-confluent-v0.0.1` | Confluent | Go 1.25 + Pulumi + Confluent SDK cache |
-| `pulumi-snowflake-v0.0.1` | Snowflake | Go 1.25 + Pulumi + Snowflake SDK cache |
 
 ```dockerfile
 FROM ghcr.io/plantonhq/planton/base-images/iac-runner:pulumi-aws-v0.0.1

@@ -1,0 +1,49 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awssqsqueue
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: fifo_queue
+      sku_meter: queue requests
+      pricing_unit: requests
+      impact: FIFO requests bill about 25% above standard-queue requests -- ordering and exactly-once semantics carry a per-request premium.
+    - field_path: receive_wait_time_seconds
+      sku_meter: queue requests
+      pricing_unit: requests
+      impact: Long polling (up to 20s) collapses empty-receive spam into far fewer billed requests -- the single biggest request-count lever for low-traffic queues.
+    - field_path: max_message_size_bytes
+      sku_meter: queue requests
+      pricing_unit: requests
+      impact: Every 64 KB chunk of a payload bills as one request -- a 256 KB message is four billed requests.
+    - field_path: visibility_timeout_seconds
+      sku_meter: queue requests
+      pricing_unit: requests
+      impact: A timeout shorter than processing time redelivers messages -- every redelivery is a fresh billed receive.
+    - field_path: dead_letter_config.max_receive_count
+      sku_meter: queue requests
+      pricing_unit: requests
+      impact: The redrive ceiling bounds how many times a poison message is redelivered (and billed) before landing in the dead-letter queue.
+    - field_path: kms_key_id
+      sku_meter: KMS requests
+      pricing_unit: requests
+      impact: SSE-KMS calls AWS KMS for data keys -- each call bills at KMS request rates, where the default SSE-SQS encrypts for free.
+    - field_path: kms_data_key_reuse_period_seconds
+      sku_meter: KMS requests
+      pricing_unit: requests
+      impact: A longer data-key reuse window (up to 24h) means fewer KMS calls -- the direct dial on SSE-KMS request cost.
+    - field_path: fifo_throughput_limit
+      sku_meter: queue requests
+      pricing_unit: requests
+      impact: High-throughput FIFO mode (perMessageGroupId) raises the request ceiling, not the rate -- it changes how much CAN bill, not the per-request price.
+  free_tier: The first 1 million requests each month are free, account-wide across all queues.
+  estimate_exclusions:
+    - request volume is entirely workload-driven -- an idle queue bills nothing, and message retention is free regardless of message_retention_seconds
+    - data transfer out of the region bills per GB
+    - a dead-letter queue is its own component billing its own requests
+    - SSE-KMS request cost follows traffic and the data-key reuse window
+  notes: "SQS has no storage meter -- retention length changes exposure, never cost. The entire bill is request-count times per-request rate, which is why long polling and batch-friendly payload sizing are the cost posture."

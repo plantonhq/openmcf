@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package dev.planton.aws.awscloudtrail.v1alpha1;
+
+// AwsCloudTrailStackOutputs captures the observable state of the
+// trail after apply.
+message AwsCloudTrailStackOutputs {
+  // The trail's ARN (also the provider's import ID).
+  string trail_arn = 1;
+
+  // The trail's home region - the region that manages a multi-region
+  // trail.
+  string home_region = 2;
+
+  // The ARN of the SNS topic notified on log delivery (set only when
+  // spec.sns_topic_name is configured).
+  string sns_topic_arn = 3;
+}

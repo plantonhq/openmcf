@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsrestapidomain.v1alpha1;
+
+// AwsRestApiDomainStackOutputs captures observable identifiers from a
+// provisioned API Gateway custom domain. DNS records alias to the
+// regional or CloudFront target; access associations key off the
+// domain ARN.
+message AwsRestApiDomainStackOutputs {
+  // The custom domain name.
+  string domain_name = 1;
+
+  // The domain's ARN.
+  string domain_name_arn = 2;
+
+  // The domain name ID (distinguishes PRIVATE domains sharing one
+  // hostname).
+  string domain_name_id = 3;
+
+  // The regional target hostname - point Route 53 alias records here
+  // for REGIONAL/PRIVATE domains.
+  string regional_domain_name = 4;
+
+  // The Route 53 hosted zone ID of the regional endpoint (alias
+  // records need it).
+  string regional_zone_id = 5;
+
+  // The CloudFront target hostname - point alias records here for EDGE
+  // domains.
+  string cloudfront_domain_name = 6;
+
+  // The CloudFront hosted zone ID (a fixed global value; alias records
+  // need it).
+  string cloudfront_zone_id = 7;
+
+  // Base-path mapping IDs keyed by each entry's base_path ("(none)"
+  // for the empty base path).
+  map<string, string> base_path_mapping_ids = 8;
+
+  // Access-association ARNs keyed by each entry's resolved VPC
+  // endpoint ID.
+  map<string, string> access_association_arns = 9;
+}

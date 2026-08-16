@@ -10,7 +10,7 @@ This orchestrator rule integrates a **new cloud provider** into Planton across a
 
 ## Role
 
-You are the Planton Code Partner. You add a new provider by following established patterns from existing providers (Auth0, OpenStack, Scaleway, AWS, GCP, Azure, etc.). You do NOT guess. When uncertain about authentication models, field mappings, or naming, you pause and ask the user.
+You are the Planton Code Partner. You add a new provider by following established patterns from existing providers (Auth0, DigitalOcean, Cloudflare, AWS, GCP, Azure, etc.). You do NOT guess. When uncertain about authentication models, field mappings, or naming, you pause and ask the user.
 
 ## What Forge Creates
 
@@ -34,21 +34,21 @@ A complete provider integration includes:
 
 **Examples:**
 ```
-@forge-planton-provider Scaleway --terraform-provider terraform-provider-scaleway
-@forge-planton-provider OpenStack --terraform-provider terraform-provider-openstack
-@forge-planton-provider Hetzner --terraform-provider terraform-provider-hcloud
+@forge-planton-provider DigitalOcean --terraform-provider terraform-provider-digitalocean
+@forge-planton-provider Cloudflare --terraform-provider terraform-provider-cloudflare
+@forge-planton-provider Auth0 --terraform-provider terraform-provider-auth0
 ```
 
 **Arguments:**
 
-- `<ProviderDisplayName>`: Human-readable name (e.g., "Scaleway", "Hetzner Cloud"). Used for display_name in proto metadata and UI labels.
+- `<ProviderDisplayName>`: Human-readable name (e.g., "Auth0", "DigitalOcean"). Used for display_name in proto metadata and UI labels.
 - `--terraform-provider <workspace-path>`: Path to the Terraform provider repository in the workspace. Used to research authentication model, environment variables, and provider docs URL.
 
 ---
 
 ## Execution Sequence
 
-9 phases with 2 interactive checkpoints. Each phase retries up to 3 times on fixable errors.
+8 phases with 1 interactive checkpoint. Each phase retries up to 3 times on fixable errors.
 
 ---
 
@@ -63,8 +63,8 @@ Read the Terraform provider source in the workspace to determine:
 1. **Provider configuration block**: Find the provider schema definition (typically in `internal/provider/` or the root). Look for the `Schema` map in the provider's `Configure` function to identify all accepted arguments.
 2. **Environment variables**: Identify every `XXXX_*` environment variable the provider reads. These are typically declared via `DefaultFunc: schema.EnvDefaultFrom("VARIABLE_NAME")` or similar patterns in the provider source.
 3. **Authentication model classification**:
-   - **Flat**: Single set of credential fields, all at the top level (like Scaleway's access_key/secret_key or Auth0's domain/client_id/client_secret). Most providers fall here.
-   - **Multi-method (oneof)**: Multiple distinct authentication methods where only one is active at a time (like OpenStack's password/application_credential/token). This is rare -- only use when the provider genuinely supports mutually exclusive auth strategies with different field sets.
+   - **Flat**: Single set of credential fields, all at the top level (like Auth0's domain/client_id/client_secret or DigitalOcean's api_token). Most providers fall here.
+   - **Multi-method (oneof)**: Multiple distinct authentication methods where only one is active at a time (e.g. a provider that accepts password auth, application credentials, or a pre-issued token as mutually exclusive strategies). This is rare -- only use when the provider genuinely supports mutually exclusive auth strategies with different field sets.
 4. **Required vs. optional fields**: Which fields are mandatory for authentication vs. optional configuration (region, zone, project scope, etc.).
 5. **Provider docs URL**: The Terraform registry URL, typically `https://registry.terraform.io/providers/<org>/<name>/latest/docs`.
 
@@ -76,10 +76,10 @@ Read `shared/cloudresourcekind/cloud_resource_provider.proto` -- find the highes
 
 From the display name, derive:
 
-- `provider_id`: lowercase snake_case for proto enum (e.g., `scaleway`, `digital_ocean`, `open_fga`)
-- `provider_package`: lowercase for Go package and proto package (e.g., `scaleway`, `openstack`, `auth0`)
-- `provider_group`: `<provider_package>.planton.dev` (e.g., `scaleway.planton.dev`)
-- `ProtoConfigName`: PascalCase + `ProviderConfig` (e.g., `ScalewayProviderConfig`, `OpenStackProviderConfig`)
+- `provider_id`: lowercase snake_case for proto enum (e.g., `auth0`, `digital_ocean`, `open_fga`)
+- `provider_package`: lowercase for Go package and proto package (e.g., `auth0`, `digitalocean`, `cloudflare`)
+- `provider_group`: `<provider_package>.planton.dev` (e.g., `auth0.planton.dev`)
+- `ProtoConfigName`: PascalCase + `ProviderConfig` (e.g., `Auth0ProviderConfig`, `DigitalOceanProviderConfig`)
 - `config_filename`: `<provider_package>-provider-config.yaml`
 
 **CHECKPOINT -- Present findings and ask for confirmation:**
@@ -110,11 +110,10 @@ Follow the pattern from existing providers. The proto file MUST include:
 - The `<ProtoConfigName>` message with:
   - Each field documented with its purpose and mapped environment variable
   - Required fields annotated with `[(buf.validate.field).required = true]`
-  - For **flat** providers: all fields at the top level (see `provider/scaleway/provider.proto`)
-  - For **multi-method** providers: a `oneof credentials` block with sub-messages per method, plus common fields outside the oneof (see `provider/openstack/provider.proto`)
+  - For **flat** providers: all fields at the top level (see `catalog/auth0/provider.proto`)
+  - For **multi-method** providers: a `oneof credentials` block with sub-messages per method, plus common fields outside the oneof
 
-**Pattern reference (flat):** `catalog/scaleway/provider.proto`
-**Pattern reference (multi-method):** `catalog/openstack/provider.proto`
+**Pattern reference (flat):** `catalog/auth0/provider.proto`
 
 **Step 1.2 -- MODIFY `shared/cloudresourcekind/cloud_resource_provider.proto`**
 
@@ -167,7 +166,7 @@ const ProviderDisplayName = "<ProviderDisplayName>"
 const ProviderDocsURL = "<terraform_registry_url>"
 ```
 
-**Pattern reference:** `catalog/scaleway/cli_help.go`
+**Pattern reference:** `catalog/auth0/cli_help.go`
 
 Guidelines:
 - Group required fields first, then optional with a `# Optional` separator
@@ -196,7 +195,7 @@ go_library(
 )
 ```
 
-**Pattern reference:** `catalog/scaleway/BUILD.bazel`
+**Pattern reference:** `catalog/auth0/BUILD.bazel`
 
 Note: If the provider proto uses `oneof` with sub-messages, the deps may need additional entries. Check the generated `provider.pb.go` after Phase 3 and update if needed.
 
@@ -256,8 +255,7 @@ func load<ProviderPascal>EnvVars(providerConfigYaml []byte) (map[string]string, 
 }
 ```
 
-**Pattern reference (flat):** `pkg/iac/stackinput/providerenvvars/scaleway.go`
-**Pattern reference (multi-method):** `pkg/iac/stackinput/providerenvvars/openstack.go`
+**Pattern reference (flat):** `pkg/iac/stackinput/providerenvvars/auth0.go`
 
 For flat providers, map each non-empty string field. For multi-method providers, switch on the `credentials` oneof case first, then handle common fields.
 
@@ -306,57 +304,7 @@ case cloudresourcekind.CloudResourceProvider_<provider_id>:
 
 ---
 
-### Phase 6: Catalog Documentation (2-3 files) (CHECKPOINT)
-
-**Goal:** Add the provider to the public documentation catalog.
-
-**CHECKPOINT -- Ask the user:**
-
-1. "Do you have an SVG icon for <ProviderDisplayName>? If so, please provide the file path. Otherwise, I will reference `default.svg` in the catalog."
-2. "Any specific description or resource list you want on the provider catalog page, or should I create a minimal placeholder indicating resources are coming soon?"
-
-**Step 6.1 -- CREATE `site/public/docs/catalog/<provider_package>/index.md`**
-
-```markdown
----
-title: "<PROVIDER_UPPER>"
-description: "Deploy <PROVIDER_UPPER> resources using Planton"
-icon: "cloud"
-order: <next_order_number>
----
-
-# <PROVIDER_UPPER>
-
-<ProviderDisplayName> provider registered. Components coming soon.
-
-For more information about <ProviderDisplayName>, see the [<ProviderDisplayName> Documentation](<provider_docs_url>).
-```
-
-If the user provides a list of planned resources, include them as a bullet list instead of the placeholder text.
-
-**Step 6.2 -- CREATE or PLACE `site/public/images/providers/<provider_package>.svg`**
-
-If the user provides an SVG, place it here. Otherwise, note that `default.svg` will be used in the catalog index.
-
-**Step 6.3 -- MODIFY `site/public/docs/catalog/index.md`**
-
-Add a provider card to the grid in **alphabetical order** among existing entries:
-
-```html
-<a href="/docs/catalog/<provider_package>" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">
-  <img src="/images/providers/<icon_filename>.svg" alt="<PROVIDER_UPPER>" class="w-8 h-8 object-contain" />
-  <div>
-    <div class="font-semibold text-white"><PROVIDER_UPPER></div>
-    <div class="text-sm text-slate-400">0 components</div>
-  </div>
-</a>
-```
-
-Use `default.svg` for `<icon_filename>` if no provider-specific icon was provided.
-
----
-
-### Phase 7: Build Validation
+### Phase 6: Build Validation
 
 **Goal:** Verify the entire integration compiles.
 
@@ -379,7 +327,7 @@ If any build fails, identify the error, fix it, and retry. Common issues:
 
 ---
 
-### Phase 8: Changelog
+### Phase 7: Changelog
 
 **Goal:** Document the integration with a structured changelog entry.
 
@@ -444,7 +392,7 @@ Added <ProviderDisplayName> as provider #<N> to Planton...
 **Build**: CLI and proto stubs pass
 ```
 
-**Pattern reference:** `_changelog/2026-02/2026-02-12-181851-scaleway-provider-integration.md`
+**Pattern reference:** `_changelog/2025-12/2025-12-30-054629-auth0-provider-integration.md`
 
 ---
 
@@ -453,57 +401,48 @@ Added <ProviderDisplayName> as provider #<N> to Planton...
 - Each phase retries up to 3 times on fixable errors (build failures, syntax errors).
 - If a phase fails after 3 attempts, STOP and report the error clearly. Do not proceed to the next phase.
 - Proto generation errors (Phase 3) block all subsequent phases.
-- Build validation errors (Phase 7) should be traced back to the originating phase and fixed there.
+- Build validation errors (Phase 6) should be traced back to the originating phase and fixed there.
 
 ## Progress Tracking
 
 Provide progress updates after each phase:
 
 ```
-[0/8] Research and discovery complete -- awaiting confirmation
-[1/8] Proto definitions created
-[2/8] Provider package created (cli_help.go, BUILD.bazel)
-[3/8] Proto stubs generated (make protos)
-[4/8] Stack input / env vars wired
-[5/8] Provider detection wired
-[6/8] Catalog documentation added -- awaiting confirmation
-[7/8] Build validation passed
-[8/8] Changelog written
+[0/7] Research and discovery complete -- awaiting confirmation
+[1/7] Proto definitions created
+[2/7] Provider package created (cli_help.go, BUILD.bazel)
+[3/7] Proto stubs generated (make protos)
+[4/7] Stack input / env vars wired
+[5/7] Provider detection wired
+[6/7] Build validation passed
+[7/7] Changelog written
 
 Provider integration complete!
 ```
 
 ## Reference Files
 
-These files serve as the canonical patterns. When in doubt, read the Scaleway implementation (flat model) or OpenStack implementation (multi-method model) and follow exactly.
+These files serve as the canonical patterns. When in doubt, read the Auth0 implementation (flat model) and follow exactly. No current provider uses the multi-method model; when one arrives, the `oneof credentials` shape described in Phase 1 is the contract.
 
 ### Proto Layer
-- `catalog/scaleway/provider.proto` -- flat provider config
-- `catalog/openstack/provider.proto` -- multi-method provider config
+- `catalog/auth0/provider.proto` -- flat provider config
 - `shared/cloudresourcekind/cloud_resource_provider.proto` -- provider enum
 
 ### Provider Package
-- `catalog/scaleway/cli_help.go` -- CLI constants
-- `catalog/scaleway/BUILD.bazel` -- Bazel build
+- `catalog/auth0/cli_help.go` -- CLI constants
+- `catalog/auth0/BUILD.bazel` -- Bazel build
 
 ### Stack Input / Env Vars
-- `pkg/iac/stackinput/providerenvvars/scaleway.go` -- flat env var loader
-- `pkg/iac/stackinput/providerenvvars/openstack.go` -- multi-method env var loader
+- `pkg/iac/stackinput/providerenvvars/auth0.go` -- flat env var loader
 - `pkg/iac/stackinput/providerenvvars/loader.go` -- main loader switch
 
 ### Provider Detection
 - `pkg/iac/stackinput/providerdetect/guidance.go` -- guidance switch functions
 - `pkg/iac/stackinput/providerdetect/validate.go` -- validation switch
 
-### Catalog
-- `site/public/docs/catalog/scaleway/index.md` -- provider catalog page
-- `site/public/docs/catalog/index.md` -- catalog index with provider cards
-- `site/public/images/providers/scaleway.svg` -- provider icon
-
 ### Changelog
-- `_changelog/2026-02/2026-02-12-181851-scaleway-provider-integration.md` -- Scaleway (flat, recent)
-- `_changelog/2026-02/2026-02-08-215116-openstack-provider-integration.md` -- OpenStack (multi-method)
-- `_changelog/2025-12/2025-12-30-054629-auth0-provider-integration.md` -- Auth0 (flat, earliest)
+- `_changelog/2025-12/2025-12-30-054629-auth0-provider-integration.md` -- Auth0 (flat)
+- `_changelog/2026-01/2026-01-17-075626-openfga-provider-integration.md` -- OpenFGA (flat)
 
 ## Authentication Model Decision Guide
 
@@ -512,13 +451,13 @@ Use this guide during Phase 0 to classify the provider:
 **Use FLAT model when:**
 - The provider has a single authentication method (API key, access key pair, client credentials, etc.)
 - All credential fields coexist without conflict
-- Examples: AWS (access key + secret), Auth0 (domain + client_id + client_secret), Scaleway (access key + secret key), Cloudflare (API token or API key + email), GCP (service account key)
+- Examples: AWS (access key + secret), Auth0 (domain + client_id + client_secret), DigitalOcean (API token), Cloudflare (API token or API key + email), GCP (service account key)
 
 **Use MULTI-METHOD (oneof) model when:**
 - The provider explicitly supports 2+ mutually exclusive authentication strategies
 - Each strategy requires different fields that would be confusing if presented together
 - The Terraform provider source has distinct code paths per auth method
-- Examples: OpenStack (password vs. application credentials vs. token)
+- Example shape: password auth vs. application credentials vs. a pre-issued token
 
 **When in doubt, prefer FLAT.** Most providers use a single auth method. The oneof model adds complexity across the layers (proto, env var loader with oneof switch, CLI guidance covering each method). Only use it when the provider genuinely supports fundamentally different auth strategies.
 

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kuberneteskarpenterec2nodeclass
+spec:
+  billing_model: free
+  free_tier: The EC2NodeClass itself -- the cluster-scoped machine template NodePools launch instances from (AMIs, subnets, security groups, IAM identity, disk layout, kubelet and IMDS posture) -- never bills. It is a Kubernetes API object the Karpenter controller reads; creating it launches nothing.
+  notes: "Nearly every field of this spec SHAPES EC2 spend without creating any: ami_selector_terms decide the image, block_device_mappings decide the EBS volumes (size, type, IOPS, throughput) every node carries, detailed_monitoring opts launched instances into per-minute CloudWatch metrics, and subnet placement influences data-transfer paths. All of that bills only when a NodePool provisions instances from this template -- the EC2 instance hours, EBS volumes, and CloudWatch charges accrue to the nodes Karpenter launches, which are owned by the node pool components and the AWS account, never by this resource."

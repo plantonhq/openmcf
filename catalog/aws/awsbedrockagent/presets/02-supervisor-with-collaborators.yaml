@@ -1,0 +1,39 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgent
+metadata:
+  name: support-supervisor
+spec:
+  region: us-west-2
+  description: Supervisor delegating billing questions to a specialist agent
+  foundationModel: amazon.nova-lite-v1:0
+  agentResourceRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: bedrock-agent-role
+      fieldPath: status.outputs.role_arn
+  instruction: >-
+    You are a support supervisor. Answer general questions yourself and
+    delegate billing or invoice questions to the billing collaborator.
+  agentCollaboration: SUPERVISOR
+  memory:
+    storageDays: 30
+  collaborators:
+    - name: billing
+      collaborationInstruction: >-
+        Handle all billing, payment, and invoice questions.
+      collaboratorAliasArn:
+        valueFrom:
+          kind: AwsBedrockAgent
+          name: billing-agent
+          fieldPath: status.outputs.alias_arns.live
+      relayConversationHistory: TO_COLLABORATOR
+  knowledgeBaseAssociations:
+    - name: docs
+      knowledgeBaseId:
+        valueFrom:
+          kind: AwsBedrockKnowledgeBase
+          name: product-docs
+          fieldPath: status.outputs.knowledge_base_id
+      description: Product documentation for troubleshooting answers.
+  aliases:
+    - name: live

@@ -1,0 +1,13 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerMlflowServer
+metadata:
+  name: regulated-mlflow
+spec:
+  region: us-west-2
+  artifactStoreUri: s3://regulated-mlflow/artifacts
+  roleArn:
+    value: arn:aws:iam::123456789012:role/mlflow-server
+  size: Medium
+  mlflowVersion: "3.0"
+  automaticModelRegistration: true
+  weeklyMaintenanceWindowStart: SUN:03:00

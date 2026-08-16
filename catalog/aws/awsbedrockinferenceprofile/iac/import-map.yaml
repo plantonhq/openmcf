@@ -1,0 +1,17 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsbedrockinferenceprofile
+spec:
+  # The application inference profile imports by its id (the module names
+  # the profile after the Planton resource, and AWS uses the name as the
+  # application profile's id).
+  values:
+    - name: inference_profile_id
+      derivations:
+        - from_stack_output: inference_profile_id
+        - from_metadata_name: true
+      where_to_find: >-
+        `aws bedrock list-inference-profiles --type-equals APPLICATION`
+        (inferenceProfileId), or Bedrock console -> Cross-region inference
+        -> Application inference profiles.

@@ -133,6 +133,10 @@ func resolveDerivation(d *componentv1.ImportValueDerivation, rctx ResolveContext
 		if rctx.MetadataName != "" && source.FromMetadataNameSuffix != "" {
 			return rctx.MetadataName + source.FromMetadataNameSuffix
 		}
+	case *componentv1.ImportValueDerivation_FromMetadataNamePrefix:
+		if rctx.MetadataName != "" && source.FromMetadataNamePrefix != "" {
+			return source.FromMetadataNamePrefix + rctx.MetadataName
+		}
 	case *componentv1.ImportValueDerivation_Literal:
 		return source.Literal
 	case *componentv1.ImportValueDerivation_FromClusterSecretKey:

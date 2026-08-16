@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesnamespace
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A namespace stores no data of its own -- it is a grouping object in etcd, whose encryption is owned by the target cluster. Data at rest belongs to the workloads and volumes deployed into the namespace.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With nothing stored (see enc-at-rest), there is no at-rest key to manage; etcd and volume encryption keys belong to the cluster and its storage classes.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The namespace itself carries no traffic. service_mesh_config enrolls the namespace's workloads in sidecar injection (Istio, Linkerd, or Consul), but the mTLS requirement itself is declared by mesh policies such as PeerAuthentication -- a separate kind.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A namespace has no network endpoint to expose. Public exposure is a property of the Services, Ingresses, and Gateways created inside it -- separate kinds.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: network_config.isolate_ingress
+      evidence:
+        type: spec_default
+        reference: Unset leaves the namespace open; when true, the module renders a NetworkPolicy selecting ALL pods with policy_types [Ingress] that allows traffic only from allowed_ingress_namespaces and from within the namespace itself -- default-deny with declared sources.
+      notes: network_config.restrict_egress is the outbound twin -- a default-deny egress policy allowing DNS to kube-system, allowed_egress_cidrs, and intra-namespace traffic. The 02-production-with-quotas preset enables both. Enforcement requires a CNI that implements NetworkPolicy; on a CNI that ignores them the objects exist but traffic still flows.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A namespace serves no inbound requests -- web application firewalls do not apply. Edge filtering belongs to the ingress and gateway components deployed into it.
+    - control_id: rbac
+      status: not_applicable
+      notes: The namespace is the SCOPE Kubernetes RBAC grants attach to, but this spec defines no roles or bindings -- access grants are the KubernetesRbac kind. Access to the namespace object itself is governed by the target cluster's RBAC.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A namespace authenticates to no cloud API. Keyless identity for the workloads inside it is configured on those workloads' service accounts -- separate kinds.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The namespace performs no authentication; there is no legacy authentication path to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Namespace operations (create, label, delete) are Kubernetes API calls, captured by the target cluster's audit policy. The component emits no log stream of its own.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A namespace emits no operational metrics. Its labels (merged with standard environment/team/cost-center labels) support monitoring and cost attribution of the workloads inside it, but the metrics belong to those workloads and the cluster.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: There is no data to back up -- the namespace and its governance objects (quota, limit range, network policies) are fully described by this declarative spec, re-appliable at any time. Workload data backup belongs to the workload kinds.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backups (see backup-recovery), there is no retention length to configure.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A namespace is an API object with no running replicas -- it exists cluster-wide by nature. Zone spread applies to the workloads inside it, not to the namespace.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on namespaces, and deleting one CASCADES to every object inside it -- the highest-blast-radius delete this component class has. Protection is operational (cluster RBAC on namespace delete, change review).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software to patch -- the namespace is configuration held by the cluster's API server, whose version lifecycle belongs to the cluster component.

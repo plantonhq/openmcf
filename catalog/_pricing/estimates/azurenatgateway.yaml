@@ -1,0 +1,51 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azurenatgateway
+spec:
+  presets:
+    - preset: 01-standard
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: NAT Gateway
+          sku_meter: gateway hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one STANDARD gateway billed the flat globally priced rate every hour of the month from creation, idle or busy
+          list_unit_price: "0.045"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'NAT Gateway' and armRegionName eq 'Global' and meterName eq 'Standard Gateway' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "32.8500"
+      total_list_cost: "32.8500"
+      exclusions:
+        - data processing bills every GB translated, in both directions
+        - the one attached public IP bills hourly on its own referenced component
+      notes: The gateway-hour line is the whole committed spend; traffic and the referenced address are the variables that live elsewhere.
+    - preset: 02-prefix-snat-range
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: NAT Gateway
+          sku_meter: gateway hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one STANDARD gateway billed the flat globally priced rate every hour of the month
+          list_unit_price: "0.045"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'NAT Gateway' and armRegionName eq 'Global' and meterName eq 'Standard Gateway' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "32.8500"
+      total_list_cost: "32.8500"
+      exclusions:
+        - data processing bills every GB translated, in both directions
+        - the attached public IP prefix bills every address it contains, hourly, on its own referenced component -- the prefix size lives on that component, not this manifest
+      notes: The prefix buys a contiguous, allowlistable SNAT range; its cost follows the prefix component.

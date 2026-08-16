@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesreferencegrant
+spec:
+  billing_model: free
+  free_tier: A ReferenceGrant is a Gateway API trust object -- a declaration that resources in other namespaces may reference specified kinds in this grant's namespace. It reserves no node capacity and no cloud SKU bills for it.
+  notes: "No field of this spec buys anything: the from and to entries are trust assertions about KINDS of resources (which Gateways or Routes may reference which Secrets or Services), consumed by the Gateway controller the cluster already runs. Real spend lives in the gateways, routes, and backend workloads the grant authorizes references between -- separate catalog kinds with their own cost profiles."

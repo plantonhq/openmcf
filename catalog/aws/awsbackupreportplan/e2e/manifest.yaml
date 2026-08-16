@@ -1,0 +1,23 @@
+# Canonical AwsBackupReportPlan example (hack/dev manifest and refgen
+# Example source): a daily backup-job report into S3. Literal names
+# stand in for composed references so the offline `tofu plan` renders
+# every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupReportPlan
+metadata:
+  name: daily-job-report
+  id: daily-job-report
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  reportPlanName: daily_backup_jobs
+  description: Daily backup job outcomes delivered to S3
+  deliveryChannel:
+    s3BucketName:
+      value: backup-reports-bucket
+    s3KeyPrefix: backup-reports
+    formats: ["CSV", "JSON"]
+  reportSetting:
+    reportTemplate: BACKUP_JOB_REPORT
+    regions: ["us-west-2"]

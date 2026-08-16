@@ -1,3 +1,0 @@
-name: openstack-project
-runtime: go
-description: Pulumi module for OpenStackProject

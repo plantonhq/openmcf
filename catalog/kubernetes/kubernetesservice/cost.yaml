@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesservice
+spec:
+  billing_model: free
+  free_tier: The Service object itself never bills. ClusterIP (and headless) services are pure in-cluster networking programmed by kube-proxy, ExternalName is a DNS CNAME, and NodePort only opens ports on nodes the cluster already pays for -- no provider SKU meters any of them.
+  notes: "One field deserves a loud warning: type set to load_balancer asks the cloud provider to provision a REAL external load balancer (AWS NLB/ELB, a GCP forwarding rule, an Azure load balancer -- shaped by the annotations), and that load balancer bills hourly and per-traffic from the moment it exists. The charge lands on the cloud provider account the cluster runs in -- it is programmed BY this object but metered on the cloud bill, not on any meter of this component. Deleting a LoadBalancer service deprovisions the LB and stops that spend. Everything else in the spec (selectors, ports, traffic policies, session affinity, dual-stack) shapes routing and buys nothing."

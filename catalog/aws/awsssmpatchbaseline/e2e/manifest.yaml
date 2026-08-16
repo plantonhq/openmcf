@@ -1,0 +1,58 @@
+# Canonical AwsSsmPatchBaseline example (hack/dev manifest and refgen
+# Example source): an Amazon Linux 2023 security baseline with both
+# approval-arm styles across two rules, a global filter, explicit
+# patch lists, an alternative repo source, governed patch groups, and
+# the default designation - so the offline `tofu plan` renders every
+# arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSsmPatchBaseline
+metadata:
+  name: al2023-security-baseline
+  id: al2023-security-baseline
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  operatingSystem: AMAZON_LINUX_2023
+  description: AL2023 security baseline with a 7-day soak
+  approvalRules:
+    - patchFilters:
+        - key: CLASSIFICATION
+          values:
+            - Security
+        - key: SEVERITY
+          values:
+            - Critical
+            - Important
+      approveAfterDays: 7
+      complianceLevel: CRITICAL
+    - patchFilters:
+        - key: CLASSIFICATION
+          values:
+            - Bugfix
+      approveUntilDate: "2026-12-31"
+      complianceLevel: LOW
+      enableNonSecurity: true
+  globalFilters:
+    - key: PRODUCT
+      values:
+        - AmazonLinux2023
+  approvedPatches:
+    - kernel-6.1.134
+  approvedPatchesComplianceLevel: HIGH
+  rejectedPatches:
+    - nginx-1.25.0
+  rejectedPatchesAction: BLOCK
+  sources:
+    - name: internal-repo
+      configuration: |
+        [internal]
+        name=Internal AL2023 mirror
+        baseurl=https://repo.example.com/al2023
+        enabled=1
+      products:
+        - AmazonLinux2023.3
+  patchGroups:
+    - prod-servers
+    - staging-servers
+  setAsDefaultBaseline: true

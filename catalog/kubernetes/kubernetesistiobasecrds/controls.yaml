@@ -1,0 +1,59 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesistiobasecrds
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: CRDs are API schema definitions stored in the cluster's etcd; encrypting that store is the target cluster control plane's property. This component stores no data of its own.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest), so customer-managed keys have no meaning here.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: CRDs serve no traffic. The Istio APIs they define (PeerAuthentication, DestinationRule) are the machinery OTHER components use to enforce mTLS -- but installing the schemas encrypts nothing by itself; no controller ships with this component.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: CRDs are not network-addressable; they extend the Kubernetes API surface, which is the cluster's own exposure posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound traffic reaches CRDs, so there are no network sources to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No requests flow through CRDs, so a web application firewall does not apply.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may install or modify CRDs (a cluster-admin-grade operation) and who may create the Istio custom resources they define is the target cluster's own Kubernetes RBAC; this spec configures nothing.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component authenticates to nothing -- it holds no credentials and calls no cloud APIs (the module fetches the CRD bundle from the pinned istio/istio release over HTTPS at plan time, on the runner's side).
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: There is no authentication path into CRDs beyond the Kubernetes API itself, so no legacy mechanism exists to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: CRD installation and every subsequent custom-resource operation are Kubernetes API operations, captured by the target cluster's audit policy; the CRDs emit nothing of their own.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: CRDs have no runtime behavior to monitor. Istio telemetry begins when a control plane and data plane are installed -- separate components.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The bundle is fully declarative -- re-applying the module reinstalls the exact pinned CRD set. The custom resources users create AGAINST these CRDs are owned by their respective components.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist for this component (see backup-recovery), so retention has nothing to govern.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: CRDs live in the cluster control plane's own storage; their availability is the API server's availability. There is no footprint to replicate.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on CustomResourceDefinitions -- and deleting a CRD cascades deletion of EVERY custom resource of that kind cluster-wide, which makes operational protection (cluster RBAC, change review) genuinely load-bearing for this component.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Nothing runs here to patch. The installed CRD schema is pinned to the Istio release the typed SDK was generated against -- the spec deliberately has no version field, so schema updates arrive only through module upgrades, never through user drift.

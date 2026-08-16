@@ -1,0 +1,22 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSsmPatchBaseline
+metadata:
+  name: windows-default
+spec:
+  region: <aws-region>
+  operatingSystem: WINDOWS
+  description: Account default for Windows - security and critical updates
+  approvalRules:
+    - patchFilters:
+        - key: CLASSIFICATION
+          values:
+            - SecurityUpdates
+            - CriticalUpdates
+        - key: MSRC_SEVERITY
+          values:
+            - Critical
+            - Important
+      approveAfterDays: 3
+      complianceLevel: HIGH
+  availableSecurityUpdatesComplianceStatus: NON_COMPLIANT
+  setAsDefaultBaseline: true

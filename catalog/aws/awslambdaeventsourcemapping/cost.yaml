@@ -1,0 +1,59 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awslambdaeventsourcemapping
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: provisioned_pollers.minimum_pollers
+      sku_meter: provisioned event pollers
+      pricing_unit: EPU-hours
+      impact: Provisioned mode's floor bills around the clock from creation, traffic or not -- pollers are packed onto Event Poller Units (10 pollers per EPU at default density for Kafka sources), and the minimum holds those EPUs allocated. The one opt-in that turns this free glue into committed spend.
+    - field_path: provisioned_pollers.maximum_pollers
+      sku_meter: provisioned event pollers
+      pricing_unit: EPU-hours
+      impact: The autoscaling ceiling -- pollers above the minimum bill additional EPU-hours only while scaled up.
+    - field_path: batch_size
+      sku_meter: function invocations
+      pricing_unit: requests
+      impact: Larger batches mean fewer billed invocations of the wired function for the same record volume -- and for SQS sources, fewer billed receive requests on the queue.
+    - field_path: maximum_batching_window_seconds
+      sku_meter: function invocations
+      pricing_unit: requests
+      impact: Waiting to fill batches trades latency for fewer invocations -- the batching window is the second half of the batch-size dial.
+    - field_path: parallelization_factor
+      sku_meter: function invocations
+      pricing_unit: requests
+      impact: Concurrent batches per Kinesis/DynamoDB shard (1-10) multiply concurrent function invocations -- throughput bought with invocation concurrency.
+    - field_path: scaling_max_concurrency
+      sku_meter: function invocations
+      pricing_unit: requests
+      impact: Caps concurrent function invocations from an SQS source -- the manifest's spend ceiling on the wired function.
+    - field_path: maximum_retry_attempts
+      sku_meter: function invocations
+      pricing_unit: requests
+      impact: Each retry of a failed batch is a fresh billed invocation; bisect_batch_on_function_error further multiplies attempts by splitting failed batches.
+    - field_path: filters
+      sku_meter: function invocations
+      pricing_unit: requests
+      impact: Filter patterns drop non-matching records before they ever invoke the function -- filtering is free, the invocations it prevents are not.
+    - field_path: starting_position
+      sku_meter: function invocations
+      pricing_unit: requests
+      impact: TRIM_HORIZON replays the stream's entire retained backlog on first enable -- a one-time invocation surge proportional to history.
+    - field_path: metrics
+      sku_meter: CloudWatch metrics
+      pricing_unit: metrics
+      impact: Enabling EventCount, ErrorCount, or Kafka metrics bills each as a custom CloudWatch metric per month.
+    - field_path: disabled
+      sku_meter: provisioned event pollers
+      pricing_unit: EPU-hours
+      impact: Disabling the mapping stops polling and invocations; provisioned-mode EPUs stop billing only when the provisioned_pollers block is removed.
+  estimate_exclusions:
+    - the wired function's invocations and compute duration bill on its AwsLambda component -- this mapping only sets how many invocations happen
+    - source-side reads bill on the source component (SQS requests, Kinesis shard throughput, MSK cluster capacity)
+    - under heavy per-poller throughput, enhanced EPU utilization packs fewer pollers per EPU and allocates more EPUs -- workload-dependent
+  notes: "In default (on-demand) mode this component is free glue -- the polling infrastructure carries no charge of its own, and the entire bill lands on the function and the source. Provisioned mode (provisioned_pollers) is the explicit exception, billing Event-Poller-Unit hours from the moment it is configured."

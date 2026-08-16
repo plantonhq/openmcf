@@ -1,0 +1,146 @@
+# Canonical AwsBedrockFlow example (hack/dev manifest and refgen Example
+# source): a routing pipeline exercising the node classes -- input,
+# inline prompt, condition, knowledge base, inline code, retrieval, and
+# outputs -- with data and conditional connections. Literal ARNs/ids
+# stand in for composed references so the offline `tofu plan` renders
+# every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockFlow
+metadata:
+  name: support-router
+  id: support-router
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  description: Classify a request, answer from docs or summarize inline
+  executionRoleArn:
+    value: arn:aws:iam::123456789012:role/bedrock-flow-role
+  definition:
+    nodes:
+      - name: FlowInput
+        type: Input
+        outputs:
+          - name: document
+            type: String
+      - name: Classify
+        type: Prompt
+        inputs:
+          - name: input
+            expression: $.data
+            type: String
+        outputs:
+          - name: modelCompletion
+            type: String
+        prompt:
+          inline:
+            modelId: amazon.nova-micro-v1:0
+            text:
+              text: "Classify this request as billing or docs: {{input}}"
+              inputVariables:
+                - input
+            inferenceConfiguration:
+              temperature: 0
+      - name: Route
+        type: Condition
+        inputs:
+          - name: category
+            expression: $.data
+            type: String
+        condition:
+          conditions:
+            - name: billing
+              expression: category == "billing"
+            - name: default
+      - name: AskKb
+        type: KnowledgeBase
+        inputs:
+          - name: retrievalQuery
+            expression: $.data
+            type: String
+        outputs:
+          - name: outputText
+            type: String
+        knowledgeBase:
+          knowledgeBaseId:
+            value: KBEXAMPLE01
+          modelId: amazon.nova-micro-v1:0
+          numberOfResults: 3
+      - name: Summarize
+        type: InlineCode
+        inputs:
+          - name: doc
+            expression: $.data
+            type: String
+        outputs:
+          - name: summary
+            type: String
+        inlineCode:
+          code: |
+            def handler(doc):
+                return doc[:200]
+      - name: FetchContext
+        type: Retrieval
+        inputs:
+          - name: retrievalPath
+            expression: $.data
+            type: String
+        outputs:
+          - name: retrievedData
+            type: String
+        retrieval:
+          bucketName:
+            value: support-context-bucket
+      - name: FlowOutput
+        type: Output
+        inputs:
+          - name: document
+            expression: $.data
+            type: String
+      - name: RawOutput
+        type: Output
+        inputs:
+          - name: document
+            expression: $.data
+            type: String
+    connections:
+      - name: InToClassify
+        source: FlowInput
+        target: Classify
+        data:
+          sourceOutput: document
+          targetInput: input
+      - name: ClassifyToRoute
+        source: Classify
+        target: Route
+        data:
+          sourceOutput: modelCompletion
+          targetInput: category
+      - name: ClassifyToKb
+        source: Classify
+        target: AskKb
+        data:
+          sourceOutput: modelCompletion
+          targetInput: retrievalQuery
+      - name: RouteBilling
+        source: Route
+        target: AskKb
+        conditional:
+          condition: billing
+      - name: ClassifyToRaw
+        source: Classify
+        target: RawOutput
+        data:
+          sourceOutput: modelCompletion
+          targetInput: document
+      - name: RouteDefault
+        source: Route
+        target: RawOutput
+        conditional:
+          condition: default
+      - name: KbToOut
+        source: AskKb
+        target: FlowOutput
+        data:
+          sourceOutput: outputText
+          targetInput: document

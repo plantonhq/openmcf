@@ -7617,6 +7617,332 @@ func TestStackOutputsConformance(t *testing.T) {
 				"web_ui_password_secret", "port_forward_command",
 			},
 		},
+		{
+			// AwsSecretsManagerSecret: secret_arn keys the E2E verifier and
+			// is the canonical join key (AWS appends a random suffix, so the
+			// ARN is never derivable from the name); version_id is exported
+			// in EVERY arm (empty for a shell secret) so the output shape is
+			// engine- and configuration-invariant.
+			name: "AwsSecretsManagerSecret",
+			kind: cloudresourcekind.CloudResourceKind_AwsSecretsManagerSecret,
+			rawOutputs: map[string]interface{}{
+				"secret_arn":  "arn:aws:secretsmanager:us-west-2:123456789012:secret:prod/payments/db-AbCdEf",
+				"secret_name": "prod/payments/db",
+				"version_id":  "12345678-90ab-cdef-1234-567890abcdef",
+			},
+			mustPopulate: []string{
+				"secret_arn", "secret_name", "version_id",
+			},
+		},
+		{
+			// AwsOpenSearchServerlessCollection: collection_name keys the
+			// E2E verifier; collection_arn is the vector-store join key for
+			// Bedrock knowledge bases; the endpoints are what applications
+			// and Dashboards users connect to; kms_key_arn echoes the
+			// effective key (AWS-owned or customer-managed).
+			name: "AwsOpenSearchServerlessCollection",
+			kind: cloudresourcekind.CloudResourceKind_AwsOpenSearchServerlessCollection,
+			rawOutputs: map[string]interface{}{
+				"collection_id":       "a1b2c3d4e5f6g7",
+				"collection_arn":      "arn:aws:aoss:us-west-2:123456789012:collection/a1b2c3d4e5f6g7",
+				"collection_name":     "app-search",
+				"collection_endpoint": "https://a1b2c3d4e5f6g7.us-west-2.aoss.amazonaws.com",
+				"dashboard_endpoint":  "https://a1b2c3d4e5f6g7.us-west-2.aoss.amazonaws.com/_dashboards",
+				"kms_key_arn":         "arn:aws:kms:us-west-2:123456789012:key/aws-owned",
+			},
+			mustPopulate: []string{
+				"collection_id", "collection_arn", "collection_name",
+				"collection_endpoint", "dashboard_endpoint", "kms_key_arn",
+			},
+		},
+		{
+			// AwsBedrockGuardrail: guardrail_id keys the E2E verifier;
+			// consumers pin guardrail_id + a version_numbers entry (the
+			// name-keyed published-version map -- AWS assigns the numbers);
+			// draft_version is the literal DRAFT.
+			name: "AwsBedrockGuardrail",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockGuardrail,
+			rawOutputs: map[string]interface{}{
+				"guardrail_id":  "gr1a2b3c4d5e",
+				"guardrail_arn": "arn:aws:bedrock:us-west-2:123456789012:guardrail/gr1a2b3c4d5e",
+				"draft_version": "DRAFT",
+				"version_numbers": map[string]interface{}{
+					"prod": "1",
+				},
+			},
+			mustPopulate: []string{
+				"guardrail_id", "guardrail_arn", "draft_version", "version_numbers",
+			},
+		},
+		{
+			// AwsBedrockCustomModel: job_arn keys the E2E verifier (the job
+			// is the tracked object); custom_model_arn is what provisioned
+			// throughput references; job_status reports the async training
+			// outcome.
+			name: "AwsBedrockCustomModel",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockCustomModel,
+			rawOutputs: map[string]interface{}{
+				"custom_model_arn":  "arn:aws:bedrock:us-east-1:123456789012:custom-model/amazon.titan-text-lite-v1/abc123def456",
+				"custom_model_name": "support-titan-ft",
+				"job_arn":           "arn:aws:bedrock:us-east-1:123456789012:model-customization-job/amazon.titan-text-lite-v1/xyz789",
+				"job_status":        "InProgress",
+			},
+			mustPopulate: []string{
+				"custom_model_arn", "custom_model_name", "job_arn", "job_status",
+			},
+		},
+		{
+			// AwsBedrockInferenceProfile: inference_profile_id keys the E2E
+			// verifier; the ARN is the modelId applications invoke through.
+			name: "AwsBedrockInferenceProfile",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockInferenceProfile,
+			rawOutputs: map[string]interface{}{
+				"inference_profile_arn": "arn:aws:bedrock:us-west-2:123456789012:application-inference-profile/checkout-nova",
+				"inference_profile_id":  "checkout-nova",
+				"status":                "ACTIVE",
+				"type":                  "APPLICATION",
+			},
+			mustPopulate: []string{
+				"inference_profile_arn", "inference_profile_id", "status", "type",
+			},
+		},
+		{
+			// AwsBedrockProvisionedThroughput: provisioned_model_arn keys
+			// the E2E verifier and is the modelId applications invoke
+			// through.
+			name: "AwsBedrockProvisionedThroughput",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockProvisionedThroughput,
+			rawOutputs: map[string]interface{}{
+				"provisioned_model_arn":  "arn:aws:bedrock:us-east-1:123456789012:provisioned-model/1y5n57gh5y2e",
+				"provisioned_model_name": "support-model-capacity",
+			},
+			mustPopulate: []string{
+				"provisioned_model_arn", "provisioned_model_name",
+			},
+		},
+		{
+			// AwsBedrockModelAccess: model_id keys the E2E verifier and is
+			// the chart-ordering join key for model-consuming components.
+			name: "AwsBedrockModelAccess",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockModelAccess,
+			rawOutputs: map[string]interface{}{
+				"model_id": "mistral.mistral-7b-instruct-v0:2",
+			},
+			mustPopulate: []string{
+				"model_id",
+			},
+		},
+		{
+			// AwsBedrockAgent: agent_id keys the E2E verifier; the
+			// name-keyed satellite maps (alias_arns especially -- the
+			// value supervisors, prompts, and flows consume) feed the
+			// keyed-by-address import derivations.
+			name: "AwsBedrockAgent",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockAgent,
+			rawOutputs: map[string]interface{}{
+				"agent_id":      "GGRRAED6JP",
+				"agent_arn":     "arn:aws:bedrock:us-west-2:123456789012:agent/GGRRAED6JP",
+				"draft_version": "DRAFT",
+				"alias_ids": map[string]interface{}{
+					"live": "66IVY0GUTF",
+				},
+				"alias_arns": map[string]interface{}{
+					"live": "arn:aws:bedrock:us-west-2:123456789012:agent-alias/GGRRAED6JP/66IVY0GUTF",
+				},
+				"action_group_ids": map[string]interface{}{
+					"orders": "MMAUDBZTH4",
+				},
+				"collaborator_ids": map[string]interface{}{
+					"billing": "AG3TN4RQIY",
+				},
+				"associated_knowledge_base_ids": map[string]interface{}{
+					"docs": "EMDPPAYPZI",
+				},
+			},
+			mustPopulate: []string{
+				"agent_id", "agent_arn", "draft_version", "alias_ids",
+				"alias_arns", "action_group_ids", "collaborator_ids",
+				"associated_knowledge_base_ids",
+			},
+		},
+		{
+			// AwsBedrockKnowledgeBase: knowledge_base_id keys the E2E
+			// verifier and is what agents and flows consume; the
+			// name-keyed data_source_ids map feeds the keyed-by-address
+			// import derivations.
+			name: "AwsBedrockKnowledgeBase",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockKnowledgeBase,
+			rawOutputs: map[string]interface{}{
+				"knowledge_base_id":  "EMDPPAYPZI",
+				"knowledge_base_arn": "arn:aws:bedrock:us-west-2:123456789012:knowledge-base/EMDPPAYPZI",
+				"data_source_ids": map[string]interface{}{
+					"docs": "GWCMFMQF6T",
+				},
+			},
+			mustPopulate: []string{
+				"knowledge_base_id", "knowledge_base_arn", "data_source_ids",
+			},
+		},
+		{
+			// AwsBedrockFlow: flow_id keys the E2E verifier; flow_arn is
+			// the invocation key; draft_version is the literal DRAFT.
+			name: "AwsBedrockFlow",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockFlow,
+			rawOutputs: map[string]interface{}{
+				"flow_id":       "FLOWID1234",
+				"flow_arn":      "arn:aws:bedrock:us-west-2:123456789012:flow/FLOWID1234",
+				"draft_version": "DRAFT",
+			},
+			mustPopulate: []string{
+				"flow_id", "flow_arn", "draft_version",
+			},
+		},
+		{
+			// AwsBedrockPrompt: prompt_id keys the E2E verifier;
+			// prompt_arn is what a flow's prompt node consumes;
+			// draft_version is the literal DRAFT.
+			name: "AwsBedrockPrompt",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockPrompt,
+			rawOutputs: map[string]interface{}{
+				"prompt_id":     "1A2BC3DEFG",
+				"prompt_arn":    "arn:aws:bedrock:us-west-2:123456789012:prompt/1A2BC3DEFG",
+				"draft_version": "DRAFT",
+			},
+			mustPopulate: []string{
+				"prompt_id", "prompt_arn", "draft_version",
+			},
+		},
+		{
+			// AwsBedrockAgentCoreRuntime: agent_runtime_id keys the E2E
+			// verifier; agent_runtime_arn is what gateway HTTP targets
+			// and the resource policy consume; the name-keyed
+			// endpoint_arns map feeds the keyed-by-address import
+			// derivations (an endpoint's AWS identity IS its name).
+			name: "AwsBedrockAgentCoreRuntime",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockAgentCoreRuntime,
+			rawOutputs: map[string]interface{}{
+				"agent_runtime_id":      "support_agent-Ab1Cd2Ef3G",
+				"agent_runtime_arn":     "arn:aws:bedrock-agentcore:us-west-2:123456789012:runtime/support_agent-Ab1Cd2Ef3G",
+				"agent_runtime_version": "1",
+				"workload_identity_arn": "arn:aws:bedrock-agentcore:us-west-2:123456789012:workload-identity-directory/default/workload-identity/support_agent-Ab1Cd2Ef3G",
+				"endpoint_arns": map[string]interface{}{
+					"live": "arn:aws:bedrock-agentcore:us-west-2:123456789012:runtime/support_agent-Ab1Cd2Ef3G/runtime-endpoint/live",
+				},
+			},
+			mustPopulate: []string{
+				"agent_runtime_id", "agent_runtime_arn",
+				"agent_runtime_version", "workload_identity_arn",
+				"endpoint_arns",
+			},
+		},
+		{
+			// AwsBedrockAgentCoreGateway: gateway_id keys the E2E
+			// verifier; gateway_url is the MCP URL agents connect to;
+			// the name-keyed target_ids map feeds the keyed-by-address
+			// import derivations.
+			name: "AwsBedrockAgentCoreGateway",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockAgentCoreGateway,
+			rawOutputs: map[string]interface{}{
+				"gateway_id":            "support-tools-abc123de45",
+				"gateway_arn":           "arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/support-tools-abc123de45",
+				"gateway_url":           "https://support-tools-abc123de45.gateway.bedrock-agentcore.us-west-2.amazonaws.com/mcp",
+				"workload_identity_arn": "arn:aws:bedrock-agentcore:us-west-2:123456789012:workload-identity-directory/default/workload-identity/support-tools-abc123de45",
+				"target_ids": map[string]interface{}{
+					"orders": "TGT123ABC4",
+				},
+			},
+			mustPopulate: []string{
+				"gateway_id", "gateway_arn", "gateway_url",
+				"workload_identity_arn", "target_ids",
+			},
+		},
+		{
+			// AwsBedrockAgentCoreMemory: memory_id keys the E2E verifier;
+			// memory_arn is what harnesses and agent code consume; the
+			// name-keyed strategy_ids map feeds the keyed-by-address
+			// import derivations.
+			name: "AwsBedrockAgentCoreMemory",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockAgentCoreMemory,
+			rawOutputs: map[string]interface{}{
+				"memory_id":  "support_memory-Ab1Cd2Ef3G",
+				"memory_arn": "arn:aws:bedrock-agentcore:us-west-2:123456789012:memory/support_memory-Ab1Cd2Ef3G",
+				"strategy_ids": map[string]interface{}{
+					"facts": "facts-Zy9Xw8Vu7T",
+				},
+			},
+			mustPopulate: []string{
+				"memory_id", "memory_arn", "strategy_ids",
+			},
+		},
+		{
+			// AwsBedrockAgentCoreIdentity: every arm is a name-keyed map
+			// (the bundle has no single id); the provider ARNs are what
+			// gateway target credentials consume, and policy_engine_arn
+			// is what a gateway's policy-engine attachment consumes.
+			name: "AwsBedrockAgentCoreIdentity",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockAgentCoreIdentity,
+			rawOutputs: map[string]interface{}{
+				"workload_identity_arns": map[string]interface{}{
+					"support-agent": "arn:aws:bedrock-agentcore:us-west-2:123456789012:workload-identity-directory/default/workload-identity/support-agent",
+				},
+				"api_key_provider_arns": map[string]interface{}{
+					"docs-api": "arn:aws:bedrock-agentcore:us-west-2:123456789012:token-vault/default/apikeycredentialprovider/docs-api",
+				},
+				"api_key_secret_arns": map[string]interface{}{
+					"docs-api": "arn:aws:secretsmanager:us-west-2:123456789012:secret:bedrock-agentcore-identity!default/apikey/docs-api-AbCdEf",
+				},
+				"oauth2_provider_arns": map[string]interface{}{
+					"github": "arn:aws:bedrock-agentcore:us-west-2:123456789012:token-vault/default/oauth2credentialprovider/github",
+				},
+				"oauth2_client_secret_arns": map[string]interface{}{
+					"github": "arn:aws:secretsmanager:us-west-2:123456789012:secret:bedrock-agentcore-identity!default/oauth2/github-AbCdEf",
+				},
+				"policy_engine_id":  "agent_authz-a1b2c3d4e5",
+				"policy_engine_arn": "arn:aws:bedrock-agentcore:us-west-2:123456789012:policy-engine/agent_authz-a1b2c3d4e5",
+				"policy_ids": map[string]interface{}{
+					"allow_order_reads": "allow_order_reads-f6g7h8i9j0",
+				},
+			},
+			mustPopulate: []string{
+				"workload_identity_arns", "api_key_provider_arns",
+				"api_key_secret_arns", "oauth2_provider_arns",
+				"oauth2_client_secret_arns", "policy_engine_id",
+				"policy_engine_arn", "policy_ids",
+			},
+		},
+		{
+			// AwsBedrockAgentCoreTools: every arm is a name-keyed map
+			// (the bundle has no single id); the ARNs are what harness
+			// browser/code-interpreter tools consume, and the id maps
+			// feed the keyed-by-address import derivations.
+			name: "AwsBedrockAgentCoreTools",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockAgentCoreTools,
+			rawOutputs: map[string]interface{}{
+				"browser_ids": map[string]interface{}{
+					"research-browser": "research-browser-Ab1Cd2Ef3G",
+				},
+				"browser_arns": map[string]interface{}{
+					"research-browser": "arn:aws:bedrock-agentcore:us-west-2:123456789012:browser/research-browser-Ab1Cd2Ef3G",
+				},
+				"browser_profile_ids": map[string]interface{}{
+					"logged_in_docs": "logged_in_docs-Zy9Xw8Vu7T",
+				},
+				"browser_profile_arns": map[string]interface{}{
+					"logged_in_docs": "arn:aws:bedrock-agentcore:us-west-2:123456789012:browser-profile/logged_in_docs-Zy9Xw8Vu7T",
+				},
+				"code_interpreter_ids": map[string]interface{}{
+					"python_sandbox": "python_sandbox-Qw2Er4Ty6U",
+				},
+				"code_interpreter_arns": map[string]interface{}{
+					"python_sandbox": "arn:aws:bedrock-agentcore:us-west-2:123456789012:code-interpreter/python_sandbox-Qw2Er4Ty6U",
+				},
+			},
+			mustPopulate: []string{
+				"browser_ids", "browser_arns", "browser_profile_ids",
+				"browser_profile_arns", "code_interpreter_ids",
+				"code_interpreter_arns",
+			},
+		},
 	}
 
 	for _, tc := range cases {

@@ -1,0 +1,32 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsalb
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Elastic Load Balancing
+      sku_meter: Application Load Balancer hours
+      pricing_unit: hours
+      description: Hourly charge for the load balancer's existence, accruing from creation regardless of traffic.
+  cost_drivers:
+    - field_path: minimum_load_balancer_capacity_units
+      sku_meter: reserved Load Balancer Capacity Units
+      pricing_unit: LCU-hours
+      impact: Reserved LCUs bill for the full reservation every hour while set, on top of usage-driven LCUs. Set it for the surge window, then remove it.
+    - field_path: ip_address_type
+      sku_meter: public IPv4 address usage
+      pricing_unit: IP-hours
+      impact: Internet-facing nodes each hold a billed public IPv4 address; choosing dualstack-without-public-ipv4 serves IPv6-capable clients without public-IPv4 charges.
+    - field_path: internal
+      sku_meter: public IPv4 address usage
+      pricing_unit: IP-hours
+      impact: An internal load balancer holds no public IPv4 addresses, removing that charge entirely.
+  estimate_exclusions:
+    - LCU usage (new connections, active connections, processed bytes, rule evaluations) is traffic-dependent
+    - data transfer out to the internet
+    - public IPv4 address count scales with the number of load balancer nodes (one per Availability Zone)
+  notes: Delivery of access, connection, and health-check logs is free at the load balancer; stored log bytes bill to the destination S3 bucket's own cost. The hourly baseline is the only certainty at manifest time -- everything else scales with traffic.

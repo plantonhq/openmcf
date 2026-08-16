@@ -13,7 +13,6 @@ spec:
     Secrets, the Web UI on, and your first Temporal namespace created
     declaratively.
   iconUrl: https://downloads.planton.dev/catalog/logos/kubernetes/kubernetestemporal/logo.svg
-  isReady: true
   webLinks:
     chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/kubernetes/self-hosted-temporal
     readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/kubernetes/self-hosted-temporal/README.md

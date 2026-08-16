@@ -1,0 +1,55 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsecstaskdefinition
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: cpu
+      sku_meter: task vCPU hours
+      pricing_unit: vCPU-hours
+      impact: The definition's vCPU allocation is the rate card every running copy bills against -- it materializes as spend only when an AwsEcsService (or RunTask) runs this definition.
+    - field_path: memory
+      sku_meter: task memory hours
+      pricing_unit: GB-hours
+      impact: The memory half of the per-task rate card, billed per GB-hour by every running copy.
+    - field_path: runtime_platform.cpu_architecture
+      sku_meter: task vCPU hours
+      pricing_unit: vCPU-hours
+      impact: ARM64 Fargate bills roughly 20% below X86_64 for the same allocation -- the cheapest change a workload that runs on Graviton can make.
+    - field_path: runtime_platform.operating_system_family
+      sku_meter: task vCPU hours
+      pricing_unit: vCPU-hours
+      impact: Windows tasks carry a per-vCPU-hour OS licensing surcharge on top of the Linux rate.
+    - field_path: ephemeral_storage_gib
+      sku_meter: task ephemeral storage
+      pricing_unit: GB-hours
+      impact: Scratch space above the free 20 GiB bills per GB-hour on every running Fargate task.
+    - field_path: containers.gpu_count
+      sku_meter: task vCPU hours
+      pricing_unit: vCPU-hours
+      impact: GPU containers require GPU-bearing capacity -- on EC2 launch type the instance rate, and on Fargate the GPU task rates.
+    - field_path: logging.retention_days
+      sku_meter: log storage
+      pricing_unit: GB-months
+      impact: The module's auto-created CloudWatch log group retains task output this many days (default 30) -- retention times log volume is the storage bill.
+    - field_path: logging.disabled
+      sku_meter: log ingestion
+      pricing_unit: GB
+      impact: Container stdout/stderr ships to CloudWatch at ingestion rates unless logging is disabled -- volume follows application chattiness.
+    - field_path: containers.log_configuration
+      sku_meter: log ingestion
+      pricing_unit: GB
+      impact: A per-container log driver override (awsfirelens, third-party sinks) moves ingestion cost to the declared destination.
+    - field_path: containers.secrets
+      sku_meter: secret retrievals
+      pricing_unit: requests
+      impact: Each task start resolves the referenced Secrets Manager or SSM parameters -- per-call charges multiplied by task churn.
+  estimate_exclusions:
+    - registering a task definition is free -- cpu/memory here are a rate card that bills nothing until a service runs copies, which is where count lives
+    - log ingestion and storage follow application output volume through the auto-created log group
+    - EFS and S3 volumes bill on the referenced file systems and buckets
+  notes: "The near-free component: revisions are free metadata, and the one real resource the module creates -- the CloudWatch log group (when logging is enabled and no existing group is referenced) -- bills only for what tasks write into it. The Fargate rates this definition's cpu/memory select are joined with a service's desired_count at composition time."

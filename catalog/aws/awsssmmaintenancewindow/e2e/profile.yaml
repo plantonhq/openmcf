@@ -1,0 +1,32 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsssmmaintenancewindow
+spec:
+  # A maintenance window under live E2E, created DISABLED (the
+  # presence-typed explicit-false enabled - its live proof) with one
+  # tag target matching nothing, an untargeted run-command task, and
+  # an automation task - nothing ever executes and the lane bills
+  # nothing (windows/targets/tasks are free).
+  #
+  # Deliberately not exercised live:
+  #   - LAMBDA / STEP_FUNCTIONS task arms -- each needs a real function
+  #     or state machine fixture as its task_arn. Unblock: AwsLambda /
+  #     AwsStepFunction fixtures via scenario annotations.
+  #   - a task targeting a REGISTERED window target (key
+  #     WindowTargetIds) -- the target registration ID is
+  #     cloud-generated, so the scenario cannot carry it statically.
+  #     Unblock: a harness cross-resource-output token, or the import
+  #     round-trip (which walks target_ids/task_ids and proves the
+  #     composite identities regardless).
+  #   - run-command S3/CloudWatch/SNS delivery -- output nothing ever
+  #     writes; needs bucket/log-group/topic fixtures. Unblock:
+  #     fixtures via scenario annotations when the proof queue wants
+  #     the delivery path.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q42
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

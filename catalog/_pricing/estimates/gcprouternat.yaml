@@ -1,0 +1,62 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcprouternat
+spec:
+  presets:
+    - preset: 01-all-subnets-auto
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - public NAT bills per VM endpoint-hour -- with no VMs behind the gateway yet, the committed spend is zero, and each endpoint adds its per-hour rate up to the 32-endpoint cap
+        - auto-allocated external addresses bill per IP-hour as Google scales the pool with endpoint count
+        - data processing bills every GiB translated, in both directions
+      notes: An idle public NAT gateway with auto-allocated addresses costs exactly zero -- the meters start with the first VM endpoint and the first byte.
+    - preset: 02-static-ip-allowlisting
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Networking
+          sku_meter: NAT external IP usage
+          pricing_unit: IP-hours
+          pricing_quantity: "1460"
+          quantity_basis: 2 manually attached static addresses x 730 hours -- each address assigned to the gateway bills per IP-hour for the whole month regardless of traffic
+          list_unit_price: "0.005"
+          price_source: https://cloudbilling.googleapis.com/v1/services/E505-1604-58F8/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "7.3000"
+      total_list_cost: "7.3000"
+      exclusions:
+        - per-VM endpoint-hours and per-GiB data processing follow the workloads scoped by the subnetwork list
+        - the GcpAddress reservations themselves bill on their own components only while unattached; assigned to this gateway, their cost is the IP-usage line above
+        - Cloud Logging volume under the ERRORS_ONLY filter is negligible until errors occur
+      notes: The static egress addresses are the preset's committed spend -- the point of the preset is stable IPs third parties can allowlist, and stability bills by the hour.
+    - preset: 03-private-nat
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Networking
+          sku_meter: private NAT gateway hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one PRIVATE-type gateway billed a flat rate every hour of the month from creation, idle or busy -- unlike public NAT there is no per-endpoint metering
+          list_unit_price: "0.045"
+          price_source: https://cloudbilling.googleapis.com/v1/services/E505-1604-58F8/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "32.8500"
+      total_list_cost: "32.8500"
+      exclusions:
+        - data processing bills every GiB translated between the private networks, in both directions
+        - private addresses are free -- no IP-usage charges apply to PRIVATE gateways
+      notes: Private NAT inverts the public cost shape -- a flat always-on gateway fee with no address charges, so the committed spend is the certainty and traffic is the variable.

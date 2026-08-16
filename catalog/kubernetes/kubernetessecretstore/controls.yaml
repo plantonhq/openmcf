@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetessecretstore
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The store holds a connection description, not the secret material -- the secrets rest in the external backend under that provider's at-rest encryption, owned there. Any static credential the spec declares is materialized by the modules as a Kubernetes Secret in the store's namespace, whose at-rest posture is the target cluster's etcd encryption.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Key management for the backend's storage belongs to the backend provider; this spec has no seam for it.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: config.vault.server
+      evidence:
+        type: spec_default
+        reference: The managed-cloud arms (aws, gcp_secret_manager, azure_key_vault) have no plaintext variant -- those providers serve HTTPS-only APIs. For the vault arm the server URL's scheme decides the transport, and ca_bundle pins a private CA for the server's TLS certificate.
+      notes: The 02-vault-approle preset points at an https:// server. A plain-http Vault/OpenBao endpoint is expressible, so an organization's review should hold vault-arm stores to https. The fake arm serves declared literals and never leaves the cluster.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The store is not a network endpoint -- it is configuration the External Secrets Operator consumes. Nothing listens; nothing is exposed.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound network path exists to restrict. The store originates reads toward its backend; it accepts nothing.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No HTTP traffic is served; there is nothing for a request filter to protect.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management of the CR is the target cluster's Kubernetes RBAC, and data-plane authorization (which secrets the identity may read) is the backend provider's IAM -- both outside this spec. The namespaced grain itself bounds consumption structurally, though -- only ExternalSecrets in the store's own namespace may sync from it, which is exactly the blast-radius boundary this kind exists for.
+    - control_id: workload-identity
+      status: configurable
+      field_path: config.aws.service_account_name
+      evidence:
+        type: spec_default
+        reference: Every backend arm carries the same authentication ladder -- keyless via a referenced ServiceAccount whose cloud binding (EKS IRSA, GKE Workload Identity, or AKS Workload Identity) authorizes the reads, keyless via the operator's ambient identity when the auth block is left empty, or declared static credentials as the fallback, which the modules materialize as a Kubernetes Secret the CR references (the credential never appears inside the CR).
+      notes: "The 01-team-gcp-secret-manager preset authenticates keyless through serviceAccountName; 02-vault-approle uses static AppRole credentials by necessity (no cloud identity to federate against a Vault server). Equivalent seams on the other arms: config.gcp_secret_manager.service_account_name, config.azure_key_vault.service_account_name, and config.vault.kubernetes. Each arm's validation forbids setting a ServiceAccount reference and static keys together."
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The backend arms expose no legacy protocol toggle to disable; the meaningful weaker-vs-stronger credential choice here is static keys versus keyless identity, which is the workload-identity stance above.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the CR are Kubernetes API operations under the target cluster's audit policy, and the reads ESO makes against the backend land in that provider's own audit trail -- both owned outside this spec.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The store emits nothing itself; sync health and metrics come from the External Secrets Operator's controller, owned by that component.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The store is declarative configuration the IaC modules recreate from its manifest, and it only READS from its backend -- durability of the secret material is the backend's concern.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A configuration object has no replicas or failure domains; availability of the syncing machinery is the External Secrets Operator's, and of the secret material the backend's.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on the CR. Deleting the store stops future syncs in its namespace but deletes nothing in the backend -- the store only reads.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: No software runs here; the External Secrets Operator's version and patching belong to that component.

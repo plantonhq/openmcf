@@ -1,3 +1,0 @@
-name: oci-redis-cluster
-runtime: go
-description: OCI Redis Cluster component

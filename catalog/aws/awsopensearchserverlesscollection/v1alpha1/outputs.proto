@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsopensearchserverlesscollection.v1alpha1;
+
+// AwsOpenSearchServerlessCollectionStackOutputs captures observable
+// identifiers and endpoints from a provisioned OpenSearch Serverless
+// collection. These outputs are used by downstream resources to wire
+// dependencies via StringValueOrRef.
+message AwsOpenSearchServerlessCollectionStackOutputs {
+  // The unique ID of the collection (the API's own identifier, also the
+  // leading label of the collection endpoints).
+  string collection_id = 1;
+
+  // The Amazon Resource Name of the collection. Used in IAM policies and
+  // as the vector-store ARN when a Bedrock knowledge base consumes the
+  // collection.
+  string collection_arn = 2;
+
+  // The name of the collection. Matches metadata.name. Data access and
+  // lifecycle rules key off this name.
+  string collection_name = 3;
+
+  // Collection-specific endpoint for OpenSearch API operations (HTTPS).
+  // Applications index and query through this endpoint with SigV4 auth.
+  string collection_endpoint = 4;
+
+  // Collection-specific endpoint for OpenSearch Dashboards.
+  string dashboard_endpoint = 5;
+
+  // The ARN of the KMS key encrypting the collection - the AWS-owned key
+  // or the customer-managed key chosen in spec.encryption.
+  string kms_key_arn = 6;
+}

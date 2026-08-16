@@ -1,0 +1,43 @@
+# The testing plan's cost-floored full surface: weekly random
+# selection over every vault plus one EBS selection assuming the
+# consumer-scoped restore role (annotation prerequisite -- selections
+# are optional in the schema). The schedule never fires inside a lane
+# window and the account holds no recovery points to select, so no
+# test restore ever runs and the lane bills nothing. Names are
+# underscore-only by AWS contract (spec.plan_name / selection names --
+# hyphens rejected server-side).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupRestoreTestingPlan
+metadata:
+  name: planton-oss-e2e-awsbkrt
+  id: planton-oss-e2e-awsbkrt
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbackuprestoretestingplan
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  planName: planton_oss_e2e_awsbkrt
+  scheduleExpression: cron(0 5 ? * MON *)
+  startWindowHours: 8
+  recoveryPointSelection:
+    algorithm: RANDOM_WITHIN_WINDOW
+    includeVaults: ["*"]
+    recoveryPointTypes: ["SNAPSHOT"]
+    selectionWindowDays: 30
+  selections:
+    - name: ebs_volumes
+      protectedResourceType: EBS
+      iamRoleArn:
+        valueFrom:
+          kind: AwsIamRole
+          name: planton-oss-e2e-awsbkrt-role
+          fieldPath: status.outputs.role_arn
+      protectedResourceArns: ["*"]
+      validationWindowHours: 4

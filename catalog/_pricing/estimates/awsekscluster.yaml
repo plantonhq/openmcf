@@ -1,0 +1,91 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsekscluster
+spec:
+  presets:
+    - preset: 01-standard
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Elastic Kubernetes Service
+          sku_meter: cluster management fee
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one cluster, billed every hour of the month at the flat per-cluster rate
+          list_unit_price: "0.1"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEKS/20260804224832/us-east-1/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "73.0000"
+      total_list_cost: "73.0000"
+      exclusions:
+        - node compute -- worker capacity lives on separate AwsEksNodeGroup components with their own estimates
+        - CloudWatch ingestion for the enabled audit and authenticator control-plane logs depends on cluster chatter
+      notes: upgrade_support_type STANDARD caps the fee -- this preset can never incur the extended-support surcharge.
+    - preset: 02-private-endpoint
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Elastic Kubernetes Service
+          sku_meter: cluster management fee
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one cluster, billed every hour of the month at the flat per-cluster rate
+          list_unit_price: "0.1"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEKS/20260804224832/us-east-1/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "73.0000"
+      total_list_cost: "73.0000"
+      exclusions:
+        - node compute -- separate AwsEksNodeGroup components
+        - CloudWatch ingestion for the enabled audit and authenticator logs
+        - upgrade_support_type is left at the AWS EXTENDED default -- once the pinned Kubernetes version leaves standard support, the extended-support surcharge raises the hourly fee to six times this estimate
+      notes: The private endpoint, KMS secrets encryption, and deletion protection add no charge of their own.
+    - preset: 03-auto-mode
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Elastic Kubernetes Service
+          sku_meter: cluster management fee
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one cluster, billed every hour of the month at the flat per-cluster rate
+          list_unit_price: "0.1"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEKS/20260804224832/us-east-1/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "73.0000"
+      total_list_cost: "73.0000"
+      exclusions:
+        - Auto Mode compute -- EKS provisions EC2 instances, EBS volumes, and load balancers as workloads demand, billed per instance-hour with the Auto Mode management premium; entirely workload-dependent
+        - CloudWatch ingestion for the enabled audit and authenticator logs
+        - upgrade_support_type is left at the AWS EXTENDED default -- an aged version raises the fee to six times this estimate
+      notes: The management fee is this manifest's only certainty; under Auto Mode the real bill follows what pods request.
+    - preset: 04-hybrid-nodes
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Elastic Kubernetes Service
+          sku_meter: cluster management fee
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one cluster, billed every hour of the month at the flat per-cluster rate
+          list_unit_price: "0.1"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEKS/20260804224832/us-east-1/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "73.0000"
+      total_list_cost: "73.0000"
+      exclusions:
+        - hybrid node vCPU-hours -- declaring the on-prem CIDRs is free, and billing starts per vCPU only when hybrid nodes register
+        - CloudWatch ingestion for the enabled audit and authenticator logs
+        - upgrade_support_type is left at the AWS EXTENDED default -- an aged version raises the fee to six times this estimate

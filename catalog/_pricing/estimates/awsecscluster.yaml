@@ -1,0 +1,52 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsecscluster
+spec:
+  presets:
+    - preset: 01-fargate-standard
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - no cluster fee exists -- an empty ECS cluster bills exactly nothing
+        - tasks placed by services bill Fargate vCPU and memory rates on their AwsEcsService/AwsEcsTaskDefinition components
+        - enhanced Container Insights ingests per-container performance events at CloudWatch rates as workloads run
+      notes: Zero committed cost -- the free control plane is ECS's structural price advantage over EKS's hourly fee.
+    - preset: 02-fargate-cost-optimized
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the 1:4 FARGATE to FARGATE_SPOT strategy runs about 80% of scaled tasks at Spot's roughly 70% discount, interruptible with two minutes' notice -- rates apply on the services' tasks, not here
+        - standard (not enhanced) Container Insights ingests cluster- and service-level events at CloudWatch rates
+      notes: Zero committed cost -- the strategy shapes what future tasks cost; it spends nothing itself.
+    - preset: 03-ec2-capacity
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the referenced Auto Scaling Group's instances bill EC2 rates on that component -- this cluster only decides when they scale
+        - managed scaling's 80% target keeps one instance in five as warm headroom -- paid idle capacity on the ASG's bill
+        - enhanced Container Insights ingests per-container events at CloudWatch rates
+      notes: Zero committed cost on this manifest -- the EC2 capacity's committed spend is the referenced ASG's floor, visible on that component.
+    - preset: 04-managed-instances
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - managed instances launch on demand against the declared requirements (Graviton, >=1 vCPU, >=2 GiB) and bill EC2 rates plus a 30 GiB gp3 volume each while they live -- zero exist until tasks need them
+        - idle instances retire after scale_in_after_seconds 300, bounding paid idle time to five minutes
+        - enhanced Container Insights ingests per-container events at CloudWatch rates
+      notes: Zero committed cost -- ECS launches capacity only when tasks demand it and retires it minutes after they stop.

@@ -1,0 +1,57 @@
+# AwsBedrockAgentCoreMemory full-surface scenario: indexed keys plus
+# built-in strategies of every type -- semantic, summarization, user
+# preference, and episodic with reflection namespaces. Proves the
+# strategy satellites' serialized attach/detach through the parent memory
+# (AWS serializes strategy writes per memory; the provider holds a
+# per-memory lock).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreMemory
+metadata:
+  name: planton-oss-e2e-awsacmem-full
+  id: planton-oss-e2e-awsacmem-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockagentcorememory
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  memoryName: planton_e2e_acmem_full
+  description: Planton E2E full-surface memory
+  eventExpiryDays: 30
+  indexedKeys:
+    - key: customer_id
+      type: STRING
+    - key: priority
+      type: NUMBER
+  strategies:
+    - name: facts
+      type: SEMANTIC
+      description: Extract standalone facts
+      namespaceTemplates:
+        - /facts/{actorId}
+    - name: summaries
+      type: SUMMARIZATION
+      namespaceTemplates:
+        - /summaries/{actorId}/{sessionId}
+    - name: preferences
+      type: USER_PREFERENCE
+      namespaceTemplates:
+        - /preferences/{actorId}
+    - name: episodes
+      type: EPISODIC
+      namespaceTemplates:
+        - /episodes/{actorId}
+      # AWS requires each reflection namespace to be "the same as or a
+      # hierarchical prefix of the episodic namespace" -- an unrelated
+      # root like /reflections/... is rejected at UpdateMemory
+      # (live-caught 2026-08-14). The strict hierarchical prefix below
+      # keeps the arm's proof value: it differs from the provider's
+      # unset-case auto-fill (which mirrors the episodic namespace
+      # exactly), so the echo proves OUR value landed.
+      reflectionNamespaceTemplates:
+        - /episodes

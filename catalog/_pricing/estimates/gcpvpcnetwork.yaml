@@ -1,0 +1,31 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpvpcnetwork
+spec:
+  presets:
+    - preset: 01-custom-mode-regional
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the VPC network, its routing mode, and its firewall enforcement order bill nothing at any scale
+        - the network's real spend lives in separate components deployed into it -- Cloud NAT, static addresses, load balancers, and subnetworks' flow logs
+      notes: A VPC network is free Google Cloud infrastructure -- the estimate is zero by the provider's pricing, not by omission.
+    - preset: 02-custom-mode-global
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the VPC network bills nothing at any scale; GLOBAL routing changes where Cloud Routers advertise routes, and any inter-region traffic that results bills as the workloads' data transfer, not here
+        - the network's real spend lives in separate components deployed into it
+      notes: A VPC network is free Google Cloud infrastructure -- the estimate is zero by the provider's pricing, not by omission.

@@ -1,0 +1,29 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbedrockagentcoreevaluation
+spec:
+  # An AgentCore Evaluations bundle under live E2E: two lanes. The
+  # minimal lane proves a code-based evaluator on the AwsLambda smoke
+  # fixture (create does not invoke the function). The full-surface
+  # lane proves an LLM-judge evaluator plus a Bedrock harness on the
+  # shared AgentCore role fixture. Creating evaluation objects is
+  # free; AWS bills per evaluation run and the lanes never start a
+  # run. Verification walks the id-keyed output maps (GetEvaluator
+  # ACTIVE, GetHarness READY).
+  #
+  # Deliberately not exercised live: the online evaluation config
+  # (needs a CloudWatch log group that AgentCore observability writes
+  # to -- unblock: compose AwsCloudwatchLogGroup), Gemini/OpenAI
+  # harness vendors (need Secrets Manager API keys), and the explicit
+  # runtime-environment arm (the omitted path is the computed default)
+  # -- all offline-proven via e2e/manifest.yaml. Whether LLM-judge /
+  # harness create validates Bedrock model access rides the Q37
+  # watch-list (the standing model-access payment-instrument deferral).
+  #
+  # pending_proof: forged this session to the full offline bar -- Q37
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 30

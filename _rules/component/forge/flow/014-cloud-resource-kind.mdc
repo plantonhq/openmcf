@@ -27,15 +27,9 @@ itself -- read it if this list ever disagrees):
 - GCP: 3000-3999
 - Kubernetes: 4000-4999
 - DigitalOcean: 5000-5999
-- Civo: 6000-6999
 - Cloudflare: 7000-7999
 - Auth0: 8000-8999
 - OpenFGA: 9000-9999
-- OpenStack: 10000-10999
-- Scaleway: 11000-11999
-- Alibaba Cloud: 12000-12999
-- OCI: 13000-13999
-- Hetzner Cloud: 14000-14999
 
 Providers organize their bands into FAMILY SUB-BANDS (see the `--- ... ---`
 comments inside each band). When a wave of related kinds is planned, its
@@ -52,7 +46,6 @@ ID PREFIX PATTERNS
 - GCP: typically "gcp" prefix + 3-7 char abbreviation (e.g., "gcpdns", "gcpsql", "gcpcert")
 - Kubernetes: descriptive + "k8s" suffix (e.g., "k8sms", "pgk8s", "cmk8s")
 - DigitalOcean: "do" prefix + abbreviation (e.g., "doapp", "dodns", "docert")
-- Civo: "ci" prefix + abbreviation (e.g., "cidns", "cidb", "cicert")
 - Cloudflare: "cf" prefix + abbreviation (e.g., "cfdns", "cfkvn", "cfr2b")
 
 SEQUENTIAL STEPS

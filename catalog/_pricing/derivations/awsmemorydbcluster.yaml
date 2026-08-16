@@ -1,0 +1,103 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsMemorydbCluster manifest's spec values into metered quantities and
+# price choices. The committed cost is the node fleet: num_shards primaries
+# plus num_shards x num_replicas_per_shard replicas, every hour, at the
+# rate the manifest's own node_type and engine select through the price
+# book's attribute identities. Data written -- the usage half of the
+# hybrid bill -- is an exclusion no manifest can predict. Primaries and
+# replicas are sibling rules on the same meter and price, merging by
+# summed quantity (a product cannot express shards x (1 + replicas)).
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsmemorydbcluster
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  refusals:
+    - when:
+        - field_path: multi_region_cluster_name
+          op: is_set
+      reason: joining a multi-Region cluster adds cross-region replication rates that are not in the price book, so the member cluster's committed cost cannot be stated honestly
+  lines:
+    - sku_meter: node hours
+      quantity:
+        - field_value:
+            field_path: num_shards
+            default_when_unset: "1"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon MemoryDB
+        pricing_unit: hours
+        attributes:
+          - key: node_type
+            from_field: node_type
+          - key: engine
+            from_field: engine
+      basis: one primary node per shard (num_shards, the provider default 1 when unset) x 730 hours at the node_type and engine rate
+    - sku_meter: node hours
+      applies_when:
+        - field_path: num_replicas_per_shard
+          op: is_set
+      quantity:
+        - field_value:
+            field_path: num_shards
+            default_when_unset: "1"
+        - field_value:
+            field_path: num_replicas_per_shard
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon MemoryDB
+        pricing_unit: hours
+        attributes:
+          - key: node_type
+            from_field: node_type
+          - key: engine
+            from_field: engine
+      basis: the declared replicas -- num_shards x num_replicas_per_shard nodes -- x 730 hours at the same node rate; an explicit 0 honestly contributes nothing
+    - sku_meter: node hours
+      applies_when:
+        - field_path: num_replicas_per_shard
+          op: is_unset
+      quantity:
+        - field_value:
+            field_path: num_shards
+            default_when_unset: "1"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon MemoryDB
+        pricing_unit: hours
+        attributes:
+          - key: node_type
+            from_field: node_type
+          - key: engine
+            from_field: engine
+      basis: the provider default of 1 replica per shard when the manifest does not state a replica count -- num_shards replica nodes x 730 hours
+  exclusions:
+    - applies_when:
+        - field_path: engine
+          op: equals
+          value: redis
+      text: every gigabyte written to the cluster bills at the Redis OSS data-written rate -- pure write-traffic cost
+    - applies_when:
+        - field_path: engine
+          op: equals
+          value: valkey
+      text: data written is free up to 10 TB/month on Valkey and bills per GB above it -- pure write-traffic cost
+    - applies_when:
+        - field_path: snapshot_retention_limit
+          op: not_equals
+          value: "0"
+      text: snapshot storage beyond the free allowance (the cluster's total storage) grows with dataset size and retention
+    - text: data transfer between AZs for client traffic and out of the region follows standard AWS rates
+  notes:
+    - text: Estimated at the declared topology -- shards and replicas both scale in place.
+    - applies_when:
+        - field_path: data_tiering
+          op: equals
+          value: "true"
+      text: The r6gd node rate carries the local NVMe SSD data-tiering capacity.

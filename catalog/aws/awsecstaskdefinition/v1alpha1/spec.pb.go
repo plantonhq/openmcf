@@ -1907,9 +1907,9 @@ const file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xc3\x02\xbaH\xbf\x02\x1an\n" +
 	"\vscope_valid\x12)scope must be 'task' or 'shared' when set\x1a4this.scope == '' || this.scope in ['task', 'shared']\x1a\xcc\x01\n" +
-	"#autoprovision_requires_shared_scope\x12vautoprovision only applies to 'shared' scope volumes -- a task-scoped volume always exists exactly as long as its task\x1a-!this.autoprovision || this.scope == 'shared'\"\xc4\x02\n" +
-	"!AwsEcsTaskDefinitionS3FilesVolume\x12\x88\x01\n" +
-	"\x0ffile_system_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x19status.outputs.bucket_arn\x98\xd4a\x01R\rfileSystemArn\x12(\n" +
+	"#autoprovision_requires_shared_scope\x12vautoprovision only applies to 'shared' scope volumes -- a task-scoped volume always exists exactly as long as its task\x1a-!this.autoprovision || this.scope == 'shared'\"\xc0\x02\n" +
+	"!AwsEcsTaskDefinitionS3FilesVolume\x12\x84\x01\n" +
+	"\x0ffile_system_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x19status.outputs.bucket_arnR\rfileSystemArn\x12(\n" +
 	"\x10access_point_arn\x18\x02 \x01(\tR\x0eaccessPointArn\x12%\n" +
 	"\x0eroot_directory\x18\x03 \x01(\tR\rrootDirectory\x12C\n" +
 	"\x17transit_encryption_port\x18\x04 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x00R\x15transitEncryptionPort\"\xcb\x03\n" +

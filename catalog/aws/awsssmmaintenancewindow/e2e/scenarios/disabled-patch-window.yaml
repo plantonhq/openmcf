@@ -1,0 +1,59 @@
+# A DISABLED window live (the presence-typed explicit-false enabled -
+# the tri-state heal's live proof) with one tag-based target matching
+# nothing and two tasks: an untargeted run-command (no rate controls -
+# AWS rejects them on untargeted tasks) and an automation runbook.
+# Disabled window + no matching instances = nothing ever executes;
+# windows, targets, and tasks are free. ~$0.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSsmMaintenanceWindow
+metadata:
+  name: planton-oss-e2e-awsssmmw
+  id: planton-oss-e2e-awsssmmw
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsssmmaintenancewindow
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  schedule: cron(0 2 ? * SUN *)
+  duration: 3
+  cutoff: 1
+  description: Planton E2E window (disabled by design)
+  enabled: false
+  scheduleTimezone: Etc/UTC
+  targets:
+    - name: e2e-never-matches
+      resourceType: INSTANCE
+      targets:
+        - key: tag:planton-e2e-ssm
+          values:
+            - never-matches
+      description: E2E tag target matching nothing
+  tasks:
+    - name: patch-scan
+      taskType: RUN_COMMAND
+      taskArn:
+        value: AWS-RunPatchBaseline
+      priority: 1
+      cutoffBehavior: CANCEL_TASK
+      invocation:
+        runCommand:
+          comment: E2E patch scan (never executes - window disabled)
+          timeoutSeconds: 600
+          parameters:
+            - name: Operation
+              values:
+                - Scan
+    - name: restart-runbook
+      taskType: AUTOMATION
+      taskArn:
+        value: AWS-RestartEC2Instance
+      priority: 2
+      invocation:
+        automation:
+          documentVersion: $DEFAULT

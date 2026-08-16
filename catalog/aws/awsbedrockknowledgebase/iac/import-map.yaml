@@ -1,0 +1,23 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsbedrockknowledgebase
+spec:
+  # The knowledge base imports by its bare id; each data source composes
+  # its own id with the knowledge base id, derived blind from the
+  # data_source_ids output map keyed exactly like the module's for_each
+  # entries.
+  values:
+    - name: knowledge_base_id
+      derivations:
+        - from_stack_output: knowledge_base_id
+      where_to_find: >-
+        Bedrock console -> Knowledge bases -> <knowledge base> (the ID),
+        or `aws bedrock-agent list-knowledge-bases` (knowledgeBaseId).
+    - name: data_source_id
+      derivations:
+        - from_stack_output_keyed_by_address: data_source_ids
+      where_to_find: >-
+        `aws bedrock-agent list-data-sources --knowledge-base-id <id>`
+        lists dataSourceId per source; match each to its
+        spec.data_sources entry by name.

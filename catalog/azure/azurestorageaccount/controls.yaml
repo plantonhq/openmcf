@@ -1,0 +1,98 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurestorageaccount
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure Storage encrypts every object at rest with platform-managed keys before writing; encryption cannot be disabled. infrastructure_encryption_enabled can layer a second, independent encryption pass.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: customer_managed_key
+      evidence:
+        type: spec_default
+        reference: Unset means platform-managed keys; configuring the block makes a Key Vault key (unwrapped by a user-assigned identity) the account's encryption key, with table_encryption_key_type/queue_encryption_key_type extending account-scoped keys to those services.
+      notes: No preset enables CMK.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: https_traffic_only_enabled defaults to true, rejecting plaintext HTTP, and min_tls_version floors the accepted TLS version; weakening either requires an explicit opt-out.
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_network_access_enabled
+      evidence:
+        type: spec_default
+        reference: Azure's default is a public endpoint gated by authentication; setting it false removes public reachability entirely (private endpoints only) and makes network_rules moot. allow_nested_items_to_be_public separately governs whether containers may ever expose anonymous blobs.
+      notes: The 02-production-locked-down preset denies public network access via network_rules default DENY with subnet exceptions.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: network_rules
+      evidence:
+        type: spec_default
+        reference: Absent means all networks may reach the public endpoint (subject to authentication); declaring rules with default_action DENY restricts access to the listed IP ranges, subnets, and trusted Azure services.
+      notes: The 02-production-locked-down preset denies by default and allowlists a subnet.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Requests terminate on Azure's storage API edge; request filtering (WAF) attaches to Front Door or Application Gateway in front of static websites, separate components.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure RBAC governs management- and data-plane access on every account; default_to_oauth_authentication additionally makes Entra the portal's default data-access mode.
+      notes: Shared-key access (below) is the coexisting legacy path until disabled.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Workloads holding managed identities access data with short-lived Entra tokens through Azure RBAC -- the identity path is always available; the identity block adds the account's own managed identity for CMK.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: shared_access_key_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to true -- account keys (the shared-secret legacy path) authorize anything; setting it false forces every data request through Entra, and the 02-production-locked-down preset caps SAS lifetimes while keys remain on.
+      notes: Disabling keys breaks key-dependent tooling (classic connection strings, some SDK paths) -- the reason it stays a choice rather than a default.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Data-plane access audit is Azure Monitor diagnostic settings on the account's services -- separate resources, not fields of this spec. Administrative changes always land in the Azure Activity Log.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure Storage publishes account metrics (capacity, transactions, availability, latency) to Azure Monitor for every account without configuration.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: blob_properties
+      evidence:
+        type: spec_default
+        reference: Unset means no versioning and no soft delete; enabling versioning keeps noncurrent versions on overwrite, soft-delete windows preserve deleted blobs and containers, and restore_policy adds point-in-time restore for block blobs.
+      notes: All three presets enable soft delete; 01 adds versioning.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: blob_properties.delete_retention_policy
+      evidence:
+        type: spec_default
+        reference: The soft-delete windows (blob and container, 1-365 days) are the account's recovery retention -- presets keep 7, 30, and 14 days respectively.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replication_type
+      evidence:
+        type: spec_default
+        reference: LRS keeps three copies in one datacenter; ZRS spreads copies across availability zones, and GZRS (the 02 preset) adds zone redundancy plus a geo-replicated secondary region.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Storage API nor this spec offers an account-level deletion-protection flag (Azure resource locks are subscription-side governance outside the manifest); container and blob soft delete are the recovery net for data-level deletions.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Microsoft operates and patches the storage fleet; no customer-visible patch surface exists.

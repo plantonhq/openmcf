@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesdestinationrule
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The rule stores no data of its own -- it is a Kubernetes API object persisted in the cluster's etcd, whose encryption at rest is a property of the target cluster's control plane, not of this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); customer-managed keys for etcd belong to the cluster component.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: traffic_policy.tls
+      evidence:
+        type: spec_default
+        reference: Unset leaves the sidecar's upstream connections on the mesh's default posture; traffic_policy.tls selects how the sidecar originates connections to the host -- SIMPLE or MUTUAL TLS with declared certificates, or ISTIO_MUTUAL for mesh-managed mTLS -- and the same settings apply per subset and per port.
+      notes: The 02-mtls-origination-egress preset originates MUTUAL TLS toward an external service. Mesh-wide mTLS enforcement (the inbound side) belongs to PeerAuthentication, not this rule.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The rule is not a network endpoint -- it is configuration istiod distributes to proxies. Reachability of the host service it shapes belongs to that service's own resources.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The rule decides what happens AFTER routing selects a destination (pools, eviction, TLS); it matches no request sources and admits or rejects nothing. Source-based restriction is AuthorizationPolicy's job.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The rule performs no request filtering -- outlier_detection evicts unhealthy backends for resilience, it does not inspect requests for attacks. A WAF belongs to the gateway layer.
+    - control_id: rbac
+      status: not_applicable
+      notes: The rule has no access-control surface -- access to the object is the target cluster's Kubernetes RBAC, and export_to controls cross-namespace VISIBILITY of the rule for resolution, not who may call the service.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The rule calls no cloud APIs -- there is nothing for it to authenticate to. Client certificates for MUTUAL TLS reference Secrets or mesh identity, configured within traffic_policy.tls.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The rule has no authentication path of its own to harden.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the rule are Kubernetes API operations captured by the target cluster's audit policy; the rule itself produces no access events.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The rule emits no metrics of its own; the effects of its policies (ejections, pool overflow) surface in the sidecars' Envoy telemetry, which the mesh installation owns.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The rule is stateless declarative configuration fully reproducible from its manifest -- there is no data to back up or restore.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The rule is an API-server record replicated by the cluster's control plane. locality_lb_setting DISTRIBUTES traffic across zones for the workloads it shapes, but replication of those workloads belongs to their own components.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor Istio offers a deletion-protection flag on DestinationRule; protection is operational (namespace RBAC, change review). Deleting the rule reverts traffic to mesh defaults -- including dropping any TLS origination it configured.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software here to patch -- the resource is data. Envoy and istiod versions are patched through the mesh installation's own lifecycle.

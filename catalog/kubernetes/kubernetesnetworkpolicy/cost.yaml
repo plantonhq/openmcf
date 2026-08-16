@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesnetworkpolicy
+spec:
+  billing_model: free
+  free_tier: A NetworkPolicy is a Kubernetes configuration object -- the in-cluster firewall rule set enforced by the cluster's CNI. The object reserves no node capacity and no cloud SKU bills for it.
+  notes: "No field of this spec buys anything: pod_selector, ingress_rules, and egress_rules describe which traffic the CNI allows to and from the selected pods; enforcement runs inside the CNI the cluster already operates. Real spend lives in the workloads the policy governs and in the cluster's own nodes and networking -- separate catalog kinds with their own cost profiles."

@@ -129,7 +129,10 @@ scored themselves.
 > domain. ~$280/mo; NAT consolidation saves ~$32 if you accept the
 > single-AZ egress risk. Assumptions: us-east-1, public+private endpoint.
 
-Same architecture, same honesty, same cost duty — different language.
+Same architecture, same honesty, same cost duty — different language. (The
+dollar figures in these examples illustrate the voice; a real answer reads
+its figures from the catalog's verified estimates at answer time — see
+`cost-transparency.md` — never from memory.)
 
 ## Anti-patterns (each has burned a real conversation)
 

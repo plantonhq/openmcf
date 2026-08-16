@@ -1,0 +1,30 @@
+# Consumer-scoped AwsIamRole install profile for the testing plan's
+# selections: AWS validates at selection creation that the role trusts
+# backup.amazonaws.com; the managed restores policy carries the
+# restore-time permissions a real drill needs.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-awsbkrt-role
+  id: planton-oss-e2e-awsbkrt-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E role AWS Backup assumes for the restore testing kind's selection fixture
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: backup.amazonaws.com
+        Action: sts:AssumeRole

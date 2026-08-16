@@ -1,0 +1,22 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awssagemakerendpoint
+spec:
+  # Both resources import by their bare names: the endpoint by its own,
+  # the folded configuration by the suffixed name the modules minted
+  # (carried in the endpoint_config_name output).
+  values:
+    - name: endpoint_name
+      derivations:
+        - from_stack_output: endpoint_name
+      where_to_find: >-
+        SageMaker console -> Inference -> Endpoints (the name), or
+        `aws sagemaker list-endpoints` (EndpointName).
+    - name: endpoint_config_name
+      derivations:
+        - from_stack_output: endpoint_config_name
+      where_to_find: >-
+        `aws sagemaker describe-endpoint --endpoint-name <name>` shows
+        EndpointConfigName (the suffixed configuration currently in
+        service).

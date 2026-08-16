@@ -1,8 +1,0 @@
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareD1Database
-metadata:
-  name: my-d1-database
-spec:
-  accountId: <cloudflare-account-id>
-  databaseName: <database-name>
-  region: wnam

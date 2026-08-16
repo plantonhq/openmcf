@@ -175,6 +175,15 @@ func TestResolveValues(t *testing.T) {
 						{Source: &componentv1.ImportValueDerivation_Literal{Literal: "cert-manager.io/v1"}},
 					},
 				},
+				{
+					// The prefix mirror of from_metadata_name_suffix:
+					// provider-composed identifiers built by prefixing the
+					// parent's name (App Auto Scaling's "table/<table_name>").
+					Name: "scaling_resource_id",
+					Derivations: []*componentv1.ImportValueDerivation{
+						{Source: &componentv1.ImportValueDerivation_FromMetadataNamePrefix{FromMetadataNamePrefix: "table/"}},
+					},
+				},
 			},
 		},
 	}
@@ -189,7 +198,7 @@ func TestResolveValues(t *testing.T) {
 
 	resolved, unresolved := ResolveValues(
 		m,
-		[]string{"bucket", "repository_name", "vpc_id", "tiering_name", "association_id", "api_version"},
+		[]string{"bucket", "repository_name", "vpc_id", "tiering_name", "association_id", "api_version", "scaling_resource_id"},
 		rctx,
 	)
 
@@ -197,9 +206,10 @@ func TestResolveValues(t *testing.T) {
 		"bucket":          "my-bucket",
 		"repository_name": "team/app",
 		// stack output empty -> falls through to the ARN part.
-		"vpc_id":       "vpc-0abc",
-		"tiering_name": "archive",
-		"api_version":  "cert-manager.io/v1",
+		"vpc_id":              "vpc-0abc",
+		"tiering_name":        "archive",
+		"api_version":         "cert-manager.io/v1",
+		"scaling_resource_id": "table/my-bucket",
 	}
 	if !reflect.DeepEqual(resolved, want) {
 		t.Errorf("resolved = %v, want %v", resolved, want)

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesbackendtlspolicy
+spec:
+  billing_model: free
+  free_tier: A Gateway API BackendTLSPolicy is a record in the Kubernetes API server -- instructions telling a Gateway controller to originate TLS to the backend Services it targets and how to verify their certificates. No provider bills for the policy object, and it reserves no cluster capacity of its own.
+  notes: "No field of this spec buys anything: target_refs, validation, and options decide HOW the gateway-to-backend hop is secured -- the TLS handshakes run inside the gateway data plane that already exists. The real spend lives with the Gateway's implementing infrastructure (the load balancer or proxy the KubernetesGateway's controller programs, billed through its own components) and the backend workloads the policy targets."

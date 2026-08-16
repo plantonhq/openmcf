@@ -1,0 +1,59 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesenvoyfilter
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The filter stores no data of its own -- it is a Kubernetes API object persisted in the cluster's etcd, whose encryption at rest is a property of the target cluster's control plane, not of this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); customer-managed keys for etcd belong to the cluster component.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The filter encrypts nothing by design -- its patch payloads are free-form JSON merged into Envoy config with no schema validation. A reviewer should hear the inverse risk instead; a patch CAN alter listeners and clusters in ways that weaken the mesh's TLS posture, which is why the spec labels this kind an expert-only escape hatch.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The filter is not a network endpoint -- it is configuration istiod distributes to proxies. Whether patched workloads are publicly reachable is decided by their Services and gateways (though a listener patch could change what a proxy binds -- part of the same expert-only risk noted under enc-in-transit).
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The filter models no source-based access rules; request admission belongs to AuthorizationPolicy. Patches operate on Envoy's xDS objects, not on a declared allow-list of network sources.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No structured WAF capability exists in this spec. A patch could hand-wire an Envoy filter that inspects requests, but that is arbitrary expert configuration, not a modeled control this profile can vouch for.
+    - control_id: rbac
+      status: not_applicable
+      notes: The filter has no access-control surface of its own -- access to the object is the target cluster's Kubernetes RBAC. Because a filter in the mesh root namespace patches proxies mesh-wide, restricting who may create EnvoyFilters there is the operationally important fence.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The filter calls no cloud APIs -- there is nothing for it to authenticate to.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The filter has no authentication path of its own to harden.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the filter are Kubernetes API operations captured by the target cluster's audit policy; the filter itself produces no access events.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The filter emits no metrics of its own; the behavior of patched proxies surfaces in their Envoy telemetry, which the mesh installation owns.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The filter is stateless declarative configuration fully reproducible from its manifest -- there is no data to back up or restore.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The filter is an API-server record replicated by the cluster's control plane; there is no per-resource replication or zonal knob.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor Istio offers a deletion-protection flag on EnvoyFilter; protection is operational (namespace RBAC, change review). Deleting a filter reverts the patched proxies to istiod's generated configuration.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software here to patch -- the resource is data (and its "patches" rewrite proxy CONFIG, not software). Envoy and istiod versions are patched through the mesh installation's own lifecycle; note that EnvoyFilter payloads target Envoy's internal APIs and may need rework across Istio upgrades.

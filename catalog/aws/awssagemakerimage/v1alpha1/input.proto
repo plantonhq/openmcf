@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssagemakerimage.v1alpha1;
+
+import "catalog/aws/awssagemakerimage/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// AwsSagemakerImageStackInput is the input for the IaC modules that
+// deploy the image and its versions.
+message AwsSagemakerImageStackInput {
+  // target is the AwsSagemakerImage resource to deploy.
+  AwsSagemakerImage target = 1;
+  // provider_config contains the AWS provider credentials and configuration.
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

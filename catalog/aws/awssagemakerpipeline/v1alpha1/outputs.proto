@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssagemakerpipeline.v1alpha1;
+
+// AwsSagemakerPipelineStackOutputs captures observable identifiers from
+// a provisioned pipeline. Executions start against `pipeline_name`
+// (StartPipelineExecution).
+message AwsSagemakerPipelineStackOutputs {
+  // The pipeline name (the AWS identity executions start against).
+  string pipeline_name = 1;
+
+  // The Amazon Resource Name of the pipeline.
+  string pipeline_arn = 2;
+}

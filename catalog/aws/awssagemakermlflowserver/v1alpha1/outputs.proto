@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssagemakermlflowserver.v1alpha1;
+
+// AwsSagemakerMlflowServerStackOutputs captures observable identifiers
+// from a provisioned MLflow tracking server.
+message AwsSagemakerMlflowServerStackOutputs {
+  // The tracking server name (the AWS identity).
+  string tracking_server_name = 1;
+
+  // The Amazon Resource Name of the tracking server.
+  string tracking_server_arn = 2;
+
+  // URL of the MLflow UI served by this tracking server.
+  string tracking_server_url = 3;
+}

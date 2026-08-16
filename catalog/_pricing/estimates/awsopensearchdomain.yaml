@@ -1,0 +1,79 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsopensearchdomain
+spec:
+  presets:
+    - preset: 01-single-node-dev
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon OpenSearch Service
+          sku_meter: data node hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: instance_count data nodes (the AWS default 1 when unset) x 730 hours at the instance_type's On-Demand rate
+          list_unit_price: "0.036"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonES/20260709090858/us-west-2/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "26.2800"
+        - service_name: Amazon OpenSearch Service
+          sku_meter: EBS storage
+          pricing_unit: GB-months
+          pricing_quantity: "10"
+          quantity_basis: one gp3 volume of volume_size GB per data node -- instance_count x volume_size at the OpenSearch gp3 rate, billing from creation full or empty
+          list_unit_price: "0.122"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonES/20260709090858/us-west-2/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "1.2200"
+      total_list_cost: "27.5000"
+      exclusions:
+        - data transfer out of the region is traffic-dependent
+      notes: Estimated at the declared node topology running all 730 hours -- the committed always-on spend. Automated snapshots are stored free by the service, and traffic between the domain's own nodes -- including cross-AZ -- carries no transfer charge.
+    - preset: 02-production-vpc
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon OpenSearch Service
+          sku_meter: data node hours
+          pricing_unit: hours
+          pricing_quantity: "2190"
+          quantity_basis: instance_count data nodes (the AWS default 1 when unset) x 730 hours at the instance_type's On-Demand rate
+          list_unit_price: "0.167"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonES/20260709090858/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "365.7300"
+        - service_name: Amazon OpenSearch Service
+          sku_meter: dedicated master node hours
+          pricing_unit: hours
+          pricing_quantity: "2190"
+          quantity_basis: dedicated_master_count master nodes (the AWS default 3 when unset) x 730 hours at the dedicated_master_type's rate -- masters hold no data and need no storage line
+          list_unit_price: "0.167"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonES/20260709090858/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "365.7300"
+        - service_name: Amazon OpenSearch Service
+          sku_meter: EBS storage
+          pricing_unit: GB-months
+          pricing_quantity: "300"
+          quantity_basis: one gp3 volume of volume_size GB per data node -- instance_count x volume_size at the OpenSearch gp3 rate, billing from creation full or empty
+          list_unit_price: "0.122"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonES/20260709090858/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "36.6000"
+      total_list_cost: "768.0600"
+      exclusions:
+        - data transfer out of the region is traffic-dependent
+      notes: Estimated at the declared node topology running all 730 hours -- the committed always-on spend. Automated snapshots are stored free by the service, and traffic between the domain's own nodes -- including cross-AZ -- carries no transfer charge.

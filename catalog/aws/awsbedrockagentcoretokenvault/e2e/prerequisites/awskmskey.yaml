@@ -1,0 +1,22 @@
+# Consumer-scoped AwsKmsKey install profile for the token-vault
+# singleton: one symmetric key with a short deletion window (the
+# minimum AWS allows is 7 days -- scheduled deletion is this fixture's
+# "gone" state, per the harness's scheduled-deletion orphan class).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsKmsKey
+metadata:
+  name: planton-oss-e2e-acetv-key
+  id: planton-oss-e2e-acetv-key
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awskmskey
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E customer-managed key for the AgentCore token vault
+  deletionWindowDays: 7

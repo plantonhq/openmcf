@@ -1,0 +1,124 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpcloudsql
+spec:
+  presets:
+    - preset: 01-postgres-production-private
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloud SQL
+          sku_meter: instance vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "2920"
+          quantity_basis: db-custom-4-15360 is 4 vCPUs x 730 hours at the REGIONAL rate, which already includes the synchronized standby (regional SKUs bill exactly double the zonal rate)
+          list_unit_price: "0.0826"
+          price_source: https://cloudbilling.googleapis.com/v1/services/9662-B51E-5089/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "241.1920"
+        - service_name: Cloud SQL
+          sku_meter: instance memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "10950"
+          quantity_basis: 15360 MB in the tier string is exactly 15 GiB x 730 hours at the REGIONAL rate, standby included
+          list_unit_price: "0.014"
+          price_source: https://cloudbilling.googleapis.com/v1/services/9662-B51E-5089/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "153.3000"
+        - service_name: Cloud SQL
+          sku_meter: instance storage
+          pricing_unit: GiB-months
+          pricing_quantity: "100"
+          quantity_basis: 100 GiB provisioned PD_SSD at the REGIONAL storage rate (standby storage included); auto-resize can grow it toward the 500 GiB limit
+          list_unit_price: "0.34"
+          price_source: https://cloudbilling.googleapis.com/v1/services/9662-B51E-5089/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "34.0000"
+      total_list_cost: "428.4920"
+      exclusions:
+        - backup storage for the 30 retained backups and the 7-day point-in-time log window bills per GiB and follows database churn
+        - network egress follows client placement
+      notes: The regional SKUs are the HA price -- Google bills the standby through doubled rates rather than a second instance, so this estimate is the complete committed compute-and-storage spend.
+    - preset: 02-mysql-high-availability
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloud SQL
+          sku_meter: instance vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "1460"
+          quantity_basis: db-custom-2-7680 is 2 vCPUs x 730 hours at the REGIONAL rate, standby included
+          list_unit_price: "0.0826"
+          price_source: https://cloudbilling.googleapis.com/v1/services/9662-B51E-5089/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "120.5960"
+        - service_name: Cloud SQL
+          sku_meter: instance memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "5475"
+          quantity_basis: 7680 MB in the tier string is exactly 7.5 GiB x 730 hours at the REGIONAL rate
+          list_unit_price: "0.014"
+          price_source: https://cloudbilling.googleapis.com/v1/services/9662-B51E-5089/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "76.6500"
+        - service_name: Cloud SQL
+          sku_meter: instance storage
+          pricing_unit: GiB-months
+          pricing_quantity: "50"
+          quantity_basis: 50 GiB provisioned disk at the REGIONAL rate; disk.type is unset so the PD_SSD default applies, and auto-resize can grow it without a declared limit
+          list_unit_price: "0.34"
+          price_source: https://cloudbilling.googleapis.com/v1/services/9662-B51E-5089/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "17.0000"
+      total_list_cost: "214.2460"
+      exclusions:
+        - backup storage for the 14 retained backups and binary logs bills per GiB and follows write volume
+        - network egress -- this preset serves over a public IP, so client-side egress rates apply to reads
+      notes: MySQL and PostgreSQL share the same machine rates in this region; the regional SKUs carry the standby exactly as in the PostgreSQL preset.
+    - preset: 03-postgres-read-replica
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloud SQL
+          sku_meter: instance vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "1460"
+          quantity_basis: the replica is its own billable instance -- db-custom-2-7680 is 2 vCPUs x 730 hours at the ZONAL rate (availability_type defaults to ZONAL on replicas)
+          list_unit_price: "0.0413"
+          price_source: https://cloudbilling.googleapis.com/v1/services/9662-B51E-5089/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "60.2980"
+        - service_name: Cloud SQL
+          sku_meter: instance memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "5475"
+          quantity_basis: 7680 MB is 7.5 GiB x 730 hours at the ZONAL rate
+          list_unit_price: "0.007"
+          price_source: https://cloudbilling.googleapis.com/v1/services/9662-B51E-5089/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "38.3250"
+        - service_name: Cloud SQL
+          sku_meter: instance storage
+          pricing_unit: GiB-months
+          pricing_quantity: "10"
+          quantity_basis: the disk block is unset, so the replica provisions the 10 GiB PD_SSD default; auto-resize grows it to track the primary's data set
+          list_unit_price: "0.17"
+          price_source: https://cloudbilling.googleapis.com/v1/services/9662-B51E-5089/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "1.7000"
+      total_list_cost: "100.3230"
+      exclusions:
+        - the primary it replicates (master_instance_name) is a separate component with its own estimate
+        - replication traffic within the region is free; cross-region replicas would bill egress
+      notes: A read replica bills like a zonal instance of its own tier -- the estimate is the replica alone, never the primary it references.

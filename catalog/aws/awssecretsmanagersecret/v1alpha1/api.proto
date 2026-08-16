@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssecretsmanagersecret.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/aws/awssecretsmanagersecret/v1alpha1/outputs.proto";
+import "catalog/aws/awssecretsmanagersecret/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AwsSecretsManagerSecret is a component for creating and managing AWS
+// Secrets Manager secrets - named, versioned, KMS-encrypted containers for
+// credential material with optional automatic rotation and cross-region
+// replication.
+message AwsSecretsManagerSecret {
+  // api_version specifies the API version for this resource.
+  string api_version = 1 [(buf.validate.field).string.const = 'aws.planton.dev/v1alpha1'];
+
+  // kind identifies this resource type.
+  string kind = 2 [(buf.validate.field).string.const = 'AwsSecretsManagerSecret'];
+
+  // metadata contains standard resource metadata including name, labels, and annotations.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec defines the desired state of the secret.
+  AwsSecretsManagerSecretSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status contains the observed state and outputs from the deployment.
+  AwsSecretsManagerSecretStatus status = 5;
+}
+
+// AwsSecretsManagerSecretStatus contains the status and outputs for the secret.
+message AwsSecretsManagerSecretStatus {
+  // outputs contains the values exported from the IaC stack after deployment.
+  AwsSecretsManagerSecretStackOutputs outputs = 1;
+}

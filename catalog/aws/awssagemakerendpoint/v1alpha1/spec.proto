@@ -1,0 +1,577 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssagemakerendpoint.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsSagemakerEndpointSpec defines the desired configuration for an
+// Amazon SageMaker AI real-time inference endpoint TOGETHER WITH its
+// endpoint configuration (the immutable capacity/variant definition the
+// endpoint points at). The endpoint's AWS name derives from
+// metadata.name.
+//
+// AWS's own update model: an endpoint configuration is immutable, so
+// changing any variant/capture/async setting rolls a NEW configuration
+// and repoints the endpoint at it (UpdateEndpoint, optionally shaped by
+// `deployment`). The modules own that choreography - configurations are
+// name-suffixed and created before the old one is destroyed, so the
+// endpoint never references a deleted configuration.
+message AwsSagemakerEndpointSpec {
+  // The AWS region where the endpoint will be created.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The models served by this endpoint - each variant hosts one model
+  // with its own capacity (1-10). One variant is the common case;
+  // multiple variants split traffic by weight (A/B testing).
+  repeated AwsSagemakerEndpointVariant production_variants = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 10
+  }];
+
+  // Shadow variants receive a copy of production traffic without
+  // returning responses to callers (shadow testing). AWS allows exactly
+  // one production and one shadow variant when shadow testing.
+  repeated AwsSagemakerEndpointVariant shadow_variants = 3 [(buf.validate.field).repeated.max_items = 10];
+
+  // KMS key encrypting the ML storage volumes attached to the
+  // endpoint's instances. NOT usable with nitro-local-storage instance
+  // families (ml.g5/g6/p4d/p5 and similar encrypt locally by default
+  // and reject a custom key) or serverless-only endpoints.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // IAM role for the endpoint configuration - REQUIRED when any variant
+  // omits `model` (inference-component endpoints, where components bring
+  // their own models later); otherwise the models' roles apply.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef execution_role_arn = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Queue requests and deliver responses to S3 instead of returning
+  // them synchronously (large payloads, long-running inference).
+  AwsSagemakerEndpointAsyncInference async_inference = 6;
+
+  // Capture request/response payloads to S3 (the Model Monitor feed).
+  AwsSagemakerEndpointDataCapture data_capture = 7;
+
+  // How UpdateEndpoint rolls new capacity: blue/green with traffic
+  // shifting (AWS default when omitted) or rolling batches, plus
+  // CloudWatch-alarm auto-rollback.
+  AwsSagemakerEndpointDeployment deployment = 8;
+
+  // Variant names are identity within the endpoint configuration - AWS
+  // rejects duplicates (checked across production and shadow together).
+  option (buf.validate.message).cel = {
+    id: "variant_names_unique"
+    message: "variant names must be unique across production_variants and shadow_variants"
+    expression: "(this.production_variants.map(v, v.variant_name) + this.shadow_variants.map(v, v.variant_name)).filter(n, n != '').unique()"
+  };
+
+  // AWS's shadow-testing shape: exactly one variant on each side.
+  option (buf.validate.message).cel = {
+    id: "shadow_one_each_side"
+    message: "shadow testing requires exactly one production variant and one shadow variant"
+    expression: "this.shadow_variants.size() == 0 || (this.production_variants.size() == 1 && this.shadow_variants.size() == 1)"
+  };
+
+  // Inference-component endpoints (variants without a model) need the
+  // configuration-level role.
+  option (buf.validate.message).cel = {
+    id: "role_required_without_models"
+    message: "execution_role_arn is required when any variant omits model"
+    expression: "!(this.production_variants + this.shadow_variants).exists(v, !has(v.model)) || has(this.execution_role_arn)"
+  };
+}
+
+// AwsSagemakerEndpointVariant is one model behind the endpoint with its
+// serving capacity: EITHER dedicated instances (`instance_type` and
+// friends) OR serverless compute (`serverless`) - never both.
+message AwsSagemakerEndpointVariant {
+  // Variant name (letters, digits, hyphens; max 63). Optional - the
+  // modules default it deterministically per position ("variant-0",
+  // "variant-1", ...) so plans stay stable; AWS's console convention
+  // for a single variant is "AllTraffic".
+  string variant_name = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 63
+      pattern: "^[0-9A-Za-z-]+$"
+    }
+  ];
+
+  // The SageMaker model this variant serves. Omit ONLY for
+  // inference-component endpoints (components attach models later) -
+  // then the spec-level execution_role_arn is required.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef model = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSagemakerModel,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.model_name"
+  ];
+
+  // Instance type for dedicated capacity (an "ml.*" type, e.g.
+  // "ml.m5.large", "ml.g5.xlarge"). AWS's accepted set grows with every
+  // release - the value passes through to the API, which rejects
+  // unknown types. Required unless `serverless` is set.
+  string instance_type = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^ml\\.[a-z0-9]+([.-][a-z0-9]+)*$"
+  ];
+
+  // Number of instances to launch initially (>= 1). With
+  // `managed_instance_scaling` or application auto-scaling this is the
+  // starting point, not a fixed size.
+  optional int32 initial_instance_count = 4 [(buf.validate.field).int32.gte = 1];
+
+  // Relative traffic share among variants (>= 0; AWS defaults to 1.0).
+  // Traffic splits proportionally to weight/sum(weights); 0 sends no
+  // traffic while keeping the variant deployed.
+  optional float initial_variant_weight = 5 [(buf.validate.field).float.gte = 0];
+
+  // Serverless compute instead of dedicated instances: SageMaker scales
+  // capacity with traffic and bills per inference ($0 idle). Excludes
+  // every instance-based setting on this variant.
+  AwsSagemakerEndpointServerlessConfig serverless = 6;
+
+  // Endpoint-managed instance range (min/max autoscaling handled by
+  // SageMaker itself, no Application Auto Scaling policy needed).
+  AwsSagemakerEndpointManagedInstanceScaling managed_instance_scaling = 7;
+
+  // How invocations route across instances:
+  // "LEAST_OUTSTANDING_REQUESTS" (favor free capacity) or "RANDOM".
+  // Omitted = AWS default (RANDOM).
+  string routing_strategy = 8 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "LEAST_OUTSTANDING_REQUESTS",
+        "RANDOM"
+      ]
+    }
+  ];
+
+  // ML storage volume attached to each instance, in GB (1-512). Only
+  // instance families with EBS volumes accept it (nitro-local-storage
+  // families reject it).
+  optional int32 volume_size_gb = 9 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 512
+  }];
+
+  // Seconds the inference container may take to pass its startup health
+  // check (60-3600). Raise for large models with slow load times.
+  optional int32 container_startup_health_check_timeout_seconds = 10 [(buf.validate.field).int32 = {
+    gte: 60
+    lte: 3600
+  }];
+
+  // Seconds allowed to download and extract model data from S3 to the
+  // instance (60-3600). Raise for multi-GB artifacts.
+  optional int32 model_data_download_timeout_seconds = 11 [(buf.validate.field).int32 = {
+    gte: 60
+    lte: 3600
+  }];
+
+  // Allow AWS Systems Manager sessions into the variant's instances
+  // (debugging). Ignored on inference-component endpoints.
+  bool enable_ssm_access = 12;
+
+  // Pin the preconfigured inference AMI (GPU/Neuron driver line).
+  // Omitted = AWS picks. Values at the current provider line:
+  // "al2-ami-sagemaker-inference-gpu-2",
+  // "al2-ami-sagemaker-inference-gpu-2-1",
+  // "al2-ami-sagemaker-inference-gpu-3-1",
+  // "al2-ami-sagemaker-inference-neuron-2",
+  // "al2023-ami-sagemaker-inference-gpu-4-1".
+  string inference_ami_version = 13 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "al2-ami-sagemaker-inference-gpu-2",
+        "al2-ami-sagemaker-inference-gpu-2-1",
+        "al2-ami-sagemaker-inference-gpu-3-1",
+        "al2-ami-sagemaker-inference-neuron-2",
+        "al2023-ami-sagemaker-inference-gpu-4-1"
+      ]
+    }
+  ];
+
+  // Elastic Inference accelerator attached to the variant (EI is
+  // deprecated by AWS - existing workloads only). Values:
+  // ml.eia1.medium/large/xlarge, ml.eia2.medium/large/xlarge.
+  string accelerator_type = 14 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "ml.eia1.medium",
+        "ml.eia1.large",
+        "ml.eia1.xlarge",
+        "ml.eia2.medium",
+        "ml.eia2.large",
+        "ml.eia2.xlarge"
+      ]
+    }
+  ];
+
+  // Write core dumps from a crashed model container to S3.
+  AwsSagemakerEndpointCoreDump core_dump = 15;
+
+  // Launch this variant's instances ONLY into the named ML capacity
+  // reservation (the modules send AWS's capacity-reservations-only
+  // preference alongside - its single legal value).
+  string ml_capacity_reservation_arn = 16 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Serverless and dedicated-instance settings are exclusive per
+  // variant (AWS's ServerlessConfig contract).
+  option (buf.validate.message).cel = {
+    id: "serverless_excludes_instance_settings"
+    message: "serverless variants cannot set instance_type, initial_instance_count, managed_instance_scaling, volume_size_gb, accelerator_type, inference_ami_version, core_dump, or ml_capacity_reservation_arn"
+    expression: "!has(this.serverless) || (this.instance_type == '' && !has(this.initial_instance_count) && !has(this.managed_instance_scaling) && !has(this.volume_size_gb) && this.accelerator_type == '' && this.inference_ami_version == '' && !has(this.core_dump) && this.ml_capacity_reservation_arn == '')"
+  };
+
+  // A variant must declare its compute: an instance type or serverless.
+  option (buf.validate.message).cel = {
+    id: "compute_form_required"
+    message: "either instance_type or serverless must be set"
+    expression: "has(this.serverless) || this.instance_type != ''"
+  };
+}
+
+// AwsSagemakerEndpointServerlessConfig sizes serverless inference.
+message AwsSagemakerEndpointServerlessConfig {
+  // Maximum concurrent invocations the variant processes (1-200).
+  int32 max_concurrency = 1 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 200
+  }];
+
+  // Memory per invocation environment in MB - one of 1024, 2048, 3072,
+  // 4096, 5120, 6144 (CPU scales with memory).
+  int32 memory_size_mb = 2 [(buf.validate.field).int32 = {
+    in: [
+      1024,
+      2048,
+      3072,
+      4096,
+      5120,
+      6144
+    ]
+  }];
+
+  // Pre-warmed concurrency held ready to serve without cold starts
+  // (1-200; must not exceed max_concurrency). Billed while provisioned.
+  optional int32 provisioned_concurrency = 3 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 200
+  }];
+
+  // AWS rejects provisioning beyond the concurrency ceiling.
+  option (buf.validate.message).cel = {
+    id: "provisioned_within_max"
+    message: "provisioned_concurrency must not exceed max_concurrency"
+    expression: "!has(this.provisioned_concurrency) || this.provisioned_concurrency <= this.max_concurrency"
+  };
+}
+
+// AwsSagemakerEndpointManagedInstanceScaling lets the endpoint itself
+// scale instances between a floor and ceiling.
+message AwsSagemakerEndpointManagedInstanceScaling {
+  // "ENABLED" or "DISABLED". Omitted = AWS default.
+  string status = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "ENABLED",
+        "DISABLED"
+      ]
+    }
+  ];
+
+  // Instances retained when scaling down (>= 0; 0 lets the endpoint
+  // scale to zero where the instance family supports it).
+  optional int32 min_instance_count = 2 [(buf.validate.field).int32.gte = 0];
+
+  // Instances provisioned at peak (>= 1).
+  optional int32 max_instance_count = 3 [(buf.validate.field).int32.gte = 1];
+
+  // A floor above the ceiling can never scale.
+  option (buf.validate.message).cel = {
+    id: "min_within_max"
+    message: "min_instance_count must not exceed max_instance_count"
+    expression: "!has(this.min_instance_count) || !has(this.max_instance_count) || this.min_instance_count <= this.max_instance_count"
+  };
+}
+
+// AwsSagemakerEndpointCoreDump captures model-container core dumps.
+message AwsSagemakerEndpointCoreDump {
+  // S3 destination for core dumps. Example: "s3://my-dumps/endpoint/"
+  string destination_s3_uri = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 512
+    pattern: "^(https|s3)://([^/]+)/?(.*)$"
+  }];
+
+  // KMS key encrypting the dumps at rest in S3.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+}
+
+// AwsSagemakerEndpointAsyncInference queues invocations and delivers
+// results to S3.
+message AwsSagemakerEndpointAsyncInference {
+  // S3 location for inference responses. Example:
+  // "s3://my-bucket/async-out/"
+  string output_s3_path = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 512
+    pattern: "^(https|s3)://([^/]+)/?(.*)$"
+  }];
+
+  // S3 location for FAILED inference responses (kept apart from
+  // successes).
+  string failure_s3_path = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 512
+      pattern: "^(https|s3)://([^/]+)/?(.*)$"
+    }
+  ];
+
+  // KMS key encrypting the async output objects.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Cap concurrent requests sent to one model container. Omitted = AWS
+  // picks an optimal value (1-1000).
+  optional int32 max_concurrent_invocations_per_instance = 4 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 1000
+  }];
+
+  // SNS topic notified on successful inference.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef success_topic_arn = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSnsTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_arn"
+  ];
+
+  // SNS topic notified on failed inference.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef error_topic_arn = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSnsTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_arn"
+  ];
+
+  // Which notifications carry the full inference response inline:
+  // any of "SUCCESS_NOTIFICATION_TOPIC", "ERROR_NOTIFICATION_TOPIC".
+  repeated string include_inference_response_in = 7 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: [
+          "SUCCESS_NOTIFICATION_TOPIC",
+          "ERROR_NOTIFICATION_TOPIC"
+        ]
+      }
+    }
+  }];
+}
+
+// AwsSagemakerEndpointDataCapture samples request/response payloads to
+// S3 - the input feed for Model Monitor.
+message AwsSagemakerEndpointDataCapture {
+  // S3 location for captured data. Example: "s3://my-bucket/capture/"
+  string destination_s3_uri = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 512
+    pattern: "^(https|s3)://([^/]+)/?(.*)$"
+  }];
+
+  // Percentage of traffic to capture (0-100).
+  int32 initial_sampling_percentage = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+
+  // Capture request payloads ("Input"), responses ("Output"), or both
+  // in one entry ("InputAndOutput"). 1-2 entries.
+  repeated string capture_modes = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 2
+    unique: true
+    items: {
+      string: {
+        in: [
+          "Input",
+          "Output",
+          "InputAndOutput"
+        ]
+      }
+    }
+  }];
+
+  // Start with capture ON (flip without replacing the configuration is
+  // not possible - the configuration is immutable, so the modules roll
+  // a new one).
+  bool enable_capture = 4;
+
+  // Request content types captured as CSV (e.g. "text/csv"; max 10).
+  // When either content-type list is set, AWS requires at least one
+  // entry across the two.
+  repeated string csv_content_types = 5 [(buf.validate.field).repeated = {
+    max_items: 10
+    items: {
+      string: {
+        min_len: 1
+        max_len: 256
+        pattern: "^[0-9A-Za-z](-*[0-9A-Za-z])*\\/[0-9A-Za-z](-*[0-9A-Za-z.])*$"
+      }
+    }
+  }];
+
+  // Request content types captured as JSON (e.g. "application/json";
+  // max 10).
+  repeated string json_content_types = 6 [(buf.validate.field).repeated = {
+    max_items: 10
+    items: {
+      string: {
+        min_len: 1
+        max_len: 256
+        pattern: "^[0-9A-Za-z](-*[0-9A-Za-z])*\\/[0-9A-Za-z](-*[0-9A-Za-z.])*$"
+      }
+    }
+  }];
+
+  // KMS key encrypting captured data in S3.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+}
+
+// AwsSagemakerEndpointDeployment shapes how UpdateEndpoint rolls new
+// capacity: exactly one strategy, plus optional alarm-driven rollback.
+message AwsSagemakerEndpointDeployment {
+  // Blue/green: a full new fleet is provisioned and traffic shifts per
+  // the routing configuration. Exactly one of `blue_green` and
+  // `rolling`.
+  AwsSagemakerEndpointBlueGreenPolicy blue_green = 1;
+
+  // Rolling: instances are replaced in batches in place (no parallel
+  // fleet cost). Exactly one of `blue_green` and `rolling`.
+  AwsSagemakerEndpointRollingPolicy rolling = 2;
+
+  // CloudWatch alarms watched during deployment - any alarm firing
+  // rolls the endpoint back (1-10 alarm names).
+  repeated string auto_rollback_alarm_names = 3 [(buf.validate.field).repeated = {
+    max_items: 10
+    unique: true
+    items: {string: {min_len: 1}}
+  }];
+
+  // The provider pairs the two policies exactly-one when deployment is
+  // configured.
+  option (buf.validate.message).cel = {
+    id: "strategy_exactly_one"
+    message: "exactly one of blue_green and rolling must be set"
+    expression: "has(this.blue_green) != has(this.rolling)"
+  };
+}
+
+// AwsSagemakerEndpointCapacitySize sizes a deployment step as an
+// absolute instance count or a percentage of the fleet.
+message AwsSagemakerEndpointCapacitySize {
+  // "INSTANCE_COUNT" or "CAPACITY_PERCENT".
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "INSTANCE_COUNT",
+      "CAPACITY_PERCENT"
+    ]
+  }];
+
+  // The count or percentage (>= 1).
+  int32 value = 2 [(buf.validate.field).int32.gte = 1];
+}
+
+// AwsSagemakerEndpointBlueGreenPolicy shifts traffic from the old fleet
+// to a new one.
+message AwsSagemakerEndpointBlueGreenPolicy {
+  // "ALL_AT_ONCE" (flip everything after one bake), "CANARY" (a canary
+  // batch first, then the rest), or "LINEAR" (equal steps).
+  string traffic_routing_type = 1 [(buf.validate.field).string = {
+    in: [
+      "ALL_AT_ONCE",
+      "CANARY",
+      "LINEAR"
+    ]
+  }];
+
+  // Seconds between traffic-shift steps (0-3600) - the bake time per
+  // step while rollback alarms are watched.
+  int32 wait_interval_seconds = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 3600
+  }];
+
+  // Size of the first (canary) traffic batch - CANARY only; at most 50%
+  // of the variant's capacity.
+  AwsSagemakerEndpointCapacitySize canary_size = 3;
+
+  // Size of each LINEAR step - LINEAR only; 10-50% of capacity.
+  AwsSagemakerEndpointCapacitySize linear_step_size = 4;
+
+  // Extra seconds the OLD fleet is kept after traffic fully shifts
+  // (0-3600; AWS default 0) - the rollback safety window.
+  optional int32 termination_wait_seconds = 5 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 3600
+  }];
+
+  // Hard ceiling for the whole deployment (600-14400 seconds; must
+  // exceed wait interval + termination wait).
+  optional int32 maximum_execution_timeout_seconds = 6 [(buf.validate.field).int32 = {
+    gte: 600
+    lte: 14400
+  }];
+
+  // AWS pairs the step-size blocks with their routing types.
+  option (buf.validate.message).cel = {
+    id: "canary_size_pairs_with_canary"
+    message: "canary_size requires traffic_routing_type CANARY"
+    expression: "!has(this.canary_size) || this.traffic_routing_type == 'CANARY'"
+  };
+  option (buf.validate.message).cel = {
+    id: "linear_step_pairs_with_linear"
+    message: "linear_step_size requires traffic_routing_type LINEAR"
+    expression: "!has(this.linear_step_size) || this.traffic_routing_type == 'LINEAR'"
+  };
+}
+
+// AwsSagemakerEndpointRollingPolicy replaces instances in batches.
+message AwsSagemakerEndpointRollingPolicy {
+  // Batch size per rolling step (5-50% of the fleet when expressed as
+  // CAPACITY_PERCENT).
+  AwsSagemakerEndpointCapacitySize maximum_batch_size = 1 [(buf.validate.field).required = true];
+
+  // Seconds between batches (0-3600) - the bake time while rollback
+  // alarms are watched.
+  int32 wait_interval_seconds = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 3600
+  }];
+
+  // Batch size used when rolling BACK to the old fleet (AWS defaults to
+  // 100% - one-shot rollback).
+  AwsSagemakerEndpointCapacitySize rollback_maximum_batch_size = 3;
+
+  // Hard ceiling for the whole deployment (600-14400 seconds).
+  optional int32 maximum_execution_timeout_seconds = 4 [(buf.validate.field).int32 = {
+    gte: 600
+    lte: 14400
+  }];
+}

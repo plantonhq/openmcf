@@ -1,0 +1,93 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awslambda
+spec:
+  aws:
+    statements:
+      - sid: ManageFunction
+        actions:
+          - lambda:CreateFunction
+          - lambda:GetFunction
+          - lambda:GetFunctionConfiguration
+          - lambda:UpdateFunctionCode
+          - lambda:UpdateFunctionConfiguration
+          - lambda:DeleteFunction
+          - lambda:ListVersionsByFunction
+          - lambda:PublishVersion
+          - lambda:PutFunctionConcurrency
+          - lambda:DeleteFunctionConcurrency
+          - lambda:GetFunctionConcurrency
+          - lambda:GetFunctionCodeSigningConfig
+          - lambda:PutFunctionCodeSigningConfig
+          - lambda:DeleteFunctionCodeSigningConfig
+          - lambda:PutFunctionRecursionConfig
+          - lambda:GetFunctionRecursionConfig
+          - lambda:PutRuntimeManagementConfig
+          - lambda:GetRuntimeManagementConfig
+          - lambda:TagResource
+          - lambda:UntagResource
+          - lambda:ListTags
+        resources:
+          - arn:aws:lambda:*:*:function:*
+        provenance: derived
+        notes: Covers aws_lambda_function plus its attribute satellites (aws_lambda_function_recursion_config, aws_lambda_runtime_management_config) and reserved_concurrent_executions. Action names verified against the AWS service reference; the function-name wildcard is the ARN's variable part.
+      - sid: ManageInvocationSatellites
+        actions:
+          - lambda:CreateAlias
+          - lambda:GetAlias
+          - lambda:UpdateAlias
+          - lambda:DeleteAlias
+          - lambda:PutProvisionedConcurrencyConfig
+          - lambda:GetProvisionedConcurrencyConfig
+          - lambda:DeleteProvisionedConcurrencyConfig
+          - lambda:PutFunctionScalingConfig
+          - lambda:GetFunctionScalingConfig
+          - lambda:CreateFunctionUrlConfig
+          - lambda:GetFunctionUrlConfig
+          - lambda:UpdateFunctionUrlConfig
+          - lambda:DeleteFunctionUrlConfig
+          - lambda:AddPermission
+          - lambda:RemovePermission
+          - lambda:GetPolicy
+          - lambda:PutFunctionEventInvokeConfig
+          - lambda:GetFunctionEventInvokeConfig
+          - lambda:UpdateFunctionEventInvokeConfig
+          - lambda:DeleteFunctionEventInvokeConfig
+        resources:
+          - arn:aws:lambda:*:*:function:*
+          - arn:aws:lambda:*:*:function:*:*
+        provenance: derived
+        notes: Covers the per-feature satellites -- aws_lambda_alias, aws_lambda_provisioned_concurrency_config, aws_lambda_function_scaling_config, aws_lambda_function_url, aws_lambda_permission, aws_lambda_function_event_invoke_config -- each created only when its spec block is set. The qualified-function ARN form covers alias- and version-scoped calls; no DeleteFunctionScalingConfig action exists in the service reference (scaling configs are removed by re-put).
+      - sid: PassExecutionRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: CreateFunction and UpdateFunctionConfiguration pass the referenced execution role (role_arn) to the Lambda service. Narrow to the actual role ARN in a hardened deployment.
+      - sid: FetchCodeArtifacts
+        actions:
+          - s3:GetObject
+          - ecr:BatchGetImage
+          - ecr:GetDownloadUrlForLayer
+        resources:
+          - arn:aws:s3:::*/*
+          - arn:aws:ecr:*:*:repository/*
+        provenance: derived
+        notes: Required only for the code source the manifest uses -- Lambda fetches the s3 object (spec.s3) or pulls the container image (image_uri) with the caller's permissions at CreateFunction/UpdateFunctionCode time. Scope to the actual bucket or repository in a hardened deployment.
+      - sid: UseCustomerManagedKey
+        actions:
+          - kms:DescribeKey
+          - kms:CreateGrant
+          - kms:GenerateDataKey
+          - kms:Decrypt
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Required only when kms_key_arn or source_kms_key_arn references a customer-managed key -- configuring the function encrypts environment variables and packages under it. Scope to the actual key ARN in a hardened deployment.

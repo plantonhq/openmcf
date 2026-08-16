@@ -1,3 +1,0 @@
-name: openstack-volume
-runtime: go
-description: Pulumi module for OpenStackVolume

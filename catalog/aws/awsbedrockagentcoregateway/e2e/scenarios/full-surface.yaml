@@ -1,0 +1,60 @@
+# AwsBedrockAgentCoreGateway full-surface scenario: JWT inbound auth
+# against Google's public OIDC discovery document (the upstream
+# provider's own test fixture), the MCP tuning block (semantic search,
+# session timeout, response streaming), and one self-contained target --
+# an inline OpenAPI schema fronted with the gateway's own IAM role -- plus
+# metadata propagation. Proves the target satellite's create-after /
+# destroy-before ordering (AWS deletes targets before the gateway).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreGateway
+metadata:
+  name: planton-oss-e2e-awsacgw-full
+  id: planton-oss-e2e-awsacgw-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockagentcoregateway
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E full-surface MCP gateway
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-agentcore-role
+      fieldPath: status.outputs.role_arn
+  authorizerType: CUSTOM_JWT
+  customJwtAuthorizer:
+    discoveryUrl: https://accounts.google.com/.well-known/openid-configuration
+    allowedAudience:
+      - planton-e2e-agents
+    customClaims:
+      - claimName: org
+        valueType: STRING
+        matchOperator: EQUALS
+        matchValue: planton
+  mcp:
+    instructions: E2E tools for exercising the gateway surface.
+    enableSemanticSearch: true
+    sessionTimeoutSeconds: 900
+    enableResponseStreaming: true
+  targets:
+    - name: e2e-billing-api
+      description: Inline OpenAPI schema target
+      backend:
+        openApiSchema:
+          # AWS validates the document content at target create: it
+          # requires a non-empty `servers` array whose URL uses HTTPS
+          # (the target lands FAILED otherwise; live-caught 2026-08-14).
+          # No call is made to the URL at create.
+          inlinePayload: '{"openapi":"3.0.0","info":{"title":"planton-e2e-billing","version":"1"},"servers":[{"url":"https://billing.e2e.planton.ai"}],"paths":{"/invoices":{"get":{"operationId":"listInvoices","responses":{"200":{"description":"ok"}}}}}}'
+      credentials:
+        gatewayIamRole:
+          service: execute-api
+      metadata:
+        allowedRequestHeaders:
+          - X-Trace-Id

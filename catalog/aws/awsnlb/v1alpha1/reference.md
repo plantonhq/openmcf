@@ -359,6 +359,14 @@ Fields that can point at another resource's outputs:
 | `spec.accessLogs.bucket` | AwsS3Bucket | `status.outputs.bucket_id` |
 | `spec.dns.route53ZoneId` | AwsRoute53Zone | `status.outputs.zone_id` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsRestApiVpcLink | `spec.targetArn` | `status.outputs.load_balancer_arn` |
+
 ## See Also
 
 - [Overview](../README.md)

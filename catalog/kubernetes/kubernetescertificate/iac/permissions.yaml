@@ -1,0 +1,25 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetescertificate
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - cert-manager.io
+        resources:
+          - certificates
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the kubectl_manifest.certificate resource -- the module's only resource, applying one namespaced Certificate (cert-manager.io/v1) via server-side apply. The output TLS Secret is created by the cert-manager controller, not by the runner.

@@ -1,0 +1,66 @@
+# Consumer-scoped AwsIamRole install profile for the AgentCore gateway.
+# The shared IAM-role profile ships ~16 roles (EKS, ECS, SageMaker,
+# AgentCore, ...); this kind references exactly one -- the role that
+# trusts bedrock-agentcore.amazonaws.com and carries the permission set
+# the upstream provider's own AgentCore acceptance fixtures grant.
+# Scoping the fixture to that role keeps the chain off the shared
+# fixed-name set (the concurrent-session collision class) and drops
+# DEPENDENCIES-UP from minutes of unused role creates to one role.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-agentcore-role
+  id: planton-oss-e2e-agentcore-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for the Bedrock AgentCore family
+  inlinePolicies:
+    agentCoreE2E:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - ecr:GetAuthorizationToken
+            - ecr:BatchGetImage
+            - ecr:GetDownloadUrlForLayer
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - s3:ListBucket
+            - s3:GetObject
+            - s3:PutObject
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - bedrock:InvokeModel
+          Resource: "*"
+        # Code-based evaluators (AwsBedrockAgentCoreEvaluation) invoke a
+        # Lambda at evaluation-run time. Create of the evaluator does
+        # not invoke it; the grant is here so a later live run against
+        # this role succeeds without a second IAM change.
+        - Effect: Allow
+          Action:
+            - lambda:InvokeFunction
+          Resource: "*"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: bedrock-agentcore.amazonaws.com
+        Action: sts:AssumeRole

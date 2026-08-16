@@ -1,0 +1,9 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsConfigAggregator
+metadata:
+  name: grant-to-security-account
+spec:
+  region: <aws-region>
+  authorizations:
+    - accountId: "<aggregator-account-id>"
+      authorizedAwsRegion: <aggregator-home-region>

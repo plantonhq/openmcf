@@ -1,0 +1,91 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awssqsqueue
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: New queues encrypt messages at rest with SQS-managed keys (SSE-SQS) by default, and the spec's sqs_managed_sse_enabled only ever makes that explicit or upgrades it to KMS.
+      notes: Both presets pin sqs_managed_sse_enabled true, making the default visible in the manifest.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset means SQS-managed keys; setting kms_key_id re-encrypts messages under the referenced customer-managed KMS key with a tunable data-key reuse window.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: policy
+      evidence:
+        type: spec_default
+        reference: The SQS API serves HTTPS, but TLS-only access is enforced by a queue policy denying requests where aws:SecureTransport is false -- the policy field carries it.
+      notes: Neither preset pins a TLS-only policy today; AWS SDKs default to HTTPS endpoints.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A queue with no resource policy is accessible only to its own account's IAM-authorized principals -- there is no anonymous or cross-account path unless the policy field deliberately grants one.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: policy
+      evidence:
+        type: spec_default
+        reference: The queue policy narrows senders and receivers to declared principals, source ARNs, and conditions; redrive_allow_policy separately restricts which source queues may use this queue as their dead-letter target.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A queue has no WAF attachment point; it is an API-addressed service, not a web endpoint.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management and data-plane call (SendMessage, ReceiveMessage, queue administration) is IAM-authorized against the queue ARN; no non-IAM access path exists.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A queue holds no credentials and runs no workloads; producers and consumers authenticate with their own identities.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: SQS has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management API call is recorded in CloudTrail by default; message-level data events can additionally be enabled account-side.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: SQS publishes queue depth, message age, and throughput metrics to CloudWatch automatically for every queue at no charge.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: dead_letter_config
+      evidence:
+        type: spec_default
+        reference: Unset means exhausted messages are lost when retention lapses; a dead-letter config preserves messages that fail processing max_receive_count times for inspection and redrive back to the source.
+      notes: A queue is transient transport, not durable storage -- the dead-letter queue plus redrive is its recovery story.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: message_retention_seconds
+      evidence:
+        type: spec_default
+        reference: Retention is declared policy from 60 seconds to 14 days (default 4 days) -- how long an unconsumed or dead-lettered message survives is a manifest choice, not an accident.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: SQS stores every message redundantly across multiple availability zones within the region -- zone-level durability is structural, not configured.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: SQS offers no deletion-protection flag; a deleted queue is recreated from the manifest, and its 60-second name-reuse quarantine is a provider safeguard, not a control.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the fleet; no customer-visible patch surface exists.

@@ -1,0 +1,31 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremanagedredis
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Redis Cache
+      sku_meter: cache instance
+      pricing_unit: hours
+      description: The instance bills its SKU's hourly rate from creation, used or idle -- the sku_name value carries both the performance family and the memory size in one identity.
+  cost_drivers:
+    - field_path: sku_name
+      sku_meter: cache instance
+      pricing_unit: hours
+      impact: The whole bill in one field -- Balanced (B), Compute Optimized (X), Memory Optimized (M), and Flash Optimized (A) families each ladder by memory size, and every step has its own hourly rate.
+    - field_path: high_availability_enabled
+      sku_meter: cache instance
+      pricing_unit: hours
+      impact: On by default with the replicated pair included in the SKU rate; disabling it halves the instance's effective rate in exchange for no failover -- Azure bills the non-HA shape at half the listed price.
+    - field_path: default_database.geo_replication_group_name
+      sku_meter: cache instance
+      pricing_unit: hours
+      impact: Joining a geo-replication group changes nothing on this instance's rate -- but every member instance bills its own SKU, so the group's cost is the sum of its members.
+  estimate_exclusions:
+    - network egress follows client placement
+    - persistence (AOF/RDB) writes to managed storage included in the SKU rate
+  notes: "Azure Managed Redis prices one meter: the SKU-hour, with high availability included in the listed rate. The families move the memory-to-compute ratio, not the billing shape -- pick the size, multiply by hours, that is the bill."

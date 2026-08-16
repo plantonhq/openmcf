@@ -1,0 +1,42 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsconfigrecorder
+spec:
+  # The region's Config recording posture under live E2E: the scenario
+  # composes the service role and the policy-carrying history bucket,
+  # applies a deliberately SCOPED inclusion recorder (two cheap types
+  # -- per-item recording bills per configuration item) with a
+  # delivery channel and the 90-day retention floor, verifies
+  # DescribeConfigurationRecorders/RecorderStatus/DeliveryChannels/
+  # RetentionConfigurations echo the posture, then destroys. Destroy
+  # is a REAL delete with ordering (stop recorder, then channel +
+  # recorder + retention).
+  #
+  # SINGLETON COLLISION CLASS: one recorder and one channel per region
+  # ("default") -- both engines' lanes and any concurrent session
+  # target the SAME regional objects; lanes run sequentially within a
+  # session, and a PRE-EXISTING recorder in the test account fails
+  # create (the watch-list flags it; heal by removing the stray
+  # recorder, never by renaming).
+  #
+  # Deliberately not exercised live:
+  #   - recording_enabled: false -- the stopped posture is a plain
+  #     Stop call the running lane's destroy already exercises.
+  #   - all_supported / EXCLUSION_BY_RESOURCE_TYPES /
+  #     include_global_resource_types -- recording every supported
+  #     type in a shared account bills per item across ALL fixtures
+  #     and strays; the inclusion shape proves the recording-group
+  #     plumbing at pennies. Renders proven arm-for-arm offline.
+  #     Unblock: a dedicated quiet account or an owner call on the
+  #     recording bill.
+  #   - s3_kms_key_arn / sns_topic_arn on the channel + recording_mode
+  #     overrides -- proven arm-for-arm offline; fold into the
+  #     scenario when the proof lane wants them.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q39
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

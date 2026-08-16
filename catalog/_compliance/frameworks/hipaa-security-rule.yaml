@@ -1,0 +1,51 @@
+# Crosswalk: HIPAA Security Rule technical safeguards (45 CFR 164.312) plus
+# the data-backup plan requirement (164.308(a)(7)(ii)(A)) onto the Planton
+# Control Catalog. Covers the requirements TECHNICAL controls can serve;
+# administrative and physical safeguards are out of scope by nature. A
+# mapping says catalog controls SERVE a requirement -- it never declares a
+# component or deployment "HIPAA-compliant". Schema:
+# compliance/frameworkcrosswalk/v1.
+apiVersion: compliance.planton.dev/v1
+kind: FrameworkCrosswalk
+metadata:
+  name: hipaa-security-rule
+spec:
+  framework_name: HIPAA Security Rule
+  framework_version: 45 CFR Part 164, Subpart C (2013 Omnibus)
+  mappings:
+    - requirement_id: 164.312(a)(1)
+      requirement_name: Access control
+      control_ids: [rbac, no-public-access, restricted-ingress]
+      notes: Required standard. Technical policies that allow access only to authorized persons or programs.
+    - requirement_id: 164.312(a)(2)(i)
+      requirement_name: Unique user identification
+      control_ids: [rbac, workload-identity]
+      notes: Required implementation specification. Identity-based access with unique, attributable principals.
+    - requirement_id: 164.312(a)(2)(iv)
+      requirement_name: Encryption and decryption
+      control_ids: [enc-at-rest, enc-at-rest-cmk]
+      notes: Addressable implementation specification for data at rest.
+    - requirement_id: 164.312(b)
+      requirement_name: Audit controls
+      control_ids: [audit-logging, monitoring-integration]
+      notes: Required standard. Mechanisms that record and examine activity in systems containing ePHI.
+    - requirement_id: 164.312(c)(1)
+      requirement_name: Integrity
+      control_ids: [backup-recovery, deletion-protection]
+      notes: Required standard. Protection of ePHI from improper alteration or destruction.
+    - requirement_id: 164.312(d)
+      requirement_name: Person or entity authentication
+      control_ids: [no-legacy-auth, workload-identity]
+      notes: Required standard. Verification that a person or entity seeking access is the one claimed.
+    - requirement_id: 164.312(e)(1)
+      requirement_name: Transmission security
+      control_ids: [enc-in-transit, restricted-ingress]
+      notes: Required standard. Guarding against unauthorized access to ePHI transmitted over networks.
+    - requirement_id: 164.312(e)(2)(ii)
+      requirement_name: Encryption (transmission)
+      control_ids: [enc-in-transit]
+      notes: Addressable implementation specification for data in transit.
+    - requirement_id: 164.308(a)(7)(ii)(A)
+      requirement_name: Data backup plan
+      control_ids: [backup-recovery, backup-retention-policy]
+      notes: Required implementation specification. An administrative safeguard these technical controls serve.

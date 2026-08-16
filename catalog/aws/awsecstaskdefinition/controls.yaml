@@ -1,0 +1,74 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsecstaskdefinition
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The only data this component materializes -- the auto-created CloudWatch log group -- is encrypted at rest by CloudWatch's service encryption; the definition itself is configuration stored encrypted by the managed service.
+      notes: Runtime storage posture (task ephemeral, EBS, EFS) is governed where those surfaces are declared -- the service's volume configuration and the referenced file systems.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: logging.log_group
+      evidence:
+        type: spec_default
+        reference: The module's auto-created log group uses CloudWatch's default encryption; referencing an externally managed log group brings its customer-managed KMS key, since the module never creates a group when one is referenced.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A task definition is metadata -- network transport belongs to the running service (Service Connect TLS) and the applications themselves.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: No endpoint exists; exposure is declared on the AwsEcsService's network block.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Port mappings here declare what a container listens on; which sources may reach it is the service's security-group posture.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No web endpoint, no WAF attachment point.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Registering, describing, and deregistering task definitions is IAM-authorized; what a running task may do is exactly its declared task_role -- role-based by construction.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Containers receive short-lived credentials from the referenced task_role via the ECS agent, and image pulls plus log writes use the execution_role -- no static keys enter the container environment, and the secrets map injects Secrets Manager/SSM values by ARN at start rather than baking material into the definition.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: ECS has a single authentication path -- SigV4 IAM; no legacy protocol exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Registration and deregistration are recorded in CloudTrail by default, and every revision is an immutable, numbered record of what was declared.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Logging is on unless explicitly disabled -- the module creates the /ecs/<family> CloudWatch log group (30-day retention) and wires every container's awslogs driver to it, so task output is observable from the first run.
+      notes: health_check blocks per container feed ECS's health model, driving service-level replacement and deployment safety.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Revisions are immutable and re-registerable from the manifest -- there is no mutable data to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist; log retention (logging.retention_days) is an observability setting, not backup policy.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Zone placement is the running service's concern; a definition carries no placement.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Deregistration only marks a revision INACTIVE -- running tasks continue, and the revision history is never destroyed; no protection flag exists or is needed.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A definition runs nothing -- platform patching applies to the Fargate or EC2 capacity executing it, governed on the service and cluster components; container image freshness is the owner's build pipeline.

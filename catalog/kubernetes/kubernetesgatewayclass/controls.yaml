@@ -1,0 +1,59 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesgatewayclass
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A GatewayClass stores no data beyond its own definition in the cluster's etcd; encrypting that store is the target cluster control plane's property, not a seam of this spec (controller_name, parameters_ref, description are all pure configuration).
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest), so customer-managed keys have no meaning here.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A GatewayClass serves no traffic -- it names the controller that will serve Gateways of this class. TLS is declared per-listener on those Gateway resources (their own catalog kind), never on the class.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The class is not network-addressable. Public exposure is created by the Gateways instantiated from it and the controller's own service -- both separate resources with their own posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The class accepts no inbound traffic to restrict. Listener allowed-routes and network restrictions live on the Gateways of this class.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No requests flow through this object, so a web application firewall does not apply; request filtering belongs to the gateway controller's data plane.
+    - control_id: rbac
+      status: not_applicable
+      notes: The object's only access plane is the Kubernetes API -- who may create or change the GatewayClass is the target cluster's own RBAC, not something this spec configures. It has no data plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The class authenticates to nothing -- it holds no credentials and calls no cloud APIs. Any cloud identity used to program data planes belongs to the controller installation.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: There is no authentication path into this object beyond the Kubernetes API itself, so no legacy mechanism exists to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the GatewayClass are Kubernetes API operations, captured by the target cluster's audit policy; the object produces no administrative or access events of its own.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The class has no runtime behavior to monitor. Traffic and controller metrics are emitted by the gateway controller and its Gateways.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The object is fully declarative and holds no data -- re-applying the manifest reconstructs it exactly. There is nothing to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist for this object (see backup-recovery), so retention has nothing to govern.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A GatewayClass has no runtime footprint to replicate. Availability of the traffic path is a property of the controller deployment and the Gateway data planes.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on GatewayClass; protection is operational (cluster RBAC, change review). Note that controller_name is immutable once the class exists -- the Gateway API admission webhook rejects changes -- so repointing a class means recreating it.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Nothing runs here to patch. The controller software the class names is installed, versioned, and patched through its own component.

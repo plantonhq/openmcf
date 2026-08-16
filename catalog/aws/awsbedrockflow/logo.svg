@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>AWS Bedrock Flow</title>
+    <defs>
+        <linearGradient id="brflwGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#7C3AED"/>
+            <stop offset="100%" stop-color="#4C1D95"/>
+        </linearGradient>
+    </defs>
+    <rect width="80" height="80" rx="16" fill="url(#brflwGradient)"/>
+    <circle cx="22" cy="40" r="7" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+    <circle cx="58" cy="22" r="7" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+    <circle cx="58" cy="58" r="7" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+    <path d="M28 36 Q40 28 51 24" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+    <path d="M28 44 Q40 52 51 56" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+</svg>

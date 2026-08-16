@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurevirtualnetwork
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A virtual network is a software-defined network container; it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: encryption
+      evidence:
+        type: spec_default
+        reference: Unset means VNet encryption is off (the Azure default); configuring it encrypts traffic between supported VMs inside the network, with the enforcement value deciding whether unencrypted-capable VMs are allowed.
+      notes: The 03-ddos-protected preset sets ALLOW_UNENCRYPTED enforcement. Payload-level TLS between workloads remains the workloads' responsibility.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The network itself has no public reachability -- internet exposure is created by public IPs, load balancers, and gateways, each a separate catalog kind with its own posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Ingress restriction lives on network security groups and their subnet/NIC associations -- separate catalog kinds that attach into the network.
+    - control_id: edge-protection
+      status: configurable
+      field_path: ddos_protection_plan
+      evidence:
+        type: spec_default
+        reference: Unset leaves the network on Azure's infrastructure-level DDoS protection only; attaching a DDoS Network Protection plan (enable=true with the plan's ARM ID) adds adaptive volumetric attack mitigation for every protected public IP in the network.
+      notes: The 03-ddos-protected preset attaches a plan. Request-level filtering (WAF) still belongs to application gateways and Front Door, separate kinds.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the network exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The network runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Traffic audit (VNet flow logs) is configured through Network Watcher on the network or its subnets -- separate resources, not fields of this spec. Control-plane changes land in the Azure Activity Log as subscription-level posture.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The network container publishes no metrics of its own; traffic observability (flow logs, connection monitor) is configured through Network Watcher resources, separate kinds.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless network configuration -- nothing to back up; the manifest recreates the network declaratively.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A virtual network is a regional construct spanning every availability zone in its region by design; zone placement happens on the resources deployed into it, and the network itself has no single-zone failure mode.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a virtual network (Azure resource locks are subscription-side governance outside the manifest). A network carrying subnets in use refuses deletion until they empty, but that is dependency ordering, not a control.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed software-defined networking -- Microsoft operates and patches the underlying network fabric; no customer-visible patch surface exists.

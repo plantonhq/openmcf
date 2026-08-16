@@ -1,0 +1,23 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupRestoreTestingPlan
+metadata:
+  name: weekly-restore-drills
+spec:
+  region: <aws-region>
+  planName: weekly_restore_drills
+  scheduleExpression: cron(0 5 ? * MON *)
+  recoveryPointSelection:
+    algorithm: RANDOM_WITHIN_WINDOW
+    includeVaults: ["*"]
+    recoveryPointTypes: ["SNAPSHOT"]
+    selectionWindowDays: 30
+  selections:
+    - name: ebs_volumes
+      protectedResourceType: EBS
+      iamRoleArn:
+        valueFrom:
+          kind: AwsIamRole
+          name: <restore-testing-role>
+          fieldPath: status.outputs.role_arn
+      protectedResourceArns: ["*"]
+      validationWindowHours: 4

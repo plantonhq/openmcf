@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockagentcoreidentity.v1alpha1;
+
+// AwsBedrockAgentCoreIdentityStackOutputs captures observable
+// identifiers from a provisioned AgentCore identity bundle. Downstream
+// resources (gateway targets' credential providers, gateways' policy
+// engines, JWT authorizers' workload allow-lists) wire dependencies via
+// StringValueOrRef.
+message AwsBedrockAgentCoreIdentityStackOutputs {
+  // Workload identity ARNs keyed by each `workload_identities` entry's
+  // name.
+  map<string, string> workload_identity_arns = 1;
+
+  // Credential provider ARNs keyed by each
+  // `api_key_credential_providers` entry's name - the value a gateway
+  // target's api_key credentials consume.
+  map<string, string> api_key_provider_arns = 2;
+
+  // Secrets Manager secret ARNs holding each vaulted API key, keyed by
+  // provider name.
+  map<string, string> api_key_secret_arns = 3;
+
+  // Credential provider ARNs keyed by each
+  // `oauth2_credential_providers` entry's name - the value a gateway
+  // target's oauth credentials consume.
+  map<string, string> oauth2_provider_arns = 4;
+
+  // Secrets Manager secret ARNs holding each vaulted OAuth client
+  // secret, keyed by provider name.
+  map<string, string> oauth2_client_secret_arns = 5;
+
+  // The policy engine's unique identifier (empty when the bundle has no
+  // engine).
+  string policy_engine_id = 6;
+
+  // The policy engine's ARN - the value a gateway's policy_engine
+  // configuration consumes.
+  string policy_engine_arn = 7;
+
+  // Cedar policy IDs keyed by each `policy_engine.policies` entry's
+  // name.
+  map<string, string> policy_ids = 8;
+}

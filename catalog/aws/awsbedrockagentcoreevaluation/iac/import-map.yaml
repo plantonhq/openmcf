@@ -1,0 +1,31 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsbedrockagentcoreevaluation
+spec:
+  # Every evaluation object imports by its AWS-generated id, derived
+  # blind from the per-arm output maps keyed exactly like the module's
+  # for_each entries. enable_on_create on the online config is
+  # create-time intent the API never echoes -- declared config-only in
+  # the provider catalog.
+  values:
+    - name: evaluator_id
+      derivations:
+        - from_stack_output_keyed_by_address: evaluator_ids
+      where_to_find: >-
+        `aws bedrock-agentcore-control list-evaluators` lists
+        evaluatorId per evaluator; match each to its spec.evaluators
+        entry by name.
+    - name: harness_id
+      derivations:
+        - from_stack_output_keyed_by_address: harness_ids
+      where_to_find: >-
+        `aws bedrock-agentcore-control list-harnesses` lists harnessId
+        per harness; match each to its spec.harnesses entry by name.
+    - name: online_evaluation_config_id
+      derivations:
+        - from_stack_output_keyed_by_address: online_evaluation_config_ids
+      where_to_find: >-
+        `aws bedrock-agentcore-control list-online-evaluation-configs`
+        lists onlineEvaluationConfigId; match each to its
+        spec.online_evaluation_configs entry by name.

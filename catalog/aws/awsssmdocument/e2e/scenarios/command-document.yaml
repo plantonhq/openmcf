@@ -1,0 +1,46 @@
+# A customer-owned Command document live: JSON content with a declared
+# parameter, a version label, and a target-type restriction. The name
+# is RUN-SCOPED: DeleteDocument is asynchronous, so a fixed name could
+# collide with the first engine's still-deleting document. Sharing and
+# attachments stay offline (see the profile). ~$0: documents are free.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSsmDocument
+metadata:
+  name: planton-oss-e2e-awsssmd-${E2E_RUN_ID}
+  id: planton-oss-e2e-awsssmd-${E2E_RUN_ID}
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsssmdocument
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  documentType: Command
+  documentFormat: JSON
+  content: |
+    {
+      "schemaVersion": "2.2",
+      "description": "Planton E2E command document",
+      "parameters": {
+        "Message": {
+          "type": "String",
+          "description": "Message to echo",
+          "default": "planton-e2e"
+        }
+      },
+      "mainSteps": [
+        {
+          "action": "aws:runShellScript",
+          "name": "echoMessage",
+          "inputs": {
+            "runCommand": ["echo {{Message}}"]
+          }
+        }
+      ]
+    }
+  targetType: /AWS::EC2::Instance
+  versionName: release-1.0.0

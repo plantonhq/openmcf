@@ -1,0 +1,30 @@
+# AwsBedrockModelAccess minimal scenario: accept the public offer for a
+# third-party marketplace model that needs no use-case form. Cohere
+# Command R is the probe-verified choice in the test account (public
+# offer present, usage-based rate card only, authorizationStatus
+# AUTHORIZED, agreement NOT_AVAILABLE pre-lane); auto-enabled models
+# (Mistral, Meta, Amazon) reject the offers API with "Agreement not
+# supported". The offer token is looked up in-module at deploy time, so
+# the manifest names only the model. Destroy cancels the agreement -- the
+# zero-orphan sweep must see agreementAvailability NOT_AVAILABLE
+# afterwards.
+#
+# Deliberately not exercised here: use_case_form (account-global,
+# write-once -- see the profile's recorded deferral).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockModelAccess
+metadata:
+  name: planton-oss-e2e-awsbrma-min
+  id: planton-oss-e2e-awsbrma-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockmodelaccess
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  modelId: cohere.command-r-v1:0

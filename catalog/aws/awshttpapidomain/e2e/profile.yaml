@@ -14,11 +14,10 @@ spec:
   # tenant. Deliberately not in the lane: the ROUTING-RULE surface -- API
   # Gateway routing rules invoke ONLY REST-protocol APIs (live-caught 400
   # "Only the REST protocol type is supported" at CreateRoutingRule on both
-  # engines; the catalog has no REST API kind to build a fixture from), so
-  # the rule arms are offline-proven (plans/previews render the folded
-  # Plugin Framework resource) and unblock when a REST API kind ships with
-  # a fixture; the verifier already asserts the routing posture
-  # (GetDomainName mode + ListRoutingRules) for that day. Also not in the
+  # engines). AwsRestApiGateway now exists; composing a REST fixture into
+  # this HTTP-domain lane is a follow-on (the rule arms stay offline-proven
+  # until a lane budget covers it). The verifier already asserts the routing
+  # posture (GetDomainName mode + ListRoutingRules). Also not in the
   # lane: mutual TLS (needs an S3-hosted truststore fixture), DNS records
   # (the domain exists independently of any record pointing at it), and the
   # ownership-verification certificate (AWS only accepts it alongside a

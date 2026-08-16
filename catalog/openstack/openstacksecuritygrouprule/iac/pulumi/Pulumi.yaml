@@ -1,3 +1,0 @@
-name: openstack-security-group-rule
-runtime: go
-description: Pulumi module for OpenStackSecurityGroupRule

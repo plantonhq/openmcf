@@ -1,0 +1,31 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsroute53zone
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon Route 53
+      sku_meter: hosted zones
+      pricing_unit: zone-months
+      description: Every hosted zone bills a flat monthly fee from creation, public or private, at the first-25-zones tier rate (cheaper beyond 25).
+  cost_drivers:
+    - field_path: is_private
+      sku_meter: DNS queries
+      pricing_unit: millions of queries
+      impact: Public zones bill every DNS query per million answered; a private zone's queries from its associated VPCs are free, so the monthly zone fee becomes its whole bill.
+    - field_path: query_logging
+      sku_meter: query log ingestion
+      pricing_unit: GB
+      impact: Every answered query becomes a CloudWatch Logs ingestion event on the referenced log group -- on a high-traffic domain the logging can dwarf the zone fee. The spec itself warns about the volume.
+    - field_path: dnssec
+      sku_meter: KMS signing key usage
+      impact: DNSSEC signing is free on the Route 53 side, but the referenced customer-managed asymmetric KMS key bills monthly plus per-request signing charges on its own AwsKmsKey component.
+  estimate_exclusions:
+    - DNS query volume is traffic-dependent (public zones bill per million queries; routing-policy queries bill at higher rates on the record kinds)
+    - query-log bytes bill CloudWatch Logs ingestion and storage on the destination log group
+    - the DNSSEC signing key bills on its own AwsKmsKey component
+  notes: "The zone fee is the only certainty at manifest time; queries follow traffic. DNS records, health checks, and routing policies live on their own kinds (AwsRoute53DnsRecord, AwsRoute53HealthCheck) with their own cost shapes."

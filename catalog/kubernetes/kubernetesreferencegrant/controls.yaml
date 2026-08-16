@@ -1,0 +1,59 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesreferencegrant
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A ReferenceGrant stores no data -- it is a trust assertion in etcd, whose encryption is owned by the target cluster. The Secrets it may authorize references TO are separate resources with their own posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With nothing stored (see enc-at-rest), there is no at-rest key to manage.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The grant carries no traffic -- it authorizes cross-namespace OBJECT references (e.g. a Gateway in another namespace reading a TLS Secret here), evaluated by the Gateway controller.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A grant has no network endpoint to expose. It widens no network path -- only which Gateway API objects may point at which resources.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The grant governs object references, not network traffic. It is itself deliberately narrow -- each from entry trusts one (group, kind, namespace) tuple and each to entry one (group, kind) with an optional single name -- but that restricts reference authority, not inbound network sources.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The grant serves no requests -- web application firewalls do not apply.
+    - control_id: rbac
+      status: not_applicable
+      notes: Access to the ReferenceGrant object is governed by the target cluster's Kubernetes RBAC. The grant itself is an authorization primitive of the Gateway API's own trust model -- cross-namespace references are denied unless a grant in the referenced namespace permits them -- but it defines no roles or subjects.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A grant authenticates to no cloud API -- it is configuration consumed by the in-cluster Gateway controller.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The grant performs no authentication; there is no legacy authentication path to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the grant are Kubernetes API operations, captured by the target cluster's audit policy. Upstream deliberately omits a status subresource on ReferenceGrant, so there is no controller-managed status to log from.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A trust object emits no operational metrics; reference-resolution behavior surfaces on the REFERENCING resources' statuses, owned by their kinds.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: There is no data to back up -- the grant is fully described by its declarative spec, re-appliable at any time.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backups (see backup-recovery), there is no retention length to configure.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The grant is an API object with no running replicas; the Gateway controller evaluates it wherever it reconciles.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on Gateway API objects. Deleting the grant FAILS CLOSED -- revoking it revokes the cross-namespace access it authorized, breaking the referencing Gateways or Routes rather than opening anything. Protection is operational (namespace RBAC, change review).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software to patch -- the grant is configuration served by the cluster's Gateway API CRDs; version lifecycle belongs to the cluster and its gateway controller.

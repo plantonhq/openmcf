@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="site/public/icon.png" alt="Planton logo" width="72">
+  <img src=".github/icon.png" alt="Planton logo" width="72">
 </p>
 
 # Planton
@@ -13,12 +13,12 @@ clean, auditable infrastructure-as-code running underneath. No account. No
 connections. No ceremony.
 
 <p align="center">
-  <b><a href="https://planton.app/download">Download Planton</a></b>
+  <b><a href="https://planton.ai">Download Planton</a></b>
   &nbsp;·&nbsp; Free forever, including for commercial use
   &nbsp;·&nbsp; Runs on macOS · Linux · Windows
 </p>
 
-**[Website](https://planton.app)** · **[Getting Started](https://planton.app/docs/getting-started)** · **[Documentation](https://planton.app/docs)**
+**[Website](https://planton.ai)** · **[Getting Started](https://planton.ai/docs/getting-started)** · **[Documentation](https://planton.ai/docs)**
 
 ---
 
@@ -47,10 +47,9 @@ yourself.
      (count non-test `(kind_meta)` annotations and distinct providers). The chart
      count MUST be verified against `charts/*/*/Chart.yaml`. Never re-type a stale number. -->
 
-- **[`catalog/`](catalog)** — **400+ components**
-  across **17 cloud providers** (AWS, GCP, Azure, Kubernetes, OCI, Alibaba
-  Cloud, Hetzner Cloud, DigitalOcean, Cloudflare, Civo, Scaleway, OpenStack,
-  Confluent, Snowflake, Auth0, MongoDB Atlas, and OpenFGA). Each component is a
+- **[`catalog/`](catalog)** — **600+ components**
+  across **8 cloud providers** (AWS, GCP, Azure, Kubernetes, DigitalOcean,
+  Cloudflare, Auth0, and OpenFGA). Each component is a
   Protocol Buffer definition in the Kubernetes Resource Model shape
   (`apiVersion`/`kind`/`metadata`/`spec`) with field-level validations and
   auto-generated SDKs in Go, Python, TypeScript, and Java.
@@ -60,9 +59,6 @@ yourself.
 - **[`cmd/planton`](cmd/planton)** — the open-source CLI and IaC engine that
   validates manifests and executes the Pulumi and OpenTofu/Terraform modules
   that ship with every component.
-- **[`site/`](site)** — the [planton.app](https://planton.app) website and
-  documentation.
-
 ## The CLI
 
 The desktop app is the product; the CLI is its companion — the same deploys,
@@ -96,8 +92,8 @@ planton apply -f postgres.yaml
 
 Validation catches mistakes in seconds — before anything touches your cloud —
 and the deploy streams live output from the underlying IaC module. See the
-[Getting Started guide](https://planton.app/docs/getting-started) and the
-[CLI reference](https://planton.app/docs/cli/cli-reference).
+[Getting Started guide](https://planton.ai/docs/getting-started) and the
+[CLI reference](https://planton.ai/docs/cli).
 
 ## Licensing
 
@@ -111,8 +107,7 @@ yours to fork, the identity is not; see [TRADEMARKS.md](TRADEMARKS.md).
 ## Contributing
 
 Visit [CONTRIBUTING.md](CONTRIBUTING.md) for information on building Planton
-from source, and the [Contributor Guide](https://planton.app/docs/contributing)
-for details about becoming a contributor.
+from source and for details about becoming a contributor.
 
 ## Acknowledgments
 

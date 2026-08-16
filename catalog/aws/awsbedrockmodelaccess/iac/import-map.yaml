@@ -1,0 +1,19 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsbedrockmodelaccess
+spec:
+  # The agreement imports by the bare model id (the provider's identity
+  # attribute); the account-global use-case form imports by the 12-digit
+  # account id.
+  values:
+    - name: model_id
+      derivations:
+        - from_spec_field: model_id
+      where_to_find: >-
+        The foundation model id the agreement covers (Bedrock console ->
+        Model access, or `aws bedrock list-foundation-models` modelId).
+    - name: aws_account_id
+      where_to_find: >-
+        The 12-digit AWS account id holding the use-case form (top-right
+        account menu in the console, or `aws sts get-caller-identity`).

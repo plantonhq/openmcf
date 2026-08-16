@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbackupplan.v1alpha1;
+
+// AwsBackupPlanStackOutputs captures the observable state of the
+// backup plan after apply.
+message AwsBackupPlanStackOutputs {
+  // The plan's AWS-generated ID (a UUID - also the provider's import
+  // ID; the plan's name is NOT its identity at AWS).
+  string plan_id = 1;
+
+  // The plan's ARN.
+  string plan_arn = 2;
+
+  // The plan's version ID (changes on every plan update).
+  string plan_version = 3;
+
+  // AWS-generated selection IDs keyed by selection name (each
+  // selection imports as "{plan_id}|{selection_id}").
+  map<string, string> selection_ids = 4;
+}

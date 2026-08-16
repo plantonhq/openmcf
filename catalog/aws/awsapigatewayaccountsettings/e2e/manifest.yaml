@@ -1,0 +1,15 @@
+# Canonical AwsApiGatewayAccountSettings example (hack/dev manifest and
+# refgen Example source): the region's API Gateway account object with
+# a CloudWatch logging role set. Literal ARN stands in for the composed
+# AwsIamRole reference so the offline `tofu plan` renders the resource.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsApiGatewayAccountSettings
+metadata:
+  name: apigw-account-us-west-2
+  id: apigw-account-us-west-2
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  cloudwatchRoleArn:
+    value: arn:aws:iam::123456789012:role/apigw-cloudwatch-logs

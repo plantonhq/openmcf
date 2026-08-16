@@ -13,11 +13,11 @@ message ProviderE2EProfileSpec {
     none = 1;
     // GitHub OIDC federation (AWS, GCP, Azure).
     oidc = 2;
-    // Scoped API token (DigitalOcean, Civo, Hetzner, Cloudflare).
+    // Scoped API token (DigitalOcean, Cloudflare).
     api_token = 3;
     // Service account JSON key (GCP).
     service_account_key = 4;
-    // Self-hosted infrastructure (OpenFGA, OpenStack).
+    // Self-hosted infrastructure (OpenFGA).
     self_hosted = 5;
   }
 
@@ -28,7 +28,7 @@ message ProviderE2EProfileSpec {
     kind = 1;
     // Actual cloud provider API.
     real_cloud = 2;
-    // Local container (OpenFGA, OpenStack DevStack).
+    // Local container (OpenFGA).
     local_container = 3;
   }
 

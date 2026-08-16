@@ -1,0 +1,109 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsEksNodeGroup manifest's spec values into metered quantities and
+# price choices. On-Demand pools price their scaling floor's instance
+# hours (the node type selects the rate) plus every node's root volume;
+# Spot pools carry no committed instance rate (the market sets it under
+# the On-Demand ceiling -- an exclusion, never a guessed number); a pool
+# built on a launch template REFUSES -- its instance type and disk live
+# on the referenced AwsLaunchTemplate, invisible in this manifest. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/awseksnodegroup.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awseksnodegroup
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  refusals:
+    - when:
+        - field_path: launch_template
+          op: is_set
+      reason: the instance type and disk -- and therefore the rate -- are delegated to the referenced AwsLaunchTemplate and invisible in this manifest, so an estimate here would be a guess wearing a dollar sign
+  lines:
+    - sku_meter: node instance hours
+      applies_when:
+        - field_path: capacity_type
+          op: not_equals
+          value: spot
+      quantity:
+        - field_value:
+            field_path: scaling.min_size
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Elastic Compute Cloud
+        pricing_unit: hours
+        attributes:
+          - key: instance_type
+            from_field: instance_types
+      basis: the scaling floor (min_size) of On-Demand nodes x 730 hours -- the committed always-on capacity
+    - sku_meter: node root volumes
+      quantity:
+        - field_value:
+            field_path: scaling.min_size
+        - field_value:
+            field_path: disk_size_gb
+            default_when_unset: "100"
+      price_slug: ebs-gp3-storage-us-east-1
+      basis: floor nodes x their root volume size (disk_size_gb, the AWS default 100 GiB when unset)
+    - sku_meter: node root volumes
+      applies_when:
+        - field_path: warm_pool_config
+          op: is_set
+      quantity:
+        - field_value:
+            field_path: warm_pool_config.min_size
+        - field_value:
+            field_path: disk_size_gb
+            default_when_unset: "100"
+      price_slug: ebs-gp3-storage-us-east-1
+      basis: STOPPED warm-pool instances each hold a root volume -- stopped instances bill only their EBS
+  exclusions:
+    - applies_when:
+        - field_path: capacity_type
+          op: not_equals
+          value: spot
+      text: autoscaled nodes above the floor are workload-dependent (max_size sets the instance ceiling)
+    - applies_when:
+        - field_path: capacity_type
+          op: equals
+          value: spot
+        - field_path: scaling.min_size
+          op: equals
+          value: "0"
+      text: min_size 0 makes this pool scale-to-zero -- no capacity is committed, so the committed estimate is genuinely zero
+    - applies_when:
+        - field_path: capacity_type
+          op: equals
+          value: spot
+      text: running nodes bill the fluctuating Spot market rate, typically 60-90% below On-Demand and never above it
+    - applies_when:
+        - field_path: capacity_type
+          op: equals
+          value: spot
+      text: Spot interruptions can reclaim nodes with two minutes' notice -- the discount's price
+    - applies_when:
+        - field_path: warm_pool_config
+          op: is_set
+      text: a RUNNING pool_state would bill the pooled instances at full price for instant scale-out
+    - text: data transfer between AZs and out of the region follows pod traffic
+    - text: the cluster management fee bills on the AwsEksCluster component
+  notes:
+    - applies_when:
+        - field_path: capacity_type
+          op: not_equals
+          value: spot
+      text: Estimated at the autoscaling floor -- the committed always-on spend.
+    - applies_when:
+        - field_path: capacity_type
+          op: equals
+          value: spot
+      text: Spot has no committed list price -- the market sets the hourly rate under the published On-Demand ceiling, which is why this estimate carries no priced lines.
+    - applies_when:
+        - field_path: warm_pool_config
+          op: is_set
+      text: The warm pool's stopped instances add storage cost only, buying pre-initialized scale-out.

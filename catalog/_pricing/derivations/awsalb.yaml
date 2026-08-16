@@ -1,0 +1,74 @@
+# Cost derivation: the machine-executable rules turning any AwsAlb
+# manifest's spec values into metered quantities and price choices. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/awsalb.yaml; a server-side estimator evaluates the
+# same rules against live manifests. Prices live in the provider's price
+# book (../pricebook/). Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsalb
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  lines:
+    - sku_meter: Application Load Balancer hours
+      quantity:
+        - hours_in_month: true
+      price_slug: alb-hours-us-east-1
+      basis: one load balancer, billed every hour of the month
+    - sku_meter: reserved Load Balancer Capacity Units
+      applies_when:
+        - field_path: minimum_load_balancer_capacity_units
+          op: not_equals
+          value: "0"
+      quantity:
+        - field_value:
+            field_path: minimum_load_balancer_capacity_units
+        - hours_in_month: true
+      price_slug: alb-reserved-lcu-us-east-1
+      basis: minimum_load_balancer_capacity_units reserves that many LCUs every hour of the month
+    - sku_meter: public IPv4 address usage
+      applies_when:
+        - field_path: internal
+          op: not_equals
+          value: "true"
+      quantity:
+        - count_of: subnets
+        - hours_in_month: true
+      price_slug: public-ipv4-in-use-us-east-1
+      basis: internet-facing -- one public IPv4 node per subnet's Availability Zone, held every hour of the month
+  exclusions:
+    - applies_when:
+        - field_path: minimum_load_balancer_capacity_units
+          op: equals
+          value: "0"
+      text: LCU usage (new connections, active connections, processed bytes, rule evaluations) is traffic-dependent
+    - applies_when:
+        - field_path: minimum_load_balancer_capacity_units
+          op: not_equals
+          value: "0"
+      text: LCU usage beyond the reserved LCUs is traffic-dependent
+    - applies_when:
+        - field_path: internal
+          op: not_equals
+          value: "true"
+      text: data transfer out to the internet
+    - applies_when:
+        - field_path: access_logs
+          op: is_set
+      text: access-log bytes bill to the destination S3 bucket, not the load balancer
+  notes:
+    - applies_when:
+        - field_path: internal
+          op: equals
+          value: "true"
+      text: Internal scheme holds no public IPv4 addresses, removing that charge entirely.
+    - applies_when:
+        - field_path: minimum_load_balancer_capacity_units
+          op: not_equals
+          value: "0"
+      text: The reservation is priced as a steady month-long hold; it exists for surge windows and should be removed after them, so real spend depends on how long the reservation stays set.

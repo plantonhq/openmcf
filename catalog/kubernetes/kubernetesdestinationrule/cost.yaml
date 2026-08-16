@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesdestinationrule
+spec:
+  billing_model: free
+  free_tier: An Istio DestinationRule is a record in the Kubernetes API server -- load-balancing, connection-pool, outlier-detection, and client-TLS settings that istiod compiles into the Envoy configuration of already-running sidecars. No provider bills for the rule object, and it reserves no cluster capacity of its own.
+  notes: "No field of this spec buys anything: traffic_policy and subsets shape what happens to traffic AFTER routing selects the host -- the shaping runs inside proxy containers that already exist. The real spend lives in the workloads whose traffic the rule shapes (the host Service's backing pods and the calling workloads, each billing through its own component's cluster-capacity profile); where the rule steers traffic across zones or localities (locality_lb_setting), any cross-zone data-transfer rates bill on the cluster's network, not here."

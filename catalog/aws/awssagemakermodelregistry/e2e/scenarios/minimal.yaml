@@ -1,0 +1,19 @@
+# AwsSagemakerModelRegistry minimal scenario: the bare group (free
+# metadata; packages register into it imperatively). Proves the
+# create -> Completed lifecycle both engines share.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerModelRegistry
+metadata:
+  name: planton-oss-e2e-awssgmmr-min
+  id: planton-oss-e2e-awssgmmr-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssagemakermodelregistry
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2

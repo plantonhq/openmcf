@@ -1,0 +1,35 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpredisinstance
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Cloud Memorystore for Redis
+      sku_meter: provisioned capacity
+      pricing_unit: GiB-hours
+      description: The provisioned memory bills per GiB-hour from creation, used or empty, at a rate set by the service tier and the capacity band the size falls into (M1 through M5 -- larger bands are cheaper per GiB).
+  cost_drivers:
+    - field_path: memory_size_gb
+      sku_meter: provisioned capacity
+      pricing_unit: GiB-hours
+      impact: The size is the bill -- every provisioned GiB accrues hourly, and crossing a capacity band boundary (1-4, 5-10, 11-35, 36-100, 101+) changes the per-GiB rate.
+    - field_path: tier
+      sku_meter: provisioned capacity
+      pricing_unit: GiB-hours
+      impact: STANDARD_HA adds a synchronously replicated failover node and bills a higher per-GiB rate than BASIC (roughly double -- the standard rate is the per-node rate twice).
+    - field_path: read_replicas_mode
+      sku_meter: provisioned capacity
+      pricing_unit: GiB-hours
+      impact: READ_REPLICAS_ENABLED switches billing to per-node -- the primary and every replica each bill the full instance capacity at the per-node rate.
+    - field_path: replica_count
+      sku_meter: provisioned capacity
+      pricing_unit: GiB-hours
+      impact: Each additional read replica is another full copy of the capacity billed at the per-node rate.
+  estimate_exclusions:
+    - network egress from the instance follows client placement; in-region traffic to the authorized network is free
+    - RDB snapshot storage is included in the instance price
+  notes: "Memorystore for Redis is a pure capacity meter: GiB times hours times the tier's band rate. There is no per-request charge, so the committed spend IS the whole spend for in-region clients -- what varies is only whether replicas multiply the capacity."

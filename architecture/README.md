@@ -79,7 +79,7 @@ Planton is built on three foundational components that work together seamlessly:
         │               │               │
         ▼               ▼               ▼
 ┌────────────────────────────────────────────────┐
-│        Components (100+)            │
+│        Components (600+)            │
 │  PostgresKubernetes | AwsRdsInstance | etc.   │
 └────────────────────────────────────────────────┘
 ```
@@ -247,9 +247,9 @@ Deploy managed services on cloud providers:
 **3. SaaS Platform Integrations**
 
 Provision and manage third-party SaaS platforms:
-- `MongodbAtlas` - MongoDB Atlas clusters
-- `ConfluentKafka` - Confluent Cloud Kafka
-- `SnowflakeDatabase` - Snowflake data warehouse
+- `Auth0Client` - Auth0 application client
+- `Auth0Connection` - Auth0 identity connection
+- `OpenFgaStore` - OpenFGA authorization store
 
 ---
 
@@ -461,7 +461,7 @@ Planton provides a sophisticated lifecycle management system for components. Thi
 
 **Example:**
 ```bash
-@forge-planton-component MongodbAtlas --provider atlas
+@forge-planton-component CloudflareD1Database --provider cloudflare
 ```
 
 ### 2. Audit: Assess Component Completeness
@@ -498,7 +498,7 @@ Planton provides a sophisticated lifecycle management system for components. Thi
 
 **Example:**
 ```bash
-@audit-planton-component MongodbAtlas
+@audit-planton-component CloudflareD1Database
 ```
 
 ### 3. Update: Enhance Existing Components
@@ -522,7 +522,7 @@ Planton provides a sophisticated lifecycle management system for components. Thi
 
 **Example:**
 ```bash
-@update-planton-component MongodbAtlas --scenario fill-gaps
+@update-planton-component CloudflareD1Database --scenario fill-gaps
 ```
 
 ### 4. Complete: Auto-Improve Workflow
@@ -549,7 +549,7 @@ Planton provides a sophisticated lifecycle management system for components. Thi
 
 **Example:**
 ```bash
-@complete-planton-component MongodbAtlas
+@complete-planton-component CloudflareD1Database
 ```
 
 ### 5. Fix: Targeted Fixes with Cascading Updates
@@ -1075,7 +1075,7 @@ Research → Forge → Audit → (Complete) → Deploy & Test → Commit
 
 2. **Forge Phase**
    ```bash
-   @forge-planton-component MongodbAtlas --provider atlas
+   @forge-planton-component CloudflareD1Database --provider cloudflare
    ```
    - Creates complete component (95-100% complete)
    - Proto definitions with validations
@@ -1085,7 +1085,7 @@ Research → Forge → Audit → (Complete) → Deploy & Test → Commit
 
 3. **Audit Phase**
    ```bash
-   @audit-planton-component MongodbAtlas
+   @audit-planton-component CloudflareD1Database
    ```
    - Verify forge created everything
    - Check completion score (should be 95-100%)
@@ -1093,14 +1093,14 @@ Research → Forge → Audit → (Complete) → Deploy & Test → Commit
 
 4. **Complete Phase (if needed)**
    ```bash
-   @complete-planton-component MongodbAtlas
+   @complete-planton-component CloudflareD1Database
    ```
    - Fill any remaining gaps
    - Re-audit to verify 100%
 
 5. **Local Testing**
    ```bash
-   cd catalog/atlas/atlasmongodb/iac/pulumi
+   cd catalog/cloudflare/cloudflared1database/iac/pulumi
    planton pulumi update --manifest ../../e2e/manifest.yaml --module-dir .
    ```
    - Test Pulumi module locally (the CLI builds the stack input and drives the module)
@@ -1116,7 +1116,7 @@ Research → Forge → Audit → (Complete) → Deploy & Test → Commit
 7. **Commit**
    ```bash
    git add -A
-   git commit -m "feat(atlas): add MongodbAtlas component"
+   git commit -m "feat(cloudflare): add CloudflareD1Database component"
    git push origin main
    ```
 
@@ -1126,15 +1126,15 @@ Research → Forge → Audit → (Complete) → Deploy & Test → Commit
 
 ```bash
 # 1. Edit spec.proto
-vim catalog/atlas/atlasmongodb/v1alpha1/spec.proto
+vim catalog/cloudflare/cloudflared1database/v1alpha1/spec.proto
 
 # 2. Add field with validation
 # message Spec {
-#   int32 backup_retention_days = 5 [(buf.validate.field).int32 = {gte: 1, lte: 365}];
+#   int32 time_travel_retention_days = 5 [(buf.validate.field).int32 = {gte: 1, lte: 30}];
 # }
 
 # 3. Propagate changes
-@update-planton-component MongodbAtlas --scenario proto-changed
+@update-planton-component CloudflareD1Database --scenario proto-changed
 
 # This will:
 # - Regenerate proto stubs
@@ -1144,7 +1144,7 @@ vim catalog/atlas/atlasmongodb/v1alpha1/spec.proto
 # - Add test for new validation rule
 
 # 4. Verify
-@audit-planton-component MongodbAtlas
+@audit-planton-component CloudflareD1Database
 ```
 
 **Scenario 2: Fixing a Bug**
@@ -1201,8 +1201,8 @@ git commit -m "feat: enhance <ComponentName>"
 ```bash
 # List of components to improve
 components=(
-  "MongodbAtlas"
-  "ConfluentKafka"
+  "CloudflareD1Database"
+  "Auth0Client"
   "PostgresKubernetes"
 )
 
@@ -1561,7 +1561,7 @@ planton version
 
 Test validation rules:
 ```bash
-cd catalog/atlas/atlasmongodb/v1alpha1
+cd catalog/cloudflare/cloudflared1database/v1alpha1
 go test -v
 ```
 
@@ -1569,7 +1569,7 @@ go test -v
 
 Test IaC modules locally:
 ```bash
-cd catalog/atlas/atlasmongodb/iac/pulumi
+cd catalog/cloudflare/cloudflared1database/iac/pulumi
 planton pulumi preview --manifest ../../e2e/manifest.yaml --module-dir .
 ```
 
@@ -1612,7 +1612,7 @@ Planton is a multi-cloud deployment framework that provides **consistency withou
 - ✅ Provider-specific power (no artificial abstraction)
 - ✅ Dual IaC support (Pulumi and Terraform)
 - ✅ Language-neutral APIs (Protocol Buffers)
-- ✅ 100+ components (AWS, GCP, Azure, K8s, SaaS)
+- ✅ 600+ components (AWS, GCP, Azure, K8s, DigitalOcean, Cloudflare, Auth0, OpenFGA)
 
 **Architecture:**
 1. **APIs** - Proto definitions with validations (buf.build)

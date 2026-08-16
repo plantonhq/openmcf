@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>AWS Bedrock Custom Model</title>
+    <defs>
+        <linearGradient id="brcmGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0EA5E9"/>
+            <stop offset="100%" stop-color="#1E40AF"/>
+        </linearGradient>
+    </defs>
+    <rect width="80" height="80" rx="16" fill="url(#brcmGradient)"/>
+    <circle cx="40" cy="26" r="7" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+    <circle cx="24" cy="54" r="7" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+    <circle cx="56" cy="54" r="7" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+    <path d="M36 32 L27 48 M44 32 L53 48 M31 54 L49 54" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+</svg>

@@ -1,3 +1,0 @@
-name: oci-mysql-db-system
-runtime: go
-description: OCI MySQL DB System component

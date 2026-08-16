@@ -1,0 +1,14 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSesAccountSettings
+metadata:
+  name: ses-account-vdm
+spec:
+  region: <aws-region>
+  suppression:
+    reasons:
+      - BOUNCE
+      - COMPLAINT
+  vdm:
+    enabled: true
+    engagementMetrics: true
+    optimizedSharedDelivery: true

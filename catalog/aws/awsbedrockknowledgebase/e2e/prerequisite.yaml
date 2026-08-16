@@ -1,0 +1,31 @@
+# AwsBedrockKnowledgeBase install profile used as a prerequisite by
+# composed components (an agent scenario's knowledge-base association
+# needs a live knowledge base id). The harness deploys it before the
+# dependent scenario and resolves references by name.
+#
+# Deliberately the MANAGED type: AWS manages the vector store, so the
+# prerequisite is fully self-contained -- no vector-store fixture, no
+# embedding tuning, just the shared bedrock-agents role fixture.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockKnowledgeBase
+metadata:
+  name: planton-oss-e2e-bedrock-kb-prereq
+  id: planton-oss-e2e-bedrock-kb-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockknowledgebase
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite knowledge base (agent association target)
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-bedrock-agents-role
+      fieldPath: status.outputs.role_arn
+  managed: {}

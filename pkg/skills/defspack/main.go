@@ -27,15 +27,17 @@ func main() {
 	version := flag.String("version", "", "release version (vX.Y.Z) to stamp into the manifest; required with -out")
 	outDir := flag.String("out", "", "directory to write release artifacts into; omit to validate only")
 	root := flag.String("root", "", "repository root (defaults to the working directory)")
-	// The catalog skill's assembled pack is ~18MB, and Stigmer engines cap
-	// gRPC messages at 10MB in both directions (hardcoded in the engine's
-	// server library, contradicting the skill layer's own 100MB acceptance
-	// -- reported upstream: https://github.com/stigmer/stigmer/issues/675).
-	// Until that lifts, PACKAGING excludes the pack by default -- released
-	// artifacts stay pushable and mountable -- while loading and VALIDATION
-	// always assemble it, so a pull request that breaks the pack fails the
-	// lint gate today, and activation is this one flag on the day the cap
-	// lifts.
+	// The release lanes pass this flag: the catalog skill ships
+	// self-contained, its ~18MB assembled pack inside the archive. Skill
+	// artifacts above the engines' 10MB inline gRPC lane ride the
+	// capability-URL transfer lane (stigmer/stigmer#675, fixed upstream in
+	// v3.12.3), so pushing an embedded artifact needs Stigmer SDK >=
+	// v3.12.3 on the pushing side -- this repo's go.mod pins one, and any
+	// consumer engine older than v3.12.3 refuses the push loudly rather
+	// than mounting a truncated skill. The default stays false so a plain
+	// packaging run needs no catalog tree; loading and VALIDATION always
+	// assemble the pack either way, so a pull request that breaks it fails
+	// the lint gate regardless of the flag.
 	embedPack := flag.Bool("embed-catalog-pack", false, "package the catalog skill self-contained (its components/ reference pack inside the archive)")
 	flag.Parse()
 

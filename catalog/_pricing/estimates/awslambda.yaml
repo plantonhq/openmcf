@@ -1,0 +1,45 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awslambda
+spec:
+  presets:
+    - preset: 01-zip-basic
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - invocations bill per request and per GB-second of duration at 256 MB (memory_size_mb) -- workload-driven, zero when idle
+        - the always-free tier absorbs the first 1 million requests and 400,000 GB-seconds each month account-wide
+        - CloudWatch log ingestion follows function output volume
+        - the code artifact bills on the referenced S3 bucket, not here
+      notes: No provisioned concurrency and no scaling-config floor -- the committed monthly cost of this function existing is exactly zero.
+    - preset: 02-container-basic
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - invocations bill per request and per GB-second at 512 MB on arm64, which is priced about 20% below x86_64 per GB-second
+        - the container image bills ECR storage on the referenced repository, not here
+        - CloudWatch log ingestion follows function output volume
+      notes: Zero committed cost while idle; the arm64 architecture choice lowers the usage rate, never the (zero) baseline.
+    - preset: 03-durable-workflow
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - invocations bill per request and per GB-second at 512 MB, with the 900-second timeout capping any single invocation's spend
+        - durable-workflow state and checkpoint retention (retention_period_days 30) bill on Lambda's durable-execution meters as workflows run
+        - each async retry (maximum_retry_attempts 2) is a fresh billed invocation
+        - the failure destination delivers to a referenced resource that bills its own requests
+      notes: Zero committed cost while idle -- durable workflows bill only when executions run and retain state.

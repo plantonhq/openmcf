@@ -82,6 +82,7 @@ go_library(
         "front_door_secret.go",
         "front_door_security_policy.go",
         "function_app.go",
+        "function_app_flex_consumption.go",
         "ip_group.go",
         "key_vault.go",
         "key_vault_certificate.go",

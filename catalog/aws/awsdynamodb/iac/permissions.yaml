@@ -1,0 +1,88 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsdynamodb
+spec:
+  aws:
+    statements:
+      - sid: ManageTable
+        actions:
+          - dynamodb:CreateTable
+          - dynamodb:DeleteTable
+          - dynamodb:DescribeTable
+          - dynamodb:UpdateTable
+          - dynamodb:DescribeContinuousBackups
+          - dynamodb:UpdateContinuousBackups
+          - dynamodb:DescribeTimeToLive
+          - dynamodb:UpdateTimeToLive
+          - dynamodb:ListTagsOfResource
+          - dynamodb:TagResource
+          - dynamodb:UntagResource
+        resources:
+          - arn:aws:dynamodb:*:*:table/*
+        provenance: derived
+        notes: Covers aws_dynamodb_table -- table lifecycle, GSIs (managed through UpdateTable), TTL, point-in-time recovery, table class, deletion protection, and replica updates (global tables are UpdateTable ReplicaUpdates; the wildcard region in the ARN covers replica-region table access).
+      - sid: UseCustomerManagedKey
+        actions:
+          - kms:DescribeKey
+          - kms:CreateGrant
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Required only when server_side_encryption.kms_key_arn (or a replica's kms_key_arn) selects a customer-managed key -- DynamoDB creates a grant against the key on the caller's behalf during aws_dynamodb_table create/update.
+      - sid: ManageAutoscaling
+        actions:
+          - application-autoscaling:RegisterScalableTarget
+          - application-autoscaling:DeregisterScalableTarget
+          - application-autoscaling:DescribeScalableTargets
+          - application-autoscaling:PutScalingPolicy
+          - application-autoscaling:DeleteScalingPolicy
+          - application-autoscaling:DescribeScalingPolicies
+          - application-autoscaling:PutScheduledAction
+          - application-autoscaling:DeleteScheduledAction
+          - application-autoscaling:DescribeScheduledActions
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_appautoscaling_target/policy (read and write) and aws_appautoscaling_scheduled_action -- the modules pin provisioned capacity through a scalable target even without user autoscaling. Application Auto Scaling APIs support no resource-level scoping, so the wildcard is the narrowest possible scope.
+      - sid: CreateAutoscalingServiceLinkedRole
+        actions:
+          - iam:CreateServiceLinkedRole
+        resources:
+          - arn:aws:iam::*:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/*
+        provenance: derived
+        notes: The first Application Auto Scaling target for DynamoDB in an account creates the service-linked role automatically; scoped to exactly that role path.
+      - sid: ManageContributorInsights
+        actions:
+          - dynamodb:UpdateContributorInsights
+          - dynamodb:DescribeContributorInsights
+        resources:
+          - arn:aws:dynamodb:*:*:table/*
+          - arn:aws:dynamodb:*:*:table/*/index/*
+        provenance: derived
+        notes: Covers aws_dynamodb_contributor_insights at table level and per GSI.
+      - sid: ManageKinesisStreamingDestination
+        actions:
+          - dynamodb:EnableKinesisStreamingDestination
+          - dynamodb:DisableKinesisStreamingDestination
+          - dynamodb:DescribeKinesisStreamingDestination
+          - kinesis:DescribeStream
+        resources:
+          - arn:aws:dynamodb:*:*:table/*
+          - arn:aws:kinesis:*:*:stream/*
+        provenance: derived
+        notes: Covers aws_dynamodb_kinesis_streaming_destination -- created only when spec.kinesis_streaming_destination is set; DescribeStream validates the destination stream.
+      - sid: ManageResourcePolicy
+        actions:
+          - dynamodb:PutResourcePolicy
+          - dynamodb:GetResourcePolicy
+          - dynamodb:DeleteResourcePolicy
+        resources:
+          - arn:aws:dynamodb:*:*:table/*
+        provenance: derived
+        notes: Covers aws_dynamodb_resource_policy -- created only when spec.resource_policy is set.

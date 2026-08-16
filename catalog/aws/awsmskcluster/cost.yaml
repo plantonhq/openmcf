@@ -1,0 +1,63 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsmskcluster
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Amazon Managed Streaming for Apache Kafka
+      sku_meter: broker instance hours
+      pricing_unit: hours
+      description: Every broker node bills hourly from cluster creation whether or not a single message flows; the rate follows the instance_type.
+    - service_name: Amazon Managed Streaming for Apache Kafka
+      sku_meter: broker storage
+      pricing_unit: GB-months
+      description: Each broker's provisioned EBS volume bills per GB-month from creation, full or empty; unset ebs_volume_size_gib still provisions the AWS default per broker.
+  cost_drivers:
+    - field_path: instance_type
+      sku_meter: broker instance hours
+      pricing_unit: hours
+      impact: The broker instance type sets the hourly rate per broker -- the dominant term of the bill. Graviton (m7g) types undercut same-size m5 types; express.* types bill a different model with AWS-managed storage.
+    - field_path: number_of_broker_nodes
+      sku_meter: broker instance hours
+      pricing_unit: hours
+      impact: Every broker is a full billed instance with its own storage volume, so this multiplies both the instance and storage lines -- and AWS only ever lets it grow.
+    - field_path: ebs_volume_size_gib
+      sku_meter: broker storage
+      pricing_unit: GB-months
+      impact: Every provisioned gigabyte bills monthly on every broker regardless of what Kafka actually stores; volume size can only be increased.
+    - field_path: storage_mode
+      sku_meter: tiered storage
+      pricing_unit: GB-months
+      impact: TIERED offloads warm log segments to low-cost storage billed per GB-month actually stored, plus a per-GB retrieval charge when consumers read back into the hot tier.
+    - field_path: provisioned_throughput_enabled
+      sku_meter: provisioned storage throughput
+      pricing_unit: MiBps-months
+      impact: Turns on a per-broker throughput reservation billed monthly on top of the storage itself.
+    - field_path: provisioned_throughput_mbs
+      sku_meter: provisioned storage throughput
+      pricing_unit: MiBps-months
+      impact: The reserved MiB/s bills per broker per month at the provisioned figure, used or not.
+    - field_path: vpc_connectivity
+      sku_meter: PrivateLink connectivity hours
+      pricing_unit: hours
+      impact: Multi-VPC private connectivity bills hourly per enabled authentication scheme while it is on, plus a per-GB charge on every byte processed through it.
+    - field_path: logging
+      sku_meter: broker log delivery
+      pricing_unit: GB
+      impact: Broker log delivery bills at the destinations -- CloudWatch Logs ingestion and storage, Firehose delivery, S3 storage -- scaling with broker verbosity.
+    - field_path: enhanced_monitoring
+      sku_meter: enhanced CloudWatch metrics
+      pricing_unit: metric-months
+      impact: Levels above DEFAULT publish per-broker, per-topic, or per-partition metric streams billed as additional CloudWatch metrics; the most granular level on a large cluster is real money.
+  free_tier: ""
+  estimate_exclusions:
+    - data transfer into and out of the cluster (client traffic crossing AZs, regions, or the internet) follows standard AWS data transfer rates
+    - tiered storage bills by warm data actually stored and retrieved, which follows retention and consumer behavior
+    - PrivateLink data processing bills per GB moved through multi-VPC connections
+    - broker log delivery bills CloudWatch/Firehose/S3 at the destination resources, scaling with log volume
+    - enhanced monitoring metric charges scale with topic and partition counts
+  notes: "Broker hours and provisioned storage are the certainties at manifest time, and both ratchet: AWS supports increasing broker count and volume size but never decreasing them in place. The Prometheus JMX and Node exporters (open monitoring) are free. Declared topics and the cluster policy add nothing to the bill."

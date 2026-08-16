@@ -1,0 +1,65 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetespostgres
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1 -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the ten kubernetes_secret_v1 resources -- application and superuser credentials, declarative role passwords, external-cluster passwords, and backup/recovery object-store credentials, regions, and endpoint CAs. All are namespace-scoped to the database's namespace.
+      - api_groups:
+          - postgresql.cnpg.io
+        resources:
+          - clusters
+          - scheduledbackups
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the kubectl_manifest resources applying the CloudNativePG Cluster and its ScheduledBackups (postgresql.cnpg.io/v1) via server-side apply.
+      - api_groups:
+          - barmancloud.cnpg.io
+        resources:
+          - objectstores
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the kubectl_manifest resources applying the Barman Cloud plugin's backup and recovery-source ObjectStores (barmancloud.cnpg.io/v1) via server-side apply -- created only when backup or recovery is configured.

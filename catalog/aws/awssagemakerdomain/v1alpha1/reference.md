@@ -229,8 +229,9 @@ spec:
         jupyterLabAppSettings:
           defaultResourceSpec:
             instanceType: ml.t3.medium
-          idleSettings:
-            idleTimeoutInMinutes: 60
+          # No idle settings here: alice (the owner profile) resolves
+          # lifecycleManagement DISABLED for JupyterLab, and AWS rejects
+          # SpaceIdleSettings on a disabled plane.
         spaceStorageSettings:
           ebsVolumeSizeInGb: 25
 ```
@@ -4303,6 +4304,8 @@ The EBS volume size in GB. Range: 5-16384.
 - `trusted_identity_propagation_requires_sso`: trusted_identity_propagation_status requires auth_mode 'SSO' (AWS rejects the setting on IAM-auth domains, even 'DISABLED')
 - `user_profile_names_unique`: user_profiles names must be unique — each name keys one user profile
 - `space_names_unique`: spaces names must be unique — each name keys one space
+- `space_idle_requires_owner_lifecycle_jupyterlab`: a space may not set jupyter_lab_app_settings.idle_settings when its owner profile sets lifecycle_management 'DISABLED' for JupyterLab — AWS rejects SpaceIdleSettings on a disabled plane
+- `space_idle_requires_owner_lifecycle_codeeditor`: a space may not set code_editor_app_settings.idle_settings when its owner profile sets lifecycle_management 'DISABLED' for Code Editor — AWS rejects SpaceIdleSettings on a disabled plane
 
 ## Outputs
 
@@ -4358,6 +4361,14 @@ Fields that can point at another resource's outputs:
 | `spec.userProfiles[].userSettings.sharingSettings.s3KmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.userProfiles[].userSettings.customFileSystemConfigs[].efsFileSystemConfig.fileSystemId` | AwsElasticFileSystem | `status.outputs.file_system_id` |
 | `spec.spaces[].spaceSettings.customFileSystems[].fileSystemId` | AwsElasticFileSystem | `status.outputs.file_system_id` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsSagemakerMlflowApp | `spec.defaultDomainIds` | `status.outputs.domain_id` |
 
 ## See Also
 

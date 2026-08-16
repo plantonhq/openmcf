@@ -1,0 +1,65 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsmemcachedelasticache
+spec:
+  aws:
+    statements:
+      - sid: ManageCacheCluster
+        actions:
+          - elasticache:CreateCacheCluster
+          - elasticache:DescribeCacheClusters
+          - elasticache:ModifyCacheCluster
+          - elasticache:DeleteCacheCluster
+          - elasticache:AddTagsToResource
+          - elasticache:RemoveTagsFromResource
+          - elasticache:ListTagsForResource
+        resources:
+          - arn:aws:elasticache:*:*:cluster:*
+          - arn:aws:elasticache:*:*:subnetgroup:*
+          - arn:aws:elasticache:*:*:parametergroup:*
+        provenance: derived
+        notes: Covers aws_elasticache_cluster across create, in-place modifications (node count, engine version, windows, notifications, per apply_immediately), tagging, and teardown. CreateCacheCluster and ModifyCacheCluster authorize against the referenced subnet group and parameter group as well as the cluster itself, so those ARN classes ride the same statement.
+      - sid: ManageSubnetGroup
+        actions:
+          - elasticache:CreateCacheSubnetGroup
+          - elasticache:DescribeCacheSubnetGroups
+          - elasticache:ModifyCacheSubnetGroup
+          - elasticache:DeleteCacheSubnetGroup
+        resources:
+          - arn:aws:elasticache:*:*:subnetgroup:*
+        provenance: derived
+        notes: Covers the conditional aws_elasticache_subnet_group -- created only when the spec provides subnet_ids inline; the bring-your-own subnet_group_name arm passes through untouched.
+      - sid: ManageParameterGroup
+        actions:
+          - elasticache:CreateCacheParameterGroup
+          - elasticache:DescribeCacheParameterGroups
+          - elasticache:DescribeCacheParameters
+          - elasticache:ModifyCacheParameterGroup
+          - elasticache:ResetCacheParameterGroup
+          - elasticache:DeleteCacheParameterGroup
+        resources:
+          - arn:aws:elasticache:*:*:parametergroup:*
+        provenance: derived
+        notes: Covers the conditional aws_elasticache_parameter_group -- created only for inline parameters with a declared family; the bring-your-own parameter_group_name arm passes through untouched.
+      - sid: DescribeVpcContext
+        actions:
+          - ec2:DescribeSubnets
+          - ec2:DescribeSecurityGroups
+          - ec2:DescribeVpcs
+        resources:
+          - "*"
+        provenance: derived
+        notes: Subnet-group creation and security-group attachment validate their references. EC2 Describe APIs support no resource-level scoping, so the wildcard is the narrowest possible scope.
+      - sid: CreateServiceLinkedRole
+        actions:
+          - iam:CreateServiceLinkedRole
+        resources:
+          - arn:aws:iam::*:role/aws-service-role/elasticache.amazonaws.com/*
+        provenance: derived
+        notes: The first ElastiCache cluster in an account creates the ElastiCache service-linked role automatically (it manages the cache-node network interfaces); scoped to exactly that role path.

@@ -1,0 +1,57 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsrediselasticache
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Amazon ElastiCache
+      sku_meter: cache node hours
+      pricing_unit: hours
+      description: Every node in the replication group bills hourly from creation, around the clock, traffic or not -- total nodes times the node_type rate is the bill's core.
+  cost_drivers:
+    - field_path: node_type
+      sku_meter: cache node hours
+      pricing_unit: hours
+      impact: The node type sets the per-node hourly rate -- the dominant dial, from burstable t-class dev nodes to memory-optimized r-class production nodes.
+    - field_path: num_cache_clusters
+      sku_meter: cache node hours
+      pricing_unit: hours
+      impact: Non-clustered mode's total node count (primary plus replicas, 1-6) -- a direct multiplier.
+    - field_path: num_node_groups
+      sku_meter: cache node hours
+      pricing_unit: hours
+      impact: Clustered mode's shard count -- total nodes are num_node_groups x (1 + replicas_per_node_group).
+    - field_path: replicas_per_node_group
+      sku_meter: cache node hours
+      pricing_unit: hours
+      impact: Replicas per shard (0-5) multiply the node count shard by shard.
+    - field_path: engine
+      sku_meter: cache node hours
+      pricing_unit: hours
+      impact: Valkey node-hours are priced below Redis for the same hardware.
+    - field_path: data_tiering_enabled
+      sku_meter: cache node hours
+      pricing_unit: hours
+      impact: Data tiering requires the pricier r6gd SSD-tiered node family -- more capacity per node at a higher rate.
+    - field_path: snapshot_retention_limit
+      sku_meter: snapshot storage
+      pricing_unit: GB-months
+      impact: Automatic snapshot storage bills per GB-month beyond the free allowance for the retained days (0-35).
+    - field_path: global_replication_group_id
+      sku_meter: cross-region replication transfer
+      pricing_unit: GB
+      impact: Joining a global datastore adds cross-region replication transfer on top of the secondary's own node-hours; node type and layout are inherited from the primary.
+    - field_path: log_delivery_configurations
+      sku_meter: log delivery ingestion
+      pricing_unit: GB
+      impact: Slow-log and engine-log delivery bill CloudWatch Logs or Kinesis Firehose ingestion.
+  estimate_exclusions:
+    - snapshot storage beyond the free allowance grows with dataset size and retention
+    - cross-region replication transfer for global datastores is write-volume-dependent
+    - log delivery ingestion follows engine activity
+    - reserved nodes change the economics entirely and are purchased outside the manifest
+  notes: "Failover, multi-AZ, and encryption carry no fee of their own -- their cost is the node count they require. The bill is committed the moment the group exists: nodes x node_type rate, 24/7."

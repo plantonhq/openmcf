@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockagentcoregateway.v1alpha1;
+
+// AwsBedrockAgentCoreGatewayStackOutputs captures observable identifiers
+// from a provisioned AgentCore gateway. Downstream resources (agents and
+// harnesses using the gateway as a tool, MCP clients) wire dependencies
+// via StringValueOrRef.
+message AwsBedrockAgentCoreGatewayStackOutputs {
+  // The unique gateway identifier (e.g. "my-gateway-abc123de45").
+  string gateway_id = 1;
+
+  // The Amazon Resource Name of the gateway - the canonical key for IAM
+  // policies and harness gateway tools.
+  string gateway_arn = 2;
+
+  // The MCP URL agents connect to (e.g.
+  // "https://my-gateway-abc123de45.gateway.bedrock-agentcore.us-west-2.amazonaws.com/mcp").
+  string gateway_url = 3;
+
+  // ARN of the workload identity AWS created for this gateway.
+  string workload_identity_arn = 4;
+
+  // Target IDs keyed by each `targets` entry's name.
+  map<string, string> target_ids = 5;
+}

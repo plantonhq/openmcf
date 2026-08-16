@@ -1,0 +1,103 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awss3bucket
+spec:
+  aws:
+    statements:
+      - sid: ManageBucket
+        actions:
+          - s3:CreateBucket
+          - s3:DeleteBucket
+          - s3:ListBucket
+          - s3:GetBucketTagging
+          - s3:PutBucketTagging
+          - s3:GetBucketObjectLockConfiguration
+          - s3:PutBucketObjectLockConfiguration
+        resources:
+          - arn:aws:s3:::*
+        provenance: derived
+        notes: Covers aws_s3_bucket and aws_s3_bucket_object_lock_configuration -- bucket lifecycle, identity tags, and object-lock setup. S3 bucket ARNs carry no account or region segment, so the bucket-name wildcard is the ARN's only variable part.
+      - sid: ManageAccessPosture
+        actions:
+          - s3:GetBucketPublicAccessBlock
+          - s3:PutBucketPublicAccessBlock
+          - s3:GetBucketOwnershipControls
+          - s3:PutBucketOwnershipControls
+          - s3:GetBucketAcl
+          - s3:PutBucketAcl
+          - s3:GetBucketPolicy
+          - s3:PutBucketPolicy
+          - s3:DeleteBucketPolicy
+        resources:
+          - arn:aws:s3:::*
+        provenance: derived
+        notes: Covers the two always-materialized posture satellites (public access block, ownership controls) plus the optional ACL and bucket policy resources -- the module orders policy changes after guard changes deliberately.
+      - sid: ManageDataConfiguration
+        actions:
+          - s3:GetBucketVersioning
+          - s3:PutBucketVersioning
+          - s3:GetEncryptionConfiguration
+          - s3:PutEncryptionConfiguration
+          - s3:GetLifecycleConfiguration
+          - s3:PutLifecycleConfiguration
+          - s3:GetReplicationConfiguration
+          - s3:PutReplicationConfiguration
+          - s3:GetBucketWebsite
+          - s3:PutBucketWebsite
+          - s3:DeleteBucketWebsite
+          - s3:GetBucketLogging
+          - s3:PutBucketLogging
+          - s3:GetBucketCORS
+          - s3:PutBucketCORS
+          - s3:GetBucketNotification
+          - s3:PutBucketNotification
+          - s3:GetAccelerateConfiguration
+          - s3:PutAccelerateConfiguration
+          - s3:GetBucketRequestPayment
+          - s3:PutBucketRequestPayment
+        resources:
+          - arn:aws:s3:::*
+        provenance: derived
+        notes: Covers the conditional per-feature satellites (versioning, encryption, lifecycle, replication, website, logging, CORS, notification, acceleration, request payment) -- each created only when its spec block is set, but update paths need both Get and Put.
+      - sid: ManageInsightConfigurations
+        actions:
+          - s3:GetIntelligentTieringConfiguration
+          - s3:PutIntelligentTieringConfiguration
+          - s3:GetAnalyticsConfiguration
+          - s3:PutAnalyticsConfiguration
+          - s3:GetInventoryConfiguration
+          - s3:PutInventoryConfiguration
+          - s3:GetMetricsConfiguration
+          - s3:PutMetricsConfiguration
+          - s3:GetBucketAbac
+          - s3:PutBucketAbac
+          - s3:CreateBucketMetadataTableConfiguration
+          - s3:GetBucketMetadataTableConfiguration
+          - s3:DeleteBucketMetadataTableConfiguration
+        resources:
+          - arn:aws:s3:::*
+        provenance: derived
+        notes: Covers the analytics-family satellites (Intelligent-Tiering, analytics, inventory, request metrics), ABAC status, and the S3 Metadata table configuration. The metadata-table and ABAC action names are verified against the AWS Service Authorization reference data.
+      - sid: PassReplicationRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: Required only when spec.replication is set -- S3 assumes the referenced replication role, and configuring replication passes it. Narrow to the actual role ARN in a hardened deployment.
+      - sid: PurgeObjectsOnForceDestroy
+        actions:
+          - s3:ListBucketVersions
+          - s3:DeleteObject
+          - s3:DeleteObjectVersion
+        resources:
+          - arn:aws:s3:::*
+          - arn:aws:s3:::*/*
+        provenance: derived
+        notes: Used only by force_destroy teardown, which lists and deletes every remaining object and version before deleting the bucket.

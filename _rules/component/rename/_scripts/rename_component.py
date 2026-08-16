@@ -7,7 +7,6 @@ Renames a component across the entire codebase using sequential in-place operati
 - Renames files containing old component name
 - Replaces old component name in file contents
 - Updates cloud_resource_kind.proto registry
-- Updates documentation
 - Runs build pipeline (protos, build, test)
 
 Usage:
@@ -23,9 +22,9 @@ Usage:
 
   # Specify provider explicitly (skips auto-discovery)
   python3 _rules/component/rename/_scripts/rename_component.py \
-    --old-name OpenStackComputeKeypair \
-    --new-name OpenStackKeypair \
-    --provider openstack
+    --old-name DigitalOceanComputeDroplet \
+    --new-name DigitalOceanDroplet \
+    --provider digitalocean
 
 Output: JSON object with success status, metrics, and build results
 """
@@ -324,47 +323,6 @@ def update_registry_entry(
         f.write(content)
 
 
-def rename_icon_folder(repo_root: str, provider: str, old_folder: str, new_folder: str) -> Dict:
-    """
-    Rename icon folder if it exists.
-    Returns dict with: exists, old_path, new_path, renamed
-    """
-    # Map provider to icon directory structure
-    # For kubernetes/workload or kubernetes/addon, use just "kubernetes"
-    icon_provider = provider.split('/')[0]
-    
-    old_icon_path = os.path.join(
-        repo_root,
-        "site/public/images/providers",
-        icon_provider,
-        old_folder
-    )
-    
-    new_icon_path = os.path.join(
-        repo_root,
-        "site/public/images/providers", 
-        icon_provider,
-        new_folder
-    )
-    
-    result = {
-        'exists': os.path.exists(old_icon_path),
-        'old_path': old_icon_path,
-        'new_path': new_icon_path,
-        'renamed': False
-    }
-    
-    if result['exists']:
-        # Delete target if exists
-        if os.path.exists(new_icon_path):
-            shutil.rmtree(new_icon_path)
-        # Rename
-        shutil.move(old_icon_path, new_icon_path)
-        result['renamed'] = True
-    
-    return result
-
-
 def run_command(cmd: List[str], cwd: str) -> Tuple[int, str, str]:
     """Run a command and return (exit_code, stdout, stderr)"""
     try:
@@ -445,7 +403,7 @@ def main() -> int:
     )
     parser.add_argument(
         '--provider',
-        help='Provider name (e.g., openstack, aws, gcp). If provided, the component '
+        help='Provider name (e.g., digitalocean, aws, gcp). If provided, the component '
              'directory is resolved directly as catalog/{provider}/{component}. '
              'If not provided, all provider directories are searched.'
     )
@@ -477,7 +435,6 @@ def main() -> int:
         'files_renamed': 0,
         'files_updated': 0,
         'replacements_made': 0,
-        'icon_folder_renamed': False,
         'protos_exit_code': 0,
         'build_exit_code': 0,
         'test_exit_code': 0,
@@ -550,30 +507,15 @@ def main() -> int:
         
         # Skip proto validation entirely - proto is already updated
         
-        # 4. Rename icon folder (before component directory renames)
-        icon_result = rename_icon_folder(repo_root, provider, old_folder, new_folder)
-        result['icon_folder_renamed'] = icon_result['renamed']
-        
-        if icon_result['exists']:
-            print(f"Renamed icon folder: {icon_result['old_path']} -> {icon_result['new_path']}", file=sys.stderr)
-        else:
-            print(f"Icon folder not found (skipped): {icon_result['old_path']}", file=sys.stderr)
-        
-        # 5. Build replacement map
+        # 4. Build replacement map
         replacements = build_replacement_map(args.old_name, args.new_name)
         
-        # 6. Apply sequential renames to component directory
+        # 5. Apply sequential renames to component directory
         component_dir = Path(old_dir)
         for old_str, new_str in replacements:
             apply_sequential_renames(component_dir, old_str, new_str, stats)
         
-        # 7. Apply sequential renames to docs directory
-        docs_dir = Path(repo_root) / "site" / "public" / "docs"
-        if docs_dir.exists():
-            for old_str, new_str in replacements:
-                apply_sequential_renames(docs_dir, old_str, new_str, stats)
-        
-        # 7.5. Rename the component directory itself (from certmanager to kubernetescertmanager)
+        # 6. Rename the component directory itself (from certmanager to kubernetescertmanager)
         old_component_dir = Path(old_dir)
         new_dir = get_component_directory(repo_root, provider, new_folder)
         new_component_dir = Path(new_dir)
@@ -591,13 +533,13 @@ def main() -> int:
                 print(f"Error renaming component directory {old_component_dir}: {e}", file=sys.stderr)
                 stats['errors'] += 1
         
-        # 8. Update result with statistics
+        # 7. Update result with statistics
         result['dirs_renamed'] = stats['dirs_renamed']
         result['files_renamed'] = stats['files_renamed']
         result['files_updated'] = stats['files_updated']
         result['replacements_made'] = stats['replacements_made']
         
-        # 9. Mark as successful - skip build pipeline
+        # 8. Mark as successful - skip build pipeline
         result['success'] = True
         print(f"Successfully renamed {args.old_name} -> {args.new_name}", file=sys.stderr)
         print(f"  Directories: {stats['dirs_renamed']}, Files: {stats['files_renamed']}, Content updates: {stats['files_updated']}", file=sys.stderr)

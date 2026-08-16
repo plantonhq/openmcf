@@ -1,0 +1,21 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurednszone
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Azure DNS
+      sku_meter: hosted zone
+      pricing_unit: zone-months
+      description: Every public zone bills a flat monthly fee from creation, prorated by the fraction of the month it exists. The rate steps down after the 25th zone in the subscription.
+  cost_drivers:
+    - field_path: zone_name
+      sku_meter: hosted zone
+      impact: One zone, one fee -- the only sizing decision is how many zones the architecture creates, and the per-zone rate drops from the 26th.
+  estimate_exclusions:
+    - query volume bills per million queries answered and is entirely traffic-dependent
+  notes: "The zone fee is the certainty; queries are the variable. This kind hosts public zones -- private resolution is the separate AzurePrivateDnsZone kind with its own profile -- and nothing else in the spec (SOA tuning, tags) moves money."

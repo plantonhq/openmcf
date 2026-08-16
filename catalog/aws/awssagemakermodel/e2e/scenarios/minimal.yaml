@@ -1,0 +1,29 @@
+# AwsSagemakerModel minimal scenario: a single container serving the
+# AWS-owned us-west-2 scikit-learn image (the prebuilt-registry path -
+# no fixture, no ECR dependency; upstream's own tests resolve the same
+# registry). Proves the create -> describable lifecycle both engines
+# share. Models are free - only endpoints deploying them bill.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerModel
+metadata:
+  name: planton-oss-e2e-awssgmmd-min
+  id: planton-oss-e2e-awssgmmd-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssagemakermodel
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  executionRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-sagemaker-execution-role
+      fieldPath: status.outputs.role_arn
+  primaryContainer:
+    image: 746614075791.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1

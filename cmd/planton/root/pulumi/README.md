@@ -1,6 +1,5 @@
 # Pulumi Commands Reference
 
-> **📖 For the best reading experience**, view this documentation on the [Planton website](https://planton.dev/docs/cli/pulumi-commands).
 
 Your complete guide to managing infrastructure with `planton pulumi` commands.
 
@@ -739,10 +738,7 @@ These flags inject provider credentials into the stack input (alternative to env
 - **`--azure-credential <file>`**: Path to Azure credential YAML
 - **`--gcp-credential <file>`**: Path to GCP credential YAML
 - **`--kubernetes-cluster <file>`**: Path to Kubernetes cluster credential YAML
-- **`--confluent-credential <file>`**: Path to Confluent Cloud credential YAML
 - **`--docker-credential <file>`**: Path to Docker registry credential YAML
-- **`--mongodb-atlas-credential <file>`**: Path to MongoDB Atlas credential YAML
-- **`--snowflake-credential <file>`**: Path to Snowflake credential YAML
 
 **Example**:
 

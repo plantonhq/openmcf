@@ -1,0 +1,497 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockagentcoreruntime.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsBedrockAgentCoreRuntimeSpec defines the desired configuration for an
+// Amazon Bedrock AgentCore agent runtime - a serverless, session-isolated
+// execution environment that hosts YOUR agent code (any framework:
+// LangGraph, CrewAI, Strands, plain Python/Node) behind AWS-managed
+// scaling, identity, and networking.
+//
+// The runtime hosts one immutable artifact per version: either a container
+// image (any language, ECR URI) or an AWS-managed code bundle (Python/Node
+// entrypoint in S3). Every spec change creates a new runtime VERSION;
+// endpoints pin or float across versions, so live traffic moves only when
+// an endpoint says so. Creating a runtime is free - AWS bills per-second
+// for CPU/memory only while sessions execute.
+message AwsBedrockAgentCoreRuntimeSpec {
+  // The AWS region where the agent runtime will be created.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Runtime name in AWS (1-48 characters; must start with a letter, then
+  // letters, digits, underscore - AWS rejects hyphens here, so the name is
+  // an explicit field rather than metadata.name). Changing it replaces the
+  // runtime.
+  string runtime_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^[a-zA-Z][a-zA-Z0-9_]{0,47}$"
+  }];
+
+  // Human-readable description shown in the AgentCore console (1-4096
+  // characters when set). Updates in place.
+  string description = 3 [(buf.validate.field).string.max_len = 4096];
+
+  // IAM role the AgentCore service assumes to run the agent (pull the ECR
+  // image or read the S3 code bundle, write logs, call the AWS APIs your
+  // agent uses). The role must trust bedrock-agentcore.amazonaws.com.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // What the runtime executes - exactly one of a container image or an
+  // AWS-managed code bundle. Switching arms replaces the runtime; changing
+  // values within an arm creates a new runtime version in place.
+  AwsBedrockAgentCoreRuntimeArtifact artifact = 5 [(buf.validate.field).required = true];
+
+  // How the runtime reaches the network. Required by AWS.
+  AwsBedrockAgentCoreRuntimeNetwork network = 6 [(buf.validate.field).required = true];
+
+  // Protocol the hosted agent server speaks: HTTP (plain request/response,
+  // the AWS default when omitted), MCP (Model Context Protocol server),
+  // A2A (agent-to-agent), or AGUI.
+  string server_protocol = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "HTTP",
+        "MCP",
+        "A2A",
+        "AGUI"
+      ]
+    }
+  ];
+
+  // Environment variables injected into every session of the runtime.
+  map<string, string> environment_variables = 8;
+
+  // Session lifetime tuning. Omitted = AWS defaults.
+  AwsBedrockAgentCoreRuntimeLifecycle lifecycle = 9;
+
+  // Inbound JWT authorization for the runtime's endpoints. Omitted = the
+  // runtime accepts AWS IAM (SigV4) callers only.
+  AwsBedrockAgentCoreJwtAuthorizer custom_jwt_authorizer = 10;
+
+  // HTTP request headers the runtime forwards to your agent code beyond
+  // the AWS defaults (e.g. a tracing header your framework reads).
+  repeated string request_header_allowlist = 11 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Filesystems mounted into every session (max 5). Each mount is exactly
+  // one of an EFS access point, an S3 files access point, or AWS-managed
+  // per-session scratch storage.
+  repeated AwsBedrockAgentCoreRuntimeFilesystem filesystems = 12 [(buf.validate.field).repeated.max_items = 5];
+
+  // Named serving endpoints for this runtime. Each endpoint either floats
+  // on the latest version (omit version) or pins an explicit one - this is
+  // how you run DEFAULT/staging/prod traffic splits over one runtime.
+  // AWS also maintains an implicit DEFAULT endpoint on every runtime.
+  repeated AwsBedrockAgentCoreRuntimeEndpoint endpoints = 13;
+
+  // Resource-based policy applied to the runtime's own ARN (an IAM policy
+  // document as structured JSON) - grant other accounts or services
+  // permission to invoke this runtime. Omitted = no resource policy.
+  // Author statements WITHOUT a Resource member: AWS requires each
+  // statement's Resource to be exactly the runtime's own ARN (an
+  // AWS-suffixed value no author can know before create; PutResourcePolicy
+  // 400 otherwise, live-caught 2026-08-14), so both modules set Resource
+  // on every statement to the runtime ARN they deploy.
+  google.protobuf.Struct resource_policy = 14;
+
+  // Entry names are for_each keys on both engines - duplicates would
+  // silently collapse entries.
+  option (buf.validate.message).cel = {
+    id: "endpoint_names_unique"
+    message: "endpoints entries must have unique names"
+    expression: "this.endpoints.map(e, e.name).unique()"
+  };
+
+  // Mount paths are the mount identity - AWS rejects duplicates.
+  option (buf.validate.message).cel = {
+    id: "filesystem_mount_paths_unique"
+    message: "filesystems entries must have unique mount_paths"
+    expression: "this.filesystems.map(f, f.mount_path).unique()"
+  };
+}
+
+// AwsBedrockAgentCoreRuntimeArtifact is what the runtime executes -
+// exactly one arm.
+message AwsBedrockAgentCoreRuntimeArtifact {
+  // Run a container image. Any language/framework; the image must expose
+  // the runtime contract (an HTTP server on the expected port).
+  AwsBedrockAgentCoreRuntimeContainer container = 1;
+
+  // Run an AWS-managed code bundle - hand AWS your Python/Node source in
+  // S3 and an entrypoint; AWS supplies the base environment (no image to
+  // build or maintain).
+  AwsBedrockAgentCoreRuntimeCode code = 2;
+
+  // Exactly one artifact arm. AWS replaces the runtime when the arm
+  // switches.
+  option (buf.validate.message).cel = {
+    id: "artifact_exactly_one"
+    message: "artifact must set exactly one of container or code"
+    expression: "has(this.container) != has(this.code)"
+  };
+}
+
+// AwsBedrockAgentCoreRuntimeContainer locates the container image.
+message AwsBedrockAgentCoreRuntimeContainer {
+  // ECR image URI the runtime pulls
+  // (e.g. "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-agent:v1").
+  string image_uri = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsBedrockAgentCoreRuntimeCode configures the AWS-managed code bundle.
+message AwsBedrockAgentCoreRuntimeCode {
+  // Managed base runtime for the code bundle.
+  string runtime = 1 [(buf.validate.field).string = {
+    in: [
+      "PYTHON_3_10",
+      "PYTHON_3_11",
+      "PYTHON_3_12",
+      "PYTHON_3_13",
+      "PYTHON_3_14",
+      "NODE_22"
+    ]
+  }];
+
+  // Entrypoint command relative to the bundle root (1-2 elements, e.g.
+  // ["main.py"] or ["src/app.py", "handler"]).
+  repeated string entry_point = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 2
+    items: {
+      string: {
+        min_len: 1
+        max_len: 128
+      }
+    }
+  }];
+
+  // S3 location of the code bundle.
+  AwsBedrockAgentCoreRuntimeCodeS3 s3 = 3 [(buf.validate.field).required = true];
+}
+
+// AwsBedrockAgentCoreRuntimeCodeS3 locates the code bundle in S3.
+message AwsBedrockAgentCoreRuntimeCodeS3 {
+  // Bucket holding the code bundle.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // Object key (or key prefix) of the code within the bucket (1-1024
+  // characters).
+  string prefix = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 1024
+  }];
+
+  // Pin an explicit object version on a versioned bucket. Omitted = the
+  // current version.
+  string version_id = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 1024
+  ];
+}
+
+// AwsBedrockAgentCoreRuntimeNetwork controls how sessions reach the
+// network.
+message AwsBedrockAgentCoreRuntimeNetwork {
+  // PUBLIC gives sessions AWS-managed outbound internet; VPC attaches
+  // sessions to your subnets so they reach private resources (and the
+  // internet only through your VPC's routing).
+  string mode = 1 [(buf.validate.field).string = {
+    in: [
+      "PUBLIC",
+      "VPC"
+    ]
+  }];
+
+  // VPC placement - required when mode is VPC.
+  AwsBedrockAgentCoreVpcConfig vpc_config = 2;
+
+  // AWS requires the placement exactly when mode is VPC.
+  option (buf.validate.message).cel = {
+    id: "vpc_mode_requires_config"
+    message: "vpc_config is required when mode is VPC and forbidden otherwise"
+    expression: "(this.mode == 'VPC') == has(this.vpc_config)"
+  };
+}
+
+// AwsBedrockAgentCoreVpcConfig places sessions into your VPC.
+message AwsBedrockAgentCoreVpcConfig {
+  // Subnets the session network interfaces attach to (at least one).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnets = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Security groups applied to the session network interfaces (at least
+  // one).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_groups = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+}
+
+// AwsBedrockAgentCoreRuntimeLifecycle tunes session lifetimes.
+message AwsBedrockAgentCoreRuntimeLifecycle {
+  // Seconds an idle session survives before AWS reclaims it. Omitted =
+  // AWS default.
+  int32 idle_runtime_session_timeout_seconds = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Hard ceiling in seconds on any session's total lifetime, idle or not.
+  // Omitted = AWS default.
+  int32 max_lifetime_seconds = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+}
+
+// AwsBedrockAgentCoreJwtAuthorizer validates inbound bearer tokens
+// against an OpenID Connect provider before requests reach the workload.
+// Shared by agent runtimes and gateways.
+message AwsBedrockAgentCoreJwtAuthorizer {
+  // The provider's OIDC discovery URL (must serve
+  // /.well-known/openid-configuration).
+  string discovery_url = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Accepted "aud" claim values. A token must match at least one entry of
+  // at least one configured allow-list.
+  repeated string allowed_audience = 2 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Accepted OAuth client IDs (the "client_id"/"azp" claim).
+  repeated string allowed_clients = 3 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Accepted OAuth scopes.
+  repeated string allowed_scopes = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Restrict which AgentCore workload identities may present tokens.
+  AwsBedrockAgentCoreAllowedWorkloads allowed_workloads = 5;
+
+  // Additional claim-matching rules a token must satisfy beyond the
+  // standard audience/client/scope checks.
+  repeated AwsBedrockAgentCoreCustomClaim custom_claims = 6;
+
+  // Reach a PRIVATE OIDC provider through your VPC instead of the public
+  // internet.
+  AwsBedrockAgentCorePrivateEndpoint private_endpoint = 7;
+
+  // Per-domain overrides of the private endpoint (max 5) - route specific
+  // issuer domains through different private paths.
+  repeated AwsBedrockAgentCorePrivateEndpointOverride private_endpoint_overrides = 8 [(buf.validate.field).repeated.max_items = 5];
+}
+
+// AwsBedrockAgentCoreAllowedWorkloads restricts callers to named
+// AgentCore workload identities and/or hosting environments.
+message AwsBedrockAgentCoreAllowedWorkloads {
+  // Workload identity names allowed to call (1-10).
+  repeated string workload_identities = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 10
+    items: {string: {min_len: 1}}
+  }];
+
+  // Hosting environment ARNs allowed to call (1-10).
+  repeated string hosting_environment_arns = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 10
+    items: {string: {min_len: 1}}
+  }];
+}
+
+// AwsBedrockAgentCoreCustomClaim is one extra JWT claim check.
+message AwsBedrockAgentCoreCustomClaim {
+  // The inbound token claim to inspect (1-255 characters; letters,
+  // digits, and _ . - :).
+  string claim_name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 255
+    pattern: "^[A-Za-z0-9_.:-]+$"
+  }];
+
+  // Whether the claim's value is a single STRING or a STRING_ARRAY.
+  string value_type = 2 [(buf.validate.field).string = {
+    in: [
+      "STRING",
+      "STRING_ARRAY"
+    ]
+  }];
+
+  // How the claim value is compared: EQUALS (exact), CONTAINS (the value
+  // appears), or CONTAINS_ANY (any of the expected values appears).
+  string match_operator = 3 [(buf.validate.field).string = {
+    in: [
+      "EQUALS",
+      "CONTAINS",
+      "CONTAINS_ANY"
+    ]
+  }];
+
+  // Expected value when matching a single string.
+  string match_value = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 255
+      pattern: "^[A-Za-z0-9_.:-]+$"
+    }
+  ];
+
+  // Expected values when matching against a list.
+  repeated string match_values = 5 [(buf.validate.field).repeated.items.string = {
+    min_len: 1
+    max_len: 255
+    pattern: "^[A-Za-z0-9_.:-]+$"
+  }];
+
+  // AWS takes exactly one match-value shape.
+  option (buf.validate.message).cel = {
+    id: "claim_match_value_exactly_one"
+    message: "custom claim must set exactly one of match_value or match_values"
+    expression: "(this.match_value != '') != (this.match_values.size() > 0)"
+  };
+}
+
+// AwsBedrockAgentCorePrivateEndpoint reaches a private resource - exactly
+// one arm.
+message AwsBedrockAgentCorePrivateEndpoint {
+  // AWS manages VPC endpoints in your subnets.
+  AwsBedrockAgentCoreManagedVpcEndpoint managed_vpc = 1;
+
+  // You bring a VPC Lattice resource configuration.
+  AwsBedrockAgentCoreLatticeEndpoint self_managed_lattice = 2;
+
+  // Exactly one endpoint arm.
+  option (buf.validate.message).cel = {
+    id: "private_endpoint_exactly_one"
+    message: "private endpoint must set exactly one of managed_vpc or self_managed_lattice"
+    expression: "has(this.managed_vpc) != has(this.self_managed_lattice)"
+  };
+}
+
+// AwsBedrockAgentCoreManagedVpcEndpoint is an AWS-managed private path
+// through your VPC.
+message AwsBedrockAgentCoreManagedVpcEndpoint {
+  // The VPC to route through.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
+  ];
+
+  // Subnets for the managed endpoint's network interfaces (at least one).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Security groups on the endpoint interfaces (max 5).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 3 [
+    (buf.validate.field).repeated.max_items = 5,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+
+  // Whether the endpoint answers IPV4 or IPV6.
+  string endpoint_ip_address_type = 4 [(buf.validate.field).string = {
+    in: [
+      "IPV4",
+      "IPV6"
+    ]
+  }];
+
+  // Domain the endpoint routes (3-255 characters). Omitted = derived from
+  // the target.
+  string routing_domain = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 255
+  ];
+
+  // Tags applied to the AWS-managed endpoint resources (the module always
+  // adds the Planton identity tags).
+  map<string, string> tags = 6;
+}
+
+// AwsBedrockAgentCoreLatticeEndpoint routes through a VPC Lattice
+// resource configuration you manage.
+message AwsBedrockAgentCoreLatticeEndpoint {
+  // The Lattice resource-configuration identifier.
+  string resource_configuration_id = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsBedrockAgentCorePrivateEndpointOverride routes one issuer domain
+// through a specific private endpoint.
+message AwsBedrockAgentCorePrivateEndpointOverride {
+  // The domain this override captures (1-253 characters).
+  string domain = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 253
+  }];
+
+  // The private path for that domain.
+  AwsBedrockAgentCorePrivateEndpoint private_endpoint = 2 [(buf.validate.field).required = true];
+}
+
+// AwsBedrockAgentCoreRuntimeFilesystem is one filesystem mount - exactly
+// one source arm.
+message AwsBedrockAgentCoreRuntimeFilesystem {
+  // Where the filesystem appears inside sessions: /mnt/<one-level>
+  // (6-200 characters).
+  string mount_path = 1 [(buf.validate.field).string = {
+    min_len: 6
+    max_len: 200
+    pattern: "^/mnt/[a-zA-Z0-9._-]+/?$"
+  }];
+
+  // Mount an EFS access point (durable, shared across sessions).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef efs_access_point_arn = 2 [(dev.planton.shared.foreignkey.v1.default_kind) = AwsEfsAccessPoint];
+
+  // Mount an S3 files access point.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef s3_files_access_point_arn = 3;
+
+  // AWS-managed per-session scratch storage (wiped when the session
+  // ends).
+  bool session_storage = 4;
+
+  // Exactly one source arm.
+  option (buf.validate.message).cel = {
+    id: "filesystem_source_exactly_one"
+    message: "filesystem must set exactly one of efs_access_point_arn, s3_files_access_point_arn, or session_storage"
+    expression: "(has(this.efs_access_point_arn) ? 1 : 0) + (has(this.s3_files_access_point_arn) ? 1 : 0) + (this.session_storage ? 1 : 0) == 1"
+  };
+}
+
+// AwsBedrockAgentCoreRuntimeEndpoint is one named serving endpoint.
+message AwsBedrockAgentCoreRuntimeEndpoint {
+  // Endpoint name (1-48 characters; letter first, then letters, digits,
+  // underscore). The for_each key on both engines and the key in the
+  // `endpoint_arns` output map; also the endpoint name in AWS.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^[a-zA-Z][a-zA-Z0-9_]{0,47}$"
+  }];
+
+  // Human-readable description (1-256 characters when set).
+  string description = 2 [(buf.validate.field).string.max_len = 256];
+
+  // Pin the endpoint to an explicit runtime version ("1", "2", ...).
+  // Omitted = the endpoint tracks the runtime's latest version.
+  string agent_runtime_version = 3;
+}

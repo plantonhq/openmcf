@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesgatewayclass
+spec:
+  billing_model: free
+  free_tier: The GatewayClass itself -- a cluster-scoped record naming the controller (controller_name) that manages Gateways of this class, plus an optional parameters_ref and description -- never bills. It is a Kubernetes API object with no runtime footprint; nothing meters its existence.
+  notes: "No field of this spec buys anything: controller_name binds Gateways of this class to a controller, and parameters_ref points at controller-specific configuration -- both are pure selection. The real spend lives in the Gateways of this class and the controller serving them: the controller's pods consume cluster capacity, and the Gateways' external exposure (cloud load balancers, addresses) bills through those components and the cloud primitives they create."

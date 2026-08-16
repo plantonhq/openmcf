@@ -1,0 +1,3 @@
+name: awsbedrockinvocationlogging
+runtime:
+  name: go

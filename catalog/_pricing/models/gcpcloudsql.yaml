@@ -1,0 +1,74 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: gcpcloudsql
+spec:
+  presets:
+    - preset: 01-postgres-production-private
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: instance vCPU
+          price: cloudsql-postgres-regional-vcpu-us-central1
+          pricing_quantity: "2920"
+          quantity_basis: db-custom-4-15360 is 4 vCPUs x 730 hours at the REGIONAL rate, which already includes the synchronized standby (regional SKUs bill exactly double the zonal rate)
+        - sku_meter: instance memory
+          price: cloudsql-postgres-regional-ram-us-central1
+          pricing_quantity: "10950"
+          quantity_basis: 15360 MB in the tier string is exactly 15 GiB x 730 hours at the REGIONAL rate, standby included
+        - sku_meter: instance storage
+          price: cloudsql-postgres-regional-ssd-us-central1
+          pricing_quantity: "100"
+          quantity_basis: 100 GiB provisioned PD_SSD at the REGIONAL storage rate (standby storage included); auto-resize can grow it toward the 500 GiB limit
+      exclusions:
+        - backup storage for the 30 retained backups and the 7-day point-in-time log window bills per GiB and follows database churn
+        - network egress follows client placement
+      notes: The regional SKUs are the HA price -- Google bills the standby through doubled rates rather than a second instance, so this estimate is the complete committed compute-and-storage spend.
+    - preset: 02-mysql-high-availability
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: instance vCPU
+          price: cloudsql-mysql-regional-vcpu-us-central1
+          pricing_quantity: "1460"
+          quantity_basis: db-custom-2-7680 is 2 vCPUs x 730 hours at the REGIONAL rate, standby included
+        - sku_meter: instance memory
+          price: cloudsql-mysql-regional-ram-us-central1
+          pricing_quantity: "5475"
+          quantity_basis: 7680 MB in the tier string is exactly 7.5 GiB x 730 hours at the REGIONAL rate
+        - sku_meter: instance storage
+          price: cloudsql-mysql-regional-ssd-us-central1
+          pricing_quantity: "50"
+          quantity_basis: 50 GiB provisioned disk at the REGIONAL rate; disk.type is unset so the PD_SSD default applies, and auto-resize can grow it without a declared limit
+      exclusions:
+        - backup storage for the 14 retained backups and binary logs bills per GiB and follows write volume
+        - network egress -- this preset serves over a public IP, so client-side egress rates apply to reads
+      notes: MySQL and PostgreSQL share the same machine rates in this region; the regional SKUs carry the standby exactly as in the PostgreSQL preset.
+    - preset: 03-postgres-read-replica
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: instance vCPU
+          price: cloudsql-postgres-zonal-vcpu-us-central1
+          pricing_quantity: "1460"
+          quantity_basis: the replica is its own billable instance -- db-custom-2-7680 is 2 vCPUs x 730 hours at the ZONAL rate (availability_type defaults to ZONAL on replicas)
+        - sku_meter: instance memory
+          price: cloudsql-postgres-zonal-ram-us-central1
+          pricing_quantity: "5475"
+          quantity_basis: 7680 MB is 7.5 GiB x 730 hours at the ZONAL rate
+        - sku_meter: instance storage
+          price: cloudsql-postgres-zonal-ssd-us-central1
+          pricing_quantity: "10"
+          quantity_basis: the disk block is unset, so the replica provisions the 10 GiB PD_SSD default; auto-resize grows it to track the primary's data set
+      exclusions:
+        - the primary it replicates (master_instance_name) is a separate component with its own estimate
+        - replication traffic within the region is free; cross-region replicas would bill egress
+      notes: A read replica bills like a zonal instance of its own tier -- the estimate is the replica alone, never the primary it references.

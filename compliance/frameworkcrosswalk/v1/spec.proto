@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package dev.planton.compliance.frameworkcrosswalk.v1;
+
+// FrameworkCrosswalkSpec maps framework requirements to catalog controls.
+// A crosswalk need not cover a framework exhaustively: it covers the
+// requirements that TECHNICAL controls can serve (administrative and
+// physical safeguards are out of scope by nature). Coverage grows
+// additively; requirement_ids are stable once published.
+message FrameworkCrosswalkSpec {
+  // The framework's full human name, e.g. "HIPAA Security Rule" or
+  // "CIS Amazon Web Services Foundations Benchmark".
+  string framework_name = 1;
+  // The framework version or revision this crosswalk was authored against,
+  // e.g. "v3.0.0" or "45 CFR Part 164, Subpart C (2013 Omnibus)". A
+  // framework rev bumps this string and updates mappings in this one file
+  // -- components are untouched.
+  string framework_version = 2;
+  repeated RequirementMapping mappings = 3;
+}
+
+// RequirementMapping links one framework requirement to the catalog
+// controls that serve it.
+message RequirementMapping {
+  // The requirement's identifier in the framework's OWN numbering, kept
+  // verbatim so it matches published framework text and OSCAL catalogs:
+  // "164.312(a)(2)(iv)" for HIPAA, "2.1.1" for CIS.
+  string requirement_id = 1;
+  // The requirement's name/title as the framework states it.
+  string requirement_name = 2;
+  // The catalog control ids that serve this requirement. Every id must
+  // exist in the central control catalog -- the conformance gate enforces
+  // it.
+  repeated string control_ids = 3;
+  // How the controls serve the requirement, when the mapping needs
+  // explanation a security reviewer would otherwise have to reconstruct
+  // (e.g. addressable-vs-required status under HIPAA).
+  string notes = 4;
+}

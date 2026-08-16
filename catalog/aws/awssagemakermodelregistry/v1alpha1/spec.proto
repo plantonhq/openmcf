@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssagemakermodelregistry.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+
+// AwsSagemakerModelRegistrySpec defines the desired configuration for
+// an Amazon SageMaker model package group - the model registry's unit
+// of organization, holding the versioned model packages a team
+// registers, approves, and deploys from. The group's AWS name derives
+// from metadata.name.
+//
+// The group itself is a named shell: model package VERSIONS are
+// registered into it by training pipelines and SDK calls, never
+// declaratively. Everything here except the resource policy is
+// create-time only (even the description replaces the group -
+// provider-enforced).
+message AwsSagemakerModelRegistrySpec {
+  // The AWS region where the model package group will be created.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Free-form description (1-1024 characters when set). Changing it
+  // REPLACES the group (provider-enforced) - write it once, well.
+  string description = 2 [(buf.validate.field).string.max_len = 1024];
+
+  // IAM resource policy attached to the group (cross-account model
+  // sharing - grant other accounts DescribeModelPackage /
+  // CreateModelPackage on the group). The policy document as structured
+  // JSON; the folded policy resource updates in place.
+  google.protobuf.Struct resource_policy = 3;
+}

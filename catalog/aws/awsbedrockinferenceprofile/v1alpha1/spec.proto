@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockinferenceprofile.v1alpha1;
+
+import "buf/validate/validate.proto";
+
+// AwsBedrockInferenceProfileSpec defines the desired configuration for an
+// Amazon Bedrock APPLICATION inference profile - a named handle over a
+// foundation model (or an AWS system-defined cross-region profile) that
+// carries its own ARN and tags, so per-application/per-tenant model usage
+// can be tracked, cost-allocated, and IAM-scoped independently. The
+// profile itself is free; invocations through it bill at the underlying
+// model's rates.
+//
+// The profile's name is taken from `metadata.name` (1-64 characters).
+//
+// EVERY spec field is create-time-immutable (AWS provides no update for
+// application inference profiles beyond tags) - changing one destroys and
+// recreates the profile, which changes its ARN; consumers pinning the ARN
+// must be updated.
+//
+// Credentials, region, and deployment workflow live outside this spec in
+// stack inputs.
+message AwsBedrockInferenceProfileSpec {
+  // The AWS region where the inference profile is created.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Human-readable description (1-200 characters when set).
+  string description = 2 [(buf.validate.field).string.max_len = 200];
+
+  // ARN of the model source this profile routes to: a foundation model
+  // (arn:...::foundation-model/<model-id>) for single-region use, or an
+  // AWS system-defined inference profile
+  // (arn:...:inference-profile/<geo>.<model-id>, e.g.
+  // "us.amazon.nova-micro-v1:0") to inherit cross-region routing. AWS
+  // never echoes the source back, so the modules pin it in state - it
+  // shows as unchanged as long as the spec value stays the same.
+  // The foundation-model form works ONLY for models that support
+  // ON_DEMAND inference (live-verified 2026-08-13: CreateInferenceProfile
+  // rejects others with "The provided foundation model does not support
+  // On Demand inference"). Models whose inferenceTypesSupported is
+  // INFERENCE_PROFILE only - the Nova family and most 2025+ releases -
+  // must be referenced through their system-defined inference-profile ARN
+  // form instead. Check with:
+  // `aws bedrock list-foundation-models --by-inference-type ON_DEMAND`.
+  string source_arn = 3 [(buf.validate.field).string.pattern = "^arn:aws[a-z-]*:bedrock:[a-z0-9-]*:[0-9]*:(foundation-model|inference-profile)/.+$"];
+}

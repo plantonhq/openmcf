@@ -1,0 +1,50 @@
+# Canonical AwsSagemakerModel example (hack/dev manifest and refgen
+# Example source): an inference pipeline exercising every arm - two
+# containers with environments and hostnames, uncompressed S3 model
+# data with EULA acceptance, an additional adapter channel, a private
+# registry image config, multi-model caching, VPC attachment, and
+# network isolation. Literal ARNs stand in for composed references so
+# the offline `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerModel
+metadata:
+  name: churn-scoring-pipeline
+  id: churn-scoring-pipeline
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  executionRoleArn:
+    value: arn:aws:iam::123456789012:role/sagemaker-execution
+  enableNetworkIsolation: true
+  inferenceExecutionMode: Serial
+  containers:
+    - image: 123456789012.dkr.ecr.us-west-2.amazonaws.com/churn-preprocess:2.1
+      containerHostname: preprocess
+      environment:
+        LOG_LEVEL: info
+      modelDataSource:
+        s3Uri: s3://my-models/churn/preprocess/
+        s3DataType: S3Prefix
+        compressionType: None
+      imageConfig:
+        repositoryAccessMode: Vpc
+        repositoryCredentialsProviderArn: arn:aws:lambda:us-west-2:123456789012:function:registry-creds
+    - image: 123456789012.dkr.ecr.us-west-2.amazonaws.com/churn-score:2.1
+      containerHostname: score
+      mode: MultiModel
+      multiModelCache: Disabled
+      modelDataUrl: s3://my-models/churn/scoring/
+      additionalModelDataSources:
+        - channelName: adapters
+          source:
+            s3Uri: s3://my-models/churn/adapters/
+            s3DataType: S3Prefix
+            compressionType: None
+            acceptEula: true
+  vpcConfig:
+    subnetIds:
+      - value: subnet-0a1b2c3d4e5f60001
+      - value: subnet-0a1b2c3d4e5f60002
+    securityGroupIds:
+      - value: sg-0a1b2c3d4e5f60001

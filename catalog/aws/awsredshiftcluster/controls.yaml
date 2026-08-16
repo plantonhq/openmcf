@@ -1,0 +1,105 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsredshiftcluster
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: encrypted
+      evidence:
+        type: spec_default
+        reference: Carries declared default true, mirroring AWS's own default for new clusters -- storage, snapshots, and the copied snapshots derived from them are encrypted; false requires a deliberate spec choice.
+      notes: Toggling encryption on a live cluster is an in-place but long-running migration; three of four presets set it explicitly.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset means the AWS-managed Redshift service key; setting kms_key_id encrypts cluster storage under the referenced customer-managed key, with master_password_secret_kms_key_id available separately for the managed admin secret.
+      notes: A KMS-encrypted cluster copying snapshots cross-region additionally needs snapshot_copy.snapshot_copy_grant_name.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every Redshift cluster presents TLS on its endpoint with AWS-managed certificates; clients can always connect encrypted.
+      notes: Requiring TLS (rejecting plaintext clients) is the require_ssl cluster parameter carried through the parameters field -- the production and analytics presets set it true.
+    - control_id: no-public-access
+      status: configurable
+      field_path: publicly_accessible
+      evidence:
+        type: spec_default
+        reference: Defaults to false -- the cluster gets no public IP and resolves only inside the VPC; true attaches a public address (optionally pinned via elastic_ip, which CEL ties to public reachability).
+      notes: All four presets keep it false; the spec doc says warehouses almost always stay private behind VPC routing.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_default
+        reference: The attached security groups are the complete inbound surface -- the warehouse port opens only to the sources those groups declare; empty falls back to the VPC's default security group.
+      notes: Warehouse ingress rules belong on the referenced AwsSecurityGroup nodes, never inside this cluster; endpoint_accesses entries carry their own security groups per managed VPC endpoint.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A SQL warehouse endpoint has no WAF attachment point; request filtering belongs to the application tier in front of it.
+    - control_id: rbac
+      status: not_applicable
+      notes: Database users, groups, and grants are engine-internal objects managed through SQL, and IAM-based temporary database credentials (GetClusterCredentials) are a client-side sign-in flow -- neither is a cluster-level spec control. The iam_roles field governs what the CLUSTER may access, not who may access the cluster.
+    - control_id: workload-identity
+      status: configurable
+      field_path: manage_master_password
+      evidence:
+        type: spec_default
+        reference: Carries recommended_default=true -- AWS generates, stores, and rotates the admin password in Secrets Manager, so no secret touches the manifest or IaC state; the alternative master_password field is marked sensitive and mutually exclusive.
+      notes: All four presets set it true. On the data-access side, iam_roles lets the warehouse reach S3/Glue/Lambda through assumed roles instead of embedded credentials during COPY, UNLOAD, and Spectrum queries.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The engine's authentication surface (password policies, TLS cipher floors) is engine-internal configuration carried through parameters, not a first-class spec control.
+    - control_id: audit-logging
+      status: configurable
+      field_path: logging
+      evidence:
+        type: spec_default
+        reference: Unset exports nothing; the logging block delivers connection attempts, executed queries, and user DDL changes to S3 or CloudWatch Logs, keyed by the cluster itself.
+      notes: The production and analytics presets export all three log types to CloudWatch; the useractivitylog additionally requires the enable_user_activity_logging cluster parameter, which those presets set.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every cluster publishes CloudWatch metrics (CPU, storage, connection and query throughput, health) automatically; nothing in the spec can disable the stream.
+      notes: usage_limits with breach_action emit-metric adds spend-governance signals to the same CloudWatch surface.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: automated_snapshot_retention_period
+      evidence:
+        type: spec_default
+        reference: Carries declared default 1 (the AWS default) -- automated snapshots enable point-in-time recovery within the window; 0 disables automated snapshots entirely, which the spec doc calls not recommended.
+      notes: Production presets set 7 or 14 days; skip_final_snapshot=false with a named final snapshot additionally protects teardown (CEL forces the name when not skipping), and snapshot_copy extends recovery across regions.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: automated_snapshot_retention_period
+      evidence:
+        type: spec_validation
+        reference: The retention window is a first-class dial validated to 0-35 days, so organizational retention policy is expressed directly in the manifest; manual_snapshot_retention_period (1-3653 or -1 indefinite) governs manual snapshots the same way.
+      notes: snapshot_copy carries its own destination-region retention dials for copied snapshots.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: multi_az
+      evidence:
+        type: spec_default
+        reference: Defaults to false (single-AZ); true runs compute in two availability zones behind one endpoint with automatic failover -- RA3 multi-node only, at double the compute cost. Mutually exclusive with availability_zone_relocation_enabled (CEL-enforced), which recovers by moving the single cluster instead.
+      notes: The analytics preset enables it; the other presets rely on snapshots for recovery.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Redshift has no termination-protection switch to refuse cluster deletion. The nearest guard is the final-snapshot contract -- skip_final_snapshot false forces a named final snapshot (CEL-enforced) -- which protects the data through deletion, not the cluster's existence.
+    - control_id: managed-patching
+      status: configurable
+      field_path: allow_version_upgrade
+      evidence:
+        type: spec_default
+        reference: Carries declared default true, mirroring AWS -- engine patches apply automatically during the maintenance window; false holds upgrades for manual control.
+      notes: maintenance_track_name picks how fresh those patches are (current vs trailing), and preferred_maintenance_window picks when they land; the production presets pin explicit windows.

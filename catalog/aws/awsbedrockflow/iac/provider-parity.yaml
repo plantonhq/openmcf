@@ -1,0 +1,132 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_bedrockagent_flow:
+    mappings:
+      # The provider's singular repeated blocks; the spec pluralizes.
+      - arg: definition.node
+        spec: spec.definition.nodes
+      - arg: definition.connection
+        spec: spec.definition.connections
+      - arg: definition.node.input
+        spec: spec.definition.nodes.inputs
+      - arg: definition.node.output
+        spec: spec.definition.nodes.outputs
+      # Node configuration union members ride a configuration wrapper; the
+      # spec carries each class's arm directly on the node (the wrapper --
+      # including the EMPTY input/output/iterator/collector members -- is
+      # derived from the node type by the modules).
+      - arg: definition.node.configuration.agent
+        spec: spec.definition.nodes.agent
+      - arg: definition.node.configuration.condition
+        spec: spec.definition.nodes.condition
+      - arg: definition.node.configuration.condition.condition
+        spec: spec.definition.nodes.condition.conditions
+      - arg: definition.node.configuration.inline_code
+        spec: spec.definition.nodes.inline_code
+      - arg: definition.node.configuration.knowledge_base
+        spec: spec.definition.nodes.knowledge_base
+      - arg: definition.node.configuration.knowledge_base.guardrail_configuration
+        spec: spec.definition.nodes.knowledge_base.guardrail
+      - arg: definition.node.configuration.knowledge_base.guardrail_configuration.guardrail_identifier
+        spec: spec.definition.nodes.knowledge_base.guardrail.guardrail_id
+      - arg: definition.node.configuration.knowledge_base.guardrail_configuration.guardrail_version
+        spec: spec.definition.nodes.knowledge_base.guardrail.version
+      # Inference settings ride a one-element text wrapper; the spec
+      # carries the leaves directly.
+      - arg: definition.node.configuration.knowledge_base.inference_configuration.text
+        spec: spec.definition.nodes.knowledge_base.inference_configuration
+      - arg: definition.node.configuration.lambda_function
+        spec: spec.definition.nodes.lambda_function
+      - arg: definition.node.configuration.lex
+        spec: spec.definition.nodes.lex
+      - arg: definition.node.configuration.prompt
+        spec: spec.definition.nodes.prompt
+      - arg: definition.node.configuration.prompt.guardrail_configuration
+        spec: spec.definition.nodes.prompt.guardrail
+      - arg: definition.node.configuration.prompt.guardrail_configuration.guardrail_identifier
+        spec: spec.definition.nodes.prompt.guardrail.guardrail_id
+      - arg: definition.node.configuration.prompt.guardrail_configuration.guardrail_version
+        spec: spec.definition.nodes.prompt.guardrail.version
+      # The prompt source rides a source_configuration wrapper with
+      # resource XOR inline members; the spec carries prompt_arn and the
+      # inline arm directly.
+      - arg: definition.node.configuration.prompt.source_configuration.resource
+        spec: spec.definition.nodes.prompt.prompt_arn
+      - arg: definition.node.configuration.prompt.source_configuration.resource.prompt_arn
+        spec: spec.definition.nodes.prompt.prompt_arn
+      - arg: definition.node.configuration.prompt.source_configuration.inline
+        spec: spec.definition.nodes.prompt.inline
+      - arg: definition.node.configuration.prompt.source_configuration.inline.inference_configuration.text
+        spec: spec.definition.nodes.prompt.inline.inference_configuration
+      # The inline template tree mirrors the AwsBedrockPrompt kind's
+      # manifest divergence-for-divergence (upstream shares the models).
+      - arg: definition.node.configuration.prompt.source_configuration.inline.template_configuration.text
+        spec: spec.definition.nodes.prompt.inline.text
+      - arg: definition.node.configuration.prompt.source_configuration.inline.template_configuration.chat
+        spec: spec.definition.nodes.prompt.inline.chat
+      - arg: definition.node.configuration.prompt.source_configuration.inline.template_configuration.chat.message
+        spec: spec.definition.nodes.prompt.inline.chat.messages
+      - arg: definition.node.configuration.prompt.source_configuration.inline.template_configuration.chat.message.content.text
+        spec: spec.definition.nodes.prompt.inline.chat.messages.text
+      # cache_point.type has exactly one legal value ("default") -- the
+      # spec models the checkpoint as a bool and the modules own the
+      # constant.
+      - arg: definition.node.configuration.prompt.source_configuration.inline.template_configuration.chat.message.content.cache_point.type
+        spec: spec.definition.nodes.prompt.inline.chat.messages.cache_point
+      - arg: definition.node.configuration.prompt.source_configuration.inline.template_configuration.chat.system.cache_point.type
+        spec: spec.definition.nodes.prompt.inline.chat.system.cache_point
+      - arg: definition.node.configuration.prompt.source_configuration.inline.template_configuration.chat.input_variable.name
+        spec: spec.definition.nodes.prompt.inline.chat.input_variables
+      - arg: definition.node.configuration.prompt.source_configuration.inline.template_configuration.chat.tool_configuration.tool
+        spec: spec.definition.nodes.prompt.inline.chat.tool_configuration.tools
+      - arg: definition.node.configuration.prompt.source_configuration.inline.template_configuration.chat.tool_configuration.tool.tool_spec
+        spec: spec.definition.nodes.prompt.inline.chat.tool_configuration.tools.spec
+      - arg: definition.node.configuration.prompt.source_configuration.inline.template_configuration.chat.tool_configuration.tool.tool_spec.input_schema.json
+        spec: spec.definition.nodes.prompt.inline.chat.tool_configuration.tools.spec.input_schema
+      - arg: definition.node.configuration.prompt.source_configuration.inline.template_configuration.chat.tool_configuration.tool.cache_point.type
+        spec: spec.definition.nodes.prompt.inline.chat.tool_configuration.tools.cache_point
+      - arg: definition.node.configuration.prompt.source_configuration.inline.template_configuration.chat.tool_configuration.tool_choice.tool.name
+        spec: spec.definition.nodes.prompt.inline.chat.tool_configuration.tool_choice.tool_name
+      - arg: definition.node.configuration.prompt.source_configuration.inline.template_configuration.text.cache_point.type
+        spec: spec.definition.nodes.prompt.inline.text.cache_point
+      - arg: definition.node.configuration.prompt.source_configuration.inline.template_configuration.text.input_variable.name
+        spec: spec.definition.nodes.prompt.inline.text.input_variables
+      # Retrieval/storage ride a service_configuration.s3 wrapper -- S3 is
+      # the only service AWS defines; the spec carries the bucket leaf.
+      - arg: definition.node.configuration.retrieval.service_configuration.s3.bucket_name
+        spec: spec.definition.nodes.retrieval.bucket_name
+      - arg: definition.node.configuration.storage.service_configuration.s3.bucket_name
+        spec: spec.definition.nodes.storage.bucket_name
+      # Connection configuration arms; the spec carries data/conditional
+      # directly on the connection (type is derived -- see exclusions).
+      - arg: definition.connection.configuration.data
+        spec: spec.definition.connections.data
+      - arg: definition.connection.configuration.conditional
+        spec: spec.definition.connections.conditional
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the flow name is platform naming, never free-form spec surface
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: definition.connection.type
+        reason: wired by the module -- derived from which arm (data/conditional) the entry sets; a leaf that must agree with structure is drift surface, not configuration
+      - arg: definition.node.configuration.inline_code.language
+        reason: wired by the module (Python_3 is the only language AWS defines at the pin) -- a single-value vocabulary is a constant, not configuration
+      - arg: definition.node.configuration.prompt.source_configuration.inline.template_type
+        reason: wired by the module -- derived from which template arm (text/chat) the entry sets
+
+specExclusions:
+  # The model's tool-choice modes ANY and AUTO are EMPTY provider blocks
+  # (no argument leaves to map); the spec models each as a bool and the
+  # modules render the matching empty block.
+  - field: spec.definition.nodes.prompt.inline.chat.tool_configuration.tool_choice.any
+    reason: renders the provider's empty tool_choice.any block -- block presence IS the value; no argument leaf exists to map
+  - field: spec.definition.nodes.prompt.inline.chat.tool_configuration.tool_choice.auto
+    reason: renders the provider's empty tool_choice.auto block -- block presence IS the value; no argument leaf exists to map

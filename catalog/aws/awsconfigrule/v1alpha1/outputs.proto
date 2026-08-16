@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsconfigrule.v1alpha1;
+
+// AwsConfigRuleStackOutputs captures the observable state of the
+// Config rule after apply.
+message AwsConfigRuleStackOutputs {
+  // The rule's ARN. For organization rules this is the organization
+  // rule ARN.
+  string rule_arn = 1;
+
+  // The rule's name (metadata.name echoed) - the key remediation
+  // attachments and aggregator queries address rules by.
+  string rule_name = 4;
+
+  // The rule's AWS-assigned ID (account-scoped rules; empty for
+  // organization rules, which have no rule_id).
+  string rule_id = 2;
+
+  // The remediation configuration's ARN (set only when
+  // spec.remediation is configured).
+  string remediation_arn = 3;
+}

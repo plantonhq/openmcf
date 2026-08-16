@@ -1,0 +1,151 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureAksCluster manifest's spec values into metered quantities and
+# price choices -- the embedded default node pool's VM hours and OS
+# disks, the STANDARD-tier management fee, and the managed egress path's
+# load balancer and public IP. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/azureakscluster.yaml; a server-side estimator evaluates
+# the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azureakscluster
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  refusals:
+    - when:
+        - field_path: default_node_pool.os_disk_size_gb
+          op: not_equals
+          value: "0"
+      reason: custom OS disk sizes are not yet priced -- the Premium SSD tier family beyond the AKS default P10 (128 GiB) is not in the price book, and pricing the wrong tier would misstate the bill
+  lines:
+    - sku_meter: node pool VM hours
+      applies_when:
+        - field_path: default_node_pool.auto_scaling_enabled
+          op: equals
+          value: "true"
+      quantity:
+        - field_value:
+            field_path: default_node_pool.min_count
+        - hours_in_month: true
+      price_lookup:
+        service_name: Virtual Machines
+        pricing_unit: hours
+        attributes:
+          - key: vm_size
+            from_field: default_node_pool.vm_size
+      basis: default pool at the autoscaling floor (min_count) x 730 hours, Linux pay-as-you-go
+    - sku_meter: node pool VM hours
+      applies_when:
+        - field_path: default_node_pool.auto_scaling_enabled
+          op: not_equals
+          value: "true"
+      quantity:
+        - field_value:
+            field_path: default_node_pool.node_count
+        - hours_in_month: true
+      price_lookup:
+        service_name: Virtual Machines
+        pricing_unit: hours
+        attributes:
+          - key: vm_size
+            from_field: default_node_pool.vm_size
+      basis: default pool at its fixed node_count x 730 hours, Linux pay-as-you-go
+    - sku_meter: cluster management fee
+      applies_when:
+        - field_path: sku_tier
+          op: equals
+          value: STANDARD
+      quantity:
+        - hours_in_month: true
+      price_slug: aks-standard-management-fee
+      basis: sku_tier STANDARD bills the uptime-SLA control plane every hour of the month
+    - sku_meter: node OS disk storage
+      applies_when:
+        - field_path: default_node_pool.auto_scaling_enabled
+          op: equals
+          value: "true"
+      quantity:
+        - field_value:
+            field_path: default_node_pool.min_count
+      price_slug: managed-disk-p10-eastus
+      basis: one P10 (128 GiB) Premium SSD managed OS disk per node at the autoscaling floor -- the AKS default size when os_disk_size_gb is unset
+    - sku_meter: node OS disk storage
+      applies_when:
+        - field_path: default_node_pool.auto_scaling_enabled
+          op: not_equals
+          value: "true"
+      quantity:
+        - field_value:
+            field_path: default_node_pool.node_count
+      price_slug: managed-disk-p10-eastus
+      basis: one P10 (128 GiB) Premium SSD managed OS disk per fixed node -- the AKS default size when os_disk_size_gb is unset
+    - sku_meter: included load balancer rules
+      applies_when:
+        - field_path: network_profile.outbound_type
+          op: not_equals
+          value: MANAGED_NAT_GATEWAY
+        - field_path: network_profile.outbound_type
+          op: not_equals
+          value: USER_ASSIGNED_NAT_GATEWAY
+        - field_path: network_profile.outbound_type
+          op: not_equals
+          value: USER_DEFINED_ROUTING
+      quantity:
+        - hours_in_month: true
+      price_slug: standard-lb-included-rules
+      basis: the default outbound_type (LOAD_BALANCER) provisions a Standard Load Balancer whose included-rules bundle bills every hour
+    - sku_meter: standard static public IP
+      applies_when:
+        - field_path: network_profile.outbound_type
+          op: not_equals
+          value: MANAGED_NAT_GATEWAY
+        - field_path: network_profile.outbound_type
+          op: not_equals
+          value: USER_ASSIGNED_NAT_GATEWAY
+        - field_path: network_profile.outbound_type
+          op: not_equals
+          value: USER_DEFINED_ROUTING
+      quantity:
+        - field_value:
+            field_path: network_profile.load_balancer_profile.managed_outbound_ip_count
+            default_when_unset: "1"
+        - hours_in_month: true
+      price_slug: standard-static-public-ip
+      basis: the managed outbound public IPs (Azure's default is one) x 730 hours
+  exclusions:
+    - applies_when:
+        - field_path: oms_agent
+          op: is_set
+      text: Log Analytics ingestion for Container Insights (oms_agent) depends on workload log volume
+    - applies_when:
+        - field_path: microsoft_defender
+          op: is_set
+      text: Microsoft Defender for Containers plan charges (billed per protected vCPU per month)
+    - applies_when:
+        - field_path: private_cluster_enabled
+          op: equals
+          value: "true"
+      text: private endpoint and private DNS zone charges for the private API server
+    - applies_when:
+        - field_path: default_node_pool.auto_scaling_enabled
+          op: equals
+          value: "true"
+      text: autoscaled nodes above the floor are workload-dependent (max_count sets the VM ceiling)
+    - text: load balancer data processed and network egress are traffic-dependent
+  notes:
+    - applies_when:
+        - field_path: default_node_pool.auto_scaling_enabled
+          op: equals
+          value: "true"
+      text: Estimated at the autoscaling floor -- the committed always-on spend.
+    - applies_when:
+        - field_path: default_node_pool.host_encryption_enabled
+          op: equals
+          value: "true"
+      text: Host encryption on the default pool adds no charge of its own.

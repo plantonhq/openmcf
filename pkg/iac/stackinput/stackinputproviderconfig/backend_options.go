@@ -83,11 +83,6 @@ func ValidateProviderConfig(
 				"Azure credentials required for resource '%s'. Provide credentials via provider_config in API request",
 				resourceName,
 			)
-		case cloudresourcekind.CloudResourceProvider_atlas:
-			return errors.Errorf(
-				"Atlas credentials required for resource '%s'. Provide credentials via provider_config in API request",
-				resourceName,
-			)
 		case cloudresourcekind.CloudResourceProvider_auth0:
 			return errors.Errorf(
 				"Auth0 credentials required for resource '%s'. Provide credentials via provider_config in API request",
@@ -96,16 +91,6 @@ func ValidateProviderConfig(
 		case cloudresourcekind.CloudResourceProvider_cloudflare:
 			return errors.Errorf(
 				"Cloudflare credentials required for resource '%s'. Provide credentials via provider_config in API request",
-				resourceName,
-			)
-		case cloudresourcekind.CloudResourceProvider_confluent:
-			return errors.Errorf(
-				"Confluent credentials required for resource '%s'. Provide credentials via provider_config in API request",
-				resourceName,
-			)
-		case cloudresourcekind.CloudResourceProvider_snowflake:
-			return errors.Errorf(
-				"Snowflake credentials required for resource '%s'. Provide credentials via provider_config in API request",
 				resourceName,
 			)
 		case cloudresourcekind.CloudResourceProvider_kubernetes:
@@ -122,7 +107,7 @@ func ValidateProviderConfig(
 			// No credentials needed for unspecified provider
 			return nil
 		default:
-			// For other providers (civo, digitalocean, etc.), credentials are optional
+			// For other providers (e.g. digitalocean), credentials are optional
 			return nil
 		}
 	}

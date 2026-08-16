@@ -1,0 +1,13 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsbedrockinvocationlogging
+spec:
+  values:
+    - name: region
+      derivations:
+        - from_spec_field: region
+      where_to_find: >-
+        The AWS region whose invocation logging this instance manages
+        (the configuration is a region singleton -- the region IS the
+        import id).

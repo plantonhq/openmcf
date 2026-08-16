@@ -1,0 +1,25 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsConfigRule
+metadata:
+  name: s3-bucket-versioning-enabled
+spec:
+  region: <aws-region>
+  description: Every S3 bucket must have versioning enabled
+  managed:
+    ruleIdentifier: S3_BUCKET_VERSIONING_ENABLED
+  scope:
+    complianceResourceTypes:
+      - AWS::S3::Bucket
+  evaluationModes:
+    - DETECTIVE
+  remediation:
+    automatic: false
+    targetId: AWS-ConfigureS3BucketVersioning
+    resourceType: AWS::S3::Bucket
+    parameters:
+      - name: BucketName
+        resourceValue: RESOURCE_ID
+      - name: AutomationAssumeRole
+        staticValue: <remediation-role-arn>
+    concurrentExecutionRatePercentage: 10
+    errorPercentage: 50

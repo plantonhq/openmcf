@@ -1,0 +1,105 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsmskcluster
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: MSK encrypts every broker's EBS data volume at rest on every cluster; kms_key_arn only chooses WHICH key (the aws/msk service key when unset) -- encryption itself cannot be disabled at any configuration level.
+      notes: The module maps kms_key_arn to encryption_at_rest_kms_key_arn and omits it when unset, letting the service key stand.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Unset means the AWS-managed aws/msk service key; setting kms_key_arn encrypts broker volumes under the referenced customer-managed key. ForceNew -- the key is a create-time decision.
+      notes: The 02-production-encrypted preset references a platform AwsKmsKey.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: client_broker_encryption
+      evidence:
+        type: spec_default
+        reference: Carries declared default TLS -- all client-broker traffic is TLS-encrypted (port 9094) unless the manifest explicitly weakens to TLS_PLAINTEXT or PLAINTEXT; in_cluster_encryption separately defaults true for broker-to-broker traffic.
+      notes: Presets keep the TLS default; public access and PrivateLink both require TLS-only client_broker_encryption (CEL-enforced for public access).
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_access_type
+      evidence:
+        type: spec_default
+        reference: Defaults to DISABLED -- brokers are reachable only inside the VPC; SERVICE_PROVIDED_EIPS attaches public IPs, and the public_access_requires_authenticated_tls CEL rule forces real client authentication with TLS-only encryption before it is representable.
+      notes: All four presets leave public access disabled.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_validation
+        reference: security_group_ids carries repeated.min_items=1 -- every cluster attaches at least one declared security group, and the Kafka/ZooKeeper listener ports open only to the sources those referenced AwsSecurityGroup nodes declare.
+      notes: The module attaches the groups directly to the broker network interfaces and never creates a shadow group of its own.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Brokers speak the Kafka wire protocol, not HTTP -- there is no WAF attachment point for this resource class.
+    - control_id: rbac
+      status: configurable
+      field_path: authentication.sasl_iam_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to false; true puts the Kafka data plane (topic-level produce, consume, and admin actions) under IAM policy control on port 9098.
+      notes: All four presets enable SASL/IAM; SASL/SCRAM and mTLS can coexist for clients that cannot use IAM.
+    - control_id: workload-identity
+      status: configurable
+      field_path: authentication.sasl_iam_enabled
+      evidence:
+        type: spec_default
+        reference: With SASL/IAM enabled, clients authenticate with short-lived IAM credentials (role assumption, instance profiles) -- no password or certificate material to store or rotate.
+      notes: SASL/SCRAM is the stored-credential alternative for non-AWS clients; its secrets live in Secrets Manager under customer-managed KMS keys via scram_secret_arns.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: authentication.unauthenticated
+      evidence:
+        type: spec_default
+        reference: Within the authentication block, unauthenticated defaults to false -- clients must present SASL/IAM, SASL/SCRAM, or mTLS credentials. Omitting the authentication block entirely leaves the cluster accepting unauthenticated connections, so declaring the block is the control.
+      notes: The TLS default on client_broker_encryption also keeps the plaintext 9092 listener closed; every preset declares an authentication block.
+    - control_id: audit-logging
+      status: configurable
+      field_path: logging
+      evidence:
+        type: spec_default
+        reference: Unset delivers no broker logs; enabling cloudwatch_logs, firehose, or s3 streams broker logs to the referenced destinations for retention and analysis, and all three can run simultaneously.
+      notes: Control-plane calls land in CloudTrail regardless. The 02 preset streams to CloudWatch Logs; the 03 preset enables all three destinations.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: enhanced_monitoring
+      evidence:
+        type: spec_default
+        reference: DEFAULT-level cluster and topic metrics flow to CloudWatch on every cluster; PER_BROKER, PER_TOPIC_PER_BROKER, and PER_TOPIC_PER_PARTITION add progressively finer metric streams.
+      notes: jmx_exporter_enabled and node_exporter_enabled additionally expose free Prometheus endpoints on ports 11001/11002; presets 02 and 03 enable both plus PER_TOPIC_PER_BROKER.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: MSK offers no managed backup or restore of topic data -- durability comes from Kafka replication across brokers and AZs (replication_factor on topics), not from backups. Streams are re-consumed, not restored.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: There are no backups to retain; log.retention.* in server_properties governs how long the live stream keeps messages, which is data lifecycle, not backup retention.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: subnet_ids
+      evidence:
+        type: spec_default
+        reference: Brokers distribute round-robin across the provided subnets, and number_of_broker_nodes must be a multiple of the subnet count -- subnets in multiple AZs spread the cluster evenly across zones.
+      notes: Every preset places brokers across three AZ subnets; topic-level replication_factor 3 with min.insync.replicas 2 completes zone-loss tolerance.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither MSK nor the provider exposes a deletion-protection flag for clusters; a deleted cluster and its declared topics are recreated from the manifest, but streamed data does not survive.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: MSK owns broker infrastructure and OS patching on every cluster; Kafka version upgrades roll through the managed UpdateClusterKafkaVersion operation driven by the kafka_version field, broker by broker.
+      notes: Version downgrades cannot be performed in place and force cluster replacement -- upgrades are the only managed direction.

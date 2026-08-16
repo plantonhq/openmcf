@@ -1,0 +1,36 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupPlan
+metadata:
+  name: dr-cold-storage
+spec:
+  region: <aws-region>
+  rules:
+    - name: weekly_archive
+      targetVaultName:
+        valueFrom:
+          kind: AwsBackupVault
+          name: <backup-vault>
+          fieldPath: status.outputs.vault_name
+      schedule: cron(0 3 ? * SUN *)
+      lifecycle:
+        coldStorageAfterDays: 30
+        deleteAfterDays: 365
+      copyActions:
+        - destinationVaultArn:
+            valueFrom:
+              kind: AwsBackupVault
+              name: <dr-region-vault>
+              fieldPath: status.outputs.vault_arn
+          lifecycle:
+            deleteAfterDays: 365
+  selections:
+    - name: critical
+      iamRoleArn:
+        valueFrom:
+          kind: AwsIamRole
+          name: <backup-service-role>
+          fieldPath: status.outputs.role_arn
+      selectionTags:
+        - type: STRINGEQUALS
+          key: tier
+          value: critical

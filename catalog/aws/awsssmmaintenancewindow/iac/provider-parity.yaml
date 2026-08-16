@@ -1,0 +1,121 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_ssm_maintenance_window:
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: name
+        reason: metadata.name is the window name on both engines -- never free-form spec surface
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+  aws_ssm_maintenance_window_target:
+    mappings:
+      - arg: region
+        spec: spec.region
+      # Target registrations fold into the window as the name-keyed
+      # targets list.
+      - arg: name
+        spec: spec.targets.name
+      - arg: resource_type
+        spec: spec.targets.resource_type
+      - arg: description
+        spec: spec.targets.description
+      - arg: owner_information
+        spec: spec.targets.owner_information
+      - arg: targets.key
+        spec: spec.targets.targets.key
+      - arg: targets.values
+        spec: spec.targets.targets.values
+    exclusions:
+      - arg: window_id
+        reason: wired by the module to the folded window's own AWS-generated ID -- a registration always belongs to THIS window, never a foreign one
+  aws_ssm_maintenance_window_task:
+    mappings:
+      - arg: region
+        spec: spec.region
+      # Tasks fold into the window as the name-keyed tasks list; the
+      # provider's task_invocation_parameters tree is the spec's
+      # invocation union (arm names drop the _parameters suffix).
+      - arg: name
+        spec: spec.tasks.name
+      - arg: task_type
+        spec: spec.tasks.task_type
+      - arg: task_arn
+        spec: spec.tasks.task_arn
+      - arg: description
+        spec: spec.tasks.description
+      - arg: service_role_arn
+        spec: spec.tasks.service_role_arn
+      - arg: priority
+        spec: spec.tasks.priority
+      - arg: max_concurrency
+        spec: spec.tasks.max_concurrency
+      - arg: max_errors
+        spec: spec.tasks.max_errors
+      - arg: cutoff_behavior
+        spec: spec.tasks.cutoff_behavior
+      - arg: targets.key
+        spec: spec.tasks.targets.key
+      - arg: targets.values
+        spec: spec.tasks.targets.values
+      - arg: task_invocation_parameters.run_command_parameters.comment
+        spec: spec.tasks.invocation.run_command.comment
+      - arg: task_invocation_parameters.run_command_parameters.document_hash
+        spec: spec.tasks.invocation.run_command.document_hash
+      - arg: task_invocation_parameters.run_command_parameters.document_hash_type
+        spec: spec.tasks.invocation.run_command.document_hash_type
+      - arg: task_invocation_parameters.run_command_parameters.document_version
+        spec: spec.tasks.invocation.run_command.document_version
+      - arg: task_invocation_parameters.run_command_parameters.output_s3_bucket
+        spec: spec.tasks.invocation.run_command.output_s3_bucket
+      - arg: task_invocation_parameters.run_command_parameters.output_s3_key_prefix
+        spec: spec.tasks.invocation.run_command.output_s3_key_prefix
+      - arg: task_invocation_parameters.run_command_parameters.service_role_arn
+        spec: spec.tasks.invocation.run_command.service_role_arn
+      - arg: task_invocation_parameters.run_command_parameters.timeout_seconds
+        spec: spec.tasks.invocation.run_command.timeout_seconds
+      - arg: task_invocation_parameters.run_command_parameters.parameter.name
+        spec: spec.tasks.invocation.run_command.parameters.name
+      - arg: task_invocation_parameters.run_command_parameters.parameter.values
+        spec: spec.tasks.invocation.run_command.parameters.values
+      - arg: task_invocation_parameters.run_command_parameters.cloudwatch_config.cloudwatch_log_group_name
+        spec: spec.tasks.invocation.run_command.cloudwatch_config.cloudwatch_log_group_name
+      - arg: task_invocation_parameters.run_command_parameters.cloudwatch_config.cloudwatch_output_enabled
+        spec: spec.tasks.invocation.run_command.cloudwatch_config.cloudwatch_output_enabled
+      - arg: task_invocation_parameters.run_command_parameters.notification_config.notification_arn
+        spec: spec.tasks.invocation.run_command.notification_config.notification_arn
+      - arg: task_invocation_parameters.run_command_parameters.notification_config.notification_events
+        spec: spec.tasks.invocation.run_command.notification_config.notification_events
+      - arg: task_invocation_parameters.run_command_parameters.notification_config.notification_type
+        spec: spec.tasks.invocation.run_command.notification_config.notification_type
+      - arg: task_invocation_parameters.automation_parameters.document_version
+        spec: spec.tasks.invocation.automation.document_version
+      - arg: task_invocation_parameters.automation_parameters.parameter.name
+        spec: spec.tasks.invocation.automation.parameters.name
+      - arg: task_invocation_parameters.automation_parameters.parameter.values
+        spec: spec.tasks.invocation.automation.parameters.values
+      - arg: task_invocation_parameters.lambda_parameters.client_context
+        spec: spec.tasks.invocation.lambda.client_context
+      - arg: task_invocation_parameters.lambda_parameters.payload
+        spec: spec.tasks.invocation.lambda.payload
+      - arg: task_invocation_parameters.lambda_parameters.qualifier
+        spec: spec.tasks.invocation.lambda.qualifier
+      - arg: task_invocation_parameters.step_functions_parameters.input
+        spec: spec.tasks.invocation.step_functions.input
+      - arg: task_invocation_parameters.step_functions_parameters.name
+        spec: spec.tasks.invocation.step_functions.name
+    exclusions:
+      - arg: window_id
+        reason: wired by the module to the folded window's own AWS-generated ID -- a task always belongs to THIS window, never a foreign one

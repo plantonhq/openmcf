@@ -1,0 +1,35 @@
+# Canonical AwsConfigRecorder example (hack/dev manifest and refgen
+# Example source): the region's recording posture -- a scoped inclusion
+# recorder delivering to S3 with a retention window. Literal
+# ARNs/names stand in for composed references so the offline `tofu
+# plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsConfigRecorder
+metadata:
+  name: config-recording-us-west-2
+  id: config-recording-us-west-2
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  roleArn:
+    value: arn:aws:iam::123456789012:role/config-recorder
+  recordingGroup:
+    allSupported: false
+    resourceTypes:
+      - AWS::S3::Bucket
+      - AWS::EC2::SecurityGroup
+    recordingStrategy: INCLUSION_BY_RESOURCE_TYPES
+  recordingMode:
+    recordingFrequency: CONTINUOUS
+    override:
+      description: Daily snapshots for noisy compute types
+      recordingFrequency: DAILY
+      resourceTypes:
+        - AWS::EC2::Instance
+  deliveryChannel:
+    s3BucketName:
+      value: my-config-history
+    s3KeyPrefix: config
+    snapshotDeliveryFrequency: TwentyFour_Hours
+  retentionPeriodInDays: 365

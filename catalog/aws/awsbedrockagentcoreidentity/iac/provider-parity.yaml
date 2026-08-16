@@ -1,0 +1,161 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_bedrockagentcore_workload_identity:
+    specRoot: spec.workload_identities
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+
+  aws_bedrockagentcore_api_key_credential_provider:
+    specRoot: spec.api_key_credential_providers
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: api_key_wo
+        reason: write-only variant excluded by design -- the spec's api_key is sensitive end to end (JIT-resolved secret reference) and the plain argument lets the provider detect rotation; a write-only value the provider cannot read back would make rotation invisible to state
+      - arg: api_key_wo_version
+        reason: companion of the excluded api_key_wo write-only variant (see that exclusion)
+
+  aws_bedrockagentcore_oauth2_credential_provider:
+    specRoot: spec.oauth2_credential_providers
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The spec's clean vendor vocabulary (CUSTOM/GITHUB/...) maps to the
+      # provider's enum values (CustomOauth2/GithubOauth2/...) AND selects
+      # which of the six structurally-identical vendor blocks renders --
+      # the vendor field IS the discriminator (fan-in below).
+      - arg: credential_provider_vendor
+        spec: spec.oauth2_credential_providers.vendor
+      - arg: oauth2_provider_config
+        spec: spec.oauth2_credential_providers.vendor
+      # The six vendor blocks carry identical credential leaves; every
+      # block's client_id/client_secret fans in to the shared spec pair.
+      - arg: oauth2_provider_config.custom_oauth2_provider_config
+        spec: spec.oauth2_credential_providers.vendor
+      - arg: oauth2_provider_config.custom_oauth2_provider_config.client_id
+        spec: spec.oauth2_credential_providers.client_id
+      - arg: oauth2_provider_config.custom_oauth2_provider_config.client_secret
+        spec: spec.oauth2_credential_providers.client_secret
+      - arg: oauth2_provider_config.custom_oauth2_provider_config.oauth_discovery
+        spec: spec.oauth2_credential_providers.oauth_discovery
+      - arg: oauth2_provider_config.github_oauth2_provider_config
+        spec: spec.oauth2_credential_providers.vendor
+      - arg: oauth2_provider_config.github_oauth2_provider_config.client_id
+        spec: spec.oauth2_credential_providers.client_id
+      - arg: oauth2_provider_config.github_oauth2_provider_config.client_secret
+        spec: spec.oauth2_credential_providers.client_secret
+      - arg: oauth2_provider_config.google_oauth2_provider_config
+        spec: spec.oauth2_credential_providers.vendor
+      - arg: oauth2_provider_config.google_oauth2_provider_config.client_id
+        spec: spec.oauth2_credential_providers.client_id
+      - arg: oauth2_provider_config.google_oauth2_provider_config.client_secret
+        spec: spec.oauth2_credential_providers.client_secret
+      - arg: oauth2_provider_config.microsoft_oauth2_provider_config
+        spec: spec.oauth2_credential_providers.vendor
+      - arg: oauth2_provider_config.microsoft_oauth2_provider_config.client_id
+        spec: spec.oauth2_credential_providers.client_id
+      - arg: oauth2_provider_config.microsoft_oauth2_provider_config.client_secret
+        spec: spec.oauth2_credential_providers.client_secret
+      - arg: oauth2_provider_config.salesforce_oauth2_provider_config
+        spec: spec.oauth2_credential_providers.vendor
+      - arg: oauth2_provider_config.salesforce_oauth2_provider_config.client_id
+        spec: spec.oauth2_credential_providers.client_id
+      - arg: oauth2_provider_config.salesforce_oauth2_provider_config.client_secret
+        spec: spec.oauth2_credential_providers.client_secret
+      - arg: oauth2_provider_config.slack_oauth2_provider_config
+        spec: spec.oauth2_credential_providers.vendor
+      - arg: oauth2_provider_config.slack_oauth2_provider_config.client_id
+        spec: spec.oauth2_credential_providers.client_id
+      - arg: oauth2_provider_config.slack_oauth2_provider_config.client_secret
+        spec: spec.oauth2_credential_providers.client_secret
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: oauth2_provider_config.custom_oauth2_provider_config.client_id_wo
+        reason: write-only variant excluded by design -- the spec's client_id is sensitive end to end (JIT-resolved secret reference) and the plain argument lets the provider detect rotation
+      - arg: oauth2_provider_config.custom_oauth2_provider_config.client_secret_wo
+        reason: write-only variant excluded by design -- the spec's client_secret is sensitive end to end (JIT-resolved secret reference) and the plain argument lets the provider detect rotation
+      - arg: oauth2_provider_config.custom_oauth2_provider_config.client_credentials_wo_version
+        reason: companion of the excluded write-only variants (see those exclusions)
+      - arg: oauth2_provider_config.github_oauth2_provider_config.client_id_wo
+        reason: write-only variant excluded by design -- see the custom block's client_id_wo exclusion
+      - arg: oauth2_provider_config.github_oauth2_provider_config.client_secret_wo
+        reason: write-only variant excluded by design -- see the custom block's client_secret_wo exclusion
+      - arg: oauth2_provider_config.github_oauth2_provider_config.client_credentials_wo_version
+        reason: companion of the excluded write-only variants (see those exclusions)
+      - arg: oauth2_provider_config.google_oauth2_provider_config.client_id_wo
+        reason: write-only variant excluded by design -- see the custom block's client_id_wo exclusion
+      - arg: oauth2_provider_config.google_oauth2_provider_config.client_secret_wo
+        reason: write-only variant excluded by design -- see the custom block's client_secret_wo exclusion
+      - arg: oauth2_provider_config.google_oauth2_provider_config.client_credentials_wo_version
+        reason: companion of the excluded write-only variants (see those exclusions)
+      - arg: oauth2_provider_config.microsoft_oauth2_provider_config.client_id_wo
+        reason: write-only variant excluded by design -- see the custom block's client_id_wo exclusion
+      - arg: oauth2_provider_config.microsoft_oauth2_provider_config.client_secret_wo
+        reason: write-only variant excluded by design -- see the custom block's client_secret_wo exclusion
+      - arg: oauth2_provider_config.microsoft_oauth2_provider_config.client_credentials_wo_version
+        reason: companion of the excluded write-only variants (see those exclusions)
+      - arg: oauth2_provider_config.salesforce_oauth2_provider_config.client_id_wo
+        reason: write-only variant excluded by design -- see the custom block's client_id_wo exclusion
+      - arg: oauth2_provider_config.salesforce_oauth2_provider_config.client_secret_wo
+        reason: write-only variant excluded by design -- see the custom block's client_secret_wo exclusion
+      - arg: oauth2_provider_config.salesforce_oauth2_provider_config.client_credentials_wo_version
+        reason: companion of the excluded write-only variants (see those exclusions)
+      - arg: oauth2_provider_config.slack_oauth2_provider_config.client_id_wo
+        reason: write-only variant excluded by design -- see the custom block's client_id_wo exclusion
+      - arg: oauth2_provider_config.slack_oauth2_provider_config.client_secret_wo
+        reason: write-only variant excluded by design -- see the custom block's client_secret_wo exclusion
+      - arg: oauth2_provider_config.slack_oauth2_provider_config.client_credentials_wo_version
+        reason: companion of the excluded write-only variants (see those exclusions)
+
+  aws_bedrockagentcore_policy_engine:
+    specRoot: spec.policy_engine
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The engine's charset (no hyphens) is stricter than metadata.name
+      # conventions, so the name is an explicit spec field.
+      - arg: name
+        spec: spec.policy_engine.engine_name
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+
+  aws_bedrockagentcore_policy:
+    specRoot: spec.policy_engine.policies
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The policy attaches to the engine this kind deploys -- the module
+      # wires the parent ID.
+      - arg: policy_engine_id
+        spec: spec.policy_engine.engine_name
+      # The two-level single-member wrapper (definition.cedar.statement)
+      # flattens to the statement leaf.
+      - arg: definition
+        spec: spec.policy_engine.policies.cedar_statement
+      - arg: definition.cedar
+        spec: spec.policy_engine.policies.cedar_statement
+      - arg: definition.cedar.statement
+        spec: spec.policy_engine.policies.cedar_statement

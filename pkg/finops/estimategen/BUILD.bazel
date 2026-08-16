@@ -1,0 +1,45 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+go_library(
+    name = "estimategen_lib",
+    srcs = [
+        "generate.go",
+        "main.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/finops/estimategen",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//finops/componentcostestimatemodel/v1:componentcostestimatemodel",
+        "//finops/pricebook/v1:pricebook",
+        "//pkg/crkreflect",
+        "//pkg/finops/costderivation",
+        "//pkg/finops/costestimate",
+        "//pkg/finops/costestimator",
+        "//pkg/finops/costprofile",
+        "//pkg/finops/estimatemodel",
+        "//pkg/finops/pricebook",
+        "//pkg/protobufyaml",
+        "//pkg/yamlemit",
+    ],
+)
+
+go_binary(
+    name = "estimategen",
+    embed = [":estimategen_lib"],
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "estimategen_test",
+    srcs = [
+        "drift_test.go",
+        "replay_test.go",
+    ],
+    embed = [":estimategen_lib"],
+    deps = [
+        "//finops/componentcostestimate/v1:componentcostestimate",
+        "//pkg/finops/costderivation",
+        "//pkg/finops/costestimate",
+        "//pkg/protobufyaml",
+    ],
+)

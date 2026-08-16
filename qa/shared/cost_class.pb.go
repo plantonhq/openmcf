@@ -30,9 +30,9 @@ const (
 	CostClass_cost_class_unspecified CostClass = 0
 	// Local infrastructure only (kind clusters, local containers). $0.
 	CostClass_free_local CostClass = 1
-	// Cloud free tiers (Cloudflare Workers Free, Auth0 free, OCI Always Free, Atlas M0). $0.
+	// Cloud free tiers (Cloudflare Workers Free, Auth0 free). $0.
 	CostClass_free_cloud CostClass = 2
-	// Low-cost VPS providers (DigitalOcean, Civo, Hetzner, Scaleway). ~$1-5/provider/month.
+	// Low-cost VPS providers (DigitalOcean). ~$1-5/provider/month.
 	CostClass_cheap_ephemeral CostClass = 3
 	// Major cloud non-free resources (AWS, GCP, Azure compute/storage). ~$25-200/provider/month.
 	CostClass_paid_ephemeral CostClass = 4

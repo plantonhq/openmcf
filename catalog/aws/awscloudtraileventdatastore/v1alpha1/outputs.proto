@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package dev.planton.aws.awscloudtraileventdatastore.v1alpha1;
+
+// AwsCloudTrailEventDataStoreStackOutputs captures the observable
+// state of the event data store after apply.
+message AwsCloudTrailEventDataStoreStackOutputs {
+  // The event data store's ARN (also the provider's import ID).
+  string event_data_store_arn = 1;
+}

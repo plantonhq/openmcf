@@ -1,0 +1,32 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbackupplan
+spec:
+  # A backup plan under live E2E: one daily rule into the vault
+  # fixture with a delete-only lifecycle, plus a tag-driven selection
+  # on the consumer-scoped backup service role. The schedule never
+  # fires in a lane window and the selection tag matches nothing, so
+  # no recovery points are ever created (~$0). Destroy exercises the
+  # provider's selections-drain-then-plan-delete ordering.
+  #
+  # Deliberately not exercised live:
+  #   - a real backup job / recovery point -- wall-clock heavy and
+  #     billable. Unblock: a composed scenario with a tagged fixture
+  #     resource and a near-future cron when the proof lane wants the
+  #     job path.
+  #   - cold storage transitions and copy actions -- both only
+  #     observable on real recovery points. Unblock: same composed
+  #     scenario.
+  #   - Windows VSS advanced settings -- needs a Windows EC2 fixture.
+  #     Unblock: an EC2 Windows fixture chain (cost-gated).
+  #   - GuardDuty scan settings/actions -- scan billing on real
+  #     recovery points. Unblock: same composed scenario plus the
+  #     GuardDuty scanner role contract.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q41
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

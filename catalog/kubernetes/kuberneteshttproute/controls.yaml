@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kuberneteshttproute
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An HTTPRoute stores no data beyond its own definition in the cluster's etcd; encrypting that store is the target cluster control plane's property, not a seam of this spec.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest), so customer-managed keys have no meaning here.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: rules.filters.request_redirect.scheme
+      evidence:
+        type: spec_default
+        reference: TLS terminates on the parent Gateway's listeners, not on the route; the route's own seam is the RequestRedirect filter -- a rule with scheme "https" answers plaintext requests with a redirect that forces clients onto the Gateway's TLS listener.
+      notes: The certificates and TLS configuration for the hostnames this route serves live on the parent Gateway (its own catalog kind). This field only closes the plaintext side door; it cannot encrypt anything by itself.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The route is not network-addressable; it attaches to a Gateway through parent_refs, and whether that Gateway is internet-facing is the Gateway's own exposure posture.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: hostnames
+      evidence:
+        type: spec_default
+        reference: Empty hostnames match any Host the parent Gateway's listeners permit; declaring hostnames narrows the route to those exact (or wildcard-suffix) hosts, and each rule's matches (path, headers, query params, method) narrow which requests are forwarded further.
+      notes: This is application-layer scoping -- which requests the route claims. Network-source restriction (who can reach the listener at all) belongs to the parent Gateway's listener configuration and Kubernetes NetworkPolicies.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A route offers no web application firewall; beyond its declared matches and filters (header modification, redirect, rewrite, mirror, CORS), request filtering is the gateway controller's data plane or an edge service in front of it.
+    - control_id: rbac
+      status: not_applicable
+      notes: The object's only access plane is the Kubernetes API -- who may create or change the HTTPRoute is the target cluster's own RBAC. Cross-namespace attachment and backend references are additionally gated by the Gateway API's ReferenceGrant model, owned by those namespaces.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The route authenticates to nothing -- it holds no credentials and calls no cloud APIs.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: There is no authentication path into this object beyond the Kubernetes API itself, so no legacy mechanism exists to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the route are Kubernetes API operations, captured by the target cluster's audit policy; request access logs are emitted by the Gateway's data plane, not by this object.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The route has no runtime behavior of its own to monitor; traffic metrics for its rules are emitted by the gateway controller.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The object is fully declarative and holds no data -- re-applying the manifest reconstructs it exactly. There is nothing to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist for this object (see backup-recovery), so retention has nothing to govern.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A route has no runtime footprint to replicate. Availability of the traffic path is a property of the Gateway data plane and the backend Services.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on HTTPRoute; deleting it detaches the routing rules (traffic falls back to whatever else the Gateway serves) without destroying any data. Protection is operational (cluster RBAC, change review).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Nothing runs here to patch. The gateway controller interpreting the route is installed, versioned, and patched through its own component.

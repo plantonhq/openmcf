@@ -1,0 +1,43 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsecscluster
+spec:
+  aws:
+    statements:
+      - sid: ManageCluster
+        actions:
+          - ecs:CreateCluster
+          - ecs:DescribeClusters
+          - ecs:UpdateCluster
+          - ecs:DeleteCluster
+          - ecs:PutClusterCapacityProviders
+          - ecs:TagResource
+          - ecs:UntagResource
+          - ecs:ListTagsForResource
+        resources:
+          - arn:aws:ecs:*:*:cluster/*
+        provenance: derived
+        notes: Covers aws_ecs_cluster (settings, execute-command and managed-storage configuration) and aws_ecs_cluster_capacity_providers, which attaches the strategy to the cluster ARN.
+      - sid: ManageCapacityProviders
+        actions:
+          - ecs:CreateCapacityProvider
+          - ecs:DescribeCapacityProviders
+          - ecs:UpdateCapacityProvider
+          - ecs:DeleteCapacityProvider
+        resources:
+          - arn:aws:ecs:*:*:capacity-provider/*
+        provenance: derived
+        notes: Covers both aws_ecs_capacity_provider resources -- the ASG-backed providers (ec2_capacity_providers) and the managed-instances providers.
+      - sid: PassCapacityRoles
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: Required only for managed_instances_capacity_providers -- creating one passes the ECS infrastructure role and the instances' profile role to ECS. Scope to the actual role ARNs in a hardened deployment.

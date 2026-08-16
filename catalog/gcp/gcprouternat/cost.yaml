@@ -1,0 +1,35 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcprouternat
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: type
+      sku_meter: private NAT gateway hours
+      pricing_unit: hours
+      impact: PUBLIC (the default) bills per VM endpoint that uses the gateway -- zero VMs, zero charge; PRIVATE swaps that for a flat per-gateway hourly fee that accrues from creation, idle or busy.
+    - field_path: nat_ips
+      sku_meter: NAT external IP usage
+      pricing_unit: IP-hours
+      impact: Each manually attached external address (a referenced GcpAddress) bills per hour through the NAT gateway's IP-usage meter for as long as it is assigned; leaving nat_ips empty auto-allocates addresses that bill the same way as endpoints scale.
+    - field_path: source_subnetwork_ip_ranges_to_nat
+      sku_meter: NAT endpoint hours
+      pricing_unit: hours
+      impact: The NAT scope decides how many VM endpoints bill the per-VM hourly rate -- all subnetworks, or only the ranges listed in subnetworks.
+    - field_path: log_filter
+      sku_meter: Cloud Logging ingestion
+      pricing_unit: GiB
+      impact: ERRORS_ONLY (the default) keeps log volume minimal; ALL or TRANSLATIONS_ONLY writes an entry per connection, billed at Cloud Logging's per-GiB ingestion rates on busy gateways.
+    - field_path: auto_network_tier
+      sku_meter: network egress
+      impact: STANDARD tier lowers the egress rates of the translated traffic (billed on the traffic, not here) in exchange for Google-edge routing; PREMIUM is the default.
+  estimate_exclusions:
+    - public NAT bills per VM endpoint-hour (capped at the 32-endpoint rate) -- the count of VMs behind the gateway is unknowable from this manifest
+    - data processing bills every GiB the gateway translates, in both directions -- the dominant real-world cost for chatty private workloads
+    - Cloud Logging volume under ALL or TRANSLATIONS_ONLY filters follows connection rate
+    - egress rates of the translated traffic bill as the workloads' data transfer
+  notes: "An idle public gateway with no attached addresses costs exactly zero -- the per-endpoint meter is the whole public story, which is why this profile is usage_based rather than hybrid. The two committed-money levers are explicit fields: attaching static addresses (per IP-hour) and choosing type=PRIVATE (flat per-gateway hours)."

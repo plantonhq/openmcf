@@ -1,0 +1,74 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsnatgateway
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A NAT gateway forwards packets and stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The gateway translates addresses without terminating or originating encryption; payload encryption is end-to-end between the workloads and their destinations.
+    - control_id: no-public-access
+      status: configurable
+      field_path: connectivity_type
+      evidence:
+        type: spec_default
+        reference: The choice is always explicit (CEL-required, recommended_default public). private creates a gateway with no internet path at all -- NAT between VPC ranges only -- while public holds Elastic IPs for internet egress.
+      notes: Either way the gateway accepts no inbound connections from the internet; NAT is outbound-initiated by design. The 02-private-nat-gateway preset picks private.
+    - control_id: restricted-ingress
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A NAT gateway only ever forwards connections initiated from inside the VPC; unsolicited inbound traffic has no path through it.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request surface exists to filter (see restricted-ingress).
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is AWS-account IAM posture, not a component choice; the gateway exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The gateway runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Traffic through the gateway is auditable with VPC Flow Logs on the VPC or subnet -- a separate resource, not a field of this spec. Control-plane changes land in CloudTrail as account-level posture.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AWS publishes NAT gateway metrics (bytes processed, active connections, port allocation errors) to CloudWatch automatically for every gateway; this cannot be disabled.
+      notes: ErrorPortAllocation is the metric that says a gateway needs more addresses -- the trigger for secondary_allocation_ids.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless packet forwarding -- no data to back up; the configuration is declarative and re-creatable from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: availability_mode
+      evidence:
+        type: spec_default
+        reference: Defaults to zonal -- one gateway in one AZ, sharing that zone's fate; regional runs the gateway in every AZ of the VPC with AWS managing zone placement and failover.
+      notes: The 03-regional-nat-gateway preset enables it. Zonal deployments get multi-AZ by composing one gateway per zone instead.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor this spec offers a deletion-protection flag for a NAT gateway; the blast radius of deletion is lost egress, recreated declaratively in minutes.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the NAT fleet; no customer-visible patch surface exists.

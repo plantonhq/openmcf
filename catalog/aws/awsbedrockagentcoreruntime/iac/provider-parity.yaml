@@ -1,0 +1,173 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_bedrockagentcore_agent_runtime:
+    mappings:
+      # AWS's runtime-name charset is stricter than metadata.name
+      # conventions, so the name is an explicit spec field.
+      - arg: agent_runtime_name
+        spec: spec.runtime_name
+      # The provider's `_configuration`-suffixed wrappers; the spec names
+      # the concepts directly.
+      - arg: agent_runtime_artifact
+        spec: spec.artifact
+      - arg: agent_runtime_artifact.container_configuration
+        spec: spec.artifact.container
+      - arg: agent_runtime_artifact.container_configuration.container_uri
+        spec: spec.artifact.container.image_uri
+      - arg: agent_runtime_artifact.code_configuration
+        spec: spec.artifact.code
+      # The code's single-member wrapper (code.s3) flattens one level.
+      - arg: agent_runtime_artifact.code_configuration.code
+        spec: spec.artifact.code.s3
+      - arg: agent_runtime_artifact.code_configuration.code.s3
+        spec: spec.artifact.code.s3
+      # A single-entry list ATTRIBUTE -- one schema argument fanning in to
+      # EVERY spec leaf it realizes.
+      - arg: lifecycle_configuration
+        spec: spec.lifecycle.idle_runtime_session_timeout_seconds
+      - arg: lifecycle_configuration
+        spec: spec.lifecycle.max_lifetime_seconds
+      - arg: network_configuration
+        spec: spec.network
+      - arg: network_configuration.network_mode
+        spec: spec.network.mode
+      - arg: network_configuration.network_mode_config
+        spec: spec.network.vpc_config
+      # Single-attribute wrappers flatten to their leaves.
+      - arg: protocol_configuration
+        spec: spec.server_protocol
+      - arg: protocol_configuration.server_protocol
+        spec: spec.server_protocol
+      - arg: request_header_configuration
+        spec: spec.request_header_allowlist
+      - arg: request_header_configuration.request_header_allowlist
+        spec: spec.request_header_allowlist
+      # The single-member authorizer wrapper flattens to the JWT message.
+      - arg: authorizer_configuration
+        spec: spec.custom_jwt_authorizer
+      - arg: authorizer_configuration.custom_jwt_authorizer
+        spec: spec.custom_jwt_authorizer
+      - arg: authorizer_configuration.custom_jwt_authorizer.allowed_audience
+        spec: spec.custom_jwt_authorizer.allowed_audience
+      - arg: authorizer_configuration.custom_jwt_authorizer.allowed_clients
+        spec: spec.custom_jwt_authorizer.allowed_clients
+      - arg: authorizer_configuration.custom_jwt_authorizer.allowed_scopes
+        spec: spec.custom_jwt_authorizer.allowed_scopes
+      - arg: authorizer_configuration.custom_jwt_authorizer.discovery_url
+        spec: spec.custom_jwt_authorizer.discovery_url
+      - arg: authorizer_configuration.custom_jwt_authorizer.allowed_workload_configuration
+        spec: spec.custom_jwt_authorizer.allowed_workloads
+      - arg: authorizer_configuration.custom_jwt_authorizer.allowed_workload_configuration.workload_identities
+        spec: spec.custom_jwt_authorizer.allowed_workloads.workload_identities
+      # Repeated single-leaf blocks flatten to a repeated string.
+      - arg: authorizer_configuration.custom_jwt_authorizer.allowed_workload_configuration.hosting_environment
+        spec: spec.custom_jwt_authorizer.allowed_workloads.hosting_environment_arns
+      - arg: authorizer_configuration.custom_jwt_authorizer.allowed_workload_configuration.hosting_environment.arn
+        spec: spec.custom_jwt_authorizer.allowed_workloads.hosting_environment_arns
+      # The claim's two-level match-value wrappers flatten onto the claim
+      # entry.
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim
+        spec: spec.custom_jwt_authorizer.custom_claims
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim.inbound_token_claim_name
+        spec: spec.custom_jwt_authorizer.custom_claims.claim_name
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim.inbound_token_claim_value_type
+        spec: spec.custom_jwt_authorizer.custom_claims.value_type
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim.authorizing_claim_match_value
+        spec: spec.custom_jwt_authorizer.custom_claims.match_operator
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim.authorizing_claim_match_value.claim_match_operator
+        spec: spec.custom_jwt_authorizer.custom_claims.match_operator
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim.authorizing_claim_match_value.claim_match_value
+        spec: spec.custom_jwt_authorizer.custom_claims.match_value
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim.authorizing_claim_match_value.claim_match_value.match_value_string
+        spec: spec.custom_jwt_authorizer.custom_claims.match_value
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim.authorizing_claim_match_value.claim_match_value.match_value_string_list
+        spec: spec.custom_jwt_authorizer.custom_claims.match_values
+      # The private endpoint's provider `_resource` suffixes; the spec
+      # names the arms directly.
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint
+        spec: spec.custom_jwt_authorizer.private_endpoint
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint.managed_vpc_resource
+        spec: spec.custom_jwt_authorizer.private_endpoint.managed_vpc
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint.managed_vpc_resource.vpc_identifier
+        spec: spec.custom_jwt_authorizer.private_endpoint.managed_vpc.vpc_id
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint.self_managed_lattice_resource
+        spec: spec.custom_jwt_authorizer.private_endpoint.self_managed_lattice
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint.self_managed_lattice_resource.resource_configuration_identifier
+        spec: spec.custom_jwt_authorizer.private_endpoint.self_managed_lattice.resource_configuration_id
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint_overrides
+        spec: spec.custom_jwt_authorizer.private_endpoint_overrides
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc_resource
+        spec: spec.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc_resource.vpc_identifier
+        spec: spec.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc.vpc_id
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.self_managed_lattice_resource
+        spec: spec.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.self_managed_lattice
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.self_managed_lattice_resource.resource_configuration_identifier
+        spec: spec.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.self_managed_lattice.resource_configuration_id
+      # The filesystem's three source arms each repeat the mount path;
+      # the spec carries it once per entry with ARN/bool source leaves.
+      - arg: filesystem_configuration
+        spec: spec.filesystems
+      - arg: filesystem_configuration.efs_access_point
+        spec: spec.filesystems.efs_access_point_arn
+      - arg: filesystem_configuration.efs_access_point.access_point_arn
+        spec: spec.filesystems.efs_access_point_arn
+      - arg: filesystem_configuration.efs_access_point.mount_path
+        spec: spec.filesystems.mount_path
+      - arg: filesystem_configuration.s3_files_access_point
+        spec: spec.filesystems.s3_files_access_point_arn
+      - arg: filesystem_configuration.s3_files_access_point.access_point_arn
+        spec: spec.filesystems.s3_files_access_point_arn
+      - arg: filesystem_configuration.s3_files_access_point.mount_path
+        spec: spec.filesystems.mount_path
+      - arg: filesystem_configuration.session_storage
+        spec: spec.filesystems.session_storage
+      - arg: filesystem_configuration.session_storage.mount_path
+        spec: spec.filesystems.mount_path
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+
+  aws_bedrockagentcore_agent_runtime_endpoint:
+    # (specExclusions for this kind live at the manifest root below.)
+    specRoot: spec.endpoints
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The endpoint attaches to the runtime this kind deploys -- the
+      # module wires the parent ID.
+      - arg: agent_runtime_id
+        spec: spec.runtime_name
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+
+  aws_bedrockagentcore_resource_policy:
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The policy document is a Struct the modules marshal.
+      - arg: policy
+        spec: spec.resource_policy
+    exclusions:
+      - arg: resource_arn
+        reason: wired by the module to the runtime's own ARN -- this kind scopes the policy to the runtime it deploys; the provider resource accepts any AgentCore ARN, and sibling kinds gain their own policy arms on demand signals
+
+specExclusions:
+  # AWS-managed per-session scratch storage is selected by the presence of
+  # the provider's session_storage block, whose only leaf (mount_path) maps
+  # to the entry's shared mount_path field; the spec models the selection
+  # as a bool and the modules render the matching block.
+  - field: spec.filesystems.session_storage
+    reason: renders the provider's filesystem_configuration.session_storage block -- block presence IS the source selection; its only leaf (mount_path) maps to the entry's shared mount_path

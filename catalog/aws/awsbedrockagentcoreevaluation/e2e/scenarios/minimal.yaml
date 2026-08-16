@@ -1,0 +1,30 @@
+# AwsBedrockAgentCoreEvaluation minimal scenario: one code-based
+# evaluator on the AwsLambda smoke fixture -- create does not invoke
+# the function. Fixture-cheap and independent of Bedrock model access.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreEvaluation
+metadata:
+  name: planton-oss-e2e-awsacev-min
+  id: planton-oss-e2e-awsacev-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockagentcoreevaluation
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsLambda"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  evaluators:
+    - name: planton_e2e_code
+      description: Planton E2E Lambda scorer
+      level: TRACE
+      codeBased:
+        lambdaArn:
+          valueFrom:
+            kind: AwsLambda
+            name: planton-oss-e2e-lambda-smoke
+            fieldPath: status.outputs.function_arn

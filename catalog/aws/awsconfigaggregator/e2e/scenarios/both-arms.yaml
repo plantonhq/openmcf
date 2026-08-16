@@ -1,0 +1,33 @@
+# Both aggregation arms in one deployment, zero fixtures, zero data
+# flow: the aggregator names a DOCUMENTATION account (aggregating from
+# an account that never authorized you is legal -- the source simply
+# shows as pending), and the grant authorizes the same documentation
+# account (a grant is a standalone permission record; the grantee never
+# has to exist). Aggregators and grants are free. The org source arm is
+# the recorded single-account deferral. Destroy is a REAL delete of
+# both arms.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsConfigAggregator
+metadata:
+  name: planton-oss-e2e-awscfgagg-both
+  id: planton-oss-e2e-awscfgagg-both
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsconfigaggregator
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  aggregation:
+    accountSource:
+      accountIds:
+        - "123456789012"
+      regions:
+        - us-west-2
+  authorizations:
+    - accountId: "123456789012"
+      authorizedAwsRegion: us-west-2

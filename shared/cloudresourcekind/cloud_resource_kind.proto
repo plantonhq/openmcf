@@ -146,17 +146,14 @@ enum CloudResourceKind {
   // each catalog room to grow to its provider's full surface without ever
   // colliding with a neighbor. Allocation discipline:
   //
-  //   1–49        test/dev/custom        50–199      SaaS platform
+  //   1–49        test/dev/custom
   //   1000–1999   AWS                    2000–2999   Azure
   //   3000–3999   GCP                    4000–4999   Kubernetes
-  //   5000–5999   DigitalOcean           6000–6999   Civo
-  //   7000–7999   Cloudflare             8000–8999   Auth0
-  //   9000–9999   OpenFGA                10000–10999 OpenStack
-  //   11000–11999 Scaleway               12000–12999 Alibaba Cloud
-  //   13000–13999 OCI                    14000–14999 Hetzner Cloud
+  //   5000–5999   DigitalOcean           7000–7999   Cloudflare
+  //   8000–8999   Auth0                  9000–9999   OpenFGA
   //
-  // The next new provider takes the next free 1,000 band (15000–15999, and
-  // so on). Within a band, allocate contiguous family sub-bands deliberately
+  // The next new provider takes the next free 1,000 band. Within a band,
+  // allocate contiguous family sub-bands deliberately
   // at the start of an authoring wave — never grab numbers ad hoc — and
   // record the family in a section comment. Enum numbers are transport-only:
   // every durable store keys kinds by NAME, so pre-launch renumbering is
@@ -183,23 +180,6 @@ enum CloudResourceKind {
     provider: _test
     version: "v1alpha1"
     id_prefix: "tcrk"
-  }];
-
-  // 50–199: saas platform resources
-  ConfluentKafka = 50 [(kind_meta) = {
-    provider: confluent
-    version: "v1alpha1"
-    id_prefix: "conkaf"
-  }];
-  AtlasMongodb = 51 [(kind_meta) = {
-    provider: atlas
-    version: "v1alpha1"
-    id_prefix: "atlmdb"
-  }];
-  SnowflakeDatabase = 52 [(kind_meta) = {
-    provider: snowflake
-    version: "v1alpha1"
-    id_prefix: "snowdb"
   }];
 
   // 1000–1999: AWS resources
@@ -1135,6 +1115,567 @@ enum CloudResourceKind {
     provider: aws
     version: "v1alpha1"
     id_prefix: "awssesid"
+  }];
+
+  // A dependency-free leaf: the KMS key, rotation Lambda, and external
+  // rotation role references are all optional composition -- scenarios
+  // declare them via the e2e-prerequisites annotation, never registry
+  // edges.
+  AwsSecretsManagerSecret = 1180 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssm"
+  }];
+
+  // A dependency-free leaf: the collection-scoped encryption/network/
+  // data-access/retention policies are module-rendered, and the KMS key
+  // and data-access principal references are optional composition
+  // (e2e-prerequisites annotation).
+  AwsOpenSearchServerlessCollection = 1185 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsoss"
+  }];
+
+  // A dependency-free leaf: the KMS key reference is optional composition
+  // (e2e-prerequisites annotation); published versions are folded
+  // satellites of the guardrail itself.
+  AwsBedrockGuardrail = 1190 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbrgrd"
+  }];
+
+  // AwsIamRole is a prerequisite because Bedrock assumes the job role to
+  // read training data and write outputs; the S3 locations and KMS key
+  // are optional composition (e2e-prerequisites annotation).
+  AwsBedrockCustomModel = 1191 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbrcm"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // A dependency-free leaf: the model source is a foundation model or an
+  // AWS system-defined cross-region profile, never a customer resource.
+  AwsBedrockInferenceProfile = 1192 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbrip"
+  }];
+
+  // A dependency-free leaf in the registry: capacity is typically bought
+  // for an AwsBedrockCustomModel (the default reference), but foundation
+  // model ARNs are equally legal, so the edge is optional composition.
+  AwsBedrockProvisionedThroughput = 1193 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbrpt"
+  }];
+
+  // A dependency-free leaf: the agreement covers an AWS-listed foundation
+  // model, never a customer resource.
+  AwsBedrockModelAccess = 1194 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbrma"
+  }];
+
+  // Region settings singleton (one invocation-logging configuration per
+  // account+region; identity = the region). Delivery destinations are
+  // optional references (at least one of CloudWatch/S3, enforced by CEL),
+  // so prerequisites stay empty and E2E fixtures ride scenario annotations.
+  AwsBedrockInvocationLogging = 1195 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbedil"
+  }];
+
+  // AwsIamRole is a prerequisite because the Bedrock service assumes the
+  // agent resource role to invoke models, action-group Lambdas, and
+  // knowledge bases; the guardrail, KMS key, provisioned throughput, and
+  // collaborator/knowledge-base edges are optional composition
+  // (e2e-prerequisites annotation). Action groups, aliases, collaborators,
+  // and knowledge-base associations are folded satellites of the agent.
+  AwsBedrockAgent = 1200 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbragt"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // AwsIamRole is a prerequisite because the Bedrock service assumes the
+  // knowledge-base role to read data sources, call the embedding model,
+  // and read/write the vector store; the vector-store and data-source
+  // reference edges (OpenSearch, S3, Secrets Manager, ...) are optional
+  // composition (e2e-prerequisites annotation). Data sources are folded
+  // satellites of the knowledge base.
+  AwsBedrockKnowledgeBase = 1201 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbrkb"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // AwsIamRole is a prerequisite because the Bedrock service assumes the
+  // flow execution role to invoke the models, agents, knowledge bases,
+  // and Lambdas its nodes reference; the node-level reference edges are
+  // optional composition (e2e-prerequisites annotation).
+  AwsBedrockFlow = 1202 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbrflw"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // A dependency-free leaf: variants target AWS-listed foundation models
+  // by ID; targeting another agent's alias is optional composition
+  // (e2e-prerequisites annotation).
+  AwsBedrockPrompt = 1203 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbrpmt"
+  }];
+
+  // AwsIamRole is a prerequisite because the AgentCore service assumes
+  // the runtime role to pull the container image or read the S3 code
+  // bundle and to run the hosted agent; the code-bundle S3 bucket and
+  // VPC placement edges are optional composition (e2e-prerequisites
+  // annotation). Endpoints and the runtime's resource policy are folded
+  // satellites of the runtime.
+  AwsBedrockAgentCoreRuntime = 1210 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsacrt"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // AwsIamRole is a prerequisite because the gateway assumes its role to
+  // reach targets (invoke Lambdas, sign SigV4 requests); the target and
+  // credential-provider reference edges (runtime, Lambda, Identity
+  // providers, policy engine) are optional composition
+  // (e2e-prerequisites annotation). Targets are folded satellites of the
+  // gateway - AWS deletes them before the gateway at destroy.
+  AwsBedrockAgentCoreGateway = 1211 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsacgw"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // A dependency-free leaf for built-in strategies: the execution role
+  // (custom strategies, Kinesis delivery), KMS key, and Kinesis stream
+  // edges are optional composition (e2e-prerequisites annotation).
+  // Strategies are folded satellites of the memory - AWS serializes
+  // their changes through the parent.
+  AwsBedrockAgentCoreMemory = 1212 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsacmem"
+  }];
+
+  // A dependency-free leaf: workload identities, credential providers,
+  // and the Cedar policy engine with its policies are all name-keyed
+  // arms of one identity-and-access bundle; the KMS key edge is optional
+  // composition (e2e-prerequisites annotation). The account/region
+  // token-vault CMK is deliberately NOT modeled here (settings
+  // singleton).
+  AwsBedrockAgentCoreIdentity = 1213 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsacid"
+  }];
+
+  // A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution
+  // role (recordings, certificates), S3, Secrets Manager, and VPC edges
+  // are optional composition (e2e-prerequisites annotation). Browsers,
+  // profiles, and code interpreters are name-keyed arms of one tools
+  // bundle; AWS exposes no update - every field change recreates the
+  // tool.
+  AwsBedrockAgentCoreTools = 1214 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsactl"
+  }];
+
+  // The AgentCore Evaluations bundle - evaluators (LLM-judge or
+  // Lambda scorers), harnesses (repeatable agent test benches), and
+  // online evaluation configs (continuous scoring of sampled
+  // production sessions). Deploys standalone - no arm requires an
+  // agent runtime to exist. No registry prerequisite: every arm is
+  // optional, so no dependency is required for the kind to function
+  // (scenarios compose IAM roles via annotations).
+  AwsBedrockAgentCoreEvaluation = 1215 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsacev"
+  }];
+
+  // Account/region settings singleton: sets the KMS key on the ONE
+  // default AgentCore token vault. The KMS reference is conditional on
+  // key_type (CEL-enforced), so prerequisites stay empty and E2E
+  // fixtures ride scenario annotations.
+  AwsBedrockAgentCoreTokenVault = 1216 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsacetv"
+  }];
+
+  // The immutable serving definition (container image + artifacts +
+  // execution role) that endpoints deploy - one container or an
+  // inference pipeline.
+  AwsSagemakerModel = 1220 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssgmmd"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // A real-time inference endpoint WITH its folded endpoint
+  // configuration - the configuration is immutable upstream, so the
+  // modules roll name-suffixed configurations create-before-destroy
+  // and repoint the endpoint.
+  AwsSagemakerEndpoint = 1221 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssgmep"
+    prerequisites: [AwsSagemakerModel]
+  }];
+
+  // A managed Jupyter notebook EC2 instance with its folded lifecycle
+  // configuration (bootstrap scripts).
+  AwsSagemakerNotebookInstance = 1222 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssgmnb"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // A Feature Store feature group - online and/or offline stores over
+  // a declared feature schema.
+  AwsSagemakerFeatureGroup = 1223 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssgmfg"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // A model registry package group with its folded resource policy -
+  // model package VERSIONS register into it imperatively (training
+  // pipelines), never declaratively.
+  AwsSagemakerModelRegistry = 1224 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssgmmr"
+  }];
+
+  // An ML workflow DAG (the SageMaker pipeline-definition JSON) that
+  // executions run against - free to create, billed per execution.
+  AwsSagemakerPipeline = 1225 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssgmpl"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // A named registry entry exposing YOUR container images to Studio,
+  // with folded AWS-numbered versions (append-only by position).
+  AwsSagemakerImage = 1226 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssgmim"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // The classic hourly-billed managed MLflow tracking server (~25 min
+  // to provision; Small ~$0.6/hour). The serverless successor is
+  // AwsSagemakerMlflowApp.
+  AwsSagemakerMlflowServer = 1227 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssgmmf"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // The serverless MLflow 3.x deployment (billed per use) - standalone,
+  // associating with SageMaker domains; NOT a tracking-server
+  // satellite.
+  AwsSagemakerMlflowApp = 1228 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssgmma"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // A full REST API (API Gateway v1): the resource/method tree with
+  // inline integrations (or an imported OpenAPI document), one stage
+  // with an explicit hash-triggered deployment, and the API-scoped
+  // satellites (authorizers, models, validators, gateway responses,
+  // policy, documentation, client certificate). Self-contained: a
+  // MOCK-integration API needs no other resource.
+  AwsRestApiGateway = 1230 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsrestgw"
+  }];
+
+  // A custom domain for REST APIs with base-path mappings and - for
+  // PRIVATE domains - VPC-endpoint access associations. AwsCertManagerCert
+  // is a prerequisite because the domain cannot be created without a
+  // TLS certificate covering it.
+  AwsRestApiDomain = 1231 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsrestdm"
+    prerequisites: [AwsCertManagerCert]
+  }];
+
+  // A usage plan metering REST API consumers - stage coverage, quota,
+  // throttles, and the API keys it admits. No registry prerequisite: a
+  // plan is valid with no stage coverage (scenarios compose the REST
+  // API via annotations).
+  AwsRestApiUsagePlan = 1232 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsrestup"
+  }];
+
+  // A REST API VPC link fronting an internal Network Load Balancer so
+  // REST integrations reach private services. AwsNlb is a prerequisite
+  // because AWS rejects link creation without the target balancer.
+  AwsRestApiVpcLink = 1233 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsrestvl"
+    prerequisites: [AwsNlb]
+  }];
+
+  // Region settings singleton (one API Gateway account object per
+  // account+region; identity = the region). The CloudWatch role is an
+  // optional reference (unset = the explicit no-logging posture), so
+  // prerequisites stay empty and E2E fixtures ride scenario annotations.
+  AwsApiGatewayAccountSettings = 1234 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsapias"
+  }];
+
+  // The account's API audit trail. AwsS3Bucket is a prerequisite
+  // because AWS rejects trail creation without a delivery bucket
+  // carrying the CloudTrail service-principal policy. 1240 opens the
+  // governance sub-band (1240-1249).
+  AwsCloudTrail = 1240 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awstrail"
+    prerequisites: [AwsS3Bucket]
+  }];
+
+  // Region singleton (one AWS Config recorder per region, named
+  // "default" by AWS; identity = the region). AwsIamRole is a
+  // prerequisite because the recorder cannot exist without its
+  // service role.
+  AwsConfigRecorder = 1241 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awscfgr"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // One AWS Config compliance rule (managed, custom-lambda, or
+  // custom-policy; account- or organization-scoped) with optional
+  // auto-remediation. Managed rules need no prerequisites; the
+  // custom-lambda arm's function reference is conditional, so E2E
+  // fixtures ride scenario annotations.
+  AwsConfigRule = 1242 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awscfgrl"
+  }];
+
+  // Region singleton (AWS allows one GuardDuty detector per
+  // account+region; the detector has no name - identity = the
+  // region). Satellite references (S3 export bucket, KMS key) are
+  // conditional, so E2E fixtures ride scenario annotations.
+  AwsGuardDuty = 1243 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsgd"
+  }];
+
+  // CloudTrail Lake: a queryable, immutable event data store with its
+  // own retention and billing lifecycle - no trail required. The KMS
+  // key reference is conditional, so E2E fixtures ride scenario
+  // annotations.
+  AwsCloudTrailEventDataStore = 1244 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awseds"
+  }];
+
+  // AWS Config cross-account/cross-region aggregation: the aggregator
+  // (collector side) and/or the reciprocal authorization grants
+  // (source-account side). Works with zero recorders; the org-source
+  // role reference is conditional, so E2E fixtures ride scenario
+  // annotations.
+  AwsConfigAggregator = 1245 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awscfgagg"
+  }];
+
+  // An AWS Config conformance pack (account- or organization-scoped):
+  // a template bundle that creates its own Config rules. Deployment
+  // requires an active Config recorder in the region (a service-side
+  // requirement, not a spec reference), so E2E fixtures ride scenario
+  // annotations.
+  AwsConfigConformancePack = 1246 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awscfgcp"
+  }];
+
+  // GuardDuty Malware Protection for S3: scans new objects in one
+  // bucket - a standalone plan protecting a bucket, not a detector
+  // satellite (its schema carries no detector reference). The
+  // execution role and the protected bucket are required references.
+  AwsGuardDutyMalwareProtectionPlan = 1247 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsgdmpp"
+    prerequisites: [
+      AwsIamRole,
+      AwsS3Bucket
+    ]
+  }];
+
+  // An AWS Backup vault - the encrypted container recovery points
+  // live in, as either a standard vault (with its lock, access
+  // policy, and notification satellites) or a logically air-gapped
+  // vault (AWS's own VaultType discriminator). The KMS and SNS
+  // references are conditional, so E2E fixtures ride scenario
+  // annotations. 1250 opens the backup sub-band (1250-1259).
+  AwsBackupVault = 1250 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbkv"
+  }];
+
+  // An AWS Backup plan: scheduled backup rules plus the resource
+  // selections that assign resources to them. AwsBackupVault is a
+  // prerequisite because every rule requires a target vault; the
+  // selections' IAM role is conditional and rides scenario
+  // annotations.
+  AwsBackupPlan = 1251 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbkp"
+    prerequisites: [AwsBackupVault]
+  }];
+
+  // A Backup Audit Manager framework: compliance controls evaluating
+  // backup posture. No schema-required references (the Config
+  // recorder its evaluations need is a lane fixture, not a spec
+  // reference).
+  AwsBackupFramework = 1252 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbkf"
+  }];
+
+  // A Backup Audit Manager report plan: scheduled compliance/job
+  // reports delivered to S3. AwsS3Bucket is a prerequisite because
+  // the delivery channel's bucket is required.
+  AwsBackupReportPlan = 1253 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbkrp"
+    prerequisites: [AwsS3Bucket]
+  }];
+
+  // An AWS Backup restore testing plan with its folded selections:
+  // scheduled restore tests proving recovery points actually restore.
+  // Vault targeting accepts the "*" wildcard, so fixtures are
+  // conditional and ride scenario annotations.
+  AwsBackupRestoreTestingPlan = 1254 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbkrt"
+  }];
+
+  // Account/region settings singleton for AWS Backup: the account's
+  // global settings (cross-account backup) and the region's
+  // resource-type opt-in/management preferences. Both provider
+  // deletes are no-ops - settings persist after destroy.
+  AwsBackupSettings = 1255 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbks"
+  }];
+
+  // An SSM Parameter Store entry (String/StringList/SecureString).
+  // The parameter's name is an explicit spec field - names are
+  // hierarchical paths ("/prod/db/url") metadata.name cannot carry.
+  // The KMS reference is conditional (SecureString only), so E2E
+  // fixtures ride scenario annotations. 1260 opens the SSM sub-band
+  // (1260-1269).
+  AwsSsmParameter = 1260 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsssmp"
+  }];
+
+  // A customer-owned SSM document (Command/Automation/Session/...):
+  // reusable action definitions managed nodes and automations execute.
+  // State Manager associations are their own AwsSsmAssociation kind -
+  // an association binds ANY document (AWS-managed included), so it is
+  // not this document's satellite.
+  AwsSsmDocument = 1261 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsssmd"
+  }];
+
+  // An SSM maintenance window with its folded target registrations and
+  // tasks (Run Command / Automation / Lambda / Step Functions) - the
+  // targets and tasks are true window satellites (ForceNew window_id
+  // edges). Identity is the AWS-generated "mw-..." id.
+  AwsSsmMaintenanceWindow = 1262 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsssmmw"
+  }];
+
+  // An SSM patch baseline with its folded patch-group registrations
+  // and the account/region default-baseline designation (delete
+  // RESTORES AWS's own predefined default for the OS). Identity is the
+  // AWS-generated "pb-..." id.
+  AwsSsmPatchBaseline = 1263 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsssmpb"
+  }];
+
+  // A State Manager association: the binding of an SSM document to
+  // targets on a schedule. Split from the document kind because the
+  // document reference is a free string with no structural edge -
+  // associations routinely bind AWS-managed documents
+  // (AWS-RunShellScript, ...) with no user document anywhere, so no
+  // registry prerequisite either. Identity is the AWS-generated
+  // association UUID.
+  AwsSsmAssociation = 1264 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsssma"
+  }];
+
+  // Account/region settings singleton (one SES account object per
+  // account+region): the suppression list and VDM posture. 1360 opens
+  // the SES P1 sub-band (1360-1369).
+  AwsSesAccountSettings = 1360 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssesas"
   }];
 
   // 2000–2999: Azure resources
@@ -4637,71 +5178,6 @@ enum CloudResourceKind {
     id_prefix: "dodnsrec"
   }];
 
-  // 6000–6999: Civo resources
-  CivoBucket = 6000 [(kind_meta) = {
-    provider: civo
-    version: "v1alpha1"
-    id_prefix: "cibkt"
-  }];
-  CivoCertificate = 6001 [(kind_meta) = {
-    provider: civo
-    version: "v1alpha1"
-    id_prefix: "cicert"
-  }];
-  CivoComputeInstance = 6002 [(kind_meta) = {
-    provider: civo
-    version: "v1alpha1"
-    id_prefix: "ciinst"
-  }];
-  CivoDatabase = 6003 [(kind_meta) = {
-    provider: civo
-    version: "v1alpha1"
-    id_prefix: "cidb"
-  }];
-  CivoDnsZone = 6004 [(kind_meta) = {
-    provider: civo
-    version: "v1alpha1"
-    id_prefix: "cidns"
-    container_kind: true
-  }];
-  CivoFirewall = 6005 [(kind_meta) = {
-    provider: civo
-    version: "v1alpha1"
-    id_prefix: "cifw"
-  }];
-  CivoIpAddress = 6006 [(kind_meta) = {
-    provider: civo
-    version: "v1alpha1"
-    id_prefix: "ciip"
-  }];
-  CivoKubernetesCluster = 6007 [(kind_meta) = {
-    provider: civo
-    version: "v1alpha1"
-    id_prefix: "cikc"
-    container_kind: true
-  }];
-  CivoKubernetesNodePool = 6008 [(kind_meta) = {
-    provider: civo
-    version: "v1alpha1"
-    id_prefix: "ciknp"
-  }];
-  CivoVolume = 6009 [(kind_meta) = {
-    provider: civo
-    version: "v1alpha1"
-    id_prefix: "civol"
-  }];
-  CivoVpc = 6010 [(kind_meta) = {
-    provider: civo
-    version: "v1alpha1"
-    id_prefix: "civpc"
-    container_kind: true
-  }];
-  CivoDnsRecord = 6011 [(kind_meta) = {
-    provider: civo
-    version: "v1alpha1"
-    id_prefix: "cirec"
-  }];
-
   // 7000–7999: Cloudflare resources
   CloudflareDnsZone = 7000 [(kind_meta) = {
     provider: cloudflare
@@ -4955,813 +5431,5 @@ enum CloudResourceKind {
     provider: openfga
     version: "v1alpha1"
     id_prefix: "fgatuple"
-  }];
-
-  // 10000–10999: OpenStack resources
-  OpenStackKeypair = 10000 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "oskp"
-  }];
-  OpenStackNetwork = 10001 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "osnet"
-    container_kind: true
-  }];
-  OpenStackSubnet = 10002 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "ossub"
-    container_kind: true
-  }];
-  OpenStackRouter = 10003 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "osrtr"
-  }];
-  OpenStackRouterInterface = 10004 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "osri"
-  }];
-  OpenStackSecurityGroup = 10005 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "ossg"
-  }];
-  OpenStackFloatingIp = 10006 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "osfip"
-  }];
-  OpenStackNetworkPort = 10007 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "osnp"
-  }];
-  OpenStackSecurityGroupRule = 10025 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "ossgr"
-  }];
-  OpenStackFloatingIpAssociate = 10026 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "osfipa"
-  }];
-  OpenStackInstance = 10008 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "osinst"
-  }];
-  OpenStackServerGroup = 10009 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "ossgrp"
-  }];
-  OpenStackVolume = 10010 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "osvol"
-  }];
-  OpenStackVolumeAttach = 10011 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "osva"
-  }];
-  OpenStackProject = 10012 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "osprj"
-    container_kind: true
-  }];
-  OpenStackApplicationCredential = 10013 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "osac"
-  }];
-  OpenStackImage = 10014 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "osimg"
-  }];
-  OpenStackRoleAssignment = 10015 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "osra"
-  }];
-  OpenStackLoadBalancer = 10016 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "oslb"
-  }];
-  OpenStackLoadBalancerListener = 10017 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "oslbl"
-  }];
-  OpenStackLoadBalancerPool = 10018 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "oslbp"
-  }];
-  OpenStackLoadBalancerMember = 10019 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "oslbm"
-  }];
-  OpenStackLoadBalancerMonitor = 10020 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "oslbmon"
-  }];
-  OpenStackDnsZone = 10021 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "osdz"
-    container_kind: true
-  }];
-  OpenStackDnsRecord = 10022 [(kind_meta) = {
-    provider: openstack
-    version: "v1alpha1"
-    id_prefix: "osdr"
-  }];
-  // 10023, 10024: free primary slots (OpenStack Magnum kinds removed 2026-03); a
-  // future primary OpenStack kind may take them. Companion kinds live at 2525+.
-
-  // 11000–11999: Scaleway resources
-
-  // --- Networking ---
-
-  ScalewayVpc = 11000 [(kind_meta) = {
-    provider: scaleway
-    version: "v1alpha1"
-    id_prefix: "scwvpc"
-    container_kind: true
-  }];
-  ScalewayPrivateNetwork = 11001 [(kind_meta) = {
-    provider: scaleway
-    version: "v1alpha1"
-    id_prefix: "scwpn"
-    container_kind: true
-  }];
-  ScalewayPublicGateway = 11002 [(kind_meta) = {
-    provider: scaleway
-    version: "v1alpha1"
-    id_prefix: "scwpgw"
-  }];
-  ScalewayLoadBalancer = 11003 [(kind_meta) = {
-    provider: scaleway
-    version: "v1alpha1"
-    id_prefix: "scwlb"
-  }];
-  ScalewayInstanceSecurityGroup = 11004 [(kind_meta) = {
-    provider: scaleway
-    version: "v1alpha1"
-    id_prefix: "scwsg"
-  }];
-
-  // --- Compute ---
-
-  ScalewayInstance = 11010 [(kind_meta) = {
-    provider: scaleway
-    version: "v1alpha1"
-    id_prefix: "scwinst"
-  }];
-
-  // --- Kubernetes ---
-
-  ScalewayKapsuleCluster = 11020 [(kind_meta) = {
-    provider: scaleway
-    version: "v1alpha1"
-    id_prefix: "scwk8s"
-    container_kind: true
-  }];
-  ScalewayKapsulePool = 11021 [(kind_meta) = {
-    provider: scaleway
-    version: "v1alpha1"
-    id_prefix: "scwknp"
-  }];
-
-  // --- Databases ---
-
-  ScalewayRdbInstance = 11030 [(kind_meta) = {
-    provider: scaleway
-    version: "v1alpha1"
-    id_prefix: "scwrdb"
-  }];
-  ScalewayRedisCluster = 11031 [(kind_meta) = {
-    provider: scaleway
-    version: "v1alpha1"
-    id_prefix: "scwred"
-  }];
-  ScalewayMongodbInstance = 11032 [(kind_meta) = {
-    provider: scaleway
-    version: "v1alpha1"
-    id_prefix: "scwmdb"
-  }];
-
-  // --- Storage ---
-
-  ScalewayObjectBucket = 11040 [(kind_meta) = {
-    provider: scaleway
-    version: "v1alpha1"
-    id_prefix: "scwbkt"
-  }];
-  ScalewayBlockVolume = 11041 [(kind_meta) = {
-    provider: scaleway
-    version: "v1alpha1"
-    id_prefix: "scwblk"
-  }];
-
-  // --- Container Registry ---
-
-  ScalewayContainerRegistry = 11050 [(kind_meta) = {
-    provider: scaleway
-    version: "v1alpha1"
-    id_prefix: "scwcr"
-  }];
-
-  // --- DNS ---
-
-  ScalewayDnsZone = 11060 [(kind_meta) = {
-    provider: scaleway
-    version: "v1alpha1"
-    id_prefix: "scwdns"
-    container_kind: true
-  }];
-  ScalewayDnsRecord = 11061 [(kind_meta) = {
-    provider: scaleway
-    version: "v1alpha1"
-    id_prefix: "scwrec"
-  }];
-
-  // --- Serverless ---
-
-  ScalewayServerlessFunction = 11070 [(kind_meta) = {
-    provider: scaleway
-    version: "v1alpha1"
-    id_prefix: "scwfn"
-  }];
-  ScalewayServerlessContainer = 11071 [(kind_meta) = {
-    provider: scaleway
-    version: "v1alpha1"
-    id_prefix: "scwscn"
-  }];
-
-  // 12000–12999: Alibaba Cloud resources
-
-  // --- Monitoring ---
-
-  AliCloudLogProject = 12000 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "aclog"
-  }];
-
-  // --- Identity ---
-
-  AliCloudRamRole = 12010 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acramr"
-  }];
-
-  AliCloudRamPolicy = 12011 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acramp"
-  }];
-
-  // --- Networking ---
-
-  AliCloudVpc = 12020 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acvpc"
-    container_kind: true
-  }];
-
-  AliCloudVswitch = 12021 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acvsw"
-    container_kind: true
-  }];
-
-  AliCloudSecurityGroup = 12022 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acsg"
-  }];
-
-  AliCloudEipAddress = 12023 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "aceip"
-  }];
-
-  AliCloudNatGateway = 12024 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acnat"
-  }];
-
-  AliCloudApplicationLoadBalancer = 12025 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acalb"
-  }];
-
-  AliCloudNetworkLoadBalancer = 12026 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acnlb"
-  }];
-
-  AliCloudVpnGateway = 12027 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acvpn"
-  }];
-
-  // --- DNS ---
-
-  AliCloudDnsZone = 12040 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acdz"
-    container_kind: true
-  }];
-
-  AliCloudDnsRecord = 12041 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acdr"
-  }];
-
-  AliCloudPrivateDnsZone = 12042 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acdpz"
-    container_kind: true
-  }];
-
-  // --- Storage ---
-
-  AliCloudStorageBucket = 12050 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acbkt"
-  }];
-
-  AliCloudNasFileSystem = 12051 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acnas"
-  }];
-
-  // --- Security ---
-
-  AliCloudKmsKey = 12060 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "ackms"
-  }];
-
-  // --- Database ---
-
-  AliCloudRdsInstance = 12070 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acrds"
-  }];
-
-  AliCloudPolardbCluster = 12071 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acpdb"
-  }];
-
-  AliCloudRedisInstance = 12072 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acred"
-  }];
-
-  AliCloudMongodbInstance = 12073 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acmdb"
-  }];
-
-  // --- Compute ---
-
-  AliCloudEcsInstance = 12080 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acecs"
-  }];
-
-  // --- Containers ---
-
-  AliCloudContainerRegistry = 12090 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "accr"
-  }];
-
-  AliCloudKubernetesCluster = 12091 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acack"
-    container_kind: true
-  }];
-
-  AliCloudKubernetesNodePool = 12092 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acknp"
-  }];
-
-  // --- CDN ---
-
-  AliCloudCdnDomain = 12100 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "accdn"
-  }];
-
-  // --- Serverless ---
-
-  AliCloudFunction = 12110 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acfc"
-  }];
-
-  AliCloudSaeApplication = 12111 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acsae"
-  }];
-
-  // --- Messaging ---
-
-  AliCloudRocketmqInstance = 12120 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "acrmq"
-  }];
-
-  // --- Enterprise Networking ---
-
-  AliCloudCenInstance = 12130 [(kind_meta) = {
-    provider: alicloud
-    version: "v1alpha1"
-    id_prefix: "accen"
-  }];
-
-  // 13000–13999: OCI resources
-
-  // --- Networking ---
-
-  OciVcn = 13000 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocivcn"
-    container_kind: true
-  }];
-
-  OciSubnet = 13001 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocisub"
-    container_kind: true
-  }];
-
-  OciSecurityGroup = 13002 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocisg"
-  }];
-
-  // --- Identity ---
-
-  OciCompartment = 13003 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocicmp"
-    container_kind: true
-  }];
-  OciIdentityPolicy = 13004 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ociply"
-  }];
-  OciDynamicGroup = 13005 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocidg"
-  }];
-
-  // --- Compute ---
-
-  OciComputeInstance = 13010 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocivm"
-  }];
-
-  // --- Containers ---
-
-  OciContainerEngineCluster = 13011 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocioke"
-    container_kind: true
-  }];
-
-  OciContainerEngineNodePool = 13012 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocienp"
-  }];
-
-  OciContainerInstance = 13013 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocici"
-  }];
-
-  // --- OCI: Advanced Networking (13020-13029) ---
-
-  OciApplicationLoadBalancer = 13020 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocialb"
-  }];
-
-  OciNetworkLoadBalancer = 13021 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocinlb"
-  }];
-
-  OciDynamicRoutingGateway = 13022 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocidrg"
-  }];
-
-  OciPublicIp = 13023 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocipip"
-  }];
-
-  // --- OCI: Databases (13030-13039) ---
-
-  OciAutonomousDatabase = 13030 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ociadb"
-  }];
-
-  OciDbSystem = 13031 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocidb"
-  }];
-
-  OciMysqlDbSystem = 13032 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocimysql"
-  }];
-
-  OciPostgresqlDbSystem = 13033 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocipg"
-  }];
-
-  OciRedisCluster = 13034 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocired"
-  }];
-
-  OciNosqlTable = 13035 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocinosql"
-  }];
-
-  // ── Storage ───────────────────────────────────────────────────────
-
-  OciObjectStorageBucket = 13040 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ociobkt"
-  }];
-
-  OciFileSystem = 13041 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocifs"
-  }];
-
-  OciBlockVolume = 13042 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocibvol"
-  }];
-
-  // ── Security and Secrets ────────────────────────────────────────────
-
-  OciKmsVault = 13050 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocivlt"
-    container_kind: true
-  }];
-
-  OciKmsKey = 13051 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocikey"
-  }];
-
-  OciVaultSecret = 13052 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocisec"
-  }];
-
-  OciBastion = 13053 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocibst"
-  }];
-
-  // ── Serverless and Functions ────────────────────────────────────────
-
-  OciFunctionsApplication = 13060 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocifnapp"
-  }];
-
-  OciApiGateway = 13061 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ociagw"
-  }];
-
-  // ── Messaging and Streaming ─────────────────────────────────────────
-
-  OciStreamPool = 13070 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocistr"
-  }];
-
-  OciQueue = 13071 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocique"
-  }];
-
-  // ── Monitoring and Logging ──────────────────────────────────────────
-
-  OciAlarm = 13080 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocialm"
-  }];
-
-  OciLogGroup = 13081 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocilog"
-  }];
-
-  // ── DNS and Certificates ──────────────────────────────────────────
-
-  OciDnsZone = 13090 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocidns"
-    container_kind: true
-  }];
-
-  OciDnsRecord = 13091 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocidnsr"
-  }];
-
-  // ── Additional Services ─────────────────────────────────────────────
-
-  OciNetworkFirewall = 13095 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocifw"
-  }];
-
-  OciDevopsProject = 13096 [(kind_meta) = {
-    provider: oci
-    version: "v1alpha1"
-    id_prefix: "ocidev"
-  }];
-
-  // =========================================================================
-  // Hetzner Cloud (provider: hetzner_cloud, range: 14000-14999)
-  // =========================================================================
-
-  // --- Foundation / Security ---
-
-  HetznerCloudSshKey = 14000 [(kind_meta) = {
-    provider: hetzner_cloud
-    version: "v1alpha1"
-    id_prefix: "hcssh"
-  }];
-
-  HetznerCloudPlacementGroup = 14001 [(kind_meta) = {
-    provider: hetzner_cloud
-    version: "v1alpha1"
-    id_prefix: "hcpg"
-  }];
-
-  HetznerCloudFirewall = 14002 [(kind_meta) = {
-    provider: hetzner_cloud
-    version: "v1alpha1"
-    id_prefix: "hcfw"
-  }];
-
-  // --- Networking ---
-
-  HetznerCloudNetwork = 14010 [(kind_meta) = {
-    provider: hetzner_cloud
-    version: "v1alpha1"
-    id_prefix: "hcnet"
-    container_kind: true
-  }];
-
-  HetznerCloudPrimaryIp = 14011 [(kind_meta) = {
-    provider: hetzner_cloud
-    version: "v1alpha1"
-    id_prefix: "hcpip"
-  }];
-
-  HetznerCloudFloatingIp = 14012 [(kind_meta) = {
-    provider: hetzner_cloud
-    version: "v1alpha1"
-    id_prefix: "hcfip"
-  }];
-
-  // --- Compute ---
-
-  HetznerCloudServer = 14020 [(kind_meta) = {
-    provider: hetzner_cloud
-    version: "v1alpha1"
-    id_prefix: "hcsrv"
-  }];
-
-  HetznerCloudVolume = 14021 [(kind_meta) = {
-    provider: hetzner_cloud
-    version: "v1alpha1"
-    id_prefix: "hcvol"
-  }];
-
-  HetznerCloudSnapshot = 14022 [(kind_meta) = {
-    provider: hetzner_cloud
-    version: "v1alpha1"
-    id_prefix: "hcsnp"
-  }];
-
-  // --- Load Balancing ---
-
-  HetznerCloudCertificate = 14030 [(kind_meta) = {
-    provider: hetzner_cloud
-    version: "v1alpha1"
-    id_prefix: "hccrt"
-  }];
-
-  HetznerCloudLoadBalancer = 14031 [(kind_meta) = {
-    provider: hetzner_cloud
-    version: "v1alpha1"
-    id_prefix: "hclb"
-  }];
-
-  // --- DNS ---
-
-  HetznerCloudDnsZone = 14040 [(kind_meta) = {
-    provider: hetzner_cloud
-    version: "v1alpha1"
-    id_prefix: "hcdns"
-    container_kind: true
   }];
 }

@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockagent.v1alpha1;
+
+// AwsBedrockAgentStackOutputs captures observable identifiers from a
+// provisioned Bedrock agent. These outputs are used by downstream
+// resources (supervisor agents, flows, prompts) to wire dependencies via
+// StringValueOrRef.
+message AwsBedrockAgentStackOutputs {
+  // The unique agent identifier (e.g. "GGRRAED6JP").
+  string agent_id = 1;
+
+  // The Amazon Resource Name of the agent - the canonical key for IAM
+  // policies.
+  string agent_arn = 2;
+
+  // The agent's mutable working version - always the literal "DRAFT".
+  // Serving traffic goes through aliases, never the draft.
+  string draft_version = 3;
+
+  // Alias IDs keyed by each `aliases` entry's name.
+  // Example: {"live": "66IVY0GUTF"}.
+  map<string, string> alias_ids = 4;
+
+  // Alias ARNs keyed by each `aliases` entry's name - the value a
+  // supervisor agent's collaborator entry or a flow's agent node consumes.
+  map<string, string> alias_arns = 5;
+
+  // Action group IDs keyed by each `action_groups` entry's name.
+  map<string, string> action_group_ids = 6;
+
+  // Collaborator IDs keyed by each `collaborators` entry's name.
+  map<string, string> collaborator_ids = 7;
+
+  // Associated knowledge base IDs keyed by each
+  // `knowledge_base_associations` entry's name.
+  map<string, string> associated_knowledge_base_ids = 8;
+}

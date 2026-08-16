@@ -1,0 +1,118 @@
+# Cost derivation: the machine-executable rules turning any AwsMskCluster
+# manifest's spec values into metered quantities and price choices. Every
+# broker bills hourly at the instance_type's rate and carries a provisioned
+# EBS volume billed per GB-month -- both from creation. Provisioned storage
+# throughput reserves MiB/s per broker, and multi-VPC private connectivity
+# bills hourly per enabled authentication scheme. The estimate generator
+# replays the catalog presets through these rules to emit
+# ../estimates/awsmskcluster.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsmskcluster
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  lines:
+    - sku_meter: broker instance hours
+      quantity:
+        - field_value:
+            field_path: number_of_broker_nodes
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Streaming for Apache Kafka
+        pricing_unit: hours
+        attributes:
+          - key: instance_type
+            from_field: instance_type
+      basis: every broker node x 730 hours at the instance_type's broker rate -- the always-on core of the bill
+    - sku_meter: broker storage
+      quantity:
+        - field_value:
+            field_path: number_of_broker_nodes
+        - field_value:
+            field_path: ebs_volume_size_gib
+            default_when_unset: "1000"
+      price_lookup:
+        service_name: Amazon Managed Streaming for Apache Kafka
+        pricing_unit: GB-months
+        attributes:
+          - key: storage_media
+            constant: gp2
+      basis: each broker's provisioned EBS volume (ebs_volume_size_gib, the AWS default 1000 GiB per broker when the manifest does not size it) billed per GB-month at the region's gp2 broker-storage rate
+    - sku_meter: provisioned storage throughput
+      applies_when:
+        - field_path: provisioned_throughput_enabled
+          op: equals
+          value: "true"
+      quantity:
+        - field_value:
+            field_path: number_of_broker_nodes
+        - field_value:
+            field_path: provisioned_throughput_mbs
+      price_slug: msk-provisioned-throughput-us-east-1
+      basis: the reserved throughput (provisioned_throughput_mbs) bills per MiB/s-month on every broker, used or not
+    - sku_meter: PrivateLink connectivity hours
+      applies_when:
+        - field_path: vpc_connectivity.sasl_iam_enabled
+          op: equals
+          value: "true"
+      quantity:
+        - hours_in_month: true
+      price_slug: msk-private-connectivity-hours-us-east-1
+      basis: multi-VPC private connectivity bills one connectivity-hour per enabled authentication scheme -- this line carries the SASL/IAM scheme x 730 hours
+    - sku_meter: PrivateLink connectivity hours
+      applies_when:
+        - field_path: vpc_connectivity.sasl_scram_enabled
+          op: equals
+          value: "true"
+      quantity:
+        - hours_in_month: true
+      price_slug: msk-private-connectivity-hours-us-east-1
+      basis: multi-VPC private connectivity bills one connectivity-hour per enabled authentication scheme -- this line carries the SASL/SCRAM scheme x 730 hours
+    - sku_meter: PrivateLink connectivity hours
+      applies_when:
+        - field_path: vpc_connectivity.tls_enabled
+          op: equals
+          value: "true"
+      quantity:
+        - hours_in_month: true
+      price_slug: msk-private-connectivity-hours-us-east-1
+      basis: multi-VPC private connectivity bills one connectivity-hour per enabled authentication scheme -- this line carries the mTLS scheme x 730 hours
+  exclusions:
+    - text: data transfer into and out of the cluster (client traffic crossing AZs, regions, or the internet) follows standard AWS data transfer rates
+    - applies_when:
+        - field_path: storage_mode
+          op: equals
+          value: TIERED
+      text: tiered storage bills per GB-month of warm data actually offloaded plus a per-GB retrieval charge -- both follow retention and consumer behavior
+    - applies_when:
+        - field_path: logging
+          op: is_set
+      text: broker log delivery bills CloudWatch Logs ingestion, Firehose delivery, or S3 storage at the destination resources, scaling with log volume
+    - applies_when:
+        - field_path: vpc_connectivity
+          op: is_set
+      text: PrivateLink data processing bills per GB moved through the multi-VPC connections, on top of the hourly connectivity charge
+    - applies_when:
+        - field_path: enhanced_monitoring
+          op: is_set
+        - field_path: enhanced_monitoring
+          op: not_equals
+          value: DEFAULT
+      text: monitoring levels above DEFAULT publish additional CloudWatch metric streams billed per metric, scaling with broker, topic, and partition counts
+    - applies_when:
+        - field_path: scram_secret_arns
+          op: is_set
+      text: the associated Secrets Manager secrets and their customer-managed KMS key bill on their own resources, outside this component
+  notes:
+    - text: Estimated at the declared broker fleet -- AWS supports increasing broker count and volume size in place, never decreasing them.
+    - applies_when:
+        - field_path: jmx_exporter_enabled
+          op: equals
+          value: "true"
+      text: The Prometheus JMX and Node exporters (open monitoring) are free.

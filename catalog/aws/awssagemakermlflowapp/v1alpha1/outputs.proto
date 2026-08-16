@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssagemakermlflowapp.v1alpha1;
+
+// AwsSagemakerMlflowAppStackOutputs captures observable identifiers
+// from a provisioned MLflow app. The ARN is the app's AWS identity
+// (all API operations key on it).
+message AwsSagemakerMlflowAppStackOutputs {
+  // The Amazon Resource Name of the MLflow app (the AWS identity).
+  string app_arn = 1;
+
+  // The app name.
+  string app_name = 2;
+}

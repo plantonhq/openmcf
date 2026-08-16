@@ -1,0 +1,73 @@
+# Canonical AwsSagemakerEndpoint example (hack/dev manifest and refgen
+# Example source): an instance-backed endpoint exercising every arm -
+# weighted variants, managed instance scaling, routing, core dumps,
+# data capture, async inference, KMS, and a canary blue/green
+# deployment policy with alarm rollback. Literal ARNs stand in for
+# composed references so the offline `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerEndpoint
+metadata:
+  name: churn-scoring
+  id: churn-scoring
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  kmsKeyArn:
+    value: arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab
+  productionVariants:
+    - variantName: primary
+      model:
+        value: churn-scoring-model
+      instanceType: ml.m5.large
+      initialInstanceCount: 2
+      initialVariantWeight: 0.9
+      routingStrategy: LEAST_OUTSTANDING_REQUESTS
+      volumeSizeGb: 64
+      containerStartupHealthCheckTimeoutSeconds: 300
+      modelDataDownloadTimeoutSeconds: 600
+      enableSsmAccess: true
+      managedInstanceScaling:
+        status: ENABLED
+        minInstanceCount: 1
+        maxInstanceCount: 4
+      coreDump:
+        destinationS3Uri: s3://my-dumps/churn-scoring/
+        kmsKeyArn:
+          value: arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab
+    - variantName: canary
+      model:
+        value: churn-scoring-model-next
+      instanceType: ml.m5.large
+      initialInstanceCount: 1
+      initialVariantWeight: 0.1
+  asyncInference:
+    outputS3Path: s3://my-bucket/async-out/
+    failureS3Path: s3://my-bucket/async-fail/
+    maxConcurrentInvocationsPerInstance: 4
+    successTopicArn:
+      value: arn:aws:sns:us-west-2:123456789012:inference-ok
+    errorTopicArn:
+      value: arn:aws:sns:us-west-2:123456789012:inference-err
+    includeInferenceResponseIn:
+      - ERROR_NOTIFICATION_TOPIC
+  dataCapture:
+    destinationS3Uri: s3://my-bucket/capture/
+    initialSamplingPercentage: 25
+    captureModes:
+      - Input
+      - Output
+    enableCapture: true
+    jsonContentTypes:
+      - application/json
+  deployment:
+    blueGreen:
+      trafficRoutingType: CANARY
+      waitIntervalSeconds: 300
+      canarySize:
+        type: CAPACITY_PERCENT
+        value: 20
+      terminationWaitSeconds: 120
+      maximumExecutionTimeoutSeconds: 3600
+    autoRollbackAlarmNames:
+      - churn-scoring-5xx

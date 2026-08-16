@@ -1,0 +1,309 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbackupplan.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsBackupPlanSpec defines the desired configuration for an AWS
+// Backup plan: the scheduled rules that create recovery points, plus
+// the resource selections that assign resources to the plan.
+//
+// The plan's name is metadata.name and changing it forces
+// replacement. AWS identifies the plan by a generated UUID (the
+// import ID), not the name. Selections fold in as name-keyed entries
+// - AWS refuses to delete a plan while selections exist, and both
+// modules create/destroy them with the plan so ordering is never the
+// author's problem.
+message AwsBackupPlanSpec {
+  // Rule names are for_each keys on both engines - duplicates would
+  // silently collapse entries.
+  option (buf.validate.message).cel = {
+    id: "spec.rule_names_unique"
+    message: "rules entries must have unique names"
+    expression: "this.rules.map(r, r.name).unique()"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.selection_names_unique"
+    message: "selections entries must have unique names"
+    expression: "this.selections.map(s, s.name).unique()"
+  };
+
+  // The AWS region the backup plan lives in.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The plan's backup rules: when to back up, where recovery points
+  // land, and how long they live. At least one rule is required (the
+  // provider does not pre-check this; AWS rejects an empty plan).
+  repeated AwsBackupPlanRule rules = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // Windows VSS advanced backup settings, one entry per resource type
+  // (the provider accepts only "EC2" at the pinned version).
+  repeated AwsBackupPlanAdvancedBackupSetting advanced_backup_settings = 3;
+
+  // Plan-wide malware scanning of recovery points (GuardDuty).
+  // Distinct from the per-rule scan_actions: this setting scans
+  // recovery points the plan creates for the listed resource types.
+  AwsBackupPlanScanSetting scan_setting = 4;
+
+  // The resource selections assigned to this plan, keyed by name.
+  // Each selection pairs an IAM role (which AWS Backup assumes to
+  // take the backups) with the resources it covers.
+  repeated AwsBackupPlanSelection selections = 5;
+}
+
+// AwsBackupPlanRule is one scheduled backup rule.
+message AwsBackupPlanRule {
+  // Rule name, 1-50 characters of letters, digits, hyphens,
+  // underscores, and periods. The for_each key on both engines.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 50
+    pattern: "^[0-9A-Za-z_.-]+$"
+  }];
+
+  // The standard vault that receives this rule's recovery points -
+  // required on EVERY rule, even when also targeting an air-gapped
+  // vault below.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target_vault_name = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsBackupVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vault_name"
+  ];
+
+  // When the rule fires, as a CloudWatch cron expression (e.g.
+  // "cron(0 5 ? * * *)" for daily 05:00 UTC). Unset = the rule never
+  // fires on a schedule (on-demand only).
+  string schedule = 3;
+
+  // IANA timezone the schedule is evaluated in. Unset = "Etc/UTC"
+  // (the provider default; a state-upgrade backfills it on older
+  // plans).
+  string schedule_expression_timezone = 4;
+
+  // Minutes a started backup job waits for resources before
+  // canceling, at least 60. Unset = 60 (the provider default).
+  int32 start_window_minutes = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 60
+  ];
+
+  // Minutes a running backup job may take before AWS cancels it.
+  // Unset = 180 (the provider default).
+  int32 completion_window_minutes = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Continuous (point-in-time-restore) backups instead of snapshots,
+  // for the resource types that support them. AWS caps continuous
+  // retention at 35 days - keep lifecycle.delete_after_days within
+  // it.
+  bool enable_continuous_backup = 7;
+
+  // Tags stamped onto every recovery point this rule creates (NOT
+  // merged with the module's identity tags - these are recovery-point
+  // metadata).
+  map<string, string> recovery_point_tags = 8;
+
+  // Additionally copy this rule's recovery points into a logically
+  // air-gapped vault (the ransomware-recovery posture). The rule
+  // still needs its standard target_vault_name.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target_logically_air_gapped_backup_vault_arn = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsBackupVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vault_arn"
+  ];
+
+  // Recovery-point lifecycle: cold-storage transition and expiry.
+  // Unset = keep forever in warm storage.
+  AwsBackupPlanLifecycle lifecycle = 10;
+
+  // Cross-vault/cross-region/cross-account copies of this rule's
+  // recovery points, each with its own lifecycle.
+  repeated AwsBackupPlanCopyAction copy_actions = 11;
+
+  // Per-rule malware scans of the recovery points this rule creates.
+  repeated AwsBackupPlanScanAction scan_actions = 12;
+}
+
+// AwsBackupPlanLifecycle controls when a recovery point moves to cold
+// storage and when it expires. The provider CANNOT send an explicit
+// zero for either day count - zero and unset are the same wire shape,
+// both meaning "unset" (presence-typed here so that truth is
+// explicit).
+message AwsBackupPlanLifecycle {
+  // Days after creation before the recovery point moves to cold
+  // storage. Unset = never moves. Once in cold storage, it must stay
+  // at least 90 days.
+  optional int32 cold_storage_after_days = 1 [(buf.validate.field).int32.gte = 1];
+
+  // Days after creation before the recovery point is deleted. Unset =
+  // kept until deleted manually. When cold storage is configured, AWS
+  // requires this to exceed cold_storage_after_days by at least 90.
+  optional int32 delete_after_days = 2 [(buf.validate.field).int32.gte = 1];
+
+  // Move archive-eligible resource types (currently EBS) to archive
+  // tier instead of deleting. Sent to AWS only when true (the
+  // provider never transmits an explicit false).
+  optional bool opt_in_to_archive_for_supported_resources = 3;
+
+  // AWS's cold-storage contract: a recovery point must sit in cold
+  // storage at least 90 days before it may expire.
+  option (buf.validate.message).cel = {
+    id: "lifecycle.cold_storage_minimum_90_days"
+    message: "delete_after_days must exceed cold_storage_after_days by at least 90 (AWS's cold-storage minimum)"
+    expression: "!has(this.cold_storage_after_days) || !has(this.delete_after_days) || this.delete_after_days >= this.cold_storage_after_days + 90"
+  };
+}
+
+// AwsBackupPlanCopyAction copies each recovery point to another vault
+// (same or different region/account) with its own lifecycle.
+message AwsBackupPlanCopyAction {
+  // The destination vault's ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef destination_vault_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsBackupVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vault_arn"
+  ];
+
+  // Lifecycle of the COPY (independent of the source recovery
+  // point's). Unset = the copy is kept until deleted manually.
+  AwsBackupPlanLifecycle lifecycle = 2;
+}
+
+// AwsBackupPlanScanAction scans the recovery points one rule creates.
+message AwsBackupPlanScanAction {
+  // The scanner. Only "GUARDDUTY" exists at the pinned provider.
+  string malware_scanner = 1 [(buf.validate.field).string = {in: ["GUARDDUTY"]}];
+
+  // Full scan of every recovery point, or incremental scan of changed
+  // data only.
+  string scan_mode = 2 [(buf.validate.field).string = {
+    in: [
+      "FULL_SCAN",
+      "INCREMENTAL_SCAN"
+    ]
+  }];
+}
+
+// AwsBackupPlanAdvancedBackupSetting turns on application-consistent
+// Windows VSS backups for a resource type.
+message AwsBackupPlanAdvancedBackupSetting {
+  // The resource type. The provider accepts exactly "EC2" at the
+  // pinned version.
+  string resource_type = 1 [(buf.validate.field).string = {in: ["EC2"]}];
+
+  // Backup options for the type - in practice {"WindowsVSS":
+  // "enabled"} (or "disabled").
+  map<string, string> backup_options = 2 [(buf.validate.field).map.min_pairs = 1];
+}
+
+// AwsBackupPlanScanSetting scans the plan's recovery points for
+// malware with GuardDuty (plan-wide, by resource type).
+message AwsBackupPlanScanSetting {
+  // The scanner. Only "GUARDDUTY" exists at the pinned provider.
+  string malware_scanner = 1 [(buf.validate.field).string = {in: ["GUARDDUTY"]}];
+
+  // Resource types whose recovery points are scanned (AWS documents
+  // "EBS", "EC2", "S3", and "ALL").
+  repeated string resource_types = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    unique: true
+    items: {
+      string: {
+        min_len: 1
+        max_len: 50
+        pattern: "^[a-zA-Z0-9\\-\\_\\.]{1,50}$"
+      }
+    }
+  }];
+
+  // IAM role GuardDuty assumes to scan the recovery points.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef scanner_role_arn = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+}
+
+// AwsBackupPlanSelection assigns resources to the plan. Every field
+// forces replacement of the selection (the provider has no update
+// path). A selection covers the UNION of its resources list and
+// whatever matches its tags/conditions.
+message AwsBackupPlanSelection {
+  // Selection name, 1-50 characters of letters, digits, hyphens,
+  // underscores, and periods. The for_each key on both engines and
+  // half of the composed import ID.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 50
+    pattern: "^[0-9A-Za-z_.-]+$"
+  }];
+
+  // IAM role AWS Backup assumes to take and manage backups of the
+  // selected resources. The role must trust backup.amazonaws.com
+  // (AWS's managed AWSBackupServiceRolePolicyForBackup policy is the
+  // usual grant).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef iam_role_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Resource ARNs to include ("*" selects everything the role can
+  // reach).
+  repeated string resources = 3 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Resource ARNs to exclude from whatever the other matchers
+  // selected. Once set, AWS keeps the value - it cannot be cleared
+  // back to empty without replacing the selection.
+  repeated string not_resources = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Tag-match entries: a resource is selected when it carries the
+  // tag. Entries OR together.
+  repeated AwsBackupPlanSelectionTag selection_tags = 5;
+
+  // Fine-grained tag conditions (AND semantics across the four
+  // operator lists). Once set, AWS keeps the value - clearing it
+  // requires replacing the selection.
+  AwsBackupPlanSelectionConditions conditions = 6;
+}
+
+// AwsBackupPlanSelectionTag is one tag matcher on a selection.
+message AwsBackupPlanSelectionTag {
+  // The match operator. Only "STRINGEQUALS" exists at the pinned
+  // provider.
+  string type = 1 [(buf.validate.field).string = {in: ["STRINGEQUALS"]}];
+
+  // The tag key to match.
+  string key = 2 [(buf.validate.field).string.min_len = 1];
+
+  // The tag value to match.
+  string value = 3 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsBackupPlanSelectionConditions are the fine-grained tag operators
+// (keys use the "aws:ResourceTag/<key>" form).
+message AwsBackupPlanSelectionConditions {
+  // Exact-match conditions.
+  repeated AwsBackupPlanSelectionConditionPair string_equals = 1;
+
+  // Exact-mismatch conditions.
+  repeated AwsBackupPlanSelectionConditionPair string_not_equals = 2;
+
+  // Wildcard-match conditions.
+  repeated AwsBackupPlanSelectionConditionPair string_like = 3;
+
+  // Wildcard-mismatch conditions.
+  repeated AwsBackupPlanSelectionConditionPair string_not_like = 4;
+}
+
+// AwsBackupPlanSelectionConditionPair is one key/value condition.
+message AwsBackupPlanSelectionConditionPair {
+  // The condition key (e.g. "aws:ResourceTag/environment").
+  string key = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The condition value.
+  string value = 2 [(buf.validate.field).string.min_len = 1];
+}

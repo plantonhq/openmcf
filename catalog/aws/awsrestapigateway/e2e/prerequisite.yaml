@@ -1,0 +1,35 @@
+# Install fixture consumed by kinds that declare AwsRestApiGateway as a
+# prerequisite (usage-plan stage coverage, domain base-path mappings).
+# Deliberately dependency-free: a single MOCK health route needs no
+# Lambda chain, so consumers pay the minimum fixture cost. The
+# component's own richer lane lives in scenarios/full-surface.yaml.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRestApiGateway
+metadata:
+  name: planton-oss-e2e-awsrestgw-prereq
+  id: planton-oss-e2e-awsrestgw-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsrestapigateway
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite REST API (MOCK-only, dependency-free)
+  stage:
+    name: prod
+  routes:
+    - path: /health
+      method: GET
+      integration:
+        type: MOCK
+        requestTemplates:
+          application/json: '{"statusCode": 200}'
+      responses:
+        - statusCode: "200"
+          integrationResponseTemplates:
+            application/json: '{"ok": true}'

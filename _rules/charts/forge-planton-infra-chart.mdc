@@ -149,7 +149,6 @@ spec:
     kind: platform
   description: <one sentence that sells the chart honestly>
   iconUrl: <VERIFIED live URL — see icon rules below>
-  isReady: true
   webLinks:
     chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/<path-to-chart>
     readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/<path-to-chart>/README.md

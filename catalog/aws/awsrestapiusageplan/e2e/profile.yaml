@@ -1,0 +1,22 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsrestapiusageplan
+spec:
+  # A usage plan under live E2E: one lane composing the dependency-free
+  # REST API prerequisite fixture, covering that API's prod stage with
+  # a daily quota, a throttle, and one generated API key. Verification
+  # is GetUsagePlan keyed on usage_plan_id. Usage plans and keys are
+  # free to keep.
+  #
+  # Deliberately not exercised live: per-method throttles (offline in
+  # e2e/manifest.yaml), a caller-supplied key value (the generated
+  # value is the recommended path; supplying one is a secret-rotation
+  # concern), and Marketplace product_code (needs a Marketplace listing).
+  #
+  # pending_proof: forged this session to the full offline bar -- Q37
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

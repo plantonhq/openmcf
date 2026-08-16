@@ -1,0 +1,36 @@
+# Consumer-scoped AwsIamRole install profile for the trail's CloudWatch
+# Logs mirroring arm: ONE role trusting cloudtrail.amazonaws.com with
+# write access to the fixture log group's streams.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-awstrail-role
+  id: planton-oss-e2e-awstrail-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E role CloudTrail assumes to mirror events to CloudWatch Logs
+  inlinePolicies:
+    cloudtrailToCloudwatch:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: "arn:aws:logs:us-west-2:*:log-group:planton-oss-e2e-awstrail-lg:log-stream:*"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: cloudtrail.amazonaws.com
+        Action: sts:AssumeRole

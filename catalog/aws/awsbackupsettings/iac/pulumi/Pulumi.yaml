@@ -1,0 +1,3 @@
+name: awsbackupsettings
+runtime: go
+description: Pulumi module to manage AWS Backup account and region settings (settings singleton)

@@ -1,3 +1,0 @@
-name: openstack-image
-runtime: go
-description: Pulumi module for OpenStackImage

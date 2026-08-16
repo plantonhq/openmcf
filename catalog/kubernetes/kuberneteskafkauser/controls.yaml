@@ -1,0 +1,70 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kuberneteskafkauser
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The generated credential Secret (password and JAAS config for scram-sha-512, client certificate and key for tls) rests in the cluster's Secret storage; encrypting it is the target cluster control plane's property, not a seam of this spec.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for the cluster's Secret storage are configured on the control plane (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Transport encryption is the Kafka cluster's listener posture, owned by the KubernetesKafka component. The user's authentication type must MATCH a listener -- a tls user pairs with a tls-auth (mTLS) listener and a scram-sha-512 user with a SCRAM listener -- but the user resource cannot itself turn TLS on or off.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A user is not network-addressable; reachability of the Kafka endpoints its credentials work against is the cluster's listener exposure.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: authorization.acls.host
+      evidence:
+        type: spec_default
+        reference: Each ACL rule carries a host restriction -- empty means "*" (any host), while setting host limits that rule's grant to clients connecting from the declared host, enforced by Kafka's ACL evaluation on the brokers.
+      notes: This is Kafka's own source restriction per grant. Network-path restriction (who can reach the listeners at all) is the Kafka cluster's listener configuration and Kubernetes NetworkPolicies, owned by that component.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A Kafka principal serves no HTTP edge traffic -- web application firewalls do not apply.
+    - control_id: rbac
+      status: configurable
+      field_path: authorization
+      evidence:
+        type: spec_default
+        reference: Unset declares no grants (on a simple-authorization cluster the principal can access nothing it is not granted); authorization.acls declare per-resource operations -- Read/Write/Describe and the rest over topics, consumer groups, transactional ids, or the cluster, with literal or prefix name matching. Requires the cluster to run simple authorization -- the user operator rejects ACL-bearing users outright on clusters without it.
+      notes: The presets are least-privilege worked examples -- 01-producer grants Write/Describe/Create on a topic prefix, 02-consumer grants topic Read/Describe plus group Read, and 03-mtls-service combines a producer half, a consumer half, and quotas.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Strimzi's user model is deliberately credential-based -- the user operator generates a static password or client certificate into a Secret the client workload mounts. The tls-external arm delegates certificate issuance outside the cluster but the credential is still presented material, not a platform-issued short-lived identity.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: The spec.authentication.type_enum validation rule restricts authentication.type to scram-sha-512, tls, or tls-external -- no PLAIN, no unauthenticated arm is representable in the contract.
+      notes: Omitting authentication entirely is valid only for a principal that exists purely to carry ACLs for an externally-authenticated identity; it creates no credential and opens no login path.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the user resource are Kubernetes API operations, captured by the target cluster's audit policy; authentication and authorization decisions for the principal are broker-side events owned by the Kafka cluster's logging.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Per-client metrics (quota throttling, connection counts) are exported by the Kafka brokers, owned by the KubernetesKafka component; this resource only surfaces reconcile status.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The resource is fully declarative and its credentials are regenerable -- re-applying it makes the user operator recreate the principal, its Secret, and its ACLs. There is no data to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist for this object (see backup-recovery), so retention has nothing to govern.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A principal has no runtime footprint to replicate; availability of authentication is the Kafka cluster's broker availability.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor Strimzi offers a deletion-protection flag on KafkaUser; deleting it revokes the credentials and ACLs (breaking the clients that use them) but destroys no data. Protection is operational (namespace RBAC, change review).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Nothing runs here to patch. Credential mechanics (certificate renewal from the clients CA, password generation) are the user operator's behavior, versioned with the Kafka cluster's operator.

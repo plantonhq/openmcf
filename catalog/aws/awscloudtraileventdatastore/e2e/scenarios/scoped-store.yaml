@@ -1,0 +1,40 @@
+# The cost-floored single-account surface: a single-region store with
+# the 7-day retention floor, termination protection OFF (the
+# single-step-destroy posture -- protection ON refuses deletion until
+# disabled), ingestion SUSPENDED (proving the write-only arm live and
+# flooring Lake's per-GB ingestion bill at zero), and one deliberately
+# narrow data-event selector matching a table that never exists. No
+# fixtures: the store owns its storage. Destroy is a REAL delete into
+# AWS's 7-day PENDING_DELETION window -- and because the deleted
+# store's NAME stays reserved for those 7 days, the store name is
+# RUN-SCOPED (the awss3bucket ${E2E_RUN_ID} precedent): consecutive
+# lanes and both engines never collide on a reservation.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudTrailEventDataStore
+metadata:
+  name: planton-oss-e2e-awseds-${E2E_RUN_ID}
+  id: planton-oss-e2e-awseds-${E2E_RUN_ID}
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscloudtraileventdatastore
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  multiRegionEnabled: false
+  retentionPeriodDays: 7
+  terminationProtectionEnabled: false
+  suspend: true
+  advancedEventSelectors:
+    - name: DynamoDB data events for a table that never exists
+      fieldSelectors:
+        - field: eventCategory
+          equals: ["Data"]
+        - field: resources.type
+          equals: ["AWS::DynamoDB::Table"]
+        - field: resources.ARN
+          startsWith: ["arn:aws:dynamodb:us-west-2:000000000000:table/planton-e2e-never-exists"]

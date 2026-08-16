@@ -29,6 +29,10 @@ var (
 	repoRoot         string
 	runID            string
 	pulumiBackendURL string
+	// assertApplyIdempotency mirrors the provider profile's
+	// assert_apply_idempotency field: when armed, every scenario lifecycle
+	// gains the IDEMPOTENCY phase (re-plan after apply must be empty).
+	assertApplyIdempotency bool
 )
 
 func TestMain(m *testing.M) {
@@ -53,6 +57,13 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "failed to login to pulumi backend: %v\n", err)
 		os.Exit(1)
 	}
+
+	providerProfile, err := profilepkg.LoadProviderProfile(repoRoot, "aws")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to load AWS provider E2E profile: %v\n", err)
+		os.Exit(1)
+	}
+	assertApplyIdempotency = providerProfile.GetSpec().GetAssertApplyIdempotency()
 
 	testHarness = awse2e.NewHarness()
 	ctx := context.Background()
@@ -1009,6 +1020,459 @@ func TestAwsSagemakerDomain_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awssagemakerdomain", "terraform")
 }
 
+func TestAwsSecretsManagerSecret_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssecretsmanagersecret", "pulumi")
+}
+
+func TestAwsSecretsManagerSecret_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssecretsmanagersecret", "terraform")
+}
+
+func TestAwsBedrockGuardrail_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockguardrail", "pulumi")
+}
+
+func TestAwsBedrockGuardrail_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockguardrail", "terraform")
+}
+
+func TestAwsBedrockCustomModel_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockcustommodel", "pulumi")
+}
+
+func TestAwsBedrockCustomModel_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockcustommodel", "terraform")
+}
+
+func TestAwsBedrockInferenceProfile_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockinferenceprofile", "pulumi")
+}
+
+func TestAwsBedrockInferenceProfile_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockinferenceprofile", "terraform")
+}
+
+func TestAwsBedrockProvisionedThroughput_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockprovisionedthroughput", "pulumi")
+}
+
+func TestAwsBedrockProvisionedThroughput_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockprovisionedthroughput", "terraform")
+}
+
+func TestAwsBedrockModelAccess_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockmodelaccess", "pulumi")
+}
+
+func TestAwsBedrockModelAccess_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockmodelaccess", "terraform")
+}
+
+func TestAwsOpenSearchServerlessCollection_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsopensearchserverlesscollection", "pulumi")
+}
+
+func TestAwsOpenSearchServerlessCollection_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsopensearchserverlesscollection", "terraform")
+}
+
+func TestAwsBedrockAgent_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagent", "pulumi")
+}
+
+func TestAwsBedrockAgent_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagent", "terraform")
+}
+
+// --- AWS Bedrock Knowledge Base (the VECTOR lane stores vectors in the
+// standing S3 Vectors fixture the harness ensures below; see
+// aa_e2e.EnsureS3VectorsKnowledgeBaseFixture) ---
+
+func ensureS3VectorsFixture(t *testing.T) {
+	t.Helper()
+	if err := awse2e.EnsureS3VectorsKnowledgeBaseFixture(context.Background()); err != nil {
+		t.Fatalf("S3 Vectors knowledge-base fixture: %v", err)
+	}
+}
+
+func TestAwsBedrockKnowledgeBase_Pulumi(t *testing.T) {
+	ensureS3VectorsFixture(t)
+	runAllScenariosForComponent(t, "awsbedrockknowledgebase", "pulumi")
+}
+
+func TestAwsBedrockKnowledgeBase_Terraform(t *testing.T) {
+	ensureS3VectorsFixture(t)
+	runAllScenariosForComponent(t, "awsbedrockknowledgebase", "terraform")
+}
+
+func TestAwsBedrockFlow_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockflow", "pulumi")
+}
+
+func TestAwsBedrockFlow_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockflow", "terraform")
+}
+
+func TestAwsBedrockPrompt_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockprompt", "pulumi")
+}
+
+func TestAwsBedrockPrompt_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockprompt", "terraform")
+}
+
+// --- AWS Bedrock AgentCore (the runtime lanes execute the code bundle the
+// harness seeds below; see aa_e2e.EnsureAgentCoreCodeBundleFixture) ---
+
+func ensureAgentCoreCodeFixture(t *testing.T) {
+	t.Helper()
+	if err := awse2e.EnsureAgentCoreCodeBundleFixture(context.Background()); err != nil {
+		t.Fatalf("AgentCore code-bundle fixture: %v", err)
+	}
+}
+
+func TestAwsBedrockAgentCoreRuntime_Pulumi(t *testing.T) {
+	ensureAgentCoreCodeFixture(t)
+	runAllScenariosForComponent(t, "awsbedrockagentcoreruntime", "pulumi")
+}
+
+func TestAwsBedrockAgentCoreRuntime_Terraform(t *testing.T) {
+	ensureAgentCoreCodeFixture(t)
+	runAllScenariosForComponent(t, "awsbedrockagentcoreruntime", "terraform")
+}
+
+func TestAwsBedrockAgentCoreGateway_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcoregateway", "pulumi")
+}
+
+func TestAwsBedrockAgentCoreGateway_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcoregateway", "terraform")
+}
+
+func TestAwsBedrockAgentCoreMemory_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcorememory", "pulumi")
+}
+
+func TestAwsBedrockAgentCoreMemory_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcorememory", "terraform")
+}
+
+func TestAwsBedrockAgentCoreIdentity_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcoreidentity", "pulumi")
+}
+
+func TestAwsBedrockAgentCoreIdentity_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcoreidentity", "terraform")
+}
+
+func TestAwsBedrockAgentCoreTools_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcoretools", "pulumi")
+}
+
+func TestAwsBedrockAgentCoreTools_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcoretools", "terraform")
+}
+
+// --- AWS SageMaker (models, serving, MLOps) ---
+
+func TestAwsSagemakerModel_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakermodel", "pulumi")
+}
+
+func TestAwsSagemakerModel_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakermodel", "terraform")
+}
+
+func TestAwsSagemakerEndpoint_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakerendpoint", "pulumi")
+}
+
+func TestAwsSagemakerEndpoint_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakerendpoint", "terraform")
+}
+
+func TestAwsSagemakerNotebookInstance_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakernotebookinstance", "pulumi")
+}
+
+func TestAwsSagemakerNotebookInstance_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakernotebookinstance", "terraform")
+}
+
+func TestAwsSagemakerFeatureGroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakerfeaturegroup", "pulumi")
+}
+
+func TestAwsSagemakerFeatureGroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakerfeaturegroup", "terraform")
+}
+
+func TestAwsSagemakerModelRegistry_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakermodelregistry", "pulumi")
+}
+
+func TestAwsSagemakerModelRegistry_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakermodelregistry", "terraform")
+}
+
+func TestAwsSagemakerPipeline_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakerpipeline", "pulumi")
+}
+
+func TestAwsSagemakerPipeline_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakerpipeline", "terraform")
+}
+
+func TestAwsSagemakerImage_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakerimage", "pulumi")
+}
+
+func TestAwsSagemakerImage_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakerimage", "terraform")
+}
+
+func TestAwsSagemakerMlflowServer_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakermlflowserver", "pulumi")
+}
+
+func TestAwsSagemakerMlflowServer_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakermlflowserver", "terraform")
+}
+
+func TestAwsSagemakerMlflowApp_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakermlflowapp", "pulumi")
+}
+
+func TestAwsSagemakerMlflowApp_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakermlflowapp", "terraform")
+}
+
+// --- AWS API Gateway REST (v1) family + AgentCore Evaluations ---
+
+func TestAwsRestApiGateway_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrestapigateway", "pulumi")
+}
+
+func TestAwsRestApiGateway_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrestapigateway", "terraform")
+}
+
+func TestAwsRestApiDomain_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrestapidomain", "pulumi")
+}
+
+func TestAwsRestApiDomain_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrestapidomain", "terraform")
+}
+
+func TestAwsRestApiUsagePlan_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrestapiusageplan", "pulumi")
+}
+
+func TestAwsRestApiUsagePlan_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrestapiusageplan", "terraform")
+}
+
+func TestAwsRestApiVpcLink_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrestapivpclink", "pulumi")
+}
+
+func TestAwsRestApiVpcLink_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrestapivpclink", "terraform")
+}
+
+func TestAwsBedrockAgentCoreEvaluation_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcoreevaluation", "pulumi")
+}
+
+func TestAwsBedrockAgentCoreEvaluation_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcoreevaluation", "terraform")
+}
+
+func TestAwsApiGatewayAccountSettings_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsapigatewayaccountsettings", "pulumi")
+}
+
+func TestAwsApiGatewayAccountSettings_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsapigatewayaccountsettings", "terraform")
+}
+
+func TestAwsBedrockInvocationLogging_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockinvocationlogging", "pulumi")
+}
+
+func TestAwsBedrockInvocationLogging_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockinvocationlogging", "terraform")
+}
+
+func TestAwsBedrockAgentCoreTokenVault_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcoretokenvault", "pulumi")
+}
+
+func TestAwsBedrockAgentCoreTokenVault_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcoretokenvault", "terraform")
+}
+
+func TestAwsSesAccountSettings_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssesaccountsettings", "pulumi")
+}
+
+func TestAwsSesAccountSettings_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssesaccountsettings", "terraform")
+}
+
+func TestAwsCloudTrail_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudtrail", "pulumi")
+}
+
+func TestAwsCloudTrail_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudtrail", "terraform")
+}
+
+func TestAwsConfigRecorder_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsconfigrecorder", "pulumi")
+}
+
+func TestAwsConfigRecorder_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsconfigrecorder", "terraform")
+}
+
+func TestAwsConfigRule_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsconfigrule", "pulumi")
+}
+
+func TestAwsConfigRule_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsconfigrule", "terraform")
+}
+
+func TestAwsGuardDuty_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsguardduty", "pulumi")
+}
+
+func TestAwsGuardDuty_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsguardduty", "terraform")
+}
+
+func TestAwsCloudTrailEventDataStore_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudtraileventdatastore", "pulumi")
+}
+
+func TestAwsCloudTrailEventDataStore_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudtraileventdatastore", "terraform")
+}
+
+func TestAwsConfigAggregator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsconfigaggregator", "pulumi")
+}
+
+func TestAwsConfigAggregator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsconfigaggregator", "terraform")
+}
+
+func TestAwsConfigConformancePack_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsconfigconformancepack", "pulumi")
+}
+
+func TestAwsConfigConformancePack_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsconfigconformancepack", "terraform")
+}
+
+func TestAwsGuardDutyMalwareProtectionPlan_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsguarddutymalwareprotectionplan", "pulumi")
+}
+
+func TestAwsGuardDutyMalwareProtectionPlan_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsguarddutymalwareprotectionplan", "terraform")
+}
+
+func TestAwsBackupVault_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupvault", "pulumi")
+}
+
+func TestAwsBackupVault_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupvault", "terraform")
+}
+
+func TestAwsBackupPlan_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupplan", "pulumi")
+}
+
+func TestAwsBackupPlan_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupplan", "terraform")
+}
+
+func TestAwsBackupFramework_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupframework", "pulumi")
+}
+
+func TestAwsBackupFramework_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupframework", "terraform")
+}
+
+func TestAwsBackupReportPlan_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupreportplan", "pulumi")
+}
+
+func TestAwsBackupReportPlan_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupreportplan", "terraform")
+}
+
+func TestAwsBackupRestoreTestingPlan_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackuprestoretestingplan", "pulumi")
+}
+
+func TestAwsBackupRestoreTestingPlan_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackuprestoretestingplan", "terraform")
+}
+
+func TestAwsBackupSettings_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupsettings", "pulumi")
+}
+
+func TestAwsBackupSettings_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupsettings", "terraform")
+}
+
+func TestAwsSsmParameter_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmparameter", "pulumi")
+}
+
+func TestAwsSsmParameter_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmparameter", "terraform")
+}
+
+func TestAwsSsmDocument_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmdocument", "pulumi")
+}
+
+func TestAwsSsmDocument_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmdocument", "terraform")
+}
+
+func TestAwsSsmAssociation_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmassociation", "pulumi")
+}
+
+func TestAwsSsmAssociation_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmassociation", "terraform")
+}
+
+func TestAwsSsmMaintenanceWindow_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmmaintenancewindow", "pulumi")
+}
+
+func TestAwsSsmMaintenanceWindow_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmmaintenancewindow", "terraform")
+}
+
+func TestAwsSsmPatchBaseline_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmpatchbaseline", "pulumi")
+}
+
+func TestAwsSsmPatchBaseline_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmpatchbaseline", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()
@@ -1076,7 +1540,8 @@ func runSingleScenario(t *testing.T, component, moduleDir, engine string, scenar
 		// Leaving it empty makes the dependency stacks fall back to the
 		// machine's ambient `pulumi login` backend, coupling the run to
 		// stale developer state.
-		BackendURL: pulumiBackendURL,
+		BackendURL:             pulumiBackendURL,
+		AssertApplyIdempotency: assertApplyIdempotency,
 	}
 
 	if engine == "pulumi" {

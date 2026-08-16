@@ -28,23 +28,14 @@ type CloudResourceProvider int32
 const (
 	CloudResourceProvider_cloud_resource_provider_unspecified CloudResourceProvider = 0
 	CloudResourceProvider__test                               CloudResourceProvider = 1
-	CloudResourceProvider_atlas                               CloudResourceProvider = 11
 	CloudResourceProvider_aws                                 CloudResourceProvider = 12
 	CloudResourceProvider_azure                               CloudResourceProvider = 13
-	CloudResourceProvider_civo                                CloudResourceProvider = 14
 	CloudResourceProvider_cloudflare                          CloudResourceProvider = 15
-	CloudResourceProvider_confluent                           CloudResourceProvider = 16
 	CloudResourceProvider_digital_ocean                       CloudResourceProvider = 17
 	CloudResourceProvider_gcp                                 CloudResourceProvider = 18
 	CloudResourceProvider_kubernetes                          CloudResourceProvider = 19
-	CloudResourceProvider_snowflake                           CloudResourceProvider = 20
 	CloudResourceProvider_auth0                               CloudResourceProvider = 21
 	CloudResourceProvider_openfga                             CloudResourceProvider = 22
-	CloudResourceProvider_openstack                           CloudResourceProvider = 23
-	CloudResourceProvider_scaleway                            CloudResourceProvider = 24
-	CloudResourceProvider_alicloud                            CloudResourceProvider = 25
-	CloudResourceProvider_oci                                 CloudResourceProvider = 26
-	CloudResourceProvider_hetzner_cloud                       CloudResourceProvider = 27
 )
 
 // Enum value maps for CloudResourceProvider.
@@ -52,44 +43,26 @@ var (
 	CloudResourceProvider_name = map[int32]string{
 		0:  "cloud_resource_provider_unspecified",
 		1:  "_test",
-		11: "atlas",
 		12: "aws",
 		13: "azure",
-		14: "civo",
 		15: "cloudflare",
-		16: "confluent",
 		17: "digital_ocean",
 		18: "gcp",
 		19: "kubernetes",
-		20: "snowflake",
 		21: "auth0",
 		22: "openfga",
-		23: "openstack",
-		24: "scaleway",
-		25: "alicloud",
-		26: "oci",
-		27: "hetzner_cloud",
 	}
 	CloudResourceProvider_value = map[string]int32{
 		"cloud_resource_provider_unspecified": 0,
 		"_test":                               1,
-		"atlas":                               11,
 		"aws":                                 12,
 		"azure":                               13,
-		"civo":                                14,
 		"cloudflare":                          15,
-		"confluent":                           16,
 		"digital_ocean":                       17,
 		"gcp":                                 18,
 		"kubernetes":                          19,
-		"snowflake":                           20,
 		"auth0":                               21,
 		"openfga":                             22,
-		"openstack":                           23,
-		"scaleway":                            24,
-		"alicloud":                            25,
-		"oci":                                 26,
-		"hetzner_cloud":                       27,
 	}
 )
 
@@ -199,25 +172,19 @@ const file_shared_cloudresourcekind_cloud_resource_provider_proto_rawDesc = "" +
 	"6shared/cloudresourcekind/cloud_resource_provider.proto\x12$dev.planton.shared.cloudresourcekind\x1a google/protobuf/descriptor.proto\"T\n" +
 	"\x19CloudResourceProviderMeta\x12\x14\n" +
 	"\x05group\x18\x01 \x01(\tR\x05group\x12!\n" +
-	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName*\xdf\a\n" +
+	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName*\x81\x04\n" +
 	"\x15CloudResourceProvider\x12'\n" +
 	"#cloud_resource_provider_unspecified\x10\x00\x128\n" +
 	"\x05_test\x10\x01\x1a-\xea\xcc')\n" +
-	"\x11_test.planton.dev\x12\x14Test Cloud Resources\x121\n" +
-	"\x05atlas\x10\v\x1a&\xea\xcc'\"\n" +
-	"\x11atlas.planton.dev\x12\rMongoDB Atlas\x12#\n" +
+	"\x11_test.planton.dev\x12\x14Test Cloud Resources\x12#\n" +
 	"\x03aws\x10\f\x1a\x1a\xea\xcc'\x16\n" +
 	"\x0faws.planton.dev\x12\x03AWS\x12)\n" +
 	"\x05azure\x10\r\x1a\x1e\xea\xcc'\x1a\n" +
-	"\x11azure.planton.dev\x12\x05Azure\x12&\n" +
-	"\x04civo\x10\x0e\x1a\x1c\xea\xcc'\x18\n" +
-	"\x10civo.planton.dev\x12\x04Civo\x128\n" +
+	"\x11azure.planton.dev\x12\x05Azure\x128\n" +
 	"\n" +
 	"cloudflare\x10\x0f\x1a(\xea\xcc'$\n" +
 	"\x16cloudflare.planton.dev\x12\n" +
-	"Cloudflare\x125\n" +
-	"\tconfluent\x10\x10\x1a&\xea\xcc'\"\n" +
-	"\x15confluent.planton.dev\x12\tConfluent\x12@\n" +
+	"Cloudflare\x12@\n" +
 	"\rdigital_ocean\x10\x11\x1a-\xea\xcc')\n" +
 	"\x19digital-ocean.planton.dev\x12\fDigitalOcean\x12#\n" +
 	"\x03gcp\x10\x12\x1a\x1a\xea\xcc'\x16\n" +
@@ -225,23 +192,11 @@ const file_shared_cloudresourcekind_cloud_resource_provider_proto_rawDesc = "" +
 	"\n" +
 	"kubernetes\x10\x13\x1a(\xea\xcc'$\n" +
 	"\x16kubernetes.planton.dev\x12\n" +
-	"Kubernetes\x125\n" +
-	"\tsnowflake\x10\x14\x1a&\xea\xcc'\"\n" +
-	"\x15snowflake.planton.dev\x12\tSnowflake\x12)\n" +
+	"Kubernetes\x12)\n" +
 	"\x05auth0\x10\x15\x1a\x1e\xea\xcc'\x1a\n" +
 	"\x11auth0.planton.dev\x12\x05Auth0\x12/\n" +
 	"\aopenfga\x10\x16\x1a\"\xea\xcc'\x1e\n" +
-	"\x13openfga.planton.dev\x12\aOpenFGA\x125\n" +
-	"\topenstack\x10\x17\x1a&\xea\xcc'\"\n" +
-	"\x15openstack.planton.dev\x12\tOpenStack\x122\n" +
-	"\bscaleway\x10\x18\x1a$\xea\xcc' \n" +
-	"\x14scaleway.planton.dev\x12\bScaleway\x127\n" +
-	"\balicloud\x10\x19\x1a)\xea\xcc'%\n" +
-	"\x14alicloud.planton.dev\x12\rAlibaba Cloud\x12,\n" +
-	"\x03oci\x10\x1a\x1a#\xea\xcc'\x1f\n" +
-	"\x0foci.planton.dev\x12\fOracle Cloud\x12A\n" +
-	"\rhetzner_cloud\x10\x1b\x1a.\xea\xcc'*\n" +
-	"\x19hetzner-cloud.planton.dev\x12\rHetzner Cloud:\x89\x01\n" +
+	"\x13openfga.planton.dev\x12\aOpenFGA:\x89\x01\n" +
 	"\rprovider_meta\x12!.google.protobuf.EnumValueOptions\x18\xcd\xf9\x04 \x01(\v2?.dev.planton.shared.cloudresourcekind.CloudResourceProviderMetaR\fproviderMetaB\xb1\x02\n" +
 	"(com.dev.planton.shared.cloudresourcekindB\x1aCloudResourceProviderProtoP\x01Z5github.com/plantonhq/planton/shared/cloudresourcekind\xa2\x02\x04DPSC\xaa\x02$Dev.Planton.Shared.Cloudresourcekind\xca\x02$Dev\\Planton\\Shared\\Cloudresourcekind\xe2\x020Dev\\Planton\\Shared\\Cloudresourcekind\\GPBMetadata\xea\x02'Dev::Planton::Shared::Cloudresourcekindb\x06proto3"
 

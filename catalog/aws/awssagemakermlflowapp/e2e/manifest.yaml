@@ -1,0 +1,22 @@
+# Canonical AwsSagemakerMlflowApp example (hack/dev manifest and refgen
+# Example source): an account-default serverless MLflow app exercising
+# every arm - domain associations, auto-registration, and the
+# maintenance window. Literal ARNs and domain IDs stand in for composed
+# references so the offline `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerMlflowApp
+metadata:
+  name: ml-experiments
+  id: ml-experiments
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  artifactStoreUri: s3://my-mlflow/artifacts
+  roleArn:
+    value: arn:aws:iam::123456789012:role/mlflow-app
+  accountDefaultStatus: ENABLED
+  defaultDomainIds:
+    - value: d-abcdef123456
+  modelRegistrationMode: AutoModelRegistrationEnabled
+  weeklyMaintenanceWindowStart: SUN:03:00

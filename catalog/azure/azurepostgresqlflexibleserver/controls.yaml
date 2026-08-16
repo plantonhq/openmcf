@@ -1,0 +1,102 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurepostgresqlflexibleserver
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Flexible Server encrypts data, backups, and temporary files at rest with service-managed keys on every server; encryption cannot be disabled.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: customer_managed_key
+      evidence:
+        type: spec_default
+        reference: Unset means service-managed encryption; configuring the block encrypts the server with a Key Vault key accessed through the named user-assigned identity, with a separate key for geo-redundant backups.
+      notes: The 03-hardened-cmk-entra preset enables it. CMK is a creation-time decision requiring the identity block.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Flexible Server requires TLS by default (require_secure_transport is on unless deliberately relaxed through server parameters outside this spec); client connections negotiate TLS 1.2+.
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_network_access_enabled
+      evidence:
+        type: spec_default
+        reference: Azure's default is a public endpoint gated by the firewall allowlist; setting it false (with delegated_subnet_id and private_dns_zone_id) injects the server into a virtual network with a private address only -- Azure rejects a public endpoint on an injected server.
+      notes: The 02-production-private-ha preset is VNet-injected; the 01 dev preset stays public behind firewall rules by design.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: firewall_rules
+      evidence:
+        type: spec_default
+        reference: For public servers, the firewall rules are the complete allowlist of client address ranges; an empty list admits no direct client. VNet-injected servers scope ingress by subnet topology instead.
+      notes: The 01-dev-burstable preset allowlists a single admin range.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A managed database endpoint is protected by TLS, authentication, and network scoping rather than a WAF; no request-filtering attachment point exists.
+    - control_id: rbac
+      status: configurable
+      field_path: authentication.active_directory_auth_enabled
+      evidence:
+        type: spec_default
+        reference: Off by default (password authentication only); enabling Entra authentication lets Azure identities and groups authenticate with directory-issued tokens, with aad_administrators granting the admin role to declared principals.
+      notes: The 03-hardened-cmk-entra preset is Entra-only. Management-plane access is always Azure RBAC.
+    - control_id: workload-identity
+      status: configurable
+      field_path: authentication.active_directory_auth_enabled
+      evidence:
+        type: spec_default
+        reference: With Entra authentication on, workloads holding managed identities connect with short-lived directory tokens instead of static passwords -- the identity path exists only when this is enabled.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: authentication.password_auth_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to true (password logins accepted); setting it false with Entra auth on retires static database passwords entirely -- the 03-hardened-cmk-entra preset does exactly that.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Administrative actions on the server land in the Azure Activity Log unconditionally; PostgreSQL server logs flow to Azure Monitor per the server's diagnostic defaults.
+      notes: Statement-level auditing (pgaudit) is a server-parameter concern outside this spec's fields.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Flexible Server publishes compute, storage, IOPS, and connection metrics to Azure Monitor for every server without configuration.
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Automated backups with point-in-time restore inside the retention window are always on -- the platform takes daily snapshots plus continuous WAL archiving; create_mode POINT_IN_TIME_RESTORE is the restore path.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: backup_retention_days
+      evidence:
+        type: spec_default
+        reference: Defaults to 7 days, configurable up to 35; geo_redundant_backup_enabled additionally replicates backups to the paired region (a creation-time decision).
+      notes: Presets 02 and 03 retain 35 days; 02 adds geo-redundancy.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: high_availability
+      evidence:
+        type: spec_default
+        reference: Absent means a single-zone server; mode ZONE_REDUNDANT provisions a synchronously replicated standby in another availability zone (standby_availability_zone pins it) with automatic failover, and SAME_ZONE keeps the standby local.
+      notes: The 02-production-private-ha preset is zone-redundant with pinned zones.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Flexible Server API nor this spec offers a deletion-protection flag (Azure resource locks are subscription-side governance outside the manifest); point-in-time restore inside the retention window is the recovery path after an accidental deletion is noticed.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Microsoft applies minor versions and security patches through managed maintenance; maintenance_window steers when disruption may happen, never whether patching occurs.

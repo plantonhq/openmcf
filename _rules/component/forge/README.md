@@ -78,7 +78,7 @@ Use forge when you need to:
 
 **Create a SaaS platform resource:**
 ```
-@forge-planton-component MongodbAtlas --provider atlas
+@forge-planton-component CloudflareD1Database --provider cloudflare
 ```
 
 **Create a GCP resource:**
@@ -105,7 +105,7 @@ Use forge when you need to:
 
 Before running forge, have ready:
 1. **Component Name** - PascalCase (e.g., `GcpCertManagerCert`)
-2. **Provider** - One of: aws, gcp, azure, kubernetes, atlas, snowflake, confluent, digitalocean, civo, cloudflare
+2. **Provider** - One of: aws, gcp, azure, kubernetes, digitalocean, cloudflare, auth0, openfga
 3. **Category** - Only for Kubernetes: addon, workload, or config
 
 ### What Forge Asks You
@@ -165,7 +165,7 @@ component e2e profiles, not the forge pipeline.)
 Forge provides real-time progress updates:
 
 ```
-🔨 Forge: Creating MongodbAtlas
+🔨 Forge: Creating CloudflareD1Database
 
 Phase 1: Proto API Definitions
 [1/19] ✅ Generated spec.proto
@@ -176,7 +176,7 @@ Phase 1: Proto API Definitions
 [6/19] ✅ Generated input.proto
 
 Phase 2: Registration
-[7/19] ✅ Registered MongodbAtlas = 51 in cloud_resource_kind.proto
+[7/19] ✅ Registered CloudflareD1Database = 7005 in cloud_resource_kind.proto
 [8/19] ✅ Generated proto stubs (make protos)
 
 Phase 3: Documentation
@@ -206,12 +206,12 @@ Phase 9: Guide + Reference
 
 🎉 Component creation complete!
 
-📍 Location: catalog/atlas/mongodbatlas/
+📍 Location: catalog/cloudflare/cloudflared1database/
 📊 Expected Audit Score: 95-100%
 
 Next steps:
 1. Review generated files
-2. Run: @audit-planton-component MongodbAtlas
+2. Run: @audit-planton-component CloudflareD1Database
 3. Make any custom modifications
 4. Commit and push
 ```
@@ -229,7 +229,7 @@ If a rule fails after 3 attempts:
 2. Fix the issue manually
 3. Resume from the failed rule:
    ```
-   @forge-planton-component MongodbAtlas --resume-from 012
+   @forge-planton-component CloudflareD1Database --resume-from 012
    ```
 
 ### Common Issues
@@ -337,14 +337,14 @@ Forge creates a **production-ready baseline**. Common customizations:
 ## Troubleshooting
 
 ### "Component already exists"
-**Error:** `Component MongodbAtlas already exists at ...`
+**Error:** `Component CloudflareD1Database already exists at ...`
 
 **Solution:** Use `@update-planton-component` instead, or delete first with `@delete-planton-component`.
 
 ### "Provider not recognized"
 **Error:** `Provider 'xyz' is not valid`
 
-**Valid providers:** aws, gcp, azure, kubernetes, atlas, snowflake, confluent, digitalocean, civo, cloudflare
+**Valid providers:** aws, gcp, azure, kubernetes, digitalocean, cloudflare, auth0, openfga
 
 ### "Build failed after 3 attempts"
 **Check:**

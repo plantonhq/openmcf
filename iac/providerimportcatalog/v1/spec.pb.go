@@ -140,8 +140,23 @@ type ResourceTypeImportId struct {
 	// therefore structurally invisible to scans -- consumers must treat their
 	// absence as "not discoverable", never as an error.
 	CloudControlTypeName string `protobuf:"bytes,7,opt,name=cloud_control_type_name,json=cloudControlTypeName,proto3" json:"cloud_control_type_name,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Set when the resource type's upstream provider ships NO importer at the
+	// pinned version -- the type structurally cannot be imported, so an
+	// id_format cannot honestly exist for it (authoring one anyway would only
+	// fail at import time). The value records WHY, with the pinned-version
+	// citation (e.g. "no Importer on the upstream resource at v6.58.0; the
+	// service call is an idempotent upsert"). Mutually exclusive with
+	// id_format -- the offline conformance guard enforces exactly one of the
+	// two. The live round-trip skips these addresses at import and instead
+	// proves the ADOPTER'S contract for them: the plan over the re-imported
+	// state proposes re-creating the resource, and the reconcile-apply
+	// executes it -- so declare this only for types whose create path
+	// CONVERGES on an existing cloud resource (an upsert-style Put), which
+	// the round-trip lane verifies live. A type whose create would conflict
+	// with its own survivor needs a different treatment, not this field.
+	NotImportableUpstreamReason string `protobuf:"bytes,8,opt,name=not_importable_upstream_reason,json=notImportableUpstreamReason,proto3" json:"not_importable_upstream_reason,omitempty"`
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
 }
 
 func (x *ResourceTypeImportId) Reset() {
@@ -223,13 +238,20 @@ func (x *ResourceTypeImportId) GetCloudControlTypeName() string {
 	return ""
 }
 
+func (x *ResourceTypeImportId) GetNotImportableUpstreamReason() string {
+	if x != nil {
+		return x.NotImportableUpstreamReason
+	}
+	return ""
+}
+
 var File_iac_providerimportcatalog_v1_spec_proto protoreflect.FileDescriptor
 
 const file_iac_providerimportcatalog_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"'iac/providerimportcatalog/v1/spec.proto\x12(dev.planton.iac.providerimportcatalog.v1\"\x82\x01\n" +
 	"\x19ProviderImportCatalogSpec\x12e\n" +
-	"\x0eresource_types\x18\x01 \x03(\v2>.dev.planton.iac.providerimportcatalog.v1.ResourceTypeImportIdR\rresourceTypes\"\xbe\x02\n" +
+	"\x0eresource_types\x18\x01 \x03(\v2>.dev.planton.iac.providerimportcatalog.v1.ResourceTypeImportIdR\rresourceTypes\"\x83\x03\n" +
 	"\x14ResourceTypeImportId\x12%\n" +
 	"\x0eterraform_type\x18\x01 \x01(\tR\rterraformType\x12\x1f\n" +
 	"\vpulumi_type\x18\x02 \x01(\tR\n" +
@@ -238,7 +260,8 @@ const file_iac_providerimportcatalog_v1_spec_proto_rawDesc = "" +
 	"\x05notes\x18\x04 \x01(\tR\x05notes\x124\n" +
 	"\x16config_only_attributes\x18\x05 \x03(\tR\x14configOnlyAttributes\x12>\n" +
 	"\x1bwrite_normalized_attributes\x18\x06 \x03(\tR\x19writeNormalizedAttributes\x125\n" +
-	"\x17cloud_control_type_name\x18\a \x01(\tR\x14cloudControlTypeNameB\xd1\x02\n" +
+	"\x17cloud_control_type_name\x18\a \x01(\tR\x14cloudControlTypeName\x12C\n" +
+	"\x1enot_importable_upstream_reason\x18\b \x01(\tR\x1bnotImportableUpstreamReasonB\xd1\x02\n" +
 	",com.dev.planton.iac.providerimportcatalog.v1B\tSpecProtoP\x01ZQgithub.com/plantonhq/planton/iac/providerimportcatalog/v1;providerimportcatalogv1\xa2\x02\x04DPIP\xaa\x02(Dev.Planton.Iac.Providerimportcatalog.V1\xca\x02(Dev\\Planton\\Iac\\Providerimportcatalog\\V1\xe2\x024Dev\\Planton\\Iac\\Providerimportcatalog\\V1\\GPBMetadata\xea\x02,Dev::Planton::Iac::Providerimportcatalog::V1b\x06proto3"
 
 var (

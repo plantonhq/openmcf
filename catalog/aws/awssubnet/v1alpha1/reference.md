@@ -379,6 +379,18 @@ Fields on other kinds that can point at this resource:
 | AwsAppRunnerVpcConnector | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsAutoScalingGroup | `spec.subnets` | `status.outputs.subnet_id` |
 | AwsBatchComputeEnvironment | `spec.computeResources.subnetIds` | `status.outputs.subnet_id` |
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].runtimeEnvironment.network.vpcConfig.subnets` | `status.outputs.subnet_id` |
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].customJwtAuthorizer.privateEndpoint.managedVpc.subnetIds` | `status.outputs.subnet_id` |
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.subnetIds` | `status.outputs.subnet_id` |
+| AwsBedrockAgentCoreGateway | `spec.customJwtAuthorizer.privateEndpoint.managedVpc.subnetIds` | `status.outputs.subnet_id` |
+| AwsBedrockAgentCoreGateway | `spec.customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.subnetIds` | `status.outputs.subnet_id` |
+| AwsBedrockAgentCoreGateway | `spec.targets[].privateEndpoint.managedVpc.subnetIds` | `status.outputs.subnet_id` |
+| AwsBedrockAgentCoreRuntime | `spec.network.vpcConfig.subnets` | `status.outputs.subnet_id` |
+| AwsBedrockAgentCoreRuntime | `spec.customJwtAuthorizer.privateEndpoint.managedVpc.subnetIds` | `status.outputs.subnet_id` |
+| AwsBedrockAgentCoreRuntime | `spec.customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.subnetIds` | `status.outputs.subnet_id` |
+| AwsBedrockAgentCoreTools | `spec.browsers[].network.vpcConfig.subnets` | `status.outputs.subnet_id` |
+| AwsBedrockAgentCoreTools | `spec.codeInterpreters[].network.vpcConfig.subnets` | `status.outputs.subnet_id` |
+| AwsBedrockCustomModel | `spec.vpcConfig.subnetIds` | `status.outputs.subnet_id` |
 | AwsClientVpn | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsClientVpn | `spec.routes[].targetSubnetId` | `status.outputs.subnet_id` |
 | AwsCodeBuildProject | `spec.vpcConfig.subnetIds` | `status.outputs.subnet_id` |
@@ -424,6 +436,8 @@ Fields on other kinds that can point at this resource:
 | AwsRedshiftServerlessWorkgroup | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsRedshiftServerlessWorkgroup | `spec.endpointAccesses[].subnetIds` | `status.outputs.subnet_id` |
 | AwsSagemakerDomain | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsSagemakerModel | `spec.vpcConfig.subnetIds` | `status.outputs.subnet_id` |
+| AwsSagemakerNotebookInstance | `spec.subnetId` | `status.outputs.subnet_id` |
 | AwsServerlessElasticache | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsTransitGatewayVpcAttachment | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsVpcEndpoint | `spec.routeTableIds` | `status.outputs.route_table_id` |

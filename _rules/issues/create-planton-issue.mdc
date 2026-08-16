@@ -68,7 +68,6 @@ YYYY-MM-DD-HHMMSS.{area}.{type}.{slug}.md
 - `repo` - Repository-wide changes
 - `ops` - Operations/infrastructure
 - `tooling` - Build tools, scripts
-- `site` - Planton website
 - `forge` - Component forge system
 
 **Type** (issue category):
@@ -113,7 +112,6 @@ When file paths are mentioned in the conversation, map them to simple areas:
 - **`.cursor/**`, `Makefile`, `MODULE.bazel`** → `repo`
 - **`docker/**`, `docker-compose.yml`** → `ops`
 - **`tools/**`, `hack/**`, `build/**`** → `tooling`
-- **`site/**`** → `site`
 - **`_rules/component/forge/**`** → `forge`
 
 ### Keyword Detection
@@ -125,7 +123,6 @@ Look for these keywords in the conversation:
 - "package", "library", "pkg/", "helper", "utility" → `pkg`
 - "protobuf", "proto", "API definition", "stubs", "buf" → `apis`
 - "forge", "code generation", "component generation" → `forge`
-- "website", "Next.js", "site", "documentation site" → `site`
 - "build", "bazel", "compilation", "tooling" → `tooling`
 
 ### Multi-Area Issues

@@ -1,0 +1,28 @@
+# The settings singleton's honest lane: the REGION arm only, asserting
+# opt-ins that match AWS's own defaults (EBS/EC2 true) so the
+# no-op-delete persistence leaves the shared test account exactly as
+# AWS ships it. The GLOBAL arm (cross-account backup) is a recorded
+# deferral: it is an organizations-level control on the shared
+# account, and destroy would NOT revert it. Both arms' deletes are
+# provider no-ops -- the verifier's absent phase asserts the object
+# still answers, never disappearance.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupSettings
+metadata:
+  name: planton-oss-e2e-awsbks
+  id: planton-oss-e2e-awsbks
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbackupsettings
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  regionSettings:
+    resourceTypeOptInPreference:
+      EBS: true
+      EC2: true

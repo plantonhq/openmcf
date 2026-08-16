@@ -401,6 +401,18 @@ Fields on other kinds that can point at this resource:
 | AwsAlb | `spec.securityGroups` | `status.outputs.security_group_id` |
 | AwsAppRunnerVpcConnector | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsBatchComputeEnvironment | `spec.computeResources.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].runtimeEnvironment.network.vpcConfig.securityGroups` | `status.outputs.security_group_id` |
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].customJwtAuthorizer.privateEndpoint.managedVpc.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsBedrockAgentCoreGateway | `spec.customJwtAuthorizer.privateEndpoint.managedVpc.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsBedrockAgentCoreGateway | `spec.customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsBedrockAgentCoreGateway | `spec.targets[].privateEndpoint.managedVpc.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsBedrockAgentCoreRuntime | `spec.network.vpcConfig.securityGroups` | `status.outputs.security_group_id` |
+| AwsBedrockAgentCoreRuntime | `spec.customJwtAuthorizer.privateEndpoint.managedVpc.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsBedrockAgentCoreRuntime | `spec.customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsBedrockAgentCoreTools | `spec.browsers[].network.vpcConfig.securityGroups` | `status.outputs.security_group_id` |
+| AwsBedrockAgentCoreTools | `spec.codeInterpreters[].network.vpcConfig.securityGroups` | `status.outputs.security_group_id` |
+| AwsBedrockCustomModel | `spec.vpcConfig.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsClientVpn | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsCodeBuildProject | `spec.environment.dockerServer.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsCodeBuildProject | `spec.vpcConfig.securityGroupIds` | `status.outputs.security_group_id` |
@@ -443,6 +455,8 @@ Fields on other kinds that can point at this resource:
 | AwsSagemakerDomain | `spec.defaultSpaceSettings.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsSagemakerDomain | `spec.domainSecurityGroupIds` | `status.outputs.security_group_id` |
 | AwsSagemakerDomain | `spec.userProfiles[].userSettings.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsSagemakerModel | `spec.vpcConfig.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsSagemakerNotebookInstance | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsSecurityGroup | `spec.ingress[].sourceSecurityGroupIds` | `status.outputs.security_group_id` |
 | AwsSecurityGroup | `spec.ingress[].destinationSecurityGroupIds` | `status.outputs.security_group_id` |
 | AwsSecurityGroup | `spec.egress[].sourceSecurityGroupIds` | `status.outputs.security_group_id` |
