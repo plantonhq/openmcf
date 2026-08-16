@@ -341,6 +341,48 @@ holding a frontend in the fixture subnet) blocks the entire reverse teardown
 chain behind it. Destroying a stack whose update failed is safe; it removes
 whatever was actually created.
 
+### Scenario-declared data-plane setup (the SETUP phase)
+
+Some scenarios need an asset that no catalog kind can create because it is
+DATA-PLANE CONTENT inside a fixture, not a control-plane object -- the first
+user: Azure ML refuses to provision a managed online deployment without a
+registered model, and a model registration is a file upload into the fixture
+workspace, unreachable by any fixture manifest. Such a scenario declares a
+setup script:
+
+```yaml
+metadata:
+  annotations:
+    planton.dev/e2e-setup-script: "catalog/azure/<kind>/e2e/scenarios/minimal.setup.sh"
+```
+
+The filename MUST end in `.setup.sh`. The repo's blanket `*.sh` gitignore would otherwise leave the script only on the machine that wrote it; a matching exception tracks `catalog/**/e2e/scenarios/*.setup.sh`. A different suffix is an untracked file and a broken lane on every fresh checkout.
+
+The runner executes it as the `SETUP` phase -- after DEPENDENCIES-UP and
+reference resolution (the fixtures the script seeds into exist), before
+VALIDATE (a seeding failure stops the lane before any component deploy). The
+script runs via bash from the repo root, once per engine lane, inheriting the
+process environment (cloud CLI logins, the harness's `ARM_*`/`PLANTON_E2E_*`
+exports) plus `E2E_RUN_ID` (engine-scoped) and `E2E_SCENARIO`. A non-zero
+exit fails the lane; the dependency chain still tears down.
+
+Rules that keep the seam honest:
+
+- **Control-plane objects never enter here.** Anything a catalog kind can
+  create must keep entering through registry prerequisites or the
+  `e2e-prerequisites` annotation -- those paths carry the teardown and
+  orphan-sweep guarantees a script dodges.
+- **Seed ONLY into fixture-owned resources.** There is deliberately no
+  teardown pair: everything the script creates must die with the fixture
+  chain at DEPENDENCIES-DOWN, or the zero-orphan sweep is lying.
+- **Idempotent per lane** (an in-lane retry may re-run it), and any remote
+  artifact it fetches is pinned (commit SHA + checksum) so the lane's inputs
+  cannot drift under it.
+- **Bash 3.2 portable.** The runner invokes `bash`, and macOS ships 3.2 --
+  no associative arrays (`declare -A`), no `mapfile`. A `set -u` script
+  that uses `[MLmodel]=` as an array key dies as "unbound variable"
+  before any fetch (live-caught on the first SETUP-phase lane).
+
 ### Bare polymorphic references need an explicit `kind:` in scenario valueFrom
 
 Reference resolution determines the referenced kind from the `valueFrom.kind`
@@ -632,6 +674,25 @@ gateway slot, so a P2S lane and an S2S lane never collide on the slot,
 but two P2S lanes sharing a fixture hub must run SEQUENTIALLY, and a
 wedged gateway teardown blocks the hub's P2S slot AND the hub's own
 deletion until swept.
+
+### Long-running Azure components (ML managed online deployments)
+
+A managed online deployment provisions a real VM (no scale-to-zero).
+Measured live (one Standard_F2s_v2, eastus, both engines): create
+**17-18 minutes**, delete **~6 minutes**. The lane also pays the
+fixture workspace chain plus a fixture endpoint (~10-12 min up,
+~8 min down) and a SETUP-phase model registration (~20 s). A
+single-engine lane totals **~42-44 minutes**; budget `-timeout=90m`
+per engine. The instance bills from provisioning to destroy.
+
+Azure's MFE can answer the create LRO with `InternalServerError`
+("Internal error. Please see troubleshooting guide") in under a
+minute -- `percentComplete: 0`, no field detail. The same body
+succeeds on retry (and succeeded on the other engine minutes
+earlier). Treat that 500 as a transient service fault: wait out
+the failed lane's teardown, retry once, do not debug the module.
+A second identical 500 is the finding (quota, image-build, or a
+real body defect) and gets its own recorded boundary.
 
 ### A dirty `e2e/profile.yaml` on a shared checkout is a LIVE proof lane's state
 

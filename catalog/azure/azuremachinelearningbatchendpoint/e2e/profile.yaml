@@ -3,20 +3,16 @@ kind: ComponentE2EProfile
 metadata:
   name: azuremachinelearningbatchendpoint
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests, both
-  # engine builds, offline tofu plan green); live dual-engine proof has
-  # not yet run. The endpoint OBJECT creates in minutes and is a pure
-  # routing object -- no compute, no idle cost; the time lives in its
-  # chain (the fixture workspace and its companions). The scenario
-  # proves the Entra-auth default (AADToken -- the only mode the batch
-  # service accepts; the service's rejection of key modes is documented
-  # upstream and the spec's vocabulary encodes it) with a system
-  # identity and the scoring/swagger URI read-back; the
-  # default-deployment pointer is offline-proven only this wave (it
-  # names a deployment -- the deployment lane's territory). SECOND
-  # raw-API (azapi / azure-native) group to reach the proof lane,
-  # riding the online pair's machinery unchanged.
+  # Proven live on both engines: an Entra-auth (AADToken default)
+  # system-identity endpoint on the fixture workspace -- a pure
+  # routing object, free at rest, minutes-class create; scoring/
+  # swagger URI read-back 4/5 (the swagger URI reads back empty on a
+  # deployment-less endpoint -- populated only once a deployment
+  # serves). The Terraform blind import round-trip is clean under the
+  # shared azapi catalog tolerances. The default-deployment pointer
+  # stays offline-proven (it names a deployment -- the deployment
+  # kind's territory).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 45

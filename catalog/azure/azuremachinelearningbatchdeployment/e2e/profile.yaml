@@ -3,21 +3,20 @@ kind: ComponentE2EProfile
 metadata:
   name: azuremachinelearningbatchdeployment
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests, both
-  # engine builds, offline tofu plan green); live dual-engine proof has
-  # not yet run. The deployment is a job RECIPE -- nothing provisions
-  # and nothing bills at create time (compute materializes per job, and
-  # no lane ever submits a job); the time lives in its chain (the
-  # fixture workspace and the fixture batch endpoint). The smoke
-  # scenario is deliberately BARE -- no model, no compute -- and
-  # whether the service accepts a bare batch deployment is itself the
-  # lane's proof point (the ARM schema allows it; the fallback -- a
-  # minimal registered model as a scenario-declared fixture -- rides
-  # the queue's watch-list). The model union's dataPath/outputPath
-  # arms, the pipeline-component recipe, and the batching dials are
-  # offline-proven only this wave (they need registered assets no
-  # catalog kind creates).
+  # The deployment is a job RECIPE -- nothing provisions and nothing
+  # bills at create time (compute materializes per job, and no lane
+  # ever submits a job); the time lives in its chain (the fixture
+  # workspace, the fixture batch endpoint, and the fixture
+  # scale-to-zero compute cluster). The bare-recipe arm the wave
+  # originally gambled on is a live-proven service boundary (400
+  # UserError naming ModelConfiguration.ModelReference and
+  # ComputeConfiguration.ComputeId, ArgumentNullOrEmpty -- now a
+  # spec CEL), so the smoke serves a SETUP-seeded MLflow model on
+  # the fixture cluster instead. The model union's dataPath/
+  # outputPath arms, the pipeline-component recipe, and the batching
+  # dials are offline-proven only this wave (they need registered
+  # assets no catalog kind creates).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 45

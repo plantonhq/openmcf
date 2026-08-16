@@ -585,7 +585,7 @@ func TestAzureMachineLearningOnlineEndpoint_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azuremachinelearningonlineendpoint", "terraform")
 }
 
-// --- Azure ML Online Deployment (composed: workspace chain -> fixture endpoint -> one Standard_F2s_v2 managed instance; 10-20 min provisioning, bills until destroy -- no scale-to-zero. Model-less by design: whether the service accepts a bare managed deployment is the lane's proof point; deployment names are endpoint-scoped, so scenarios carry the run-id token because both engines attach to the SAME fixture endpoint) ---
+// --- Azure ML Online Deployment (composed: workspace chain -> fixture endpoint -> one Standard_F2s_v2 managed instance serving a SETUP-seeded MLflow model; 10-20 min provisioning, bills until destroy -- no scale-to-zero. A model is required live: the service rejects a model-less managed create with a bare 400 despite the ARM schema marking model/environment/code optional; deployment names are endpoint-scoped, so scenarios carry the run-id token because both engines attach to the SAME fixture endpoint) ---
 
 func TestAzureMachineLearningOnlineDeployment_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "azuremachinelearningonlinedeployment", "pulumi")
@@ -603,7 +603,7 @@ func TestAzureMachineLearningBatchEndpoint_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azuremachinelearningbatchendpoint", "terraform")
 }
 
-// --- Azure ML Batch Deployment (composed: workspace chain -> fixture batch endpoint -> a BARE recipe; nothing provisions or bills at create -- compute materializes per job and no lane submits one. Whether the service accepts a bare batch deployment is the lane's proof point; deployment names are endpoint-scoped, so scenarios carry the run-id token because both engines attach to the SAME fixture endpoint) ---
+// --- Azure ML Batch Deployment (composed: workspace chain -> fixture batch endpoint + fixture scale-to-zero compute cluster -> a Model-type recipe serving a SETUP-seeded MLflow model; nothing provisions or bills -- compute materializes per job and no lane submits one. A model AND a compute are required live: the service rejects a bare recipe with 400 UserError naming both properties (now a spec CEL); deployment names are endpoint-scoped, so scenarios carry the run-id token because both engines attach to the SAME fixture endpoint) ---
 
 func TestAzureMachineLearningBatchDeployment_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "azuremachinelearningbatchdeployment", "pulumi")
