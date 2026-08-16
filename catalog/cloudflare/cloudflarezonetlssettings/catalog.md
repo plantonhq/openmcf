@@ -159,7 +159,7 @@ spec:
 
 ## Related Components
 
-- [Cloudflare DNS Zone](/docs/catalog/cloudflare/cloudflarednszone) -- the zone whose TLS posture this resource manages, referenced by `zoneId`
-- [Cloudflare Certificate Pack](/docs/catalog/cloudflare/cloudflarecertificatepack) -- advanced edge certificates, often the coverage that makes disabling Universal SSL safe
-- [Cloudflare Custom Hostname](/docs/catalog/cloudflare/cloudflarecustomhostname) -- TLS for SaaS vanity hostnames outside this zone
-- [Cloudflare Zone Settings](/docs/catalog/cloudflare/cloudflarezonesettings) -- zone-wide settings like minimum TLS version and Always Use HTTPS
+- **CloudflareDnsZone** -- the zone whose TLS posture this resource manages, referenced by `zoneId`
+- **CloudflareCertificatePack** -- advanced edge certificates, often the coverage that makes disabling Universal SSL safe
+- **CloudflareCustomHostname** -- TLS for SaaS vanity hostnames outside this zone
+- **CloudflareZoneSettings** -- zone-wide settings like minimum TLS version and Always Use HTTPS

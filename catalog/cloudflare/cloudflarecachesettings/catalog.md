@@ -141,7 +141,7 @@ spec:
 
 ## Related Components
 
-- [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) -- the zone whose cache posture this resource manages, referenced via `zoneId`
-- [**Cloudflare Zone Settings**](/cloud-catalog/cloudflare-zone-settings) -- general zone settings (SSL mode, minification, security level)
-- [**Cloudflare Zone TLS Settings**](/cloud-catalog/cloudflare-zone-tls-settings) -- the zone's TLS-specific posture
-- [**Cloudflare Ruleset**](/cloud-catalog/cloudflare-ruleset) -- per-URL cache rules (TTLs, cache keys, bypass) via the cache settings phase
+- **CloudflareDnsZone** -- the zone whose cache posture this resource manages, referenced via `zoneId`
+- **CloudflareZoneSettings** -- general zone settings (SSL mode, minification, security level)
+- **CloudflareZoneTlsSettings** -- the zone's TLS-specific posture
+- **CloudflareRuleset** -- per-URL cache rules (TTLs, cache keys, bypass) via the cache settings phase

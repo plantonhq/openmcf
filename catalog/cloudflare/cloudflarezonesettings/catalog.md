@@ -16,7 +16,7 @@ Zone settings and the waiting-room toggle have no delete at Cloudflare: destroy 
 
 ## Prerequisites
 
-- **A Cloudflare zone** -- typically a [CloudflareDnsZone](/docs/catalog/cloudflare/cloudflarednszone) resource whose `zone_id` output this resource references, or a literal zone ID from the dashboard
+- **A Cloudflare zone** -- typically a CloudflareDnsZone resource whose `zone_id` output this resource references, or a literal zone ID from the dashboard
 - **A Cloudflare API token** with Zone Settings Edit permission on the target zone (managed transforms, URL normalization, and origin cloud regions ride the same zone-scoped token)
 - **The right zone plan for gated settings** -- `advancedDdos`, `orangeToOrange`, `prefetchPreload`, `responseBuffering`, `sortQueryStringForCache`, `trueClientIpHeader`, and `proxyReadTimeout` need Enterprise; `polish`, `mirage`, and `imageResizing` need Pro or above. The apply fails with the API's editable=false error on a plan that lacks a setting; nothing is billed or upgraded
 
@@ -205,7 +205,7 @@ spec:
 
 ## Related Components
 
-- [CloudflareDnsZone](/docs/catalog/cloudflare/cloudflarednszone) -- creates the zone this resource configures and owns the DNS-level settings (SOA, NS TTL, DNSSEC) that are out of scope here; its `zone_id` output is this resource's foreign key
-- [CloudflareCacheSettings](/docs/catalog/cloudflare/cloudflarecachesettings) -- cache rules, tiered caching, and cache reserve for the same zone
-- [CloudflareZoneTlsSettings](/docs/catalog/cloudflare/cloudflarezonetlssettings) -- advanced per-zone TLS configuration beyond this resource's TLS toggles
-- [CloudflareRuleset](/docs/catalog/cloudflare/cloudflareruleset) -- per-request overrides of these zone-wide settings via the `http_config_settings` phase
+- **CloudflareDnsZone** -- creates the zone this resource configures and owns the DNS-level settings (SOA, NS TTL, DNSSEC) that are out of scope here; its `zone_id` output is this resource's foreign key
+- **CloudflareCacheSettings** -- cache rules, tiered caching, and cache reserve for the same zone
+- **CloudflareZoneTlsSettings** -- advanced per-zone TLS configuration beyond this resource's TLS toggles
+- **CloudflareRuleset** -- per-request overrides of these zone-wide settings via the `http_config_settings` phase
