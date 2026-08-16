@@ -1,0 +1,3 @@
+name: awsorganization
+runtime: go
+description: Pulumi module to manage THE AWS Organization with its folded service access, delegated administrators, and resource policy

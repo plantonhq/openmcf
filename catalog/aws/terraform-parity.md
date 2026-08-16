@@ -28,10 +28,10 @@ that has progressed.
 | | |
 |---|---|
 | Provider schema (parity baseline) | `aws@6.58.0` |
-| Kinds in the catalog | 165 |
-| Distinct provider resources consumed | 403 |
-| Spec fields authored across all kinds | 6217 |
-| Module pins on `aws` | `~> 6.58` × 165 |
+| Kinds in the catalog | 169 |
+| Distinct provider resources consumed | 413 |
+| Spec fields authored across all kinds | 6267 |
+| Module pins on `aws` | `~> 6.58` × 169 |
 | Module pins on `time` | `~> 0.13` × 1 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -46,7 +46,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**165 of 165 kinds are at total accounting; 113 proven live.**
+**169 of 169 kinds are at total accounting; 113 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -165,6 +165,10 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsNlb | 68 | 10 | 10 | 48 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsOpenSearchDomain | 90 | 51 | 30 | 9 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsOpenSearchServerlessCollection | 24 | 8 | 4 | 12 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsOrganization | 9 | 5 | 1 | 3 | 0 | ✅ | — |
+| AwsOrganizationAccount | 31 | 20 | 5 | 6 | 0 | ✅ | — |
+| AwsOrganizationPolicy | 10 | 3 | 2 | 5 | 0 | ✅ | — |
+| AwsOrganizationalUnit | 4 | 1 | 1 | 2 | 0 | ✅ | — |
 | AwsPlantonRunner | 0 | 0 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRdsCluster | 143 | 84 | 19 | 40 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRdsInstance | 119 | 65 | 20 | 34 | 0 | ✅ | ✅ pulumi, terraform |
@@ -222,11 +226,11 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 402 | consumed by a kind's Terraform module today |
+| Modeled | 412 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
-| Composed | 28 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 591 | judged to be covered by a planned kind or planned composition, not built yet |
-| Deferred | 541 | deliberately not offered, each with the recorded reason |
+| Composed | 29 | capability covered through an existing kind's surface rather than a kind of its own |
+| Planned | 579 | judged to be covered by a planned kind or planned composition, not built yet |
+| Deferred | 542 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
 
@@ -235,10 +239,13 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (402)
+### Modeled (412)
 
 | Resource | Consuming kinds |
 |---|---|
+| `aws_account_alternate_contact` | consumed by AwsOrganizationAccount |
+| `aws_account_primary_contact` | consumed by AwsOrganizationAccount |
+| `aws_account_region` | consumed by AwsOrganizationAccount |
 | `aws_acm_certificate` | consumed by AwsCertManagerCert |
 | `aws_acm_certificate_validation` | consumed by AwsCertManagerCert |
 | `aws_api_gateway_account` | consumed by AwsApiGatewayAccountSettings |
@@ -532,6 +539,13 @@ rather than trusted.
 | `aws_opensearchserverless_collection` | consumed by AwsOpenSearchServerlessCollection |
 | `aws_opensearchserverless_lifecycle_policy` | consumed by AwsOpenSearchServerlessCollection |
 | `aws_opensearchserverless_security_policy` | consumed by AwsOpenSearchServerlessCollection |
+| `aws_organizations_account` | consumed by AwsOrganizationAccount |
+| `aws_organizations_delegated_administrator` | consumed by AwsOrganization |
+| `aws_organizations_organization` | consumed by AwsOrganization |
+| `aws_organizations_organizational_unit` | consumed by AwsOrganizationalUnit |
+| `aws_organizations_policy` | consumed by AwsOrganizationPolicy |
+| `aws_organizations_policy_attachment` | consumed by AwsOrganizationPolicy |
+| `aws_organizations_resource_policy` | consumed by AwsOrganization |
 | `aws_rds_cluster` | consumed by AwsRdsCluster |
 | `aws_rds_cluster_activity_stream` | consumed by AwsRdsCluster |
 | `aws_rds_cluster_endpoint` | consumed by AwsRdsCluster |
@@ -642,7 +656,7 @@ rather than trusted.
 | `aws_wafv2_web_acl_association` | consumed by AwsAlb, AwsAppRunnerService |
 | `aws_wafv2_web_acl_logging_configuration` | consumed by AwsWafWebAcl |
 
-### Composed (28)
+### Composed (29)
 
 | Resource | Recorded reason |
 |---|---|
@@ -658,6 +672,7 @@ rather than trusted.
 | `aws_kms_key_policy` | covered by AwsKmsKey spec.policy -- the standalone resource is the detached-management pattern for keys owned elsewhere |
 | `aws_nat_gateway_eip_association` | covered by AwsNatGateway's existing EIP fields -- secondary_allocation_ids (zonal public gateways) and availability_zone_addresses[].allocation_ids (regional gateways) declare the same associations declaratively; the standalone association resource exists for imperatively attaching EIPs to gateways not owned by the same configuration, an anti-pattern for a kind that owns its gateway |
 | `aws_opensearch_domain_policy` | standalone twin of the domain's own access_policies argument, which AwsOpenSearchDomain models directly; the standalone resource exists for out-of-band policy management |
+| `aws_organizations_aws_service_access` | covered by AwsOrganization's own aws_service_access_principals field (the organization resource's argument) -- the provider's docs warn that managing the same principal through this standalone resource AND the organization argument produces a perpetual diff, so the declarative home is the org spec (re-judged 2026-08-16 from the founding fold-into-AwsOrganization plan on that schema evidence) |
 | `aws_redshift_cluster_iam_roles` | attaches/detaches IAM roles on an existing cluster -- an out-of-band alternative to the inline surface AwsRedshiftCluster spec.iam_roles already owns (the autoscaling-attachment class) |
 | `aws_secretsmanager_tag` | the per-tag granular twin of the secret's own tags argument -- AwsSecretsManagerSecret's module-wired identity tag map owns the surface (the ecs_tag/ec2_tag imperative-helper class) |
 | `aws_security_group_rule` | covered by AwsSecurityGroup's inline ingress/egress rules (same payload: protocol/ports/CIDRs/prefix lists/groups/self/description); the legacy standalone rule resource cannot be mixed with inline rules on one group -- the module's inline blocks are the single owner of the rule set |
@@ -675,15 +690,12 @@ rather than trusted.
 | `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
 | `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (591)
+### Planned (579)
 
 | Resource | Recorded reason |
 |---|---|
 | `aws_accessanalyzer_analyzer` | judged as a planned AwsIamAccessAnalyzer kind (analyzer with archive rules folding in) |
 | `aws_accessanalyzer_archive_rule` | judged as a planned AwsIamAccessAnalyzer kind (analyzer with archive rules folding in) |
-| `aws_account_alternate_contact` | account-level contact and region-enablement settings fold into the planned AwsOrganizationAccount kind |
-| `aws_account_primary_contact` | account-level contact and region-enablement settings fold into the planned AwsOrganizationAccount kind |
-| `aws_account_region` | account-level contact and region-enablement settings fold into the planned AwsOrganizationAccount kind |
 | `aws_acmpca_certificate` | judged as a planned AwsPrivateCa kind (certificate authority, CA certificate, issued certificates, permission, policy) |
 | `aws_acmpca_certificate_authority` | judged as a planned AwsPrivateCa kind (certificate authority, CA certificate, issued certificates, permission, policy) |
 | `aws_acmpca_certificate_authority_certificate` | judged as a planned AwsPrivateCa kind (certificate authority, CA certificate, issued certificates, permission, policy) |
@@ -1026,15 +1038,6 @@ rather than trusted.
 | `aws_opensearchserverless_collection_group` | a shared OCU-capacity container many collections join -- its own lifecycle and capacity limits fail a fold into the per-collection kind (the standalone-vs-satellite test); judged as a future AwsOpenSearchServerlessCollectionGroup kind (AwsOpenSearchServerlessCollection models the membership side via collection_group_name) |
 | `aws_opensearchserverless_security_config` | account-level Dashboards identity-provider configuration (SAML / IAM Identity Center / IAM federation) shared by every collection -- never per-collection surface; judged as a future AwsOpenSearchServerlessSecurityConfig kind (the session's collection close split the founding blanket) |
 | `aws_opensearchserverless_vpc_endpoint` | the consumer-side VPC endpoint referenced by many collections' network policies -- own lifecycle in the consumer's VPC (the managed-OpenSearch vpc_endpoint split, verbatim); judged as a future AwsOpenSearchServerlessVpcEndpoint kind (AwsOpenSearchServerlessCollection models the reference side via network.vpc_endpoint_ids) |
-| `aws_organizations_account` | judged as a planned AwsOrganizationAccount kind |
-| `aws_organizations_aws_service_access` | judged as a planned AwsOrganization kind (organization, service access, delegated administrators, resource policies) |
-| `aws_organizations_delegated_administrator` | judged as a planned AwsOrganization kind (organization, service access, delegated administrators, resource policies) |
-| `aws_organizations_organization` | judged as a planned AwsOrganization kind (organization, service access, delegated administrators, resource policies) |
-| `aws_organizations_organizational_unit` | judged as a planned AwsOrganizationalUnit kind |
-| `aws_organizations_policy` | judged as a planned AwsOrganizationPolicy kind (policies with attachments) |
-| `aws_organizations_policy_attachment` | judged as a planned AwsOrganizationPolicy kind (policies with attachments) |
-| `aws_organizations_resource_policy` | judged as a planned AwsOrganization kind (organization, service access, delegated administrators, resource policies) |
-| `aws_organizations_tag` | judged as a planned AwsOrganization kind (organization, service access, delegated administrators, resource policies) |
 | `aws_pipes_pipe` | judged as a planned AwsEventbridgePipe kind |
 | `aws_placement_group` | judged as a planned AwsPlacementGroup kind (re-judged 2026-08-11 from the blanket fold-into-AwsEc2Instance reason): an account-level placement strategy (cluster/partition/spread) consumed by many instances and ASGs -- AwsEc2Instance.placement references a group by name/id but cannot create one |
 | `aws_prometheus_alert_manager_definition` | judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging) |
@@ -1271,7 +1274,7 @@ rather than trusted.
 | `aws_xray_sampling_rule` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 | `aws_xray_trace_segment_destination` | judged as a planned AwsXraySettings kind (sampling rules, groups, indexing, encryption, trace destinations, resource policies) |
 
-### Deferred (541)
+### Deferred (542)
 
 | Resource | Recorded reason |
 |---|---|
@@ -1628,6 +1631,7 @@ rather than trusted.
 | `aws_opensearch_application` | OpenSearch UI applications; deferred pending demand |
 | `aws_opensearch_inbound_connection_accepter` | cross-cluster search connections; deferred pending demand |
 | `aws_opensearch_outbound_connection` | cross-cluster search connections; deferred pending demand |
+| `aws_organizations_tag` | generated per-key tag escape hatch for Organizations objects created OUTSIDE IaC (e.g. Control Tower accounts); it does not honor ignore_tags and duplicates the native tags argument the catalog's kinds model on OU/account/policy/resource-policy -- the aws_dynamodb_tag imperative-helper class (re-judged 2026-08-16 from the founding fold-into-AwsOrganization plan on that schema evidence) |
 | `aws_osis_pipeline` | OpenSearch Ingestion pipelines; deferred pending demand |
 | `aws_osis_pipeline_endpoint` | OpenSearch Ingestion pipelines; deferred pending demand |
 | `aws_osis_resource_policy` | OpenSearch Ingestion pipelines; deferred pending demand |

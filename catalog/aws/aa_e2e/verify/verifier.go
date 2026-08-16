@@ -181,6 +181,11 @@ var verifiers = map[string]Verifier{
 	"awsssmmaintenancewindow":     &ssmMaintenanceWindowVerifier{},
 	"awsssmpatchbaseline":         &ssmPatchBaselineVerifier{},
 
+	"awsorganization":        &organizationVerifier{},
+	"awsorganizationalunit":  &organizationalUnitVerifier{},
+	"awsorganizationaccount": &organizationAccountVerifier{},
+	"awsorganizationpolicy":  &organizationPolicyVerifier{},
+
 	"awstransitgateway":              &transitGatewayVerifier{},
 	"awstransitgatewayvpcattachment": &transitGatewayVpcAttachmentVerifier{},
 	"awstransitgatewayroutetable":    &transitGatewayRouteTableVerifier{},

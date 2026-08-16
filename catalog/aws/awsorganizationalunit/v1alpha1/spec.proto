@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsorganizationalunit.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsOrganizationalUnitSpec defines the desired configuration for one
+// AWS Organizations organizational unit: a container in the
+// organization's OU tree that member accounts are grouped into and
+// organization policies attach to.
+//
+// The OU's display name is an explicit spec field - AWS allows names
+// with spaces and arbitrary characters ("Core Services") that
+// metadata.name cannot carry. AWS identifies the OU as "ou-..." (the
+// import ID); the parent reference is immutable (moving an OU means
+// recreating it), while the name renames in place.
+//
+// Creating OUs requires the ORGANIZATION'S MANAGEMENT account.
+message AwsOrganizationalUnitSpec {
+  // The parent's literal form must be the organization root ("r-...")
+  // or another OU ("ou-...") - the provider's own pattern.
+  option (buf.validate.message).cel = {
+    id: "spec.parent_id_literal_format"
+    message: "a literal parent_id must be an organization root (r-...) or an organizational unit (ou-...)"
+    expression: "!has(this.parent_id.value) || this.parent_id.value.matches('^(r-[0-9a-z]{4,32}|ou-[0-9a-z]{4,32}-[0-9a-z]{8,32})$')"
+  };
+
+  // The AWS region used by the provider while managing the OU.
+  // Organizations is a global service - the OU is the same
+  // everywhere - but every AWS API call is still made against a
+  // regional endpoint, so a region is required.
+  // Example: "us-west-2", "eu-west-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The OU's display name (1-128 characters; spaces and arbitrary
+  // characters are legal - which is why this is an explicit field
+  // rather than metadata.name). Renames apply in place.
+  string ou_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+
+  // The parent this OU hangs under: the organization root for a
+  // first-level OU (the default wiring - an AwsOrganization
+  // reference resolves its root_id), a parent AwsOrganizationalUnit's
+  // ou_id reference for a nested OU, or a literal "r-..."/"ou-..."
+  // ID for a pre-existing tree. IMMUTABLE - changing the parent
+  // forces replacement (AWS moves accounts, not OUs).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef parent_id = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsOrganization,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.root_id"
+  ];
+}

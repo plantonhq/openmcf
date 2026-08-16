@@ -60,19 +60,17 @@ message AwsSesAccountSettingsSuppression {
   // the setting PERSISTS after this component is destroyed (SES has
   // no delete for it; the last-applied reasons stay in effect). To
   // stop suppressing, apply an empty list before destroying.
-  repeated string reasons = 1 [
-    (buf.validate.field).repeated = {
-      unique: true
-      items: {
-        string: {
-          in: [
-            "BOUNCE",
-            "COMPLAINT"
-          ]
-        }
+  repeated string reasons = 1 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: [
+          "BOUNCE",
+          "COMPLAINT"
+        ]
       }
     }
-  ];
+  }];
 }
 
 // AwsSesAccountSettingsVdm configures the Virtual Deliverability

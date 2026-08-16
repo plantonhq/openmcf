@@ -1,0 +1,40 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_organizations_organization:
+    exclusions:
+      # Terraform read-throttling behavior flag (skip the heavy
+      # DescribeOrganization companions on refresh) -- engine behavior,
+      # never organization configuration.
+      - arg: return_organization_only
+        reason: Terraform state-read throttling flag (reads only the DescribeOrganization core on refresh) -- apply/read behavior, not organization configuration
+
+  aws_organizations_delegated_administrator:
+    # Each registration is one spec.delegated_administrators entry.
+    specRoot: spec.delegated_administrators
+
+  aws_organizations_resource_policy:
+    mappings:
+      # The org's singleton resource policy folds in as the structured
+      # spec.resource_policy document (serialized to JSON by the
+      # modules).
+      - arg: content
+        spec: spec.resource_policy
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+specExclusions:
+  # Organizations is a GLOBAL service: none of its resources carries a
+  # region argument. The spec's region drives only the provider
+  # connection.
+  - field: spec.region
+    reason: provider-connection region only -- Organizations is global and none of its resources carries a region argument

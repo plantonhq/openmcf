@@ -132,6 +132,10 @@ import (
 	awsnlbv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsnlb/v1alpha1"
 	awsopensearchdomainv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsopensearchdomain/v1alpha1"
 	awsopensearchserverlesscollectionv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsopensearchserverlesscollection/v1alpha1"
+	awsorganizationv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsorganization/v1alpha1"
+	awsorganizationaccountv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsorganizationaccount/v1alpha1"
+	awsorganizationalunitv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsorganizationalunit/v1alpha1"
+	awsorganizationpolicyv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsorganizationpolicy/v1alpha1"
 	awsplantonrunnerv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsplantonrunner/v1alpha1"
 	awsrdsclusterv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsrdscluster/v1alpha1"
 	awsrdsinstancev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsrdsinstance/v1alpha1"
@@ -776,6 +780,10 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsNlb:                                 &awsnlbv1alpha1.AwsNlb{},
 	cloudresourcekind.CloudResourceKind_AwsOpenSearchDomain:                    &awsopensearchdomainv1alpha1.AwsOpenSearchDomain{},
 	cloudresourcekind.CloudResourceKind_AwsOpenSearchServerlessCollection:      &awsopensearchserverlesscollectionv1alpha1.AwsOpenSearchServerlessCollection{},
+	cloudresourcekind.CloudResourceKind_AwsOrganization:                        &awsorganizationv1alpha1.AwsOrganization{},
+	cloudresourcekind.CloudResourceKind_AwsOrganizationAccount:                 &awsorganizationaccountv1alpha1.AwsOrganizationAccount{},
+	cloudresourcekind.CloudResourceKind_AwsOrganizationPolicy:                  &awsorganizationpolicyv1alpha1.AwsOrganizationPolicy{},
+	cloudresourcekind.CloudResourceKind_AwsOrganizationalUnit:                  &awsorganizationalunitv1alpha1.AwsOrganizationalUnit{},
 	cloudresourcekind.CloudResourceKind_AwsPlantonRunner:                       &awsplantonrunnerv1alpha1.AwsPlantonRunner{},
 	cloudresourcekind.CloudResourceKind_AwsRdsCluster:                          &awsrdsclusterv1alpha1.AwsRdsCluster{},
 	cloudresourcekind.CloudResourceKind_AwsRdsInstance:                         &awsrdsinstancev1alpha1.AwsRdsInstance{},

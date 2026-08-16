@@ -1338,3 +1338,93 @@ spec:
         designation's stable identity (a baseline id or ARN imports
         too; `aws ssm get-default-patch-baseline
         --operating-system <os>` shows the holder).
+
+    # --- Organizations & Account Management (management-account scope;
+    # all global -- the provider validates the org import against the
+    # caller's own organization) ---
+    - terraform_type: aws_organizations_organization
+      pulumi_type: aws:organizations/organization:Organization
+      id_format: "{organization_id}"
+      notes: >-
+        The organization's ID ("o-..."; `aws organizations
+        describe-organization` shows Id) -- the importer hard-errors
+        unless it matches the organization the credentials belong to.
+    - terraform_type: aws_organizations_organizational_unit
+      pulumi_type: aws:organizations/organizationalUnit:OrganizationalUnit
+      id_format: "{ou_id}"
+      notes: >-
+        The OU's ID ("ou-..."; `aws organizations
+        list-organizational-units-for-parent --parent-id <root>` shows
+        Id).
+    - terraform_type: aws_organizations_account
+      pulumi_type: aws:organizations/account:Account
+      id_format: "{account_id}"
+      # close_on_deletion and create_govcloud are engine/creation
+      # behavior never returned by AWS, and role_name has NO read API
+      # at all (the provider's own import test ignores all three; both
+      # engines additionally ignore role_name changes so an import
+      # never plans a destructive replacement).
+      config_only_attributes:
+        - close_on_deletion
+        - create_govcloud
+        - role_name
+      notes: >-
+        The member account's 12-digit ID (`aws organizations
+        list-accounts` shows Id). An underscore-suffixed form
+        "{account_id}_{ALLOW|DENY}" also imports, seeding
+        iam_user_access_to_billing (itself unreadable after creation).
+    - terraform_type: aws_organizations_policy
+      pulumi_type: aws:organizations/policy:Policy
+      id_format: "{policy_id}"
+      # skip_destroy is destroy-time engine behavior, never returned by
+      # AWS (the provider's own import test ignores it).
+      config_only_attributes:
+        - skip_destroy
+      notes: >-
+        The policy's ID ("p-..."; `aws organizations list-policies
+        --filter SERVICE_CONTROL_POLICY` shows Id). AWS-managed
+        policies (FullAWSAccess, ...) refuse to import by design.
+    - terraform_type: aws_organizations_policy_attachment
+      pulumi_type: aws:organizations/policyAttachment:PolicyAttachment
+      id_format: "{target_id}:{policy_id}"
+      config_only_attributes:
+        - skip_destroy
+      notes: >-
+        Colon-separated target and policy -- the TARGET comes first
+        (`aws organizations list-targets-for-policy --policy-id <id>`
+        shows TargetId).
+    - terraform_type: aws_organizations_resource_policy
+      pulumi_type: aws:organizations/resourcePolicy:ResourcePolicy
+      id_format: "{resource_policy_id}"
+      notes: >-
+        The resource policy's ID ("rp-..."; `aws organizations
+        describe-resource-policy` shows ResourcePolicySummary.Id) --
+        the organization's singleton, so the ID is informational.
+    - terraform_type: aws_organizations_delegated_administrator
+      pulumi_type: aws:organizations/delegatedAdministrator:DelegatedAdministrator
+      id_format: "{account_id}/{service_principal}"
+      notes: >-
+        Slash-separated member account ID and service principal (`aws
+        organizations list-delegated-administrators` shows Id per
+        principal).
+    - terraform_type: aws_account_alternate_contact
+      pulumi_type: aws:account/alternativeContact:AlternativeContact
+      id_format: "{account_id}/{alternate_contact_type}"
+      notes: >-
+        Slash-separated account ID and contact type
+        (BILLING|OPERATIONS|SECURITY). A bare contact type imports the
+        caller's own account's contact instead.
+    - terraform_type: aws_account_primary_contact
+      pulumi_type: aws:account/primaryContact:PrimaryContact
+      id_format: "{account_id}"
+      notes: >-
+        The target account's 12-digit ID (`aws account
+        get-contact-information --account-id <id>` shows the contact).
+    - terraform_type: aws_account_region
+      pulumi_type: aws:account/region:Region
+      id_format: "{account_id},{region_name}"
+      notes: >-
+        Comma-separated account ID and region name (`aws account
+        list-regions --account-id <id>` shows RegionName + opt
+        status). A bare region name imports the caller's own account's
+        region instead.

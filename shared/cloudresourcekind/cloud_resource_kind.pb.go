@@ -583,6 +583,32 @@ const (
 	// registry prerequisite either. Identity is the AWS-generated
 	// association UUID.
 	CloudResourceKind_AwsSsmAssociation CloudResourceKind = 1264
+	// THE AWS Organization of the deploying account - creating it makes
+	// the caller the management account. Trusted service access,
+	// delegated administrators, and the org's singleton resource policy
+	// fold in (none has a life of its own; the standalone service-access
+	// resource fights the org's own argument with a perpetual diff).
+	// Deleting this deletes the entire organization. 1270 opens the
+	// Organizations sub-band (1270-1279).
+	CloudResourceKind_AwsOrganization CloudResourceKind = 1270
+	// An organizational unit in the org's OU tree. The display name is
+	// an explicit spec field (OU names allow spaces metadata.name cannot
+	// carry); the parent reference (root or parent OU) is required and
+	// immutable, so the organization is a registry prerequisite.
+	CloudResourceKind_AwsOrganizationalUnit CloudResourceKind = 1271
+	// A MEMBER account of the organization: creation, OU placement, and
+	// the account-level settings satellites (alternate/primary contacts,
+	// opt-in region enablement) fold onto the created account's ID.
+	// Destroy is never a clean delete (remove-from-org or ~90-day
+	// close) - taught on the spec. No registry prerequisite by the
+	// schema-required-only rule (the OU parent reference is optional).
+	CloudResourceKind_AwsOrganizationAccount CloudResourceKind = 1272
+	// An Organizations policy (SCP and its twelve sibling types) with
+	// its folded attachments to roots, OUs, and member accounts. The
+	// policy type must be enabled on the organization first; AWS-managed
+	// policies are never adopted. No registry prerequisite by the
+	// schema-required-only rule (attachments are optional).
+	CloudResourceKind_AwsOrganizationPolicy CloudResourceKind = 1273
 	// Account/region settings singleton (one SES account object per
 	// account+region): the suppression list and VDM posture. 1360 opens
 	// the SES P1 sub-band (1360-1369).
@@ -2012,6 +2038,10 @@ var (
 		1262: "AwsSsmMaintenanceWindow",
 		1263: "AwsSsmPatchBaseline",
 		1264: "AwsSsmAssociation",
+		1270: "AwsOrganization",
+		1271: "AwsOrganizationalUnit",
+		1272: "AwsOrganizationAccount",
+		1273: "AwsOrganizationPolicy",
 		1360: "AwsSesAccountSettings",
 		2000: "AzureResourceGroup",
 		2001: "AzureAksCluster",
@@ -2638,6 +2668,10 @@ var (
 		"AwsSsmMaintenanceWindow":                        1262,
 		"AwsSsmPatchBaseline":                            1263,
 		"AwsSsmAssociation":                              1264,
+		"AwsOrganization":                                1270,
+		"AwsOrganizationalUnit":                          1271,
+		"AwsOrganizationAccount":                         1272,
+		"AwsOrganizationPolicy":                          1273,
 		"AwsSesAccountSettings":                          1360,
 		"AzureResourceGroup":                             2000,
 		"AzureAksCluster":                                2001,
@@ -3475,7 +3509,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x9f\x9f\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xf8\xa0\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -3649,7 +3683,11 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x0eAwsSsmDocument\x10\xed\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsssmd\x128\n" +
 	"\x17AwsSsmMaintenanceWindow\x10\xee\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsssmmw\x124\n" +
 	"\x13AwsSsmPatchBaseline\x10\xef\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsssmpb\x121\n" +
-	"\x11AwsSsmAssociation\x10\xf0\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsssma\x126\n" +
+	"\x11AwsSsmAssociation\x10\xf0\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsssma\x12.\n" +
+	"\x0fAwsOrganization\x10\xf6\t\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awsorg\x127\n" +
+	"\x15AwsOrganizationalUnit\x10\xf7\t\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\bv1alpha1\"\x05awsou:\x02\xf6\t\x127\n" +
+	"\x16AwsOrganizationAccount\x10\xf8\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsoacct\x125\n" +
+	"\x15AwsOrganizationPolicy\x10\xf9\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsopol\x126\n" +
 	"\x15AwsSesAccountSettings\x10\xd0\n" +
 	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssesas\x121\n" +
 	"\x12AzureResourceGroup\x10\xd0\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\bv1alpha1\"\x04azrg0\x01\x121\n" +

@@ -1,0 +1,237 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsorganizationaccount.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsOrganizationAccountSpec defines the desired configuration for one
+// MEMBER account of an AWS Organization: creating the account,
+// placing it in the OU tree, and managing its account-level settings
+// (alternate contacts, primary contact, opt-in region enablement).
+//
+// The account's display name is an explicit spec field - AWS allows
+// names with spaces metadata.name cannot carry. AWS identifies the
+// account by its 12-digit account ID (the import ID; importing an
+// existing member account adopts it without recreating).
+//
+// Everything here runs FROM the organization's management account.
+// The account-settings arms (contacts, regions) additionally require
+// trusted access for AWS Account Management on the organization
+// (service principal "account.amazonaws.com" in the AwsOrganization's
+// aws_service_access_principals).
+//
+// THE DELETE CONTRACT deserves attention. close_on_deletion=false
+// (the default) merely REMOVES the account from the organization on
+// destroy - the account lives on as a standalone AWS account (it must
+// carry standalone billing information for the removal to succeed).
+// close_on_deletion=true CLOSES the account: AWS suspends it for ~90
+// days (PENDING_CLOSURE) before permanent deletion, and account
+// closures are quota-limited per rolling 30 days. Neither path is a
+// clean "delete" - treat member accounts as long-lived.
+message AwsOrganizationAccountSpec {
+  // The parent's literal form must be the organization root ("r-...")
+  // or an OU ("ou-...") - the provider's own pattern.
+  option (buf.validate.message).cel = {
+    id: "spec.parent_id_literal_format"
+    message: "a literal parent_id must be an organization root (r-...) or an organizational unit (ou-...)"
+    expression: "!has(this.parent_id) || !has(this.parent_id.value) || this.parent_id.value.matches('^(r-[0-9a-z]{4,32}|ou-[0-9a-z]{4,32}-[0-9a-z]{8,32})$')"
+  };
+  // Region entries are for_each keys on both engines - duplicates
+  // would silently collapse.
+  option (buf.validate.message).cel = {
+    id: "spec.region_names_unique"
+    message: "regions entries must have unique region names"
+    expression: "this.regions.map(r, r.region_name).unique()"
+  };
+
+  // The AWS region used by the provider while managing the account.
+  // Organizations and Account Management are global services, but
+  // every AWS API call is still made against a regional endpoint, so
+  // a region is required.
+  // Example: "us-west-2", "eu-west-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The member account's display name (1-50 characters; spaces are
+  // legal - which is why this is an explicit field rather than
+  // metadata.name). Renames apply in place through the Account
+  // Management API.
+  string account_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 50
+  }];
+
+  // The email address of the account's root user (6-64 characters,
+  // unique across ALL of AWS). IMMUTABLE - changing it forces
+  // replacement, which is a full member-account lifecycle event (see
+  // the delete contract above).
+  string email = 3 [(buf.validate.field).string = {
+    min_len: 6
+    max_len: 64
+    pattern: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"
+  }];
+
+  // Where the account sits in the OU tree: an AwsOrganizationalUnit
+  // reference (the default wiring), a literal "r-..."/"ou-..." ID, or
+  // unset to leave the account under the organization root. Changing
+  // it MOVES the account in place.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef parent_id = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsOrganizationalUnit,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.ou_id"
+  ];
+
+  // The IAM role AWS pre-creates in the new account for the
+  // management account to assume (1-64 characters of [\w+=,.@-]).
+  // Unset = AWS's default "OrganizationAccountAccessRole". WRITE-ONCE:
+  // it takes effect at account creation, AWS exposes NO API to read it
+  // back, and both engines deliberately ignore later changes (without
+  // that, importing an existing account would plan a destructive
+  // replacement to "set" a value AWS can never echo). Config-only on
+  // import.
+  string role_name = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[\\w+=,.@-]{1,64}$"
+  ];
+
+  // Whether IAM users in the member account may access billing
+  // information (ALLOW) or only the root user may (DENY). Unset =
+  // AWS's default (ALLOW). IMMUTABLE - changing it forces
+  // replacement.
+  string iam_user_access_to_billing = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "ALLOW",
+        "DENY"
+      ]
+    }
+  ];
+
+  // What destroy does to the account: false (default) removes it from
+  // the organization (the account survives standalone); true CLOSES
+  // it (~90-day PENDING_CLOSURE suspension, quota-limited, not
+  // supported for GovCloud accounts). Engine behavior at destroy
+  // time, not account state - imports never see it.
+  bool close_on_deletion = 7;
+
+  // Create a companion GovCloud (US) account alongside the standard
+  // account (the govcloud_id output carries its ID). Decided at
+  // creation - changing it later is silently ignored by AWS
+  // (config-only on import).
+  bool create_govcloud = 8;
+
+  // The account's alternate contacts (billing, operations, security)
+  // - each one AWS routes that category's communications to. Removing
+  // an arm deletes that contact.
+  AwsOrganizationAccountAlternateContacts alternate_contacts = 9;
+
+  // The account's primary contact information (the postal address AWS
+  // keeps on file). AWS provides no delete API for primary contact
+  // information: removing this arm (or destroying the account
+  // resource) leaves the last-written contact in place, and clearing
+  // an optional leaf leaves that leaf's last value on file.
+  AwsOrganizationAccountPrimaryContact primary_contact = 10;
+
+  // Opt-in region enablement for the member account (e.g.
+  // "ap-southeast-3"). Only OPT-IN regions can be managed - regions
+  // enabled by default reject disable attempts. Enabling or disabling
+  // a region is a long operation (up to ~60 minutes each way).
+  // Removing an entry does NOT opt the region back out - the region
+  // keeps its last state (the provider's destroy is a no-op).
+  repeated AwsOrganizationAccountRegion regions = 11;
+}
+
+// AwsOrganizationAccountAlternateContacts groups the three alternate
+// contact categories AWS supports (at most one contact per category).
+message AwsOrganizationAccountAlternateContacts {
+  // The contact AWS routes billing communications to.
+  AwsOrganizationAccountAlternateContact billing = 1;
+
+  // The contact AWS routes operational communications to.
+  AwsOrganizationAccountAlternateContact operations = 2;
+
+  // The contact AWS routes security communications to.
+  AwsOrganizationAccountAlternateContact security = 3;
+}
+
+// AwsOrganizationAccountAlternateContact is one alternate contact.
+// Each imports as "{account_id}/{BILLING|OPERATIONS|SECURITY}".
+message AwsOrganizationAccountAlternateContact {
+  // The contact's name (1-64 characters).
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+
+  // The contact's title (1-50 characters).
+  string title = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 50
+  }];
+
+  // The contact's email address.
+  string email_address = 3 [(buf.validate.field).string.pattern = "^[\\w+=,.-]+@[\\w.-]+\\.[\\w]+$"];
+
+  // The contact's phone number (digits, spaces, parentheses, "+",
+  // and "-").
+  string phone_number = 4 [(buf.validate.field).string.pattern = "^[0-9\\s()+-]+$"];
+}
+
+// AwsOrganizationAccountPrimaryContact is the account's primary
+// contact information (imports by the account ID).
+message AwsOrganizationAccountPrimaryContact {
+  // The full name of the primary contact (1-64 characters).
+  string full_name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+
+  // The company name, if the account belongs to one.
+  string company_name = 2;
+
+  // The first line of the primary contact's address.
+  string address_line_1 = 3 [(buf.validate.field).string.min_len = 1];
+
+  // The second line of the address, if needed.
+  string address_line_2 = 4;
+
+  // The third line of the address, if needed.
+  string address_line_3 = 5;
+
+  // The city of the primary contact's address.
+  string city = 6 [(buf.validate.field).string.min_len = 1];
+
+  // The district or county, if needed.
+  string district_or_county = 7;
+
+  // The state or region. AWS requires it for some countries (e.g.
+  // US, CA) and rejects it for others - AWS validates per country at
+  // apply time.
+  string state_or_region = 8;
+
+  // The postal code of the address.
+  string postal_code = 9 [(buf.validate.field).string.min_len = 1];
+
+  // The ISO-3166 two-letter country code (e.g. "US", "DE").
+  string country_code = 10 [(buf.validate.field).string.pattern = "^[A-Z]{2}$"];
+
+  // The phone number of the primary contact. AWS requires the
+  // leading "+" country code here (unlike alternate contacts).
+  string phone_number = 11 [(buf.validate.field).string.pattern = "^[+][0-9\\s()-]+$"];
+
+  // The website of the company or account, if any.
+  string website_url = 12;
+}
+
+// AwsOrganizationAccountRegion manages one opt-in region's enablement
+// for the account. Each imports as "{account_id},{region_name}".
+message AwsOrganizationAccountRegion {
+  // The opt-in region to manage (e.g. "ap-southeast-3",
+  // "eu-central-2").
+  string region_name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Whether the region is enabled for the account. An entry with
+  // enabled=false actively DISABLES the region (also up to ~60
+  // minutes); removing the entry instead leaves the region as-is.
+  bool enabled = 2;
+}

@@ -1,0 +1,3 @@
+name: awsorganizationaccount
+runtime: go
+description: Pulumi module to manage an AWS Organizations member account with its folded contact and region settings

@@ -1,0 +1,39 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsorganization
+spec:
+  # The organization imports by its "o-..." ID (validated against the
+  # caller's own org). Each delegated-administrator registration
+  # composes its two spec leaves from its own address-key segments
+  # (the module keys entries "{account_id}//{service_principal}"); the
+  # singleton resource policy imports by its cloud-generated "rp-..."
+  # ID via the stack output.
+  values:
+    - name: organization_id
+      derivations:
+        - from_stack_output: organization_id
+      where_to_find: >-
+        Organizations console -> Settings (the organization ID), or
+        `aws organizations describe-organization` (Organization.Id).
+    - name: account_id
+      derivations:
+        - from_address_key_segment: 0
+      where_to_find: >-
+        The delegated member account's 12-digit ID (`aws organizations
+        list-delegated-administrators` shows Id) -- each
+        spec.delegated_administrators entry is its own registration.
+    - name: service_principal
+      derivations:
+        - from_address_key_segment: 1
+      where_to_find: >-
+        The delegated service's principal (e.g. config.amazonaws.com;
+        `aws organizations list-delegated-services-for-account
+        --account-id <id>` shows ServicePrincipal).
+    - name: resource_policy_id
+      derivations:
+        - from_stack_output: resource_policy_id
+      where_to_find: >-
+        `aws organizations describe-resource-policy`
+        (ResourcePolicy.ResourcePolicySummary.Id, "rp-...") -- the
+        organization keeps exactly one.

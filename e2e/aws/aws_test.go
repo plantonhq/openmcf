@@ -1473,6 +1473,38 @@ func TestAwsSsmPatchBaseline_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsssmpatchbaseline", "terraform")
 }
 
+func TestAwsOrganization_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsorganization", "pulumi")
+}
+
+func TestAwsOrganization_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsorganization", "terraform")
+}
+
+func TestAwsOrganizationalUnit_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsorganizationalunit", "pulumi")
+}
+
+func TestAwsOrganizationalUnit_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsorganizationalunit", "terraform")
+}
+
+func TestAwsOrganizationAccount_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsorganizationaccount", "pulumi")
+}
+
+func TestAwsOrganizationAccount_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsorganizationaccount", "terraform")
+}
+
+func TestAwsOrganizationPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsorganizationpolicy", "pulumi")
+}
+
+func TestAwsOrganizationPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsorganizationpolicy", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

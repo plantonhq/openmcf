@@ -175,7 +175,9 @@ message AwsBackupPlanCopyAction {
 // AwsBackupPlanScanAction scans the recovery points one rule creates.
 message AwsBackupPlanScanAction {
   // The scanner. Only "GUARDDUTY" exists at the pinned provider.
-  string malware_scanner = 1 [(buf.validate.field).string = {in: ["GUARDDUTY"]}];
+  string malware_scanner = 1 [(buf.validate.field).string = {
+    in: ["GUARDDUTY"]
+  }];
 
   // Full scan of every recovery point, or incremental scan of changed
   // data only.
@@ -192,7 +194,9 @@ message AwsBackupPlanScanAction {
 message AwsBackupPlanAdvancedBackupSetting {
   // The resource type. The provider accepts exactly "EC2" at the
   // pinned version.
-  string resource_type = 1 [(buf.validate.field).string = {in: ["EC2"]}];
+  string resource_type = 1 [(buf.validate.field).string = {
+    in: ["EC2"]
+  }];
 
   // Backup options for the type - in practice {"WindowsVSS":
   // "enabled"} (or "disabled").
@@ -203,7 +207,9 @@ message AwsBackupPlanAdvancedBackupSetting {
 // malware with GuardDuty (plan-wide, by resource type).
 message AwsBackupPlanScanSetting {
   // The scanner. Only "GUARDDUTY" exists at the pinned provider.
-  string malware_scanner = 1 [(buf.validate.field).string = {in: ["GUARDDUTY"]}];
+  string malware_scanner = 1 [(buf.validate.field).string = {
+    in: ["GUARDDUTY"]
+  }];
 
   // Resource types whose recovery points are scanned (AWS documents
   // "EBS", "EC2", "S3", and "ALL").
@@ -274,7 +280,9 @@ message AwsBackupPlanSelection {
 message AwsBackupPlanSelectionTag {
   // The match operator. Only "STRINGEQUALS" exists at the pinned
   // provider.
-  string type = 1 [(buf.validate.field).string = {in: ["STRINGEQUALS"]}];
+  string type = 1 [(buf.validate.field).string = {
+    in: ["STRINGEQUALS"]
+  }];
 
   // The tag key to match.
   string key = 2 [(buf.validate.field).string.min_len = 1];

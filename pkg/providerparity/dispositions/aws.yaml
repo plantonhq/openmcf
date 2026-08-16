@@ -26,15 +26,6 @@ resources:
   - resource: aws_accessanalyzer_archive_rule
     disposition: model-planned
     reason: "judged as a planned AwsIamAccessAnalyzer kind (analyzer with archive rules folding in)"
-  - resource: aws_account_alternate_contact
-    disposition: model-planned
-    reason: "account-level contact and region-enablement settings fold into the planned AwsOrganizationAccount kind"
-  - resource: aws_account_primary_contact
-    disposition: model-planned
-    reason: "account-level contact and region-enablement settings fold into the planned AwsOrganizationAccount kind"
-  - resource: aws_account_region
-    disposition: model-planned
-    reason: "account-level contact and region-enablement settings fold into the planned AwsOrganizationAccount kind"
   - resource: aws_acmpca_certificate
     disposition: model-planned
     reason: "judged as a planned AwsPrivateCa kind (certificate authority, CA certificate, issued certificates, permission, policy)"
@@ -2345,33 +2336,12 @@ resources:
   - resource: aws_opensearchserverless_vpc_endpoint
     disposition: model-planned
     reason: "the consumer-side VPC endpoint referenced by many collections' network policies -- own lifecycle in the consumer's VPC (the managed-OpenSearch vpc_endpoint split, verbatim); judged as a future AwsOpenSearchServerlessVpcEndpoint kind (AwsOpenSearchServerlessCollection models the reference side via network.vpc_endpoint_ids)"
-  - resource: aws_organizations_account
-    disposition: model-planned
-    reason: "judged as a planned AwsOrganizationAccount kind"
   - resource: aws_organizations_aws_service_access
-    disposition: model-planned
-    reason: "judged as a planned AwsOrganization kind (organization, service access, delegated administrators, resource policies)"
-  - resource: aws_organizations_delegated_administrator
-    disposition: model-planned
-    reason: "judged as a planned AwsOrganization kind (organization, service access, delegated administrators, resource policies)"
-  - resource: aws_organizations_organization
-    disposition: model-planned
-    reason: "judged as a planned AwsOrganization kind (organization, service access, delegated administrators, resource policies)"
-  - resource: aws_organizations_organizational_unit
-    disposition: model-planned
-    reason: "judged as a planned AwsOrganizationalUnit kind"
-  - resource: aws_organizations_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsOrganizationPolicy kind (policies with attachments)"
-  - resource: aws_organizations_policy_attachment
-    disposition: model-planned
-    reason: "judged as a planned AwsOrganizationPolicy kind (policies with attachments)"
-  - resource: aws_organizations_resource_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsOrganization kind (organization, service access, delegated administrators, resource policies)"
+    disposition: composed
+    reason: "covered by AwsOrganization's own aws_service_access_principals field (the organization resource's argument) -- the provider's docs warn that managing the same principal through this standalone resource AND the organization argument produces a perpetual diff, so the declarative home is the org spec (re-judged 2026-08-16 from the founding fold-into-AwsOrganization plan on that schema evidence)"
   - resource: aws_organizations_tag
-    disposition: model-planned
-    reason: "judged as a planned AwsOrganization kind (organization, service access, delegated administrators, resource policies)"
+    disposition: deferred
+    reason: "generated per-key tag escape hatch for Organizations objects created OUTSIDE IaC (e.g. Control Tower accounts); it does not honor ignore_tags and duplicates the native tags argument the catalog's kinds model on OU/account/policy/resource-policy -- the aws_dynamodb_tag imperative-helper class (re-judged 2026-08-16 from the founding fold-into-AwsOrganization plan on that schema evidence)"
   - resource: aws_osis_pipeline
     disposition: deferred
     reason: "OpenSearch Ingestion pipelines; deferred pending demand"

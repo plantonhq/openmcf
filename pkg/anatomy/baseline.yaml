@@ -397,6 +397,18 @@ violations:
   - catalog/aws/awsnlb/iac:missing-permissions
   - catalog/aws/awsnlb:missing-control-profile
   - catalog/aws/awsnlb:missing-cost-profile
+  - catalog/aws/awsorganization/iac:missing-permissions
+  - catalog/aws/awsorganization:missing-control-profile
+  - catalog/aws/awsorganization:missing-cost-profile
+  - catalog/aws/awsorganizationaccount/iac:missing-permissions
+  - catalog/aws/awsorganizationaccount:missing-control-profile
+  - catalog/aws/awsorganizationaccount:missing-cost-profile
+  - catalog/aws/awsorganizationalunit/iac:missing-permissions
+  - catalog/aws/awsorganizationalunit:missing-control-profile
+  - catalog/aws/awsorganizationalunit:missing-cost-profile
+  - catalog/aws/awsorganizationpolicy/iac:missing-permissions
+  - catalog/aws/awsorganizationpolicy:missing-control-profile
+  - catalog/aws/awsorganizationpolicy:missing-cost-profile
   - catalog/aws/awsplantonrunner/iac:missing-permissions
   - catalog/aws/awsplantonrunner:missing-control-profile
   - catalog/aws/awsplantonrunner:missing-cost-profile

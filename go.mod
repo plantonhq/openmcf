@@ -11,7 +11,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources v1.2.0
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azcertificates v1.4.0
 	github.com/Masterminds/sprig v2.15.0+incompatible
-	github.com/aws/aws-sdk-go-v2 v1.43.5
+	github.com/aws/aws-sdk-go-v2 v1.43.6
 	github.com/aws/aws-sdk-go-v2/config v1.32.25
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.24
 	github.com/aws/aws-sdk-go-v2/service/acm v1.30.6
@@ -59,6 +59,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/neptune v1.46.2
 	github.com/aws/aws-sdk-go-v2/service/opensearch v1.73.0
 	github.com/aws/aws-sdk-go-v2/service/opensearchserverless v1.34.5
+	github.com/aws/aws-sdk-go-v2/service/organizations v1.53.8
 	github.com/aws/aws-sdk-go-v2/service/rds v1.119.5
 	github.com/aws/aws-sdk-go-v2/service/redshift v1.63.5
 	github.com/aws/aws-sdk-go-v2/service/redshiftserverless v1.35.10
@@ -74,7 +75,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.73.5
 	github.com/aws/aws-sdk-go-v2/service/sts v1.43.3
 	github.com/aws/aws-sdk-go-v2/service/wafv2 v1.75.0
-	github.com/aws/smithy-go v1.27.7
+	github.com/aws/smithy-go v1.27.8
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
@@ -145,8 +146,8 @@ require (
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.14 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.29 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.36 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.36 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.37 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.37 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.31 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.13 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.22 // indirect
