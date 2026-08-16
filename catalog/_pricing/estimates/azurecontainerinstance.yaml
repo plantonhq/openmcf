@@ -1,0 +1,81 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azurecontainerinstance
+spec:
+  presets:
+    - preset: 01-public-web-container
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Container Instances
+          sku_meter: vCPU duration
+          pricing_unit: vCPU-hours
+          pricing_quantity: "365"
+          quantity_basis: the group allocates 0.5 vCPU (one container, cpu 0.5) and the default Always restart policy keeps it running all month -- 0.5 x 730 hours
+          list_unit_price: "0.0405"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Container Instances' and armRegionName eq 'eastus' and meterName eq 'Standard vCPU Duration' and productName eq 'Container Instances' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "14.7825"
+        - service_name: Container Instances
+          sku_meter: Memory duration
+          pricing_unit: GB-hours
+          pricing_quantity: "730"
+          quantity_basis: the group allocates 1 GB (one container, memory 1) around the clock -- 1 x 730 hours
+          list_unit_price: "0.00445"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Container Instances' and armRegionName eq 'eastus' and meterName eq 'Standard Memory Duration' and productName eq 'Container Instances' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "3.2485"
+      total_list_cost: "18.0310"
+      exclusions:
+        - image pull seconds and registry-side egress precede every start
+        - network egress follows traffic and client placement
+      notes: Billing is per second of allocated capacity, so the 730-hour figure is exact only for a group that never restarts or stops; the liveness probe restarts the container in place without a billing gap.
+    - preset: 02-private-vnet-worker
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Container Instances
+          sku_meter: vCPU duration
+          pricing_unit: vCPU-hours
+          pricing_quantity: "730"
+          quantity_basis: the group allocates 1 vCPU (one container, cpu 1) and the default Always restart policy keeps the worker running all month -- 1 x 730 hours
+          list_unit_price: "0.0405"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Container Instances' and armRegionName eq 'eastus' and meterName eq 'Standard vCPU Duration' and productName eq 'Container Instances' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "29.5650"
+        - service_name: Container Instances
+          sku_meter: Memory duration
+          pricing_unit: GB-hours
+          pricing_quantity: "1460"
+          quantity_basis: the group allocates 2 GB (one container, memory 2) around the clock -- 2 x 730 hours
+          list_unit_price: "0.00445"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Container Instances' and armRegionName eq 'eastus' and meterName eq 'Standard Memory Duration' and productName eq 'Container Instances' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "6.4970"
+      total_list_cost: "36.0620"
+      exclusions:
+        - the delegated subnet and the user-assigned identity are their own components; the group's private IP is free
+        - image pull seconds and registry-side egress precede every start
+        - network egress follows traffic and client placement
+      notes: Private networking changes posture, not price -- the vCPU and memory meters read the same inside a subnet.
+    - preset: 03-run-once-job
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the job's runtime -- the only quantity the meters bill -- is decided by the migration's data, which no manifest can know
+        - Spot capacity bills discounted per-second meters (Standard Spot vCPU Duration / Standard Spot Memory Duration) and can be evicted mid-run, so reruns multiply the billed seconds
+        - the init container bills its startup seconds on the same meters
+        - image pull seconds and registry-side egress precede every start
+      notes: "A run-to-completion job (restart policy Never) has no committed always-on spend: it bills 2 vCPU and 4 GB per second only while migrate.py actually runs, at Spot's discounted rates. The estimate totals to zero not because the job is free but because its duration is unknowable from the manifest -- a ten-minute run bills ten minutes."

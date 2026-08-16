@@ -1,0 +1,39 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuresearchservice
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Azure Cognitive Search
+      sku_meter: search units
+      pricing_unit: hours
+      description: The service bills every search unit (SU) hourly from creation, queried or idle -- SUs = replicas x partitions, so even the smallest billable service (1 replica x 1 partition) pays one SU-hour rate around the clock.
+  cost_drivers:
+    - field_path: sku
+      sku_meter: search units
+      pricing_unit: hours
+      impact: The tier picks the per-SU hourly rate and the capacity behind each SU -- basic is the entry ladder, standard/standard2/standard3 step up storage and throughput per unit, storage-optimized tiers trade compute for disk. The free tier bills nothing and carries no SLA.
+    - field_path: replica_count
+      sku_meter: search units
+      pricing_unit: hours
+      impact: Multiplies the SU count directly -- each replica is a full copy of the search engine (3+ replicas reach the 99.9% read-write SLA). Unset means 1, the service default.
+    - field_path: partition_count
+      sku_meter: search units
+      pricing_unit: hours
+      impact: Multiplies the SU count directly -- each partition adds index storage and indexing throughput. Unset means 1, the service default.
+    - field_path: semantic_search_sku
+      sku_meter: semantic ranking queries
+      impact: The standard semantic tier bills per 1,000 semantic queries on top of the SU hours; the free semantic tier is capped and unbilled.
+    - field_path: shared_private_link_services
+      sku_meter: shared private links
+      impact: Each shared private link is a managed private endpoint to a data source whose charges accrue outside the SU-hour meter.
+  estimate_exclusions:
+    - semantic ranking queries follow query volume
+    - indexer AI enrichment (document cracking, custom skills) bills usage meters that follow document volume
+    - shared private links to data sources carry charges outside the SU-hour meter
+    - network egress follows client placement
+  notes: "The SU product is the whole dedicated bill: (replicas x partitions) x the sku's SU-hour rate. Capacity moves in place along basic -> standard -> standard2 -> standard3; any other sku change replaces the service and restarts its bill at the new rate."

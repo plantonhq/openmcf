@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awselasticacheusergroup
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A user group stores no cache data -- it is a membership list held by the ElastiCache control plane. At-rest encryption of cache data is the attached cache's posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data store here means no key decision (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A group terminates no connections -- TLS is the attached cache's transit-encryption setting (required by AWS before any member with 'iam' authentication can be used).
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A group is not addressable -- it has no endpoint, only a management API governed by IAM. Network exposure belongs to the attached cache.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Network-level ingress to a cache is its security groups' job; this group restricts which IDENTITIES apply to a cache, not where connections come from (see rbac).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: AWS WAF attaches to Layer-7 HTTP entry points; the RBAC attachment unit of a Redis/Valkey cache has no edge surface.
+    - control_id: rbac
+      status: configurable
+      field_path: user_ids
+      evidence:
+        type: spec_default
+        reference: Being the RBAC attachment unit IS this component -- users define WHO and WHAT (identity plus ACL access string), the group defines WHERE by attaching them, as one object, to replication groups and serverless caches. Membership requires at least one user (spec-validated) and updates in place, making user_ids the single place an application's cache access is granted or revoked without the cache ever changing.
+      notes: AWS additionally refuses to create a group without a member whose user NAME is "default" -- the identity that defines what unauthenticated clients may do. The group only accepts users of its own engine and region.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Credential mechanisms live on the member users (an AwsElasticacheUser with 'iam' authentication is the keyless path); the group carries membership, not credentials.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: user_ids
+      evidence:
+        type: spec_default
+        reference: Attaching a user group is the act that moves a cache OFF the legacy model -- one shared AUTH token for every client -- and onto per-application RBAC identities. The mandatory "default"-named member decides the last legacy door -- what a client that never authenticates may do -- and the production pattern the spec documents is a locked-down default user (access string "off ~* +@all", no credential) so anonymous connections are rejected outright.
+      notes: The strength of the resulting posture is the members' -- a permissive default user re-opens anonymous access, which is why membership deserves the same review as the access strings themselves.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Membership changes (who granted an application cache access) land in CloudTrail as account-level posture; connection and command logging belong to the attached cache's log-delivery configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: ElastiCache publishes CloudWatch metrics on cache and node dimensions; a user group has no metric dimension and no export knob.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A group holds no data to back up -- it is a declarative membership list re-creatable from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at the group level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A group is a regional control-plane object with no zonal footprint -- zone redundancy is the attached cache's replica placement.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for user groups.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A group is configuration on a fully managed service -- there is no software of its own to patch.

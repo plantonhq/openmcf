@@ -26,7 +26,6 @@ spec:
         actions:
           - logs:CreateLogGroup
           - logs:DeleteLogGroup
-          - logs:DescribeLogGroups
           - logs:PutRetentionPolicy
           - logs:TagResource
           - logs:UntagResource
@@ -35,6 +34,13 @@ spec:
           - arn:aws:logs:*:*:log-group:*
         provenance: derived
         notes: Covers the module's aws_cloudwatch_log_group, created only when logging is enabled and no existing group is referenced (defaults to /ecs/<family> with 30-day retention).
+      - sid: DescribeLogGroups
+        actions:
+          - logs:DescribeLogGroups
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side of the log group during plan/refresh. The CloudWatch Logs API reference states DescribeLogGroups supports no resource type and requires Resource "*" (the other log-group actions scope to the log-group ARN), so an ARN-scoped grant never matches -- the wildcard is the narrowest possible scope.
       - sid: PassTaskRoles
         actions:
           - iam:PassRole

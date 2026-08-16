@@ -202,3 +202,470 @@ spec:
         arm_region_name: Zone 1
         meter_name: Public Zone
         tier_minimum_units: "0"
+    - name: vm-standard-d2s-v3-eastus
+      service_name: Virtual Machines
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.096"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Machines' and armRegionName eq 'eastus' and armSkuName eq 'Standard_D2s_v3' and meterName eq 'D2s v3' and productName eq 'Virtual Machines DSv3 Series' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      attributes:
+        vm_size: Standard_D2s_v3
+      azure_selector:
+        service_name: Virtual Machines
+        arm_region_name: eastus
+        arm_sku_name: Standard_D2s_v3
+        meter_name: D2s v3
+        product_name: Virtual Machines DSv3 Series
+    - name: aci-standard-vcpu-eastus
+      service_name: Container Instances
+      pricing_unit: vCPU-hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.0405"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Container Instances' and armRegionName eq 'eastus' and meterName eq 'Standard vCPU Duration' and productName eq 'Container Instances' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      azure_selector:
+        service_name: Container Instances
+        arm_region_name: eastus
+        meter_name: Standard vCPU Duration
+        product_name: Container Instances
+    - name: aci-standard-memory-eastus
+      service_name: Container Instances
+      pricing_unit: GB-hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.00445"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Container Instances' and armRegionName eq 'eastus' and meterName eq 'Standard Memory Duration' and productName eq 'Container Instances' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      azure_selector:
+        service_name: Container Instances
+        arm_region_name: eastus
+        meter_name: Standard Memory Duration
+        product_name: Container Instances
+    - name: acr-standard-registry-unit-eastus
+      service_name: Container Registry
+      pricing_unit: days
+      region: eastus
+      currency: USD
+      list_unit_price: "0.6666"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Container Registry' and armRegionName eq 'eastus' and meterName eq 'Standard Registry Unit' and productName eq 'Container Registry' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      attributes:
+        sku: STANDARD
+      azure_selector:
+        service_name: Container Registry
+        arm_region_name: eastus
+        meter_name: Standard Registry Unit
+        product_name: Container Registry
+    - name: acr-premium-registry-unit-eastus
+      service_name: Container Registry
+      pricing_unit: days
+      region: eastus
+      currency: USD
+      list_unit_price: "1.6666"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Container Registry' and armRegionName eq 'eastus' and meterName eq 'Premium Registry Unit' and productName eq 'Container Registry' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      attributes:
+        sku: PREMIUM
+      azure_selector:
+        service_name: Container Registry
+        arm_region_name: eastus
+        meter_name: Premium Registry Unit
+        product_name: Container Registry
+    - name: acr-premium-registry-replication-unit-eastus
+      service_name: Container Registry
+      pricing_unit: days
+      region: eastus
+      currency: USD
+      list_unit_price: "1.6666"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Container Registry' and armRegionName eq 'eastus' and meterName eq 'Premium Registry Replication Unit' and productName eq 'Container Registry' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      azure_selector:
+        service_name: Container Registry
+        arm_region_name: eastus
+        meter_name: Premium Registry Replication Unit
+        product_name: Container Registry
+    - name: mssql-gp-compute-vcore-eastus
+      service_name: SQL Database
+      pricing_unit: vCore-hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.152217"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'SQL Database' and armRegionName eq 'eastus' and armSkuName eq 'SQLDB_GP_Compute_Gen5' and meterName eq 'vCore' and productName eq 'SQL Database Single/Elastic Pool General Purpose - Compute Gen5' and skuName eq 'vCore' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      azure_selector:
+        service_name: SQL Database
+        arm_region_name: eastus
+        arm_sku_name: SQLDB_GP_Compute_Gen5
+        meter_name: vCore
+        product_name: SQL Database Single/Elastic Pool General Purpose - Compute Gen5
+        sku_name: vCore
+    - name: mssql-hyperscale-compute-vcore-eastus
+      service_name: SQL Database
+      pricing_unit: vCore-hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.18266"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'SQL Database' and armRegionName eq 'eastus' and armSkuName eq 'SQLDB_HyperScale_Compute_Gen5' and productName eq 'SQL Database SingleDB/Elastic Pool Hyperscale - Compute Gen5' and skuName eq 'vCore' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      azure_selector:
+        service_name: SQL Database
+        arm_region_name: eastus
+        arm_sku_name: SQLDB_HyperScale_Compute_Gen5
+        product_name: SQL Database SingleDB/Elastic Pool Hyperscale - Compute Gen5
+        sku_name: vCore
+    - name: mssql-bc-compute-vcore-eastus
+      service_name: SQL Database
+      pricing_unit: vCore-hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.304435"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'SQL Database' and armRegionName eq 'eastus' and armSkuName eq 'SQLDB_BC_Compute_Gen5' and meterName eq 'vCore' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      azure_selector:
+        service_name: SQL Database
+        arm_region_name: eastus
+        arm_sku_name: SQLDB_BC_Compute_Gen5
+        meter_name: vCore
+    - name: mssql-gp-storage-eastus
+      service_name: SQL Database
+      pricing_unit: GB-months
+      region: eastus
+      currency: USD
+      list_unit_price: "0.115"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'SQL Database' and armRegionName eq 'eastus' and meterName eq 'General Purpose Data Stored' and productName eq 'SQL Database Single/Elastic Pool General Purpose - Storage' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      azure_selector:
+        service_name: SQL Database
+        arm_region_name: eastus
+        meter_name: General Purpose Data Stored
+        product_name: SQL Database Single/Elastic Pool General Purpose - Storage
+    - name: mssql-bc-storage-eastus
+      service_name: SQL Database
+      pricing_unit: GB-months
+      region: eastus
+      currency: USD
+      list_unit_price: "0.25"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'SQL Database' and armRegionName eq 'eastus' and meterName eq 'Business Critical Data Stored' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      azure_selector:
+        service_name: SQL Database
+        arm_region_name: eastus
+        meter_name: Business Critical Data Stored
+    - name: mssql-gp-sql-license-vcore
+      service_name: SQL Database
+      pricing_unit: vCore-hours
+      region: global
+      currency: USD
+      list_unit_price: "0.099966"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'SQL Database' and armRegionName eq 'Global' and meterName eq 'vCore' and productName eq 'SQL Database Single/Elastic Pool General Purpose - SQL License' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      azure_selector:
+        service_name: SQL Database
+        arm_region_name: Global
+        meter_name: vCore
+        product_name: SQL Database Single/Elastic Pool General Purpose - SQL License
+    - name: mssql-hyperscale-sql-license-vcore
+      service_name: SQL Database
+      pricing_unit: vCore-hours
+      region: global
+      currency: USD
+      list_unit_price: "0.099966"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'SQL Database' and armRegionName eq 'Global' and meterName eq 'vCore' and productName eq 'SQL Database SingleDB/Elastic Pool Hyperscale - SQL License' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      azure_selector:
+        service_name: SQL Database
+        arm_region_name: Global
+        meter_name: vCore
+        product_name: SQL Database SingleDB/Elastic Pool Hyperscale - SQL License
+    - name: mssql-bc-sql-license-vcore
+      service_name: SQL Database
+      pricing_unit: vCore-hours
+      region: global
+      currency: USD
+      list_unit_price: "0.375"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'SQL Database' and armRegionName eq 'Global' and meterName eq 'vCore' and productName eq 'SQL Database Single/Elastic Pool Business Critical - SQL License' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      azure_selector:
+        service_name: SQL Database
+        arm_region_name: Global
+        meter_name: vCore
+        product_name: SQL Database Single/Elastic Pool Business Critical - SQL License
+    - name: mssql-standard-pool-edtu-eastus
+      service_name: SQL Database
+      pricing_unit: eDTU-days
+      region: eastus
+      currency: USD
+      list_unit_price: "0.0725"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'SQL Database' and armRegionName eq 'eastus' and productName eq 'SQL Database Elastic Pool - Standard' and skuName eq '1 DTU' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      azure_selector:
+        service_name: SQL Database
+        arm_region_name: eastus
+        product_name: SQL Database Elastic Pool - Standard
+        sku_name: 1 DTU
+    - name: mysql-flexible-b1ms-eastus
+      service_name: Azure Database for MySQL
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.017"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for MySQL' and armRegionName eq 'eastus' and meterName eq 'B1MS' and productName eq 'Azure Database for MySQL Flexible Server Burstable BS Series Compute' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      azure_selector:
+        service_name: Azure Database for MySQL
+        arm_region_name: eastus
+        meter_name: B1MS
+        product_name: Azure Database for MySQL Flexible Server Burstable BS Series Compute
+    - name: mysql-flexible-gp-ddsv4-vcore-eastus
+      service_name: Azure Database for MySQL
+      pricing_unit: vCore-hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.0855"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for MySQL' and armRegionName eq 'eastus' and armSkuName eq 'AzureDB_MySQL_Flexible_Server_General_Purpose_Ddsv4_Compute' and meterName eq 'vCore' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      azure_selector:
+        service_name: Azure Database for MySQL
+        arm_region_name: eastus
+        arm_sku_name: AzureDB_MySQL_Flexible_Server_General_Purpose_Ddsv4_Compute
+        meter_name: vCore
+    - name: mysql-flexible-storage-eastus
+      service_name: Azure Database for MySQL
+      pricing_unit: GB-months
+      region: eastus
+      currency: USD
+      list_unit_price: "0.115"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for MySQL' and armRegionName eq 'eastus' and meterName eq 'Storage Data Stored' and productName eq 'Azure Database for MySQL Flexible Server Storage' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      azure_selector:
+        service_name: Azure Database for MySQL
+        arm_region_name: eastus
+        meter_name: Storage Data Stored
+        product_name: Azure Database for MySQL Flexible Server Storage
+    - name: mongo-cluster-gp-vcore-eastus
+      service_name: Azure Cosmos DB
+      pricing_unit: vCore-hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.068961"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Cosmos DB' and armRegionName eq 'eastus' and armSkuName eq 'Azure_Cosmos_DB_for_MongoDB_Coordinator_Node_1vCore' and productName eq 'Azure DocumentDB' and skuName eq 'Coordinator Node 1 vCore' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      azure_selector:
+        service_name: Azure Cosmos DB
+        arm_region_name: eastus
+        arm_sku_name: Azure_Cosmos_DB_for_MongoDB_Coordinator_Node_1vCore
+        product_name: Azure DocumentDB
+        sku_name: Coordinator Node 1 vCore
+    - name: mongo-cluster-gp-storage-eastus
+      service_name: Azure Cosmos DB
+      pricing_unit: GB-months
+      region: eastus
+      currency: USD
+      list_unit_price: "0.115"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Cosmos DB' and armRegionName eq 'eastus' and armSkuName eq 'Azure_Cosmos_DB_for_MongoDB_General_Purpose_Storage' and meterName eq 'General Purpose Storage Data Stored' and productName eq 'Azure DocumentDB' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      azure_selector:
+        service_name: Azure Cosmos DB
+        arm_region_name: eastus
+        arm_sku_name: Azure_Cosmos_DB_for_MongoDB_General_Purpose_Storage
+        meter_name: General Purpose Storage Data Stored
+        product_name: Azure DocumentDB
+    - name: redis-cache-standard-c1-eastus
+      service_name: Redis Cache
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.138"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Redis Cache' and armRegionName eq 'eastus' and armSkuName eq 'Azure_Redis_Cache_Standard_C1_Cache' and meterName eq 'C1 Cache' and productName eq 'Azure Redis Cache Standard' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      attributes:
+        cache_capacity: "1"
+        cache_sku: STANDARD
+      azure_selector:
+        service_name: Redis Cache
+        arm_region_name: eastus
+        arm_sku_name: Azure_Redis_Cache_Standard_C1_Cache
+        meter_name: C1 Cache
+        product_name: Azure Redis Cache Standard
+    - name: redis-cache-premium-p1-eastus
+      service_name: Redis Cache
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.555"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Redis Cache' and armRegionName eq 'eastus' and armSkuName eq 'Azure_Redis_Cache_Premium_P1_Cache' and meterName eq 'P1 Cache' and productName eq 'Azure Redis Cache Premium' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      attributes:
+        cache_capacity: "1"
+        cache_sku: PREMIUM
+      azure_selector:
+        service_name: Redis Cache
+        arm_region_name: eastus
+        arm_sku_name: Azure_Redis_Cache_Premium_P1_Cache
+        meter_name: P1 Cache
+        product_name: Azure Redis Cache Premium
+    - name: redis-cache-basic-c0-eastus
+      service_name: Redis Cache
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.022"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Redis Cache' and armRegionName eq 'eastus' and armSkuName eq 'Azure_Redis_Cache_Basic_C0_Cache' and meterName eq 'C0 Cache' and productName eq 'Azure Redis Cache Basic' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      attributes:
+        cache_capacity: "0"
+        cache_sku: BASIC
+      azure_selector:
+        service_name: Redis Cache
+        arm_region_name: eastus
+        arm_sku_name: Azure_Redis_Cache_Basic_C0_Cache
+        meter_name: C0 Cache
+        product_name: Azure Redis Cache Basic
+    - name: search-standard-su-eastus
+      service_name: Azure Cognitive Search
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.336"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Cognitive Search' and armRegionName eq 'eastus' and meterName eq 'Standard S1 Unit' and productName eq 'Azure AI Search' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      attributes:
+        search_sku: standard
+      azure_selector:
+        service_name: Azure Cognitive Search
+        arm_region_name: eastus
+        meter_name: Standard S1 Unit
+        product_name: Azure AI Search
+    - name: search-basic-su-eastus
+      service_name: Azure Cognitive Search
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.101"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Cognitive Search' and armRegionName eq 'eastus' and meterName eq 'Basic Unit' and productName eq 'Azure AI Search' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      attributes:
+        search_sku: basic
+      azure_selector:
+        service_name: Azure Cognitive Search
+        arm_region_name: eastus
+        meter_name: Basic Unit
+        product_name: Azure AI Search
+    - name: appservice-linux-standard-s1-eastus
+      service_name: Azure App Service
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.095"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure App Service' and armRegionName eq 'eastus' and meterName eq 'S1 App' and productName eq 'Azure App Service Standard Plan - Linux' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      attributes:
+        os: LINUX
+        plan_sku: STANDARD_S1
+      azure_selector:
+        service_name: Azure App Service
+        arm_region_name: eastus
+        meter_name: S1 App
+        product_name: Azure App Service Standard Plan - Linux
+    - name: appservice-linux-premium-p1v3-eastus
+      service_name: Azure App Service
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.155"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure App Service' and armRegionName eq 'eastus' and armSkuName eq 'Azure_App_Service_Premium_v3_Plan_Linux_P1_v3' and meterName eq 'P1 v3 App' and productName eq 'Azure App Service Premium v3 Plan - Linux' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      attributes:
+        os: LINUX
+        plan_sku: PREMIUM_P1V3
+      azure_selector:
+        service_name: Azure App Service
+        arm_region_name: eastus
+        arm_sku_name: Azure_App_Service_Premium_v3_Plan_Linux_P1_v3
+        meter_name: P1 v3 App
+        product_name: Azure App Service Premium v3 Plan - Linux
+    - name: fabric-capacity-cu-hour-eastus
+      service_name: Microsoft Fabric
+      pricing_unit: CU-hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.18"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Microsoft Fabric' and armRegionName eq 'eastus' and armSkuName eq 'Compute Pool' and meterName eq 'Compute Pool Capacity Usage CU' and productName eq 'Fabric Capacity' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      azure_selector:
+        service_name: Microsoft Fabric
+        arm_region_name: eastus
+        arm_sku_name: Compute Pool
+        meter_name: Compute Pool Capacity Usage CU
+        product_name: Fabric Capacity
+    - name: eventhubs-dedicated-capacity-unit-eastus
+      service_name: Event Hubs
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "6.849"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Event Hubs' and armRegionName eq 'eastus' and meterName eq 'Dedicated Capacity Unit' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      azure_selector:
+        service_name: Event Hubs
+        arm_region_name: eastus
+        meter_name: Dedicated Capacity Unit
+    - name: eventhubs-standard-throughput-unit-eastus
+      service_name: Event Hubs
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.03"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Event Hubs' and armRegionName eq 'eastus' and meterName eq 'Standard Throughput Unit' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      azure_selector:
+        service_name: Event Hubs
+        arm_region_name: eastus
+        meter_name: Standard Throughput Unit
+    - name: eventhubs-premium-processing-unit-eastus
+      service_name: Event Hubs
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "1.027"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Event Hubs' and armRegionName eq 'eastus' and meterName eq 'Premium Processing Unit' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      azure_selector:
+        service_name: Event Hubs
+        arm_region_name: eastus
+        meter_name: Premium Processing Unit
+    - name: vm-standard-ds3-v2-eastus
+      service_name: Virtual Machines
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.293"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Machines' and armRegionName eq 'eastus' and armSkuName eq 'Standard_DS3_v2' and meterName eq 'DS3 v2' and productName eq 'Virtual Machines DSv2 Series' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      attributes:
+        vm_size: Standard_DS3_v2
+      azure_selector:
+        service_name: Virtual Machines
+        arm_region_name: eastus
+        arm_sku_name: Standard_DS3_v2
+        meter_name: DS3 v2
+        product_name: Virtual Machines DSv2 Series
+    - name: vm-standard-ds3-v2-uppercase-eastus
+      service_name: Virtual Machines
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.293"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Machines' and armRegionName eq 'eastus' and armSkuName eq 'Standard_DS3_v2' and meterName eq 'DS3 v2' and productName eq 'Virtual Machines DSv2 Series' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-16"
+      attributes:
+        vm_size: STANDARD_DS3_V2
+      azure_selector:
+        service_name: Virtual Machines
+        arm_region_name: eastus
+        arm_sku_name: Standard_DS3_v2
+        meter_name: DS3 v2
+        product_name: Virtual Machines DSv2 Series

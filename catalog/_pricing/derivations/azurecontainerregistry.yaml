@@ -1,0 +1,58 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureContainerRegistry manifest's spec values into metered quantities
+# and price choices -- the SKU tier's per-day registry unit, plus one
+# more Premium unit per day for each geo-replica. The estimate
+# generator replays the catalog presets through these rules to emit
+# ../estimates/azurecontainerregistry.yaml; a server-side estimator
+# evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azurecontainerregistry
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  lines:
+    - sku_meter: Registry unit
+      applies_when:
+        - field_path: sku
+          op: not_equals
+          value: BASIC
+      quantity:
+        - constant: "30.4167"
+      price_lookup:
+        service_name: Container Registry
+        pricing_unit: days
+        attributes:
+          - key: sku
+            from_field: sku
+      basis: one registry x 30.4167 days (the 730-hour month / 24, so the per-day meter shares the catalog's hours convention) at the SKU tier's flat daily rate
+    - sku_meter: Geo-replication units
+      applies_when:
+        - field_path: sku
+          op: equals
+          value: PREMIUM
+      quantity:
+        - count_of: georeplications
+        - constant: "30.4167"
+      price_slug: acr-premium-registry-replication-unit-eastus
+      basis: one Premium replication unit per geo-replica x 30.4167 days -- each replica actually bills at its own location's rate, and replica locations are deployment choices, so every replica is assumed at the eastus rate
+  exclusions:
+    - applies_when:
+        - field_path: sku
+          op: equals
+          value: BASIC
+      text: the Basic tier's daily registry-unit meter is not yet in the price book
+    - text: storage beyond the SKU's included quota bills per GB-month (the Data Stored meter), and each geo-replica's storage bills again in its region
+    - text: ACR Tasks (image builds) bill per vCPU-second of build time (the Task vCPU Duration meter)
+    - text: image pulls bill network egress to wherever the pullers run
+  notes:
+    - applies_when:
+        - field_path: zone_redundancy_enabled
+          op: equals
+          value: "true"
+      text: Zone redundancy changes where the registry's data lives, not the daily rate -- the meter is the same.

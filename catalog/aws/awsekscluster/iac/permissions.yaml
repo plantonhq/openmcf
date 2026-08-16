@@ -12,7 +12,6 @@ spec:
     statements:
       - sid: ManageCluster
         actions:
-          - eks:CreateCluster
           - eks:DeleteCluster
           - eks:DescribeCluster
           - eks:UpdateClusterConfig
@@ -23,6 +22,13 @@ spec:
           - arn:aws:eks:*:*:cluster/*
         provenance: derived
         notes: Covers aws_eks_cluster -- the module's only resource. UpdateClusterConfig carries endpoint access, logging, Auto Mode, zonal shift, and deletion-protection changes; UpdateClusterVersion carries in-place upgrades.
+      - sid: CreateCluster
+        actions:
+          - eks:CreateCluster
+        resources:
+          - "*"
+        provenance: derived
+        notes: The service reference lists NO resource types for eks:CreateCluster (the cluster ARN does not exist until the call returns, and the EKS user guide states create actions must use the wildcard), while every other lifecycle action scopes to the cluster ARN -- so the create lives in its own wildcard statement and the scoped statement stays narrow.
       - sid: PassClusterRoles
         actions:
           - iam:PassRole

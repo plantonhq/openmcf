@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awscognitouserpoolclient
+spec:
+  billing_model: free
+  free_tier: An app client is pool-attached OAuth configuration, and AWS states outright that there is no additional charge for the number of app clients registered in an account. Amazon Cognito's meters count monthly active users (MAUs) on the user pool and successful token responses for machine-to-machine traffic -- a client that nobody signs in through and that requests no tokens meters nothing anywhere.
+  notes: "No field of this spec buys anything by existing, but this resource sits directly in front of two usage meters. First, humans who sign in through this client become MAUs billed on the parent AwsCognitoUserPool at its pricing-tier rates (Lite/Essentials/Plus -- the tier lever, including threat protection, lives on the pool; the client-scoped risk_configuration only redirects responses a pool-level feature already paid for). Second -- the meter this spec can switch on -- a client with allowed_oauth_flows of client_credentials is a machine-to-machine client, and every successful token response it obtains bills on Cognito's M2M token-request meter with NO free tier; refresh_token_validity and access_token_validity indirectly shape that volume, since shorter lifetimes mean more token requests. The optional analytics_configuration publishes sign-in/sign-up events to an Amazon Pinpoint project, which bills its own event and endpoint meters on Pinpoint as its own service."

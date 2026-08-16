@@ -1,0 +1,24 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsapprunnervpcconnector
+spec:
+  aws:
+    statements:
+      - sid: ManageVpcConnector
+        actions:
+          - apprunner:CreateVpcConnector
+          - apprunner:DescribeVpcConnector
+          - apprunner:DeleteVpcConnector
+          - apprunner:TagResource
+          - apprunner:UntagResource
+          - apprunner:ListTagsForResource
+        resources:
+          - arn:aws:apprunner:*:*:vpcconnector/*/*/*
+        provenance: derived
+        notes: "Covers aws_apprunner_vpc_connector (tf) / apprunner.VpcConnector (pulumi). All six actions authorize on the vpcconnector ARN per the service reference; its format carries three path segments (name/version/id), hence the triple wildcard. Every field is immutable -- changes create a replacement revision, so no update action exists. No ec2 permissions are needed: the connector object is control-plane configuration, and the ENIs carrying its traffic are provisioned by the App Runner service when running services use the connector."

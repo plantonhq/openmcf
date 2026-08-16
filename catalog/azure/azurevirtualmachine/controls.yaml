@@ -1,0 +1,85 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurevirtualmachine
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure managed disks -- the OS disk and any attached data disks -- are encrypted at rest with platform-managed keys (storage-side encryption) on every disk; it cannot be disabled.
+      notes: Temp disks and disk caches sit on the compute host and are covered only when security.encryption_at_host_enabled is on.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: os_disk.disk_encryption_set_id
+      evidence:
+        type: spec_default
+        reference: Unset means platform-managed keys; referencing a disk encryption set encrypts the OS disk with a Key Vault key you own and can revoke. Confidential VMs use secure_vm_disk_encryption_set_id for the guest-state blob instead.
+      notes: Data disks carry their own encryption sets on their own AzureManagedDisk components.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A VM is raw compute -- what its workloads encrypt in transit is decided inside the guest OS and its applications, not by any field of this manifest. Azure encrypts traffic between its own datacenters (MACsec) independently of anything configured here.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The VM itself carries no exposure surface -- its network presence is the referenced AzureNetworkInterface resources (network_interface_ids), and public IPs live NIC-side. Whether this machine is internet-reachable is decided on those components, deliberately outside this manifest.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound filtering is NSG territory, and NSGs attach to the referenced NICs and their subnets -- first-class components of their own. This spec has no ingress field to configure by design (matching Azure's model, where filtering never lives on the VM resource).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A raw compute instance offers no WAF attachment point; request filtering is composed in front of the VM (Application Gateway, Front Door) against the NIC's addresses, never on the VM resource itself.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane operation on the VM -- create, resize, deallocate, run-command, extension install -- is authorized by Azure RBAC unconditionally. Guest OS logins are separate and governed by the os_profile's credentials.
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: Unset means the workload has no platform identity; SYSTEM_ASSIGNED (or user-assigned identities) lets code on the VM fetch short-lived Entra tokens from the Instance Metadata Service instead of holding static credentials, with grants composed via AzureRoleAssignment.
+      notes: The 03-spot-data-disk preset carries a system-assigned identity for registry pulls and queue access.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: os_profile.linux.disable_password_authentication
+      evidence:
+        type: spec_default
+        reference: Azure's default is true -- SSH password logins are off and keys are the only path; setting it false (with admin_password) reopens password authentication. Spec validation requires at least one SSH key whenever passwords are disabled.
+      notes: Windows VMs authenticate with a password by ARM's own contract (there is no key-based alternative); both Linux presets stay keys-only.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane action on the VM lands in the Azure Activity Log unconditionally -- who resized, who ran a command, who deleted. In-guest audit trails (auth logs, syslog, Windows events) are the guest OS's own and need an agent to export.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Host-level platform metrics (CPU, disk, network) flow to Azure Monitor for every VM with no configuration; boot_diagnostics adds serial console output and boot screenshots (presence enables it, empty uses Azure-managed storage).
+      notes: All three presets enable managed-storage boot diagnostics. Guest-level metrics need the Azure Monitor agent, outside this spec.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Neither the VM API nor this spec carries a backup facility -- Azure Backup is composed vault-side (a Recovery Services vault enrolls the VM), outside this manifest. Data that must survive the machine belongs on referenced data disks, which outlive the VM by design.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility in the spec, there is no retention to configure here; retention lives on the vault's policy when Azure Backup is composed.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A single VM is one instance in one place -- availability.zone pins WHICH zone it occupies, and an availability set spreads a GROUP of VMs across fault domains; neither replicates this machine. Zone-redundant resilience is composed from several VMs or an AzureVirtualMachineScaleSet.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Compute API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. Referenced data disks and NICs survive VM deletion by design -- only the machine and its OS disk go.
+    - control_id: managed-patching
+      status: configurable
+      field_path: os_profile.linux.patch_mode
+      evidence:
+        type: spec_default
+        reference: Unspecified applies Azure's default (the image's own update behavior); LINUX_AUTOMATIC_BY_PLATFORM hands patch orchestration to Azure Update Manager, unlocking patching.reboot_setting and assessment control. Windows fleets configure the parallel os_profile.windows.patch_mode (default AUTOMATIC_BY_OS -- Windows Update as the image configures it).
+      notes: Platform patching is opt-in on both OSes; the presets ride the image defaults.

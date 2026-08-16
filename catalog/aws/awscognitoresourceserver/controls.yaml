@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awscognitoresourceserver
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A resource server stores no customer data -- its identifier and scope definitions are Cognito control-plane metadata held inside AWS's own service infrastructure, not a data store this component owns.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest here to key (see enc-at-rest); Cognito exposes no KMS surface on resource servers.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A resource server terminates no connections of its own -- it is a scope vocabulary. The token endpoints that mint scopes against it are Cognito's HTTPS-only pool endpoints, and the protected API's transport belongs to whatever serves that API.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The resource server has no endpoint to expose -- it names an external API (conventionally by its audience URI) and defines scopes for it. The pool's token endpoints and the API itself own their exposure.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; a scope vocabulary carries no addresses, ports, or security groups.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A resource server receives no HTTP requests -- web ACLs and request filters have nothing to attach to. Edge protection for the protected API belongs to that API's own stack.
+    - control_id: rbac
+      status: configurable
+      field_path: scopes
+      evidence:
+        type: spec_default
+        reference: The resource server IS an authorization-granularity surface -- the scopes it defines are the exact permissions access tokens can carry for this API ("{identifier}/{scope_name}"), and app clients (most importantly machine-to-machine clients, which can request ONLY custom scopes) must be individually granted each scope through their allowed_oauth_scopes. A resource server with no scopes mints nothing requestable; splitting read/write/admin into separate scopes is how least-privilege API access is expressed in a Cognito pool.
+      notes: Removing a scope here invalidates it for future tokens immediately, but already-issued tokens carry it until they expire -- revocation takes effect on token lifetime boundaries. Which client may request which scope is decided on each AwsCognitoUserPoolClient; the API itself must still enforce the scopes it reads from tokens.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The resource server holds no credentials and runs no workloads -- it defines what tokens may claim, while the identities requesting tokens live on app clients and pool users.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The resource server exposes no authentication path -- it participates only in OAuth 2.0 scope semantics. Authentication-flow floors belong to the pool and its app clients.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Management calls against the resource server are recorded by AWS CloudTrail as account-level posture; token issuance events are pool-level behavior.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Cognito publishes its CloudWatch metrics at the user pool level; the resource server has no metric dimension of its own -- token requests against its scopes appear in the pool's metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A resource server holds no data to back up -- it is declarative configuration fully re-creatable from the manifest; scopes update in place.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Cognito user pools are a regional managed service AWS operates across multiple availability zones as its own posture; the resource server is configuration inside that service with no placement of its own.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for resource servers (the pool-level deletion_protection setting belongs to AwsCognitoUserPool). The identifier and pool binding are ForceNew, so changing either replaces the resource server.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A resource server is a pure configuration object with no software to patch.

@@ -1,0 +1,84 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureEventHubNamespace manifest's spec values into metered quantities
+# and price choices -- one arm per pricing tier, because the sku picks
+# the meter: STANDARD bills throughput units by the hour, PREMIUM bills
+# reserved processing units by the hour, and capacity multiplies
+# whichever meter applies (Azure's default is 1 when unset). BASIC
+# refuses honestly: its throughput-unit rate is not pinned in the price
+# book (no committed preset deploys BASIC), and a refusal beats an
+# unproven figure. The estimate generator replays the catalog presets
+# through these rules to emit ../estimates/azureeventhubnamespace.yaml;
+# a server-side estimator evaluates the same rules against live
+# manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azureeventhubnamespace
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  refusals:
+    - when:
+        - field_path: sku
+          op: equals
+          value: BASIC
+      reason: the Basic tier's throughput-unit rate is not pinned in the price book -- no committed preset deploys BASIC, and stating a committed figure from an unpinned rate would misstate the bill; Basic namespaces price when their rate enters the book
+  lines:
+    - sku_meter: throughput units
+      applies_when:
+        - field_path: sku
+          op: not_equals
+          value: BASIC
+        - field_path: sku
+          op: not_equals
+          value: PREMIUM
+      quantity:
+        - field_value:
+            field_path: capacity
+            default_when_unset: "1"
+        - hours_in_month: true
+      price_slug: eventhubs-standard-throughput-unit-eastus
+      basis: capacity TUs (Azure's default 1 when unset) x 730 hours at the Standard Throughput Unit rate -- this arm covers sku STANDARD and an unspecified sku, which deploys STANDARD
+    - sku_meter: processing units
+      applies_when:
+        - field_path: sku
+          op: equals
+          value: PREMIUM
+      quantity:
+        - field_value:
+            field_path: capacity
+            default_when_unset: "1"
+        - hours_in_month: true
+      price_slug: eventhubs-premium-processing-unit-eastus
+      basis: capacity PUs (Azure sells 1, 2, 4, 8, or 16; default 1 when unset) x 730 hours at the Premium Processing Unit rate
+  exclusions:
+    - applies_when:
+        - field_path: sku
+          op: not_equals
+          value: BASIC
+        - field_path: sku
+          op: not_equals
+          value: PREMIUM
+      text: ingress events bill per million on the Standard Ingress Events meter and follow producer volume; capture, when a hub enables it, bills the hourly Standard Capture meter per TU
+    - applies_when:
+        - field_path: auto_inflate_enabled
+          op: equals
+          value: "true"
+      text: TUs auto-inflate grows above capacity bill at the same TU rate, up to maximum_throughput_units -- the estimate prices the provisioned floor
+    - applies_when:
+        - field_path: sku
+          op: equals
+          value: PREMIUM
+      text: event data retained beyond the included window bills per GB-month on the Premium Extended Retention meter
+    - text: network egress follows consumer placement
+  notes:
+    - applies_when:
+        - field_path: sku
+          op: equals
+          value: PREMIUM
+      text: The price list publishes no Premium ingress or capture meters -- both are included in the PU rate.
+    - text: A namespace placed on a dedicated cluster (dedicated_cluster_id) bills through the cluster's capacity units on its own AzureEventHubCluster component instead of these meters -- a reference these rules cannot read, so this estimate prices the namespace's own tier.

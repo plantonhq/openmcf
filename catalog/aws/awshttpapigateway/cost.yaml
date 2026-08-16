@@ -36,10 +36,6 @@ spec:
       sku_meter: authorizer invocations
       pricing_unit: requests
       impact: Caching authorizer results collapses repeated invocations for the TTL window -- the direct dial on Lambda-authorizer spend.
-    - field_path: routes.integration.connection_id
-      sku_meter: VPC Link hours
-      pricing_unit: hours
-      impact: A VPC_LINK integration rides a referenced VPC Link that bills hourly whether or not requests flow -- the one always-on charge this API can depend on, owned by the link component.
     - field_path: cors_configuration.max_age_seconds
       sku_meter: API requests
       pricing_unit: requests
@@ -50,4 +46,4 @@ spec:
     - requests over 512 KB bill in 512 KB increments
     - backend compute (the Lambda functions and services behind integration_uri) bills on its own components
     - data transfer out bills per GB
-  notes: "An HTTP API's existence is free -- the bill is request count times the per-million rate, roughly a third of REST API pricing, which is why this is the demo's API front door. The opt-in meters (detailed metrics, access logs, Lambda authorizers) are all visible manifest choices."
+  notes: "An HTTP API's existence is free -- the bill is request count times the per-million rate, roughly a third of REST API pricing, which is why this is the demo's API front door. The opt-in meters (detailed metrics, access logs, Lambda authorizers) are all visible manifest choices. A VPC_LINK integration (routes.integration.connection_id) adds NO meter: HTTP API VPC links are free -- the AmazonApiGateway offer carries no VPC-link product -- and the widespread hourly-charge belief conflates them with interface-endpoint pricing; the private targets behind the link bill on their own components."

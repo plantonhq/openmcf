@@ -1,0 +1,45 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurecontainerinstance
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Container Instances
+      sku_meter: vCPU duration
+      pricing_unit: vCPU-hours
+      description: The group bills its allocated vCPUs -- the sum across containers -- per second, from image pull to termination; a group left running bills around the clock.
+    - service_name: Container Instances
+      sku_meter: Memory duration
+      pricing_unit: GB-hours
+      description: The group's allocated memory -- the sum across containers -- bills per second alongside the vCPUs, at a separate per-GB rate.
+  cost_drivers:
+    - field_path: containers
+      sku_meter: vCPU duration
+      pricing_unit: vCPU-hours
+      impact: Each container's cpu and memory allocations add directly to the group's billed capacity -- the meters price what is allocated, not what is used, so right-sizing each container is the whole cost game.
+    - field_path: restart_policy
+      sku_meter: vCPU duration
+      pricing_unit: vCPU-hours
+      impact: The default Always keeps the group running (and billing) continuously; Never / OnFailure turn it into a run-to-completion job that bills only its actual seconds -- per-second billing is what makes short jobs cheap.
+    - field_path: priority
+      sku_meter: vCPU duration
+      pricing_unit: vCPU-hours
+      impact: Spot runs the group on spare capacity at a deep discount off the standard rates -- but at Azure's market rate, evictable at any time, and only for groups with no public surface (ip_address_type None).
+    - field_path: sku
+      sku_meter: vCPU duration
+      pricing_unit: vCPU-hours
+      impact: STANDARD bills the listed per-second rates; DEDICATED places the group on isolated hosts at a materially higher rate, and CONFIDENTIAL adds a hardware-enclave premium.
+    - field_path: zones
+      sku_meter: vCPU duration
+      pricing_unit: vCPU-hours
+      impact: Pinning the group to an availability zone does not change the rate -- resilience across zones comes from running more groups, each billing its own capacity.
+  estimate_exclusions:
+    - image pulls bill the registry side (egress from the registry) and the seconds spent pulling
+    - a private group's delegated subnet and any referenced identities are their own components; the group's own IP is free
+    - log analytics ingestion (diagnostics_log_analytics) bills per GB on the workspace
+    - network egress follows traffic and client placement
+  notes: "Container groups are Azure's per-second serverless containers: the bill is allocated vCPUs x seconds plus allocated GB x seconds, summed across every container in the group, with init containers billing only their startup seconds. The same two meters read completely differently by restart policy -- Always makes an always-on service billing 730 hours a month, Never makes a job billing only its runtime. Windows groups add the Standard Windows Software Duration meter, a per-second software surcharge on the group's vCPUs."

@@ -1,0 +1,46 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awssecuritygroup
+spec:
+  aws:
+    statements:
+      - sid: ManageSecurityGroup
+        actions:
+          - ec2:CreateSecurityGroup
+          - ec2:DeleteSecurityGroup
+          - ec2:AuthorizeSecurityGroupIngress
+          - ec2:AuthorizeSecurityGroupEgress
+          - ec2:RevokeSecurityGroupIngress
+          - ec2:RevokeSecurityGroupEgress
+          - ec2:UpdateSecurityGroupRuleDescriptionsIngress
+          - ec2:UpdateSecurityGroupRuleDescriptionsEgress
+          - ec2:CreateTags
+          - ec2:DeleteTags
+        resources:
+          - arn:aws:ec2:*:*:security-group/*
+          - arn:aws:ec2:*:*:vpc/*
+        provenance: derived
+        notes: Covers aws_security_group / ec2.SecurityGroup with its rules INLINE (the modules never emit standalone rule resources). The service reference authorizes CreateSecurityGroup on BOTH the security-group and vpc ARN formats (an under-scoped create denies provisioning). Rule reconciliation runs the Authorize/Revoke pairs -- including revoking the allow-all egress rule AWS adds to every new group when the spec's egress is empty -- and description-only edits use the UpdateSecurityGroupRuleDescriptions actions. revoke_rules_on_delete additionally revokes rules in OTHER groups that reference this one, which the security-group wildcard covers.
+      - sid: ShareGroupAcrossVpcs
+        actions:
+          - ec2:AssociateSecurityGroupVpc
+          - ec2:DisassociateSecurityGroupVpc
+        resources:
+          - arn:aws:ec2:*:*:security-group/*
+          - arn:aws:ec2:*:*:vpc/*
+        provenance: derived
+        notes: Covers aws_vpc_security_group_vpc_association / vpc.SecurityGroupVpcAssociation -- sharing the group into each additional_vpc_ids entry and unsharing when entries are removed. The association pair authorizes on both the security-group and the target vpc ARN formats.
+      - sid: DescribeSecurityGroups
+        actions:
+          - ec2:DescribeSecurityGroups
+          - ec2:DescribeSecurityGroupVpcAssociations
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side during plan/refresh for the group with its inline rules and for the multi-VPC association state. EC2 Describe APIs support no resource-level scoping (empty Resources lists in the service reference), so the wildcard is the narrowest possible scope.

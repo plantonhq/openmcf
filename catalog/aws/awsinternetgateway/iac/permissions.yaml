@@ -1,0 +1,32 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsinternetgateway
+spec:
+  aws:
+    statements:
+      - sid: ManageInternetGateway
+        actions:
+          - ec2:CreateInternetGateway
+          - ec2:AttachInternetGateway
+          - ec2:DetachInternetGateway
+          - ec2:DeleteInternetGateway
+          - ec2:CreateTags
+          - ec2:DeleteTags
+        resources:
+          - arn:aws:ec2:*:*:internet-gateway/*
+          - arn:aws:ec2:*:*:vpc/*
+        provenance: derived
+        notes: Covers aws_internet_gateway / ec2.InternetGateway, the only resource either module manages -- creation, the VPC attachment (setting vpc_id attaches; changing it detaches and re-attaches without replacing the gateway), tagging, and deletion. The service reference authorizes AttachInternetGateway and DetachInternetGateway on BOTH the internet-gateway and vpc ARN formats (an under-scoped grant on just the gateway denies the attach that every create performs). CreateTags rides the create call and later tag reconciliation on the gateway ARN.
+      - sid: DescribeInternetGateways
+        actions:
+          - ec2:DescribeInternetGateways
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side during plan/refresh. EC2 Describe APIs support no resource-level scoping (empty Resources lists in the service reference), so the wildcard is the narrowest possible scope.

@@ -150,9 +150,4 @@ module "azure_virtual_machine" {
 
 ## Required Permissions
 
-The deploying credential needs
-`Microsoft.Compute/virtualMachines/write` on the resource group -- held via
-Virtual Machine Contributor, Contributor, or Owner. Attaching NICs and data
-disks additionally exercises `Microsoft.Network/networkInterfaces/join/action`
-and `Microsoft.Compute/disks/write`. Encryption at host requires the
-subscription to have the `EncryptionAtHost` feature registered.
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege action set the deploying principal needs. Encryption at host additionally requires the subscription to have the `EncryptionAtHost` feature registered.

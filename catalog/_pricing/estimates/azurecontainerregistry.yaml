@@ -1,0 +1,83 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azurecontainerregistry
+spec:
+  presets:
+    - preset: 01-standard
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Container Registry
+          sku_meter: Registry unit
+          pricing_unit: days
+          pricing_quantity: "30.4167"
+          quantity_basis: one registry x 30.4167 days (the 730-hour month / 24, so the per-day meter shares the catalog's hours convention) at the SKU tier's flat daily rate
+          list_unit_price: "0.6666"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Container Registry' and armRegionName eq 'eastus' and meterName eq 'Standard Registry Unit' and productName eq 'Container Registry' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "20.27577222"
+      total_list_cost: "20.27577222"
+      exclusions:
+        - storage beyond the SKU's included quota bills per GB-month (the Data Stored meter), and each geo-replica's storage bills again in its region
+        - ACR Tasks (image builds) bill per vCPU-second of build time (the Task vCPU Duration meter)
+        - image pulls bill network egress to wherever the pullers run
+    - preset: 02-premium-geo-replicated
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Container Registry
+          sku_meter: Registry unit
+          pricing_unit: days
+          pricing_quantity: "30.4167"
+          quantity_basis: one registry x 30.4167 days (the 730-hour month / 24, so the per-day meter shares the catalog's hours convention) at the SKU tier's flat daily rate
+          list_unit_price: "1.6666"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Container Registry' and armRegionName eq 'eastus' and meterName eq 'Premium Registry Unit' and productName eq 'Container Registry' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "50.69247222"
+        - service_name: Container Registry
+          sku_meter: Geo-replication units
+          pricing_unit: days
+          pricing_quantity: "30.4167"
+          quantity_basis: one Premium replication unit per geo-replica x 30.4167 days -- each replica actually bills at its own location's rate, and replica locations are deployment choices, so every replica is assumed at the eastus rate
+          list_unit_price: "1.6666"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Container Registry' and armRegionName eq 'eastus' and meterName eq 'Premium Registry Replication Unit' and productName eq 'Container Registry' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "50.69247222"
+      total_list_cost: "101.38494444"
+      exclusions:
+        - storage beyond the SKU's included quota bills per GB-month (the Data Stored meter), and each geo-replica's storage bills again in its region
+        - ACR Tasks (image builds) bill per vCPU-second of build time (the Task vCPU Duration meter)
+        - image pulls bill network egress to wherever the pullers run
+      notes: Zone redundancy changes where the registry's data lives, not the daily rate -- the meter is the same.
+    - preset: 03-premium-network-restricted
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Container Registry
+          sku_meter: Registry unit
+          pricing_unit: days
+          pricing_quantity: "30.4167"
+          quantity_basis: one registry x 30.4167 days (the 730-hour month / 24, so the per-day meter shares the catalog's hours convention) at the SKU tier's flat daily rate
+          list_unit_price: "1.6666"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Container Registry' and armRegionName eq 'eastus' and meterName eq 'Premium Registry Unit' and productName eq 'Container Registry' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "50.69247222"
+      total_list_cost: "50.69247222"
+      exclusions:
+        - storage beyond the SKU's included quota bills per GB-month (the Data Stored meter), and each geo-replica's storage bills again in its region
+        - ACR Tasks (image builds) bill per vCPU-second of build time (the Task vCPU Duration meter)
+        - image pulls bill network egress to wherever the pullers run

@@ -1,0 +1,58 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azureserviceplan
+spec:
+  presets:
+    - preset: 01-linux-standard
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure App Service
+          sku_meter: plan instance hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: worker_count instances (1 when unset, the platform default) x 730 hours at the declared (SKU, OS) pair's hourly rate -- serverless SKUs provision no always-on instances and emit no committed line
+          list_unit_price: "0.095"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure App Service' and armRegionName eq 'eastus' and meterName eq 'S1 App' and productName eq 'Azure App Service Standard Plan - Linux' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "69.3500"
+      total_list_cost: "69.3500"
+      exclusions:
+        - outbound data transfer follows app traffic
+    - preset: 02-linux-premium
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure App Service
+          sku_meter: plan instance hours
+          pricing_unit: hours
+          pricing_quantity: "2190"
+          quantity_basis: worker_count instances (1 when unset, the platform default) x 730 hours at the declared (SKU, OS) pair's hourly rate -- serverless SKUs provision no always-on instances and emit no committed line
+          list_unit_price: "0.155"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure App Service' and armRegionName eq 'eastus' and armSkuName eq 'Azure_App_Service_Premium_v3_Plan_Linux_P1_v3' and meterName eq 'P1 v3 App' and productName eq 'Azure App Service Premium v3 Plan - Linux' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "339.4500"
+      total_list_cost: "339.4500"
+      exclusions:
+        - outbound data transfer follows app traffic
+    - preset: 03-consumption-serverless
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the Consumption plan provisions no always-on instances -- function executions and GB-seconds bill usage meters on the function app, following invocation volume
+        - outbound data transfer follows app traffic

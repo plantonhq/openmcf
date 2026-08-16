@@ -1,0 +1,29 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurecontainerinstance
+spec:
+  azure:
+    groups:
+      - purpose: ManageContainerGroup
+        actions:
+          - Microsoft.ContainerInstance/containerGroups/read
+          - Microsoft.ContainerInstance/containerGroups/write
+          - Microsoft.ContainerInstance/containerGroups/delete
+        provenance: derived
+        notes: Covers azurerm_container_group (tf main.tf) and containerservice.NewGroup (pulumi module/main.go) -- create, refresh, tag/identity updates, and destroy. The container group API is create-only for most properties, so spec changes replace the group through the same three actions. Spellings follow Microsoft.ContainerInstance's official operation list; the namespace is not yet in the ARM action inventory snapshot, so the casing is taken from az provider operation list output rather than the inventory.
+      - purpose: JoinDelegatedSubnet
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/join/action
+        provenance: derived
+        notes: Required only for Private groups -- ARM authorizes placing the group into the referenced delegated subnet (subnet_id) with join/action on the subnet's scope at create, a service-side check the modules never call directly. The subnet must be delegated to Microsoft.ContainerInstance/containerGroups, which is the subnet's own configuration.
+      - purpose: AssignUserManagedIdentities
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: Required only when identity carries USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED identities (including the identity-form registry credential and the CMK key_vault_user_assigned_identity_id) -- ARM checks assign/action on every identity referenced in the group payload, service-side.

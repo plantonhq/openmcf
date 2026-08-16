@@ -1,0 +1,42 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurerediscache
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Redis Cache
+      sku_meter: cache instance
+      pricing_unit: hours
+      description: The cache bills its tier-and-size hourly rate from creation, used or idle -- Microsoft's listed rate covers the tier's full node complement (Basic's single node, Standard's replicated pair, Premium's per-shard pair), so the rate is the whole instance, not a per-node figure.
+  cost_drivers:
+    - field_path: sku_name
+      sku_meter: cache instance
+      pricing_unit: hours
+      impact: The tier picks the rate family -- BASIC is the single-node budget ladder, STANDARD's rate covers its replicated two-node pair, PREMIUM the per-shard pair with clustering, persistence, and VNet injection unlocked. Each tier's rates come straight from Microsoft's per-SKU meters.
+    - field_path: capacity
+      sku_meter: cache instance
+      pricing_unit: hours
+      impact: The size step within the tier's family -- C0 (250 MB) through C6 (53 GB) on Basic/Standard, P1 (6 GB) through P5 (120 GB) on Premium -- and every step has its own hourly rate.
+    - field_path: shard_count
+      sku_meter: cache instance
+      pricing_unit: hours
+      impact: Premium clustering multiplies the bill -- Microsoft prices Premium per shard (two nodes each), so 3 shards of P1 bill 3x the P1 rate.
+    - field_path: replicas_per_primary
+      sku_meter: cache instance
+      pricing_unit: hours
+      impact: Extra read replicas add billed nodes beyond the pair included in the Premium rate -- Microsoft's pricing page lists a separate pay-as-you-go price per additional node.
+    - field_path: zones
+      sku_meter: inter-zone data transfer
+      impact: Zone-pinned nodes keep their SKU rate, but replication traffic between availability zones bills data-transfer charges that follow write volume.
+    - field_path: redis_configuration.rdb_backup_enabled
+      sku_meter: persistence storage
+      pricing_unit: GB-months
+      impact: RDB snapshots (and the AOF sibling) write to a customer storage account that bills its own capacity and transactions on its own component.
+  estimate_exclusions:
+    - network egress follows client placement
+    - persistence (RDB/AOF) storage bills on the target storage account's own component
+  notes: "One meter, three tiers: the (sku_name, capacity) pair fixes the hourly rate, and Premium clustering multiplies it by shard count. Microsoft has announced the retirement of Azure Cache for Redis (Basic/Standard/Premium retire 2028-09-30) and ARM has begun rejecting new creations region by region -- existing caches keep running and keep billing exactly this shape, but new deployments should prefer AzureManagedRedis."

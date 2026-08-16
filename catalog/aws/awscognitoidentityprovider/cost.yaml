@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awscognitoidentityprovider
+spec:
+  billing_model: free
+  free_tier: An identity provider is pool-attached federation configuration -- Amazon Cognito's meters count monthly active users (MAUs) on the user pool and token requests for machine-to-machine clients, and none of them count identity provider objects. Registering one provider or fifty on a pool adds nothing to the bill, and a provider nobody signs in through meters nothing anywhere.
+  notes: "No field of this spec buys anything: OAuth client credentials, SAML metadata, attribute mappings, and identifiers are configuration Cognito stores in the pool's control plane. The real spend lives on the parent AwsCognitoUserPool's MAU meters, and this resource shapes WHICH meter each sign-in lands on -- users federated through SAML or OIDC providers bill at their own rate ($0.015/MAU beyond a 50-MAU free tier, regardless of the pool's pricing tier), while users arriving through the social providers (Google, Facebook, LoginWithAmazon, SignInWithApple) count as direct-sign-in MAUs under the pool's Lite/Essentials/Plus tier rates and their 10,000-MAU free tier. The pricing-tier lever itself (including the Plus tier's threat-protection features, successor to advanced security features) lives on the pool, never here. The external identity provider's own charges, if any, bill wherever that directory runs."

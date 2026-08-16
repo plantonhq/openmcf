@@ -1,0 +1,100 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azuremssqlelasticpool
+spec:
+  presets:
+    - preset: 01-standard-dtu
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: SQL Database
+          sku_meter: pool eDTUs
+          pricing_unit: eDTU-days
+          pricing_quantity: "3041.67"
+          quantity_basis: the pool's provisioned eDTU capacity bills per eDTU per day; 30.4167 days is the 730-hour month convention divided by 24 (the same convention every hourly line uses, rounded at the fourth decimal)
+          list_unit_price: "0.0725"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'SQL Database' and armRegionName eq 'eastus' and productName eq 'SQL Database Elastic Pool - Standard' and skuName eq '1 DTU' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "220.521075"
+      total_list_cost: "220.521075"
+      exclusions:
+        - point-in-time-restore backup storage beyond the free allowance follows the member databases' churn and retention settings
+        - network egress follows client placement
+      notes: The eDTU rate includes the capacity's storage allowance (a 100-eDTU Standard pool includes 100 GB of pool storage per Microsoft's elastic-pool pricing page); no separate storage line applies while the cap rides the included amount. Member databases (sku_name ElasticPool on the database component) bill nothing themselves -- this pool's lines are the whole bill for every database it holds.
+    - preset: 02-general-purpose-vcore
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: SQL Database
+          sku_meter: pool compute
+          pricing_unit: vCore-hours
+          pricing_quantity: "2920"
+          quantity_basis: a General Purpose pool bills its provisioned capacity in vCores x 730 hours at the Gen5 per-vCore rate
+          list_unit_price: "0.152217"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'SQL Database' and armRegionName eq 'eastus' and armSkuName eq 'SQLDB_GP_Compute_Gen5' and meterName eq 'vCore' and productName eq 'SQL Database Single/Elastic Pool General Purpose - Compute Gen5' and skuName eq 'vCore' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "444.47364"
+        - service_name: SQL Database
+          sku_meter: pool storage
+          pricing_unit: GB-months
+          pricing_quantity: "512"
+          quantity_basis: the provisioned pool storage cap (max_size_gb) bills per GB-month at the General Purpose rate whether used or empty
+          list_unit_price: "0.115"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'SQL Database' and armRegionName eq 'eastus' and meterName eq 'General Purpose Data Stored' and productName eq 'SQL Database Single/Elastic Pool General Purpose - Storage' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "58.8800"
+      total_list_cost: "503.35364"
+      exclusions:
+        - point-in-time-restore backup storage beyond the free allowance follows the member databases' churn and retention settings
+        - network egress follows client placement
+      notes: Member databases (sku_name ElasticPool on the database component) bill nothing themselves -- this pool's lines are the whole bill for every database it holds.
+    - preset: 03-business-critical-zr
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: SQL Database
+          sku_meter: SQL Server license
+          pricing_unit: vCore-hours
+          pricing_quantity: "2920"
+          quantity_basis: pay-as-you-go SQL licensing bills per provisioned vCore-hour at the Business Critical license rate -- Azure's default when license_type is unset; BASE_PRICE removes this line
+          list_unit_price: "0.375"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'SQL Database' and armRegionName eq 'Global' and meterName eq 'vCore' and productName eq 'SQL Database Single/Elastic Pool Business Critical - SQL License' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "1095.0000"
+        - service_name: SQL Database
+          sku_meter: pool compute
+          pricing_unit: vCore-hours
+          pricing_quantity: "2920"
+          quantity_basis: a Business Critical pool bills its provisioned capacity in vCores x 730 hours at the Gen5 per-vCore rate, local SSD and the built-in replicas included
+          list_unit_price: "0.304435"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'SQL Database' and armRegionName eq 'eastus' and armSkuName eq 'SQLDB_BC_Compute_Gen5' and meterName eq 'vCore' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "888.9502"
+        - service_name: SQL Database
+          sku_meter: pool storage
+          pricing_unit: GB-months
+          pricing_quantity: "256"
+          quantity_basis: the provisioned pool storage cap (max_size_gb) bills per GB-month at the Business Critical local-SSD rate whether used or empty
+          list_unit_price: "0.25"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'SQL Database' and armRegionName eq 'eastus' and meterName eq 'Business Critical Data Stored' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "64.0000"
+      total_list_cost: "2047.9502"
+      exclusions:
+        - point-in-time-restore backup storage beyond the free allowance follows the member databases' churn and retention settings
+        - network egress follows client placement
+      notes: Business Critical zone redundancy places the pool's existing replicas across availability zones at no extra cost per Microsoft's high-availability documentation -- no additional meter applies. Member databases (sku_name ElasticPool on the database component) bill nothing themselves -- this pool's lines are the whole bill for every database it holds.

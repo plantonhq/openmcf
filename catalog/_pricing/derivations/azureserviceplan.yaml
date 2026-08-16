@@ -1,0 +1,90 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureServicePlan manifest's spec values into metered quantities and
+# price choices -- worker instances x 730 hours at the (SKU, OS) pair's
+# hourly rate, with the serverless SKUs honestly emitting no committed
+# line at all. The estimate generator replays the catalog presets
+# through these rules to emit ../estimates/azureserviceplan.yaml; a
+# server-side estimator evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azureserviceplan
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  lines:
+    - sku_meter: plan instance hours
+      applies_when:
+        - field_path: sku_name
+          op: not_equals
+          value: CONSUMPTION_Y1
+        - field_path: sku_name
+          op: not_equals
+          value: FLEX_CONSUMPTION_FC1
+        - field_path: os_type
+          op: not_equals
+          value: azure_service_plan_os_type_unspecified
+      quantity:
+        - field_value:
+            field_path: worker_count
+            default_when_unset: "1"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Azure App Service
+        pricing_unit: hours
+        attributes:
+          - key: plan_sku
+            from_field: sku_name
+          - key: os
+            from_field: os_type
+      basis: worker_count instances (1 when unset, the platform default) x 730 hours at the declared (SKU, OS) pair's hourly rate -- serverless SKUs provision no always-on instances and emit no committed line
+    - sku_meter: plan instance hours
+      applies_when:
+        - field_path: sku_name
+          op: not_equals
+          value: CONSUMPTION_Y1
+        - field_path: sku_name
+          op: not_equals
+          value: FLEX_CONSUMPTION_FC1
+        - field_path: os_type
+          op: equals
+          value: azure_service_plan_os_type_unspecified
+      quantity:
+        - field_value:
+            field_path: worker_count
+            default_when_unset: "1"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Azure App Service
+        pricing_unit: hours
+        attributes:
+          - key: plan_sku
+            from_field: sku_name
+          - key: os
+            constant: LINUX
+      basis: an unset os_type deploys LINUX (the spec's documented default) -- worker_count instances (1 when unset) x 730 hours at the SKU's Linux rate
+  exclusions:
+    - applies_when:
+        - field_path: sku_name
+          op: equals
+          value: CONSUMPTION_Y1
+      text: the Consumption plan provisions no always-on instances -- function executions and GB-seconds bill usage meters on the function app, following invocation volume
+    - applies_when:
+        - field_path: sku_name
+          op: equals
+          value: FLEX_CONSUMPTION_FC1
+      text: the Flex Consumption plan provisions no always-on instances -- on-demand executions and any always-ready instances bill usage meters on the function app
+    - applies_when:
+        - field_path: premium_plan_auto_scale_enabled
+          op: equals
+          value: "true"
+      text: autoscaled instances above worker_count are load-dependent (maximum_elastic_worker_count caps them)
+    - applies_when:
+        - field_path: app_service_environment_id
+          op: is_set
+      text: the App Service Environment's own charges bill on the environment, outside this plan's instance hours
+    - text: outbound data transfer follows app traffic

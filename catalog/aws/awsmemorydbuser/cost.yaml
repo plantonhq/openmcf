@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsmemorydbuser
+spec:
+  billing_model: free
+  free_tier: A MemoryDB user is an ACL identity, and MemoryDB has no meter for identities -- the service bills exactly three things, node-hours for cluster capacity, data written per GB, and snapshot storage per GB-month, and none of them count users. An account can hold every application's identity and pay nothing until a cluster exists.
+  notes: "No field of this spec buys anything: the ACL access string and authentication mode (passwords or IAM) are access-control configuration stored by the MemoryDB control plane. The real spend lives on the clusters this identity eventually reaches -- node-hours run from cluster creation, every write is metered per GB (the durability log's price), and snapshots beyond the free allowance bill per GB-month, all regardless of how many users exist. The path between them runs through AwsMemorydbAcl: users join an ACL, the ACL attaches to a cluster, and only the cluster meters run. IAM authentication ('iam' mode) is likewise free -- tokens are signed with the caller's existing IAM identity."

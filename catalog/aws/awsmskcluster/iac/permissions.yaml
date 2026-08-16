@@ -26,7 +26,6 @@ spec:
           - kafka:UpdateConnectivity
           - kafka:UpdateStorage
           - kafka:UpdateRebalancing
-          - kafka:GetBootstrapBrokers
           - kafka:TagResource
           - kafka:UntagResource
           - kafka:ListTagsForResource
@@ -34,6 +33,13 @@ spec:
           - arn:aws:kafka:*:*:cluster/*
         provenance: derived
         notes: Covers aws_msk_cluster across its lifecycle -- create, the granular in-place update operations (broker count/type/storage, Kafka version, configuration, monitoring levels, security settings, connectivity including public access and PrivateLink, storage mode, Express rebalancing), tagging, endpoint reads, and teardown.
+      - sid: ReadBootstrapBrokers
+        actions:
+          - kafka:GetBootstrapBrokers
+        resources:
+          - "*"
+        provenance: derived
+        notes: Endpoint reads after create and during refresh. The service reference lists NO resource types for kafka:GetBootstrapBrokers (unlike the cluster lifecycle actions, which scope to the cluster ARN), so IAM evaluates it against Resource "*" -- an ARN-scoped grant never matches. The wildcard is the narrowest possible scope.
       - sid: PollClusterOperations
         actions:
           - kafka:DescribeClusterOperation

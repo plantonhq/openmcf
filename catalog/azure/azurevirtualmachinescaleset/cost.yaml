@@ -1,0 +1,48 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurevirtualmachinescaleset
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Virtual Machines
+      sku_meter: Fleet compute
+      pricing_unit: hours
+      description: Every running instance bills the hourly rate of its VM size; the scale set itself is free -- the bill is the sum of its machines.
+    - service_name: Storage
+      sku_meter: Instance OS disks
+      pricing_unit: disk-months
+      description: Each instance carries its own managed OS disk at the configured storage tier, every month it exists -- unless the fleet uses ephemeral OS disks (diff_disk_settings), which live on instance-local storage for free.
+  cost_drivers:
+    - field_path: instances
+      sku_meter: Fleet compute
+      pricing_unit: hours
+      impact: The direct multiplier -- and only the starting point when autoscaling manages capacity, in which case the real bill follows the autoscaler's decisions, not this number.
+    - field_path: sku_name
+      sku_meter: Fleet compute
+      pricing_unit: hours
+      impact: A flat fleet bills every instance at this one size's hourly rate; the sentinel "Mix" hands size selection to sku_profile, making the blended rate depend on which sizes Azure actually allocates.
+    - field_path: spot
+      sku_meter: Fleet compute
+      pricing_unit: hours
+      impact: Presence moves instances above the priority-mix base to spot capacity -- deeply discounted but billed at Azure's fluctuating market rate and evictable, so the fleet's rate stops being a list price.
+    - field_path: os_profile.windows.license_type
+      sku_meter: Fleet compute
+      pricing_unit: hours
+      impact: A pay-as-you-go Windows fleet adds a per-core Windows Server license meter on every instance; WINDOWS_SERVER / WINDOWS_CLIENT (Azure Hybrid Benefit) brings your own license and prices the fleet at the base rate.
+    - field_path: os_disk.storage_account_type
+      sku_meter: Instance OS disks
+      pricing_unit: disk-months
+      impact: Picks the managed-disk ladder every instance's OS disk bills on -- multiplied by the instance count.
+    - field_path: os_disk.diff_disk_settings
+      sku_meter: Instance OS disks
+      pricing_unit: disk-months
+      impact: Presence makes every OS disk ephemeral -- instance-local, free, wiped on stop or reimage -- eliminating the per-instance disk line entirely.
+  estimate_exclusions:
+    - referenced subnets, load balancer pools, and application gateway pools bill on their own components; instance-level public IPs configured inline bill per address
+    - data disks attached fleet-wide (data_disks) bill one managed disk per instance
+    - network egress follows traffic and client placement
+  notes: "A scale set is a fleet contract, not a billable resource: the bill is instances x the VM size's hourly rate, plus one managed OS disk per instance. Three configuration moves change the arithmetic entirely -- autoscaling (the instance count becomes a floor, not a fact), spot with a priority mix (market-priced capacity above an on-demand base), and the Mix SKU sentinel (the fleet draws from several sizes at allocation time, so no single list rate describes it)."

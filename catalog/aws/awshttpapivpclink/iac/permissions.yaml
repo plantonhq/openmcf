@@ -1,0 +1,32 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awshttpapivpclink
+spec:
+  aws:
+    statements:
+      - sid: ManageVpcLink
+        actions:
+          - apigateway:GET
+          - apigateway:POST
+          - apigateway:PATCH
+          - apigateway:PUT
+          - apigateway:DELETE
+        resources:
+          - arn:aws:apigateway:*::/vpclinks
+          - arn:aws:apigateway:*::/vpclinks/*
+          - arn:aws:apigateway:*::/tags/*
+        provenance: derived
+        notes: Covers aws_apigatewayv2_vpc_link (tf) / apigatewayv2.VpcLink (pulumi). API Gateway authorizes by HTTP verb against resource paths -- POST on the /vpclinks collection creates, GET reads, PATCH renames (name is the only mutable field), DELETE destroys. The Tags resource authorizes GET/PUT/DELETE per the service reference; PUT serves only tagging here. The ENIs in the target subnets are created by the API Gateway service through its service-linked role, not by the caller, so no ec2 permissions are needed.
+      - sid: CreateApiGatewayServiceLinkedRole
+        actions:
+          - iam:CreateServiceLinkedRole
+        resources:
+          - arn:aws:iam::*:role/aws-service-role/ops.apigateway.amazonaws.com/AWSServiceRoleForAPIGateway
+        provenance: derived
+        notes: AWS auto-creates the AWSServiceRoleForAPIGateway service-linked role (which manages the link's ENIs) when the first API, custom domain name, or VPC link is created in an account. Only the account's first such creation exercises this permission.

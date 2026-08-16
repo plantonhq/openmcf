@@ -1,0 +1,48 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurevirtualmachine
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Virtual Machines
+      sku_meter: VM compute
+      pricing_unit: hours
+      description: The VM's size bills by the hour from creation until deallocation; the size string (e.g. Standard_D2s_v3) fixes the rate.
+    - service_name: Storage
+      sku_meter: OS disk storage
+      pricing_unit: disk-months
+      description: The inline OS disk bills as a managed disk at the tier matching its storage SKU and size, every month it exists -- unless it is ephemeral (diff_disk_settings), which lives on the VM's local storage for free.
+  cost_drivers:
+    - field_path: size
+      sku_meter: VM compute
+      pricing_unit: hours
+      impact: The dominant lever -- every size family has its own hourly rate, and resizing is an in-place (rebooting) update, so the rate can be tuned without replacing the machine.
+    - field_path: spot
+      sku_meter: VM compute
+      pricing_unit: hours
+      impact: Presence moves the VM to spot capacity -- deeply discounted but billed at Azure's fluctuating market rate (capped by max_bid_price), and evictable, so the committed hourly rate stops being a list price.
+    - field_path: os_profile.windows.license_type
+      sku_meter: VM compute
+      pricing_unit: hours
+      impact: A pay-as-you-go Windows VM adds a per-core Windows Server license meter on top of the base compute rate; WINDOWS_SERVER / WINDOWS_CLIENT (Azure Hybrid Benefit) brings your own license and prices the VM at the base rate.
+    - field_path: os_disk.storage_account_type
+      sku_meter: OS disk storage
+      pricing_unit: disk-months
+      impact: Picks the managed-disk ladder the OS disk bills on -- Standard HDD, Standard SSD, Premium SSD, or their zone-redundant variants, cheapest to dearest.
+    - field_path: os_disk.disk_size_gb
+      sku_meter: OS disk storage
+      pricing_unit: disk-months
+      impact: Managed disks bill by tier, and the size picks the tier (128 GiB Premium is a P10); unset inherits the image's size. It can only grow.
+    - field_path: os_disk.diff_disk_settings
+      sku_meter: OS disk storage
+      pricing_unit: disk-months
+      impact: Presence makes the OS disk ephemeral -- it lives on the VM's local cache/temp storage at no charge, at the cost of being wiped on every stop or deallocation.
+  estimate_exclusions:
+    - referenced data disks, network interfaces, and public IPs are first-class components billing on their own lines
+    - network egress follows traffic and client placement
+    - Azure Backup, when composed vault-side, bills per protected instance plus backup storage
+  notes: "Azure bills a VM as machine-plus-disk: an hourly compute meter fixed by the size string, and a managed-disk meter for the inline OS disk. Everything else the VM composes with -- NICs, public IPs, data disks -- is referenced, so those charges live on their own components. The two rate-changers to watch are spot (market-priced, not list-priced) and pay-as-you-go Windows (a license meter on top of base compute that Azure Hybrid Benefit removes)."

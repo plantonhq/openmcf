@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsmemorydbuser
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A user stores no database data -- it is access-control configuration held by the MemoryDB control plane (passwords are write-only at AWS and never readable back). At-rest encryption of cluster data is the attached cluster's posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data store here means no key decision (see enc-at-rest); the cluster's KMS settings own that choice.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A user terminates no connections -- TLS is the attached cluster's setting. The coupling runs the other way -- AWS requires TLS on the cluster before IAM-authenticated connections as this user are possible.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A user is not addressable -- it has no endpoint, only a management API governed by IAM. Network exposure belongs to the cluster's subnet and security-group posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Network-level ingress to a cluster is its security groups' job; this identity restricts what an authenticated client may DO, not where connections come from (see rbac).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: AWS WAF attaches to Layer-7 HTTP entry points; a database identity speaking the Redis/Valkey protocol has no edge surface.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: Being an ACL identity IS this component -- and the contract refuses an unscoped one. access_string is required, so every user carries an explicit Redis ACL scope (on/off switch, key patterns like ~app1:*, command categories like +@read -@dangerous) from the moment it exists; per-application least-privilege is the natural shape because MemoryDB has no other authentication model to fall back to.
+      notes: Scope is declared per user; how tight it is remains the author's call ("on ~* +@all" is a legal admin scope). AWS stores the string normalized (Redis ACL defaults made explicit), which the provider reconciles. The identity reaches a cluster only through AwsMemorydbAcl membership -- the ACL is WHERE, this user is WHO and WHAT.
+    - control_id: workload-identity
+      status: configurable
+      field_path: authentication_mode
+      evidence:
+        type: spec_default
+        reference: Setting the mode's type to 'iam' makes clients authenticate by signing short-lived tokens with their AWS IAM identity -- no long-lived secret exists anywhere. The spec enforces the shape by CEL ('iam' must carry zero passwords); AWS additionally requires TLS on the cluster and grants the connecting principal memorydb:Connect on both the user and cluster ARNs.
+      notes: The 'password' type is the credentialed alternative, with two simultaneous passwords supported so rotation is zero-downtime (add new, roll clients, remove old). Passwords are write-only at AWS -- drift changed outside the manifest is undetectable, so the manifest (or its secret store) is the source of truth.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: A MemoryDB user cannot BE a legacy credential -- the CEL validation restricts the authentication type to 'password' or 'iam', and MemoryDB itself has no shared AUTH-token mode and no passwordless user type at all. Unlike ElastiCache there is no 'no-password-required' escape hatch on users; every user authenticates with a real credential.
+      notes: The one anonymous path in MemoryDB is the built-in "open-access" ACL (every command, every key, no authentication) -- an ACL-attachment choice on the cluster, deliberately not modeled here as a resource; see AwsMemorydbAcl for that surface.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the identity (who altered an access string or credential mode) land in CloudTrail as account-level posture; connection and command logging belong to the attached cluster's configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: MemoryDB publishes CloudWatch metrics on cluster and node dimensions -- authentication failures included; a user has no metric dimension and no export knob.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A user holds no data to back up -- it is declarative configuration re-creatable from the manifest (passwords come from the manifest or secret store, never from AWS, which cannot return them).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at the user level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A user is a regional control-plane object with no zonal footprint -- zone redundancy is the attached cluster's shard and replica placement.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for MemoryDB users. Deleting a user removes it from every ACL server-side automatically -- a clean cascade, not a guard.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A user is configuration on a fully managed service -- there is no software of its own to patch; engine patching belongs to the attached cluster.

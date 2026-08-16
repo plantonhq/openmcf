@@ -1,0 +1,66 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awscognitoidentityprovider
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An identity provider stores no customer data of its own -- its configuration (including the OAuth client secrets and Apple private key the spec marks sensitive) is held inside Cognito's own service infrastructure. The user records that federated sign-ins create live in the parent user pool.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data store here to key (see enc-at-rest); Cognito exposes no KMS surface on identity providers.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every wire exchange this resource participates in is TLS with no opt-out -- Cognito's hosted sign-in and token endpoints serve HTTPS only, and the OIDC discovery, token-exchange, userinfo, and SAML metadata fetches Cognito performs against the external provider go to HTTPS URLs.
+      notes: saml.encrypted_responses adds a second, message-level layer on top -- when true, Cognito requires the IdP to encrypt the SAML assertions themselves, protecting them even from the user agent they transit through. request_signing_algorithm signs Cognito's SAML requests (integrity, not confidentiality).
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The identity provider has no endpoint of its own -- federated sign-in flows through the parent pool's hosted endpoints, which are a public-facing authentication surface by design. This object only tells the pool which external directory to trust.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; sign-in traffic terminates on the pool's endpoints, not on this configuration object.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The identity provider receives no HTTP requests directly; WAF web ACL association for Cognito's endpoints is a user pool surface, outside this spec.
+    - control_id: rbac
+      status: configurable
+      field_path: attribute_mapping
+      evidence:
+        type: spec_default
+        reference: This component IS the pool's federation surface -- it delegates WHO may authenticate to the external directory (Google, an enterprise Okta/Azure AD via OIDC, or a SAML IdP), so access governance rides the directory's own membership and policy. attribute_mapping controls which provider claims populate the pool's user attributes -- the identity data every downstream authorization decision keys off; omitted means AWS's per-provider-type default mappings apply.
+      notes: Exposure is additionally gated per app client -- a provider only becomes a sign-in path for clients that list its provider_name in their supported_identity_providers. idp_identifiers give aliasing for IdP selection without exposing the provider name. The directory's own vetting (who exists in it, MFA, conditional access) is where the real access decisions live, deliberately outside this spec.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The identity provider federates HUMAN sign-ins and runs no workloads. The credentials it holds (OAuth client secrets, Apple private key) are federation trust material the spec marks sensitive, not workload credentials -- machine-to-machine identity is the app client's client-credentials surface, a different catalog kind.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: This object adds a federation path; it cannot disable the pool's other sign-in paths -- password policy and authentication-flow floors are user pool and app client configuration. Within its own exchange there is no legacy protocol to turn off; the SAML hardening dials (request_signing_algorithm, encrypted_responses, idp_sign_out) tighten the modern exchange rather than disabling an older one.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Management calls against the provider are recorded by AWS CloudTrail as account-level posture, and sign-in event logging (including exportable auth-event logs under the Plus tier's threat protection) is a user pool capability, not a per-provider setting.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Cognito publishes its CloudWatch metrics at the user pool level; the identity provider has no metric dimension of its own -- federated sign-ins appear in the pool's metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: An identity provider holds no data to back up -- it is declarative configuration fully re-creatable from the manifest (both modules ignore the ActiveEncryptionCertificate detail AWS auto-populates for SAML providers, so re-creation converges cleanly).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Cognito user pools are a regional managed service AWS operates across multiple availability zones as its own posture; the identity provider is configuration inside that service with no placement of its own.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for identity providers (the pool-level deletion_protection setting belongs to AwsCognitoUserPool). provider_name, provider_type, and user_pool_id are ForceNew, so changes there replace the provider -- a lifecycle fact worth knowing, not a protection.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: An identity provider is pure configuration with no software to patch; the federation protocol endpoints on both sides are operated and patched by AWS and the external provider.

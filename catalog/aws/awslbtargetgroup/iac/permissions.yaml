@@ -1,0 +1,42 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awslbtargetgroup
+spec:
+  aws:
+    statements:
+      - sid: ManageTargetGroup
+        actions:
+          - elasticloadbalancing:CreateTargetGroup
+          - elasticloadbalancing:ModifyTargetGroup
+          - elasticloadbalancing:ModifyTargetGroupAttributes
+          - elasticloadbalancing:DeleteTargetGroup
+          - elasticloadbalancing:AddTags
+          - elasticloadbalancing:RemoveTags
+        resources:
+          - arn:aws:elasticloadbalancing:*:*:targetgroup/*/*
+        provenance: derived
+        notes: Covers aws_lb_target_group -- creation with tags; health-check updates (ModifyTargetGroup); attribute updates such as deregistration delay, stickiness, slow start, routing algorithm, cross-zone, proxy protocol, and group health policy (ModifyTargetGroupAttributes); and deletion. The service reference authorizes every one of these actions on the targetgroup ARN format, including create -- unlike listeners and rules, a target group is created against its own ARN, so a single resource pattern covers the full lifecycle.
+      - sid: ManageTargetRegistrations
+        actions:
+          - elasticloadbalancing:RegisterTargets
+          - elasticloadbalancing:DeregisterTargets
+        resources:
+          - arn:aws:elasticloadbalancing:*:*:targetgroup/*/*
+        provenance: derived
+        notes: Covers aws_lb_target_group_attachment -- one registration per entry of spec.targets (static instance/IP/Lambda/ALB registrations; most architectures leave the list empty and let ECS or auto-scaling register dynamically). Both actions authorize on the targetgroup ARN format.
+      - sid: DescribeTargetGroups
+        actions:
+          - elasticloadbalancing:DescribeTargetGroups
+          - elasticloadbalancing:DescribeTargetGroupAttributes
+          - elasticloadbalancing:DescribeTargetHealth
+          - elasticloadbalancing:DescribeTags
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side of aws_lb_target_group and aws_lb_target_group_attachment during plan/refresh (DescribeTargetHealth is how the provider reads back registrations). Elastic Load Balancing Describe APIs support no resource-level scoping (empty Resources lists in the service reference), so the wildcard is the narrowest possible scope.

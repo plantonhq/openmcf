@@ -30,7 +30,6 @@ spec:
         notes: Covers aws_memorydb_cluster across create, in-place updates (node type, shard/replica counts, ACL, engine and version, windows, SNS topic), tagging, and teardown. CreateCluster and UpdateCluster authorize against the referenced ACL, subnet group, and parameter group as well as the cluster itself, so those ARN classes ride the same statement. CreateCluster also authorizes against the source snapshot on snapshot_name/snapshot_arns restores and the multi-region cluster when multi_region_cluster_name joins one (its ARN carries no region), and DeleteCluster authorizes against the snapshot when final_snapshot_name is set.
       - sid: ManageSubnetGroup
         actions:
-          - memorydb:CreateSubnetGroup
           - memorydb:DescribeSubnetGroups
           - memorydb:UpdateSubnetGroup
           - memorydb:DeleteSubnetGroup
@@ -38,9 +37,16 @@ spec:
           - arn:aws:memorydb:*:*:subnetgroup/*
         provenance: derived
         notes: Covers the conditional aws_memorydb_subnet_group -- created only when the spec provides subnet_ids inline; the bring-your-own subnet_group_name arm passes through untouched.
+      - sid: CreateGroups
+        actions:
+          - memorydb:CreateSubnetGroup
+          - memorydb:CreateParameterGroup
+        resources:
+          - "*"
+        provenance: derived
+        notes: The service reference lists NO resource types for CreateSubnetGroup and CreateParameterGroup (their Describe/Update/Delete siblings DO scope to the group ARNs, proving the absence is meaningful), so IAM evaluates both creates against Resource "*" -- ARN-scoped grants never match and would deny provisioning at runtime. The wildcard is the narrowest possible scope.
       - sid: ManageParameterGroup
         actions:
-          - memorydb:CreateParameterGroup
           - memorydb:DescribeParameterGroups
           - memorydb:DescribeParameters
           - memorydb:UpdateParameterGroup

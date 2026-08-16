@@ -1,0 +1,66 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awslbtargetgroup
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A target group stores no data -- it is a registry of routing destinations held by the Elastic Load Balancing control plane.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No stored data means no key decision here (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: protocol
+      evidence:
+        type: spec_default
+        reference: The target group's protocol decides whether the load-balancer-to-target hop is encrypted -- "HTTPS" (ALB) or "TLS" (NLB) re-encrypts traffic toward targets, while "HTTP" and "TCP" send the backend hop in plaintext even when the listener terminated TLS at the edge. End-to-end encryption requires an encrypted protocol here, not just on the listener.
+      notes: The client-facing leg is the listener's posture; this field owns the backend leg. Health-check probes follow health_check.protocol independently, so an HTTPS health check against HTTPS targets keeps even probe traffic encrypted.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A target group is not addressable -- clients reach the load balancer, whose scheme and subnets decide exposure, and targets are reached at their private VPC addresses under their own network controls. The group has no endpoint surface of its own.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound filtering to targets is owned by the targets' security groups (and the load balancer's, on its network interfaces); the target group registers destinations but carries no security-group surface.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: WAF web ACLs associate with the load balancer, never with a target group -- there is no attachment point here.
+    - control_id: rbac
+      status: not_applicable
+      notes: A target group exposes no management or data plane of its own to govern -- traffic-plane access control belongs to the listener and its rules (authentication actions), and administrative access to the group is IAM, account-level posture outside this spec.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The group runs no workloads and holds no credentials of any kind; the workloads behind it authenticate to cloud APIs through their own kinds' identity surfaces (instance profiles, task roles).
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The spec exposes no authentication surface -- there is nothing here to negotiate, so no legacy path to disable. The TLS floor for encrypted backend hops is negotiated by the load balancer without a per-target-group policy knob.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Request-level logging is the load balancer's access-log attribute (entries record the target that served each request); administrative actions on the group land in CloudTrail as account-level posture.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Elastic Load Balancing publishes per-target-group CloudWatch metrics automatically once a load balancer forwards to the group -- HealthyHostCount, UnHealthyHostCount, and (on ALBs) request counts, target response times, and per-target-group HTTP code counts -- with no opt-in and no way to switch them off.
+      notes: The health_check block tunes what "healthy" means and target_group_health adds group-level DNS-failover and unhealthy-state-routing thresholds, but the metric export itself is unconditional.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A target group holds no data to back up -- it is declarative configuration re-creatable from the manifest, and dynamic registrations are re-established by whatever registers them (ECS, auto-scaling groups, Kubernetes controllers).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at the target-group level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Zone redundancy lives in the registered backends' placement (auto-scaling groups and ECS services spread targets across zones) and the load balancer's subnet layout; the group is a registry that inherits whatever spread its members have. load_balancing_cross_zone_enabled tunes whether traffic may cross zones, not whether the group is replicated.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for target groups. AWS does refuse to delete a group still referenced by a listener or rule -- a dependency guard, not a configurable protection.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A target group is configuration on a fully managed service with no software of its own; patching belongs to the registered targets, each governed by its own kind.

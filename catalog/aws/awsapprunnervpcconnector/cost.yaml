@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsapprunnervpcconnector
+spec:
+  billing_model: free
+  free_tier: An App Runner VPC connector has no meter -- the AWS price list for App Runner (offer AWSAppRunner) meters active vCPU and memory hours, provisioned memory, build minutes, and automatic deployments, and contains no connector SKU. The connector itself is configuration; the network interfaces that carry its traffic are AWS-managed and free like all ENIs.
+  notes: "The real spend sits with the services that use the connector: each AwsAppRunnerService routing its outbound traffic through it bills its own compute and provisioned-memory meters, and the private targets it reaches -- RDS instances, ElastiCache clusters, internal services -- bill on their own components. Data transfer between the service and VPC resources bills at standard rates on the account. A connector is immutable and versioned: replacing subnets or security groups creates a new revision, and old revisions linger at no charge until deleted."

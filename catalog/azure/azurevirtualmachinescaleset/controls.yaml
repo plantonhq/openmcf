@@ -1,0 +1,90 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurevirtualmachinescaleset
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every instance's managed OS disk and any fleet-wide data disks are encrypted at rest with platform-managed keys on every Azure managed disk; it cannot be disabled.
+      notes: Ephemeral OS disks (diff_disk_settings) live on instance-local storage, covered when security.encryption_at_host_enabled is on.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: os_disk.disk_encryption_set_id
+      evidence:
+        type: spec_default
+        reference: Unset means platform-managed keys; referencing a disk encryption set encrypts every instance's OS disk with a Key Vault key you own and can revoke. Confidential fleets use secure_vm_disk_encryption_set_id for the guest-state blob (UNIFORM-only).
+      notes: data_disks carry their own disk_encryption_set_id per disk definition.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A scale set is raw fleet compute -- what its instances encrypt in transit is decided inside the guest OS and its applications, not by any field of this manifest.
+    - control_id: no-public-access
+      status: configurable
+      field_path: network_interfaces
+      evidence:
+        type: spec_default
+        reference: The presets attach instances to a referenced subnet only -- private by default. Exposure is an explicit opt-in per ip_configuration -- an inline public_ip_address block gives EVERY instance its own public address -- so the fleet is only as private as its NIC templates.
+      notes: Fleet-level exposure normally composes through a load balancer or application gateway pool (referenced components), not per-instance addresses.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound filtering is NSG territory -- network_security_group_id attaches per NIC template inside network_interfaces, but the NSG and its rules are a first-class component of their own, so the allowed-source posture is decided there, not in this manifest.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The scale set offers no WAF attachment point; request filtering composes in front of the fleet -- an Application Gateway (whose backend pools instances join via application_gateway_backend_address_pool_ids) or Front Door -- on those components' own manifests.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane operation on the fleet -- scale, reimage, upgrade-policy change, delete -- is authorized by Azure RBAC unconditionally. Instance OS logins are separate, governed by the os_profile credentials baked into the instance template.
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: Unset means instances have no platform identity; SYSTEM_ASSIGNED (or user-assigned identities) lets code on every instance fetch short-lived Entra tokens from the Instance Metadata Service instead of holding static credentials.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: os_profile.linux.disable_password_authentication
+      evidence:
+        type: spec_default
+        reference: Azure's default is true -- SSH password logins are off across the fleet and keys are the only path; setting it false (with admin_password) reopens password authentication on every instance. Spec validation requires at least one SSH key whenever passwords are disabled.
+      notes: Windows fleets authenticate with a password by ARM's own contract; both Linux presets stay keys-only.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane action on the scale set lands in the Azure Activity Log unconditionally -- who scaled, who changed the image, who deleted. In-guest audit trails are the instances' own and need an agent to export.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Host-level platform metrics for the fleet flow to Azure Monitor with no configuration; boot_diagnostics adds per-instance serial console output and boot screenshots (presence enables it, empty uses Azure-managed storage). automatic_instance_repair acts on that health signal, replacing instances the health extension reports unhealthy.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Scale-set instances are cattle by design -- the recovery unit is the image reference plus reimage/replace, not a backup of any one instance. Azure Backup does not enroll scale sets; state that must survive instances belongs on external stores.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility applicable to fleet instances, there is no retention to configure here.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: zones
+      evidence:
+        type: spec_default
+        reference: Empty means a regional (non-zonal) fleet; listing zones spreads instances across them, with zone_balance optionally forcing a strict even spread. This is the fleet's core resilience lever -- unlike a single VM, a scale set genuinely replicates across zones.
+      notes: The presets pin one fault domain (zones or fleet size as the resilience unit) but leave zones to the deployment.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Compute API nor this spec offers a deletion-protection flag for scale sets; Azure resource locks are subscription-side governance outside the manifest. scale_in policy governs WHICH instances go first when shrinking, not whether the fleet can be deleted.
+    - control_id: managed-patching
+      status: configurable
+      field_path: os_profile.linux.patch_mode
+      evidence:
+        type: spec_default
+        reference: Unspecified rides the image's own update behavior; LINUX_AUTOMATIC_BY_PLATFORM hands patch orchestration to Azure (FLEXIBLE orchestration only, and it requires an application-health extension so patched instances are verified healthy). Windows fleets configure the parallel os_profile.windows.patch_mode; UNIFORM fleets patch through automatic OS image upgrades (upgrade_policy.automatic_os_upgrade) instead.

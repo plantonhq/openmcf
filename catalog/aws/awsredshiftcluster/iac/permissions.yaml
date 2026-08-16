@@ -43,17 +43,23 @@ spec:
           - redshift:CreateClusterSubnetGroup
           - redshift:DeleteClusterSubnetGroup
           - redshift:ModifyClusterSubnetGroup
-          - redshift:DescribeClusterSubnetGroups
           - redshift:CreateClusterParameterGroup
           - redshift:DeleteClusterParameterGroup
           - redshift:ModifyClusterParameterGroup
-          - redshift:DescribeClusterParameterGroups
           - redshift:DescribeClusterParameters
         resources:
           - arn:aws:redshift:*:*:subnetgroup:*
           - arn:aws:redshift:*:*:parametergroup:*
         provenance: derived
         notes: Covers the conditional aws_redshift_subnet_group (spec.subnet_ids without an existing group name) and aws_redshift_parameter_group (inline spec.parameters) satellites.
+      - sid: DescribeGroups
+        actions:
+          - redshift:DescribeClusterSubnetGroups
+          - redshift:DescribeClusterParameterGroups
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side of the group satellites during plan/refresh. The service reference lists NO resource types for these two Describe actions (DescribeClusterParameters, by contrast, DOES scope to the parameter-group ARN and stays in the scoped statement), so IAM evaluates them against Resource "*" -- ARN-scoped grants never match. The wildcard is the narrowest possible scope.
       - sid: ManageLoggingAndSnapshotCopy
         actions:
           - redshift:EnableLogging

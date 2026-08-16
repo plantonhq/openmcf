@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsiamoidcprovider
+spec:
+  billing_model: free
+  free_tier: An IAM OIDC provider is a trust anchor inside AWS IAM, and IAM is a feature of the AWS account offered at no additional charge -- no meter counts providers, their registered audiences, or thumbprints. The token exchanges it enables ride AWS STS (AssumeRoleWithWebIdentity), which is equally free, so federating one pipeline or a million pod identities through it costs nothing.
+  notes: "No field of this spec buys anything: the issuer URL, client-id list, and thumbprints are IAM control-plane configuration. The real spend lives entirely outside the trust anchor -- the issuer it registers bills as its own thing (an EKS cluster's control plane bills per hour as AwsEksCluster; GitHub Actions bills on GitHub's invoice, not AWS's), and whatever the federated credentials CALL bills on those services' meters. The roles assumed through it (AwsIamRole) are equally free."

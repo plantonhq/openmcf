@@ -1,0 +1,28 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsgluecatalogdatabase
+spec:
+  aws:
+    statements:
+      - sid: ManageCatalogDatabase
+        actions:
+          - glue:CreateDatabase
+          - glue:GetDatabase
+          - glue:UpdateDatabase
+          - glue:DeleteDatabase
+          - glue:TagResource
+          - glue:UntagResource
+          - glue:GetTags
+        resources:
+          - arn:aws:glue:*:*:catalog
+          - arn:aws:glue:*:*:database/*
+          - arn:aws:glue:*:*:table/*/*
+          - arn:aws:glue:*:*:userDefinedFunction/*/*
+        provenance: derived
+        notes: Covers aws_glue_catalog_database (tf) / glue.CatalogDatabase (pulumi). Glue's IAM model requires the catalog ARN alongside the database ARN on every database operation (the service reference lists both for CreateDatabase, GetDatabase, UpdateDatabase, and DeleteDatabase). DeleteDatabase additionally authorizes against the table and user-defined-function ARN formats because dropping a database cascades to the definitions under it -- omitting those patterns makes destroy fail on any database that accumulated tables. Tagging authorizes on the database ARN. Creating a target_database resource link or using a foreign catalog_id additionally depends on the RAM share and Lake Formation grants of the target catalog -- cross-account posture outside this manifest.

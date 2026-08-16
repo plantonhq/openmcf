@@ -1,0 +1,37 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurevirtualmachine
+spec:
+  azure:
+    groups:
+      - purpose: ManageVirtualMachine
+        actions:
+          - Microsoft.Compute/virtualMachines/read
+          - Microsoft.Compute/virtualMachines/write
+          - Microsoft.Compute/virtualMachines/delete
+        provenance: derived
+        notes: Covers azurerm_linux_virtual_machine / azurerm_windows_virtual_machine (exactly one deploys, from the OS discriminator) -- create, refresh, in-place updates (resize, tags, user_data), and destroy. The azurerm_virtual_machine_data_disk_attachment resources PATCH the same VM, so attach and detach also land on virtualMachines/write.
+      - purpose: ManageDisks
+        actions:
+          - Microsoft.Compute/disks/read
+          - Microsoft.Compute/disks/write
+          - Microsoft.Compute/disks/delete
+        provenance: derived
+        notes: The inline OS disk is created through the VM API but is its own ARM resource afterward -- both engines' default OS-disk handling deletes it on VM destroy (disks/delete) and reads it on refresh. Attaching a referenced data disk (data_disk_attachments) is authorized by Azure against the DISK as well as the VM, so the deploying principal needs disks/write on each referenced disk's scope -- a service-side check the modules never call directly.
+      - purpose: JoinNetworkInterfaces
+        actions:
+          - Microsoft.Network/networkInterfaces/read
+          - Microsoft.Network/networkInterfaces/join/action
+        provenance: derived
+        notes: The modules never call the NIC API to mutate anything -- they pass the resolved network_interface_ids in the VM payload -- but ARM authorizes attaching each referenced NIC with join/action on the NIC's scope at create (service-side). networkInterfaces/read backs the modules' output derivation (private_ip_address / public_ip_address are read across the attached NICs on refresh).
+      - purpose: AssignUserManagedIdentities
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: Required only when identity carries USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED identities -- ARM checks assign/action on every identity referenced in the VM payload (service-side; the modules only pass the resolved identity IDs).

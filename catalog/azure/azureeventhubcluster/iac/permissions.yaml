@@ -1,0 +1,20 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureeventhubcluster
+spec:
+  azure:
+    groups:
+      - purpose: ManageCluster
+        actions:
+          - Microsoft.EventHub/clusters/read
+          - Microsoft.EventHub/clusters/write
+          - Microsoft.EventHub/clusters/delete
+          - Microsoft.EventHub/clusters/operationresults/read
+        provenance: derived
+        notes: Covers azurerm_eventhub_cluster (and the Pulumi module's eventhub.Cluster) -- create, read/refresh, in-place capacity scaling, and destroy. Cluster create and delete are long-running operations; operationresults/read is the SERVICE-side polling need for the async operation status the provider follows. Destroys inside Azure's 4-hour post-creation deletion moratorium retry until the service permits the delete, all under these same actions.

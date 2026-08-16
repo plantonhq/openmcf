@@ -1,0 +1,61 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awssubnet
+spec:
+  aws:
+    statements:
+      - sid: ManageSubnet
+        actions:
+          - ec2:CreateSubnet
+          - ec2:ModifySubnetAttribute
+          - ec2:AssociateSubnetCidrBlock
+          - ec2:DisassociateSubnetCidrBlock
+          - ec2:DeleteSubnet
+          - ec2:CreateTags
+          - ec2:DeleteTags
+        resources:
+          - arn:aws:ec2:*:*:subnet/*
+          - arn:aws:ec2:*:*:vpc/*
+          - arn:aws:ec2:*:*:ipam-pool/*
+        provenance: derived
+        notes: Covers aws_subnet / ec2.Subnet -- creation with AZ placement and IPv4/IPv6 addressing (explicit CIDRs or IPAM allocations), the in-place attribute updates (map_public_ip_on_launch, DNS64, resource-name DNS records, hostname type via ModifySubnetAttribute), IPv6 CIDR changes (disassociate + associate), tagging, and deletion. The service reference authorizes CreateSubnet on BOTH the subnet and vpc ARN formats (an under-scoped create denies provisioning), and IPAM-allocated subnets additionally authorize against the ipam-pool ARN.
+      - sid: ManageOwnedRouteTable
+        actions:
+          - ec2:CreateRouteTable
+          - ec2:CreateRoute
+          - ec2:ReplaceRoute
+          - ec2:DeleteRoute
+          - ec2:EnableVgwRoutePropagation
+          - ec2:DisableVgwRoutePropagation
+          - ec2:DeleteRouteTable
+          - ec2:CreateTags
+          - ec2:DeleteTags
+        resources:
+          - arn:aws:ec2:*:*:route-table/*
+          - arn:aws:ec2:*:*:vpc/*
+        provenance: derived
+        notes: Covers aws_route_table / ec2.RouteTable, created only when the subnet OWNS its table (inline routes and/or propagating_vgws). Inline route entries reconcile through CreateRoute / ReplaceRoute / DeleteRoute, and VGW propagation toggles through the Enable/DisableVgwRoutePropagation pair -- all authorizing on the route-table ARN. CreateRouteTable, like CreateSubnet, authorizes on both the route-table and vpc formats.
+      - sid: AssociateRouteTable
+        actions:
+          - ec2:AssociateRouteTable
+          - ec2:ReplaceRouteTableAssociation
+          - ec2:DisassociateRouteTable
+        resources:
+          - arn:aws:ec2:*:*:route-table/*
+          - arn:aws:ec2:*:*:subnet/*
+        provenance: derived
+        notes: Covers aws_route_table_association / ec2.RouteTableAssociation -- binding the subnet to its owned table or to the external route_table_id, moving the association between tables in place, and unbinding at teardown. Association APIs authorize on both the route-table and subnet ARN formats.
+      - sid: DescribeSubnetsAndRouteTables
+        actions:
+          - ec2:DescribeSubnets
+          - ec2:DescribeRouteTables
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side during plan/refresh for the subnet, the owned table, and the association state. EC2 Describe APIs support no resource-level scoping (empty Resources lists in the service reference), so the wildcard is the narrowest possible scope.

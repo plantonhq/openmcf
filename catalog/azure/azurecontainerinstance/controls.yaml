@@ -1,0 +1,84 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurecontainerinstance
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure automatically encrypts container group data persisted in its control plane -- deployment metadata, environment variables, logs -- with platform-managed keys; it cannot be disabled.
+      notes: Container filesystems are ephemeral by design; durable data belongs on mounted Azure Files shares, whose encryption is the storage account's posture.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: key_vault_key_id
+      evidence:
+        type: spec_default
+        reference: Unset means platform-managed keys; referencing a Key Vault key encrypts the group's persisted data with a key you own and can revoke (paired with key_vault_user_assigned_identity_id for access).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: What the containers serve -- TLS or plaintext -- is decided by the images and their configuration, not by any field of this manifest. The group offers no TLS termination of its own; HTTPS in front composes through Application Gateway or Front Door.
+    - control_id: no-public-access
+      status: configurable
+      field_path: ip_address_type
+      evidence:
+        type: spec_default
+        reference: The default Public gives the group an internet-reachable address (plus an azurecontainer.io name when dns_name_label is set); Private places it inside a delegated subnet with no public surface, and None gives it no group IP at all -- the required posture for Spot.
+      notes: Preset 02 is the Private pattern; preset 03 uses None.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The group carries no filtering facility -- a Public group's exposed ports answer the whole internet, full stop. Source restriction is composed network-side; a Private group inherits whatever NSG governs its delegated subnet, on that component's manifest.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A container group offers no WAF attachment point; request filtering composes in front (Application Gateway, Front Door) against the group's address, never on the group itself.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane operation on the group -- create, restart, exec, delete -- is authorized by Azure RBAC unconditionally.
+      notes: az container exec grants shell access to anyone with the management-plane permission; scope it deliberately.
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: Unset means the containers hold no platform identity; SYSTEM_ASSIGNED (or user-assigned identities) lets code in the group fetch short-lived Entra tokens instead of holding connection strings -- and the identity-form registry credential builds on the same mechanism.
+      notes: Preset 02 runs as a user-assigned identity and pulls its image with it -- no password anywhere.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: image_registry_credentials
+      evidence:
+        type: spec_default
+        reference: Each private-registry credential is either a static username/password pair or a user_assigned_identity_id reference -- the identity form eliminates the stored secret and rotates itself. Public images need no entry at all.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane action on the group lands in the Azure Activity Log unconditionally -- who created, who restarted, who ran exec, who deleted.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: diagnostics_log_analytics
+      evidence:
+        type: spec_default
+        reference: Unset keeps container logs and events only in the group's own transient log buffer (az container logs, gone with the group); referencing a Log Analytics workspace streams them out durably, with LOG_ANALYTICS_METADATA_ORCHESTRATOR available for orchestrated scenarios.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A container group is ephemeral compute built from an image -- the recovery unit is redeploying the manifest, not restoring a backup. State that must survive the group belongs on mounted Azure Files shares or external stores, backed up on those components.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility on the group, there is no retention to configure here.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A container group is a single instance in a single place -- zones pins WHICH availability zone it occupies, not replication. Zone-redundant resilience is composed from multiple groups behind a load balancer, each its own component.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Container Instances API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. Deleting the group is the normal end of a run-to-completion job's life.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Containers patch by image replacement, not in-place -- there is no guest OS to patch and no platform patch facility on the group. Staying current means rebuilding the image and redeploying, which per-second billing makes cheap.

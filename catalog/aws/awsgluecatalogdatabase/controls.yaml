@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsgluecatalogdatabase
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Catalog metadata encryption is a catalog-wide setting (the Data Catalog encryption settings, SSE-KMS, off by default) configured at the account level -- this spec carries no encryption surface, and the setting cannot be made per database. The data the database describes rests wherever location_uri points, under that store's own encryption posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: The KMS key choice belongs to the same account-level catalog encryption settings (see enc-at-rest); no key surface exists on this spec.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The catalog has no endpoint of its own -- every read and write of this database's metadata travels through the AWS Glue API, which is HTTPS-only. No plaintext path to catalog metadata exists.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The database is a control-plane metadata object behind the AWS API's IAM authentication -- there is no network endpoint to expose or hide. Public exposure risk for catalog metadata is a resource-policy question on the account's catalog, not a field here.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No HTTP request surface exists -- web ACLs have nothing to attach to here.
+    - control_id: rbac
+      status: configurable
+      field_path: create_table_default_permissions
+      evidence:
+        type: spec_default
+        reference: Omitted, Lake Formation grants ALL on new tables to the IAM_ALLOWED_PRINCIPALS group -- the compatibility mode where plain IAM policies decide everything. Populating the list grants named principals specific permissions on tables created in this database, putting table access under Lake Formation's grant model from the moment of creation.
+      notes: catalog_id can place the database in another account's governed catalog, and a target_database resource link inherits the target's governance. Access to the database object itself is IAM policy on glue actions -- account posture.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The database runs no workloads and holds no credentials -- consumers (crawlers, jobs, query engines) bring their own IAM roles.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: create_table_default_permissions
+      evidence:
+        type: spec_default
+        reference: The IAM_ALLOWED_PRINCIPALS default grant IS the legacy path -- Lake Formation's IAM-compatibility mode, where fine-grained catalog permissions are bypassed in favor of plain IAM. An entry granting an empty permission set suppresses that grant on new tables, which is the documented step for moving a database to real Lake Formation enforcement.
+      notes: Suppressing the grant only governs tables created under this database; catalog-wide default-permission settings are account posture.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Every catalog operation on this database and its tables (CreateTable, GetDatabase, and the rest) lands in CloudTrail as account-level posture; no per-database audit surface exists.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The catalog emits no per-database CloudWatch metrics; operational signals live with the consumers (crawler and job metrics) and CloudTrail.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The database is one declarative metadata object re-creatable from the manifest. The definitions that accumulate under it (tables, partitions) belong to other resources; the data itself lives in S3 or the federated source, backed up there.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at this level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The Glue Data Catalog is a regional managed service; a metadata object has no zonal posture to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists. Deleting the database removes the metadata namespace -- its table definitions go with it -- while the underlying data in S3 or the federated source is untouched.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Fully managed service surface with no customer-visible software to patch.

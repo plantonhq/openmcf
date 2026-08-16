@@ -1,0 +1,159 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureMssqlDatabase manifest's spec values into metered quantities and
+# price choices -- per-vCore compute for the provisioned General Purpose
+# and Hyperscale skus the price book carries, the pay-as-you-go SQL
+# license meter Azure Hybrid Benefit removes, Hyperscale readable
+# replicas, and provisioned data storage. Serverless skus refuse
+# honestly: they bill per vCore-second consumed and can auto-pause, so a
+# committed always-on figure would misstate the bill. The estimate
+# generator replays the catalog presets through these rules; a
+# server-side estimator evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azuremssqldatabase
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    assumption: eastus
+  refusals:
+    - when:
+        - field_path: sku_name
+          op: equals
+          value: GP_S_Gen5_2
+      reason: serverless bills per vCore-second actually consumed between the min_capacity floor and the sku ceiling and can auto-pause to zero compute -- a committed always-on figure would misstate the bill
+    - when:
+        - field_path: sku_name
+          op: is_unset
+      reason: an unset sku_name lets Azure apply its default, the GP_S_Gen5_2 serverless sku, which bills per vCore-second consumed and can auto-pause -- a committed figure would misstate the bill
+    - when:
+        - field_path: sku_name
+          op: not_equals
+          value: GP_Gen5_2
+        - field_path: sku_name
+          op: not_equals
+          value: HS_Gen5_4
+        - field_path: sku_name
+          op: not_equals
+          value: GP_S_Gen5_2
+        - field_path: sku_name
+          op: is_set
+      reason: only the GP_Gen5_2 and HS_Gen5_4 compute skus are pinned in the price book -- pricing any other sku would guess its rate
+    - when:
+        - field_path: sku_name
+          op: equals
+          value: GP_Gen5_2
+        - field_path: zone_redundant
+          op: equals
+          value: "true"
+      reason: zone-redundant General Purpose bills Azure's distinct uplifted Zone Redundancy compute meter, which is not yet in the price book -- pricing the single-zone rate would understate the bill
+    - when:
+        - field_path: sku_name
+          op: equals
+          value: GP_Gen5_2
+        - field_path: max_size_gb
+          op: is_unset
+      reason: with max_size_gb unset Azure applies the SKU's default max data size, which still bills per GB-month -- the default is SKU-specific and not modeled, so set max_size_gb to price storage honestly
+  lines:
+    - sku_meter: database compute
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: GP_Gen5_2
+      quantity:
+        - constant: "2"
+        - hours_in_month: true
+      price_slug: mssql-gp-compute-vcore-eastus
+      basis: GP_Gen5_2 provisions 2 General Purpose Gen5 vCores x 730 hours; region eastus is a stated assumption -- the database prices where its referenced logical server lives
+    - sku_meter: SQL Server license
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: GP_Gen5_2
+        - field_path: license_type
+          op: not_equals
+          value: BASE_PRICE
+      quantity:
+        - constant: "2"
+        - hours_in_month: true
+      price_slug: mssql-gp-sql-license-vcore
+      basis: pay-as-you-go SQL licensing bills per provisioned vCore-hour (2 vCores x 730 hours) -- Azure's default when license_type is unset; BASE_PRICE (Azure Hybrid Benefit) removes this line
+    - sku_meter: database storage
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: GP_Gen5_2
+      quantity:
+        - field_value:
+            field_path: max_size_gb
+      price_slug: mssql-gp-storage-eastus
+      basis: provisioned data storage bills the configured max_size_gb per GB-month whether used or empty
+    - sku_meter: database compute
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: HS_Gen5_4
+      quantity:
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: mssql-hyperscale-compute-vcore-eastus
+      basis: the HS_Gen5_4 primary provisions 4 Hyperscale Gen5 vCores x 730 hours; region eastus is a stated assumption -- the database prices where its referenced logical server lives
+    - sku_meter: database compute
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: HS_Gen5_4
+      quantity:
+        - field_value:
+            field_path: read_replica_count
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: mssql-hyperscale-compute-vcore-eastus
+      basis: each Hyperscale readable replica provisions the same 4 vCores as the primary x 730 hours
+    - sku_meter: SQL Server license
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: HS_Gen5_4
+        - field_path: license_type
+          op: not_equals
+          value: BASE_PRICE
+      quantity:
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: mssql-hyperscale-sql-license-vcore
+      basis: pay-as-you-go SQL licensing bills the primary's 4 provisioned vCores x 730 hours -- Azure's default when license_type is unset; BASE_PRICE removes this line
+    - sku_meter: SQL Server license
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: HS_Gen5_4
+        - field_path: license_type
+          op: not_equals
+          value: BASE_PRICE
+      quantity:
+        - field_value:
+            field_path: read_replica_count
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: mssql-hyperscale-sql-license-vcore
+      basis: each readable replica's 4 provisioned vCores carry the same pay-as-you-go license meter x 730 hours
+  exclusions:
+    - applies_when:
+        - field_path: sku_name
+          op: equals
+          value: HS_Gen5_4
+      text: Hyperscale data storage bills per GB-month actually allocated as data grows (max_size_gb is ignored by design) and cannot be known from the manifest
+    - text: backup storage beyond the free allowance (100% of the database size) follows churn, the short/long-term retention settings, and the storage_account_type redundancy choice
+    - text: network egress follows client placement
+  notes:
+    - applies_when:
+        - field_path: sku_name
+          op: equals
+          value: HS_Gen5_4
+        - field_path: zone_redundant
+          op: equals
+          value: "true"
+      text: Hyperscale zone redundancy carries no meter of its own -- the resilience rides the readable replicas (at least one is required) and zone-redundant backup storage, both already reflected above.
