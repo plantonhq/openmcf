@@ -1,0 +1,95 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsopensearchserverlesscollection
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every collection is encrypted at rest with AES-256 -- AWS rejects CreateCollection without a matching encryption security policy, and the modules always render one scoped to exactly this collection (AWS-owned key by default).
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: encryption.kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Omitting the encryption block uses the AWS-owned key; setting kms_key_arn renders the encryption policy with the referenced customer-managed key. ForceNew -- an existing collection cannot change keys.
+      notes: The production time-series preset selects a customer-managed key.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All communication with collection and Dashboards endpoints requires TLS 1.2, and data is encrypted in transit between the collection's internal components -- there is no plaintext arm.
+    - control_id: no-public-access
+      status: configurable
+      field_path: network.allow_from_public
+      evidence:
+        type: spec_default
+        reference: Defaults to true -- the AWS console's easy-create posture, where the endpoints are network-reachable from the internet but every request must still be SigV4-signed and pass a data-access rule. false restricts reachability to the listed OpenSearch Serverless VPC endpoints.
+      notes: All three presets omit the network block and keep the public-reachability default; private access requires vpc_endpoint_ids (CEL-enforced).
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: network.vpc_endpoint_ids
+      evidence:
+        type: spec_default
+        reference: With allow_from_public false, only the listed OpenSearch Serverless VPC endpoints (vpce-...) can reach the collection and Dashboards; a CEL rule requires at least one endpoint on the private arm.
+      notes: include_dashboards false additionally leaves the Dashboards endpoint with no network rule at all.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The collection and Dashboards endpoints are service-managed with no WAF attachment point; request filtering belongs to a fronting proxy outside this component.
+    - control_id: rbac
+      status: configurable
+      field_path: data_access
+      evidence:
+        type: spec_default
+        reference: Every data-plane operation is authorized through the collection-scoped data access policy -- IAM identity permissions alone grant nothing, and a collection without at least one rule is read-proof and write-proof. Each rule grants named principals specific collection and index permissions.
+      notes: All three presets grant least-privilege per-role rules (ingest writes, analysts read, the Bedrock service role full index access).
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The only data-plane credential is a SigV4-signed IAM identity -- workloads authenticate with their IAM roles' short-lived credentials; no static database users or passwords exist in OpenSearch Serverless.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: No non-IAM authentication path exists on collection endpoints -- every request must be TLS plus SigV4; there is no basic-auth, token, or anonymous arm to disable.
+      notes: SAML for Dashboards rides account-level security configs outside this component and does not weaken the data-plane path.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management operation (collection and policy create/update/delete) lands in AWS CloudTrail automatically.
+      notes: Data-plane reads and writes are not logged -- OpenSearch Serverless has no audit-log delivery surface, so access auditing beyond CloudTrail must happen at the application tier.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: OpenSearch Serverless publishes CloudWatch metrics (IndexingOCU, SearchOCU, storage) automatically -- there is nothing to enable.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: OpenSearch Serverless exposes no snapshot or backup surface. Indexed data is persisted redundantly in S3-backed managed storage in both HA modes (infrastructure failures lose nothing), but a deleted index or collection has no restore path -- deletion discipline and upstream data sources are the recovery story.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: There is no backup surface to set retention on (see backup-recovery). retention_rules govern live index lifecycle -- how long documents stay queryable -- not backup retention.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: standby_replicas
+      evidence:
+        type: spec_default
+        reference: Defaults to ENABLED (the AWS default) -- warm standby compute in a second AZ with automatic failover, at double the minimum OCU floor. DISABLED runs single-AZ compute for dev/test; storage durability is multi-AZ either way. ForceNew -- fixed at create.
+      notes: The production time-series preset enables it; the dev-search and Bedrock vector presets disable it to halve the floor.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: OpenSearch Serverless offers no deletion-protection flag -- DeleteCollection proceeds immediately once authorized.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The service is fully managed -- AWS deploys OpenSearch engine updates and security patches transparently; no version dial exists in the spec to fall behind on.

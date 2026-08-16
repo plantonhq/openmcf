@@ -1,0 +1,86 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsrdscluster
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon Relational Database Service
+      sku_meter: instance hours
+      pricing_unit: hours
+      description: Every provisioned instance in the cluster bills hourly from creation whether or not a single query runs; the rate follows each entry's instance_class and the cluster's engine.
+  cost_drivers:
+    - field_path: instances
+      sku_meter: instance hours
+      pricing_unit: hours
+      impact: Each entry is a full billed DB instance -- the dominant term of the bill scales linearly with the writer plus every reader.
+    - field_path: db_cluster_instance_class
+      sku_meter: instance hours
+      pricing_unit: hours
+      impact: The Multi-AZ RDS cluster shape (community mysql/postgres engines) runs one writer and two readers AWS manages internally -- three billed instances at this class, even though the instances list stays empty.
+    - field_path: serverless_v2_scaling.min_capacity
+      sku_meter: serverless capacity
+      pricing_unit: ACU-hours
+      impact: The floor every db.serverless instance bills even when idle. 0 enables automatic pause -- compute cost drops to zero while paused (storage still bills); any positive floor is committed spend every hour.
+    - field_path: serverless_v2_scaling.max_capacity
+      sku_meter: serverless capacity
+      pricing_unit: ACU-hours
+      impact: The per-instance spend ceiling -- under load each db.serverless instance can bill up to this many ACUs every hour.
+    - field_path: engine
+      sku_meter: instance hours
+      pricing_unit: hours
+      impact: Selects the rate table and the cluster shape -- Aurora engines pair instance-hours with usage-billed shared storage, while community mysql/postgres select the Multi-AZ RDS cluster shape with provisioned storage and IOPS.
+    - field_path: storage_type
+      sku_meter: storage I/O
+      pricing_unit: I/O requests
+      impact: Aurora standard storage bills every I/O request; aurora-iopt1 (I/O-Optimized) removes the per-I/O charge but raises the instance-hour and per-GB rates -- it pays off for I/O-heavy workloads. On Multi-AZ RDS clusters this picks the io1/io2/gp3 rate class instead.
+    - field_path: allocated_storage_gb
+      sku_meter: provisioned storage
+      pricing_unit: GB-months
+      impact: Multi-AZ RDS clusters only -- every allocated gigabyte bills monthly regardless of what the database stores. Aurora ignores it (Aurora storage grows and bills by consumption).
+    - field_path: iops
+      sku_meter: provisioned IOPS
+      pricing_unit: IOPS-months
+      impact: Multi-AZ RDS clusters bill the provisioned IOPS monthly -- AWS requires the value for io1/io2/gp3 cluster storage.
+    - field_path: backtrack_window_seconds
+      sku_meter: backtrack change records
+      pricing_unit: change records
+      impact: Aurora MySQL backtrack bills per million change records retained across the window -- a churning database with a 72-hour window accumulates real money.
+    - field_path: backup_retention_period
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: Backup storage is free up to the cluster's storage size; longer retention on a churning cluster accumulates billable backup beyond it.
+    - field_path: enable_http_endpoint
+      sku_meter: Data API requests
+      pricing_unit: requests
+      impact: The RDS Data API bills per million requests once past the free allowance (first year only) -- traffic-dependent, zero when unused.
+    - field_path: performance_insights_retention_period
+      sku_meter: Performance Insights retention
+      impact: The 7-day default is free; extended retention (731 days or any 31-day multiple) is paid per vCPU on every instance.
+    - field_path: monitoring_interval
+      sku_meter: Enhanced Monitoring ingestion
+      pricing_unit: GB
+      impact: Enhanced Monitoring streams OS metrics from every instance to CloudWatch Logs at the chosen granularity, billed as ingestion -- 1-second granularity on a multi-instance cluster is real money.
+    - field_path: enabled_cloudwatch_logs_exports
+      sku_meter: log export ingestion
+      pricing_unit: GB
+      impact: Each exported log type bills CloudWatch Logs ingestion and storage.
+    - field_path: engine_lifecycle_support
+      sku_meter: extended support instance hours
+      pricing_unit: hours
+      impact: The AWS default auto-enrolls paid RDS Extended Support when the engine version leaves standard support; the -disabled value opts out and forces timely upgrades instead.
+    - field_path: activity_stream
+      sku_meter: activity stream Kinesis usage
+      impact: A Database Activity Stream writes every audited event to an AWS-owned Kinesis data stream billed at Kinesis rates -- shard-hours plus PUT payload units that scale with database activity.
+  free_tier: ""
+  estimate_exclusions:
+    - Aurora cluster storage bills per consumed GB-month and grows with data -- no manifest can predict it
+    - storage I/O requests on standard (non-I/O-Optimized) Aurora storage are workload-dependent
+    - backup storage beyond the free allowance grows with churn and retention
+    - backtrack change records, Data API requests, Enhanced Monitoring, Performance Insights extended retention, log exports, and activity stream Kinesis usage depend on configuration and load
+    - data transfer between AZs and out of the region is traffic-dependent
+    - extended support surcharges begin only when the pinned engine version ages out of standard support
+  notes: "Instance hours are the certainty at manifest time -- each instances entry (or the serverless floor) bills every hour. Aurora's shared storage is the inversion from instance-kind RDS: nothing is allocated up front, so storage and I/O follow consumption. A Serverless v2 cluster with min_capacity 0 can idle to zero compute cost; a positive floor is committed spend."

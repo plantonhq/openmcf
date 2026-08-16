@@ -1,0 +1,135 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsredshiftcluster
+spec:
+  aws:
+    statements:
+      - sid: ManageCluster
+        actions:
+          - redshift:CreateCluster
+          - redshift:DeleteCluster
+          - redshift:ModifyCluster
+          - redshift:DescribeClusters
+          - redshift:ModifyClusterIamRoles
+          - redshift:RestoreFromClusterSnapshot
+          - redshift:CreateTags
+          - redshift:DeleteTags
+          - redshift:DescribeTags
+        resources:
+          - arn:aws:redshift:*:*:cluster:*
+          - arn:aws:redshift:*:*:snapshot:*
+          - arn:aws:redshift:*:*:subnetgroup:*
+          - arn:aws:redshift:*:*:parametergroup:*
+          - arn:aws:redshift:*:*:usagelimit:*
+        provenance: derived
+        notes: Covers aws_redshift_cluster across its create shapes -- fresh cluster and snapshot restore (snapshot_identifier / snapshot_arn) -- plus resizes and setting changes via ModifyCluster, IAM role association changes (iam_roles / default_iam_role_arn), tagging, and teardown. RestoreFromClusterSnapshot authorizes against the source snapshot ARN as well as the cluster, and the tag actions (CreateTags/DeleteTags) authorize against each tagged resource's own ARN -- the module tags the subnet group, parameter group, and usage limits alongside the cluster.
+      - sid: ManageSnapshotsOnLifecycle
+        actions:
+          - redshift:CreateClusterSnapshot
+          - redshift:DescribeClusterSnapshots
+        resources:
+          - arn:aws:redshift:*:*:snapshot:*
+          - arn:aws:redshift:*:*:cluster:*
+        provenance: derived
+        notes: The final snapshot on teardown (skip_final_snapshot=false) and reads of the source snapshot for restore-based creates. CreateClusterSnapshot authorizes against both the source cluster and the snapshot ARNs.
+      - sid: ManageSubnetAndParameterGroups
+        actions:
+          - redshift:CreateClusterSubnetGroup
+          - redshift:DeleteClusterSubnetGroup
+          - redshift:ModifyClusterSubnetGroup
+          - redshift:DescribeClusterSubnetGroups
+          - redshift:CreateClusterParameterGroup
+          - redshift:DeleteClusterParameterGroup
+          - redshift:ModifyClusterParameterGroup
+          - redshift:DescribeClusterParameterGroups
+          - redshift:DescribeClusterParameters
+        resources:
+          - arn:aws:redshift:*:*:subnetgroup:*
+          - arn:aws:redshift:*:*:parametergroup:*
+        provenance: derived
+        notes: Covers the conditional aws_redshift_subnet_group (spec.subnet_ids without an existing group name) and aws_redshift_parameter_group (inline spec.parameters) satellites.
+      - sid: ManageLoggingAndSnapshotCopy
+        actions:
+          - redshift:EnableLogging
+          - redshift:DisableLogging
+          - redshift:DescribeLoggingStatus
+          - redshift:EnableSnapshotCopy
+          - redshift:DisableSnapshotCopy
+          - redshift:ModifySnapshotCopyRetentionPeriod
+        resources:
+          - arn:aws:redshift:*:*:cluster:*
+        provenance: derived
+        notes: Covers aws_redshift_logging (spec.logging) and aws_redshift_snapshot_copy (spec.snapshot_copy) -- both cluster settings keyed by the cluster identifier. S3-destination logging additionally requires the target bucket's own policy to grant the Redshift service write access; that policy lives on the bucket, not on this principal.
+      - sid: ManageSnapshotScheduleAssociation
+        actions:
+          - redshift:ModifyClusterSnapshotSchedule
+          - redshift:DescribeSnapshotSchedules
+        resources:
+          - arn:aws:redshift:*:*:snapshotschedule:*
+          - arn:aws:redshift:*:*:cluster:*
+        provenance: derived
+        notes: aws_redshift_snapshot_schedule_association attaches the cluster to the existing schedule named by spec.snapshot_schedule_identifier; the schedule itself is account-scoped and not created here.
+      - sid: ManageUsageLimits
+        actions:
+          - redshift:CreateUsageLimit
+          - redshift:DeleteUsageLimit
+          - redshift:ModifyUsageLimit
+          - redshift:DescribeUsageLimits
+        resources:
+          - arn:aws:redshift:*:*:usagelimit:*
+          - arn:aws:redshift:*:*:cluster:*
+        provenance: derived
+        notes: One aws_redshift_usage_limit per spec.usage_limits entry, keyed by (feature, limit type, period). CreateUsageLimit authorizes against the cluster ARN as well as the usage-limit ARN.
+      - sid: ManageScheduledActions
+        actions:
+          - redshift:CreateScheduledAction
+          - redshift:DeleteScheduledAction
+          - redshift:ModifyScheduledAction
+          - redshift:DescribeScheduledActions
+        resources:
+          - "*"
+        provenance: derived
+        notes: One aws_redshift_scheduled_action per spec.scheduled_actions entry. Scheduled-action ARNs are account-scoped names outside the cluster's ARN space, so the statement stays unscoped; narrow to arn:aws:redshift:*:*:scheduledaction:* patterns in a hardened deployment if the account's IAM supports it.
+      - sid: ManageEndpointAccess
+        actions:
+          - redshift:CreateEndpointAccess
+          - redshift:DeleteEndpointAccess
+          - redshift:ModifyEndpointAccess
+          - redshift:DescribeEndpointAccess
+          - redshift:AuthorizeEndpointAccess
+          - redshift:RevokeEndpointAccess
+          - redshift:DescribeEndpointAuthorization
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_redshift_endpoint_access (spec.endpoint_accesses) and aws_redshift_endpoint_authorization (spec.endpoint_authorizations) -- the managed VPC endpoints and their cross-account grants. Endpoint operations validate against cluster and account scopes the provider addresses by name.
+      - sid: PassRolesToRedshift
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: Associating spec.iam_roles / default_iam_role_arn with the cluster and giving scheduled actions their scheduler role (iam_role_arn) passes those roles to the Redshift service. Narrow the role ARN in a hardened deployment.
+      - sid: UseCustomerManagedKeys
+        actions:
+          - kms:DescribeKey
+          - kms:CreateGrant
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Required only when kms_key_id or master_password_secret_kms_key_id selects a customer-managed key -- Redshift creates grants against the key during cluster create/modify.
+      - sid: DescribeVpcContext
+        actions:
+          - ec2:DescribeSubnets
+          - ec2:DescribeSecurityGroups
+          - ec2:DescribeVpcs
+        resources:
+          - "*"
+        provenance: derived
+        notes: Subnet-group creation, security-group attachment, and managed-endpoint placement validate their references. EC2 Describe APIs support no resource-level scoping, so the wildcard is the narrowest possible scope.

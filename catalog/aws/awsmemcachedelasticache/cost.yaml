@@ -1,0 +1,27 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsmemcachedelasticache
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Amazon ElastiCache
+      sku_meter: cache node hours
+      pricing_unit: hours
+      description: Every cache node bills hourly from cluster creation whether or not a single key is stored; the rate follows node_type.
+  cost_drivers:
+    - field_path: node_type
+      sku_meter: cache node hours
+      pricing_unit: hours
+      impact: The node type sets the hourly rate for every node -- effectively the whole bill, since Memcached has no storage, snapshot, or replication charges.
+    - field_path: num_cache_nodes
+      sku_meter: cache node hours
+      pricing_unit: hours
+      impact: Every node is a full billed instance; keys spread across nodes by consistent hashing, so capacity -- and cost -- scale linearly with the count (1-40).
+  free_tier: ""
+  estimate_exclusions:
+    - data transfer between the cache and clients in other Availability Zones, and out of the region, follows standard AWS rates
+  notes: "The node fleet is the entire bill: Memcached has no persistence, no snapshots, and no replicas, so there is nothing else to meter. Changing node_type replaces the whole cluster (and its cached data) rather than re-pricing it in place."

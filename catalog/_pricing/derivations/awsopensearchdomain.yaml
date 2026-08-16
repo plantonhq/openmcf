@@ -1,0 +1,137 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsOpenSearchDomain manifest's spec values into metered quantities and
+# price choices. Node hours are the committed spend, one line per tier --
+# data nodes, dedicated masters, UltraWarm -- each tier's instance type
+# selecting its rate, plus the per-node gp3 EBS volumes. UltraWarm and
+# cold managed storage bill per GB actually stored -- exclusions, never
+# guessed numbers. Explicit gp3 IOPS/throughput dials REFUSE: the billable
+# surcharge is (provisioned minus included baseline), an arithmetic these
+# rules cannot express, and an estimate without it would understate a
+# committed charge. The estimate generator replays the catalog presets
+# through these rules to emit ../estimates/awsopensearchdomain.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsopensearchdomain
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  refusals:
+    - when:
+        - field_path: cluster_config.node_options
+          op: is_set
+      reason: coordinator node pools bill per node at each pool's own instance rate, and the pool shapes live in a repeated field these rules cannot resolve to committed quantities -- the estimate would silently understate the node bill
+    - when:
+        - field_path: ebs_options.ebs_enabled
+          op: equals
+          value: "true"
+        - field_path: ebs_options.volume_type
+          op: not_equals
+          value: gp3
+      reason: the EBS volume type is not gp3 (or is left to the provider default), and only the gp3 storage rate is pinned in the price book
+    - when:
+        - field_path: ebs_options.iops
+          op: not_equals
+          value: "0"
+      reason: explicitly provisioned gp3 IOPS can exceed the included 3000-IOPS baseline and bill a monthly per-IOPS surcharge of (provisioned minus included) per data-node volume, a quantity these rules cannot compute -- an estimate without it would understate a committed charge
+    - when:
+        - field_path: ebs_options.throughput
+          op: not_equals
+          value: "0"
+      reason: explicitly provisioned gp3 throughput can exceed the included 125-MiB/s baseline and bill a monthly per-MiBps surcharge of (provisioned minus included) per data-node volume, a quantity these rules cannot compute -- an estimate without it would understate a committed charge
+  lines:
+    - sku_meter: data node hours
+      quantity:
+        - field_value:
+            field_path: cluster_config.instance_count
+            default_when_unset: "1"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon OpenSearch Service
+        pricing_unit: hours
+        attributes:
+          - key: instance_type
+            from_field: cluster_config.instance_type
+      basis: instance_count data nodes (the AWS default 1 when unset) x 730 hours at the instance_type's On-Demand rate
+    - sku_meter: dedicated master node hours
+      applies_when:
+        - field_path: cluster_config.dedicated_master_enabled
+          op: equals
+          value: "true"
+      quantity:
+        - field_value:
+            field_path: cluster_config.dedicated_master_count
+            default_when_unset: "3"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon OpenSearch Service
+        pricing_unit: hours
+        attributes:
+          - key: instance_type
+            from_field: cluster_config.dedicated_master_type
+      basis: dedicated_master_count master nodes (the AWS default 3 when unset) x 730 hours at the dedicated_master_type's rate -- masters hold no data and need no storage line
+    - sku_meter: UltraWarm node hours
+      applies_when:
+        - field_path: cluster_config.warm_enabled
+          op: equals
+          value: "true"
+      quantity:
+        - field_value:
+            field_path: cluster_config.warm_count
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon OpenSearch Service
+        pricing_unit: hours
+        attributes:
+          - key: instance_type
+            from_field: cluster_config.warm_type
+      basis: warm_count UltraWarm nodes (the spec requires the count when warm is enabled) x 730 hours at the warm_type's rate
+    - sku_meter: EBS storage
+      applies_when:
+        - field_path: ebs_options.ebs_enabled
+          op: equals
+          value: "true"
+        - field_path: ebs_options.volume_type
+          op: equals
+          value: gp3
+      quantity:
+        - field_value:
+            field_path: cluster_config.instance_count
+            default_when_unset: "1"
+        - field_value:
+            field_path: ebs_options.volume_size
+      price_lookup:
+        service_name: Amazon OpenSearch Service
+        pricing_unit: GB-months
+        attributes:
+          - key: storage_media
+            constant: gp3
+      basis: one gp3 volume of volume_size GB per data node -- instance_count x volume_size at the OpenSearch gp3 rate, billing from creation full or empty
+  exclusions:
+    - applies_when:
+        - field_path: cluster_config.warm_enabled
+          op: equals
+          value: "true"
+      text: UltraWarm managed storage bills per GB-month of data actually parked on the warm tier, on top of the warm node hours
+    - applies_when:
+        - field_path: cluster_config.cold_storage_enabled
+          op: equals
+          value: "true"
+      text: cold storage bills per GB-month of data actually parked on the S3-backed cold tier
+    - applies_when:
+        - field_path: log_publishing_options
+          op: is_set
+      text: published logs bill CloudWatch Logs ingestion and storage at the destination log groups, and their volume follows query and indexing traffic
+    - text: data transfer out of the region is traffic-dependent
+  notes:
+    - text: Estimated at the declared node topology running all 730 hours -- the committed always-on spend.
+    - text: Automated snapshots are stored free by the service, and traffic between the domain's own nodes -- including cross-AZ -- carries no transfer charge.
+    - applies_when:
+        - field_path: cluster_config.multi_az_with_standby_enabled
+          op: equals
+          value: "true"
+      text: Multi-AZ with Standby dedicates part of instance_count to standby duty -- every node bills, including the standby capacity buying the 99.99% SLA.

@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesstorageclass
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: parameters
+      evidence:
+        type: spec_default
+        reference: parameters pass through verbatim to the provisioner, and volume encryption is pinned there -- the 01-aws-ebs-gp3 preset sets encrypted "true" so every volume the class provisions is encrypted at creation.
+      notes: The parameter vocabulary belongs to the chosen CSI driver, deliberately kept as an open map rather than typed fields. A class is where a platform pins encryption for ALL claims that name it, instead of relying on per-claim discipline. parameters are immutable after creation, so the posture cannot drift on an existing class.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: parameters
+      evidence:
+        type: spec_default
+        reference: The same pass-through parameters map is the seam for the driver's key-management settings; whether a customer-managed key is supported, and the parameter that names it, belongs to the chosen CSI driver.
+      notes: No preset pins a customer-managed key. Parameter values that name secrets (the csi.storage.k8s.io secret-name parameters) are references to Secret objects, never key material itself.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A StorageClass serves no traffic; the volume attachment and data paths belong to the CSI driver and the platform underneath it.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A StorageClass is not a network endpoint; it exists only at the Kubernetes API, and the volumes it templates attach to nodes, never to the internet.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound network path exists to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No HTTP traffic is served; there is nothing for a request filter to protect.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management of the class is the target cluster's Kubernetes RBAC. Note the grain -- the class is cluster-scoped and serves claims from EVERY namespace; this object offers no per-namespace gate on who may claim from it.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The class calls no cloud APIs itself; the CSI driver that provisions its volumes runs under the cluster's own identities, owned by the cluster and driver components.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The class performs no authentication; there is no auth path, legacy or otherwise, to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the class are Kubernetes API operations captured by the target cluster's audit policy; the object emits nothing itself.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A StorageClass produces no metrics; volume health and capacity signals come from the CSI driver and kubelet, owned elsewhere.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The class provisions volumes; backing those volumes up is snapshot and backup machinery configured through separate resources. Nothing in this spec schedules, stores, or restores anything.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist here to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A class controls placement, not replication -- allowed_topologies pins which zones volumes may land in, and wait_for_first_consumer aligns each volume's zone with its consuming pod. Whether a driver offers zone-replicated volume types is a provisioner-specific parameters choice owned by that driver.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No flag refuses deletion of the class, and deleting it never touches already-provisioned volumes (claims simply cannot name it anymore). The adjacent data-safety knob is reclaim_policy -- retain preserves a volume, and its bill, when its CLAIM is deleted -- but that protects volumes, not the class.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: No software runs here; the CSI driver named in provisioner is installed and patched through its own lifecycle.

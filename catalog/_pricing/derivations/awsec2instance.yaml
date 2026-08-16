@@ -1,0 +1,165 @@
+# Cost derivation: the machine-executable rules turning any AwsEc2Instance
+# manifest's spec values into metered quantities and price choices. An
+# On-Demand instance prices its instance-hours (the instance type selects
+# the rate, priced at the shared-tenancy Linux/UNIX rate under a stated
+# assumption -- the manifest does not declare the AMI's platform) plus the
+# root volume it reshapes; Spot instances carry no committed instance rate
+# (the market sets it under the On-Demand ceiling -- an exclusion, never a
+# guessed number); Capacity Block and interruptible-reservation markets
+# bill through their pre-purchased reservations. A launch-template launch
+# that omits the inline instance type REFUSES -- its rate lives on the
+# referenced AwsLaunchTemplate, invisible in this manifest. The estimate
+# generator replays the catalog presets through these rules to emit
+# ../estimates/awsec2instance.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsec2instance
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  refusals:
+    - when:
+        - field_path: launch_template
+          op: is_set
+        - field_path: instance_type
+          op: is_unset
+      reason: the instance type -- and therefore the hourly rate -- is supplied by the referenced AwsLaunchTemplate and invisible in this manifest, so an estimate here would be a guess wearing a dollar sign
+    - when:
+        - field_path: ebs_block_devices
+          op: is_set
+      reason: each additional EBS data volume bills by its own per-device size and type, which these rules cannot resolve to a single committed quantity -- the estimate would silently understate the storage bill
+    - when:
+        - field_path: placement
+          op: is_set
+        - field_path: placement.tenancy
+          op: equals
+          value: dedicated
+      reason: dedicated tenancy bills single-tenant instance rates plus a per-region fee, and the price book pins only shared-tenancy rates
+    - when:
+        - field_path: placement
+          op: is_set
+        - field_path: placement.tenancy
+          op: equals
+          value: host
+      reason: host tenancy moves billing to the Dedicated Host itself, which is purchased and billed outside this manifest
+    - when:
+        - field_path: root_block_device
+          op: is_set
+        - field_path: root_block_device.volume_type
+          op: not_equals
+          value: gp3
+      reason: the root volume's type is not gp3 (or is inherited from the AMI's mapping), and only the gp3 storage rate is pinned in the price book
+    - when:
+        - field_path: root_block_device.iops
+          op: not_equals
+          value: "0"
+      reason: explicitly provisioned IOPS can exceed the gp3 included 3000 baseline and bill a monthly surcharge of (provisioned minus included) IOPS, a quantity these rules cannot compute -- an estimate without it would understate a committed charge
+    - when:
+        - field_path: root_block_device.throughput_mibps
+          op: not_equals
+          value: "0"
+      reason: explicitly provisioned throughput can exceed the gp3 included 125 MiB/s baseline and bill a monthly surcharge of (provisioned minus included) MiB/s, a quantity these rules cannot compute -- an estimate without it would understate a committed charge
+  lines:
+    - sku_meter: instance hours
+      applies_when:
+        - field_path: market_type
+          op: is_unset
+        - field_path: spot_options
+          op: is_unset
+      quantity:
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Elastic Compute Cloud
+        pricing_unit: hours
+        attributes:
+          - key: instance_type
+            from_field: instance_type
+      basis: one On-Demand instance billed every hour of the month at the shared-tenancy Linux/UNIX rate -- the manifest does not declare the AMI's platform, so Linux/UNIX is the stated assumption
+    - sku_meter: EBS storage
+      applies_when:
+        - field_path: root_block_device.volume_type
+          op: equals
+          value: gp3
+      quantity:
+        - field_value:
+            field_path: root_block_device.volume_size_gb
+      price_slug: ebs-gp3-storage-us-east-1
+      basis: the reshaped root volume's size (root_block_device.volume_size_gb) at the gp3 rate, billing from creation full or empty
+    - sku_meter: public IPv4 address usage
+      applies_when:
+        - field_path: associate_public_ip_address
+          op: equals
+          value: "true"
+      quantity:
+        - hours_in_month: true
+      price_slug: public-ipv4-in-use-us-east-1
+      basis: one public IPv4 address explicitly associated at launch, billed every hour of the month
+  exclusions:
+    - applies_when:
+        - field_path: root_block_device.volume_size_gb
+          op: equals
+          value: "0"
+      text: the root volume's size comes from the AMI or launch template's block-device mapping, invisible in this manifest -- its GB-month charge is excluded
+    - applies_when:
+        - field_path: spot_options
+          op: is_set
+      text: running hours bill the fluctuating Spot market rate, typically 60-90% below On-Demand and never above it -- no committed instance rate exists
+    - applies_when:
+        - field_path: market_type
+          op: equals
+          value: spot
+        - field_path: spot_options
+          op: is_unset
+      text: running hours bill the fluctuating Spot market rate, typically 60-90% below On-Demand and never above it -- no committed instance rate exists
+    - applies_when:
+        - field_path: spot_options
+          op: is_set
+      text: Spot capacity can be reclaimed with two minutes' notice -- the discount's price
+    - applies_when:
+        - field_path: market_type
+          op: equals
+          value: capacity-block
+      text: the ML Capacity Block was purchased up front at its own committed price and bills whether or not this instance runs -- the instance adds no hourly compute charge here
+    - applies_when:
+        - field_path: market_type
+          op: equals
+          value: interruptible-capacity-reservation
+      text: compute bills through the targeted interruptible Capacity Reservation at its own discounted rate, purchased outside this manifest
+    - applies_when:
+        - field_path: associate_public_ip_address
+          op: is_unset
+      text: a subnet that maps public IPs on launch adds the hourly public-IPv4 charge without this manifest saying so
+    - applies_when:
+        - field_path: detailed_monitoring
+          op: equals
+          value: "true"
+      text: detailed monitoring bills per instance-metric actually published to CloudWatch
+    - applies_when:
+        - field_path: cpu_credits
+          op: equals
+          value: unlimited
+      text: surplus CPU credits on a burstable type bill per vCPU-hour when sustained load outruns the credit balance
+    - text: data transfer between AZs and out of the region follows the workload's traffic
+    - text: EBS snapshots taken of the volumes bill per GB-month outside this component
+  notes:
+    - applies_when:
+        - field_path: market_type
+          op: is_unset
+        - field_path: spot_options
+          op: is_unset
+      text: Priced at the shared-tenancy Linux/UNIX On-Demand rate -- a Windows or commercial-Linux AMI bills license-included rates above this estimate.
+    - applies_when:
+        - field_path: spot_options
+          op: is_set
+      text: Spot has no committed list price -- the market sets the hourly rate under the published On-Demand ceiling, which is why this estimate carries no instance-hours line.
+    - applies_when:
+        - field_path: market_type
+          op: equals
+          value: capacity-block
+      text: Only the EBS volumes bill through this manifest -- the reserved GPU capacity was bought as the Capacity Block itself.
+    - text: The estimate assumes the instance runs all 730 hours; stopping it stops the instance-hours meter but keeps every EBS volume billing.

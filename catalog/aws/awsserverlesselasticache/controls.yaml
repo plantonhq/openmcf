@@ -1,0 +1,98 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsserverlesselasticache
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: At-rest encryption is always enabled on a serverless cache -- no configuration at any level can disable it; the AWS-owned key encrypts by default.
+      notes: Covers the cached data and snapshots derived from it.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset means the AWS-owned key; setting kms_key_id encrypts under the referenced customer-managed key instead. ForceNew -- the key choice is fixed at create time.
+      notes: The production preset selects a customer-managed key.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All serverless caches have in-transit encryption enabled -- clients can only connect over TLS; there is no plaintext arm to disable.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The cache is reachable only through VPC endpoints in the chosen subnets -- ElastiCache Serverless has no public endpoint and no publicly-accessible option.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_default
+        reference: The attached security groups are the complete inbound surface of the cache's VPC endpoints -- the port opens only to the sources those groups declare.
+      notes: The production preset attaches an explicit cache security group; client ingress rules live on the referenced AwsSecurityGroup nodes.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A cache endpoint has no WAF attachment point; request filtering belongs to the application tier in front of it.
+    - control_id: rbac
+      status: configurable
+      field_path: user_group_id
+      evidence:
+        type: spec_default
+        reference: Unset leaves the engine's default access (Redis/Valkey default user; Memcached is unauthenticated inside the network); attaching a user group scopes commands and keyspaces per user through Redis ACLs.
+      notes: Redis/Valkey only -- a CEL guard rejects user groups on Memcached, whose access control is entirely network-level. The production preset attaches a user group.
+    - control_id: workload-identity
+      status: configurable
+      field_path: user_group_id
+      evidence:
+        type: spec_default
+        reference: Attaching a user group whose users authenticate with IAM puts data-plane access on short-lived SigV4 credentials instead of static passwords; the per-user authentication mode lives on the referenced AwsElasticacheUser resources.
+      notes: Redis/Valkey only; Memcached has no authentication mechanism at all.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The legacy Redis AUTH-token arm does not exist in this spec -- serverless access control is the user-group arm only. Memcached has no authentication path of any kind, which makes restricted-ingress the compensating control.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management operation (create, modify, delete, snapshot) lands in AWS CloudTrail automatically.
+      notes: Data-plane commands are not logged -- ElastiCache Serverless has no engine-log or slow-log delivery surface, so cache access auditing must happen at the application tier.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Serverless caches publish CloudWatch metrics (BytesUsedForCache, ElastiCacheProcessingUnits, latency percentiles) automatically -- there is nothing to enable.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: snapshot_retention_limit
+      evidence:
+        type: spec_default
+        reference: 0 disables automatic snapshots; any positive value enables daily snapshots at daily_snapshot_time, restorable into a new cache via snapshot_arns_to_restore.
+      notes: Redis/Valkey only -- Memcached has no persistence (CEL guards reject snapshot fields on it). The production preset retains 14 days.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: snapshot_retention_limit
+      evidence:
+        type: spec_validation
+        reference: The retention window is a first-class dial validated to 0-35 days, so organizational retention policy is expressed directly in the manifest.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Serverless caches automatically replicate data across multiple Availability Zones (three in most regions) with a 99.99% availability SLA -- AZ failures are transparent and no layout choice exists to get it wrong.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: ElastiCache exposes no deletion-protection flag -- a delete call proceeds immediately. The recovery path is snapshot retention, covered under backup-recovery.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: ElastiCache Serverless automatically upgrades minor and patch engine versions with no availability impact; major versions change only when the manifest's major_engine_version does.

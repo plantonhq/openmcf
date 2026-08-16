@@ -1,0 +1,49 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsMemcachedElasticache manifest's spec values into metered quantities
+# and price choices. The whole committed bill is the node fleet:
+# num_cache_nodes x 730 hours at the rate the manifest's own node_type
+# selects through the price book's attribute identities -- Memcached has
+# no storage, snapshot, or replication meters. The estimate generator
+# replays the catalog presets through these rules to emit
+# ../estimates/awsmemcachedelasticache.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsmemcachedelasticache
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  lines:
+    - sku_meter: cache node hours
+      quantity:
+        - field_value:
+            field_path: num_cache_nodes
+            default_when_unset: "1"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon ElastiCache
+        pricing_unit: hours
+        attributes:
+          - key: node_type
+            from_field: node_type
+          - key: engine
+            constant: memcached
+      basis: every cache node (num_cache_nodes, the provider default 1 when unset) x 730 hours at the node_type's Memcached rate
+  exclusions:
+    - applies_when:
+        - field_path: az_mode
+          op: equals
+          value: cross-az
+      text: cross-AZ client traffic to nodes in other Availability Zones bills standard inter-AZ data transfer
+    - text: data transfer out of the region follows standard AWS rates
+  notes:
+    - text: Estimated at the declared node count -- the fleet is the entire bill, since Memcached has no persistence, snapshots, or replicas.
+    - applies_when:
+        - field_path: transit_encryption_enabled
+          op: equals
+          value: "true"
+      text: In-transit TLS adds no charge.

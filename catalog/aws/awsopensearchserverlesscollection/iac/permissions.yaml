@@ -1,0 +1,62 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsopensearchserverlesscollection
+spec:
+  aws:
+    statements:
+      - sid: ManageCollection
+        actions:
+          - aoss:CreateCollection
+          - aoss:BatchGetCollection
+          - aoss:UpdateCollection
+          - aoss:DeleteCollection
+          - aoss:ListCollections
+          - aoss:TagResource
+          - aoss:UntagResource
+          - aoss:ListTagsForResource
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_opensearchserverless_collection. Collection ids are service-generated at create, so CreateCollection and ListCollections cannot be ARN-scoped; the collection ARN (arn:aws:aoss:*:*:collection/<id>) is only known after create. Scope post-create actions to the collection ARN in a hardened deployment.
+      - sid: ManageCollectionScopedPolicies
+        actions:
+          - aoss:CreateSecurityPolicy
+          - aoss:GetSecurityPolicy
+          - aoss:UpdateSecurityPolicy
+          - aoss:DeleteSecurityPolicy
+          - aoss:ListSecurityPolicies
+          - aoss:CreateAccessPolicy
+          - aoss:GetAccessPolicy
+          - aoss:UpdateAccessPolicy
+          - aoss:DeleteAccessPolicy
+          - aoss:ListAccessPolicies
+          - aoss:CreateLifecyclePolicy
+          - aoss:BatchGetLifecyclePolicy
+          - aoss:UpdateLifecyclePolicy
+          - aoss:DeleteLifecyclePolicy
+          - aoss:ListLifecyclePolicies
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers the two aws_opensearchserverless_security_policy resources (encryption, network), the conditional aws_opensearchserverless_access_policy, and the conditional aws_opensearchserverless_lifecycle_policy. OpenSearch Serverless policy objects are account-level named documents with no ARNs -- the policy APIs support no resource-level scoping, so the wildcard is the narrowest possible scope.
+      - sid: CreateAossServiceLinkedRole
+        actions:
+          - iam:CreateServiceLinkedRole
+        resources:
+          - arn:aws:iam::*:role/aws-service-role/observability.aoss.amazonaws.com/AWSServiceRoleForAmazonOpenSearchServerless
+        provenance: derived
+        notes: The first collection in an account creates the OpenSearch Serverless service-linked role automatically (it publishes serverless CloudWatch metrics); scoped to exactly that role.
+      - sid: UseCustomerManagedKeys
+        actions:
+          - kms:DescribeKey
+          - kms:CreateGrant
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Required only when encryption.kms_key_arn selects a customer-managed key -- AWS documents that the principal selecting the key needs kms:DescribeKey and kms:CreateGrant so OpenSearch Serverless can create grants against it. Narrow the key ARN in a hardened deployment.

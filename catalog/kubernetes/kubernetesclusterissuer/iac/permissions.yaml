@@ -1,0 +1,38 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesclusterissuer
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the kubernetes_secret_v1.credentials resources -- one Secret per credential the issuer configuration declares (DNS provider tokens and keys, ACME EAB HMAC, Vault tokens), created in cert-manager's cluster-resource namespace so the controller can read them for the cluster-scoped issuer. None are created for credential-free configurations (self_signed, ambient keyless solvers).
+      - api_groups:
+          - cert-manager.io
+        resources:
+          - clusterissuers
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers the kubectl_manifest.cluster_issuer resource -- one cluster-scoped ClusterIssuer (cert-manager.io/v1) applied via server-side apply after its credential Secrets exist.

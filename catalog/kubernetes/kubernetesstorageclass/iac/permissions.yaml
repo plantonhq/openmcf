@@ -1,0 +1,25 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesstorageclass
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - storage.k8s.io
+        resources:
+          - storageclasses
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_storage_class_v1.storage_class -- the single cluster-scoped StorageClass the module manages. delete is also exercised on changes to provisioner, parameters, reclaim_policy, or volume_binding_mode, which force replacement (delete-then-create).

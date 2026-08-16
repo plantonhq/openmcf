@@ -1,0 +1,45 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsmemorydbcluster
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon MemoryDB
+      sku_meter: node hours
+      pricing_unit: hours
+      description: Every node -- each shard's primary plus every replica -- bills hourly from cluster creation whether or not a single command runs; the rate follows node_type and engine.
+  cost_drivers:
+    - field_path: node_type
+      sku_meter: node hours
+      pricing_unit: hours
+      impact: The node type sets the hourly rate for every node in the cluster -- the dominant term of the bill.
+    - field_path: num_shards
+      sku_meter: node hours
+      pricing_unit: hours
+      impact: Each shard is a primary node plus its replicas, so this multiplies the whole node fleet.
+    - field_path: num_replicas_per_shard
+      sku_meter: node hours
+      pricing_unit: hours
+      impact: Every replica is a full billed node in every shard -- two replicas on two shards is four extra nodes.
+    - field_path: engine
+      sku_meter: node hours
+      pricing_unit: hours
+      impact: The engine changes the rate for the same hardware -- Valkey nodes list roughly 30% below Redis OSS nodes, and Valkey data written is free up to 10 TB/month where Redis bills every gigabyte.
+    - field_path: data_tiering
+      sku_meter: node hours
+      pricing_unit: hours
+      impact: Data tiering requires the r6gd (NVMe SSD) node family, whose hourly rate carries the local SSD capacity -- cheaper per gigabyte held, pricier per node-hour.
+    - field_path: snapshot_retention_limit
+      sku_meter: snapshot storage
+      pricing_unit: GB-months
+      impact: Snapshot storage is free up to the cluster's total storage; longer retention on a changing dataset accumulates billable snapshot storage beyond it.
+  free_tier: ""
+  estimate_exclusions:
+    - data written to the cluster bills per GB and follows write traffic -- Redis OSS bills every gigabyte written, Valkey is free up to 10 TB/month and billed above it
+    - snapshot storage beyond the free allowance grows with dataset size and retention
+    - data transfer between AZs for client traffic and out of the region follows standard AWS rates
+  notes: "Node hours are the committed half of the bill: num_shards x (1 primary + num_replicas_per_shard) nodes, every hour. Data written is the usage half no manifest can predict. Joining a multi-Region cluster adds cross-region replication charges on top."

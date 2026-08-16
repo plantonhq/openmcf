@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesgateway
+spec:
+  billing_model: free
+  free_tier: A Gateway API Gateway is a record in the Kubernetes API server -- listeners, addresses, and TLS configuration that the controller behind its GatewayClass programs into real traffic-handling infrastructure. The Gateway object itself never bills and reserves no cluster capacity.
+  notes: "No field of this spec bills HERE, but this object is the trigger for real spend elsewhere: the implementing controller typically provisions a cloud LoadBalancer Service (or equivalent) for it, and that load balancer's hourly fees, capacity units, and data processing bill through the cluster and controller components that own the provisioned infrastructure. infrastructure.annotations is the per-cloud injection surface steering that provisioning (internal vs internet-facing, NLB attributes, static IPs) -- it steers the spend, it does not carry it. The controller's own pods bill through their component's cluster-capacity profile."

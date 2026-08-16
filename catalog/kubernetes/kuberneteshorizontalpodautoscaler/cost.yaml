@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kuberneteshorizontalpodautoscaler
+spec:
+  billing_model: free
+  free_tier: The HorizontalPodAutoscaler itself -- an autoscaling/v2 API object the cluster's controller manager reconciles -- never bills. It requests no CPU, memory, or storage; it only moves the replica count of the workload named in scale_target.
+  notes: "No field of this spec buys anything directly, but the object exists to move someone else's bill: min_replicas is the capacity floor the scaled workload never drops below, and max_replicas is the honest ceiling on how much of the cluster's node capacity that workload may reserve. That capacity bills through the target workload's own component (its resource requests priced against the cluster's node economics), never through the autoscaler. Custom and external metrics additionally require a metrics adapter running in the cluster -- its own workload with its own footprint."

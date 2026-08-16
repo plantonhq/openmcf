@@ -1,0 +1,59 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kuberneteskafkaconnector
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The connector stores no data of its own -- the records it moves rest in the Kafka cluster's storage and the external system's, each owned by its own component. The resource definition itself rests in the cluster's etcd, whose encryption is the control plane's property.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest here to key (see enc-at-rest), so customer-managed keys have no meaning on this resource.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The connector's traffic runs over connections owned elsewhere -- the Connect workers' connection to Kafka is configured on the KubernetesKafkaConnect resource (its bootstrap and TLS settings), and encryption toward the external system is that connector class's own config keys (JDBC SSL modes, HTTPS endpoints), defined by the plugin, not by this contract.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The resource exposes no endpoint. The Connect REST API the operator drives is the Connect cluster's own surface, owned by that component.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound traffic reaches this object, so there are no network sources to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No requests flow through this object, so a web application firewall does not apply.
+    - control_id: rbac
+      status: not_applicable
+      notes: The object's access plane is the Kubernetes API, governed by the target cluster's RBAC. The connector's rights INSIDE Kafka are the ACLs of the identity the Connect cluster connects with (a KafkaUser on the KubernetesKafkaConnect resource), owned there.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Credentials to external systems are static configuration values by nature of the Connect config model. The KubernetesSecretConfigProvider seam keeps them out of this resource -- config values reference ${secrets:<namespace>/<secret>:<key>} once the Connect cluster enables the provider -- but that is secret indirection, not a platform-issued identity.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The connector authenticates nowhere itself; authentication toward Kafka is the Connect cluster's, and authentication toward the external system is whatever the connector class's config keys define. No legacy path exists in this contract to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the connector are Kubernetes API operations, captured by the target cluster's audit policy; the operator additionally reflects state transitions in the resource's status and events.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The connector's runtime metrics (task states, throughput, lag) are exported by the Connect cluster's workers, owned by the KubernetesKafkaConnect component; this resource only surfaces reconcile status.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The resource is declarative and re-applyable; the pipe's progress (offsets) lives in Kafka itself. The list_offsets and alter_offsets arms exist for offset INSPECTION and OVERRIDE (replay, skip-poison-record, migration cutover) -- operational verbs, not backup.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist for this object (see backup-recovery), so retention has nothing to govern.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The connector's availability comes from Connect's own task rebalancing across the Connect cluster's workers -- worker placement and replica count are the KubernetesKafkaConnect component's posture. Note auto_restart is the resilience seam this spec DOES carry -- it recovers FAILED connectors/tasks with incremental back-off instead of waiting for a human.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on KafkaConnector; deleting it stops and removes the pipe but destroys no data (records already moved stay where they landed, offsets remain in Kafka's internal topics). Protection is operational (namespace RBAC, change review).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Nothing runs here to patch. The connector runs whatever plugin build the Connect cluster's workers carry (stock image, prebuilt image, OCI plugins, or build -- all arms of KubernetesKafkaConnect); the version field only selects among the versions already present (empty = newest available).

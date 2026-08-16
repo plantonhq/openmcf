@@ -1,0 +1,59 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kuberneteshorizontalpodautoscaler
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An autoscaler stores no data beyond its own definition in the cluster's etcd; encrypting that store is the target cluster control plane's property. The scaled workload's storage posture belongs to that workload.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest), so customer-managed keys have no meaning here.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The autoscaler serves no connections. Its metric reads happen inside the control plane (controller manager to metrics APIs), and the scaled workload's traffic encryption is that workload's posture.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The object is not network-addressable; it has no endpoint to expose or hide.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound traffic reaches this object, so there are no network sources to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No requests flow through this object, so a web application firewall does not apply.
+    - control_id: rbac
+      status: not_applicable
+      notes: The object's only access plane is the Kubernetes API -- who may create or change the autoscaler (and thereby the target's replica bounds) is the target cluster's own RBAC, not something this spec configures.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The autoscaler holds no credentials and calls no cloud APIs itself. External metrics reach the cluster through a metrics adapter (e.g. prometheus-adapter, KEDA), and that adapter's cloud authentication is its own component's posture.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: There is no authentication path into this object beyond the Kubernetes API itself, so no legacy mechanism exists to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the autoscaler are Kubernetes API operations captured by the target cluster's audit policy, and its scaling decisions surface as Kubernetes events on the object -- there is no separate audit trail this spec configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The autoscaler CONSUMES metrics rather than exporting them -- resource metrics require metrics-server, and custom/object/external metrics require an adapter. Its own decisions are visible through the object's status and events, not a metrics endpoint of its own.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The object is fully declarative and holds no data -- re-applying the manifest reconstructs it exactly. There is nothing to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist for this object (see backup-recovery), so retention has nothing to govern.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The autoscaler owns only the target's replica COUNT. Spreading those replicas across zones is the scaled workload's scheduling posture (topology spread, anti-affinity), owned by that workload's component.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on HorizontalPodAutoscaler; deleting it freezes the target at its current replica count without destroying data. Protection is operational (cluster RBAC, change review).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Nothing runs here to patch -- the reconciling controller is the cluster's own controller manager, versioned and patched with the cluster.

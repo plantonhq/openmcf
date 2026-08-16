@@ -1,0 +1,60 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsredshiftcluster
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Amazon Redshift
+      sku_meter: node hours
+      pricing_unit: hours
+      description: Every node bills hourly from creation whether or not a single query runs; the rate follows node_type, and the count follows number_of_nodes (doubled across two AZs when multi_az is on).
+  cost_drivers:
+    - field_path: node_type
+      sku_meter: node hours
+      pricing_unit: hours
+      impact: The node class sets the hourly rate per node -- the dominant term of the bill. RA3 classes pair a higher node rate with separately-metered managed storage; DC2 bundles node-local SSD into the rate.
+    - field_path: number_of_nodes
+      sku_meter: node hours
+      pricing_unit: hours
+      impact: Every node is a full billed instance; the bill scales linearly with the count.
+    - field_path: multi_az
+      sku_meter: node hours
+      pricing_unit: hours
+      impact: Multi-AZ provisions an equal set of compute nodes in a second availability zone at the same rate -- double the compute bill, the price of automatic failover.
+    - field_path: scheduled_actions
+      sku_meter: node hours
+      pricing_unit: hours
+      impact: Pause/resume schedules suspend on-demand node billing while the cluster is paused (only backup storage bills) -- the standard nights-and-weekends lever; resize schedules change the billed topology on cron.
+    - field_path: automated_snapshot_retention_period
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: Automated snapshot storage is free up to the cluster's provisioned/managed storage size; longer retention on a churning warehouse accumulates billable backup beyond it. 0 disables automated snapshots entirely.
+    - field_path: manual_snapshot_retention_period
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: Manual snapshots bill as backup storage for their whole retention -- the default (-1) keeps them, and their charge, forever.
+    - field_path: snapshot_copy
+      sku_meter: cross-region snapshot copy
+      pricing_unit: GB-months
+      impact: Copied snapshots bill storage in the destination region plus the cross-region data transfer to get there.
+    - field_path: logging
+      sku_meter: audit log delivery
+      pricing_unit: GB
+      impact: CloudWatch delivery bills log ingestion and storage per GB; S3 delivery bills the destination bucket's storage. The useractivitylog (every executed query) is the volume driver.
+    - field_path: publicly_accessible
+      sku_meter: public IPv4 address usage
+      pricing_unit: IP-hours
+      impact: A public cluster holds a billed public IPv4 address on its leader node.
+  free_tier: ""
+  estimate_exclusions:
+    - RA3 managed storage bills per GB-month of data actually stored -- workload-dependent, invisible at manifest time
+    - concurrency scaling bills per-second above the free daily credits when bursts spill onto transient clusters
+    - Redshift Spectrum bills per TB scanned in S3
+    - backup storage beyond the free allowance grows with churn and retention
+    - cross-region snapshot copy and data sharing follow snapshot size and query traffic
+    - audit log volume follows query traffic
+  notes: "Node hours are the certainty at manifest time -- node_type x number_of_nodes, doubled by multi_az. Everything else follows operations: stored bytes drive managed storage, bursts drive concurrency scaling, external scans drive Spectrum, and pause schedules are the one lever that turns the always-on meter off. usage_limits caps what Spectrum, concurrency scaling, and cross-region datasharing may spend -- a governor on the usage meters, not a charge of its own."

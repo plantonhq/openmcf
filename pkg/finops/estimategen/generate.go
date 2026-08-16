@@ -159,6 +159,20 @@ func Generate(repoRoot string) (*Summary, error) {
 			if model == nil {
 				continue
 			}
+			// A derivation's slug-referenced prices are live references even
+			// when no committed preset triggers their conditional lines --
+			// the rule prices real manifests the presets do not exercise.
+			// (Attribute lookups stay replay-counted: their entries are
+			// value-keyed and cannot be enumerated statically.)
+			derivation, err := costderivation.Load(repoRoot, component)
+			if err != nil {
+				return nil, err
+			}
+			for _, line := range derivation.GetSpec().GetLines() {
+				if slug := line.GetPriceSlug(); slug != "" {
+					referenced[provider][slug] = true
+				}
+			}
 		} else {
 			model, err = estimatemodel.Load(repoRoot, component)
 			if err != nil {
@@ -182,9 +196,10 @@ func Generate(repoRoot string) (*Summary, error) {
 		}
 	}
 
-	// The dead-price sweep: an entry no model references is dead weight --
-	// either an orphaned pin (its component's model moved off it) or a slug
-	// typo waiting to bite. The book stays exactly as large as its readers.
+	// The dead-price sweep: an entry neither a model nor a derivation
+	// references is dead weight -- either an orphaned pin (its component's
+	// model moved off it) or a slug typo waiting to bite. The book stays
+	// exactly as large as its readers.
 	providers, err := pricebook.Discover(repoRoot)
 	if err != nil {
 		return nil, err

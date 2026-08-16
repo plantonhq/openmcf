@@ -1,0 +1,97 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsec2instance
+spec:
+  aws:
+    statements:
+      - sid: ManageInstanceLifecycle
+        actions:
+          - ec2:RunInstances
+          - ec2:TerminateInstances
+          - ec2:StartInstances
+          - ec2:StopInstances
+          - ec2:DescribeInstances
+          - ec2:DescribeInstanceAttribute
+          - ec2:ModifyInstanceAttribute
+          - ec2:DescribeInstanceStatus
+          - ec2:ModifyInstanceMetadataOptions
+          - ec2:ModifyInstanceMaintenanceOptions
+          - ec2:MonitorInstances
+          - ec2:UnmonitorInstances
+          - ec2:DescribeInstanceCreditSpecifications
+          - ec2:ModifyInstanceCreditSpecification
+          - ec2:CreateTags
+          - ec2:DeleteTags
+          - ec2:DescribeTags
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_instance across its lifecycle -- launch, the stop-update-start cycles in-place changes require (instance type, user data), protection/metadata/monitoring/credit modifications, tagging, and teardown. RunInstances authorizes against image, subnet, security-group, network-interface, volume, and instance ARNs simultaneously, so the statement stays unscoped here; narrow to account/region ARN patterns in a hardened deployment.
+      - sid: ReadLaunchContext
+        actions:
+          - ec2:DescribeImages
+          - ec2:DescribeInstanceTypes
+          - ec2:DescribeLaunchTemplates
+          - ec2:DescribeLaunchTemplateVersions
+          - ec2:DescribeSubnets
+          - ec2:DescribeSecurityGroups
+          - ec2:DescribeVpcs
+          - ec2:DescribeNetworkInterfaces
+          - ec2:DescribeVolumes
+          - ec2:DescribeVolumesModifications
+          - ec2:DescribeIamInstanceProfileAssociations
+        resources:
+          - "*"
+        provenance: derived
+        notes: The provider reads the AMI's block-device mapping, the referenced launch template and its versions (spec.launch_template), network context, attached volumes, and the profile association to reconcile state. EC2 Describe APIs support no resource-level scoping, so the wildcard is the narrowest possible scope.
+      - sid: ManageNetworkInterfaceAttributes
+        actions:
+          - ec2:ModifyNetworkInterfaceAttribute
+          - ec2:AssignPrivateIpAddresses
+          - ec2:UnassignPrivateIpAddresses
+          - ec2:AssignIpv6Addresses
+          - ec2:UnassignIpv6Addresses
+        resources:
+          - arn:aws:ec2:*:*:network-interface/*
+        provenance: derived
+        notes: In-place updates the spec allows on the primary interface -- security_group_ids, source_dest_check, secondary_private_ips, and the IPv6 address fields all edit the ENI without replacing the instance.
+      - sid: ModifyRootVolume
+        actions:
+          - ec2:ModifyVolume
+        resources:
+          - arn:aws:ec2:*:*:volume/*
+        provenance: derived
+        notes: root_block_device size/type/IOPS/throughput changes apply in place through EBS volume modification.
+      - sid: ManageInstanceProfileAssociation
+        actions:
+          - ec2:AssociateIamInstanceProfile
+          - ec2:ReplaceIamInstanceProfileAssociation
+          - ec2:DisassociateIamInstanceProfile
+          - iam:PassRole
+        resources:
+          - arn:aws:ec2:*:*:instance/*
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: spec.instance_profile attaches and replaces in place on a running instance; attaching a profile passes its role to EC2. Narrow the role ARN in a hardened deployment.
+      - sid: ManageSpotRequests
+        actions:
+          - ec2:DescribeSpotInstanceRequests
+          - ec2:CancelSpotInstanceRequests
+        resources:
+          - "*"
+        provenance: derived
+        notes: Required only for the spot market shapes (spec.spot_options / market_type "spot") -- the provider reads the request behind the instance and cancels persistent requests on destroy. Spot request APIs support no resource-level scoping.
+      - sid: UseCustomerManagedKeys
+        actions:
+          - kms:DescribeKey
+          - kms:CreateGrant
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Required only when root_block_device.kms_key_id or an ebs_block_devices entry's kms_key_id selects a customer-managed key -- EC2 creates grants against the key to attach the encrypted volumes.

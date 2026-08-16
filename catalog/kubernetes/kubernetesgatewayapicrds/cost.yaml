@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesgatewayapicrds
+spec:
+  billing_model: free
+  free_tier: This component installs the Gateway API CustomResourceDefinitions -- schema extensions of the Kubernetes API server itself. CRDs are control-plane records; no provider bills for them and they reserve no cluster capacity.
+  notes: "No field of this spec buys anything: version pins which upstream CRD bundle is applied and install_channel selects standard or experimental resource sets -- both choose API surface, not infrastructure. The CRDs only ENABLE Gateway, HTTPRoute, and the other Gateway API kinds to exist; the spend arrives later, when a Gateway resource makes an implementing controller provision a load balancer -- billed through that Gateway's and controller's own components."

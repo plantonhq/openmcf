@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetestelemetry
+spec:
+  billing_model: free
+  free_tier: A Telemetry resource is Istio configuration -- how traces, metrics, and access logs are generated for the workloads it selects. It is a custom resource istiod consumes; no compute runs for it and no provider meters it.
+  notes: "The object never bills, but it is a volume dial for OTHER systems' bills: tracing's random_sampling_percentage decides how many spans flow to the tracing backend (0% upstream default when unset), access_logging decides log volume, and metrics tag_overrides shape the cardinality the metrics store carries. All of that spend lands on the observability stack and the proxies generating the signals -- their own components and accounts -- never on this object's meter."

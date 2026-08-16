@@ -1,0 +1,49 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsopensearchserverlesscollection
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon OpenSearch Service
+      sku_meter: indexing OCU hours
+      pricing_unit: OCU-hours
+      description: The collection holds a minimum indexing-OCU floor that bills every hour from creation regardless of traffic -- 1 OCU with standby replicas (the default), 0.5 OCU without.
+    - service_name: Amazon OpenSearch Service
+      sku_meter: search and query OCU hours
+      pricing_unit: OCU-hours
+      description: The matching search-OCU floor bills every hour from creation -- 1 OCU with standby replicas (the default), 0.5 OCU without.
+  cost_drivers:
+    - field_path: standby_replicas
+      sku_meter: indexing OCU hours
+      pricing_unit: OCU-hours
+      impact: ENABLED (the AWS default) keeps warm standbys in a second AZ and doubles the minimum OCU floor to 2 OCUs total; DISABLED is the dev/test posture at 1 OCU total (0.5 indexing + 0.5 search). ForceNew -- the choice is fixed at create.
+    - field_path: standby_replicas
+      sku_meter: search and query OCU hours
+      pricing_unit: OCU-hours
+      impact: The same doubling applies to the search half of the floor -- the standby's replica serves reads, but you pay for it every hour.
+    - field_path: collection_group_name
+      sku_meter: indexing OCU hours
+      pricing_unit: OCU-hours
+      impact: Placing the collection in a collection group delegates the capacity minimums and maximums to the group's own OCU settings -- the committed floor then lives on the group, not this manifest.
+    - field_path: type
+      sku_meter: managed storage
+      pricing_unit: GB-months
+      impact: SEARCH and VECTORSEARCH keep all data on hot storage for latency; TIMESERIES tiers older data to cheaper warm storage. VECTORSEARCH collections also pool their OCUs separately from search/time-series collections.
+    - field_path: serverless_vector_acceleration
+      sku_meter: vector acceleration OCU hours
+      pricing_unit: OCU-hours
+      impact: ENABLED offloads heavy vector indexing to GPU-backed acceleration OCUs billed per OCU-hour of accelerated work -- faster indexing at the same total cost profile, paid only while accelerating.
+    - field_path: retention_rules
+      sku_meter: managed storage
+      pricing_unit: GB-months
+      impact: Retention rules expire documents in matching indexes, bounding managed-storage growth; without rules, data is retained (and billed) indefinitely.
+  free_tier: ""
+  estimate_exclusions:
+    - OCU usage above the minimum floor scales with indexing and query load up to the account's capacity limits
+    - managed storage bills per GB-month and grows with the indexed data (bounded only by retention_rules)
+    - vector acceleration OCU-hours accrue per accelerated indexing workload when enabled
+  notes: "The OCU floor is account-scoped, not per-collection: collections encrypted with the same KMS key share one OCU pool, so the first collection carries the floor and siblings add usage, not a second floor. VECTORSEARCH collections pool separately even on the same key. OpenSearch Dashboards itself is free -- only OCUs and storage bill."

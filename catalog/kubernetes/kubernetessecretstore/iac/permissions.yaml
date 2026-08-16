@@ -1,0 +1,38 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetessecretstore
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_secret_v1.credentials -- the credential Secret(s) materialized in the store's namespace only when the chosen backend declares static credentials (access keys, service-account key JSON, Vault token/AppRole secret, bearer token); get is needed for refresh either way.
+      - api_groups:
+          - external-secrets.io
+        resources:
+          - secretstores
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubectl_manifest.secret_store -- the SecretStore custom resource (external-secrets.io/v1) applied via server-side apply in the store's namespace.

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesnamespace
+spec:
+  billing_model: free
+  free_tier: A namespace and the governance objects the module renders around it (ResourceQuota, LimitRange, NetworkPolicies) are pure Kubernetes API objects -- they reserve no node capacity and no cloud SKU bills for them.
+  notes: "No field of this spec buys anything: resource_profile CAPS what workloads in the namespace may consume (and injects default requests/limits), network_config restricts their traffic, and pod_security_standard hardens them -- all governance over spend, never a source of it. Real spend lives in the workloads deployed INTO the namespace, whose resource requests reserve cluster node capacity; those are separate catalog kinds with their own cost profiles."

@@ -1,0 +1,129 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsmskcluster
+spec:
+  presets:
+    - preset: 01-basic-kafka
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Managed Streaming for Apache Kafka
+          sku_meter: broker storage
+          pricing_unit: GB-months
+          pricing_quantity: "3000"
+          quantity_basis: each broker's provisioned EBS volume (ebs_volume_size_gib, the AWS default 1000 GiB per broker when the manifest does not size it) billed per GB-month at the region's gp2 broker-storage rate
+          list_unit_price: "0.1"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMSK/20260729211408/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "300.0000"
+        - service_name: Amazon Managed Streaming for Apache Kafka
+          sku_meter: broker instance hours
+          pricing_unit: hours
+          pricing_quantity: "2190"
+          quantity_basis: every broker node x 730 hours at the instance_type's broker rate -- the always-on core of the bill
+          list_unit_price: "0.0456"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMSK/20260729211408/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "99.8640"
+      total_list_cost: "399.8640"
+      exclusions:
+        - data transfer into and out of the cluster (client traffic crossing AZs, regions, or the internet) follows standard AWS data transfer rates
+      notes: Estimated at the declared broker fleet -- AWS supports increasing broker count and volume size in place, never decreasing them.
+    - preset: 02-production-encrypted
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Managed Streaming for Apache Kafka
+          sku_meter: broker instance hours
+          pricing_unit: hours
+          pricing_quantity: "4380"
+          quantity_basis: every broker node x 730 hours at the instance_type's broker rate -- the always-on core of the bill
+          list_unit_price: "0.408"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMSK/20260729211408/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "1787.0400"
+        - service_name: Amazon Managed Streaming for Apache Kafka
+          sku_meter: broker storage
+          pricing_unit: GB-months
+          pricing_quantity: "6000"
+          quantity_basis: each broker's provisioned EBS volume (ebs_volume_size_gib, the AWS default 1000 GiB per broker when the manifest does not size it) billed per GB-month at the region's gp2 broker-storage rate
+          list_unit_price: "0.1"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMSK/20260729211408/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "600.0000"
+      total_list_cost: "2387.0400"
+      exclusions:
+        - data transfer into and out of the cluster (client traffic crossing AZs, regions, or the internet) follows standard AWS data transfer rates
+        - tiered storage bills per GB-month of warm data actually offloaded plus a per-GB retrieval charge -- both follow retention and consumer behavior
+        - broker log delivery bills CloudWatch Logs ingestion, Firehose delivery, or S3 storage at the destination resources, scaling with log volume
+        - monitoring levels above DEFAULT publish additional CloudWatch metric streams billed per metric, scaling with broker, topic, and partition counts
+      notes: Estimated at the declared broker fleet -- AWS supports increasing broker count and volume size in place, never decreasing them. The Prometheus JMX and Node exporters (open monitoring) are free.
+    - preset: 03-multi-auth-logging
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Managed Streaming for Apache Kafka
+          sku_meter: broker instance hours
+          pricing_unit: hours
+          pricing_quantity: "2190"
+          quantity_basis: every broker node x 730 hours at the instance_type's broker rate -- the always-on core of the bill
+          list_unit_price: "0.21"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMSK/20260729211408/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "459.9000"
+        - service_name: Amazon Managed Streaming for Apache Kafka
+          sku_meter: broker storage
+          pricing_unit: GB-months
+          pricing_quantity: "1500"
+          quantity_basis: each broker's provisioned EBS volume (ebs_volume_size_gib, the AWS default 1000 GiB per broker when the manifest does not size it) billed per GB-month at the region's gp2 broker-storage rate
+          list_unit_price: "0.1"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMSK/20260729211408/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "150.0000"
+      total_list_cost: "609.9000"
+      exclusions:
+        - data transfer into and out of the cluster (client traffic crossing AZs, regions, or the internet) follows standard AWS data transfer rates
+        - broker log delivery bills CloudWatch Logs ingestion, Firehose delivery, or S3 storage at the destination resources, scaling with log volume
+        - monitoring levels above DEFAULT publish additional CloudWatch metric streams billed per metric, scaling with broker, topic, and partition counts
+      notes: Estimated at the declared broker fleet -- AWS supports increasing broker count and volume size in place, never decreasing them. The Prometheus JMX and Node exporters (open monitoring) are free.
+    - preset: 04-declared-topics
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Managed Streaming for Apache Kafka
+          sku_meter: broker instance hours
+          pricing_unit: hours
+          pricing_quantity: "2190"
+          quantity_basis: every broker node x 730 hours at the instance_type's broker rate -- the always-on core of the bill
+          list_unit_price: "0.21"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMSK/20260729211408/us-west-2/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "459.9000"
+        - service_name: Amazon Managed Streaming for Apache Kafka
+          sku_meter: broker storage
+          pricing_unit: GB-months
+          pricing_quantity: "3000"
+          quantity_basis: each broker's provisioned EBS volume (ebs_volume_size_gib, the AWS default 1000 GiB per broker when the manifest does not size it) billed per GB-month at the region's gp2 broker-storage rate
+          list_unit_price: "0.1"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMSK/20260729211408/us-west-2/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "300.0000"
+      total_list_cost: "759.9000"
+      exclusions:
+        - data transfer into and out of the cluster (client traffic crossing AZs, regions, or the internet) follows standard AWS data transfer rates
+      notes: Estimated at the declared broker fleet -- AWS supports increasing broker count and volume size in place, never decreasing them.

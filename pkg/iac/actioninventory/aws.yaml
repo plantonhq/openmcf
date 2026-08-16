@@ -8,10 +8,81 @@
 # own modification stamp.
 provider: aws
 services:
+  - prefix: airflow
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/airflow/airflow.json
+    source_modified: "2026-08-07"
+    retrieved_on: "2026-08-16"
+    actions:
+      - CreateCliToken
+      - CreateEnvironment
+      - CreateWebLoginToken
+      - DeleteEnvironment
+      - GetEnvironment
+      - InvokeRestApi
+      - ListEnvironments
+      - ListTagsForResource
+      - PublishMetrics
+      - TagResource
+      - UntagResource
+      - UpdateEnvironment
+  - prefix: aoss
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/aoss/aoss.json
+    source_modified: "2026-03-25"
+    retrieved_on: "2026-08-16"
+    actions:
+      - APIAccessAll
+      - AddCollectionToCollectionGroup
+      - BatchGetCollection
+      - BatchGetCollectionGroup
+      - BatchGetEffectiveLifecyclePolicy
+      - BatchGetLifecyclePolicy
+      - BatchGetVpcEndpoint
+      - CreateAccessPolicy
+      - CreateCollection
+      - CreateCollectionGroup
+      - CreateIndex
+      - CreateLifecyclePolicy
+      - CreateSecurityConfig
+      - CreateSecurityPolicy
+      - CreateVpcEndpoint
+      - DashboardsAccessAll
+      - DeleteAccessPolicy
+      - DeleteCollection
+      - DeleteCollectionGroup
+      - DeleteIndex
+      - DeleteLifecyclePolicy
+      - DeleteSecurityConfig
+      - DeleteSecurityPolicy
+      - DeleteVpcEndpoint
+      - GetAccessPolicy
+      - GetAccountSettings
+      - GetIndex
+      - GetPoliciesStats
+      - GetSecurityConfig
+      - GetSecurityPolicy
+      - ListAccessPolicies
+      - ListCollectionGroups
+      - ListCollections
+      - ListLifecyclePolicies
+      - ListSecurityConfigs
+      - ListSecurityPolicies
+      - ListTagsForResource
+      - ListVpcEndpoints
+      - TagResource
+      - UntagResource
+      - UpdateAccessPolicy
+      - UpdateAccountSettings
+      - UpdateCollection
+      - UpdateCollectionGroup
+      - UpdateIndex
+      - UpdateLifecyclePolicy
+      - UpdateSecurityConfig
+      - UpdateSecurityPolicy
+      - UpdateVpcEndpoint
   - prefix: apigateway
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/apigateway/apigateway.json
     source_modified: "2026-07-07"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - AddCertificateToDomain
       - CreateAccessAssociation
@@ -60,7 +131,7 @@ services:
   - prefix: application-autoscaling
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/application-autoscaling/application-autoscaling.json
     source_modified: "2026-03-25"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - DeleteScalingPolicy
       - DeleteScheduledAction
@@ -79,7 +150,7 @@ services:
   - prefix: autoscaling
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/autoscaling/autoscaling.json
     source_modified: "2026-08-06"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - AttachInstances
       - AttachLoadBalancerTargetGroups
@@ -152,7 +223,7 @@ services:
   - prefix: cloudfront
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/cloudfront/cloudfront.json
     source_modified: "2026-07-17"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - AllowVendedLogDeliveryForResource
       - AssociateAlias
@@ -330,7 +401,7 @@ services:
   - prefix: dynamodb
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/dynamodb/dynamodb.json
     source_modified: "2026-08-05"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - AssociateTableReplica
       - BatchGetItem
@@ -414,7 +485,7 @@ services:
   - prefix: ec2
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/ec2/ec2.json
     source_modified: "2026-08-07"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - AcceptAddressTransfer
       - AcceptCapacityReservationBillingOwnership
@@ -1212,7 +1283,7 @@ services:
   - prefix: ecr
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/ecr/ecr.json
     source_modified: "2026-04-07"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - BatchCheckLayerAvailability
       - BatchDeleteImage
@@ -1277,7 +1348,7 @@ services:
   - prefix: ecs
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/ecs/ecs.json
     source_modified: "2026-07-29"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - AllowVendedLogDeliveryForResource
       - ContinueServiceDeployment
@@ -1363,7 +1434,7 @@ services:
   - prefix: eks
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/eks/eks.json
     source_modified: "2026-08-11"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - AccessKubernetesApi
       - AssociateAccessPolicy
@@ -1437,7 +1508,7 @@ services:
   - prefix: elasticache
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/elasticache/elasticache.json
     source_modified: "2026-08-10"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - AddTagsToResource
       - AuthorizeCacheSecurityGroupIngress
@@ -1519,7 +1590,7 @@ services:
   - prefix: elasticloadbalancing
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/elasticloadbalancing/elasticloadbalancing.json
     source_modified: "2026-05-26"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - AddListenerCertificates
       - AddTags
@@ -1598,10 +1669,146 @@ services:
       - SetSecurityGroups
       - SetSubnets
       - SetWebAcl
+  - prefix: es
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/es/es.json
+    source_modified: "2026-08-03"
+    retrieved_on: "2026-08-16"
+    actions:
+      - AcceptInboundConnection
+      - AcceptInboundCrossClusterSearchConnection
+      - AddDataSource
+      - AddDirectQueryDataSource
+      - AddTags
+      - AssociatePackage
+      - AssociatePackages
+      - AttachDataSource
+      - AuthorizeVpcEndpointAccess
+      - CancelDomainConfigChange
+      - CancelElasticsearchServiceSoftwareUpdate
+      - CancelServiceSoftwareUpdate
+      - CreateApplication
+      - CreateDomain
+      - CreateElasticsearchDomain
+      - CreateElasticsearchServiceRole
+      - CreateIndex
+      - CreateOutboundConnection
+      - CreateOutboundCrossClusterSearchConnection
+      - CreatePackage
+      - CreateServiceRole
+      - CreateVpcEndpoint
+      - DeleteApplication
+      - DeleteDataSource
+      - DeleteDirectQueryDataSource
+      - DeleteDomain
+      - DeleteElasticsearchDomain
+      - DeleteElasticsearchServiceRole
+      - DeleteInboundConnection
+      - DeleteInboundCrossClusterSearchConnection
+      - DeleteIndex
+      - DeleteOutboundConnection
+      - DeleteOutboundCrossClusterSearchConnection
+      - DeletePackage
+      - DeleteVpcEndpoint
+      - DeregisterCapability
+      - DescribeDataSourceAttachment
+      - DescribeDomain
+      - DescribeDomainAutoTunes
+      - DescribeDomainChangeProgress
+      - DescribeDomainConfig
+      - DescribeDomainHealth
+      - DescribeDomainNodes
+      - DescribeDomains
+      - DescribeDryRunProgress
+      - DescribeElasticsearchDomain
+      - DescribeElasticsearchDomainConfig
+      - DescribeElasticsearchDomains
+      - DescribeElasticsearchInstanceTypeLimits
+      - DescribeInboundConnections
+      - DescribeInboundCrossClusterSearchConnections
+      - DescribeInsightDetails
+      - DescribeInstanceTypeLimits
+      - DescribeOutboundConnections
+      - DescribeOutboundCrossClusterSearchConnections
+      - DescribePackages
+      - DescribeReservedElasticsearchInstanceOfferings
+      - DescribeReservedElasticsearchInstances
+      - DescribeReservedInstanceOfferings
+      - DescribeReservedInstances
+      - DescribeVpcEndpoints
+      - DetachDataSource
+      - DissociatePackage
+      - DissociatePackages
+      - ESCrossClusterGet
+      - ESHttpDelete
+      - ESHttpGet
+      - ESHttpHead
+      - ESHttpPatch
+      - ESHttpPost
+      - ESHttpPut
+      - GetApplication
+      - GetCapability
+      - GetCompatibleElasticsearchVersions
+      - GetCompatibleVersions
+      - GetDataSource
+      - GetDefaultApplicationSetting
+      - GetDirectQueryDataSource
+      - GetDomainMaintenanceStatus
+      - GetIndex
+      - GetMigration
+      - GetPackageVersionHistory
+      - GetUpgradeHistory
+      - GetUpgradeStatus
+      - InsightFeedback
+      - ListApplications
+      - ListDataSourceAttachments
+      - ListDataSources
+      - ListDirectQueryDataSources
+      - ListDomainMaintenances
+      - ListDomainNames
+      - ListDomainsForPackage
+      - ListElasticsearchInstanceTypeDetails
+      - ListElasticsearchInstanceTypes
+      - ListElasticsearchVersions
+      - ListInsights
+      - ListInstanceTypeDetails
+      - ListMigrations
+      - ListPackagesForDomain
+      - ListScheduledActions
+      - ListTags
+      - ListVersions
+      - ListVpcEndpointAccess
+      - ListVpcEndpoints
+      - ListVpcEndpointsForDomain
+      - PurchaseReservedElasticsearchInstanceOffering
+      - PurchaseReservedInstanceOffering
+      - PutDefaultApplicationSetting
+      - RegisterCapability
+      - RejectInboundConnection
+      - RejectInboundCrossClusterSearchConnection
+      - RemoveTags
+      - RevokeVpcEndpointAccess
+      - RollbackElasticsearchServiceSoftwareUpdate
+      - RollbackServiceSoftwareUpdate
+      - StartDomainMaintenance
+      - StartElasticsearchServiceSoftwareUpdate
+      - StartMigration
+      - StartServiceSoftwareUpdate
+      - UpdateApplication
+      - UpdateDataSource
+      - UpdateDirectQueryDataSource
+      - UpdateDomainConfig
+      - UpdateElasticsearchDomainConfig
+      - UpdateIndex
+      - UpdatePackage
+      - UpdatePackageScope
+      - UpdateScheduledAction
+      - UpdateVpcEndpoint
+      - UpgradeDomain
+      - UpgradeElasticsearchDomain
   - prefix: firehose
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/firehose/firehose.json
     source_modified: "2026-03-25"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - CreateDeliveryStream
       - DeleteDeliveryStream
@@ -1618,7 +1825,7 @@ services:
   - prefix: iam
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/iam/iam.json
     source_modified: "2026-08-12"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - AcceptDelegationRequest
       - AddClientIDToOpenIDConnectProvider
@@ -1810,10 +2017,79 @@ services:
       - UploadSSHPublicKey
       - UploadServerCertificate
       - UploadSigningCertificate
+  - prefix: kafka
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/kafka/kafka.json
+    source_modified: "2026-07-30"
+    retrieved_on: "2026-08-16"
+    actions:
+      - BatchAssociateScramSecret
+      - BatchDisassociateScramSecret
+      - CreateChannel
+      - CreateCluster
+      - CreateClusterV2
+      - CreateConfiguration
+      - CreateReplicator
+      - CreateTopic
+      - CreateVpcConnection
+      - DeleteChannel
+      - DeleteCluster
+      - DeleteClusterPolicy
+      - DeleteConfiguration
+      - DeleteReplicator
+      - DeleteTopic
+      - DeleteVpcConnection
+      - DescribeChannel
+      - DescribeCluster
+      - DescribeClusterOperation
+      - DescribeClusterOperationV2
+      - DescribeClusterV2
+      - DescribeConfiguration
+      - DescribeConfigurationRevision
+      - DescribeReplicator
+      - DescribeTopic
+      - DescribeTopicPartitions
+      - DescribeVpcConnection
+      - GetBootstrapBrokers
+      - GetClusterPolicy
+      - GetCompatibleKafkaVersions
+      - ListChannels
+      - ListClientVpcConnections
+      - ListClusterOperations
+      - ListClusterOperationsV2
+      - ListClusters
+      - ListClustersV2
+      - ListConfigurationRevisions
+      - ListConfigurations
+      - ListKafkaVersions
+      - ListNodes
+      - ListReplicators
+      - ListScramSecrets
+      - ListTagsForResource
+      - ListTopics
+      - ListVpcConnections
+      - PutClusterPolicy
+      - RebootBroker
+      - RejectClientVpcConnection
+      - TagResource
+      - UntagResource
+      - UpdateBrokerCount
+      - UpdateBrokerStorage
+      - UpdateBrokerType
+      - UpdateChannel
+      - UpdateClusterConfiguration
+      - UpdateClusterKafkaVersion
+      - UpdateConfiguration
+      - UpdateConnectivity
+      - UpdateMonitoring
+      - UpdateRebalancing
+      - UpdateReplicationInfo
+      - UpdateSecurity
+      - UpdateStorage
+      - UpdateTopic
   - prefix: kinesis
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/kinesis/kinesis.json
     source_modified: "2026-04-23"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - AddTagsToStream
       - CreateStream
@@ -1858,7 +2134,7 @@ services:
   - prefix: kms
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/kms/kms.json
     source_modified: "2026-07-29"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - CancelKeyDeletion
       - ConnectCustomKeyStore
@@ -1919,7 +2195,7 @@ services:
   - prefix: lambda
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/lambda/lambda.json
     source_modified: "2026-07-28"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - AddLayerVersionPermission
       - AddPermission
@@ -2040,7 +2316,7 @@ services:
   - prefix: logs
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/logs/logs.json
     source_modified: "2026-08-02"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - AssociateKmsKey
       - AssociateSourceToS3TableIntegration
@@ -2174,10 +2450,62 @@ services:
       - UpdateLogDelivery
       - UpdateLookupTable
       - UpdateScheduledQuery
+  - prefix: memorydb
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/memorydb/memorydb.json
+    source_modified: "2026-07-14"
+    retrieved_on: "2026-08-16"
+    actions:
+      - BatchUpdateCluster
+      - Connect
+      - CopySnapshot
+      - CreateAcl
+      - CreateCluster
+      - CreateMultiRegionCluster
+      - CreateParameterGroup
+      - CreateSnapshot
+      - CreateSubnetGroup
+      - CreateUser
+      - DeleteAcl
+      - DeleteCluster
+      - DeleteMultiRegionCluster
+      - DeleteParameterGroup
+      - DeleteSnapshot
+      - DeleteSubnetGroup
+      - DeleteUser
+      - DescribeAcls
+      - DescribeClusters
+      - DescribeEngineVersions
+      - DescribeEvents
+      - DescribeMultiRegionClusters
+      - DescribeMultiRegionParameterGroups
+      - DescribeMultiRegionParameters
+      - DescribeParameterGroups
+      - DescribeParameters
+      - DescribeReservedNodes
+      - DescribeReservedNodesOfferings
+      - DescribeServiceUpdates
+      - DescribeSnapshots
+      - DescribeSubnetGroups
+      - DescribeUsers
+      - FailoverShard
+      - ListAllowedMultiRegionClusterUpdates
+      - ListAllowedNodeTypeUpdates
+      - ListTags
+      - PauseMultiRegionClusterReplication
+      - PurchaseReservedNodesOffering
+      - ResetParameterGroup
+      - TagResource
+      - UntagResource
+      - UpdateAcl
+      - UpdateCluster
+      - UpdateMultiRegionCluster
+      - UpdateParameterGroup
+      - UpdateSubnetGroup
+      - UpdateUser
   - prefix: rds
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/rds/rds.json
     source_modified: "2026-08-13"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - AddRoleToDBCluster
       - AddRoleToDBInstance
@@ -2348,10 +2676,181 @@ services:
       - SwitchoverBlueGreenDeployment
       - SwitchoverGlobalCluster
       - SwitchoverReadReplica
+  - prefix: redshift
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/redshift/redshift.json
+    source_modified: "2026-07-29"
+    retrieved_on: "2026-08-16"
+    actions:
+      - AcceptReservedNodeExchange
+      - AddPartner
+      - AssociateDataShareConsumer
+      - AuthorizeClusterSecurityGroupIngress
+      - AuthorizeDataShare
+      - AuthorizeEndpointAccess
+      - AuthorizeInboundIntegration
+      - AuthorizeSnapshotAccess
+      - BatchDeleteClusterSnapshots
+      - BatchModifyClusterSnapshots
+      - CancelQuery
+      - CancelQuerySession
+      - CancelResize
+      - CopyClusterSnapshot
+      - CreateAuthenticationProfile
+      - CreateCluster
+      - CreateClusterParameterGroup
+      - CreateClusterSecurityGroup
+      - CreateClusterSnapshot
+      - CreateClusterSubnetGroup
+      - CreateClusterUser
+      - CreateCustomDomainAssociation
+      - CreateEndpointAccess
+      - CreateEventSubscription
+      - CreateHsmClientCertificate
+      - CreateHsmConfiguration
+      - CreateInboundIntegration
+      - CreateIntegration
+      - CreateQev2IdcApplication
+      - CreateRedshiftIdcApplication
+      - CreateSavedQuery
+      - CreateScheduledAction
+      - CreateSnapshotCopyGrant
+      - CreateSnapshotSchedule
+      - CreateTags
+      - CreateUsageLimit
+      - DeauthorizeDataShare
+      - DeleteAuthenticationProfile
+      - DeleteCluster
+      - DeleteClusterParameterGroup
+      - DeleteClusterSecurityGroup
+      - DeleteClusterSnapshot
+      - DeleteClusterSubnetGroup
+      - DeleteCustomDomainAssociation
+      - DeleteEndpointAccess
+      - DeleteEventSubscription
+      - DeleteHsmClientCertificate
+      - DeleteHsmConfiguration
+      - DeleteIntegration
+      - DeletePartner
+      - DeleteQev2IdcApplication
+      - DeleteRedshiftIdcApplication
+      - DeleteResourcePolicy
+      - DeleteSavedQueries
+      - DeleteScheduledAction
+      - DeleteSnapshotCopyGrant
+      - DeleteSnapshotSchedule
+      - DeleteTags
+      - DeleteUsageLimit
+      - DeregisterNamespace
+      - DescribeAccountAttributes
+      - DescribeAuthenticationProfiles
+      - DescribeAutonomicsDenylist
+      - DescribeClusterDbRevisions
+      - DescribeClusterParameterGroups
+      - DescribeClusterParameters
+      - DescribeClusterSecurityGroups
+      - DescribeClusterSnapshots
+      - DescribeClusterSubnetGroups
+      - DescribeClusterTracks
+      - DescribeClusterVersions
+      - DescribeClusters
+      - DescribeCustomDomainAssociations
+      - DescribeDataShares
+      - DescribeDataSharesForConsumer
+      - DescribeDataSharesForProducer
+      - DescribeDefaultClusterParameters
+      - DescribeEndpointAccess
+      - DescribeEndpointAuthorization
+      - DescribeEventCategories
+      - DescribeEventSubscriptions
+      - DescribeEvents
+      - DescribeHsmClientCertificates
+      - DescribeHsmConfigurations
+      - DescribeInboundIntegrations
+      - DescribeIntegrations
+      - DescribeLoggingStatus
+      - DescribeNodeConfigurationOptions
+      - DescribeOrderableClusterOptions
+      - DescribePartners
+      - DescribeQev2IdcApplications
+      - DescribeQuery
+      - DescribeRedshiftIdcApplications
+      - DescribeReservedNodeExchangeStatus
+      - DescribeReservedNodeOfferings
+      - DescribeReservedNodes
+      - DescribeResize
+      - DescribeSavedQueries
+      - DescribeScheduledActions
+      - DescribeSnapshotCopyGrants
+      - DescribeSnapshotSchedules
+      - DescribeStorage
+      - DescribeTable
+      - DescribeTableRestoreStatus
+      - DescribeTags
+      - DescribeUsageLimits
+      - DisableLogging
+      - DisableSnapshotCopy
+      - DisassociateDataShareConsumer
+      - EnableLogging
+      - EnableSnapshotCopy
+      - ExecuteQuery
+      - FailoverPrimaryCompute
+      - FetchResults
+      - GetClusterCredentials
+      - GetClusterCredentialsWithIAM
+      - GetIdentityCenterAuthToken
+      - GetReservedNodeExchangeConfigurationOptions
+      - GetReservedNodeExchangeOfferings
+      - GetResourcePolicy
+      - JoinGroup
+      - ListDatabases
+      - ListRecommendations
+      - ListSavedQueries
+      - ListSchemas
+      - ListTables
+      - ModifyAquaConfiguration
+      - ModifyAuthenticationProfile
+      - ModifyAutonomicsDenylist
+      - ModifyCluster
+      - ModifyClusterDbRevision
+      - ModifyClusterIamRoles
+      - ModifyClusterMaintenance
+      - ModifyClusterParameterGroup
+      - ModifyClusterSnapshot
+      - ModifyClusterSnapshotSchedule
+      - ModifyClusterSubnetGroup
+      - ModifyCustomDomainAssociation
+      - ModifyEndpointAccess
+      - ModifyEventSubscription
+      - ModifyIntegration
+      - ModifyQev2IdcApplication
+      - ModifyRedshiftIdcApplication
+      - ModifySavedQuery
+      - ModifyScheduledAction
+      - ModifySnapshotCopyRetentionPeriod
+      - ModifySnapshotSchedule
+      - ModifyUsageLimit
+      - PauseCluster
+      - PurchaseReservedNodeOffering
+      - PutResourcePolicy
+      - RebootCluster
+      - RegisterNamespace
+      - RejectDataShare
+      - ResetClusterParameterGroup
+      - ResizeCluster
+      - RestoreFromClusterSnapshot
+      - RestoreTableFromClusterSnapshot
+      - ResumeCluster
+      - RevokeClusterSecurityGroupIngress
+      - RevokeEndpointAccess
+      - RevokeSnapshotAccess
+      - RotateEncryptionKey
+      - UpdatePartnerStatus
+      - ViewQueriesFromConsole
+      - ViewQueriesInConsole
   - prefix: route53
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/route53/route53.json
     source_modified: "2026-04-19"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - ActivateKeySigningKey
       - AssociateVPCWithHostedZone
@@ -2427,7 +2926,7 @@ services:
   - prefix: s3
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/s3/s3.json
     source_modified: "2026-07-29"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - AbortMultipartUpload
       - AllowVendedLogDeliveryForResource
@@ -2612,7 +3111,7 @@ services:
   - prefix: secretsmanager
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/secretsmanager/secretsmanager.json
     source_modified: "2026-06-09"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - BatchGetSecretValue
       - CancelRotateSecret
@@ -2640,7 +3139,7 @@ services:
   - prefix: sns
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/sns/sns.json
     source_modified: "2026-05-29"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - AddPermission
       - CheckIfPhoneNumberIsOptedOut
@@ -2686,7 +3185,7 @@ services:
   - prefix: sqs
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/sqs/sqs.json
     source_modified: "2026-03-25"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - AddPermission
       - CancelMessageMoveTask
@@ -2711,7 +3210,7 @@ services:
   - prefix: wafv2
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/wafv2/wafv2.json
     source_modified: "2026-07-29"
-    retrieved_on: "2026-08-15"
+    retrieved_on: "2026-08-16"
     actions:
       - AssociateWebACL
       - CheckCapacity

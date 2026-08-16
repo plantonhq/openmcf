@@ -1,0 +1,59 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesexternalsecret
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The materialized Secret rests in the cluster's etcd, whose encryption at rest is the target cluster's control-plane posture, owned by the cluster component. The authoritative copy of every value stays in the external backend under that backend's encryption regime.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys apply to the external backend's storage and to the cluster's etcd, both configured on their own components; this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The ExternalSecret declares WHAT to sync; the transport to the backend belongs to the store connection (KubernetesSecretStore / KubernetesClusterSecretStore) and the operator -- cloud secret-manager APIs are TLS-only. Delivery to workloads happens through the Kubernetes API's TLS.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The ExternalSecret is not a network endpoint; it and the Secret it materializes are reachable only through the Kubernetes API.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: There is no inbound network traffic to restrict on a sync declaration.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The ExternalSecret serves no traffic; web application firewalls have no meaning for a sync declaration.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may read the materialized Secret is the target cluster's Kubernetes RBAC on secrets in this namespace; which namespaces may use a cluster-scoped store is fenced on the store's own conditions field. This resource carries no access-control surface of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: By design this resource carries no credentials -- authentication to the backend belongs to the referenced store (where keyless workload-identity paths are the configurable posture). The spec states it plainly; this resource only picks what to sync.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The ExternalSecret has no authentication path of its own; credential posture lives on the store.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the ExternalSecret and reads of the materialized Secret are Kubernetes API operations captured by the target cluster's audit policy; backend reads appear in the backend's own audit trail (e.g. CloudTrail), owned by that account.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The ExternalSecret emits no metrics of its own; sync successes and failures surface in the External Secrets Operator's telemetry and on the resource's status conditions.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The declaration is reproducible from its manifest, and the secret VALUES' source of truth is the external backend -- the materialized Secret is re-created from the backend on every sync. Durability of the values is the backend's posture, not this resource's.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery); version retention of secret values is the backend's own feature (remote_ref.version can pin one).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The ExternalSecret and its materialized Secret are API-server records replicated by the cluster's control plane; there is no per-resource replication or zonal knob.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor ESO offers a deletion-protection flag on ExternalSecret. Note the safe default on the OUTPUT instead -- target.deletion_policy defaults to "Retain", so deleting the ExternalSecret leaves the materialized Secret in place; "Delete" is the explicit opt-in that couples their lifecycles.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software here to patch -- the resource is data. The External Secrets Operator is patched through its own component's lifecycle.

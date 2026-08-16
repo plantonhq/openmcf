@@ -1,0 +1,25 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kuberneteskarpenterec2nodeclass
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - karpenter.k8s.aws
+        resources:
+          - ec2nodeclasses
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubectl_manifest.ec2_node_class -- the module's only resource, applying one EC2NodeClass (karpenter.k8s.aws/v1, cluster-scoped) via server-side apply. The AWS-side permissions to launch instances belong to the Karpenter controller's own identity, not to the IaC runner.
