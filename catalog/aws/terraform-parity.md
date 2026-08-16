@@ -28,10 +28,10 @@ that has progressed.
 | | |
 |---|---|
 | Provider schema (parity baseline) | `aws@6.58.0` |
-| Kinds in the catalog | 189 |
-| Distinct provider resources consumed | 458 |
-| Spec fields authored across all kinds | 7005 |
-| Module pins on `aws` | `~> 6.58` × 189 |
+| Kinds in the catalog | 195 |
+| Distinct provider resources consumed | 478 |
+| Spec fields authored across all kinds | 7151 |
+| Module pins on `aws` | `~> 6.58` × 195 |
 | Module pins on `time` | `~> 0.13` × 1 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -46,7 +46,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**189 of 189 kinds are at total accounting; 113 proven live.**
+**195 of 195 kinds are at total accounting; 113 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -112,8 +112,11 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsConfigRule | 72 | 18 | 44 | 10 | 0 | ✅ | — |
 | AwsCostAnomalyMonitor | 50 | 29 | 15 | 6 | 0 | ✅ | — |
 | AwsCostCategory | 132 | 2 | 127 | 3 | 0 | ✅ | — |
+| AwsDlmLifecyclePolicy | 72 | 2 | 63 | 7 | 0 | ✅ | — |
 | AwsDocumentDb | 74 | 40 | 8 | 26 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsDynamodb | 71 | 27 | 38 | 6 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsEbsSnapshot | 46 | 13 | 20 | 13 | 0 | ✅ | — |
+| AwsEbsVolume | 29 | 10 | 14 | 5 | 0 | ✅ | — |
 | AwsEc2Instance | 92 | 42 | 43 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEcrRepo | 17 | 5 | 7 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEcsCluster | 80 | 7 | 64 | 9 | 0 | ✅ | ✅ pulumi, terraform |
@@ -203,7 +206,10 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsRoute53HealthCheck | 23 | 17 | 2 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRoute53Zone | 17 | 5 | 5 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsS3Bucket | 204 | 24 | 102 | 78 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsS3DirectoryBucket | 8 | 2 | 3 | 3 | 0 | ✅ | — |
 | AwsS3ObjectSet | 74 | 36 | 16 | 22 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsS3TableBucket | 37 | 2 | 22 | 13 | 0 | ✅ | — |
+| AwsS3VectorBucket | 17 | 2 | 9 | 6 | 0 | ✅ | — |
 | AwsSagemakerDomain | 299 | 184 | 104 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSagemakerEndpoint | 85 | 14 | 61 | 10 | 0 | ✅ | — |
 | AwsSagemakerFeatureGroup | 28 | 5 | 19 | 4 | 0 | ✅ | — |
@@ -246,10 +252,10 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 457 | consumed by a kind's Terraform module today |
+| Modeled | 477 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 34 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 527 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 507 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 544 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
@@ -259,7 +265,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (457)
+### Modeled (477)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -439,6 +445,7 @@ rather than trusted.
 | `aws_db_option_group` | consumed by AwsRdsInstance |
 | `aws_db_parameter_group` | consumed by AwsRdsInstance |
 | `aws_db_subnet_group` | consumed by AwsRdsCluster, AwsRdsInstance |
+| `aws_dlm_lifecycle_policy` | consumed by AwsDlmLifecyclePolicy |
 | `aws_docdb_cluster` | consumed by AwsDocumentDb |
 | `aws_docdb_cluster_instance` | consumed by AwsDocumentDb |
 | `aws_docdb_cluster_parameter_group` | consumed by AwsDocumentDb |
@@ -447,6 +454,12 @@ rather than trusted.
 | `aws_dynamodb_kinesis_streaming_destination` | consumed by AwsDynamodb |
 | `aws_dynamodb_resource_policy` | consumed by AwsDynamodb |
 | `aws_dynamodb_table` | consumed by AwsDynamodb |
+| `aws_ebs_fast_snapshot_restore` | consumed by AwsEbsSnapshot |
+| `aws_ebs_snapshot` | consumed by AwsEbsSnapshot |
+| `aws_ebs_snapshot_copy` | consumed by AwsEbsSnapshot |
+| `aws_ebs_snapshot_import` | consumed by AwsEbsSnapshot |
+| `aws_ebs_volume` | consumed by AwsEbsVolume |
+| `aws_ebs_volume_copy` | consumed by AwsEbsVolume |
 | `aws_ec2_client_vpn_authorization_rule` | consumed by AwsClientVpn |
 | `aws_ec2_client_vpn_endpoint` | consumed by AwsClientVpn |
 | `aws_ec2_client_vpn_network_association` | consumed by AwsClientVpn |
@@ -655,8 +668,19 @@ rather than trusted.
 | `aws_s3_bucket_server_side_encryption_configuration` | consumed by AwsS3Bucket |
 | `aws_s3_bucket_versioning` | consumed by AwsS3Bucket |
 | `aws_s3_bucket_website_configuration` | consumed by AwsS3Bucket |
+| `aws_s3_directory_bucket` | consumed by AwsS3DirectoryBucket |
 | `aws_s3_object` | consumed by AwsS3ObjectSet |
 | `aws_s3_object_copy` | consumed by AwsS3ObjectSet |
+| `aws_s3tables_namespace` | consumed by AwsS3TableBucket |
+| `aws_s3tables_table` | consumed by AwsS3TableBucket |
+| `aws_s3tables_table_bucket` | consumed by AwsS3TableBucket |
+| `aws_s3tables_table_bucket_policy` | consumed by AwsS3TableBucket |
+| `aws_s3tables_table_bucket_replication` | consumed by AwsS3TableBucket |
+| `aws_s3tables_table_policy` | consumed by AwsS3TableBucket |
+| `aws_s3tables_table_replication` | consumed by AwsS3TableBucket |
+| `aws_s3vectors_index` | consumed by AwsS3VectorBucket |
+| `aws_s3vectors_vector_bucket` | consumed by AwsS3VectorBucket |
+| `aws_s3vectors_vector_bucket_policy` | consumed by AwsS3VectorBucket |
 | `aws_sagemaker_domain` | consumed by AwsSagemakerDomain |
 | `aws_sagemaker_endpoint` | consumed by AwsSagemakerEndpoint |
 | `aws_sagemaker_endpoint_configuration` | consumed by AwsSagemakerEndpoint |
@@ -690,6 +714,7 @@ rather than trusted.
 | `aws_sesv2_email_identity_policy` | consumed by AwsSesEmailIdentity |
 | `aws_sfn_alias` | consumed by AwsStepFunction |
 | `aws_sfn_state_machine` | consumed by AwsStepFunction |
+| `aws_snapshot_create_volume_permission` | consumed by AwsEbsSnapshot |
 | `aws_sns_topic` | consumed by AwsSnsTopic |
 | `aws_sns_topic_data_protection_policy` | consumed by AwsSnsTopic |
 | `aws_sns_topic_subscription` | consumed by AwsSnsSubscription |
@@ -707,6 +732,7 @@ rather than trusted.
 | `aws_synthetics_canary` | consumed by AwsCloudwatchSynthetics |
 | `aws_synthetics_group` | consumed by AwsCloudwatchSynthetics |
 | `aws_synthetics_group_association` | consumed by AwsCloudwatchSynthetics |
+| `aws_volume_attachment` | consumed by AwsEbsVolume |
 | `aws_vpc` | consumed by AwsVpc |
 | `aws_vpc_encryption_control` | consumed by AwsVpc |
 | `aws_vpc_endpoint` | consumed by AwsVpcEndpoint |
@@ -760,7 +786,7 @@ rather than trusted.
 | `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
 | `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (527)
+### Planned (507)
 
 | Resource | Recorded reason |
 |---|---|
@@ -874,7 +900,6 @@ rather than trusted.
 | `aws_directory_service_shared_directory` | judged as a planned AwsManagedAd kind (directories with forwarders, log subscriptions, RADIUS, regions, sharing, trusts) |
 | `aws_directory_service_shared_directory_accepter` | judged as a planned AwsManagedAd kind (directories with forwarders, log subscriptions, RADIUS, regions, sharing, trusts) |
 | `aws_directory_service_trust` | judged as a planned AwsManagedAd kind (directories with forwarders, log subscriptions, RADIUS, regions, sharing, trusts) |
-| `aws_dlm_lifecycle_policy` | DLM lifecycle policies fold into the planned AwsEbsSnapshot kind |
 | `aws_dms_certificate` | judged as a planned AwsDmsReplication kind family (replication instances/configs, endpoints, tasks, subnet groups, certificates, event subscriptions) |
 | `aws_dms_endpoint` | judged as a planned AwsDmsReplication kind family (replication instances/configs, endpoints, tasks, subnet groups, certificates, event subscriptions) |
 | `aws_dms_event_subscription` | judged as a planned AwsDmsReplication kind family (replication instances/configs, endpoints, tasks, subnet groups, certificates, event subscriptions) |
@@ -909,13 +934,7 @@ rather than trusted.
 | `aws_dx_transit_virtual_interface` | judged as a planned AwsDxVirtualInterface kind (private/public/transit and hosted virtual interfaces, accepters, BGP peers) |
 | `aws_ebs_default_kms_key` | account-wide EBS security toggles fold into the planned AwsEc2AccountSettings kind |
 | `aws_ebs_encryption_by_default` | account-wide EBS security toggles fold into the planned AwsEc2AccountSettings kind |
-| `aws_ebs_fast_snapshot_restore` | judged as a planned AwsEbsSnapshot kind (snapshots, copies, imports, fast restore, volume permissions) |
-| `aws_ebs_snapshot` | judged as a planned AwsEbsSnapshot kind (snapshots, copies, imports, fast restore, volume permissions) |
 | `aws_ebs_snapshot_block_public_access` | account-wide EBS security toggles fold into the planned AwsEc2AccountSettings kind |
-| `aws_ebs_snapshot_copy` | judged as a planned AwsEbsSnapshot kind (snapshots, copies, imports, fast restore, volume permissions) |
-| `aws_ebs_snapshot_import` | judged as a planned AwsEbsSnapshot kind (snapshots, copies, imports, fast restore, volume permissions) |
-| `aws_ebs_volume` | judged as a planned AwsEbsVolume kind (volumes, copies, attachments) |
-| `aws_ebs_volume_copy` | judged as a planned AwsEbsVolume kind (volumes, copies, attachments) |
 | `aws_ec2_allowed_images_settings` | account-wide EC2 toggles fold into the planned AwsEc2AccountSettings kind |
 | `aws_ec2_availability_zone_group` | account-wide EC2 toggles fold into the planned AwsEc2AccountSettings kind |
 | `aws_ec2_capacity_block_reservation` | judged as a planned AwsEc2CapacityReservation kind |
@@ -1114,7 +1133,6 @@ rather than trusted.
 | `aws_route53domains_registered_domain` | judged as a planned AwsRoute53Domain kind (registered domains, delegation signer records) |
 | `aws_s3_access_point` | judged as a planned AwsS3AccessPoint kind |
 | `aws_s3_account_public_access_block` | judged as a planned AwsS3AccountPublicAccessBlock kind |
-| `aws_s3_directory_bucket` | judged as a planned AwsS3DirectoryBucket kind (S3 Express One Zone) |
 | `aws_s3control_access_grant` | judged as a planned AwsS3AccessGrants kind (instances, locations, grants, policies) |
 | `aws_s3control_access_grants_instance` | judged as a planned AwsS3AccessGrants kind (instances, locations, grants, policies) |
 | `aws_s3control_access_grants_instance_resource_policy` | judged as a planned AwsS3AccessGrants kind (instances, locations, grants, policies) |
@@ -1125,16 +1143,6 @@ rather than trusted.
 | `aws_s3control_multi_region_access_point_policy` | judged as a planned AwsS3MultiRegionAccessPoint kind (access points, policies, routes) |
 | `aws_s3control_multi_region_access_point_routes` | judged as a planned AwsS3MultiRegionAccessPoint kind (access points, policies, routes) |
 | `aws_s3control_storage_lens_configuration` | judged as a planned AwsS3StorageLens kind |
-| `aws_s3tables_namespace` | judged as a planned AwsS3TableBucket kind (table buckets, namespaces, tables, policies, replication) |
-| `aws_s3tables_table` | judged as a planned AwsS3TableBucket kind (table buckets, namespaces, tables, policies, replication) |
-| `aws_s3tables_table_bucket` | judged as a planned AwsS3TableBucket kind (table buckets, namespaces, tables, policies, replication) |
-| `aws_s3tables_table_bucket_policy` | judged as a planned AwsS3TableBucket kind (table buckets, namespaces, tables, policies, replication) |
-| `aws_s3tables_table_bucket_replication` | judged as a planned AwsS3TableBucket kind (table buckets, namespaces, tables, policies, replication) |
-| `aws_s3tables_table_policy` | judged as a planned AwsS3TableBucket kind (table buckets, namespaces, tables, policies, replication) |
-| `aws_s3tables_table_replication` | judged as a planned AwsS3TableBucket kind (table buckets, namespaces, tables, policies, replication) |
-| `aws_s3vectors_index` | judged as a planned AwsS3VectorBucket kind (vector buckets, indexes, policies) |
-| `aws_s3vectors_vector_bucket` | judged as a planned AwsS3VectorBucket kind (vector buckets, indexes, policies) |
-| `aws_s3vectors_vector_bucket_policy` | judged as a planned AwsS3VectorBucket kind (vector buckets, indexes, policies) |
 | `aws_sagemaker_app_image_config` | judged as a planned AwsSagemakerAppImageConfig kind: an account-level named object (ID is its own name, no domain linkage) referenced BY NAME from domain/user-profile/space custom-image blocks -- the natural sibling of the planned AwsSagemakerImage kind (split from the former Studio-companion fold blanket) |
 | `aws_sagemaker_servicecatalog_portfolio_status` | judged as a planned AwsSagemakerServicecatalogPortfolio kind: an account/region singleton toggle (one Required enum, ID is the region, delete is a no-op) enabling SageMaker Projects templates -- the account-settings singleton class, never a per-domain satellite (split from the former Studio-companion fold blanket) |
 | `aws_sagemaker_studio_lifecycle_config` | judged as a planned AwsSagemakerStudioLifecycleConfig kind: an account-level, fully immutable named script object referenced by ARN across domain/profile/space/app surfaces -- own identity and lifecycle, not a domain satellite (split from the former Studio-companion fold blanket) |
@@ -1194,7 +1202,6 @@ rather than trusted.
 | `aws_shield_protection_group` | judged as a planned AwsShieldAdvanced kind (subscription, protections, protection groups, DRT access, proactive engagement) |
 | `aws_shield_protection_health_check_association` | judged as a planned AwsShieldAdvanced kind (subscription, protections, protection groups, DRT access, proactive engagement) |
 | `aws_shield_subscription` | judged as a planned AwsShieldAdvanced kind (subscription, protections, protection groups, DRT access, proactive engagement) |
-| `aws_snapshot_create_volume_permission` | judged as a planned AwsEbsSnapshot kind (snapshots, copies, imports, fast restore, volume permissions) |
 | `aws_spot_datafeed_subscription` | account-wide EC2 toggles fold into the planned AwsEc2AccountSettings kind |
 | `aws_ssm_activation` | judged as a planned AwsSsmActivation kind (hybrid managed-node activation with its own registration lifecycle and tags; no edge to any SSM quartet kind) |
 | `aws_ssm_resource_data_sync` | judged as a planned AwsSsmResourceDataSync kind (inventory/compliance sync to S3; standalone S3-destination lifecycle, no edge to any SSM quartet kind) |
@@ -1243,7 +1250,6 @@ rather than trusted.
 | `aws_verifiedaccess_instance_logging_configuration` | judged as a planned AwsVerifiedAccess kind (instances, trust providers, groups, endpoints, logging) |
 | `aws_verifiedaccess_instance_trust_provider_attachment` | judged as a planned AwsVerifiedAccess kind (instances, trust providers, groups, endpoints, logging) |
 | `aws_verifiedaccess_trust_provider` | judged as a planned AwsVerifiedAccess kind (instances, trust providers, groups, endpoints, logging) |
-| `aws_volume_attachment` | judged as a planned AwsEbsVolume kind (volumes, copies, attachments) |
 | `aws_vpc_block_public_access_exclusion` | judged as a planned AwsVpcBlockPublicAccess kind (the per-VPC/per-subnet exclusion arm of the regional block-public-access singleton) |
 | `aws_vpc_block_public_access_options` | judged as a planned AwsVpcBlockPublicAccess kind (a REGIONAL account-level singleton -- its id is the region -- paired with per-VPC/subnet exclusions; never per-VPC surface) |
 | `aws_vpc_dhcp_options` | judged as a planned AwsVpcDhcpOptions kind (option sets with associations) |

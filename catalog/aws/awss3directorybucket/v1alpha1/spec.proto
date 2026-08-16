@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package dev.planton.aws.awss3directorybucket.v1alpha1;
+
+import "buf/validate/validate.proto";
+
+// AwsS3DirectoryBucketSpec defines one S3 directory bucket (S3
+// Express One Zone): single-digit-millisecond object storage that
+// lives in exactly ONE availability zone (or Local Zone / Dedicated
+// Local Zone), co-located with the compute that hammers it.
+//
+// AWS mandates the full bucket name be
+// "{base}--{zone_id}--x-s3" - a value nobody should hand-assemble, so
+// BOTH modules derive it from metadata.name + zone_id and export the
+// result as the bucket_name output. Everything on this spec is fixed
+// for life except force_destroy: a directory bucket is replaced, not
+// edited.
+//
+// Directory buckets authenticate via the S3 Express session API and
+// use a directory-bucket-scoped policy surface; they never appear in
+// general-purpose bucket listings.
+message AwsS3DirectoryBucketSpec {
+  // A Local Zone bucket cannot claim single-AZ redundancy and vice
+  // versa - the redundancy class names the zone type it survives in.
+  option (buf.validate.message).cel = {
+    id: "spec.data_redundancy_matches_zone_type"
+    message: "data_redundancy must match zone_type: SingleAvailabilityZone for AvailabilityZone, SingleLocalZone for LocalZone (or leave it unset - AWS derives it)"
+    expression: "this.data_redundancy == '' || (this.data_redundancy == 'SingleAvailabilityZone') == (this.zone_type != 'LocalZone')"
+  };
+
+  // The AWS region the bucket's zone belongs to. Example:
+  // "us-east-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The zone the bucket lives in - an availability zone ID (never the
+  // letter name: "use1-az4", not "us-east-1a") or a Local Zone ID
+  // ("usw2-lax1-az1"). Fixed for life; the zone choice IS the
+  // performance model, so co-locate it with the compute.
+  string zone_id = 2 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^[a-z0-9][a-z0-9-]*$"
+  }];
+
+  // What kind of zone zone_id names. Unset means AvailabilityZone.
+  string zone_type = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "AvailabilityZone",
+        "LocalZone"
+      ]
+    }
+  ];
+
+  // The redundancy class. Unset lets AWS derive it from zone_type
+  // (SingleAvailabilityZone for AZs, SingleLocalZone for Local
+  // Zones) - the only valid pairing anyway.
+  string data_redundancy = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "SingleAvailabilityZone",
+        "SingleLocalZone"
+      ]
+    }
+  ];
+
+  // Let destroy succeed on a non-empty bucket by deleting every
+  // object first. Off by default: destroying data-holding buckets
+  // should hurt. Config-only at AWS - imports never round-trip it.
+  bool force_destroy = 5;
+}

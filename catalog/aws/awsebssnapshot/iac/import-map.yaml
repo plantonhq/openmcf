@@ -1,0 +1,23 @@
+# Where each placeholder in this component's import-ID formats comes
+# from (the formats themselves live in aa_import/catalog.yaml).
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsebssnapshot
+spec:
+  values:
+    - name: snapshot_id
+      derivations:
+        - from_stack_output: snapshot_id
+        - from_arn_part: resource_id
+      where_to_find: >-
+        EC2 console -> Snapshots (the snap-... ID column), or
+        `aws ec2 describe-snapshots --owner-ids self` (SnapshotId).
+    # FSR resources key their module instances by zone name.
+    - name: availability_zone
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The zone FSR is enabled in; `aws ec2
+        describe-fast-snapshot-restores` shows AvailabilityZone per
+        snapshot.

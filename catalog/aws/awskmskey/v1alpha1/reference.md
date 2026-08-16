@@ -423,10 +423,15 @@ Fields on other kinds that can point at this resource:
 | AwsCodePipeline | `spec.artifactStores[].encryptionKeyId` | `status.outputs.key_arn` |
 | AwsCognitoUserPool | `spec.lambdaConfig.kmsKeyId` | `status.outputs.key_arn` |
 | AwsConfigRecorder | `spec.deliveryChannel.s3KmsKeyArn` | `status.outputs.key_arn` |
+| AwsDlmLifecyclePolicy | `spec.customPolicy.schedules[].crossRegionCopyRules[].cmkArn` | `status.outputs.key_arn` |
+| AwsDlmLifecyclePolicy | `spec.customPolicy.action.crossRegionCopies[].cmkArn` | `status.outputs.key_arn` |
 | AwsDocumentDb | `spec.instances[].performanceInsightsKmsKeyId` | `status.outputs.key_arn` |
 | AwsDocumentDb | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsDynamodb | `spec.serverSideEncryption.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsDynamodb | `spec.replicas[].kmsKeyArn` | `status.outputs.key_arn` |
+| AwsEbsSnapshot | `spec.copyFrom.kmsKeyId` | `status.outputs.key_arn` |
+| AwsEbsSnapshot | `spec.importFrom.kmsKeyId` | `status.outputs.key_arn` |
+| AwsEbsVolume | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsEc2Instance | `spec.rootBlockDevice.kmsKeyId` | `status.outputs.key_arn` |
 | AwsEc2Instance | `spec.ebsBlockDevices[].kmsKeyId` | `status.outputs.key_arn` |
 | AwsEcrRepo | `spec.kmsKeyId` | `status.outputs.key_arn` |
@@ -491,6 +496,10 @@ Fields on other kinds that can point at this resource:
 | AwsS3Bucket | `spec.metadataConfiguration.inventoryTableEncryption.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsS3Bucket | `spec.metadataConfiguration.journalTableEncryption.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsS3ObjectSet | `spec.objects[].kmsKey` | `status.outputs.key_arn` |
+| AwsS3TableBucket | `spec.encryption.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsS3TableBucket | `spec.namespaces[].tables[].encryption.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsS3VectorBucket | `spec.encryption.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsS3VectorBucket | `spec.indexes[].encryption.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsSagemakerDomain | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsSagemakerDomain | `spec.defaultUserSettings.canvasAppSettings.workspaceSettings.s3KmsKeyId` | `status.outputs.key_arn` |
 | AwsSagemakerDomain | `spec.defaultUserSettings.sharingSettings.s3KmsKeyId` | `status.outputs.key_arn` |

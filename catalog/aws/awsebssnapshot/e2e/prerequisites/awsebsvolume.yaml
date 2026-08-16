@@ -1,0 +1,24 @@
+# The snapshot scenario's source volume - an extra instance beyond
+# the chain's install profiles (the harness's manifest-path
+# prerequisites seam). A standalone 10 GiB gp3 volume needs no
+# network fixtures at all.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEbsVolume
+metadata:
+  name: planton-oss-e2e-awsebssnap-source
+  id: planton-oss-e2e-awsebssnap-source
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsebsvolume
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  availabilityZone: us-west-2a
+  type: gp3
+  sizeGb: 10
+  encrypted: true

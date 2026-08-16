@@ -1,0 +1,49 @@
+# A custom snapshot policy: tag-targeted volumes, one daily schedule
+# (24h interval at 03:00 UTC), keep the newest 7, copy source tags.
+# Free at AWS - the policy never fires during the lane's lifetime
+# (nothing carries the target tag). Exercises the custom arm, the
+# derived policy_language/default_policy arguments, the disabled
+# toggle's ENABLED default, and the consumer-scoped DLM execution
+# role.
+#
+# The default_policy arm is deliberately a second-deploy update test
+# candidate rather than a separate lane (one default policy per type
+# per region - a standing default policy would collide with any
+# other run in the account); the profile records the deferral.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsDlmLifecyclePolicy
+metadata:
+  name: planton-oss-e2e-awsdlm-daily
+  id: planton-oss-e2e-awsdlm-daily
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsdlmlifecyclepolicy
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "catalog/aws/awsdlmlifecyclepolicy/e2e/prerequisites/awsiamrole.yaml"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: planton e2e daily volume snapshots
+  executionRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-awsdlm-exec
+      fieldPath: status.outputs.role_arn
+  customPolicy:
+    resourceTypes:
+      - VOLUME
+    targetTags:
+      planton-e2e-dlm: "true"
+    schedules:
+      - name: daily
+        copyTags: true
+        createRule:
+          intervalHours: 24
+          times:
+            - "03:00"
+        retainRule:
+          count: 7

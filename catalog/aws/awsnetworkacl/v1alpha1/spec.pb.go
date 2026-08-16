@@ -143,8 +143,8 @@ type AwsNetworkAclRule struct {
 	// which is exactly what security groups cannot do.
 	Action string `protobuf:"bytes,2,opt,name=action,proto3" json:"action,omitempty"`
 	// The protocol, as an IANA number ("6") or name ("tcp"). "-1" (or
-	// "all") matches every protocol. AWS stores only NUMBERS - both
-	// engines normalize names before sending, so a name here never
+	// "all") matches every protocol. AWS stores only NUMBERS - the
+	// provider normalizes names when diffing, so a name here never
 	// causes a perpetual diff.
 	Protocol string `protobuf:"bytes,3,opt,name=protocol,proto3" json:"protocol,omitempty"`
 	// The IPv4 CIDR this rule matches. Example: "10.0.0.0/16", or

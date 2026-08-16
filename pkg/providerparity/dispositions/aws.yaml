@@ -893,9 +893,6 @@ resources:
   - resource: aws_directory_service_trust
     disposition: model-planned
     reason: "judged as a planned AwsManagedAd kind (directories with forwarders, log subscriptions, RADIUS, regions, sharing, trusts)"
-  - resource: aws_dlm_lifecycle_policy
-    disposition: model-planned
-    reason: "DLM lifecycle policies fold into the planned AwsEbsSnapshot kind"
   - resource: aws_dms_certificate
     disposition: model-planned
     reason: "judged as a planned AwsDmsReplication kind family (replication instances/configs, endpoints, tasks, subnet groups, certificates, event subscriptions)"
@@ -1022,27 +1019,9 @@ resources:
   - resource: aws_ebs_encryption_by_default
     disposition: model-planned
     reason: "account-wide EBS security toggles fold into the planned AwsEc2AccountSettings kind"
-  - resource: aws_ebs_fast_snapshot_restore
-    disposition: model-planned
-    reason: "judged as a planned AwsEbsSnapshot kind (snapshots, copies, imports, fast restore, volume permissions)"
-  - resource: aws_ebs_snapshot
-    disposition: model-planned
-    reason: "judged as a planned AwsEbsSnapshot kind (snapshots, copies, imports, fast restore, volume permissions)"
   - resource: aws_ebs_snapshot_block_public_access
     disposition: model-planned
     reason: "account-wide EBS security toggles fold into the planned AwsEc2AccountSettings kind"
-  - resource: aws_ebs_snapshot_copy
-    disposition: model-planned
-    reason: "judged as a planned AwsEbsSnapshot kind (snapshots, copies, imports, fast restore, volume permissions)"
-  - resource: aws_ebs_snapshot_import
-    disposition: model-planned
-    reason: "judged as a planned AwsEbsSnapshot kind (snapshots, copies, imports, fast restore, volume permissions)"
-  - resource: aws_ebs_volume
-    disposition: model-planned
-    reason: "judged as a planned AwsEbsVolume kind (volumes, copies, attachments)"
-  - resource: aws_ebs_volume_copy
-    disposition: model-planned
-    reason: "judged as a planned AwsEbsVolume kind (volumes, copies, attachments)"
   - resource: aws_ec2_allowed_images_settings
     disposition: model-planned
     reason: "account-wide EC2 toggles fold into the planned AwsEc2AccountSettings kind"
@@ -2663,9 +2642,6 @@ resources:
   - resource: aws_s3_account_public_access_block
     disposition: model-planned
     reason: "judged as a planned AwsS3AccountPublicAccessBlock kind"
-  - resource: aws_s3_directory_bucket
-    disposition: model-planned
-    reason: "judged as a planned AwsS3DirectoryBucket kind (S3 Express One Zone)"
   - resource: aws_s3control_access_grant
     disposition: model-planned
     reason: "judged as a planned AwsS3AccessGrants kind (instances, locations, grants, policies)"
@@ -2729,36 +2705,6 @@ resources:
   - resource: aws_s3outposts_endpoint
     disposition: deferred
     reason: "S3 on Outposts endpoints; deferred pending demand"
-  - resource: aws_s3tables_namespace
-    disposition: model-planned
-    reason: "judged as a planned AwsS3TableBucket kind (table buckets, namespaces, tables, policies, replication)"
-  - resource: aws_s3tables_table
-    disposition: model-planned
-    reason: "judged as a planned AwsS3TableBucket kind (table buckets, namespaces, tables, policies, replication)"
-  - resource: aws_s3tables_table_bucket
-    disposition: model-planned
-    reason: "judged as a planned AwsS3TableBucket kind (table buckets, namespaces, tables, policies, replication)"
-  - resource: aws_s3tables_table_bucket_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsS3TableBucket kind (table buckets, namespaces, tables, policies, replication)"
-  - resource: aws_s3tables_table_bucket_replication
-    disposition: model-planned
-    reason: "judged as a planned AwsS3TableBucket kind (table buckets, namespaces, tables, policies, replication)"
-  - resource: aws_s3tables_table_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsS3TableBucket kind (table buckets, namespaces, tables, policies, replication)"
-  - resource: aws_s3tables_table_replication
-    disposition: model-planned
-    reason: "judged as a planned AwsS3TableBucket kind (table buckets, namespaces, tables, policies, replication)"
-  - resource: aws_s3vectors_index
-    disposition: model-planned
-    reason: "judged as a planned AwsS3VectorBucket kind (vector buckets, indexes, policies)"
-  - resource: aws_s3vectors_vector_bucket
-    disposition: model-planned
-    reason: "judged as a planned AwsS3VectorBucket kind (vector buckets, indexes, policies)"
-  - resource: aws_s3vectors_vector_bucket_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsS3VectorBucket kind (vector buckets, indexes, policies)"
   - resource: aws_sagemaker_algorithm
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"
@@ -3089,9 +3035,6 @@ resources:
   - resource: aws_signer_signing_profile_permission
     disposition: deferred
     reason: "code-signing profiles and jobs; deferred pending demand"
-  - resource: aws_snapshot_create_volume_permission
-    disposition: model-planned
-    reason: "judged as a planned AwsEbsSnapshot kind (snapshots, copies, imports, fast restore, volume permissions)"
   - resource: aws_sns_platform_application
     disposition: deferred
     reason: "mobile-push platform applications and SMS preferences; deferred pending demand"
@@ -3329,9 +3272,6 @@ resources:
   - resource: aws_verifiedpermissions_schema
     disposition: deferred
     reason: "fine-grained authorization stores (Verified Permissions); deferred pending demand"
-  - resource: aws_volume_attachment
-    disposition: model-planned
-    reason: "judged as a planned AwsEbsVolume kind (volumes, copies, attachments)"
   - resource: aws_vpc_block_public_access_exclusion
     disposition: model-planned
     reason: "judged as a planned AwsVpcBlockPublicAccess kind (the per-VPC/per-subnet exclusion arm of the regional block-public-access singleton)"

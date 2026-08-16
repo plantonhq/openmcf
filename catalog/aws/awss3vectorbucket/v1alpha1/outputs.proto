@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.aws.awss3vectorbucket.v1alpha1;
+
+// AwsS3VectorBucketStackOutputs captures the observable state of the
+// vector bucket and its indexes after apply.
+message AwsS3VectorBucketStackOutputs {
+  // The vector bucket's ARN - what policies and Bedrock knowledge
+  // bases reference, and the provider's import ID.
+  string vector_bucket_arn = 1;
+
+  // Each index's ARN, keyed by index name - what a Bedrock knowledge
+  // base's s3_vectors arm points at.
+  map<string, string> index_arns = 2;
+}

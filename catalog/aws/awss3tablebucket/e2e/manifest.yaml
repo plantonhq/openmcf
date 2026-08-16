@@ -1,0 +1,28 @@
+# Canonical AwsS3TableBucket example (hack/dev manifest and refgen
+# Example source): an analytics table bucket with one namespace and a
+# schema-bearing Iceberg table.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3TableBucket
+metadata:
+  name: analytics-lake
+  id: analytics-lake
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  forceDestroy: true
+  namespaces:
+    - name: analytics
+      tables:
+        - name: events
+          icebergSchema:
+            fields:
+              - name: event_id
+                type: string
+                required: true
+              - name: occurred_at
+                type: timestamp
+              - name: payload
+                type: string
+          compaction:
+            targetFileSizeMb: 256

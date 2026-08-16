@@ -79,8 +79,11 @@ import (
 	awsconfigrulev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsconfigrule/v1alpha1"
 	awscostanomalymonitorv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscostanomalymonitor/v1alpha1"
 	awscostcategoryv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscostcategory/v1alpha1"
+	awsdlmlifecyclepolicyv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsdlmlifecyclepolicy/v1alpha1"
 	awsdocumentdbv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsdocumentdb/v1alpha1"
 	awsdynamodbv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsdynamodb/v1alpha1"
+	awsebssnapshotv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsebssnapshot/v1alpha1"
+	awsebsvolumev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsebsvolume/v1alpha1"
 	awsec2instancev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsec2instance/v1alpha1"
 	awsecrrepov1alpha1 "github.com/plantonhq/planton/catalog/aws/awsecrrepo/v1alpha1"
 	awsecsclusterv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsecscluster/v1alpha1"
@@ -170,7 +173,10 @@ import (
 	awsroute53healthcheckv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsroute53healthcheck/v1alpha1"
 	awsroute53zonev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsroute53zone/v1alpha1"
 	awss3bucketv1alpha1 "github.com/plantonhq/planton/catalog/aws/awss3bucket/v1alpha1"
+	awss3directorybucketv1alpha1 "github.com/plantonhq/planton/catalog/aws/awss3directorybucket/v1alpha1"
 	awss3objectsetv1alpha1 "github.com/plantonhq/planton/catalog/aws/awss3objectset/v1alpha1"
+	awss3tablebucketv1alpha1 "github.com/plantonhq/planton/catalog/aws/awss3tablebucket/v1alpha1"
+	awss3vectorbucketv1alpha1 "github.com/plantonhq/planton/catalog/aws/awss3vectorbucket/v1alpha1"
 	awssagemakerdomainv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssagemakerdomain/v1alpha1"
 	awssagemakerendpointv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssagemakerendpoint/v1alpha1"
 	awssagemakerfeaturegroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssagemakerfeaturegroup/v1alpha1"
@@ -747,8 +753,11 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsConfigRule:                          &awsconfigrulev1alpha1.AwsConfigRule{},
 	cloudresourcekind.CloudResourceKind_AwsCostAnomalyMonitor:                  &awscostanomalymonitorv1alpha1.AwsCostAnomalyMonitor{},
 	cloudresourcekind.CloudResourceKind_AwsCostCategory:                        &awscostcategoryv1alpha1.AwsCostCategory{},
+	cloudresourcekind.CloudResourceKind_AwsDlmLifecyclePolicy:                  &awsdlmlifecyclepolicyv1alpha1.AwsDlmLifecyclePolicy{},
 	cloudresourcekind.CloudResourceKind_AwsDocumentDb:                          &awsdocumentdbv1alpha1.AwsDocumentDb{},
 	cloudresourcekind.CloudResourceKind_AwsDynamodb:                            &awsdynamodbv1alpha1.AwsDynamodb{},
+	cloudresourcekind.CloudResourceKind_AwsEbsSnapshot:                         &awsebssnapshotv1alpha1.AwsEbsSnapshot{},
+	cloudresourcekind.CloudResourceKind_AwsEbsVolume:                           &awsebsvolumev1alpha1.AwsEbsVolume{},
 	cloudresourcekind.CloudResourceKind_AwsEc2Instance:                         &awsec2instancev1alpha1.AwsEc2Instance{},
 	cloudresourcekind.CloudResourceKind_AwsEcrRepo:                             &awsecrrepov1alpha1.AwsEcrRepo{},
 	cloudresourcekind.CloudResourceKind_AwsEcsCluster:                          &awsecsclusterv1alpha1.AwsEcsCluster{},
@@ -838,7 +847,10 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsRoute53HealthCheck:                  &awsroute53healthcheckv1alpha1.AwsRoute53HealthCheck{},
 	cloudresourcekind.CloudResourceKind_AwsRoute53Zone:                         &awsroute53zonev1alpha1.AwsRoute53Zone{},
 	cloudresourcekind.CloudResourceKind_AwsS3Bucket:                            &awss3bucketv1alpha1.AwsS3Bucket{},
+	cloudresourcekind.CloudResourceKind_AwsS3DirectoryBucket:                   &awss3directorybucketv1alpha1.AwsS3DirectoryBucket{},
 	cloudresourcekind.CloudResourceKind_AwsS3ObjectSet:                         &awss3objectsetv1alpha1.AwsS3ObjectSet{},
+	cloudresourcekind.CloudResourceKind_AwsS3TableBucket:                       &awss3tablebucketv1alpha1.AwsS3TableBucket{},
+	cloudresourcekind.CloudResourceKind_AwsS3VectorBucket:                      &awss3vectorbucketv1alpha1.AwsS3VectorBucket{},
 	cloudresourcekind.CloudResourceKind_AwsSagemakerDomain:                     &awssagemakerdomainv1alpha1.AwsSagemakerDomain{},
 	cloudresourcekind.CloudResourceKind_AwsSagemakerEndpoint:                   &awssagemakerendpointv1alpha1.AwsSagemakerEndpoint{},
 	cloudresourcekind.CloudResourceKind_AwsSagemakerFeatureGroup:               &awssagemakerfeaturegroupv1alpha1.AwsSagemakerFeatureGroup{},

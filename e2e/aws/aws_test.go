@@ -1665,6 +1665,54 @@ func TestAwsManagedPrefixList_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsmanagedprefixlist", "terraform")
 }
 
+func TestAwsEbsVolume_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsebsvolume", "pulumi")
+}
+
+func TestAwsEbsVolume_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsebsvolume", "terraform")
+}
+
+func TestAwsEbsSnapshot_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsebssnapshot", "pulumi")
+}
+
+func TestAwsEbsSnapshot_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsebssnapshot", "terraform")
+}
+
+func TestAwsDlmLifecyclePolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsdlmlifecyclepolicy", "pulumi")
+}
+
+func TestAwsDlmLifecyclePolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsdlmlifecyclepolicy", "terraform")
+}
+
+func TestAwsS3DirectoryBucket_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awss3directorybucket", "pulumi")
+}
+
+func TestAwsS3DirectoryBucket_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awss3directorybucket", "terraform")
+}
+
+func TestAwsS3TableBucket_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awss3tablebucket", "pulumi")
+}
+
+func TestAwsS3TableBucket_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awss3tablebucket", "terraform")
+}
+
+func TestAwsS3VectorBucket_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awss3vectorbucket", "pulumi")
+}
+
+func TestAwsS3VectorBucket_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awss3vectorbucket", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

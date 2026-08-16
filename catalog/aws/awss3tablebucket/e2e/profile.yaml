@@ -1,0 +1,30 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awss3tablebucket
+spec:
+  # One scenario: bucket + maintenance dials + one namespace + one
+  # schema-bearing table with per-table maintenance. Empty storage is
+  # free at rest; no fixtures; seconds per lifecycle phase.
+  #
+  # Deliberately not exercised live:
+  #   - bucket-level and table-level replication -- the destination
+  #     is another AwsS3TableBucket, the same kind under test, which
+  #     the harness's self-kind-prerequisite guard blocks (and the
+  #     replication role needs s3tables replication trust). Unblock:
+  #     same-kind path-prerequisite support + a replication-trust
+  #     role fixture.
+  #   - bucket and table resource policies -- a valid policy needs
+  #     the harness account id in the principal. Unblock: the
+  #     PLANTON_E2E_AWS_ACCOUNT_ID token in the scenario vocabulary.
+  #   - KMS encryption -- needs the maintenance-service key grant to
+  #     keep compaction alive; the pairing CEL is the load-bearing
+  #     guard. Unblock: an AwsKmsKey fixture with the documented
+  #     maintenance grant.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q46
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

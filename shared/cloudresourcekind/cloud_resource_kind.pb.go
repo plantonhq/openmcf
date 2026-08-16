@@ -746,6 +746,33 @@ const (
 	// capacity contract (referencing consumes that many rule slots
 	// regardless of how many entries exist).
 	CloudResourceKind_AwsManagedPrefixList CloudResourceKind = 1322
+	// A standalone EBS volume as a create-XOR-copy union (fresh in a
+	// zone, or cloned from another volume) with attachments managed
+	// in-line. 1330 opens the block & object storage sub-band
+	// (1330-1339).
+	CloudResourceKind_AwsEbsVolume CloudResourceKind = 1330
+	// An EBS snapshot as a three-way source union (snapshot a volume,
+	// copy a snapshot, or import a disk image) with archive tiering,
+	// fast snapshot restore, and cross-account share grants in-line.
+	CloudResourceKind_AwsEbsSnapshot CloudResourceKind = 1331
+	// An S3 directory bucket (S3 Express One Zone): single-AZ,
+	// single-digit-millisecond object storage. The modules derive the
+	// mandated "{name}--{zone_id}--x-s3" bucket name.
+	CloudResourceKind_AwsS3DirectoryBucket CloudResourceKind = 1332
+	// An S3 table bucket (S3 Tables - managed Apache Iceberg storage)
+	// with its namespaces, tables, policies, and replication folded
+	// in-line as the single declarative owner.
+	CloudResourceKind_AwsS3TableBucket CloudResourceKind = 1333
+	// An S3 vector bucket (AI embedding storage with similarity query)
+	// with its vector indexes folded in-line - the natural backend for
+	// Bedrock knowledge bases.
+	CloudResourceKind_AwsS3VectorBucket CloudResourceKind = 1334
+	// A Data Lifecycle Manager policy: account-level, tag-targeted
+	// snapshot/AMI automation (create, retain, archive, copy
+	// cross-region, share, deprecate) as a default-XOR-custom mode
+	// union. AwsIamRole is a prerequisite because DLM acts through a
+	// required execution role.
+	CloudResourceKind_AwsDlmLifecyclePolicy CloudResourceKind = 1335
 	// Account/region settings singleton (one SES account object per
 	// account+region): the suppression list and VDM posture. 1360 opens
 	// the SES P1 sub-band (1360-1369).
@@ -2199,6 +2226,12 @@ var (
 		1320: "AwsVpcPeering",
 		1321: "AwsNetworkAcl",
 		1322: "AwsManagedPrefixList",
+		1330: "AwsEbsVolume",
+		1331: "AwsEbsSnapshot",
+		1332: "AwsS3DirectoryBucket",
+		1333: "AwsS3TableBucket",
+		1334: "AwsS3VectorBucket",
+		1335: "AwsDlmLifecyclePolicy",
 		1360: "AwsSesAccountSettings",
 		2000: "AzureResourceGroup",
 		2001: "AzureAksCluster",
@@ -2849,6 +2882,12 @@ var (
 		"AwsVpcPeering":                                  1320,
 		"AwsNetworkAcl":                                  1321,
 		"AwsManagedPrefixList":                           1322,
+		"AwsEbsVolume":                                   1330,
+		"AwsEbsSnapshot":                                 1331,
+		"AwsS3DirectoryBucket":                           1332,
+		"AwsS3TableBucket":                               1333,
+		"AwsS3VectorBucket":                              1334,
+		"AwsDlmLifecyclePolicy":                          1335,
 		"AwsSesAccountSettings":                          1360,
 		"AzureResourceGroup":                             2000,
 		"AzureAksCluster":                                2001,
@@ -3686,7 +3725,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*ߩ\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\x9d\xac\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -3905,7 +3944,20 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\rAwsNetworkAcl\x10\xa9\n" +
 	"\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsnacl:\x02\xf8\a\x123\n" +
 	"\x14AwsManagedPrefixList\x10\xaa\n" +
-	"\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awsmpl\x126\n" +
+	"\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awsmpl\x12.\n" +
+	"\fAwsEbsVolume\x10\xb2\n" +
+	"\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\bv1alpha1\"\tawsebsvol\x121\n" +
+	"\x0eAwsEbsSnapshot\x10\xb3\n" +
+	"\x1a\x1c\xa2\xf7\x04\x18\b\f\x12\bv1alpha1\"\n" +
+	"awsebssnap\x126\n" +
+	"\x14AwsS3DirectoryBucket\x10\xb4\n" +
+	"\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\bv1alpha1\"\tawss3dirb\x122\n" +
+	"\x10AwsS3TableBucket\x10\xb5\n" +
+	"\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\bv1alpha1\"\tawss3tblb\x123\n" +
+	"\x11AwsS3VectorBucket\x10\xb6\n" +
+	"\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\bv1alpha1\"\tawss3vecb\x128\n" +
+	"\x15AwsDlmLifecyclePolicy\x10\xb7\n" +
+	"\x1a\x1c\xa2\xf7\x04\x18\b\f\x12\bv1alpha1\"\x06awsdlm:\x02\xf0\a\x126\n" +
 	"\x15AwsSesAccountSettings\x10\xd0\n" +
 	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssesas\x121\n" +
 	"\x12AzureResourceGroup\x10\xd0\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\bv1alpha1\"\x04azrg0\x01\x121\n" +

@@ -1762,3 +1762,144 @@ spec:
       pulumi_type: aws:ec2/managedPrefixList:ManagedPrefixList
       id_format: "{prefix_list_id}"
       cloud_control_type_name: AWS::EC2::PrefixList
+
+    # --- EBS volumes ---------------------------------------------------------------
+    - terraform_type: aws_ebs_volume
+      pulumi_type: aws:ebs/volume:Volume
+      id_format: "{volume_id}"
+      cloud_control_type_name: AWS::EC2::Volume
+      # final_snapshot is engine behavior (snapshot-before-delete), never
+      # readable from EC2 -- same class as S3's force_destroy.
+      config_only_attributes: [final_snapshot]
+    - terraform_type: aws_ebs_volume_copy
+      pulumi_type: aws:ebs/volumeCopy:VolumeCopy
+      id_format: "{volume_id}"
+      notes: >-
+        Imports as a plain volume by vol- id; the copy lineage
+        (source_volume_id) is create-time-only and not recoverable from
+        EC2, so adopt copies through the create arm's surface.
+    - terraform_type: aws_volume_attachment
+      pulumi_type: aws:ec2/volumeAttachment:VolumeAttachment
+      id_format: "{device_name}:{volume_id}:{instance_id}"
+      cloud_control_type_name: AWS::EC2::VolumeAttachment
+      # The detach-behavior flags are engine-only (how to detach), never
+      # readable from EC2.
+      config_only_attributes: [force_detach, skip_destroy, stop_instance_before_detaching]
+      notes: >-
+        Colon-separated device:volume:instance composite (`aws ec2
+        describe-volumes` shows Attachments per volume).
+
+    # --- EBS snapshots ---------------------------------------------------------------
+    - terraform_type: aws_ebs_snapshot
+      pulumi_type: aws:ebs/snapshot:Snapshot
+      id_format: "{snapshot_id}"
+    - terraform_type: aws_ebs_snapshot_copy
+      pulumi_type: aws:ebs/snapshotCopy:SnapshotCopy
+      not_importable_upstream_reason: >-
+        The upstream resource ships no importer at v6.58.0 (its plain
+        snapshot sibling carries one; the copy does not) -- the copy
+        lineage (source_snapshot_id/source_region) is create-time-only
+        and not recoverable from EC2. Adopt existing copies as plain
+        snapshots through the volume arm's import path.
+    - terraform_type: aws_ebs_snapshot_import
+      pulumi_type: aws:ebs/snapshotImport:SnapshotImport
+      not_importable_upstream_reason: >-
+        The upstream resource ships no importer at v6.58.0 -- the VM
+        Import/Export task inputs (disk_container, role_name) are
+        create-time-only and not recoverable from EC2. Adopt imported
+        snapshots as plain snapshots through the volume arm's import
+        path.
+    - terraform_type: aws_ebs_fast_snapshot_restore
+      pulumi_type: aws:ebs/fastSnapshotRestore:FastSnapshotRestore
+      id_format: "{availability_zone},{snapshot_id}"
+      notes: >-
+        Comma-separated zone,snapshot composite (`aws ec2
+        describe-fast-snapshot-restores` lists both).
+    - terraform_type: aws_snapshot_create_volume_permission
+      pulumi_type: aws:ec2/snapshotCreateVolumePermission:SnapshotCreateVolumePermission
+      not_importable_upstream_reason: >-
+        The upstream resource ships no importer at v6.58.0.
+        ModifySnapshotAttribute is an idempotent grant keyed by
+        snapshot+account, so an adopter's first apply takes ownership by
+        re-granting the same permission.
+
+    # --- Data Lifecycle Manager -------------------------------------------------------
+    - terraform_type: aws_dlm_lifecycle_policy
+      pulumi_type: aws:dlm/lifecyclePolicy:LifecyclePolicy
+      id_format: "{policy_id}"
+      cloud_control_type_name: AWS::DLM::LifecyclePolicy
+      notes: >-
+        The policy-... id (`aws dlm get-lifecycle-policies` shows
+        PolicyId).
+
+    # --- S3 directory buckets ----------------------------------------------------------
+    - terraform_type: aws_s3_directory_bucket
+      pulumi_type: aws:s3/directoryBucket:DirectoryBucket
+      id_format: "{bucket_name}"
+      cloud_control_type_name: AWS::S3Express::DirectoryBucket
+      # force_destroy is engine behavior (empty-before-delete), never
+      # readable from S3.
+      config_only_attributes: [force_destroy]
+      notes: >-
+        The FULL bucket name ("{base}--{zone_id}--x-s3" - the modules
+        derive it; `aws s3api list-directory-buckets` shows it).
+
+    # --- S3 table buckets ---------------------------------------------------------------
+    - terraform_type: aws_s3tables_table_bucket
+      pulumi_type: aws:s3tables/tableBucket:TableBucket
+      id_format: "{table_bucket_arn}"
+      cloud_control_type_name: AWS::S3Tables::TableBucket
+      config_only_attributes: [force_destroy]
+    - terraform_type: aws_s3tables_table_bucket_policy
+      pulumi_type: aws:s3tables/tableBucketPolicy:TableBucketPolicy
+      id_format: "{table_bucket_arn}"
+      # AWS normalizes policy JSON on read; the provider's own import
+      # test ignores the raw text for the same reason.
+      write_normalized_attributes:
+        - resource_policy
+    - terraform_type: aws_s3tables_table_bucket_replication
+      pulumi_type: aws:s3tables/tableBucketReplication:TableBucketReplication
+      id_format: "{table_bucket_arn}"
+    - terraform_type: aws_s3tables_namespace
+      pulumi_type: aws:s3tables/namespace:Namespace
+      id_format: "{table_bucket_arn};{namespace}"
+      cloud_control_type_name: AWS::S3Tables::Namespace
+      notes: >-
+        Semicolon-separated bucket-ARN;namespace composite (the
+        provider's hand-written import path).
+    - terraform_type: aws_s3tables_table
+      pulumi_type: aws:s3tables/table:Table
+      id_format: "{table_bucket_arn};{namespace};{table_name}"
+      # The Iceberg schema and properties (metadata) are CREATE-ONLY
+      # input the provider never reads back - a fresh import lacks them
+      # and the first plan re-asserts; post-apply idempotency holds
+      # (schema evolution happens through query engines).
+      write_normalized_attributes:
+        - metadata
+      notes: >-
+        Semicolon-separated bucket-ARN;namespace;table composite (the
+        provider's hand-written import path).
+    - terraform_type: aws_s3tables_table_policy
+      pulumi_type: aws:s3tables/tablePolicy:TablePolicy
+      id_format: "{table_bucket_arn};{namespace};{table_name}"
+      write_normalized_attributes:
+        - resource_policy
+    - terraform_type: aws_s3tables_table_replication
+      pulumi_type: aws:s3tables/tableReplication:TableReplication
+      id_format: "{table_arn}"
+
+    # --- S3 vector buckets ---------------------------------------------------------------
+    - terraform_type: aws_s3vectors_vector_bucket
+      pulumi_type: aws:s3/vectorsVectorBucket:VectorsVectorBucket
+      id_format: "{vector_bucket_arn}"
+      cloud_control_type_name: AWS::S3Vectors::VectorBucket
+      config_only_attributes: [force_destroy]
+    - terraform_type: aws_s3vectors_vector_bucket_policy
+      pulumi_type: aws:s3/vectorsVectorBucketPolicy:VectorsVectorBucketPolicy
+      id_format: "{vector_bucket_arn}"
+      write_normalized_attributes:
+        - policy
+    - terraform_type: aws_s3vectors_index
+      pulumi_type: aws:s3/vectorsIndex:VectorsIndex
+      id_format: "{index_arn}"
+      cloud_control_type_name: AWS::S3Vectors::Index

@@ -37,6 +37,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.64.0
 	github.com/aws/aws-sdk-go-v2/service/configservice v1.68.5
 	github.com/aws/aws-sdk-go-v2/service/costexplorer v1.67.6
+	github.com/aws/aws-sdk-go-v2/service/dlm v1.40.1
 	github.com/aws/aws-sdk-go-v2/service/docdb v1.49.7
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.59.2
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.307.1
@@ -69,6 +70,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/redshiftserverless v1.35.10
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.46.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.104.0
+	github.com/aws/aws-sdk-go-v2/service/s3tables v1.18.6
 	github.com/aws/aws-sdk-go-v2/service/s3vectors v1.10.5
 	github.com/aws/aws-sdk-go-v2/service/sagemaker v1.257.0
 	github.com/aws/aws-sdk-go-v2/service/scheduler v1.20.2

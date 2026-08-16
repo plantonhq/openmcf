@@ -1,0 +1,21 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awss3directorybucket
+spec:
+  # One scenario: a minimal bucket in usw2-az1 (an Express-supported
+  # zone), proving the derived bucket name arm-for-arm. Free at rest,
+  # no fixtures, seconds per lifecycle phase.
+  #
+  # Deliberately not exercised live:
+  #   - Local Zone / Dedicated Local Zone locations -- the harness
+  #     account has no Local Zone opt-ins; the zone-type CEL and the
+  #     derived-redundancy pairing are the load-bearing guards.
+  #     Unblock: a Local Zone opt-in on the harness account.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q46
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

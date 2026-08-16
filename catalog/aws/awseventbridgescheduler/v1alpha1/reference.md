@@ -66,7 +66,7 @@ spec:
 | `spec.description` | `string` |  |  |  |
 | `spec.group` | `AwsEventBridgeScheduleGroup` |  |  |  |
 | `spec.group.name` | `string` | yes |  |  |
-| `spec.groupName` | `string` | yes |  |  |
+| `spec.groupName` | `string` |  |  |  |
 | `spec.scheduleExpression` | `string` | yes |  |  |
 | `spec.scheduleExpressionTimezone` | `string` |  |  |  |
 | `spec.startDate` | `string` |  |  |  |
@@ -160,13 +160,13 @@ dash, underscore.
 
 ### spec.groupName
 
-`string` · required
+`string`
 
 An existing group to join by name (another instance's owned group,
 or any pre-existing one). Unset (with no owned group) uses AWS's
 "default" group. Fixed for life.
 
-- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"minLen":"1","maxLen":"64"}}
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"64"}}
 
 ### spec.scheduleExpression
 

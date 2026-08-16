@@ -1,0 +1,3 @@
+name: awsebssnapshot
+runtime: go
+description: Pulumi module to manage an AWS EBS snapshot (volume, copy, or import source) with in-line restore and share surfaces

@@ -357,6 +357,7 @@ Fields on other kinds that can point at this resource:
 | AwsCognitoUserPoolClient | `spec.analyticsConfiguration.roleArn` | `status.outputs.role_arn` |
 | AwsConfigAggregator | `spec.aggregation.organizationSource.roleArn` | `status.outputs.role_arn` |
 | AwsConfigRecorder | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsDlmLifecyclePolicy | `spec.executionRoleArn` | `status.outputs.role_arn` |
 | AwsEcsCluster | `spec.managedInstancesCapacityProviders[].infrastructureRoleArn` | `status.outputs.role_arn` |
 | AwsEcsService | `spec.loadBalancers[].advancedConfiguration.roleArn` | `status.outputs.role_arn` |
 | AwsEcsService | `spec.deploymentConfiguration.lifecycleHooks[].roleArn` | `status.outputs.role_arn` |
@@ -441,6 +442,8 @@ Fields on other kinds that can point at this resource:
 | AwsRestApiGateway | `spec.routes[].integration.credentialsArn` | `status.outputs.role_arn` |
 | AwsRestApiGateway | `spec.authorizers[].credentialsArn` | `status.outputs.role_arn` |
 | AwsS3Bucket | `spec.replication.roleArn` | `status.outputs.role_arn` |
+| AwsS3TableBucket | `spec.replication.role` | `status.outputs.role_arn` |
+| AwsS3TableBucket | `spec.namespaces[].tables[].replication.role` | `status.outputs.role_arn` |
 | AwsSagemakerDomain | `spec.defaultUserSettings.executionRoleArn` | `status.outputs.role_arn` |
 | AwsSagemakerDomain | `spec.defaultUserSettings.jupyterLabAppSettings.emrSettings.assumableRoleArns` | `status.outputs.role_arn` |
 | AwsSagemakerDomain | `spec.defaultUserSettings.jupyterLabAppSettings.emrSettings.executionRoleArns` | `status.outputs.role_arn` |
