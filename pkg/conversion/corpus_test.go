@@ -5,23 +5,40 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 
 	"sigs.k8s.io/yaml"
 
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
+
+	"github.com/plantonhq/planton/pkg/crkreflect"
+
 	// The corpus converts between BOTH torture-kind versions; the old
 	// version's package is linked explicitly so its descriptors resolve (only
-	// the served version reaches the binary through the kind registry).
+	// the served version reaches the binary through the kind registry). A
+	// future kind's first graduation must add its old version's package here
+	// the same way, or the descriptor lookup below fails loudly.
 	_ "github.com/plantonhq/planton/catalog/_test/testcloudresourcegeneric/v1alpha1"
 )
 
 // The golden corpus: every conversion spec in the catalog must carry fixture
 // pairs (conversions/testdata/<case>/{input,expected}.yaml), and every
-// fixture must satisfy two laws:
+// fixture must satisfy two laws, both compared in the CANONICAL DOMAIN (each
+// side canonicalized at its version — see Canonicalize):
 //
-//  1. upgrade(input) == expected, byte-for-byte at the document level.
-//  2. downgrade(upgrade(input)) == input minus the upgrade's DECLARED losses
-//     -- the round-trip law: loss is legal only when the spec says so.
+//  1. canon(upgrade(canon(input))) == canon(expected).
+//  2. canon(downgrade(upgrade(canon(input)))) == canon(input) minus the
+//     upgrade's DECLARED losses — the round-trip law: loss is legal only
+//     when the spec says so.
+//
+// The canonical domain is what makes storage-spelled fixtures first-class:
+// a case authored in the persist print's shape (proto-name keys, 64-bit
+// integers as strings) proves the exact documents production lanes feed the
+// engine after canonicalizing at entry. Representation differences protobuf
+// declares meaningless (key spelling, 64-bit string form, non-presence
+// zeros) dissolve in the comparison; REAL differences still fail exactly.
 //
 // Both the Go engine here and the platform's Java engine gate on this same
 // corpus; an engine disagreement is a CI failure, not a runtime surprise.
@@ -46,6 +63,45 @@ func loadDoc(t *testing.T, path string) map[string]any {
 		t.Fatalf("parsing %s: %v", path, err)
 	}
 	return doc
+}
+
+// messageDescriptor resolves the kind's message descriptor at the given
+// version. The kind registry serves only the served version's message; other
+// versions' packages are linked by this test's explicit imports and located
+// by swapping the version segment of the served message's full name — the
+// package-path convention the registry gates enforce.
+func messageDescriptor(t *testing.T, kindName, version string) protoreflect.MessageDescriptor {
+	t.Helper()
+	kind := crkreflect.KindFromString(kindName)
+	served, err := crkreflect.NewInstance(kind)
+	if err != nil {
+		t.Fatalf("kind %q is not in the registry: %v", kindName, err)
+	}
+	servedVersion, err := crkreflect.KindVersion(kind)
+	if err != nil {
+		t.Fatalf("kind %q has no version: %v", kindName, err)
+	}
+	full := string(served.ProtoReflect().Descriptor().FullName())
+	swapped := strings.Replace(full, "."+servedVersion+".", "."+version+".", 1)
+	desc, err := protoregistry.GlobalFiles.FindDescriptorByName(protoreflect.FullName(swapped))
+	if err != nil {
+		t.Fatalf("no descriptor %s -- link the %s package into this test's imports: %v",
+			swapped, version, err)
+	}
+	md, ok := desc.(protoreflect.MessageDescriptor)
+	if !ok {
+		t.Fatalf("%s is not a message descriptor", swapped)
+	}
+	return md
+}
+
+func canon(t *testing.T, md protoreflect.MessageDescriptor, doc map[string]any, label string) map[string]any {
+	t.Helper()
+	canonical, err := Canonicalize(md, doc)
+	if err != nil {
+		t.Fatalf("canonicalizing %s: %v", label, err)
+	}
+	return canonical
 }
 
 func TestGoldenCorpus(t *testing.T) {
@@ -73,6 +129,9 @@ func TestGoldenCorpus(t *testing.T) {
 			continue
 		}
 
+		fromMd := messageDescriptor(t, spec.Kind, spec.From)
+		toMd := messageDescriptor(t, spec.Kind, spec.To)
+
 		for _, entry := range entries {
 			if !entry.IsDir() {
 				continue
@@ -82,26 +141,34 @@ func TestGoldenCorpus(t *testing.T) {
 				input := loadDoc(t, filepath.Join(fixturesDir, caseName, "input.yaml"))
 				expected := loadDoc(t, filepath.Join(fixturesDir, caseName, "expected.yaml"))
 
-				upgraded, losses, err := Apply(spec, Upgrade, input)
+				// The engine converts the canonical form -- exactly what every
+				// production lane feeds it after canonicalizing at entry.
+				canonIn := canon(t, fromMd, input, "input")
+
+				upgraded, losses, err := Apply(spec, Upgrade, canonIn)
 				if err != nil {
 					t.Fatalf("upgrade failed: %v", err)
 				}
-				if !reflect.DeepEqual(upgraded, expected) {
-					t.Errorf("upgrade(input) != expected\ngot:      %#v\nexpected: %#v", upgraded, expected)
+				if !reflect.DeepEqual(canon(t, toMd, upgraded, "upgraded"),
+					canon(t, toMd, expected, "expected")) {
+					t.Errorf("upgrade(input) != expected (canonical domain)\ngot:      %#v\nexpected: %#v",
+						upgraded, expected)
 				}
 
-				// Round-trip law: the downgrade restores the input except for
-				// losses the UPGRADE declared.
+				// Round-trip law: the downgrade restores the canonical input
+				// except for losses the UPGRADE declared.
 				roundTripped, _, err := Apply(spec, Downgrade, upgraded)
 				if err != nil {
 					t.Fatalf("downgrade failed: %v", err)
 				}
-				pruned := deepCopy(input).(map[string]any)
+				pruned := deepCopy(canonIn).(map[string]any)
 				for _, loss := range losses {
 					deletePath(pruned, loss.Path)
 				}
-				if !reflect.DeepEqual(roundTripped, pruned) {
-					t.Errorf("round-trip broke: downgrade(upgrade(input)) != input minus declared losses\ngot:      %#v\nexpected: %#v", roundTripped, pruned)
+				if !reflect.DeepEqual(canon(t, fromMd, roundTripped, "round-tripped"),
+					canon(t, fromMd, pruned, "pruned input")) {
+					t.Errorf("round-trip broke: downgrade(upgrade(input)) != input minus declared losses (canonical domain)\ngot:      %#v\nexpected: %#v",
+						roundTripped, pruned)
 				}
 			})
 		}

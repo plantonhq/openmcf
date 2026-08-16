@@ -42,6 +42,26 @@ func TestUpgradeManifestFile(t *testing.T) {
 	}
 }
 
+// A storage-spelled document (a stored-document export: proto-name keys) is
+// refused honestly with the way out named -- this binary compiles only
+// served-version schemas and cannot canonicalize an old-version document, and
+// running the engine over storage keys would silently no-op every op.
+func TestUpgradeManifestFile_StorageSpelledRefusal(t *testing.T) {
+	input := filepath.Join(tortureConversionsDir(t), "testdata",
+		"full-shape-storage-spelled", "input.yaml")
+
+	_, _, err := upgradeManifestFile(input)
+	if err == nil {
+		t.Fatal("a storage-spelled document must be refused, never silently no-op'd")
+	}
+	if !strings.Contains(err.Error(), "storage field spelling") {
+		t.Errorf("the refusal must name the spelling as the cause; got: %v", err)
+	}
+	if !strings.Contains(err.Error(), "upgrade-manifest") {
+		t.Errorf("the refusal must name the way out; got: %v", err)
+	}
+}
+
 // A manifest already at the served version is refused with a friendly
 // explanation, not converted into itself.
 func TestUpgradeManifestFile_AlreadyServed(t *testing.T) {
