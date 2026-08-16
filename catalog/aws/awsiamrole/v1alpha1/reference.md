@@ -372,8 +372,12 @@ Fields on other kinds that can point at this resource:
 | AwsEksCluster | `spec.autoMode.nodeRoleArn` | `status.outputs.role_arn` |
 | AwsEksFargateProfile | `spec.podExecutionRoleArn` | `status.outputs.role_arn` |
 | AwsEksNodeGroup | `spec.nodeRoleArn` | `status.outputs.role_arn` |
+| AwsEventBridgePipe | `spec.targetParameters.ecsTask.overrides.executionRoleArn` | `status.outputs.role_arn` |
+| AwsEventBridgePipe | `spec.targetParameters.ecsTask.overrides.taskRoleArn` | `status.outputs.role_arn` |
+| AwsEventBridgePipe | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsEventBridgeRule | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsEventBridgeRule | `spec.targets[].roleArn` | `status.outputs.role_arn` |
+| AwsEventBridgeScheduler | `spec.target.roleArn` | `status.outputs.role_arn` |
 | AwsGuardDutyMalwareProtectionPlan | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsHttpApiGateway | `spec.routes[].integration.credentialsArn` | `status.outputs.role_arn` |
 | AwsHttpApiGateway | `spec.authorizers[].authorizerCredentialsArn` | `status.outputs.role_arn` |

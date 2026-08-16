@@ -63,6 +63,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/opensearch v1.73.0
 	github.com/aws/aws-sdk-go-v2/service/opensearchserverless v1.34.5
 	github.com/aws/aws-sdk-go-v2/service/organizations v1.53.8
+	github.com/aws/aws-sdk-go-v2/service/pipes v1.26.2
 	github.com/aws/aws-sdk-go-v2/service/rds v1.119.5
 	github.com/aws/aws-sdk-go-v2/service/redshift v1.63.5
 	github.com/aws/aws-sdk-go-v2/service/redshiftserverless v1.35.10
@@ -70,6 +71,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.104.0
 	github.com/aws/aws-sdk-go-v2/service/s3vectors v1.10.5
 	github.com/aws/aws-sdk-go-v2/service/sagemaker v1.257.0
+	github.com/aws/aws-sdk-go-v2/service/scheduler v1.20.2
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.34.6
 	github.com/aws/aws-sdk-go-v2/service/sesv2 v1.63.0
 	github.com/aws/aws-sdk-go-v2/service/sfn v1.44.0

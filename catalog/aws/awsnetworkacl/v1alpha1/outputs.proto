@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsnetworkacl.v1alpha1;
+
+// AwsNetworkAclStackOutputs captures the observable state of the
+// network ACL after apply.
+message AwsNetworkAclStackOutputs {
+  // The ACL's id (acl-...) - the provider's import ID.
+  string network_acl_id = 1;
+
+  // The ACL's ARN.
+  string network_acl_arn = 2;
+
+  // The AWS account that owns the ACL.
+  string owner_id = 3;
+}

@@ -1,0 +1,33 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEventBridgeScheduler
+metadata:
+  name: nightly-report
+spec:
+  region: us-east-1
+  description: Nightly report generation at 2am Eastern
+  group:
+    name: reporting-jobs
+  scheduleExpression: cron(0 2 * * ? *)
+  scheduleExpressionTimezone: America/New_York
+  flexibleTimeWindow:
+    mode: "OFF"
+  target:
+    arn:
+      valueFrom:
+        kind: AwsLambda
+        name: report-generator
+        fieldPath: status.outputs.function_arn
+    roleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: scheduler-exec
+        fieldPath: status.outputs.role_arn
+    input: '{"report": "daily-summary"}'
+    retryPolicy:
+      maximumEventAgeInSeconds: 3600
+      maximumRetryAttempts: 3
+    deadLetterQueueArn:
+      valueFrom:
+        kind: AwsSqsQueue
+        name: scheduler-dlq
+        fieldPath: status.outputs.queue_arn

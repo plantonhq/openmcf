@@ -1,0 +1,11 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsVpcPeering
+metadata:
+  name: partner-peering-accept
+spec:
+  region: us-east-1
+  accept:
+    vpcPeeringConnectionId:
+      value: pcx-0123456789abcdef0
+    autoAccept: true
+    accepterAllowRemoteVpcDnsResolution: true

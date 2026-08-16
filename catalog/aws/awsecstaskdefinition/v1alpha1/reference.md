@@ -1076,7 +1076,9 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | AwsEcsService | `spec.taskDefinition` | `status.outputs.task_definition_arn` |
+| AwsEventBridgePipe | `spec.targetParameters.ecsTask.taskDefinitionArn` | `status.outputs.task_definition_arn` |
 | AwsEventBridgeRule | `spec.targets[].ecsTarget.taskDefinitionArn` | `status.outputs.task_definition_arn` |
+| AwsEventBridgeScheduler | `spec.target.ecsParameters.taskDefinitionArn` | `status.outputs.task_definition_arn` |
 
 ## See Also
 

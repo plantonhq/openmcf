@@ -1,0 +1,160 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsnetworkacl.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsNetworkAclSpec defines one network ACL: the stateless
+// subnet-level firewall. Rules are evaluated in rule-number order per
+// direction, first match wins, and - unlike security groups - a rule
+// can DENY. Replies are NOT tracked: a stateless firewall needs
+// explicit rules in both directions (the classic NACL trap is allowing
+// inbound 443 and forgetting the outbound ephemeral-port reply range).
+//
+// Rules and subnet associations are managed here in-line as the single
+// declarative owner - the standalone aws_network_acl_rule /
+// aws_network_acl_association resources carry identical payloads and
+// fight the in-line form, so this kind never uses them. AWS's own
+// catch-all rules (32767 for IPv4, 32768 for IPv6) always exist, are
+// invisible here, and cannot be managed - this spec's rules take
+// numbers 1-32766 below them.
+//
+// Deleting the ACL re-parents its subnets to the VPC's default NACL
+// first (subnets always belong to SOME ACL), then deletes.
+message AwsNetworkAclSpec {
+  // Rule numbers key the entries per direction - AWS rejects
+  // duplicates within a direction.
+  option (buf.validate.message).cel = {
+    id: "spec.ingress_rule_numbers_unique"
+    message: "ingress rules must have unique rule_no values"
+    expression: "this.ingress.map(r, r.rule_no).unique()"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.egress_rule_numbers_unique"
+    message: "egress rules must have unique rule_no values"
+    expression: "this.egress.map(r, r.rule_no).unique()"
+  };
+
+  // The AWS region the ACL lives in. Example: "us-east-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The VPC this ACL belongs to. Fixed for life - changing it replaces
+  // the ACL. Reference an AwsVpc vpc_id output or pass a literal
+  // vpc-... id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
+  ];
+
+  // Inbound rules, evaluated in rule_no order (first match wins).
+  // Traffic matching no rule falls through to AWS's invisible
+  // catch-all DENY.
+  repeated AwsNetworkAclRule ingress = 3;
+
+  // Outbound rules, evaluated in rule_no order (first match wins).
+  // Remember the reply direction: stateless means outbound replies to
+  // inbound connections need their own allow (ephemeral ports
+  // 1024-65535 for most clients).
+  repeated AwsNetworkAclRule egress = 4;
+
+  // The subnets this ACL filters. A subnet has exactly ONE ACL:
+  // listing it here atomically replaces its previous association (AWS
+  // has no attach - only replace). Removing a subnet from this list
+  // hands it back to the VPC's default NACL. Reference AwsSubnet
+  // subnet_id outputs or pass literal subnet-... ids.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+}
+
+// AwsNetworkAclRule is one ordered allow/deny rule in one direction.
+message AwsNetworkAclRule {
+  // Exactly one address family per rule.
+  option (buf.validate.message).cel = {
+    id: "rule.exactly_one_cidr"
+    message: "set exactly one of cidr_block (IPv4) and ipv6_cidr_block (IPv6) - a rule matches one address family; add a second rule for the other"
+    expression: "(this.cidr_block != '') != (this.ipv6_cidr_block != '')"
+  };
+  // The all-protocols wildcard matches every port; AWS stores no ports
+  // for it and rejects rules that pretend otherwise.
+  option (buf.validate.message).cel = {
+    id: "rule.all_protocol_forbids_ports"
+    message: "protocol -1/all matches every port - leave from_port and to_port unset (0)"
+    expression: "!(this.protocol in ['-1', 'all']) || (this.from_port == 0 && this.to_port == 0)"
+  };
+  // ICMP selectors only mean something on ICMP protocols.
+  option (buf.validate.message).cel = {
+    id: "rule.icmp_fields_require_icmp_protocol"
+    message: "icmp_type/icmp_code apply only to ICMP protocols (1/icmp, 58/ipv6-icmp)"
+    expression: "!(has(this.icmp_type) || has(this.icmp_code)) || this.protocol in ['1', 'icmp', '58', 'ipv6-icmp', 'icmpv6']"
+  };
+  // AWS pairs the wildcards: all ICMP types implies all codes.
+  option (buf.validate.message).cel = {
+    id: "rule.icmp_all_types_all_codes"
+    message: "icmp_type -1 (all types) requires icmp_code -1 (all codes)"
+    expression: "!has(this.icmp_type) || this.icmp_type != -1 || (has(this.icmp_code) && this.icmp_code == -1)"
+  };
+
+  // The rule's evaluation position, 1-32766 (lower evaluates first).
+  // Leave gaps (100, 200, ...) so rules can be inserted later without
+  // renumbering. Unique within the direction.
+  int32 rule_no = 1 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 32766
+  }];
+
+  // Whether matching traffic is allowed or denied - NACLs can deny,
+  // which is exactly what security groups cannot do.
+  string action = 2 [(buf.validate.field).string = {
+    in: [
+      "allow",
+      "deny"
+    ]
+  }];
+
+  // The protocol, as an IANA number ("6") or name ("tcp"). "-1" (or
+  // "all") matches every protocol. AWS stores only NUMBERS - the
+  // provider normalizes names when diffing, so a name here never
+  // causes a perpetual diff.
+  string protocol = 3 [(buf.validate.field).string.min_len = 1];
+
+  // The IPv4 CIDR this rule matches. Example: "10.0.0.0/16", or
+  // "0.0.0.0/0" for everything. Exactly one of cidr_block and
+  // ipv6_cidr_block per rule.
+  string cidr_block = 4 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // The IPv6 CIDR this rule matches. Example: "2001:db8::/32", or
+  // "::/0" for everything.
+  string ipv6_cidr_block = 5 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // The port range start (0-65535). With protocol -1/all, leave both
+  // ports unset - the wildcard matches every port. For single-port
+  // rules set from_port == to_port.
+  int32 from_port = 6 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 65535
+  }];
+
+  // The port range end (0-65535).
+  int32 to_port = 7 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 65535
+  }];
+
+  // The ICMP type this rule matches (-1 for all types). Only for ICMP
+  // protocols. Presence-typed so type 0 (echo reply) is expressible.
+  optional int32 icmp_type = 8 [(buf.validate.field).int32 = {
+    gte: -1
+    lte: 255
+  }];
+
+  // The ICMP code this rule matches (-1 for all codes). Only for ICMP
+  // protocols. Presence-typed so code 0 is expressible.
+  optional int32 icmp_code = 9 [(buf.validate.field).int32 = {
+    gte: -1
+    lte: 255
+  }];
+}

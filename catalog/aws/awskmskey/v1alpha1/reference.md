@@ -438,8 +438,11 @@ Fields on other kinds that can point at this resource:
 | AwsEksCluster | `spec.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsElasticFileSystem | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsElasticFileSystem | `spec.replication.destinationKmsKeyId` | `status.outputs.key_arn` |
+| AwsEventBridgeApiDestination | `spec.connection.kmsKeyIdentifier` | `status.outputs.key_arn` |
 | AwsEventBridgeBus | `spec.kmsKeyIdentifier` | `status.outputs.key_arn` |
 | AwsEventBridgeBus | `spec.archives[].kmsKeyIdentifier` | `status.outputs.key_arn` |
+| AwsEventBridgePipe | `spec.kmsKeyIdentifier` | `status.outputs.key_arn` |
+| AwsEventBridgeScheduler | `spec.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsFsxLustreFileSystem | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsFsxOntapFileSystem | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsFsxOpenzfsFileSystem | `spec.kmsKeyId` | `status.outputs.key_arn` |

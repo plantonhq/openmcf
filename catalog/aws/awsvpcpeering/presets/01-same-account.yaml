@@ -1,0 +1,20 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsVpcPeering
+metadata:
+  name: app-to-data
+spec:
+  region: us-east-1
+  request:
+    vpcId:
+      valueFrom:
+        kind: AwsVpc
+        name: app-vpc
+        fieldPath: status.outputs.vpc_id
+    peerVpcId:
+      valueFrom:
+        kind: AwsVpc
+        name: data-vpc
+        fieldPath: status.outputs.vpc_id
+    autoAccept: true
+    requesterAllowRemoteVpcDnsResolution: true
+    accepterAllowRemoteVpcDnsResolution: true

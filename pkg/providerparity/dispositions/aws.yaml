@@ -470,12 +470,6 @@ resources:
   - resource: aws_cloudwatch_contributor_managed_insight_rule
     disposition: deferred
     reason: "Contributor Insights rules; deferred pending demand"
-  - resource: aws_cloudwatch_event_api_destination
-    disposition: model-planned
-    reason: "judged as a planned AwsEventbridgeApiDestination kind (API destinations with connections)"
-  - resource: aws_cloudwatch_event_connection
-    disposition: model-planned
-    reason: "judged as a planned AwsEventbridgeApiDestination kind (API destinations with connections)"
   - resource: aws_cloudwatch_event_endpoint
     disposition: deferred
     reason: "EventBridge global endpoints (multi-region failover); deferred pending demand"
@@ -1097,12 +1091,9 @@ resources:
   - resource: aws_ec2_local_gateway_route_table_vpc_association
     disposition: deferred
     reason: "Outposts local-gateway surface; deferred pending demand"
-  - resource: aws_ec2_managed_prefix_list
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrefixList kind (lists with entries)"
   - resource: aws_ec2_managed_prefix_list_entry
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrefixList kind (lists with entries)"
+    disposition: composed
+    reason: "identical payload to AwsManagedPrefixList's in-line entries list -- the provider's own docs warn the standalone entry resource and in-line entries overwrite each other, so the kind's single declarative owner is the in-line form"
   - resource: aws_ec2_network_insights_access_scope
     disposition: deferred
     reason: "Network Insights analyses are imperative diagnostics, a poor declarative fit; deferred"
@@ -2039,15 +2030,12 @@ resources:
   - resource: aws_neptunegraph_graph
     disposition: deferred
     reason: "Neptune Analytics graphs; deferred pending demand"
-  - resource: aws_network_acl
-    disposition: model-planned
-    reason: "judged as a planned AwsNetworkAcl kind (ACLs, associations, rules)"
   - resource: aws_network_acl_association
-    disposition: model-planned
-    reason: "judged as a planned AwsNetworkAcl kind (ACLs, associations, rules)"
+    disposition: composed
+    reason: "identical payload to AwsNetworkAcl's in-line subnet_ids list -- the provider's own docs warn against mixing the standalone association with in-line subnet management, so the kind's single declarative owner is the in-line form"
   - resource: aws_network_acl_rule
-    disposition: model-planned
-    reason: "judged as a planned AwsNetworkAcl kind (ACLs, associations, rules)"
+    disposition: composed
+    reason: "identical payload to AwsNetworkAcl's in-line ingress/egress rules -- the provider's own docs warn the standalone rule resource and in-line rules overwrite each other, so the kind's single declarative owner is the in-line form"
   - resource: aws_network_interface
     disposition: model-planned
     reason: "judged as a planned AwsNetworkInterface kind (re-judged 2026-08-11 from the blanket fold-into-AwsEc2Instance reason): a standalone ENI lifecycle attachable across instances -- AwsEc2Instance consumes one by reference (primary_network_interface_id) and creates launch-scoped ones inline (secondary_network_interfaces), neither of which is the durable standalone ENI; the provider's own aws_instance.network_interface deprecation points at the attachment resource as the sanctioned companion"
@@ -2330,9 +2318,6 @@ resources:
   - resource: aws_pinpointsmsvoicev2_pool
     disposition: deferred
     reason: "End User Messaging SMS/voice channels; deferred pending demand"
-  - resource: aws_pipes_pipe
-    disposition: model-planned
-    reason: "judged as a planned AwsEventbridgePipe kind"
   - resource: aws_placement_group
     disposition: model-planned
     reason: "judged as a planned AwsPlacementGroup kind (re-judged 2026-08-11 from the blanket fold-into-AwsEc2Instance reason): an account-level placement strategy (cluster/partition/spread) consumed by many instances and ASGs -- AwsEc2Instance.placement references a group by name/id but cannot create one"
@@ -2843,12 +2828,6 @@ resources:
   - resource: aws_savingsplans_savings_plan
     disposition: deferred
     reason: "savings plans are a billing purchase commitment, not infrastructure"
-  - resource: aws_scheduler_schedule
-    disposition: model-planned
-    reason: "judged as a planned AwsEventbridgeScheduler kind (schedules with groups)"
-  - resource: aws_scheduler_schedule_group
-    disposition: model-planned
-    reason: "judged as a planned AwsEventbridgeScheduler kind (schedules with groups)"
   - resource: aws_schemas_discoverer
     disposition: deferred
     reason: "EventBridge schema registry content; deferred pending demand"
@@ -3425,15 +3404,9 @@ resources:
   - resource: aws_vpc_network_performance_metric_subscription
     disposition: deferred
     reason: "account-scoped AZ-pair network performance monitoring (aggregate-latency metric subscriptions between availability zones) -- never per-VPC surface; revisit on demand"
-  - resource: aws_vpc_peering_connection
-    disposition: model-planned
-    reason: "judged as a planned AwsVpcPeering kind (peering connections, accepters, options)"
-  - resource: aws_vpc_peering_connection_accepter
-    disposition: model-planned
-    reason: "judged as a planned AwsVpcPeering kind (peering connections, accepters, options)"
   - resource: aws_vpc_peering_connection_options
-    disposition: model-planned
-    reason: "judged as a planned AwsVpcPeering kind (peering connections, accepters, options)"
+    disposition: composed
+    reason: "identical payload to AwsVpcPeering's in-line DNS-resolution options on both arms -- the provider's own docs warn the standalone options resource and in-line options overwrite each other, so the kind's single declarative owner is the in-line form"
   - resource: aws_vpc_route_server
     disposition: deferred
     reason: "VPC route servers; deferred pending demand"

@@ -1,0 +1,39 @@
+# Both arms in one instance: an api-key connection (AWS stores the key
+# in its own Secrets Manager secret - the secret_arn output) and a
+# destination bound to it, with a static invocation header and a rate
+# limit. The endpoint is a reserved-domain HTTPS URL - API destinations
+# validate nothing at create, and no rule ever invokes this one, so the
+# lane is ~$0 (the AWS-owned secret bills cents/month, prorated to
+# minutes).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEventBridgeApiDestination
+metadata:
+  name: planton-oss-e2e-awsebad-min
+  id: planton-oss-e2e-awsebad-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awseventbridgeapidestination
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  connection:
+    name: planton-oss-e2e-awsebad-conn
+    description: Planton E2E api-key connection
+    apiKey:
+      key: x-api-key
+      value: planton-e2e-not-a-real-key
+    invocationHttpParameters:
+      header:
+        - key: x-planton-source
+          value: eventbridge-e2e
+  destination:
+    name: planton-oss-e2e-awsebad-dest
+    description: Planton E2E webhook destination (never invoked)
+    invocationEndpoint: https://api.example.com/events
+    httpMethod: POST
+    invocationRateLimitPerSecond: 10

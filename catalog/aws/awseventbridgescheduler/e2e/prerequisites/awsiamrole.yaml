@@ -1,0 +1,39 @@
+# Consumer-scoped AwsIamRole install profile: the execution role
+# Scheduler assumes to send to the SQS queue fixture. The trust is
+# scheduler.amazonaws.com (first create retries while it propagates -
+# the provider's two-minute IAM window); the inline policy grants the
+# queue send. Scoping the fixture here keeps the scheduler-trust shape
+# off the shared fixed-name set (the concurrent-session collision
+# class).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-awsebsch-exec
+  id: planton-oss-e2e-awsebsch-exec
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E execution role for EventBridge Scheduler
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: scheduler.amazonaws.com
+        Action: sts:AssumeRole
+  inlinePolicies:
+    sqsSendE2E:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - sqs:SendMessage
+          Resource: "*"

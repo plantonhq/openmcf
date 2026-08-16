@@ -1753,6 +1753,7 @@ Fields on other kinds that can point at this resource:
 | AwsConfigRecorder | `spec.deliveryChannel.s3BucketName` | `status.outputs.bucket_id` |
 | AwsDynamodb | `spec.importTable.s3Bucket` | `status.outputs.bucket_id` |
 | AwsEcsTaskDefinition | `spec.volumes[].s3files.fileSystemArn` | `status.outputs.bucket_arn` |
+| AwsEventBridgePipe | `spec.logConfiguration.s3.bucketName` | `status.outputs.bucket_id` |
 | AwsGlobalAccelerator | `spec.flowLogs.s3Bucket` | `status.outputs.bucket_id` |
 | AwsGuardDuty | `spec.publishingDestination.bucketArn` | `status.outputs.bucket_arn` |
 | AwsGuardDutyMalwareProtectionPlan | `spec.s3BucketName` | `status.outputs.bucket_id` |

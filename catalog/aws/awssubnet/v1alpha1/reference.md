@@ -404,7 +404,10 @@ Fields on other kinds that can point at this resource:
 | AwsEksFargateProfile | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsEksNodeGroup | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsElasticFileSystem | `spec.mountTargets[].subnetId` | `status.outputs.subnet_id` |
+| AwsEventBridgePipe | `spec.sourceParameters.selfManagedKafka.vpc.subnets` | `status.outputs.subnet_id` |
+| AwsEventBridgePipe | `spec.targetParameters.ecsTask.networkConfiguration.subnets` | `status.outputs.subnet_id` |
 | AwsEventBridgeRule | `spec.targets[].ecsTarget.networkConfiguration.subnets` | `status.outputs.subnet_id` |
+| AwsEventBridgeScheduler | `spec.target.ecsParameters.networkConfiguration.subnets` | `status.outputs.subnet_id` |
 | AwsFsxLustreFileSystem | `spec.subnetId` | `status.outputs.subnet_id` |
 | AwsFsxOntapFileSystem | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsFsxOntapFileSystem | `spec.preferredSubnetId` | `status.outputs.subnet_id` |
@@ -429,6 +432,7 @@ Fields on other kinds that can point at this resource:
 | AwsMwaaEnvironment | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsNatGateway | `spec.subnetId` | `status.outputs.subnet_id` |
 | AwsNeptuneCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsNetworkAcl | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsNlb | `spec.subnetMappings[].subnetId` | `status.outputs.subnet_id` |
 | AwsOpenSearchDomain | `spec.vpcOptions.subnetIds` | `status.outputs.subnet_id` |
 | AwsPlantonRunner | `spec.subnets` | `status.outputs.subnet_id` |

@@ -424,7 +424,10 @@ Fields on other kinds that can point at this resource:
 | AwsEksCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsEksNodeGroup | `spec.remoteAccess.sourceSecurityGroupIds` | `status.outputs.security_group_id` |
 | AwsElasticFileSystem | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsEventBridgePipe | `spec.sourceParameters.selfManagedKafka.vpc.securityGroups` | `status.outputs.security_group_id` |
+| AwsEventBridgePipe | `spec.targetParameters.ecsTask.networkConfiguration.securityGroups` | `status.outputs.security_group_id` |
 | AwsEventBridgeRule | `spec.targets[].ecsTarget.networkConfiguration.securityGroups` | `status.outputs.security_group_id` |
+| AwsEventBridgeScheduler | `spec.target.ecsParameters.networkConfiguration.securityGroups` | `status.outputs.security_group_id` |
 | AwsFsxLustreFileSystem | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsFsxOntapFileSystem | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsFsxOpenzfsFileSystem | `spec.securityGroupIds` | `status.outputs.security_group_id` |

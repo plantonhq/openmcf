@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsmanagedprefixlist.v1alpha1;
+
+import "buf/validate/validate.proto";
+
+// AwsManagedPrefixListSpec defines one customer-managed prefix list: a
+// named, versioned set of CIDR blocks that security-group rules, NACL
+// rules, and route tables reference as a single object (the pl-...
+// id). Update the list once and every referencing rule follows.
+//
+// The list's name in AWS is metadata.name. Entries are managed
+// in-line as the single declarative owner - the standalone
+// aws_ec2_managed_prefix_list_entry resource carries the identical
+// payload and fights the in-line form, so this kind never uses it.
+message AwsManagedPrefixListSpec {
+  // Entries can never exceed the list's declared capacity.
+  option (buf.validate.message).cel = {
+    id: "spec.entries_within_max"
+    message: "entries cannot exceed max_entries - raise max_entries or drop entries"
+    expression: "this.entries.size() <= this.max_entries"
+  };
+  // Every entry must match the list's address family.
+  option (buf.validate.message).cel = {
+    id: "spec.entries_match_address_family"
+    message: "every entry's cidr must match address_family - IPv6 entries contain ':', IPv4 entries do not"
+    expression: "this.entries.all(e, (this.address_family == 'IPv6') == e.cidr.contains(':'))"
+  };
+
+  // The AWS region the prefix list lives in. Example: "us-east-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The address family of every CIDR in this list. AWS fixes it for
+  // life - changing it replaces the list (and every reference to the
+  // old pl- id breaks with it).
+  string address_family = 2 [(buf.validate.field).string = {
+    in: [
+      "IPv4",
+      "IPv6"
+    ]
+  }];
+
+  // The list's capacity - how many entries it may EVER hold without a
+  // resize. Size it deliberately: a security-group rule referencing
+  // this list consumes max_entries rule-quota slots regardless of how
+  // many entries actually exist. Grows and shrinks in place (AWS
+  // applies capacity increases before entry changes and decreases
+  // after, so a resize never transiently strands entries).
+  int64 max_entries = 3 [(buf.validate.field).int64.gte = 1];
+
+  // The CIDR entries, each optionally described. Managed as the
+  // complete set - an entry removed here is removed at AWS. AWS
+  // versions the list on every entry change (the version stack
+  // output).
+  repeated AwsManagedPrefixListEntry entries = 4 [(buf.validate.field).cel = {
+    id: "spec.entry_cidrs_unique"
+    message: "entries must have unique cidr values"
+    expression: "this.map(e, e.cidr).unique()"
+  }];
+}
+
+// AwsManagedPrefixListEntry is one CIDR block in the list.
+message AwsManagedPrefixListEntry {
+  // The CIDR block. Example: "10.20.0.0/16" (IPv4) or "2001:db8::/32"
+  // (IPv6). Must match the list's address_family.
+  string cidr = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^.+/[0-9]+$"
+  }];
+
+  // What this CIDR is (an office, a partner VPC, a scanner fleet...).
+  // Shown wherever the list is inspected; keep it current.
+  string description = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 255
+  ];
+}

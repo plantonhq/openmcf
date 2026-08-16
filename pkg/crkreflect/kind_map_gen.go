@@ -97,8 +97,11 @@ import (
 	awselasticacheusergroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awselasticacheusergroup/v1alpha1"
 	awselasticfilesystemv1alpha1 "github.com/plantonhq/planton/catalog/aws/awselasticfilesystem/v1alpha1"
 	awselasticipv1alpha1 "github.com/plantonhq/planton/catalog/aws/awselasticip/v1alpha1"
+	awseventbridgeapidestinationv1alpha1 "github.com/plantonhq/planton/catalog/aws/awseventbridgeapidestination/v1alpha1"
 	awseventbridgebusv1alpha1 "github.com/plantonhq/planton/catalog/aws/awseventbridgebus/v1alpha1"
+	awseventbridgepipev1alpha1 "github.com/plantonhq/planton/catalog/aws/awseventbridgepipe/v1alpha1"
 	awseventbridgerulev1alpha1 "github.com/plantonhq/planton/catalog/aws/awseventbridgerule/v1alpha1"
+	awseventbridgeschedulerv1alpha1 "github.com/plantonhq/planton/catalog/aws/awseventbridgescheduler/v1alpha1"
 	awsfsxdatarepositoryassociationv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsfsxdatarepositoryassociation/v1alpha1"
 	awsfsxlustrefilesystemv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsfsxlustrefilesystem/v1alpha1"
 	awsfsxontapfilesystemv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsfsxontapfilesystem/v1alpha1"
@@ -132,6 +135,7 @@ import (
 	awslblistenerv1alpha1 "github.com/plantonhq/planton/catalog/aws/awslblistener/v1alpha1"
 	awslblistenerrulev1alpha1 "github.com/plantonhq/planton/catalog/aws/awslblistenerrule/v1alpha1"
 	awslbtargetgroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awslbtargetgroup/v1alpha1"
+	awsmanagedprefixlistv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsmanagedprefixlist/v1alpha1"
 	awsmanagedprometheusv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsmanagedprometheus/v1alpha1"
 	awsmanagedprometheusscraperv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsmanagedprometheusscraper/v1alpha1"
 	awsmemcachedelasticachev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsmemcachedelasticache/v1alpha1"
@@ -143,6 +147,7 @@ import (
 	awsmwaaenvironmentv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsmwaaenvironment/v1alpha1"
 	awsnatgatewayv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsnatgateway/v1alpha1"
 	awsneptuneclusterv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsneptunecluster/v1alpha1"
+	awsnetworkaclv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsnetworkacl/v1alpha1"
 	awsnlbv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsnlb/v1alpha1"
 	awsopensearchdomainv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsopensearchdomain/v1alpha1"
 	awsopensearchserverlesscollectionv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsopensearchserverlesscollection/v1alpha1"
@@ -197,6 +202,7 @@ import (
 	awstransitgatewayvpcattachmentv1alpha1 "github.com/plantonhq/planton/catalog/aws/awstransitgatewayvpcattachment/v1alpha1"
 	awsvpcv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsvpc/v1alpha1"
 	awsvpcendpointv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsvpcendpoint/v1alpha1"
+	awsvpcpeeringv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsvpcpeering/v1alpha1"
 	awswafipsetv1alpha1 "github.com/plantonhq/planton/catalog/aws/awswafipset/v1alpha1"
 	awswafregexpatternsetv1alpha1 "github.com/plantonhq/planton/catalog/aws/awswafregexpatternset/v1alpha1"
 	awswafwebaclv1alpha1 "github.com/plantonhq/planton/catalog/aws/awswafwebacl/v1alpha1"
@@ -759,8 +765,11 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsElasticIp:                           &awselasticipv1alpha1.AwsElasticIp{},
 	cloudresourcekind.CloudResourceKind_AwsElasticacheUser:                     &awselasticacheuserv1alpha1.AwsElasticacheUser{},
 	cloudresourcekind.CloudResourceKind_AwsElasticacheUserGroup:                &awselasticacheusergroupv1alpha1.AwsElasticacheUserGroup{},
+	cloudresourcekind.CloudResourceKind_AwsEventBridgeApiDestination:           &awseventbridgeapidestinationv1alpha1.AwsEventBridgeApiDestination{},
 	cloudresourcekind.CloudResourceKind_AwsEventBridgeBus:                      &awseventbridgebusv1alpha1.AwsEventBridgeBus{},
+	cloudresourcekind.CloudResourceKind_AwsEventBridgePipe:                     &awseventbridgepipev1alpha1.AwsEventBridgePipe{},
 	cloudresourcekind.CloudResourceKind_AwsEventBridgeRule:                     &awseventbridgerulev1alpha1.AwsEventBridgeRule{},
+	cloudresourcekind.CloudResourceKind_AwsEventBridgeScheduler:                &awseventbridgeschedulerv1alpha1.AwsEventBridgeScheduler{},
 	cloudresourcekind.CloudResourceKind_AwsFsxDataRepositoryAssociation:        &awsfsxdatarepositoryassociationv1alpha1.AwsFsxDataRepositoryAssociation{},
 	cloudresourcekind.CloudResourceKind_AwsFsxLustreFileSystem:                 &awsfsxlustrefilesystemv1alpha1.AwsFsxLustreFileSystem{},
 	cloudresourcekind.CloudResourceKind_AwsFsxOntapFileSystem:                  &awsfsxontapfilesystemv1alpha1.AwsFsxOntapFileSystem{},
@@ -794,6 +803,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsLbListener:                          &awslblistenerv1alpha1.AwsLbListener{},
 	cloudresourcekind.CloudResourceKind_AwsLbListenerRule:                      &awslblistenerrulev1alpha1.AwsLbListenerRule{},
 	cloudresourcekind.CloudResourceKind_AwsLbTargetGroup:                       &awslbtargetgroupv1alpha1.AwsLbTargetGroup{},
+	cloudresourcekind.CloudResourceKind_AwsManagedPrefixList:                   &awsmanagedprefixlistv1alpha1.AwsManagedPrefixList{},
 	cloudresourcekind.CloudResourceKind_AwsManagedPrometheus:                   &awsmanagedprometheusv1alpha1.AwsManagedPrometheus{},
 	cloudresourcekind.CloudResourceKind_AwsManagedPrometheusScraper:            &awsmanagedprometheusscraperv1alpha1.AwsManagedPrometheusScraper{},
 	cloudresourcekind.CloudResourceKind_AwsMemcachedElasticache:                &awsmemcachedelasticachev1alpha1.AwsMemcachedElasticache{},
@@ -805,6 +815,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsMwaaEnvironment:                     &awsmwaaenvironmentv1alpha1.AwsMwaaEnvironment{},
 	cloudresourcekind.CloudResourceKind_AwsNatGateway:                          &awsnatgatewayv1alpha1.AwsNatGateway{},
 	cloudresourcekind.CloudResourceKind_AwsNeptuneCluster:                      &awsneptuneclusterv1alpha1.AwsNeptuneCluster{},
+	cloudresourcekind.CloudResourceKind_AwsNetworkAcl:                          &awsnetworkaclv1alpha1.AwsNetworkAcl{},
 	cloudresourcekind.CloudResourceKind_AwsNlb:                                 &awsnlbv1alpha1.AwsNlb{},
 	cloudresourcekind.CloudResourceKind_AwsOpenSearchDomain:                    &awsopensearchdomainv1alpha1.AwsOpenSearchDomain{},
 	cloudresourcekind.CloudResourceKind_AwsOpenSearchServerlessCollection:      &awsopensearchserverlesscollectionv1alpha1.AwsOpenSearchServerlessCollection{},
@@ -859,6 +870,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsTransitGatewayVpcAttachment:         &awstransitgatewayvpcattachmentv1alpha1.AwsTransitGatewayVpcAttachment{},
 	cloudresourcekind.CloudResourceKind_AwsVpc:                                 &awsvpcv1alpha1.AwsVpc{},
 	cloudresourcekind.CloudResourceKind_AwsVpcEndpoint:                         &awsvpcendpointv1alpha1.AwsVpcEndpoint{},
+	cloudresourcekind.CloudResourceKind_AwsVpcPeering:                          &awsvpcpeeringv1alpha1.AwsVpcPeering{},
 	cloudresourcekind.CloudResourceKind_AwsWafIpSet:                            &awswafipsetv1alpha1.AwsWafIpSet{},
 	cloudresourcekind.CloudResourceKind_AwsWafRegexPatternSet:                  &awswafregexpatternsetv1alpha1.AwsWafRegexPatternSet{},
 	cloudresourcekind.CloudResourceKind_AwsWafWebAcl:                           &awswafwebaclv1alpha1.AwsWafWebAcl{},

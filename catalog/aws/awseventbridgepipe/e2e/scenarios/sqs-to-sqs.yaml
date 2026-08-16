@@ -1,0 +1,53 @@
+# An SQS-to-SQS pipe: the chain queue as source, an extra-instance
+# queue as target, an order filter, batch tuning, and an input
+# template - RUNNING against empty queues (pipes bill per event; zero
+# events is $0). Source and target are BARE POLYMORPHIC references -
+# each valueFrom carries its kind explicitly (no offline gate catches
+# the omission). The create waits through the pipe's provisioning
+# state machine - budget minutes.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEventBridgePipe
+metadata:
+  name: planton-oss-e2e-awsebp-min
+  id: planton-oss-e2e-awsebp-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awseventbridgepipe
+  annotations:
+    planton.dev/e2e: "true"
+    # The chain queue is the source; the path entry deploys the target
+    # as an extra instance; the registry prerequisite (AwsIamRole)
+    # deploys the consumer-scoped pipes-trusting role.
+    planton.dev/e2e-prerequisites: "AwsSqsQueue, catalog/aws/awseventbridgepipe/e2e/prerequisites/awssqsqueue-target.yaml"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E SQS-to-SQS pipe
+  source:
+    valueFrom:
+      kind: AwsSqsQueue
+      name: planton-oss-e2e-awssqsqueue-prereq
+      fieldPath: status.outputs.queue_arn
+  sourceParameters:
+    filterCriteria:
+      filters:
+        - pattern: '{"body":{"type":["order"]}}'
+    sqs:
+      batchSize: 10
+      maximumBatchingWindowInSeconds: 5
+  target:
+    valueFrom:
+      kind: AwsSqsQueue
+      name: planton-oss-e2e-awsebp-target
+      fieldPath: status.outputs.queue_arn
+  targetParameters:
+    inputTemplate: '{"orderId": <$.body.orderId>, "receivedAt": <aws.pipes.event.ingestion-time>}'
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-awsebp-exec
+      fieldPath: status.outputs.role_arn
+  desiredState: RUNNING

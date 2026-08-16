@@ -1617,6 +1617,54 @@ func TestAwsManagedPrometheusScraper_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsmanagedprometheusscraper", "terraform")
 }
 
+func TestAwsEventBridgePipe_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awseventbridgepipe", "pulumi")
+}
+
+func TestAwsEventBridgePipe_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awseventbridgepipe", "terraform")
+}
+
+func TestAwsEventBridgeScheduler_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awseventbridgescheduler", "pulumi")
+}
+
+func TestAwsEventBridgeScheduler_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awseventbridgescheduler", "terraform")
+}
+
+func TestAwsEventBridgeApiDestination_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awseventbridgeapidestination", "pulumi")
+}
+
+func TestAwsEventBridgeApiDestination_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awseventbridgeapidestination", "terraform")
+}
+
+func TestAwsVpcPeering_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsvpcpeering", "pulumi")
+}
+
+func TestAwsVpcPeering_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsvpcpeering", "terraform")
+}
+
+func TestAwsNetworkAcl_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsnetworkacl", "pulumi")
+}
+
+func TestAwsNetworkAcl_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsnetworkacl", "terraform")
+}
+
+func TestAwsManagedPrefixList_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmanagedprefixlist", "pulumi")
+}
+
+func TestAwsManagedPrefixList_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmanagedprefixlist", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

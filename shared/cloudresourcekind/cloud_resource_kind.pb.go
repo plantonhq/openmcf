@@ -704,6 +704,48 @@ const (
 	// Scrape configuration is optional on the EKS arm (AWS publishes a
 	// default, resolved at deploy) and required on the VPC arm.
 	CloudResourceKind_AwsManagedPrometheusScraper CloudResourceKind = 1307
+	// An EventBridge Pipe: one point-to-point integration reading from
+	// one source (SQS, Kinesis, DynamoDB streams, MSK or self-managed
+	// Kafka, ActiveMQ/RabbitMQ), optionally filtering and enriching
+	// in-flight, and delivering to one target (ECS, Batch, Lambda, Step
+	// Functions, Kinesis, SQS, Redshift, SageMaker, CloudWatch Logs,
+	// EventBridge buses, HTTP via API destinations). The source is fixed
+	// for life (replace-on-change); the target swaps in place. 1310
+	// opens the EventBridge extras P1 sub-band (1310-1319).
+	CloudResourceKind_AwsEventBridgePipe CloudResourceKind = 1310
+	// An EventBridge Scheduler schedule: cron/rate/one-time invocation of
+	// one target under an execution role, with flexible time windows,
+	// retry policy, and a dead-letter queue. The schedule GROUP is folded
+	// own-XOR-existing (a name-and-tags container - the provider's own
+	// update path is tags-only); unset means AWS's default group.
+	CloudResourceKind_AwsEventBridgeScheduler CloudResourceKind = 1311
+	// An EventBridge API destination with its connection: the
+	// authenticated HTTP(S) endpoint rules, pipes, and schedules invoke.
+	// Two independently deployable arms - the CONNECTION (the shareable
+	// auth trust anchor: api-key, basic, or OAuth credentials that AWS
+	// stores in Secrets Manager) and the DESTINATION (endpoint + method +
+	// rate limit) whose connection is owned inline or referenced by ARN.
+	CloudResourceKind_AwsEventBridgeApiDestination CloudResourceKind = 1312
+	// A VPC peering connection, as a request-XOR-accept mode union: the
+	// REQUEST arm creates the peering from its VPC toward a peer VPC
+	// (same-account auto-accept supported; cross-account/cross-region
+	// stays pending until accepted), the ACCEPT arm adopts and accepts a
+	// pending connection by ID from the accepter side. DNS-resolution
+	// options fold into both arms. 1320 opens the VPC networking P1
+	// sub-band (1320-1329).
+	CloudResourceKind_AwsVpcPeering CloudResourceKind = 1320
+	// A network ACL: the stateless subnet-level firewall - ordered
+	// ingress/egress rules (allow or deny, evaluated by rule number) and
+	// the subnet associations, all folded in-line as the single
+	// declarative owner (the standalone rule/association resources are
+	// the same payload and fight the in-line form).
+	CloudResourceKind_AwsNetworkAcl CloudResourceKind = 1321
+	// A customer-managed prefix list: a named, versioned set of CIDR
+	// blocks that security-group rules, NACL rules, and route tables
+	// reference as one object. Entries fold in-line; max_entries is the
+	// capacity contract (referencing consumes that many rule slots
+	// regardless of how many entries exist).
+	CloudResourceKind_AwsManagedPrefixList CloudResourceKind = 1322
 	// Account/region settings singleton (one SES account object per
 	// account+region): the suppression list and VDM posture. 1360 opens
 	// the SES P1 sub-band (1360-1369).
@@ -2151,6 +2193,12 @@ var (
 		1305: "AwsCloudwatchLogResourcePolicy",
 		1306: "AwsManagedPrometheus",
 		1307: "AwsManagedPrometheusScraper",
+		1310: "AwsEventBridgePipe",
+		1311: "AwsEventBridgeScheduler",
+		1312: "AwsEventBridgeApiDestination",
+		1320: "AwsVpcPeering",
+		1321: "AwsNetworkAcl",
+		1322: "AwsManagedPrefixList",
 		1360: "AwsSesAccountSettings",
 		2000: "AzureResourceGroup",
 		2001: "AzureAksCluster",
@@ -2795,6 +2843,12 @@ var (
 		"AwsCloudwatchLogResourcePolicy":                 1305,
 		"AwsManagedPrometheus":                           1306,
 		"AwsManagedPrometheusScraper":                    1307,
+		"AwsEventBridgePipe":                             1310,
+		"AwsEventBridgeScheduler":                        1311,
+		"AwsEventBridgeApiDestination":                   1312,
+		"AwsVpcPeering":                                  1320,
+		"AwsNetworkAcl":                                  1321,
+		"AwsManagedPrefixList":                           1322,
 		"AwsSesAccountSettings":                          1360,
 		"AzureResourceGroup":                             2000,
 		"AzureAksCluster":                                2001,
@@ -3632,7 +3686,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x8e\xa7\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*ߩ\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -3838,7 +3892,20 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x14AwsManagedPrometheus\x10\x9a\n" +
 	"\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awsamp\x12?\n" +
 	"\x1bAwsManagedPrometheusScraper\x10\x9b\n" +
-	"\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsamps:\x02\xbc\b\x126\n" +
+	"\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsamps:\x02\xbc\b\x125\n" +
+	"\x12AwsEventBridgePipe\x10\x9e\n" +
+	"\x1a\x1c\xa2\xf7\x04\x18\b\f\x12\bv1alpha1\"\x06awsebp:\x02\xf0\a\x12<\n" +
+	"\x17AwsEventBridgeScheduler\x10\x9f\n" +
+	"\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawsebsch:\x02\xf0\a\x12<\n" +
+	"\x1cAwsEventBridgeApiDestination\x10\xa0\n" +
+	"\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsebad\x124\n" +
+	"\rAwsVpcPeering\x10\xa8\n" +
+	"\x1a \xa2\xf7\x04\x1c\b\f\x12\bv1alpha1\"\n" +
+	"awsvpcpeer:\x02\xf8\a\x121\n" +
+	"\rAwsNetworkAcl\x10\xa9\n" +
+	"\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsnacl:\x02\xf8\a\x123\n" +
+	"\x14AwsManagedPrefixList\x10\xaa\n" +
+	"\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awsmpl\x126\n" +
 	"\x15AwsSesAccountSettings\x10\xd0\n" +
 	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssesas\x121\n" +
 	"\x12AzureResourceGroup\x10\xd0\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\bv1alpha1\"\x04azrg0\x01\x121\n" +

@@ -5664,6 +5664,7 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | AwsCognitoUserPool | `spec.logConfigurations[].firehoseStreamArn` | `status.outputs.delivery_stream_arn` |
+| AwsEventBridgePipe | `spec.logConfiguration.firehose.deliveryStreamArn` | `status.outputs.delivery_stream_arn` |
 | AwsMskCluster | `spec.logging.firehose.deliveryStream` | `status.outputs.delivery_stream_name` |
 | AwsSesConfigurationSet | `spec.eventDestinations[].firehose.deliveryStream` | `status.outputs.delivery_stream_arn` |
 

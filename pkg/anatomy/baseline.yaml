@@ -294,12 +294,21 @@ violations:
   - catalog/aws/awselasticip/iac:missing-permissions
   - catalog/aws/awselasticip:missing-control-profile
   - catalog/aws/awselasticip:missing-cost-profile
+  - catalog/aws/awseventbridgeapidestination/iac:missing-permissions
+  - catalog/aws/awseventbridgeapidestination:missing-control-profile
+  - catalog/aws/awseventbridgeapidestination:missing-cost-profile
   - catalog/aws/awseventbridgebus/iac:missing-permissions
   - catalog/aws/awseventbridgebus:missing-control-profile
   - catalog/aws/awseventbridgebus:missing-cost-profile
+  - catalog/aws/awseventbridgepipe/iac:missing-permissions
+  - catalog/aws/awseventbridgepipe:missing-control-profile
+  - catalog/aws/awseventbridgepipe:missing-cost-profile
   - catalog/aws/awseventbridgerule/iac:missing-permissions
   - catalog/aws/awseventbridgerule:missing-control-profile
   - catalog/aws/awseventbridgerule:missing-cost-profile
+  - catalog/aws/awseventbridgescheduler/iac:missing-permissions
+  - catalog/aws/awseventbridgescheduler:missing-control-profile
+  - catalog/aws/awseventbridgescheduler:missing-cost-profile
   - catalog/aws/awsfsxdatarepositoryassociation/iac/pulumi:missing-iac-readme
   - catalog/aws/awsfsxdatarepositoryassociation/iac/tf:missing-iac-readme
   - catalog/aws/awsfsxdatarepositoryassociation/iac:missing-permissions
@@ -428,6 +437,9 @@ violations:
   - catalog/aws/awsmemorydbuser/iac/pulumi:missing-iac-readme
   - catalog/aws/awsmemorydbuser/iac/tf:missing-iac-readme
   - catalog/aws/awsmemorydbuser/iac:missing-permissions
+  - catalog/aws/awsmanagedprefixlist/iac:missing-permissions
+  - catalog/aws/awsmanagedprefixlist:missing-control-profile
+  - catalog/aws/awsmanagedprefixlist:missing-cost-profile
   - catalog/aws/awsmemorydbuser:missing-control-profile
   - catalog/aws/awsmemorydbuser:missing-cost-profile
   - catalog/aws/awsmskserverlesscluster/iac:missing-permissions
@@ -435,6 +447,9 @@ violations:
   - catalog/aws/awsmskserverlesscluster:missing-cost-profile
   - catalog/aws/awsnatgateway/iac/pulumi:missing-iac-readme
   - catalog/aws/awsnatgateway/iac/tf:missing-iac-readme
+  - catalog/aws/awsnetworkacl/iac:missing-permissions
+  - catalog/aws/awsnetworkacl:missing-control-profile
+  - catalog/aws/awsnetworkacl:missing-cost-profile
   - catalog/aws/awsnlb/iac/pulumi:missing-iac-readme
   - catalog/aws/awsnlb/iac:missing-permissions
   - catalog/aws/awsnlb:missing-control-profile
@@ -570,6 +585,9 @@ violations:
   - catalog/aws/awsvpcendpoint/iac:missing-permissions
   - catalog/aws/awsvpcendpoint:missing-control-profile
   - catalog/aws/awsvpcendpoint:missing-cost-profile
+  - catalog/aws/awsvpcpeering/iac:missing-permissions
+  - catalog/aws/awsvpcpeering:missing-control-profile
+  - catalog/aws/awsvpcpeering:missing-cost-profile
   - catalog/aws/awswafipset/iac/pulumi:missing-iac-readme
   - catalog/aws/awswafipset/iac/tf:missing-iac-readme
   - catalog/aws/awswafipset/iac:missing-permissions

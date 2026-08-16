@@ -189,6 +189,8 @@ github.com/aws/aws-sdk-go-v2/service/opensearchserverless v1.34.5 h1:kf/tVH2j3NZ
 github.com/aws/aws-sdk-go-v2/service/opensearchserverless v1.34.5/go.mod h1:XadlQdXS3xpFvRhVYXBfI3PFZ4k/h1aUKPmb8/t1EU8=
 github.com/aws/aws-sdk-go-v2/service/organizations v1.53.8 h1:PFuSKsW0z1aEGlVyIvu4FsJbDkMbDo7tiSykCpUb1Sc=
 github.com/aws/aws-sdk-go-v2/service/organizations v1.53.8/go.mod h1:n3yWrjDL92I+vC1c6SiQfM/5mEKvDYNdWMEm3zNNiI0=
+github.com/aws/aws-sdk-go-v2/service/pipes v1.26.2 h1:LsZffveexO2+j6t5mjsAuqfKfA9qH3THPJrB9PBPEec=
+github.com/aws/aws-sdk-go-v2/service/pipes v1.26.2/go.mod h1:R8BEa/ghoOI4+sNJsJz1AyreH4T0tp/SBmmNWYvd66Y=
 github.com/aws/aws-sdk-go-v2/service/rds v1.119.5 h1:1/qGMaWmjbeOTaufLLqjLnrjhemH1eM74iVWVWWg+Zc=
 github.com/aws/aws-sdk-go-v2/service/rds v1.119.5/go.mod h1:Ve7qHa8jBmStKNz/oaxs2yBuFnwyvN0k/8PpPZVxkEY=
 github.com/aws/aws-sdk-go-v2/service/redshift v1.63.5 h1:zKvbCHX90D7GOB5HR3GzALT31M9D/gDlB1ed5310LmE=
@@ -203,6 +205,8 @@ github.com/aws/aws-sdk-go-v2/service/s3vectors v1.10.5 h1:EOZRIC8fiX1VkO4vdeM7v5
 github.com/aws/aws-sdk-go-v2/service/s3vectors v1.10.5/go.mod h1:sbie4kxutsyAH798SGvrkMAet/bDNC/dEemThQUEFHI=
 github.com/aws/aws-sdk-go-v2/service/sagemaker v1.257.0 h1:AjmVRphbA9OREBmvmlIIzLN4hk0kgP2egsY9Lwja5fY=
 github.com/aws/aws-sdk-go-v2/service/sagemaker v1.257.0/go.mod h1:CivQlQhQJ/KgONEX70dPCPtPls/vHyhGHiqY5o1GSCw=
+github.com/aws/aws-sdk-go-v2/service/scheduler v1.20.2 h1:rKQOeeBzt9xDvoatpAnbf83zigZBmqKisttFBPlSXvI=
+github.com/aws/aws-sdk-go-v2/service/scheduler v1.20.2/go.mod h1:0P6j3bPtLj8+YllLCKmNvmLF3ZsOOzifMyghlg6r1g4=
 github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.34.6 h1:1KDMKvOKNrpD667ORbZ/+4OgvUoaok1gg/MLzrHF9fw=
 github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.34.6/go.mod h1:DmtyfCfONhOyVAJ6ZMTrDSFIeyCBlEO93Qkfhxwbxu0=
 github.com/aws/aws-sdk-go-v2/service/sesv2 v1.63.0 h1:sVd6FrVJZo+FOZ46Bdtujc82tq/WVo96LkIR9ll9adg=

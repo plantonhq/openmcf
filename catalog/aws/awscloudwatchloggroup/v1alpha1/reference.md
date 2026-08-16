@@ -1363,6 +1363,7 @@ Fields on other kinds that can point at this resource:
 | AwsCodeBuildProject | `spec.logsConfig.cloudwatchLogs.groupName` | `status.outputs.log_group_name` |
 | AwsCognitoUserPool | `spec.logConfigurations[].cloudwatchLogGroupArn` | `status.outputs.log_group_arn` |
 | AwsEcsTaskDefinition | `spec.logging.logGroup` | `status.outputs.log_group_name` |
+| AwsEventBridgePipe | `spec.logConfiguration.cloudwatchLogs.logGroupArn` | `status.outputs.log_group_arn` |
 | AwsFsxLustreFileSystem | `spec.logConfiguration.destination` | `status.outputs.log_group_arn` |
 | AwsFsxWindowsFileSystem | `spec.auditLogConfiguration.auditLogDestination` | `status.outputs.log_group_arn` |
 | AwsHttpApiGateway | `spec.stage.accessLog.destinationArn` | `status.outputs.log_group_arn` |

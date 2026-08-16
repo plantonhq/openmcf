@@ -1695,3 +1695,70 @@ spec:
       id_format: "{scraper_id}"
       notes: >-
         The owning scraper's ID (one logging configuration per scraper).
+
+    # --- EventBridge Pipes -------------------------------------------------------
+    - terraform_type: aws_pipes_pipe
+      pulumi_type: aws:pipes/pipe:Pipe
+      id_format: "{pipe_name}"
+      cloud_control_type_name: AWS::Pipes::Pipe
+      notes: >-
+        The pipe's name (`aws pipes list-pipes` shows Name).
+
+    # --- EventBridge Scheduler ---------------------------------------------------
+    - terraform_type: aws_scheduler_schedule
+      pulumi_type: aws:scheduler/schedule:Schedule
+      id_format: "{group_name}/{schedule_name}"
+      cloud_control_type_name: AWS::Scheduler::Schedule
+      notes: >-
+        Slash-separated group and schedule names ("default" for ungrouped
+        schedules; `aws scheduler list-schedules` shows GroupName and Name).
+    - terraform_type: aws_scheduler_schedule_group
+      pulumi_type: aws:scheduler/scheduleGroup:ScheduleGroup
+      id_format: "{group_name}"
+      cloud_control_type_name: AWS::Scheduler::ScheduleGroup
+
+    # --- EventBridge API destinations --------------------------------------------
+    - terraform_type: aws_cloudwatch_event_connection
+      pulumi_type: aws:cloudwatch/eventConnection:EventConnection
+      id_format: "{connection_name}"
+      cloud_control_type_name: AWS::Events::Connection
+      # AWS never returns credential values (DescribeConnection masks them;
+      # they live in the AWS-owned Secrets Manager secret), so the provider
+      # reads secrets back from prior state and a fresh import cannot
+      # recover them - the first post-import plan re-sends the configured
+      # credentials. The provider's own import test ignores the basic-auth
+      # password for the same reason.
+      write_normalized_attributes:
+        - auth_parameters
+    - terraform_type: aws_cloudwatch_event_api_destination
+      pulumi_type: aws:cloudwatch/eventApiDestination:EventApiDestination
+      id_format: "{api_destination_name}"
+      cloud_control_type_name: AWS::Events::ApiDestination
+
+    # --- VPC peering --------------------------------------------------------------
+    - terraform_type: aws_vpc_peering_connection
+      pulumi_type: aws:ec2/vpcPeeringConnection:VpcPeeringConnection
+      id_format: "{peering_connection_id}"
+      cloud_control_type_name: AWS::EC2::VPCPeeringConnection
+    - terraform_type: aws_vpc_peering_connection_accepter
+      pulumi_type: aws:ec2/vpcPeeringConnectionAccepter:VpcPeeringConnectionAccepter
+      id_format: "{peering_connection_id}"
+      notes: >-
+        The same pcx- id as the connection (the accepter adopts it from
+        the accepter side).
+
+    # --- Network ACLs --------------------------------------------------------------
+    - terraform_type: aws_network_acl
+      pulumi_type: aws:ec2/networkAcl:NetworkAcl
+      id_format: "{network_acl_id}"
+      cloud_control_type_name: AWS::EC2::NetworkAcl
+      notes: >-
+        Default NACLs refuse this import path at the provider (use
+        aws_default_network_acl, which the catalog deliberately does not
+        model - adopting AWS defaults is an anti-pattern).
+
+    # --- Managed prefix lists -------------------------------------------------------
+    - terraform_type: aws_ec2_managed_prefix_list
+      pulumi_type: aws:ec2/managedPrefixList:ManagedPrefixList
+      id_format: "{prefix_list_id}"
+      cloud_control_type_name: AWS::EC2::PrefixList
