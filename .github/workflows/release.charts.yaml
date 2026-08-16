@@ -63,12 +63,22 @@ jobs:
       - name: Verify chart structure
         run: bash ./hack/guards/ensure_chart_structure.sh
 
+      # Validation runs the minimal chart-validator binary, NOT the full CLI:
+      # same command, same engine, same verdicts (pkg/infrachart/validatecmd
+      # is the single implementation all mounts share), but without the
+      # pulumi/cloud SDKs in the build graph. The full-CLI build spent 6-9
+      # minutes here (measured v0.4.1-v0.4.4) and was this job's entire cost
+      # -- packaging is 1 second -- which also made it the long pole of the
+      # release's artifact-ready point that the platform's upgrade gate waits
+      # on. The validator must still be built FROM THIS TAG: its bulk is the
+      # generated contract (kind schemas + CEL rules), which changes every
+      # release -- never swap this for a prebuilt/committed binary.
       - name: Validate charts against this tag's own contract
         run: |
           set -euo pipefail
-          go build -o /tmp/planton .
+          go build -o /tmp/chart-validator ./cmd/chart-validator
           if find charts -type f -name 'Chart.yaml' -not -path '*/build/*' | grep -q .; then
-            /tmp/planton chart validate --all charts/
+            /tmp/chart-validator --all charts/
           else
             echo "no charts in the tree; nothing to validate"
           fi
