@@ -41,7 +41,7 @@ spec:
       exclusions:
         - data transfer to clients in other Availability Zones or out of AWS bills per GB outside FSx's meters
         - the final backup taken on deletion outlives the file system and bills per GB-month until deleted
-      notes: SSD IOPS in AUTOMATIC mode (3 per GiB of storage) are included at no extra charge, and provisioned capacity bills full or empty. When a manifest joins the file system to an AWS Managed Microsoft AD (active_directory_id), that referenced directory is a separately billed service outside this estimate. Stated unconditionally because the reference lives in a foreign-key field whose presence a condition cannot read.
+      notes: SSD IOPS in AUTOMATIC mode (3 per GiB of storage) are included at no extra charge, and provisioned capacity bills full or empty. The AWS Managed Microsoft AD this file system joins (active_directory_id) is a separately billed service outside this estimate.
     - preset: 02-single-az-production
       region_assumption: us-east-1
       currency: USD
@@ -71,4 +71,4 @@ spec:
         - automatic backup storage bills per GB-month and grows with data churn across the retention window
         - the final backup taken on deletion outlives the file system and bills per GB-month until deleted
         - file and share access audit events ingest into CloudWatch Logs at its own per-GB rates -- volume scales with file activity
-      notes: SSD IOPS in AUTOMATIC mode (3 per GiB of storage) are included at no extra charge, and provisioned capacity bills full or empty. When a manifest joins the file system to an AWS Managed Microsoft AD (active_directory_id), that referenced directory is a separately billed service outside this estimate. Stated unconditionally because the reference lives in a foreign-key field whose presence a condition cannot read.
+      notes: SSD IOPS in AUTOMATIC mode (3 per GiB of storage) are included at no extra charge, and provisioned capacity bills full or empty.

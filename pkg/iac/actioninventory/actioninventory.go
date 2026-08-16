@@ -32,8 +32,15 @@
 // wrong plane is a modeling error, not just a typo. ARM publishes no
 // modification stamp for the inventory, so Azure services carry only the
 // retrieval date -- provenance never claims a fact the source does not
-// offer. Providers without a machine-readable inventory arm (gcp,
-// kubernetes) are exempt from existence checking (their structural
+// offer.
+//
+// GCP is the third arm, read from IAM's testable-permissions inventory
+// (the list behind `gcloud iam list-testable-permissions`). GCP
+// permissions are flat dotted names ("container.clusters.create"); the
+// snapshot keys them by their service segment (the part before the first
+// dot) with the remainder as the action, and like ARM the API publishes
+// no modification stamp. Providers without a machine-readable inventory
+// arm (kubernetes) are exempt from existence checking (their structural
 // validation lives in pkg/iac/permissions) -- exemption is stated here,
 // never silent.
 package actioninventory
@@ -55,6 +62,10 @@ const AwsFileName = "aws.yaml"
 // AzureFileName is the Azure inventory snapshot's name inside this
 // package's directory.
 const AzureFileName = "azure.yaml"
+
+// GcpFileName is the GCP inventory snapshot's name inside this package's
+// directory.
+const GcpFileName = "gcp.yaml"
 
 // Inventory is one provider's committed action-inventory snapshot.
 type Inventory struct {
@@ -108,6 +119,13 @@ func LoadAws(dir string) (*Inventory, error) {
 // modification stamp, so Azure services carry only the retrieval date.
 func LoadAzure(dir string) (*Inventory, error) {
 	return load(dir, AzureFileName, "azure", false)
+}
+
+// LoadGcp reads and strictly parses the committed GCP inventory snapshot
+// under the same structural invariants. The IAM inventory publishes no
+// modification stamp, so GCP services carry only the retrieval date.
+func LoadGcp(dir string) (*Inventory, error) {
+	return load(dir, GcpFileName, "gcp", false)
 }
 
 func load(dir, fileName, provider string, requireSourceModified bool) (*Inventory, error) {

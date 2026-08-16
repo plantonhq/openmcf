@@ -30,9 +30,15 @@ const (
 	// The field's effective value renders different from value.
 	Condition_not_equals Condition_Op = 2
 	// The field carries an explicit value (message present, repeated
-	// non-empty, scalar with explicit presence set).
+	// non-empty, scalar with explicit presence set). A value-or-reference
+	// wrapper is set when EITHER arm is populated -- a real literal or a
+	// reference to another resource's output: wiring the field by
+	// reference IS configuring it, even though the referenced value
+	// stays unknowable to comparisons, quantities, and price lookups.
+	// A placeholder literal ("<ipam-pool-id>") reads unset.
 	Condition_is_set Condition_Op = 3
-	// The field carries no explicit value.
+	// The field carries no explicit value (the mirror of is_set,
+	// including the wrapper and placeholder rules above).
 	Condition_is_unset Condition_Op = 4
 )
 

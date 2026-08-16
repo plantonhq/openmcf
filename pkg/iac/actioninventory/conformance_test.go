@@ -35,11 +35,11 @@ func packageDir(t *testing.T) string {
 // snapshot. Exact names must match a published spelling (case-insensitive,
 // IAM's evaluation semantics); wildcard patterns must match at least one
 // published action -- a pattern matching nothing is a fabricated
-// permission wearing a wildcard. Providers without an inventory arm (gcp,
-// kubernetes) are exempt HERE deliberately: their structural validation
+// permission wearing a wildcard. Providers without an inventory arm
+// (kubernetes) are exempt HERE deliberately: their structural validation
 // lives in pkg/iac/permissions, and their existence arms join this gate
 // when their machine-readable inventories are proven. Azure's arm is
-// TestAzureActionsExist below.
+// TestAzureActionsExist and GCP's is TestGcpPermissionsExist below.
 func TestAwsActionsExist(t *testing.T) {
 	root := repoRoot(t)
 	inv, err := LoadAws(packageDir(t))
@@ -131,6 +131,63 @@ func TestAzureActionsExist(t *testing.T) {
 	for _, svc := range inv.Services {
 		if !referenced[svc.Prefix] {
 			t.Errorf("inventory covers namespace %q which no permissions manifest references -- run `make generate-action-inventory`", svc.Prefix)
+		}
+	}
+}
+
+// TestGcpPermissionsExist is the GCP arm of the gate: every dotted IAM
+// permission every committed permissions manifest names must exist in
+// GCP's own testable-permissions inventory. The snapshot keys permissions
+// by their service segment (the part before the first dot); a permission
+// whose service the snapshot lacks names the refresh command, and a name
+// the service never defined is called out as invented -- the structural
+// regex in pkg/iac/permissions would happily accept
+// "container.clusters.frobnicate"; this gate is what makes that class of
+// wrong impossible.
+func TestGcpPermissionsExist(t *testing.T) {
+	root := repoRoot(t)
+	inv, err := LoadGcp(packageDir(t))
+	if err != nil {
+		t.Fatalf("loading inventory: %v", err)
+	}
+
+	discovered, err := permissions.Discover(root)
+	if err != nil {
+		t.Fatalf("discovering permissions manifests: %v", err)
+	}
+
+	referenced := map[string]bool{}
+	for provider, components := range discovered {
+		for _, component := range components {
+			manifest, err := permissions.Load(root, provider, component)
+			if err != nil {
+				t.Fatalf("loading %s/%s: %v", provider, component, err)
+			}
+			for _, group := range manifest.GetSpec().GetGcp().GetGroups() {
+				for _, permission := range group.GetPermissions() {
+					service, name, found := strings.Cut(permission, ".")
+					if !found {
+						t.Errorf("%s/%s: gcp permission %q has no service segment", provider, component, permission)
+						continue
+					}
+					referenced[service] = true
+					published := inv.ServiceActions(service)
+					if published == nil {
+						t.Errorf("%s/%s: permission %q names service %q which the inventory snapshot does not cover -- run `make generate-action-inventory`", provider, component, permission, service)
+						continue
+					}
+					if MatchAction(published, name) == 0 {
+						t.Errorf("%s/%s: permission %q does not exist in GCP's IAM inventory for %q -- the name is invented or misspelled", provider, component, permission, service)
+					}
+				}
+			}
+		}
+	}
+
+	// The dead-weight rule, as on the AWS and Azure arms.
+	for _, svc := range inv.Services {
+		if !referenced[svc.Prefix] {
+			t.Errorf("inventory covers service %q which no permissions manifest references -- run `make generate-action-inventory`", svc.Prefix)
 		}
 	}
 }

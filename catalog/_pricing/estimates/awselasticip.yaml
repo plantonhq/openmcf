@@ -51,10 +51,10 @@ spec:
           sku_meter: public IPv4 address usage
           pricing_unit: IP-hours
           pricing_quantity: "730"
-          quantity_basis: one address with no association target in this manifest, metered idle every hour of the month; the idle rate equals the in-use rate, so a consumer attaching the address elsewhere (an NLB subnet mapping, a NAT gateway) changes the meter name, not the number
+          quantity_basis: one address associated with an instance, metered in-use every hour of the month; every catalog preset leaves region a placeholder, so this prices the us-east-1 rate
           list_unit_price: "0.005"
           price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/20260724154225/us-east-1/index.json
-          retrieved_on: "2026-08-16"
+          retrieved_on: "2026-08-14"
           list_cost: "3.6500"
       total_list_cost: "3.6500"
       exclusions:

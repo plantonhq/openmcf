@@ -389,7 +389,9 @@ generate-reference: generate-proto-docs
 # (catalog/_pricing/estimates/): derived components replay every preset
 # through their cost derivation (catalog/_pricing/derivations/), modeled
 # components join their estimate model (catalog/_pricing/models/) with the
-# provider's price book (catalog/_pricing/pricebook/). Always whole-tree:
+# provider's price book (catalog/_pricing/pricebook/), and cluster-capacity
+# components replay their presets through their capacity derivation
+# (catalog/_pricing/capacity/) into footprint estimates. Always whole-tree:
 # the dead-price sweep
 # needs every model's references. Offline and deterministic: unchanged
 # inputs regenerate byte-identical files (enforced by the drift test in
@@ -411,13 +413,15 @@ generate-price-book:
 	go run ./pkg/finops/pricebook/fetcher
 
 # Refreshes the committed action-inventory snapshots
-# (pkg/iac/actioninventory/{aws,azure}.yaml) from each provider's own
-# published inventory -- AWS's machine-readable service reference and
-# ARM's provider-operations metadata (the Azure arm needs a signed-in
-# Azure CLI for its bearer token) -- scoped to the services the committed
-# runner permissions manifests reference. Requires network access; CI
-# never fetches -- it validates every manifest action against the
-# committed snapshots (an invented or misspelled action name cannot ship).
+# (pkg/iac/actioninventory/{aws,azure,gcp}.yaml) from each provider's own
+# published inventory -- AWS's machine-readable service reference, ARM's
+# provider-operations metadata (the Azure arm needs a signed-in Azure CLI
+# for its bearer token), and GCP IAM's testable-permissions inventory (the
+# GCP arm needs gcloud application-default credentials and an active
+# gcloud project) -- scoped to the services the committed runner
+# permissions manifests reference. Requires network access; CI never
+# fetches -- it validates every manifest action against the committed
+# snapshots (an invented or misspelled action name cannot ship).
 .PHONY: generate-action-inventory
 generate-action-inventory:
 	go run ./pkg/iac/actioninventory/fetcher

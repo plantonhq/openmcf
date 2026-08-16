@@ -122,4 +122,7 @@ spec:
       text: file and share access audit events ingest into CloudWatch Logs at its own per-GB rates -- volume scales with file activity
   notes:
     - text: SSD IOPS in AUTOMATIC mode (3 per GiB of storage) are included at no extra charge, and provisioned capacity bills full or empty.
-    - text: When a manifest joins the file system to an AWS Managed Microsoft AD (active_directory_id), that referenced directory is a separately billed service outside this estimate. Stated unconditionally because the reference lives in a foreign-key field whose presence a condition cannot read.
+    - applies_when:
+        - field_path: active_directory_id
+          op: is_set
+      text: The AWS Managed Microsoft AD this file system joins (active_directory_id) is a separately billed service outside this estimate.

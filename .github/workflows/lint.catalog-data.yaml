@@ -7,23 +7,25 @@
 # that fails strict schema parsing, references a control the central catalog
 # does not define, skips a control the catalog does define, names a spec
 # field path that no longer resolves against the served contract, or ships
-# a permission entry without provenance or structural validity, or an AWS
-# permission action that does not exist in the provider's own inventory
-# (pkg/iac/actioninventory's committed snapshot -- an invented or
-# misspelled action name cannot ship). Also guards
+# a permission entry without provenance or structural validity, or an AWS,
+# Azure, or GCP permission action that does not exist in the provider's own
+# inventory (pkg/iac/actioninventory's committed snapshots -- an invented
+# or misspelled action name cannot ship). Also guards
 # the central control catalog and framework crosswalks themselves
 # (catalog/_compliance/) and the whole cost-estimate pipeline
 # (catalog/_pricing/): the price books' pinned prices must carry sources
 # and retrieval dates, the estimate models' quantities must name declared
-# meters and resolvable prices, and the GENERATED estimates must be
-# byte-identical to a fresh join of the two -- every multiplication and
+# meters and resolvable prices, cluster-capacity components' capacity
+# derivations must bind real spec structure, and the GENERATED estimates
+# must be byte-identical to a fresh generation -- every multiplication and
 # total re-computed exactly, every model/price-book/cost.yaml disagreement
 # fatal, every unreferenced price rejected as dead weight.
 #
 # Enrollment is file presence -- every discovered sidecar is checked, no
 # allowlist. See pkg/finops/costprofile, pkg/finops/pricebook,
 # pkg/finops/estimatemodel, pkg/finops/estimategen (the drift gate),
-# pkg/finops/costestimate, pkg/compliance/controlcatalog,
+# pkg/finops/costestimate, pkg/finops/costderivation,
+# pkg/finops/capacityderivation, pkg/compliance/controlcatalog,
 # pkg/compliance/controlprofile, pkg/iac/permissions,
 # pkg/iac/actioninventory.
 # =============================================================================

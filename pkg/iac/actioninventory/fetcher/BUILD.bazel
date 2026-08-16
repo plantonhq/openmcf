@@ -4,6 +4,7 @@ go_library(
     name = "fetcher_lib",
     srcs = [
         "azure.go",
+        "gcp.go",
         "main.go",
     ],
     importpath = "github.com/plantonhq/planton/pkg/iac/actioninventory/fetcher",

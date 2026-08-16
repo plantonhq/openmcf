@@ -106,6 +106,77 @@ func TestPresetReplayHonesty(t *testing.T) {
 		}
 	})
 
+	t.Run("awsapprunnerservice", func(t *testing.T) {
+		// The reference-presence fixture: a preset whose committed floor
+		// rides a REFERENCED auto-scaling configuration refuses by the
+		// reference's presence -- never priced at the account-default
+		// floor of 1, which would be knowably wrong.
+		presets := generatedPresets(t, summary, "awsapprunnerservice")
+		if _, exists := presets["02-production-vpc-encrypted"]; exists {
+			t.Error("the ASC-referencing preset is priced -- its floor lives on the referenced AwsAppRunnerAutoScalingConfiguration and must be refused")
+		}
+		public, ok := presets["01-basic-public-image"]
+		if !ok {
+			t.Fatal("the basic preset is missing -- no reference, so the account-default floor prices under a stated assumption")
+		}
+		if lines := linesForMeter(public, "provisioned instance memory"); len(lines) != 1 || lines[0].GetPricingQuantity() != "1460" {
+			t.Errorf("basic preset memory: want one line of 1460 GB-hours (2048 MB / 1024 x 730), got %+v", lines)
+		}
+	})
+
+	t.Run("awselasticip", func(t *testing.T) {
+		// The reference-presence semantics: an address attached to an
+		// instance BY REFERENCE is attached -- it wears the in-use meter
+		// basis, not the idle one.
+		presets := generatedPresets(t, summary, "awselasticip")
+		attached, ok := presets["03-instance-attached"]
+		if !ok {
+			t.Fatal("the instance-attached preset is missing")
+		}
+		lines := linesForMeter(attached, "public IPv4 address usage")
+		if len(lines) != 1 {
+			t.Fatalf("instance-attached IPv4: want one line, got %d", len(lines))
+		}
+		if !strings.Contains(lines[0].GetQuantityBasis(), "associated with an instance") {
+			t.Errorf("instance-attached basis reads %q -- a reference-attached address must price as in-use, not idle", lines[0].GetQuantityBasis())
+		}
+	})
+
+	t.Run("kubernetespostgres", func(t *testing.T) {
+		// The capacity standard's acceptance oracle: replaying the presets
+		// through the capacity derivation reproduces the hand-verified
+		// footprints -- summed replicas, merged data+WAL storage, no
+		// priced lines, and the honesty exclusion on every preset.
+		presets := generatedPresets(t, summary, "kubernetespostgres")
+		if len(presets) != 3 {
+			t.Fatalf("kubernetespostgres: want all 3 presets, got %d", len(presets))
+		}
+		ha, ok := presets["02-production-ha"]
+		if !ok {
+			t.Fatal("the production-HA preset is missing")
+		}
+		footprint := ha.GetCapacityFootprint()
+		for _, check := range []struct{ name, got, want string }{
+			{"cpu_requests", footprint.GetCpuRequests(), "3"},
+			{"memory_requests", footprint.GetMemoryRequests(), "6Gi"},
+			{"cpu_limits", footprint.GetCpuLimits(), "6"},
+			{"memory_limits", footprint.GetMemoryLimits(), "12Gi"},
+			{"persistent_storage", footprint.GetPersistentStorage(), "360Gi"},
+		} {
+			if check.got != check.want {
+				t.Errorf("production-HA %s: got %q, want %q", check.name, check.got, check.want)
+			}
+		}
+		for key, preset := range presets {
+			if len(preset.GetLineItems()) != 0 || preset.GetTotalListCost() != "" {
+				t.Errorf("%s: cluster-capacity presets carry no priced lines or totals", key)
+			}
+			if len(preset.GetExclusions()) == 0 {
+				t.Errorf("%s: a footprint without exclusions hides that its dollar value is the cluster's economics", key)
+			}
+		}
+	})
+
 	t.Run("awsvpc", func(t *testing.T) {
 		presets := generatedPresets(t, summary, "awsvpc")
 		if len(presets) != 3 {
