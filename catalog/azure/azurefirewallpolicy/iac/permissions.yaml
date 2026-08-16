@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurefirewallpolicy
+spec:
+  azure:
+    groups:
+      - purpose: ManageFirewallPolicy
+        actions:
+          - Microsoft.Network/firewallPolicies/read
+          - Microsoft.Network/firewallPolicies/write
+          - Microsoft.Network/firewallPolicies/delete
+        provenance: derived
+        notes: Covers azurerm_firewall_policy -- create, read/refresh, in-place updates (everything except the ForceNew name/region/resource_group/sku), and destroy. Held via Network Contributor, Contributor, or narrower custom roles. The module makes no other provider calls -- base_policy_id, user-assigned identity IDs, the Key Vault secret ID for TLS inspection, and Log Analytics workspace IDs are all passed through and validated by ARM server-side (the Key Vault SECRET is read at runtime by the policy's own user-assigned identity, never by the runner).

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurefirewallpolicy
+spec:
+  billing_model: free
+  free_tier: A firewall policy is the rule-and-inspection document Azure Firewall instances enforce, and its free claim is CONDITIONAL -- Microsoft bills policies by firewall association. A policy associated with zero or one firewall is free of charge (Microsoft's documented rule, any tier including Premium); authoring, holding, and attaching a policy to its one firewall never bills.
+  notes: "Two spec-reachable conditions end the free ride. FIRST, multi-firewall association: the moment a policy is attached to two or more firewalls, Azure bills a fixed $100 per policy per REGION of attached firewalls per month (four firewalls in one region = $100/month; spanning four regions = $400/month) -- the association lives on the AzureFirewall side, but reusing one policy across a fleet is this document's whole design. SECOND, the `insights` block: enabling Firewall Policy Analytics carries its own hourly-billed enablement fee (about $250 per policy per month at full-time use) plus Log Analytics ingestion in the referenced workspace. The sku field changes no policy price -- it gates features and must match the firewalls' tier. The dominant spend is always the FIREWALLS themselves: each bills deployment hours plus per-GB data processing at its tier's rates, its own catalog kind."

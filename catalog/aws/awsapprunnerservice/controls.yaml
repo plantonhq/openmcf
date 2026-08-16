@@ -1,0 +1,92 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsapprunnerservice
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: App Runner encrypts its stored copy of the deployment source (the image or repository archive) and build logs at rest with an AWS-managed key whenever kms_key_arn is omitted -- there is no unencrypted state.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Unset means the AWS-managed key encrypts the stored source and build logs; referencing an AwsKmsKey switches that encryption to the customer-managed key. ForceNew -- changing the key replaces the service.
+      notes: The 02-production-vpc-encrypted preset references a customer-managed key.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The service endpoint is HTTPS-only -- App Runner terminates TLS on 443 with a certificate it provisions and renews itself (including for custom_domains) and forwards decrypted requests to the container's port; no plaintext listener can be configured.
+    - control_id: no-public-access
+      status: configurable
+      field_path: is_publicly_accessible
+      evidence:
+        type: spec_default
+        reference: Defaults to true (a public HTTPS URL serves the service); setting it false removes public reachability entirely -- the endpoint then answers only through the VPC Ingress Connections declared in vpc_ingress_connections.
+      notes: The 04-private-vpc-ingress preset pairs is_publicly_accessible false with a PrivateLink ingress connection for a service reachable only inside the named VPC.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: vpc_ingress_connections
+      evidence:
+        type: spec_default
+        reference: With is_publicly_accessible false, each entry publishes the service into exactly one VPC through an interface VPC endpoint (AWS PrivateLink) -- inbound reachability is restricted to clients inside the declared VPCs, and nothing else can reach the endpoint.
+      notes: A public service (the default) accepts requests from any internet source; request-level filtering for that posture is edge-protection's web ACL. Every value on a connection is create-time immutable -- changing one replaces that connection.
+    - control_id: edge-protection
+      status: configurable
+      field_path: web_acl_arn
+      evidence:
+        type: spec_default
+        reference: Unset means no WAF inspection; referencing a REGIONAL AwsWafWebAcl associates it with the service so every request passes WAF inspection before reaching the application.
+      notes: The 02-production-vpc-encrypted preset attaches a web ACL.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is AWS-account IAM posture, not a component choice, and the application's own request authentication is the workload's concern -- the service exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: configurable
+      field_path: instance_role_arn
+      evidence:
+        type: spec_default
+        reference: Unset means instances hold no AWS identity; referencing an AwsIamRole has every instance assume it at runtime, so application code calls AWS APIs (including resolving environment_secrets) with short-lived role credentials instead of static keys.
+      notes: One-way on a live service -- the provider drops empty values on update, so removing the role does not detach it; attach a replacement role instead. The 02-production-vpc-encrypted preset wires an instance role.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own to weaken -- the endpoint's TLS protocol floor is AWS-managed with no configurable legacy-cipher surface, and application-level authentication belongs to the workload.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: App Runner streams service event logs, deployment logs, and application logs to CloudWatch Logs automatically for every service -- there is no opt-in and no off switch; administrative API calls land in account-level CloudTrail.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: App Runner reports service metrics (request count, latencies, HTTP status classes, active/provisioned instance counts, CPU and memory utilization) to CloudWatch automatically under the AWS/AppRunner namespace -- no opt-in exists.
+      notes: observability_configuration_arn additionally enables X-Ray request tracing; its presence IS the enable switch, and disabling it later requires service replacement (an upstream provider gap the spec documents).
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The service runs stateless containers -- the deployment source lives in ECR or the code repository, and the configuration is declarative and re-creatable from the manifest. Application data belongs to the databases and stores the service talks to.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: App Runner is a regional managed service that places and replaces container instances across the region's availability zones itself -- the spec exposes no zone placement to get right or wrong, and unhealthy instances are replaced automatically per the health check.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the spec nor the underlying provider resource carries a deletion-protection flag -- a destroy proceeds when requested. The declarative source (image tag or repository) makes the service re-creatable, but in-flight custom-domain validations are lost with it.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the fleet, load balancing, and TLS layer beneath every service; for code_source services the managed runtime images are AWS-maintained. The application container's own contents remain the workload owner's responsibility.

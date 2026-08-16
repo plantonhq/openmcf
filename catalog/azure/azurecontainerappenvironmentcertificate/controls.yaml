@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurecontainerappenvironmentcertificate
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The one piece of sensitive data this resource holds -- the PFX bundle carrying the certificate's private key -- is stored by the Container Apps platform, and Azure encrypts service-held data at rest with Microsoft-managed keys as platform posture; no plaintext-storage mode exists. ARM never returns the blob on any read.
+      notes: On the Key Vault path the key material stays IN the vault (the environment pulls it at deploy and renewal), so at-rest posture for the source certificate is the AzureKeyVault kind's.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: The environment's certificate store exposes no customer-managed-key surface; CMK posture for a vault-sourced certificate belongs to the Key Vault kind.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: The resource exists only to encrypt traffic in transit -- it is a full certificate chain plus private key (inline PFX or vault-followed reference, exactly one enforced by spec validation) that the environment serves via SNI to every AzureContainerAppCustomDomain binding referencing its certificate_id output. It has no plaintext mode of its own.
+      notes: Whether a given hostname actually serves this certificate is decided on the binding (its certificate_binding_type), a separate kind.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The certificate has no network endpoint -- it is stored material the environment's ingress serves; exposure is the apps' ingress posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound traffic exists to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request path exists to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice. The one control-relevant grant -- the environment's identity reading the source vault (Key Vault Secrets User under RBAC) -- is a role assignment on the VAULT, posture of separate kinds.
+    - control_id: workload-identity
+      status: configurable
+      field_path: certificate_key_vault.identity
+      evidence:
+        type: spec_default
+        reference: The Key Vault path authenticates the environment to the vault with a managed identity -- unset deploys "System" (the environment's system-assigned identity), or an AzureUserAssignedIdentity's ARM ID; no credential is stored either way, and renewals propagate automatically with a versionless reference. Choosing the inline-PFX path instead carries the key material through the manifest as a sensitive value.
+      notes: The spec marks the blob and password sensitive, and Azure never returns the blob on reads -- but the vault-plus-identity path is the keyless posture this control is about.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The certificate exposes no authentication path of its own; vault access rides the managed identity (see workload-identity).
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane changes land in the Azure Activity Log as subscription-level posture; reads of a vault-sourced certificate are auditable in the KEY VAULT's diagnostic logs, posture of that separate kind.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The certificate publishes no metrics of its own; expiry observability for the source certificate belongs to Key Vault, and TLS traffic telemetry to the apps -- separate kinds.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The stored material is recreated declaratively from the manifest (inline blob) or re-pulled from Key Vault; nothing exists to back up on this resource. Note ARM never returns the PFX blob, so the inline source of truth is the manifest's secret reference -- safeguard it there.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Stored configuration with no zonal failure mode of its own; the environment's ingress fleet that serves it is Microsoft-operated platform infrastructure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for an environment certificate (Azure resource locks are subscription-side governance outside the manifest). Deleting one breaks the custom-domain bindings serving it until recreated.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The certificate store and the ingress fleet serving the certificate are Microsoft-operated Container Apps infrastructure; no customer-visible patch surface exists. Certificate RENEWAL stays yours on the inline path (upload the renewed PFX) and follows the vault automatically on a versionless Key Vault reference.

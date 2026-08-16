@@ -31,7 +31,3 @@ The module is executed by the Planton platform with a tfvars file converted from
 - **Identity is required** by the provider -- the module always emits the block; the type arrives as a proto enum NAME and maps to the wire value in `locals.tf`.
 - **The empty-update quirk**: ARM cannot update `description` or `display_name` to an empty value -- the provider replaces the project when either is cleared (the spec documents it on the fields).
 - **No resource group variable**: ARM derives the project's resource group through the account.
-
-## Required Permissions
-
-The deploying principal needs `Microsoft.CognitiveServices/accounts/projects/*` on the account's resource group (Cognitive Services Contributor).

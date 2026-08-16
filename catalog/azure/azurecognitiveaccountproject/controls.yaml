@@ -1,0 +1,65 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurecognitiveaccountproject
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The project is a workspace boundary, not a store -- the agents, files, and evaluation data organized inside it are held by the parent AI services account's service, whose kind carries the at-rest posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to key (see enc-at-rest); customer-managed-key encryption for AI Foundry data is the parent account's posture.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The project exposes no endpoint of its own; all interaction flows through the parent account's TLS-only API endpoints and ARM's TLS-only management API -- platform posture, not a project choice.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: No network surface of its own -- public network access and private endpoints are configured on the parent AI services account, a separate kind.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path of its own to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management and data-plane access are governed by Azure RBAC at the account and project scopes, granted through role assignments (their own kind); the project itself exposes no access-control toggle.
+    - control_id: workload-identity
+      status: enforced_by_default
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: identity is spec-required -- the provider's own contract is that every project carries a managed identity, and it is what the project's agents and evaluations act as. Both flavors (SYSTEM_ASSIGNED and USER_ASSIGNED) authenticate with platform-issued tokens; no stored credential exists to leak or rotate.
+      notes: SYSTEM_ASSIGNED is created and rotated by Azure with the project; USER_ASSIGNED brings identities whose downstream grants can be composed before the project exists.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The project has no authentication path of its own -- key-based versus Entra-only access to the AI endpoints is the parent account's posture.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Project creation and deletion land in the Azure Activity Log automatically as subscription-level posture; data-plane audit logs are the parent account's diagnostic settings, a separate kind's concern.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The project object emits no metrics of its own; usage and latency signals ride the parent account and the model deployments.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The ARM object is declarative configuration the manifest recreates -- but note recreating a project does NOT restore the agents, files, and evaluations that lived inside it; that service data's durability is the platform's, not this resource's.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A regional workspace object with no runtime footprint of its own; the availability of the AI endpoints behind it is the parent account's and Microsoft's platform posture.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a project (Azure resource locks are subscription-side governance outside the manifest). Deleting a project deletes the work inside it -- a change-safety concern to govern through review.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AI Foundry is a Microsoft-operated service -- the control plane that stores projects and the data plane their agents run on are patched by Microsoft; no customer-visible patch surface exists.

@@ -1,0 +1,65 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureexpressroutecircuitpeering
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A peering is routing configuration held by Azure's network control plane; it stores no customer data at rest (the BGP shared_key is write-only -- ARM never returns it on reads).
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Honesty matters here -- ExpressRoute is a PRIVATE path, not an encrypted one, and traffic over the peering is not encrypted by default, and this spec has no field that changes that. Encryption over ExpressRoute is arranged elsewhere (MACsec on ExpressRoute Direct ports, or IPsec/VPN tunnels run across the circuit) -- other kinds' posture. The optional shared_key is BGP session authentication (an MD5 hash), not traffic encryption.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The peering has no internet-reachable endpoint -- it is a routing contract between your routers and Microsoft's over a dedicated cross-connect; what address space flows is exactly what the configuration declares.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The peering exchanges ROUTES, not filtered flows -- packet-level restriction belongs to NSGs, firewalls, and route filters (route_filter_id scopes which Microsoft service communities are advertised on Microsoft peering, a route-scoping tool rather than an ingress filter).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter; L7 protection for workloads reached over the circuit is other kinds' posture.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the peering exposes no authentication plane of its own beyond the BGP session key.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The peering runs no workloads and holds no cloud credentials; the BGP shared_key authenticates router sessions, not workloads.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The only authentication surface is the optional BGP MD5 shared_key -- a router-to-router session integrity mechanism inherited from BGP itself, with no stronger alternative offered by ARM on this resource; there is no legacy path to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Peering creation, updates, and deletion land in the Azure Activity Log automatically as subscription-level posture; route tables, ARP tables, and traffic stats are read through the circuit's diagnostics, the circuit kind's concern.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The peering publishes state (BGP session status, advertised routes) through the parent circuit's metrics and diagnostic surface -- a separate kind's posture; no monitoring toggle exists on the peering itself.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless routing configuration -- nothing to back up; the manifest recreates the peering declaratively (ARM even accepts and stores the configuration while the circuit's provider state is still NotProvisioned).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      field_path: primary_peer_address_prefix
+      evidence:
+        type: spec_default
+        reference: Every ExpressRoute circuit terminates on TWO physical links across redundant Microsoft edge routers, and the peering configures BOTH BGP sessions as one unit -- primary_peer_address_prefix and secondary_peer_address_prefix travel together (spec-enforced), one /30 per link, with the ipv6 block carrying the same paired shape. A correctly configured peering is dual-path by construction.
+      notes: The redundancy is within Microsoft's peering location (two links, two routers), not across regions -- site-level resilience means a second circuit in another peering location, and Global Reach connections (the `connections` field) can stitch such circuits together.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a peering (Azure resource locks are subscription-side governance outside the manifest); deleting the private peering severs VNet connectivity through the circuit and is recreated declaratively.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Microsoft edge routers that terminate the peering's BGP sessions are Microsoft-operated infrastructure; no customer-visible patch surface exists on the Azure side (your own edge routers are yours to patch).

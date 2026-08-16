@@ -1,0 +1,65 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremachinelearningdatastore
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The datastore stores no data -- it points at a blob container, Data Lake filesystem, or file share whose at-rest encryption is the storage account's posture, a separate kind. The credentials it carries are write-only workspace metadata -- ARM never returns account keys, SAS tokens, or client secrets on any read.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to key; CMK posture for the pointed-at data belongs to the storage account kind, and for workspace metadata to the workspace's encryption block.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The datastore carries no traffic of its own; jobs and the workspace service reach the storage target over that account's TLS/SMB endpoints -- the storage kind's transport posture.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A connection record has no network endpoint; reachability of the storage target is the storage account's network posture, and of the workspace API the workspace's public-access toggle -- separate kinds.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound traffic exists to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request path exists to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may register or use datastores is Azure RBAC on the workspace scope (AzureML Data Scientist covers datastore writes) -- subscription-side posture, not a spec surface.
+    - control_id: workload-identity
+      status: configurable
+      field_path: service_data_identity
+      evidence:
+        type: spec_default
+        reference: Unspecified applies the provider default None -- the workspace service uses the stored credentials for service-side data access, and the blob variant then REQUIRES an account key or SAS. The WORKSPACE_SYSTEM_ASSIGNED_IDENTITY / WORKSPACE_USER_ASSIGNED_IDENTITY modes switch service-side access to the workspace's managed identity (which must hold data access on the storage target) -- the keyless posture.
+      notes: Per-variant credential shapes stay as Azure defines them -- the Data Lake Gen2 variant takes a service-principal triad or no credentials, and the file-share variant requires exactly one of account key or SAS regardless of identity mode (the provider's own schema).
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The datastore offers no auth path to disable -- it chooses among the credential shapes Azure defines per storage type; moving service-side access off static keys is the workload-identity choice above, and the file-share variant cannot drop key/SAS at all (provider contract).
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Create/update/delete land in the Azure Activity Log automatically as subscription-level posture; data-access logs belong to the storage account's diagnostic settings, a separate kind.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A connection record emits no metrics; storage telemetry rides the storage account and job telemetry rides the workspace's Application Insights -- separate kinds.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless connection metadata -- nothing to back up; the manifest recreates the datastore declaratively (credentials re-supplied from secret references, since ARM never returns them). The pointed-at DATA's backup posture belongs to the storage kinds.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A connection record has no runtime footprint with a zonal failure mode; storage redundancy is the storage account's replication choice, a separate kind.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a datastore (Azure resource locks are subscription-side governance outside the manifest); deleting one breaks jobs and data assets referencing it by name and is recreated declaratively. Note the unusually broad ForceNew surface -- even description and tags replace the datastore.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The workspace service that stores and resolves datastore connections is Microsoft-operated Azure Machine Learning infrastructure; no customer-visible patch surface exists.

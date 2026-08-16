@@ -1,0 +1,54 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsfsxontapfilesystem
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Amazon FSx
+      sku_meter: provisioned SSD storage
+      pricing_unit: GB-months
+      description: Every provisioned GiB of SSD primary storage bills monthly from creation, full or empty; the multi-AZ rate is double the single-AZ rate because it carries the standby copy.
+    - service_name: Amazon FSx
+      sku_meter: provisioned throughput capacity
+      pricing_unit: MiBps-months
+      description: The provisioned throughput bills per MBps-month from creation regardless of traffic; multi-AZ rates include the cross-AZ replication traffic.
+  cost_drivers:
+    - field_path: storage_capacity_gib
+      sku_meter: provisioned SSD storage
+      pricing_unit: GB-months
+      impact: Every provisioned GiB bills monthly whether data fills it or not. Capacity grows in place but never shrinks -- ONTAP's compression and deduplication stretch what a given provision holds, not what it costs.
+    - field_path: deployment_type
+      sku_meter: provisioned SSD storage
+      pricing_unit: GB-months
+      impact: Multi-AZ doubles the per-GB storage rate (the standby copy lives inside the rate) and roughly doubles the per-MBps throughput rate; the second generation's throughput rate is also higher per MBps than the first's. ForceNew.
+    - field_path: throughput_capacity
+      sku_meter: provisioned throughput capacity
+      pricing_unit: MiBps-months
+      impact: The first-generation sizing arm -- every provisioned MB/s bills monthly at the deployment type's rate.
+    - field_path: throughput_capacity_per_ha_pair
+      sku_meter: provisioned throughput capacity
+      pricing_unit: MiBps-months
+      impact: The per-pair sizing arm -- the bill is this value times ha_pairs, so a scale-out file system multiplies its throughput cost with every pair added.
+    - field_path: ha_pairs
+      sku_meter: provisioned throughput capacity
+      pricing_unit: MiBps-months
+      impact: Each HA pair added on SINGLE_AZ_2 multiplies the total provisioned throughput (per-pair value times pairs) and demands at least 1024 GiB more provisioned storage.
+    - field_path: disk_iops_configuration
+      sku_meter: provisioned SSD IOPS
+      pricing_unit: IOPS-months
+      impact: USER_PROVISIONED IOPS above the included 3 IOPS per GiB of SSD storage bill per IOPS-month, at double the rate on multi-AZ; AUTOMATIC mode stays inside the included allowance and adds nothing.
+    - field_path: automatic_backup_retention_days
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: Any non-zero retention starts accruing incremental backup storage per GB-month for the file system's volumes; longer retention on churning data accumulates more billed backup.
+  estimate_exclusions:
+    - provisioned SSD IOPS above the included 3 IOPS per GiB bill per IOPS-month; the billable excess is the provisioned figure minus the capacity-scaled allowance
+    - capacity pool storage bills per GB-month actually consumed as volumes tier cold data, plus per-operation request charges when tiered data is accessed
+    - backup storage bills per GB-month of incremental backup data actually retained
+    - data transfer when clients access the file system from an Availability Zone other than the preferred one is traffic-dependent
+    - S3 Access Point requests and bandwidth bill on S3's own meters
+  notes: Provisioned SSD storage and provisioned throughput bill every hour from creation regardless of use -- the meters follow what is provisioned, not what is read or written. Volume tiering to the elastic capacity pool (configured on AwsFsxOntapVolume, not here) is how the SSD provision is kept small; the capacity pool itself is a usage meter. Multi-AZ cross-AZ replication is included in the throughput rate, not billed as data transfer.

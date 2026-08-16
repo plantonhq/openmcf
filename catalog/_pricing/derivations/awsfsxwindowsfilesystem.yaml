@@ -1,0 +1,125 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsFsxWindowsFileSystem manifest's spec values into metered quantities
+# and price choices. The estimate generator replays the catalog presets
+# through these rules to emit ../estimates/awsfsxwindowsfilesystem.yaml;
+# a server-side estimator evaluates the same rules against live
+# manifests. Storage prices are selected by the manifest's own values
+# (storage_type, with the deployment layout fixed by each rule's
+# conditions) through the price book's attribute identities; the two
+# single-AZ generations share one rate, so MULTI_AZ_1 is the only rate
+# split. Prices live in the provider's price book (../pricebook/).
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsfsxwindowsfilesystem
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  refusals:
+    - when:
+        - field_path: disk_iops_configuration.mode
+          op: equals
+          value: USER_PROVISIONED
+      reason: user-provisioned SSD IOPS bill per IOPS-month only for the IOPS above the included 3 per GiB of storage -- a subtraction of the included allowance that these factor-product quantities cannot express, so the committed IOPS charge cannot be stated honestly
+    - when:
+        - field_path: backup_id
+          op: is_set
+      reason: the file system restores from backup_id -- its storage capacity comes from the backup and is invisible in this manifest, so the committed storage charge cannot be known here
+  lines:
+    - sku_meter: provisioned storage
+      applies_when:
+        - field_path: deployment_type
+          op: not_equals
+          value: MULTI_AZ_1
+        - field_path: storage_capacity_gib
+          op: is_set
+      quantity:
+        - field_value:
+            field_path: storage_capacity_gib
+      price_lookup:
+        service_name: Amazon FSx
+        pricing_unit: GB-months
+        attributes:
+          - key: file_system
+            constant: windows
+          - key: meter
+            constant: provisioned-storage
+          - key: deployment
+            constant: single-az
+          - key: storage_type
+            from_field: storage_type
+            assumption_when_unset: SSD
+      basis: storage_capacity_gib GiB of provisioned single-AZ storage (both single-AZ generations share the rate), billed per GB-month at the storage_type's rate -- SSD, the spec default, assumed when unset; every catalog preset leaves region a placeholder, so this prices the us-east-1 rate
+    - sku_meter: provisioned storage
+      applies_when:
+        - field_path: deployment_type
+          op: equals
+          value: MULTI_AZ_1
+        - field_path: storage_capacity_gib
+          op: is_set
+      quantity:
+        - field_value:
+            field_path: storage_capacity_gib
+      price_lookup:
+        service_name: Amazon FSx
+        pricing_unit: GB-months
+        attributes:
+          - key: file_system
+            constant: windows
+          - key: meter
+            constant: provisioned-storage
+          - key: deployment
+            constant: multi-az
+          - key: storage_type
+            from_field: storage_type
+            assumption_when_unset: SSD
+      basis: storage_capacity_gib GiB of provisioned Multi-AZ storage (the rate carries the synchronous cross-AZ standby copy), billed per GB-month at the storage_type's rate -- SSD, the spec default, assumed when unset; region is assumed us-east-1 when the manifest leaves it a placeholder
+    - sku_meter: provisioned throughput capacity
+      applies_when:
+        - field_path: deployment_type
+          op: not_equals
+          value: MULTI_AZ_1
+      quantity:
+        - field_value:
+            field_path: throughput_capacity
+      price_slug: fsx-windows-throughput-single-az-us-east-1
+      basis: throughput_capacity MB/s of provisioned single-AZ throughput, billed per MBps-month; region is assumed us-east-1 when the manifest leaves it a placeholder
+    - sku_meter: provisioned throughput capacity
+      applies_when:
+        - field_path: deployment_type
+          op: equals
+          value: MULTI_AZ_1
+      quantity:
+        - field_value:
+            field_path: throughput_capacity
+      price_slug: fsx-windows-throughput-multi-az-us-east-1
+      basis: throughput_capacity MB/s of provisioned Multi-AZ throughput (the rate carries the standby file server), billed per MBps-month; region is assumed us-east-1 when the manifest leaves it a placeholder
+  exclusions:
+    - text: data transfer to clients in other Availability Zones or out of AWS bills per GB outside FSx's meters
+    - applies_when:
+        - field_path: automatic_backup_retention_days
+          op: is_unset
+      text: automatic backups run on the default 7-day retention -- backup storage bills per GB-month and grows with data churn across the retention window
+    - applies_when:
+        - field_path: automatic_backup_retention_days
+          op: is_set
+        - field_path: automatic_backup_retention_days
+          op: not_equals
+          value: "0"
+      text: automatic backup storage bills per GB-month and grows with data churn across the retention window
+    - applies_when:
+        - field_path: skip_final_backup
+          op: equals
+          value: "false"
+      text: the final backup taken on deletion outlives the file system and bills per GB-month until deleted
+    - applies_when:
+        - field_path: audit_log_configuration
+          op: is_set
+      text: file and share access audit events ingest into CloudWatch Logs at its own per-GB rates -- volume scales with file activity
+  notes:
+    - text: SSD IOPS in AUTOMATIC mode (3 per GiB of storage) are included at no extra charge, and provisioned capacity bills full or empty.
+    - text: When a manifest joins the file system to an AWS Managed Microsoft AD (active_directory_id), that referenced directory is a separately billed service outside this estimate. Stated unconditionally because the reference lives in a foreign-key field whose presence a condition cannot read.

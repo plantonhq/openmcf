@@ -1,0 +1,39 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsfsxontapfilesystem
+spec:
+  aws:
+    statements:
+      - sid: ManageFileSystem
+        actions:
+          - fsx:CreateFileSystem
+          - fsx:UpdateFileSystem
+          - fsx:DeleteFileSystem
+          - fsx:TagResource
+          - fsx:UntagResource
+          - fsx:ListTagsForResource
+        resources:
+          - arn:aws:fsx:*:*:file-system/*
+        provenance: derived
+        notes: Covers aws_fsx_ontap_file_system -- creation (deployment type, capacity, throughput arms, HA pairs, networking, IOPS, admin password), in-place updates (capacity growth, throughput, IOPS, password, route tables, backup and maintenance windows), deletion, and tag reconciliation. Every action authorizes on the file-system ARN format per the service reference; create-time tags flow inside CreateFileSystem itself. The module restores nothing from backups and ONTAP file-system deletion takes no final backup (backups are volume-scoped), so no backup-ARN grant is needed.
+      - sid: DescribeFileSystems
+        actions:
+          - fsx:DescribeFileSystems
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side of aws_fsx_ontap_file_system during plan/refresh. FSx Describe APIs support no resource-level scoping (empty Resources list in the service reference), so the wildcard is the narrowest possible scope.
+      - sid: UseCustomerManagedKeys
+        actions:
+          - kms:DescribeKey
+          - kms:CreateGrant
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Required only when spec.kms_key_id selects a customer-managed key -- FSx validates the key and creates a grant against it during file-system creation using the caller's credentials. Both actions authorize on the key ARN format per the KMS service reference.

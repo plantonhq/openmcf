@@ -1,0 +1,111 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsFsxOpenzfsFileSystem manifest's spec values into metered quantities
+# and price choices. The estimate generator replays the catalog presets
+# through these rules to emit ../estimates/awsfsxopenzfsfilesystem.yaml;
+# a server-side estimator evaluates the same rules against live
+# manifests. Storage and throughput prices are selected by the
+# manifest's own deployment_type through the price book's attribute
+# identities. Prices live in the provider's price book (../pricebook/).
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsfsxopenzfsfilesystem
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  refusals:
+    - when:
+        - field_path: disk_iops_configuration.mode
+          op: equals
+          value: USER_PROVISIONED
+      reason: user-provisioned SSD IOPS bill per IOPS-month only for the IOPS above the included 3 per GiB of storage -- a subtraction of the included allowance that these factor-product quantities cannot express, so the committed IOPS charge cannot be stated honestly
+    - when:
+        - field_path: read_cache_configuration.sizing_mode
+          op: equals
+          value: PROPORTIONAL_TO_THROUGHPUT_CAPACITY
+      reason: the Intelligent-Tiering SSD read cache is a committed per-GB-month charge, but in this sizing mode AWS chooses the cache size from the provisioned throughput -- the size is not stated in the manifest, so the charge cannot be known here
+    - when:
+        - field_path: backup_id
+          op: is_set
+      reason: the file system restores from backup_id -- its storage capacity comes from the backup and is invisible in this manifest, so the committed storage charge cannot be known here
+  lines:
+    - sku_meter: provisioned SSD storage
+      applies_when:
+        - field_path: storage_type
+          op: not_equals
+          value: INTELLIGENT_TIERING
+        - field_path: storage_capacity_gib
+          op: is_set
+      quantity:
+        - field_value:
+            field_path: storage_capacity_gib
+      price_lookup:
+        service_name: Amazon FSx
+        pricing_unit: GB-months
+        attributes:
+          - key: file_system
+            constant: openzfs
+          - key: meter
+            constant: provisioned-ssd-storage
+          - key: deployment_type
+            from_field: deployment_type
+            assumption_when_unset: SINGLE_AZ_2
+      basis: storage_capacity_gib GiB of provisioned SSD, billed per GB-month at the deployment type's rate (SINGLE_AZ_2, the spec default, assumed when unset); every catalog preset leaves region a placeholder, so this prices the us-east-1 rate
+    - sku_meter: provisioned throughput capacity
+      quantity:
+        - field_value:
+            field_path: throughput_capacity
+      price_lookup:
+        service_name: Amazon FSx
+        pricing_unit: MiBps-months
+        attributes:
+          - key: file_system
+            constant: openzfs
+          - key: meter
+            constant: throughput-capacity
+          - key: deployment_type
+            from_field: deployment_type
+            assumption_when_unset: SINGLE_AZ_2
+      basis: throughput_capacity MB/s of provisioned throughput, billed per MBps-month at the deployment type's rate (SINGLE_AZ_2, the spec default, assumed when unset); region is assumed us-east-1 when the manifest leaves it a placeholder
+    - sku_meter: provisioned SSD read cache
+      applies_when:
+        - field_path: read_cache_configuration.sizing_mode
+          op: equals
+          value: USER_PROVISIONED
+      quantity:
+        - field_value:
+            field_path: read_cache_configuration.size_gib
+      price_slug: fsx-openzfs-intelligent-tiering-read-cache-us-east-1
+      basis: read_cache_configuration.size_gib GiB of user-provisioned Intelligent-Tiering SSD read cache, billed per GB-month; region is assumed us-east-1 when the manifest leaves it a placeholder
+  exclusions:
+    - text: data transfer to clients in other Availability Zones or out of AWS bills per GB outside FSx's meters
+    - applies_when:
+        - field_path: automatic_backup_retention_days
+          op: not_equals
+          value: "0"
+      text: automatic backup storage bills per GB-month and grows with data churn across the retention window
+    - applies_when:
+        - field_path: skip_final_backup
+          op: equals
+          value: "false"
+      text: the final backup taken on deletion outlives the file system and bills per GB-month until deleted
+    - applies_when:
+        - field_path: storage_type
+          op: equals
+          value: INTELLIGENT_TIERING
+      text: Intelligent-Tiering data bills per GB-month by access tier (frequent, infrequent, archive instant) plus monitoring and per-request charges -- entirely data-dependent, with no provisioned storage floor
+  notes:
+    - applies_when:
+        - field_path: storage_type
+          op: not_equals
+          value: INTELLIGENT_TIERING
+      text: SSD IOPS in AUTOMATIC mode (3 per GiB of storage) are included at no extra charge, and provisioned capacity bills full or empty -- compression stretches usable space, never the bill.
+    - applies_when:
+        - field_path: deployment_type
+          op: equals
+          value: MULTI_AZ_1
+      text: The MULTI_AZ_1 rates carry the cross-AZ standby file server and its replicated copy inside them -- no separate replication charge applies.

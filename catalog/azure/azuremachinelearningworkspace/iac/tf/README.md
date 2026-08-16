@@ -36,7 +36,3 @@ The module is executed by the Planton platform with a tfvars file converted from
 - **Soft delete**: deleted workspaces hold their name until purged; the provider's `machine_learning.purge_soft_delete_on_destroy`-class features flag governs purge-on-destroy.
 - **One rule namespace**: the three outbound-rule types share one ARM collection; the spec enforces cross-type name uniqueness before this module runs.
 - **PARITY-EXCEPTION**: `storage_account_access_type` is Terraform-only -- the classic Pulumi SDK cannot express it; the Pulumi module fails loudly when it is set.
-
-## Required Permissions
-
-The deploying principal needs `Microsoft.MachineLearningServices/workspaces/*` plus read access on the referenced companion services (Contributor on the resource group covers it).

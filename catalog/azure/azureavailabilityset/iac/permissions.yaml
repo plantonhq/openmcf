@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureavailabilityset
+spec:
+  azure:
+    groups:
+      - purpose: ManageAvailabilitySet
+        actions:
+          - Microsoft.Compute/availabilitySets/read
+          - Microsoft.Compute/availabilitySets/write
+          - Microsoft.Compute/availabilitySets/delete
+        provenance: derived
+        notes: Covers azurerm_availability_set -- create, read/refresh, tag updates (the only in-place change; every other field is ForceNew), and destroy. Held via Virtual Machine Contributor, Contributor, or narrower custom roles. The module makes no other provider calls -- a referenced proximity placement group ID is passed through and validated by ARM server-side.

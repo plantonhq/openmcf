@@ -28,7 +28,3 @@ The generated `variables.tf` mirrors the proto contract:
 - **The association creates fine on a machine without the Azure Monitor Agent** -- collection simply starts when the agent arrives; the association is pure configuration.
 - **No tags** -- ARM extension resources are untagged; the provider carries no tags argument.
 - **Billing**: free. The telemetry the rule collects is billed at its destinations.
-
-## Required Permissions
-
-The deploying principal needs `Microsoft.Insights/dataCollectionRuleAssociations/*` (Monitoring Contributor covers it) plus write on the target machine's scope.

@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsfsxdatarepositoryassociation
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The association stores no data of its own -- it is a sync link. The linked data rests encrypted on the Lustre file system (FSx encrypts all file systems at rest) and in S3 under the bucket's own encryption posture, each governed by its own catalog kind.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to key (see enc-at-rest); customer-managed keys are the file system's and the bucket's decisions.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The association carries no transport surface a spec field could harden -- FSx moves data to and from S3 over provider-operated service endpoints, and client traffic to the file system is the Lustre kind's concern.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The association exposes no network endpoint at all; reachability questions belong to the Lustre file system's VPC posture and the S3 bucket's public-access controls.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No endpoint means no ingress to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request surface exists for a web ACL or request filter to protect.
+    - control_id: rbac
+      status: not_applicable
+      notes: The association has no access plane of its own -- POSIX permissions govern the file-system path, and IAM plus bucket policy govern the S3 repository, each on its own component.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: FSx reaches the S3 repository through its service-linked role -- short-lived, AWS-managed credentials created for the Lustre-S3 integration. No static keys or user credentials are ever configured on the association.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The association has no authentication paths of its own to weaken or disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Administrative actions on the association land in CloudTrail as account-level posture, and object-level access to the repository is auditable on the S3 bucket's side (server access logs, CloudTrail data events), each outside this component.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: FSx automatically reports the Lustre file system's data-repository sync health to CloudWatch (e.g. the age of the oldest change queued for auto-import/export) whenever an association exists -- no opt-in exists.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The association holds no data to back up -- it is re-creatable from the manifest, and the S3 repository is itself the durable copy of the linked data by design.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The association is a regional control-plane object with no zonal footprint; availability belongs to the Lustre file system and S3.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the module exposes a deletion-protection flag for associations. The delete-time default is safe -- delete_data_in_filesystem defaults to false, so removing the association keeps the files on the file system and only severs the S3 link.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A control-plane link runs no software of its own; the Lustre servers beneath it are patched by AWS on the file system's maintenance schedule.

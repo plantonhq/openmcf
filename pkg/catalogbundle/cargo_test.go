@@ -138,19 +138,35 @@ func TestFactSheetCargoRoundTrip(t *testing.T) {
 	}
 
 	// An uncovered component's entry document carries no summary keys at
-	// all (omitempty holds) -- absence is the honest state, and untouched
-	// components' entries stay byte-stable across this change.
-	uncoveredRaw, aboardOK := bundle.entries["entries/aws/awskmskey.yaml"]
-	if !aboardOK {
-		t.Fatal("AwsKmsKey has no entry document")
+	// all (omitempty holds) -- absence is the honest state. The exemplar is
+	// chosen DYNAMICALLY (the first entry document, in name order, whose
+	// kind ships no cost cargo) so growing coverage can never rot this
+	// test; when every component is covered, there is nothing left to
+	// assert and the honest-absence property holds vacuously.
+	uncoveredName := ""
+	for name := range bundle.entries {
+		if !strings.HasPrefix(name, "entries/") {
+			continue
+		}
+		costName := "costs/" + strings.TrimPrefix(name, "entries/")
+		if _, covered := bundle.entries[costName]; covered {
+			continue
+		}
+		if uncoveredName == "" || name < uncoveredName {
+			uncoveredName = name
+		}
+	}
+	if uncoveredName == "" {
+		t.Log("every component ships fact-sheets -- no uncovered entry left to assert honest absence on")
+		return
 	}
 	var uncovered map[string]any
-	if err := yaml.Unmarshal(uncoveredRaw, &uncovered); err != nil {
+	if err := yaml.Unmarshal(bundle.entries[uncoveredName], &uncovered); err != nil {
 		t.Fatal(err)
 	}
 	for _, key := range []string{"costSummary", "controlSummary", "permissionsProvenance"} {
 		if _, present := uncovered[key]; present {
-			t.Errorf("AwsKmsKey ships no fact-sheets but its entry document carries %q", key)
+			t.Errorf("%s ships no fact-sheets but its entry document carries %q", uncoveredName, key)
 		}
 	}
 }

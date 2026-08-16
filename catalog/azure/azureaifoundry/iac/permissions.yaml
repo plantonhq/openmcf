@@ -1,0 +1,27 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureaifoundry
+spec:
+  azure:
+    groups:
+      - purpose: ManageHub
+        actions:
+          - Microsoft.MachineLearningServices/workspaces/read
+          - Microsoft.MachineLearningServices/workspaces/write
+          - Microsoft.MachineLearningServices/workspaces/delete
+        provenance: derived
+        notes: Covers azurerm_ai_foundry -- the hub is ARM-wise a Microsoft.MachineLearningServices/workspaces resource of kind "Hub" (the module source provisions exactly that; the Microsoft.CognitiveServices namespace is NOT involved). Create, in-place updates (insights, registry, public access, network mode), read/refresh, and destroy; deletion is a SOFT delete of the ML workspace class, and the purge-on-destroy path rides the same delete action (the namespace publishes no separate purge operation). Migrated from the module README's summary ("workspaces/* on the resource group -- Contributor covers it"), tightened here to the three verbs the module exercises.
+      - purpose: ReadCompanionAttachments
+        actions:
+          - Microsoft.KeyVault/vaults/read
+          - Microsoft.Storage/storageAccounts/read
+          - Microsoft.Insights/Components/Read
+          - Microsoft.ContainerRegistry/registries/read
+        provenance: derived
+        notes: The module itself never calls these -- key_vault_id, storage_account_id, application_insights_id, and container_registry_id arrive as resolved literal ARM IDs and pass into the hub body. The Machine Learning resource provider validates the attachments during the hub PUT under the deployer's token, so creating a hub against EXISTING companions needs read on each (migrated from the module README's "read access on the referenced key vault, storage account, and any insights/registry attachments"). The insights and registry reads apply only when those optional attachments are set.

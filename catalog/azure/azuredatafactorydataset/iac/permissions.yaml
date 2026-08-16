@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuredatafactorydataset
+spec:
+  azure:
+    groups:
+      - purpose: ManageDataset
+        actions:
+          - Microsoft.DataFactory/factories/datasets/read
+          - Microsoft.DataFactory/factories/datasets/write
+          - Microsoft.DataFactory/factories/datasets/delete
+        provenance: derived
+        notes: Covers all 13 dataset shapes the module fans out to (azurerm_data_factory_dataset_azure_blob through _sql_server_table plus azurerm_data_factory_custom_dataset) -- Azure stores every shape in the same factory-scoped dataset namespace, so create, read/refresh, update, and destroy are the same three child operations on the factory for each. Held at the factory's scope; Data Factory Contributor carries them. The module parses data_factory_id client-side and performs no factory read or other secondary calls -- the linked service reference travels unresolved in the payload (a name for 11 shapes, an ARM ID for azure_sql_table, a name-plus-parameters block for custom), and Azure validates it at save time.

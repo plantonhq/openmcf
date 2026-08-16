@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureredislinkedserver
+spec:
+  billing_model: free
+  free_tier: The geo-replication link itself never bills -- Azure has no meter for linked servers, and creating the link, replicating through it, and deleting it (which IS the failover operation) all cost nothing as operations.
+  notes: "The real spend sits on either side of the link and on the wire between them. Both caches referenced here (target_redis_cache_id, linked_redis_cache_id) must be PREMIUM tier and each bills its own hourly instance rate as an AzureRedisCache -- and because Azure requires the secondary to be at least as large as the primary, the warm standby costs at least as much as the cache it protects, roughly doubling cache spend for the pair. The replication traffic itself CAN bill: Microsoft charges nothing when the linked caches share a region, but this kind's whole point is different regions, and cross-region replication data transfer is billed at Azure's standard inter-region bandwidth egress rates, scaling with the primary's write volume."

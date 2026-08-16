@@ -15,7 +15,7 @@ spec:
           - Microsoft.Storage/storageAccounts/read
           - Microsoft.Storage/storageAccounts/write
           - Microsoft.Storage/storageAccounts/delete
-          - Microsoft.Storage/storageAccounts/listKeys/action
+          - Microsoft.Storage/storageAccounts/listkeys/action
           - Microsoft.Storage/storageAccounts/blobServices/read
           - Microsoft.Storage/storageAccounts/blobServices/write
           - Microsoft.Storage/storageAccounts/fileServices/read

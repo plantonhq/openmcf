@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurecomputegallery
+spec:
+  azure:
+    groups:
+      - purpose: ManageComputeGallery
+        actions:
+          - Microsoft.Compute/galleries/read
+          - Microsoft.Compute/galleries/write
+          - Microsoft.Compute/galleries/delete
+        provenance: derived
+        notes: Covers azurerm_shared_image_gallery -- create, read/refresh, in-place updates (description, tags; the entire sharing tree is create-only and forces replacement), and destroy. The sharing profile, including Community publishing, travels in the same gallery write -- no separate share action is invoked by the module. Held via Contributor or narrower custom roles.

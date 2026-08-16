@@ -1,0 +1,24 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremssqlfailovergroup
+spec:
+  azure:
+    groups:
+      - purpose: ManageFailoverGroup
+        actions:
+          - Microsoft.Sql/servers/failoverGroups/read
+          - Microsoft.Sql/servers/failoverGroups/write
+          - Microsoft.Sql/servers/failoverGroups/delete
+        provenance: derived
+        notes: Covers azurerm_mssql_failover_group -- create (polled to completion) under the primary server parsed from server_id, read/refresh, in-place updates to membership and policy, and destroy. ARM validates the create against the partner servers and databases too, so the write is held most simply via a role spanning both servers' resource groups.
+      - purpose: ReadPrimaryServer
+        actions:
+          - Microsoft.Sql/servers/read
+        provenance: derived
+        notes: Before creating the group the provider Gets the primary logical server to confirm it exists (serversClient.Get in mssql_failover_group_resource.go) -- a create against a missing server fails with the provider's own error instead of an opaque ARM one. Only the primary is read; partner servers are passed through by ID.

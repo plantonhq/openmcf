@@ -1,0 +1,68 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurestorageencryptionscope
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: The resource IS an encryption-at-rest boundary -- a named key domain inside one storage account that blobs and containers opt into. It cannot be deployed without declaring key ownership (source is required and rejects the unspecified value), and everything under the scope is always encrypted; the scope only decides WHICH key. infrastructure_encryption_required adds a second, independent platform-managed layer beneath the scope's key for just the regulated subset -- independent of the account-level switch.
+      notes: The scope narrows encryption per-tenant or per-sensitivity within one account (containers bind it via default_encryption_scope), instead of splitting into per-tenant accounts.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: source
+      evidence:
+        type: spec_default
+        reference: source chooses the key owner -- MICROSOFT_STORAGE is a platform-managed key Azure creates and rotates; MICROSOFT_KEY_VAULT encrypts under YOUR Key Vault key, with a CEL requiring key_vault_key_id in that mode. key_vault_key_id defaults to referencing an AzureKeyVaultKey's VERSIONLESS id, so key rotation propagates to the scope with zero intervention; pinning a versioned URI is the deliberate exception for freeze-the-version regimes.
+      notes: The Key Vault mode requires the ACCOUNT to carry an identity with wrap/unwrap access on the key's vault -- the same plumbing as the account-level customer-managed key, composed on the AzureStorageAccount side. Revoking the key makes the scope's data unreadable, which is the control working as designed.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The scope is a pure management-plane object with no data-plane path of its own; transport posture for the blobs under it belongs to the storage account (HTTPS-only, minimum TLS).
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A key-domain record has no network endpoint -- exposure of the data under it is the account's and containers' posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: The scope is an encryption boundary, not an access grant -- holding a key domain grants nobody data access; managing scopes is ARM RBAC on the account, which is platform posture.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The scope authenticates nobody. The identity that unwraps the Key Vault key is the ACCOUNT's managed identity -- that keyless plumbing is the AzureStorageAccount kind's posture.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The scope exposes no authentication path of its own to strengthen or disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Scope creation, key changes, and disables land in the Azure Activity Log automatically; key USE under the Key Vault mode is auditable in the vault's logs -- both outside this spec, with no toggle here.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A key-domain record emits no metrics or runtime signals of its own.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration -- nothing to back up; the manifest recreates (re-enables) the scope. Recoverability of the KEY is the Key Vault's soft-delete and purge-protection posture, which the CMK mode depends on.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The scope has no runtime footprint with a zonal failure mode; its data's durability follows the account's replication choice.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: ARM has no true delete for encryption scopes -- destroy flips the scope to Disabled (reads and writes under it then fail with 403) and the name stays reserved in the account; recreating the same name re-enables it. That is a platform lifecycle fact, not a configurable protection flag on this spec.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The encryption machinery that applies the scope's key is Microsoft-operated Azure Storage infrastructure; no customer-visible patch surface exists.

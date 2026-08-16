@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureredislinkedserver
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The link stores no data of its own; cached data rests in the two caches under each AzureRedisCache's own posture (and any persistence encryption belongs there too).
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Client connections terminate at the caches, where TLS is each cache's posture; the replication channel between the two PREMIUM caches is Microsoft's internal service traffic.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The link has no endpoint of its own -- even the geo_replicated_primary_host_name output resolves to whichever cache is currently primary, whose exposure is that cache's posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound restriction lives on each cache's firewall and private-endpoint posture; the link adds no reachable surface.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No traffic terminates at the link; there is no request-filtering attachment point.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the link exposes no authentication plane of its own -- clients authenticate against the caches under their own key/Entra posture.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The link runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own; the access-key-versus-Entra decision is each cache's posture and should match across the pair so a failover does not change the accepted auth methods.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Link creation and deletion (including failover-by-unlink) are control-plane operations landing in the Azure Activity Log as subscription-level posture.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The link emits no metrics of its own; replication health and the caches' geo-replication status surface through each cache's metrics and provisioning state.
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Creating the link IS the recovery mechanism -- Azure continuously replicates the primary cache's data (not just metadata) to the secondary in another region, keeping a warm, up-to-date copy. Recovery is deleting the link, which promotes the read-only secondary to writable, then re-pointing traffic (applications on the geo_replicated_primary_host_name output need no change).
+      notes: Replication is live-data disaster recovery, not a retained backup -- a bad write replicates too; point-in-time protection is RDB persistence/export on the caches themselves (that kind's posture).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Replication is continuous rather than a retained backup series -- there is no backup age or count to govern (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The pair spans failure domains BIGGER than zones by Azure's link-time contract -- the two PREMIUM caches must live in different regions (and the secondary at least as large as the primary), so the cached working set survives the loss of the entire primary region via unlink-and-promote.
+      notes: Zone-level redundancy WITHIN each region remains each cache's own posture; this kind adds the cross-region layer on top. server_role decides which side of the pair the linked cache plays (SECONDARY is the normal shape).
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag -- and none would fit, because deleting the link is deliberately the failover lever (unlinking makes the secondary writable). Data on both caches survives unlinking untouched.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed PaaS -- Microsoft operates and patches the replication machinery and the geo-replication DNS; no customer-visible patch surface exists.

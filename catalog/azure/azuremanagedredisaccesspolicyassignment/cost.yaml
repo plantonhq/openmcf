@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremanagedredisaccesspolicyassignment
+spec:
+  billing_model: free
+  free_tier: An access policy assignment is a pure authorization record on a Managed Redis database -- the grant of the built-in "default" policy to one Entra identity. Azure Managed Redis prices a single meter (the instance's SKU-hour), and assignments never touch it; creating, holding, and evaluating any number of grants bills nothing.
+  notes: "No field of this spec buys anything: managed_redis_id names the instance the grant lives on and object_id names the identity being granted -- both are grant coordinates stored by the Redis Enterprise resource provider at no charge. The real spend is the AzureManagedRedis instance itself, which bills its SKU's hourly rate regardless of how many identities hold grants on it; the granted identity's Redis traffic rides that same instance meter."

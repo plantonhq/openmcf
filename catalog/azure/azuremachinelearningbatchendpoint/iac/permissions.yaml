@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremachinelearningbatchendpoint
+spec:
+  azure:
+    groups:
+      - purpose: ManageBatchEndpoint
+        actions:
+          - Microsoft.MachineLearningServices/workspaces/batchEndpoints/read
+          - Microsoft.MachineLearningServices/workspaces/batchEndpoints/write
+          - Microsoft.MachineLearningServices/workspaces/batchEndpoints/delete
+        provenance: derived
+        notes: Covers the azapi_resource at Microsoft.MachineLearningServices/workspaces/batchEndpoints@2025-06-01 -- create and every update travel as a full PUT (write), refresh reads the endpoint (the exported scoringUri/swaggerUri come from the same read), and destroy deletes it. The parent workspace is addressed by the ARM ID resolved from workspace_id (azapi's parent_id) and is never read; azapi's schema validation runs locally against its embedded ARM schemas, adding no API call. No keys exist on this surface -- the batch service accepts only AADToken auth, so the namespace's batchEndpoints/listKeys action is dead surface for this kind and deliberately NOT granted. Held via Contributor on the workspace's resource group or an AzureML custom role carrying these verbs.

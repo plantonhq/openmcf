@@ -1,0 +1,74 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremachinelearningonlineendpoint
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The endpoint is a routing object and stores no data; models and images the deployments serve rest in the workspace's storage and registry, separate kinds. Initial auth keys, when supplied, are create-time-only input ARM never returns on any read.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest); CMK for workspace-held metadata is the workspace's encryption posture.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The endpoint IS a stable HTTPS scoring address -- the data plane (properties.scoringUri, the module's exported surface) and the ARM control plane are TLS-only Azure endpoints with no plaintext mode to enable.
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_network_access_enabled
+      evidence:
+        type: spec_default
+        reference: Unspecified applies true (ARM's default "Enabled") -- the scoring endpoint answers the public internet. Setting false requires private-endpoint access to the workspace for scoring.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No source-range filter exists on the endpoint; scoping beyond the binary public toggle rides the workspace's private endpoints, separate kinds.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No WAF-class surface exists on the scoring URI; front it with a gateway if edge filtering is required, separate kinds.
+    - control_id: rbac
+      status: not_applicable
+      notes: Control-plane access is ALWAYS Microsoft Entra ID plus Azure RBAC regardless of settings (the spec documents it); the data-plane authentication choice is the no-legacy-auth stance below. No further access-policy surface exists on the endpoint.
+    - control_id: workload-identity
+      status: enforced_by_default
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: The spec REQUIRES the identity block -- a recorded tightening of ARM's optional, because an endpoint without a managed identity cannot pull container images or model artifacts and every deployment on it fails at provisioning. SYSTEM_ASSIGNED (the service's own default posture) or user-assigned identities authenticate those pulls keylessly.
+      notes: USER_ASSIGNED lets registry/storage grants be composed BEFORE the endpoint exists; no stored credential appears in any flavor.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: auth_mode
+      evidence:
+        type: spec_default
+        reference: auth_mode is spec-required and takes exactly the service's vocabulary -- "Key" (static keys that never expire, the weakest), "AMLToken" (expiring, refreshing ML tokens), or "AADToken" (Microsoft Entra tokens, the keyless posture). Choosing AADToken retires static scoring credentials entirely.
+      notes: In Key mode, prefer service-minted keys (leave initial_auth_keys unset and read them with az ml online-endpoint get-credentials) over bring-your-own; either way ARM never returns key values on reads.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane changes land in the Azure Activity Log automatically as subscription-level posture; request-level logs ride the deployments and the workspace's Application Insights, separate kinds.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The endpoint publishes no metrics of its own beyond routing; scoring telemetry flows through the deployments and the workspace's required Application Insights attachment, separate kinds.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless routing configuration -- nothing to back up; the manifest recreates the endpoint declaratively. Note the NAME is reserved region-wide per subscription, so a recreated endpoint reclaims its scoring DNS only if nothing else took the name.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A routing object with no runtime footprint of its own; instance count and spread are the deployments' posture, a separate kind (the traffic map is the blue/green dial across them, not a redundancy control).
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for an online endpoint (Azure resource locks are subscription-side governance outside the manifest); deleting one tears down the scoring address and its deployments' routing.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The managed online-endpoint frontend -- TLS termination, auth enforcement, traffic splitting -- is Microsoft-operated Azure Machine Learning infrastructure; no customer-visible patch surface exists on the endpoint object (deployment images are the deployments' concern).

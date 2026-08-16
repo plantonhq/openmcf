@@ -1,0 +1,25 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremonitordatacollectionruleassociation
+spec:
+  azure:
+    groups:
+      - purpose: ManageRuleAssociation
+        actions:
+          - Microsoft.Insights/DataCollectionRuleAssociations/Read
+          - Microsoft.Insights/DataCollectionRuleAssociations/Write
+          - Microsoft.Insights/DataCollectionRuleAssociations/Delete
+        provenance: derived
+        notes: Covers azurerm_monitor_data_collection_rule_association -- create, read/refresh, description updates, and destroy. The association is an extension resource living ON the target machine ({target_id}/providers/Microsoft.Insights/dataCollectionRuleAssociations/{name}), so these must be held at the TARGET machine's scope, not the rule's resource group. ARM's inventory spells these operations with PascalCase verbs (Read/Write/Delete). Monitoring Contributor carries all three.
+      - purpose: ReadLinkedRuleOrEndpoint
+        actions:
+          - Microsoft.Insights/DataCollectionRules/Read
+          - Microsoft.Insights/DataCollectionEndpoints/Read
+        provenance: derived
+        notes: ARM enforces linked authorization at association PUT -- the caller must hold read on the scope of whichever resource the binding names, or the deploy fails with LinkedAuthorizationFailed even though the association write itself was permitted (the classic symptom when the rule lives in another subscription or resource group). DataCollectionRules/Read applies to rule bindings (data_collection_rule_id), DataCollectionEndpoints/Read to endpoint bindings (data_collection_endpoint_id); each is needed only for its binding form. The module itself performs no read of the linked resource -- this is ARM's server-side check.

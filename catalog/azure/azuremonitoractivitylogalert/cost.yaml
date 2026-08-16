@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremonitoractivitylogalert
+spec:
+  billing_model: free
+  free_tier: Activity log alert rules are the explicitly free alert class in Azure Monitor's pricing -- the rule-type table lists them with no rule or evaluation meter (metric and log-search alerts are the alert types that bill), and Microsoft's cost guidance names activity log, service health, and resource health alerts free of charge. Azure caps them at 100 active rules per subscription instead of charging.
+  notes: "No field of this spec buys anything: scopes, criteria, levels, and the service/resource-health blocks all shape free evaluation of the Activity Log, which Azure captures for every subscription at no cost. The real spend sits behind actions -- each fired action notifies an AzureMonitorActionGroup, and that kind carries the notification meters (emails, SMS, voice, webhooks beyond their free allowances). Beware the near-miss kind: METRIC alerts are a different resource with per-time-series charges; recreating an activity-log watch as a metric or log-search alert starts billing."

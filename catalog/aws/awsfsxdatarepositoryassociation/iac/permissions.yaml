@@ -1,0 +1,39 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsfsxdatarepositoryassociation
+spec:
+  aws:
+    statements:
+      - sid: ManageAssociation
+        actions:
+          - fsx:CreateDataRepositoryAssociation
+          - fsx:UpdateDataRepositoryAssociation
+          - fsx:DeleteDataRepositoryAssociation
+          - fsx:TagResource
+          - fsx:UntagResource
+          - fsx:ListTagsForResource
+        resources:
+          - arn:aws:fsx:*:*:association/*/*
+          - arn:aws:fsx:*:*:file-system/*
+        provenance: derived
+        notes: Covers aws_fsx_data_repository_association -- creation of the (file system, path, bucket) link with its import/export policies and chunk size, in-place policy updates, tagging, and deletion (including the delete_data_in_filesystem cascade). The service reference authorizes CreateDataRepositoryAssociation on BOTH the association and file-system ARN formats (an under-scoped create denies provisioning); the association ARN embeds the file-system id, hence the two-segment wildcard.
+      - sid: DescribeAssociations
+        actions:
+          - fsx:DescribeDataRepositoryAssociations
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side of aws_fsx_data_repository_association during plan/refresh. FSx Describe APIs support no resource-level scoping (empty Resources lists in the service reference), so the wildcard is the narrowest possible scope.
+      - sid: ManageServiceLinkedRole
+        actions:
+          - iam:CreateServiceLinkedRole
+        resources:
+          - arn:aws:iam::*:role/aws-service-role/s3.data-source.lustre.fsx.amazonaws.com/*
+        provenance: derived
+        notes: The first S3 link on a file system creates the Lustre-S3 integration service-linked role (service name s3.data-source.lustre.fsx.amazonaws.com, mirrored in the AmazonFSxFullAccess policy), which FSx uses to read and write the repository bucket. Scoped to that service-linked role path.

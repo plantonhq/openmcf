@@ -1,0 +1,64 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurecontainerappenvironmentmanagedcertificate
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The certificate's private key is generated, held, and rotated entirely by Azure inside the Container Apps platform -- it never transits the manifest, the state, or any API response; at-rest custody of Microsoft-held material is platform posture with no customer surface.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-managed-key surface exists for Azure-held managed-certificate material.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: The resource exists only to encrypt traffic in transit -- Azure issues a domain-validated TLS certificate for exactly subject_name, attaches it to the matching AzureContainerAppCustomDomain binding asynchronously, and renews it before expiry without intervention. There is no non-TLS mode on this resource.
+      notes: Managed certificates cover exactly one hostname -- no wildcards, no extra SANs; bring your own certificate (AzureContainerAppEnvironmentCertificate) for those.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The certificate has no network endpoint. Note the inverse dependency -- issuance and every renewal REQUIRE the domain's validation records to resolve publicly (the asuid TXT plus the CNAME or HTTP-reachable routing record).
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound traffic exists to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request path exists to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the certificate exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: No credentials exist anywhere in this flow -- domain ownership is proven by DNS records you publish, and Azure holds the key material itself.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own to strengthen or disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Creation, re-issuance, and deletion land in the Azure Activity Log automatically as subscription-level posture; no logging toggle exists on this resource.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The certificate publishes no metrics; renewal is Azure's own responsibility, and the one operational watch-item -- the DNS records staying valid so renewals keep succeeding -- lives in the DNS kinds.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Nothing to back up -- Azure holds and re-issues the material; the manifest recreates the resource declaratively (recreation re-runs domain validation, so the DNS records must still resolve).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Stored platform configuration with no zonal failure mode of its own; the ingress fleet serving the certificate is Microsoft-operated infrastructure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a managed certificate (Azure resource locks are subscription-side governance outside the manifest). Deleting one drops TLS on the bound hostname until a replacement issues.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The entire lifecycle is Microsoft-operated -- Azure issues the certificate after domain validation, serves it from the Container Apps ingress fleet, and rotates it before expiry with no customer action; every change to the spec re-issues rather than mutates.

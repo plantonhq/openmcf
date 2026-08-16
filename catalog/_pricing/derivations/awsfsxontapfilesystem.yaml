@@ -1,0 +1,90 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsFsxOntapFileSystem manifest's spec values into metered quantities and
+# price choices. The estimate generator replays the catalog presets through
+# these rules to emit ../estimates/awsfsxontapfilesystem.yaml; a server-side
+# estimator evaluates the same rules against live manifests. Storage and
+# throughput rates are selected by the manifest's own deployment_type through
+# the price book's attribute identities. Throughput is sized through exactly
+# one spec arm (whole-file-system or per-HA-pair, spec-enforced XOR) -- the
+# per-pair arm multiplies by ha_pairs. Prices live in the provider's price
+# book (../pricebook/). Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsfsxontapfilesystem
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  lines:
+    - sku_meter: provisioned SSD storage
+      quantity:
+        - field_value:
+            field_path: storage_capacity_gib
+      price_lookup:
+        service_name: Amazon FSx
+        pricing_unit: GB-months
+        attributes:
+          - key: deployment_type
+            from_field: deployment_type
+      basis: every provisioned GiB of SSD primary storage bills monthly, full or empty, at the deployment type's rate (multi-AZ carries the standby copy inside a doubled rate); every catalog preset leaves region a placeholder, so this prices the us-east-1 rate
+    - sku_meter: provisioned throughput capacity
+      applies_when:
+        - field_path: throughput_capacity
+          op: is_set
+      quantity:
+        - field_value:
+            field_path: throughput_capacity
+      price_lookup:
+        service_name: Amazon FSx
+        pricing_unit: MiBps-months
+        attributes:
+          - key: deployment_type
+            from_field: deployment_type
+      basis: the whole-file-system throughput arm -- every provisioned MB/s bills monthly at the deployment type's rate (multi-AZ rates include cross-AZ replication), at the us-east-1 rate since the presets pin region as a placeholder
+    - sku_meter: provisioned throughput capacity
+      applies_when:
+        - field_path: throughput_capacity_per_ha_pair
+          op: is_set
+      quantity:
+        - field_value:
+            field_path: throughput_capacity_per_ha_pair
+        - field_value:
+            field_path: ha_pairs
+            default_when_unset: "1"
+      price_lookup:
+        service_name: Amazon FSx
+        pricing_unit: MiBps-months
+        attributes:
+          - key: deployment_type
+            from_field: deployment_type
+      basis: the per-HA-pair throughput arm -- total provisioned throughput is the per-pair value times ha_pairs (1 when unstated), every MB/s billed monthly at the deployment type's rate (multi-AZ rates include cross-AZ replication), at the us-east-1 rate since the presets pin region as a placeholder
+  exclusions:
+    - applies_when:
+        - field_path: disk_iops_configuration.iops
+          op: is_set
+      text: user-provisioned SSD IOPS bill per IOPS-month only above the included 3 IOPS per GiB of SSD storage -- the billable excess is the provisioned figure minus the capacity-scaled allowance and is not stated here
+    - applies_when:
+        - field_path: automatic_backup_retention_days
+          op: not_equals
+          value: "0"
+      text: backup storage bills per GB-month of incremental backup data actually retained across the file system's volumes -- churn across the retention window drives it
+    - text: capacity pool storage bills per GB-month actually consumed as volumes tier cold data (a tiering_policy decision on AwsFsxOntapVolume), plus per-operation request charges whenever tiered data is accessed
+    - text: data transfer when clients access the file system from an Availability Zone other than the preferred one is traffic-dependent
+    - text: S3 Access Point requests and bandwidth against the file system bill on S3's own meters, outside this component
+  notes:
+    - applies_when:
+        - field_path: deployment_type
+          op: not_equals
+          value: SINGLE_AZ_1
+        - field_path: deployment_type
+          op: not_equals
+          value: SINGLE_AZ_2
+      text: Multi-AZ replication traffic between the active and standby file servers is included in the throughput rate -- it never appears as a data-transfer charge.
+    - applies_when:
+        - field_path: disk_iops_configuration
+          op: is_unset
+      text: AUTOMATIC SSD IOPS (3 per GiB of storage) are included in the storage rate at no separate charge.
+    - text: ONTAP's compression and deduplication typically shrink what a given SSD provision has to hold (2-5x per the spec's own guidance) -- the lever for this bill is provisioning less capacity, not a discount on the rate.

@@ -12,9 +12,9 @@ spec:
     groups:
       - purpose: ManageZone
         actions:
-          - Microsoft.Network/dnsZones/read
-          - Microsoft.Network/dnsZones/write
-          - Microsoft.Network/dnsZones/delete
+          - Microsoft.Network/dnszones/read
+          - Microsoft.Network/dnszones/write
+          - Microsoft.Network/dnszones/delete
           - Microsoft.Network/dnszones/SOA/read
           - Microsoft.Network/dnszones/SOA/write
         provenance: derived

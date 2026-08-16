@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurecomputegallery
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The gallery object is catalog metadata; the image bytes live in the versions' replicas, which are stored as managed-disk snapshots encrypted at rest by the platform -- the image kind's posture, not this container's.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The gallery carries no traffic of its own; management flows through ARM's TLS-only API, and image replication is Microsoft-internal transfer -- platform posture, not a component choice.
+    - control_id: no-public-access
+      status: configurable
+      field_path: sharing.permission
+      evidence:
+        type: spec_default
+        reference: Omitting the sharing block deploys a PRIVATE gallery -- visible and deployable only through Azure RBAC. Setting sharing.permission to "Community" publishes the gallery under a generated public community name that ANY Azure user can discover and deploy images from; "Groups" widens to named subscriptions/tenants. The entire sharing configuration is fixed at creation, so the exposure decision is deliberate and replacement-gated.
+      notes: This is catalog exposure, not a network endpoint -- a Community gallery leaks image CONTENT (baked-in software, configuration, and any secrets mistakenly captured in an image), which is exactly why Private is the right posture for almost every gallery.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface -- the gallery serves no traffic; who may deploy from it is the sharing/RBAC posture covered under no-public-access and rbac.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      field_path: sharing
+      evidence:
+        type: spec_default
+        reference: A gallery with no sharing block (the default) is governed purely by Azure RBAC -- visibility and image-deploy rights flow through role assignments on the gallery and its images, nothing else. Widening beyond RBAC (Groups or Community sharing) exists only as an explicit, create-time opt-in.
+      notes: The role assignments themselves are their own kind; this stance records that RBAC-only is the gallery's default access model, not that the gallery manages grants.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The gallery runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Gallery creation, sharing changes, and deletion land in the Azure Activity Log automatically as subscription-level posture; no logging toggle exists on this resource.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A catalog container emits no metrics or runtime signals.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The gallery object is declarative configuration the manifest recreates; the image content's durability lives in the versions' snapshot replicas (replica count and target regions are the image kind's posture).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A regional metadata object with no data path of its own; image availability across regions is the versions' replication posture, a separate kind's field.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a gallery (Azure resource locks are subscription-side governance outside the manifest); Azure refuses to delete a gallery that still contains image definitions, but that is dependency ordering, not a control.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The gallery service -- catalog storage, sharing, and replication machinery -- is Microsoft-operated infrastructure; no customer-visible patch surface exists. (Keeping the IMAGES inside the gallery patched is the whole point of an image pipeline, and it is the publisher's job, not this resource's.)
