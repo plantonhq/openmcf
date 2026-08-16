@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustaccessservicetoken.v1alpha1;
+
+// CloudflareZeroTrustAccessServiceTokenStackOutputs captures the observable
+// outputs after creating an Access service token.
+message CloudflareZeroTrustAccessServiceTokenStackOutputs {
+  // The UUID of the service token (the API identity used for import and
+  // policy `service_token` rules).
+  string service_token_id = 1;
+
+  // The Client ID the machine client presents in the CF-Access-Client-ID
+  // request header.
+  string client_id = 2;
+
+  // Sensitive. The Client Secret the machine client presents in the
+  // CF-Access-Client-Secret request header. Cloudflare returns it ONLY at
+  // creation and at rotation -- it can never be read back later, and it does
+  // not survive an import. Capture it into a secret store at deploy time.
+  string client_secret = 3;
+
+  // When the token expires, as an RFC3339 timestamp.
+  string expires_at = 4;
+}

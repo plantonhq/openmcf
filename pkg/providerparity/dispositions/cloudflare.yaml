@@ -268,15 +268,9 @@ resources:
     disposition: deferred
     reason: "Enterprise add-on entitlement: cloud email security"
   # ---- Zero Trust Access ------------------------------------------------------------
-  - resource: cloudflare_zero_trust_access_identity_provider
-    disposition: model-planned
-    reason: "judged as a planned CloudflareZeroTrustAccessIdentityProvider kind (identity providers referenced by applications and policies)"
   - resource: cloudflare_zero_trust_organization
     disposition: model-planned
     reason: "judged as a planned CloudflareZeroTrustOrganization kind (team-domain singleton: login design, session defaults)"
-  - resource: cloudflare_zero_trust_access_service_token
-    disposition: model-planned
-    reason: "judged as a planned CloudflareZeroTrustAccessServiceToken kind (machine credentials with independent rotation lifecycle)"
   - resource: cloudflare_zero_trust_access_custom_page
     disposition: model-planned
     reason: "judged as a planned CloudflareZeroTrustAccessCustomPage kind (branded block and login pages referenced by applications)"
@@ -305,12 +299,6 @@ resources:
     disposition: model-planned
     reason: "judged as a planned CloudflareZeroTrustMcpServer kind (registered MCP servers behind Access, pairing with the portal)"
   # ---- Zero Trust Gateway ------------------------------------------------------------
-  - resource: cloudflare_zero_trust_gateway_policy
-    disposition: model-planned
-    reason: "judged as a planned CloudflareZeroTrustGatewayPolicy kind (DNS/HTTP/network filtering rules, the core Gateway object)"
-  - resource: cloudflare_zero_trust_list
-    disposition: model-planned
-    reason: "judged as a planned CloudflareZeroTrustList kind (domain/IP/serial lists referenced by nearly every Gateway policy)"
   - resource: cloudflare_zero_trust_gateway_settings
     disposition: model-planned
     reason: "judged as a planned CloudflareZeroTrustGatewaySettings kind (account-level Gateway configuration singleton)"

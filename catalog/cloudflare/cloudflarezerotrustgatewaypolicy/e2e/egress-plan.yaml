@@ -1,0 +1,19 @@
+# Offline-plan arm: an egress policy selecting dedicated egress IPs. Offline
+# because dedicated egress IPs are a PAID add-on the E2E account does not
+# carry -- an entitlement-gated recorded deferral, never a silent skip. The
+# egress settings shape is proven by offline `tofu plan` (TEST-NET addresses).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustGatewayPolicy
+metadata:
+  name: test-gateway-policy-egress
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  name: egress-finance-team
+  action: egress
+  filter: egress
+  enabled: true
+  identity: any(identity.groups.name[*] == "finance")
+  rule_settings:
+    egress:
+      ipv4: 192.0.2.50
+      ipv4_fallback: 0.0.0.0

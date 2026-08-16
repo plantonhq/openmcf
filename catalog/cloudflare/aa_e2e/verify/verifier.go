@@ -439,6 +439,40 @@ var verifiers = map[string]Verifier{
 		pathFormat: "certificates/%s",
 		outputKeys: []string{"certificate_id"},
 	},
+	// Access identity providers and service tokens delete for real and 404
+	// honestly on the read after (the account-scoped arm is the one the live
+	// scenarios run; both resources are dual-scope at the provider).
+	"cloudflarezerotrustaccessidentityprovider": &apiPathVerifier{
+		component:     "cloudflarezerotrustaccessidentityprovider",
+		pathFormat:    "accounts/%s/access/identity_providers/%s",
+		outputKeys:    []string{"identity_provider_id"},
+		accountScoped: true,
+	},
+	"cloudflarezerotrustaccessservicetoken": &apiPathVerifier{
+		component:     "cloudflarezerotrustaccessservicetoken",
+		pathFormat:    "accounts/%s/access/service_tokens/%s",
+		outputKeys:    []string{"service_token_id"},
+		accountScoped: true,
+	},
+	// Gateway policies delete for real, but the schema carries a computed
+	// deleted_at the provider itself never reads -- the soft-delete-aware
+	// probe is honest either way: a clean 404 AND a tombstoned 200 with
+	// deleted_at set both count as absent (the tunnel/route precedent).
+	"cloudflarezerotrustgatewaypolicy": &apiPathVerifier{
+		component:     "cloudflarezerotrustgatewaypolicy",
+		pathFormat:    "accounts/%s/gateway/rules/%s",
+		outputKeys:    []string{"policy_id"},
+		accountScoped: true,
+		softDeleted:   true,
+	},
+	// Zero Trust lists (gateway/lists/, distinct from the rules/lists/ family
+	// above) delete for real and 404 honestly.
+	"cloudflarezerotrustlist": &apiPathVerifier{
+		component:     "cloudflarezerotrustlist",
+		pathFormat:    "accounts/%s/gateway/lists/%s",
+		outputKeys:    []string{"list_id"},
+		accountScoped: true,
+	},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is

@@ -5384,6 +5384,41 @@ enum CloudResourceKind {
     prerequisites: [CloudflareDnsZone]
   }];
 
+  // --- 7030-7059: Cloudflare Zero Trust Access sub-band ---
+
+  // No prerequisites: identity providers are account-scoped in the canonical
+  // case (the optional zone scope is a per-manifest choice, not a structural
+  // dependency).
+  CloudflareZeroTrustAccessIdentityProvider = 7030 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfztidp"
+  }];
+  // No prerequisites: service tokens are account-scoped in the canonical case
+  // (the optional zone scope is a per-manifest choice, not a structural
+  // dependency).
+  CloudflareZeroTrustAccessServiceToken = 7031 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfztst"
+  }];
+
+  // --- 7060-7079: Cloudflare Zero Trust Gateway sub-band ---
+
+  // No prerequisites: Gateway policies are account-scoped, and their list /
+  // virtual-network references are optional per-manifest edges.
+  CloudflareZeroTrustGatewayPolicy = 7060 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfztgp"
+  }];
+  // No prerequisites: Zero Trust lists are account-scoped and self-contained.
+  CloudflareZeroTrustList = 7061 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfztl"
+  }];
+
   // --- 7150-7179: Cloudflare zone TLS-posture sub-band ---
 
   // CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped

@@ -312,6 +312,34 @@ func TestCloudflareZoneTlsSettings_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "cloudflarezonetlssettings", "terraform")
 }
 
+func TestCloudflareZeroTrustAccessIdentityProvider_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustaccessidentityprovider", "pulumi")
+}
+func TestCloudflareZeroTrustAccessIdentityProvider_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustaccessidentityprovider", "terraform")
+}
+
+func TestCloudflareZeroTrustAccessServiceToken_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustaccessservicetoken", "pulumi")
+}
+func TestCloudflareZeroTrustAccessServiceToken_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustaccessservicetoken", "terraform")
+}
+
+func TestCloudflareZeroTrustGatewayPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustgatewaypolicy", "pulumi")
+}
+func TestCloudflareZeroTrustGatewayPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustgatewaypolicy", "terraform")
+}
+
+func TestCloudflareZeroTrustList_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustlist", "pulumi")
+}
+func TestCloudflareZeroTrustList_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustlist", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a
 // Cloudflare component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {

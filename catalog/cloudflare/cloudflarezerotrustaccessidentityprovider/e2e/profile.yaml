@@ -1,0 +1,27 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarezerotrustaccessidentityprovider
+spec:
+  # Access identity providers under live E2E: account-scoped, no prerequisites
+  # -- deploy -> API verify -> destroy -> verify-absent on both provisioners.
+  # Delete is a real API DELETE with an honest 404 read after it (note: the
+  # provider's own test suite has NO CheckDestroy for this resource, so our
+  # verify-absent is stricter than upstream). Creates in seconds; free.
+  # PREREQUISITE (account setup, not a fixture): the account's Zero Trust
+  # organization (team name) must exist or every Access create fails at the
+  # API -- a one-time Phase-2 provisioning step. The github-oauth scenario
+  # uses dummy OAuth credentials: creation validates SHAPE, not credentials
+  # (users could not log in through it; the lane never needs them to). The
+  # SAML shape is offline-plan-proven via e2e/saml-plan.yaml. WATCH ITEM: the
+  # OTP Access endpoint rejects API-token auth on UPDATE (the provider's own
+  # OTP tests unset CLOUDFLARE_API_TOKEN) -- create and destroy are the lane's
+  # operations, but if the idempotency re-plan triggers an update that 403s,
+  # record the defect and defer the onetimepin arm with the reason.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10
+  cost_class: cheap_ephemeral

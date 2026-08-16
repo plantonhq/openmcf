@@ -29,11 +29,11 @@ that has progressed.
 |---|---|
 | Provider schema | `aws@6.58.0` |
 | Provider schema (parity baseline) | `cloudflare@5.23.0` |
-| Kinds in the catalog | 33 |
-| Distinct provider resources consumed | 68 |
-| Spec fields authored across all kinds | 1379 |
+| Kinds in the catalog | 37 |
+| Distinct provider resources consumed | 72 |
+| Spec fields authored across all kinds | 1509 |
 | Module pins on `aws` | `~> 5.0` × 1 |
-| Module pins on `cloudflare` | `~> 5.23` × 33 |
+| Module pins on `cloudflare` | `~> 5.23` × 37 |
 | Module pins on `tls` | `~> 4.0` × 1 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -48,7 +48,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**33 of 33 kinds are at total accounting; 0 proven live.**
+**37 of 37 kinds are at total accounting; 0 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -79,7 +79,11 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | CloudflareWorkersKvPair | 5 | 5 | 0 | 0 | 0 | ✅ | — |
 | CloudflareZeroTrustAccessApplication | 39 | 29 | 10 | 0 | 0 | ✅ | — |
 | CloudflareZeroTrustAccessGroup | 7 | 4 | 3 | 0 | 0 | ✅ | — |
+| CloudflareZeroTrustAccessIdentityProvider | 8 | 6 | 2 | 0 | 0 | ✅ | — |
 | CloudflareZeroTrustAccessPolicy | 14 | 8 | 6 | 0 | 0 | ✅ | — |
+| CloudflareZeroTrustAccessServiceToken | 6 | 6 | 0 | 0 | 0 | ✅ | — |
+| CloudflareZeroTrustGatewayPolicy | 13 | 9 | 4 | 0 | 0 | ✅ | — |
+| CloudflareZeroTrustList | 5 | 4 | 1 | 0 | 0 | ✅ | — |
 | CloudflareZeroTrustTunnel | 8 | 5 | 2 | 1 | 0 | ✅ | — |
 | CloudflareZeroTrustTunnelRoute | 5 | 5 | 0 | 0 | 0 | ✅ | — |
 | CloudflareZeroTrustTunnelVirtualNetwork | 4 | 4 | 0 | 0 | 0 | ✅ | — |
@@ -92,10 +96,10 @@ All resources of `cloudflare@5.23.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 66 | consumed by a kind's Terraform module today |
+| Modeled | 70 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 0 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 139 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 135 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 45 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 7 | deprecated or superseded provider surface |
 | **Total** | **257** | |
@@ -105,7 +109,7 @@ All resources of `cloudflare@5.23.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (66)
+### Modeled (70)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -161,7 +165,11 @@ rather than trusted.
 | `cloudflare_workers_script_subdomain` | consumed by CloudflareWorker |
 | `cloudflare_zero_trust_access_application` | consumed by CloudflareZeroTrustAccessApplication |
 | `cloudflare_zero_trust_access_group` | consumed by CloudflareZeroTrustAccessGroup |
+| `cloudflare_zero_trust_access_identity_provider` | consumed by CloudflareZeroTrustAccessIdentityProvider |
 | `cloudflare_zero_trust_access_policy` | consumed by CloudflareZeroTrustAccessPolicy |
+| `cloudflare_zero_trust_access_service_token` | consumed by CloudflareZeroTrustAccessServiceToken |
+| `cloudflare_zero_trust_gateway_policy` | consumed by CloudflareZeroTrustGatewayPolicy |
+| `cloudflare_zero_trust_list` | consumed by CloudflareZeroTrustList |
 | `cloudflare_zero_trust_tunnel_cloudflared` | consumed by CloudflareZeroTrustTunnel |
 | `cloudflare_zero_trust_tunnel_cloudflared_config` | consumed by CloudflareZeroTrustTunnel |
 | `cloudflare_zero_trust_tunnel_cloudflared_route` | consumed by CloudflareZeroTrustTunnelRoute |
@@ -176,7 +184,7 @@ rather than trusted.
 | `cloudflare_zone_setting` | consumed by CloudflareZoneSettings |
 | `cloudflare_zone_subscription` | consumed by CloudflareDnsZone |
 
-### Planned (139)
+### Planned (135)
 
 | Resource | Recorded reason |
 |---|---|
@@ -268,12 +276,10 @@ rather than trusted.
 | `cloudflare_zero_trust_access_ai_controls_mcp_portal` | judged as a planned CloudflareZeroTrustMcpPortal kind (MCP server portals behind Access) |
 | `cloudflare_zero_trust_access_ai_controls_mcp_server` | judged as a planned CloudflareZeroTrustMcpServer kind (registered MCP servers behind Access, pairing with the portal) |
 | `cloudflare_zero_trust_access_custom_page` | judged as a planned CloudflareZeroTrustAccessCustomPage kind (branded block and login pages referenced by applications) |
-| `cloudflare_zero_trust_access_identity_provider` | judged as a planned CloudflareZeroTrustAccessIdentityProvider kind (identity providers referenced by applications and policies) |
 | `cloudflare_zero_trust_access_infrastructure_target` | judged as a planned CloudflareZeroTrustAccessInfrastructureTarget kind (SSH infrastructure targets referenced by infrastructure applications) |
 | `cloudflare_zero_trust_access_key_configuration` | folds into the planned CloudflareZeroTrustOrganization kind (key rotation settings are organization-singleton configuration) |
 | `cloudflare_zero_trust_access_mtls_certificate` | judged as a planned CloudflareZeroTrustAccessMtlsCertificate kind (client CA certificate with associated hostnames and independent lifecycle) |
 | `cloudflare_zero_trust_access_mtls_hostname_settings` | folds into the planned CloudflareZeroTrustAccessMtlsCertificate kind (hostname settings exist in service of the mTLS certificates) |
-| `cloudflare_zero_trust_access_service_token` | judged as a planned CloudflareZeroTrustAccessServiceToken kind (machine credentials with independent rotation lifecycle) |
 | `cloudflare_zero_trust_access_short_lived_certificate` | folds into the existing CloudflareZeroTrustAccessApplication kind's planned depth expansion (SSH short-lived certificate issuance is a per-application toggle) |
 | `cloudflare_zero_trust_access_tag` | judged as a planned CloudflareZeroTrustAccessTag kind (label referenced by name across applications) |
 | `cloudflare_zero_trust_device_custom_profile` | judged as a planned CloudflareZeroTrustDeviceCustomProfile kind (targeted WARP profiles, many per account) |
@@ -308,10 +314,8 @@ rather than trusted.
 | `cloudflare_zero_trust_gateway_certificate` | judged as a planned CloudflareZeroTrustGatewayCertificate kind (TLS inspection certificates with activation lifecycle) |
 | `cloudflare_zero_trust_gateway_logging` | folds into the planned CloudflareZeroTrustGatewaySettings kind (logging redaction toggles are Gateway settings) |
 | `cloudflare_zero_trust_gateway_pacfile` | folds into the planned CloudflareZeroTrustGatewaySettings kind (PAC file content is Gateway proxy configuration) |
-| `cloudflare_zero_trust_gateway_policy` | judged as a planned CloudflareZeroTrustGatewayPolicy kind (DNS/HTTP/network filtering rules, the core Gateway object) |
 | `cloudflare_zero_trust_gateway_proxy_endpoint` | judged as a planned CloudflareZeroTrustGatewayProxyEndpoint kind (proxy endpoints with allowed-IP configuration) |
 | `cloudflare_zero_trust_gateway_settings` | judged as a planned CloudflareZeroTrustGatewaySettings kind (account-level Gateway configuration singleton) |
-| `cloudflare_zero_trust_list` | judged as a planned CloudflareZeroTrustList kind (domain/IP/serial lists referenced by nearly every Gateway policy) |
 | `cloudflare_zero_trust_network_hostname_route` | judged as a planned CloudflareZeroTrustNetworkHostnameRoute kind (hostname-based private network routes referencing tunnels and virtual networks) |
 | `cloudflare_zero_trust_organization` | judged as a planned CloudflareZeroTrustOrganization kind (team-domain singleton: login design, session defaults) |
 | `cloudflare_zero_trust_risk_behavior` | judged as a planned CloudflareZeroTrustRiskScoring kind (account risk-behavior configuration) |

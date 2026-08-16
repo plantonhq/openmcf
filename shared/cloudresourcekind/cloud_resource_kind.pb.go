@@ -1862,6 +1862,19 @@ const (
 	// zone-level SSL-for-SaaS setting -- the spec's zone_id reference must
 	// resolve first.
 	CloudResourceKind_CloudflareCustomHostnameFallbackOrigin CloudResourceKind = 7029
+	// No prerequisites: identity providers are account-scoped in the canonical
+	// case (the optional zone scope is a per-manifest choice, not a structural
+	// dependency).
+	CloudResourceKind_CloudflareZeroTrustAccessIdentityProvider CloudResourceKind = 7030
+	// No prerequisites: service tokens are account-scoped in the canonical case
+	// (the optional zone scope is a per-manifest choice, not a structural
+	// dependency).
+	CloudResourceKind_CloudflareZeroTrustAccessServiceToken CloudResourceKind = 7031
+	// No prerequisites: Gateway policies are account-scoped, and their list /
+	// virtual-network references are optional per-manifest edges.
+	CloudResourceKind_CloudflareZeroTrustGatewayPolicy CloudResourceKind = 7060
+	// No prerequisites: Zero Trust lists are account-scoped and self-contained.
+	CloudResourceKind_CloudflareZeroTrustList CloudResourceKind = 7061
 	// CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped
 	// configuration -- the spec's zone_id reference must resolve first.
 	CloudResourceKind_CloudflareZoneTlsSettings CloudResourceKind = 7150
@@ -2504,6 +2517,10 @@ var (
 		7027: "CloudflareCertificatePack",
 		7028: "CloudflareCustomHostname",
 		7029: "CloudflareCustomHostnameFallbackOrigin",
+		7030: "CloudflareZeroTrustAccessIdentityProvider",
+		7031: "CloudflareZeroTrustAccessServiceToken",
+		7060: "CloudflareZeroTrustGatewayPolicy",
+		7061: "CloudflareZeroTrustList",
 		7150: "CloudflareZoneTlsSettings",
 		7180: "CloudflareZoneSettings",
 		7181: "CloudflareCacheSettings",
@@ -3133,6 +3150,10 @@ var (
 		"CloudflareCertificatePack":                      7027,
 		"CloudflareCustomHostname":                       7028,
 		"CloudflareCustomHostnameFallbackOrigin":         7029,
+		"CloudflareZeroTrustAccessIdentityProvider":      7030,
+		"CloudflareZeroTrustAccessServiceToken":          7031,
+		"CloudflareZeroTrustGatewayPolicy":               7060,
+		"CloudflareZeroTrustList":                        7061,
 		"CloudflareZoneTlsSettings":                      7150,
 		"CloudflareZoneSettings":                         7180,
 		"CloudflareCacheSettings":                        7181,
@@ -3525,7 +3546,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x84\xa1\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\x8d\xa3\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4181,7 +4202,11 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1dCloudflareOriginCaCertificate\x10\xf26\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfoca\x12=\n" +
 	"\x19CloudflareCertificatePack\x10\xf36\x1a\x1d\xa2\xf7\x04\x19\b\x0f\x12\bv1alpha1\"\acfcertp:\x02\xd86\x12<\n" +
 	"\x18CloudflareCustomHostname\x10\xf46\x1a\x1d\xa2\xf7\x04\x19\b\x0f\x12\bv1alpha1\"\acfchost:\x02\xd86\x12I\n" +
-	"&CloudflareCustomHostnameFallbackOrigin\x10\xf56\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x06cfchfo:\x02\xd86\x12;\n" +
+	"&CloudflareCustomHostnameFallbackOrigin\x10\xf56\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x06cfchfo:\x02\xd86\x12I\n" +
+	")CloudflareZeroTrustAccessIdentityProvider\x10\xf66\x1a\x19\xa2\xf7\x04\x15\b\x0f\x12\bv1alpha1\"\acfztidp\x12D\n" +
+	"%CloudflareZeroTrustAccessServiceToken\x10\xf76\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfztst\x12?\n" +
+	" CloudflareZeroTrustGatewayPolicy\x10\x947\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfztgp\x125\n" +
+	"\x17CloudflareZeroTrustList\x10\x957\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfztl\x12;\n" +
 	"\x19CloudflareZoneTlsSettings\x10\xee7\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x05cftls:\x02\xd86\x129\n" +
 	"\x16CloudflareZoneSettings\x10\x8c8\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x06cfzset:\x02\xd86\x12;\n" +
 	"\x17CloudflareCacheSettings\x10\x8d8\x1a\x1d\xa2\xf7\x04\x19\b\x0f\x12\bv1alpha1\"\acfcache:\x02\xd86\x12.\n" +

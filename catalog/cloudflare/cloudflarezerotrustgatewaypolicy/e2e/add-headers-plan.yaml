@@ -1,0 +1,28 @@
+# Offline-plan arm: an HTTP allow policy carrying header rewrites (add, set,
+# delete). NEVER a live scenario at v5.23.0: the provider's own migration
+# tests record computed-field drift EVEN ON FIRST APPLY when rule_settings
+# carries add_headers or override_ips -- the harness's idempotency gate would
+# false-fail on an upstream defect. The wrapper-map shape ({values: [...]}
+# unwrapping to the provider's map-of-lists) is proven by offline `tofu plan`.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustGatewayPolicy
+metadata:
+  name: test-gateway-policy-headers
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  name: allow-with-headers
+  action: allow
+  filter: http
+  enabled: true
+  traffic: http.request.host == "app.example.com"
+  rule_settings:
+    add_headers:
+      X-Planton-Env:
+        values:
+          - production
+    set_headers:
+      X-Forwarded-Team:
+        values:
+          - platform
+    delete_headers:
+      - X-Legacy-Header

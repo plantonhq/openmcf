@@ -5536,6 +5536,52 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"zone_id"},
 		},
 		{
+			// CloudflareZeroTrustAccessIdentityProvider: both engines emit the
+			// provider id plus the SCIM material (base URL and the create-only
+			// bearer secret, present when SCIM is enabled).
+			name: "CloudflareZeroTrustAccessIdentityProvider",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessIdentityProvider,
+			rawOutputs: map[string]interface{}{
+				"identity_provider_id": "f174e90a-fafe-4643-bbbc-4a0ed4fc8415",
+				"scim_base_url":        "https://scim.cloudflareaccess.com/v2/orgs/example",
+				"scim_secret":          "scim-bearer-secret",
+			},
+			mustPopulate: []string{"identity_provider_id", "scim_base_url", "scim_secret"},
+		},
+		{
+			// CloudflareZeroTrustAccessServiceToken: both engines emit the token
+			// id, the client id, the create-only client secret, and the expiry.
+			name: "CloudflareZeroTrustAccessServiceToken",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessServiceToken,
+			rawOutputs: map[string]interface{}{
+				"service_token_id": "699d98642c564d2e855e9661899b7252",
+				"client_id":        "88bf3b6d86161464f6509f7219099e57.access",
+				"client_secret":    "bdd31cbc4dec990953e39163fbbb194c93313ca9f0a6e420346af9d326b1d2a5",
+				"expires_at":       "2027-08-16T00:00:00Z",
+			},
+			mustPopulate: []string{"service_token_id", "client_id", "client_secret", "expires_at"},
+		},
+		{
+			// CloudflareZeroTrustGatewayPolicy: both engines emit the policy id
+			// and the (possibly Cloudflare-assigned) precedence.
+			name: "CloudflareZeroTrustGatewayPolicy",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustGatewayPolicy,
+			rawOutputs: map[string]interface{}{
+				"policy_id":  "f174e90a-fafe-4643-bbbc-4a0ed4fc8415",
+				"precedence": "1000",
+			},
+			mustPopulate: []string{"policy_id", "precedence"},
+		},
+		{
+			// CloudflareZeroTrustList: both engines emit the list id.
+			name: "CloudflareZeroTrustList",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustList,
+			rawOutputs: map[string]interface{}{
+				"list_id": "aa9d98642c564d2e855e9661899b7252",
+			},
+			mustPopulate: []string{"list_id"},
+		},
+		{
 			// AzureResourceGroup: flat scalar outputs from both engines (ARM id,
 			// name, region) must each land on the StackOutputs proto --
 			// resource_group_name is the FK target every other Azure kind

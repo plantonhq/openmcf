@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustlist.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarezerotrustlist/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarezerotrustlist/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareZeroTrustList is a KRM-style resource for managing a Cloudflare Zero
+// Trust list: a reusable, account-scoped set of values (domains, IPs, URLs,
+// emails, serials) referenced by Gateway policies and device-posture rules.
+message CloudflareZeroTrustList {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareZeroTrustList'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareZeroTrustListSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareZeroTrustListStatus status = 5;
+}
+
+// CloudflareZeroTrustListStatus represents the observed state of a Zero Trust list.
+message CloudflareZeroTrustListStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareZeroTrustListStackOutputs outputs = 1;
+}

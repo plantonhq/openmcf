@@ -91,6 +91,8 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| CloudflareZeroTrustGatewayPolicy | `spec.ruleSettings.dnsResolvers.ipv4[].vnetId` | `status.outputs.virtual_network_id` |
+| CloudflareZeroTrustGatewayPolicy | `spec.ruleSettings.dnsResolvers.ipv6[].vnetId` | `status.outputs.virtual_network_id` |
 | CloudflareZeroTrustTunnelRoute | `spec.virtualNetworkId` | `status.outputs.virtual_network_id` |
 
 ## See Also

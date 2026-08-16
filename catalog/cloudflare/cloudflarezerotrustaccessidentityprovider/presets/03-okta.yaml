@@ -1,0 +1,18 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustAccessIdentityProvider
+metadata:
+  name: okta-corp
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d" # replace with your account id
+  name: okta
+  type: okta
+  config:
+    client_id: your-okta-client-id # replace with your Okta application client id
+    client_secret:
+      value: your-okta-client-secret # replace with a managed-secret reference in production
+    okta_account: acme.okta.com # replace with your Okta tenant
+  scim_config:
+    enabled: true
+    identity_update_behavior: automatic
+    user_deprovision: true
+    seat_deprovision: true

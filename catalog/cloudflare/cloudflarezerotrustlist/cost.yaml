@@ -1,0 +1,10 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarezerotrustlist
+spec:
+  billing_model: free
+  notes: Zero Trust lists are included in Zero Trust Free. Creating a list and adding items creates no charge of its own. Seat counts and paid Zero Trust add-ons bill on the organization, never through this component.

@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustgatewaypolicy.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarezerotrustgatewaypolicy/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarezerotrustgatewaypolicy/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareZeroTrustGatewayPolicy is a KRM-style resource for managing a
+// Cloudflare Gateway policy: a filter over employee traffic (DNS, HTTP, or
+// network) plus the action taken when it matches -- block, allow, isolate,
+// redirect, override, resolve, and kin.
+message CloudflareZeroTrustGatewayPolicy {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareZeroTrustGatewayPolicy'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareZeroTrustGatewayPolicySpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareZeroTrustGatewayPolicyStatus status = 5;
+}
+
+// CloudflareZeroTrustGatewayPolicyStatus represents the observed state of a
+// Gateway policy.
+message CloudflareZeroTrustGatewayPolicyStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareZeroTrustGatewayPolicyStackOutputs outputs = 1;
+}

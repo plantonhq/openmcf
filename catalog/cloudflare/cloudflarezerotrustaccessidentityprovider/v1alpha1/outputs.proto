@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustaccessidentityprovider.v1alpha1;
+
+// CloudflareZeroTrustAccessIdentityProviderStackOutputs captures the observable
+// outputs after creating an Access identity provider.
+message CloudflareZeroTrustAccessIdentityProviderStackOutputs {
+  // The UUID of the identity provider -- what Access policy rules (azure_ad,
+  // github_organization, gsuite, okta, saml, oidc, login_method, auth_context)
+  // reference.
+  string identity_provider_id = 1;
+
+  // The base URL of Cloudflare's SCIM v2.0 endpoint for this provider (present
+  // when SCIM is enabled). Configure it at the identity provider together with
+  // scim_secret.
+  string scim_base_url = 2;
+
+  // Sensitive. The SCIM bearer token minted when SCIM is first enabled.
+  // Cloudflare returns it ONLY once -- it is redacted on subsequent reads and
+  // does not survive an import (refresh it via the Access API's
+  // refresh_scim_secret endpoint if lost). Capture it into a secret store at
+  // deploy time.
+  string scim_secret = 3;
+}

@@ -1,0 +1,25 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarezerotrustaccessservicetoken
+spec:
+  # Access service tokens under live E2E: account-scoped, no prerequisites --
+  # deploy -> API verify -> destroy -> verify-absent on both provisioners.
+  # Delete is a real API DELETE with an honest 404 read after it. Creates in
+  # seconds; free (Zero Trust Free). PREREQUISITE (account setup, not a
+  # fixture): the account's Zero Trust organization (team name) must exist or
+  # every Access create fails at the API -- a one-time Phase-2 provisioning
+  # step. The client_secret output is sensitive: VERIFY-OUT confirms it exists
+  # and logs must never print it; it is returned ONLY at create/rotation.
+  # WATCH ITEM: the provider's own rotation acceptance tests unset
+  # CLOUDFLARE_API_TOKEN ("the Access service does not yet support API tokens"
+  # for that path) -- our harness authenticates with an API token, so the
+  # rotation scenario may 403 at apply; if it does, record the defect and
+  # defer the rotation arm with the reason rather than switching credentials.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10
+  cost_class: cheap_ephemeral

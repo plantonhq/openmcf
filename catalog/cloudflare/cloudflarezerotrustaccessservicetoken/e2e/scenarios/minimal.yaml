@@ -1,0 +1,21 @@
+# Minimal CloudflareZeroTrustAccessServiceToken scenario: name and account
+# scope only -- Cloudflare defaults the duration to one year and treats the
+# initial secret as version 1. Proves the create/read/destroy lifecycle and
+# the create-only client_secret output.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustAccessServiceToken
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustaccessservicetoken-minimal
+  id: planton-oss-e2e-cloudflarezerotrustaccessservicetoken-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustaccessservicetoken
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-${E2E_RUN_ID}-token-min

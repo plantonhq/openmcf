@@ -1833,6 +1833,10 @@ Allowed values (use exactly as shown):
 - `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
 - `CloudflareCustomHostname` -- CloudflareDnsZone is a prerequisite because a custom hostname (SSL for SaaS) is provisioned inside a zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCustomHostnameFallbackOrigin` -- CloudflareDnsZone is a prerequisite because the fallback origin is a zone-level SSL-for-SaaS setting -- the spec's zone_id reference must resolve first.
+- `CloudflareZeroTrustAccessIdentityProvider` -- No prerequisites: identity providers are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustAccessServiceToken` -- No prerequisites: service tokens are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustGatewayPolicy` -- No prerequisites: Gateway policies are account-scoped, and their list / virtual-network references are optional per-manifest edges.
+- `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
 - `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
@@ -2625,6 +2629,10 @@ Allowed values (use exactly as shown):
 - `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
 - `CloudflareCustomHostname` -- CloudflareDnsZone is a prerequisite because a custom hostname (SSL for SaaS) is provisioned inside a zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCustomHostnameFallbackOrigin` -- CloudflareDnsZone is a prerequisite because the fallback origin is a zone-level SSL-for-SaaS setting -- the spec's zone_id reference must resolve first.
+- `CloudflareZeroTrustAccessIdentityProvider` -- No prerequisites: identity providers are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustAccessServiceToken` -- No prerequisites: service tokens are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustGatewayPolicy` -- No prerequisites: Gateway policies are account-scoped, and their list / virtual-network references are optional per-manifest edges.
+- `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
 - `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
@@ -4566,6 +4574,10 @@ Allowed values (use exactly as shown):
 - `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
 - `CloudflareCustomHostname` -- CloudflareDnsZone is a prerequisite because a custom hostname (SSL for SaaS) is provisioned inside a zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCustomHostnameFallbackOrigin` -- CloudflareDnsZone is a prerequisite because the fallback origin is a zone-level SSL-for-SaaS setting -- the spec's zone_id reference must resolve first.
+- `CloudflareZeroTrustAccessIdentityProvider` -- No prerequisites: identity providers are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustAccessServiceToken` -- No prerequisites: service tokens are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustGatewayPolicy` -- No prerequisites: Gateway policies are account-scoped, and their list / virtual-network references are optional per-manifest edges.
+- `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
 - `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
@@ -5358,6 +5370,10 @@ Allowed values (use exactly as shown):
 - `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
 - `CloudflareCustomHostname` -- CloudflareDnsZone is a prerequisite because a custom hostname (SSL for SaaS) is provisioned inside a zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCustomHostnameFallbackOrigin` -- CloudflareDnsZone is a prerequisite because the fallback origin is a zone-level SSL-for-SaaS setting -- the spec's zone_id reference must resolve first.
+- `CloudflareZeroTrustAccessIdentityProvider` -- No prerequisites: identity providers are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustAccessServiceToken` -- No prerequisites: service tokens are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustGatewayPolicy` -- No prerequisites: Gateway policies are account-scoped, and their list / virtual-network references are optional per-manifest edges.
+- `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
 - `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
@@ -7340,6 +7356,10 @@ Allowed values (use exactly as shown):
 - `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
 - `CloudflareCustomHostname` -- CloudflareDnsZone is a prerequisite because a custom hostname (SSL for SaaS) is provisioned inside a zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCustomHostnameFallbackOrigin` -- CloudflareDnsZone is a prerequisite because the fallback origin is a zone-level SSL-for-SaaS setting -- the spec's zone_id reference must resolve first.
+- `CloudflareZeroTrustAccessIdentityProvider` -- No prerequisites: identity providers are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustAccessServiceToken` -- No prerequisites: service tokens are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustGatewayPolicy` -- No prerequisites: Gateway policies are account-scoped, and their list / virtual-network references are optional per-manifest edges.
+- `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
 - `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
@@ -8132,6 +8152,10 @@ Allowed values (use exactly as shown):
 - `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
 - `CloudflareCustomHostname` -- CloudflareDnsZone is a prerequisite because a custom hostname (SSL for SaaS) is provisioned inside a zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCustomHostnameFallbackOrigin` -- CloudflareDnsZone is a prerequisite because the fallback origin is a zone-level SSL-for-SaaS setting -- the spec's zone_id reference must resolve first.
+- `CloudflareZeroTrustAccessIdentityProvider` -- No prerequisites: identity providers are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustAccessServiceToken` -- No prerequisites: service tokens are account-scoped in the canonical case (the optional zone scope is a per-manifest choice, not a structural dependency).
+- `CloudflareZeroTrustGatewayPolicy` -- No prerequisites: Gateway policies are account-scoped, and their list / virtual-network references are optional per-manifest edges.
+- `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
 - `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.

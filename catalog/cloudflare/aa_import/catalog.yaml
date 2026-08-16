@@ -221,6 +221,28 @@ spec:
     - terraform_type: cloudflare_zero_trust_access_policy
       pulumi_type: cloudflare:index/zeroTrustAccessPolicy:ZeroTrustAccessPolicy
       id_format: "{account_id}/{policy_id}"
+    # Identity providers and service tokens are dual-scope like applications
+    # and groups: the documented import ID carries a literal scope prefix
+    # ("{accounts|zones}/{account_id|zone_id}/{id}"). Live scenarios are
+    # account-scoped, so the accounts/ arm is the one recorded here. The
+    # SCIM secret (IdP) and client_secret (service token) never survive
+    # import -- Cloudflare returns them only at create/rotation.
+    - terraform_type: cloudflare_zero_trust_access_identity_provider
+      pulumi_type: cloudflare:index/zeroTrustAccessIdentityProvider:ZeroTrustAccessIdentityProvider
+      id_format: "accounts/{account_id}/{identity_provider_id}"
+    - terraform_type: cloudflare_zero_trust_access_service_token
+      pulumi_type: cloudflare:index/zeroTrustAccessServiceToken:ZeroTrustAccessServiceToken
+      id_format: "accounts/{account_id}/{service_token_id}"
+    # --- Zero Trust: Gateway ------------------------------------------------------
+    # Gateway policies and Zero Trust lists are account-scoped by API design
+    # -- no scope prefix. Policy import is "{account_id}/{rule_id}"; list
+    # import is "{account_id}/{list_id}".
+    - terraform_type: cloudflare_zero_trust_gateway_policy
+      pulumi_type: cloudflare:index/zeroTrustGatewayPolicy:ZeroTrustGatewayPolicy
+      id_format: "{account_id}/{policy_id}"
+    - terraform_type: cloudflare_zero_trust_list
+      pulumi_type: cloudflare:index/zeroTrustList:ZeroTrustList
+      id_format: "{account_id}/{list_id}"
     # --- Zero Trust: Tunnels ------------------------------------------------------
     # The tunnel and its remote-ingress config are separate provider resources
     # sharing ONE identity: the config is a tunnel-singleton, so both import as

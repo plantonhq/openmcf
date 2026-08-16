@@ -393,7 +393,11 @@ import (
 	cloudflareworkerskvpairv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareworkerskvpair/v1alpha1"
 	cloudflarezerotrustaccessapplicationv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessapplication/v1alpha1"
 	cloudflarezerotrustaccessgroupv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessgroup/v1alpha1"
+	cloudflarezerotrustaccessidentityproviderv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessidentityprovider/v1alpha1"
 	cloudflarezerotrustaccesspolicyv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccesspolicy/v1alpha1"
+	cloudflarezerotrustaccessservicetokenv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessservicetoken/v1alpha1"
+	cloudflarezerotrustgatewaypolicyv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustgatewaypolicy/v1alpha1"
+	cloudflarezerotrustlistv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustlist/v1alpha1"
 	cloudflarezerotrusttunnelv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrusttunnel/v1alpha1"
 	cloudflarezerotrusttunnelroutev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrusttunnelroute/v1alpha1"
 	cloudflarezerotrusttunnelvirtualnetworkv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/v1alpha1"
@@ -1019,39 +1023,43 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 }
 
 var ProviderCloudflareMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
-	cloudresourcekind.CloudResourceKind_CloudflareCacheSettings:                 &cloudflarecachesettingsv1alpha1.CloudflareCacheSettings{},
-	cloudresourcekind.CloudResourceKind_CloudflareCertificatePack:               &cloudflarecertificatepackv1alpha1.CloudflareCertificatePack{},
-	cloudresourcekind.CloudResourceKind_CloudflareCustomHostname:                &cloudflarecustomhostnamev1alpha1.CloudflareCustomHostname{},
-	cloudresourcekind.CloudResourceKind_CloudflareCustomHostnameFallbackOrigin:  &cloudflarecustomhostnamefallbackoriginv1alpha1.CloudflareCustomHostnameFallbackOrigin{},
-	cloudresourcekind.CloudResourceKind_CloudflareD1Database:                    &cloudflared1databasev1alpha1.CloudflareD1Database{},
-	cloudresourcekind.CloudResourceKind_CloudflareDnsRecord:                     &cloudflarednsrecordv1alpha1.CloudflareDnsRecord{},
-	cloudresourcekind.CloudResourceKind_CloudflareDnsZone:                       &cloudflarednszonev1alpha1.CloudflareDnsZone{},
-	cloudresourcekind.CloudResourceKind_CloudflareEmailRoutingAddress:           &cloudflareemailroutingaddressv1alpha1.CloudflareEmailRoutingAddress{},
-	cloudresourcekind.CloudResourceKind_CloudflareEmailRoutingRule:              &cloudflareemailroutingrulev1alpha1.CloudflareEmailRoutingRule{},
-	cloudresourcekind.CloudResourceKind_CloudflareEmailRoutingZone:              &cloudflareemailroutingzonev1alpha1.CloudflareEmailRoutingZone{},
-	cloudresourcekind.CloudResourceKind_CloudflareHyperdriveConfig:              &cloudflarehyperdriveconfigv1alpha1.CloudflareHyperdriveConfig{},
-	cloudresourcekind.CloudResourceKind_CloudflareKvNamespace:                   &cloudflarekvnamespacev1alpha1.CloudflareKvNamespace{},
-	cloudresourcekind.CloudResourceKind_CloudflareList:                          &cloudflarelistv1alpha1.CloudflareList{},
-	cloudresourcekind.CloudResourceKind_CloudflareListItem:                      &cloudflarelistitemv1alpha1.CloudflareListItem{},
-	cloudresourcekind.CloudResourceKind_CloudflareLoadBalancer:                  &cloudflareloadbalancerv1alpha1.CloudflareLoadBalancer{},
-	cloudresourcekind.CloudResourceKind_CloudflareLoadBalancerMonitor:           &cloudflareloadbalancermonitorv1alpha1.CloudflareLoadBalancerMonitor{},
-	cloudresourcekind.CloudResourceKind_CloudflareLoadBalancerPool:              &cloudflareloadbalancerpoolv1alpha1.CloudflareLoadBalancerPool{},
-	cloudresourcekind.CloudResourceKind_CloudflareOriginCaCertificate:           &cloudflareorigincacertificatev1alpha1.CloudflareOriginCaCertificate{},
-	cloudresourcekind.CloudResourceKind_CloudflarePagesProject:                  &cloudflarepagesprojectv1alpha1.CloudflarePagesProject{},
-	cloudresourcekind.CloudResourceKind_CloudflareQueue:                         &cloudflarequeuev1alpha1.CloudflareQueue{},
-	cloudresourcekind.CloudResourceKind_CloudflareR2Bucket:                      &cloudflarer2bucketv1alpha1.CloudflareR2Bucket{},
-	cloudresourcekind.CloudResourceKind_CloudflareRuleset:                       &cloudflarerulesetv1alpha1.CloudflareRuleset{},
-	cloudresourcekind.CloudResourceKind_CloudflareTurnstileWidget:               &cloudflareturnstilewidgetv1alpha1.CloudflareTurnstileWidget{},
-	cloudresourcekind.CloudResourceKind_CloudflareWorker:                        &cloudflareworkerv1alpha1.CloudflareWorker{},
-	cloudresourcekind.CloudResourceKind_CloudflareWorkersKvPair:                 &cloudflareworkerskvpairv1alpha1.CloudflareWorkersKvPair{},
-	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessApplication:    &cloudflarezerotrustaccessapplicationv1alpha1.CloudflareZeroTrustAccessApplication{},
-	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessGroup:          &cloudflarezerotrustaccessgroupv1alpha1.CloudflareZeroTrustAccessGroup{},
-	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessPolicy:         &cloudflarezerotrustaccesspolicyv1alpha1.CloudflareZeroTrustAccessPolicy{},
-	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustTunnel:               &cloudflarezerotrusttunnelv1alpha1.CloudflareZeroTrustTunnel{},
-	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustTunnelRoute:          &cloudflarezerotrusttunnelroutev1alpha1.CloudflareZeroTrustTunnelRoute{},
-	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustTunnelVirtualNetwork: &cloudflarezerotrusttunnelvirtualnetworkv1alpha1.CloudflareZeroTrustTunnelVirtualNetwork{},
-	cloudresourcekind.CloudResourceKind_CloudflareZoneSettings:                  &cloudflarezonesettingsv1alpha1.CloudflareZoneSettings{},
-	cloudresourcekind.CloudResourceKind_CloudflareZoneTlsSettings:               &cloudflarezonetlssettingsv1alpha1.CloudflareZoneTlsSettings{},
+	cloudresourcekind.CloudResourceKind_CloudflareCacheSettings:                   &cloudflarecachesettingsv1alpha1.CloudflareCacheSettings{},
+	cloudresourcekind.CloudResourceKind_CloudflareCertificatePack:                 &cloudflarecertificatepackv1alpha1.CloudflareCertificatePack{},
+	cloudresourcekind.CloudResourceKind_CloudflareCustomHostname:                  &cloudflarecustomhostnamev1alpha1.CloudflareCustomHostname{},
+	cloudresourcekind.CloudResourceKind_CloudflareCustomHostnameFallbackOrigin:    &cloudflarecustomhostnamefallbackoriginv1alpha1.CloudflareCustomHostnameFallbackOrigin{},
+	cloudresourcekind.CloudResourceKind_CloudflareD1Database:                      &cloudflared1databasev1alpha1.CloudflareD1Database{},
+	cloudresourcekind.CloudResourceKind_CloudflareDnsRecord:                       &cloudflarednsrecordv1alpha1.CloudflareDnsRecord{},
+	cloudresourcekind.CloudResourceKind_CloudflareDnsZone:                         &cloudflarednszonev1alpha1.CloudflareDnsZone{},
+	cloudresourcekind.CloudResourceKind_CloudflareEmailRoutingAddress:             &cloudflareemailroutingaddressv1alpha1.CloudflareEmailRoutingAddress{},
+	cloudresourcekind.CloudResourceKind_CloudflareEmailRoutingRule:                &cloudflareemailroutingrulev1alpha1.CloudflareEmailRoutingRule{},
+	cloudresourcekind.CloudResourceKind_CloudflareEmailRoutingZone:                &cloudflareemailroutingzonev1alpha1.CloudflareEmailRoutingZone{},
+	cloudresourcekind.CloudResourceKind_CloudflareHyperdriveConfig:                &cloudflarehyperdriveconfigv1alpha1.CloudflareHyperdriveConfig{},
+	cloudresourcekind.CloudResourceKind_CloudflareKvNamespace:                     &cloudflarekvnamespacev1alpha1.CloudflareKvNamespace{},
+	cloudresourcekind.CloudResourceKind_CloudflareList:                            &cloudflarelistv1alpha1.CloudflareList{},
+	cloudresourcekind.CloudResourceKind_CloudflareListItem:                        &cloudflarelistitemv1alpha1.CloudflareListItem{},
+	cloudresourcekind.CloudResourceKind_CloudflareLoadBalancer:                    &cloudflareloadbalancerv1alpha1.CloudflareLoadBalancer{},
+	cloudresourcekind.CloudResourceKind_CloudflareLoadBalancerMonitor:             &cloudflareloadbalancermonitorv1alpha1.CloudflareLoadBalancerMonitor{},
+	cloudresourcekind.CloudResourceKind_CloudflareLoadBalancerPool:                &cloudflareloadbalancerpoolv1alpha1.CloudflareLoadBalancerPool{},
+	cloudresourcekind.CloudResourceKind_CloudflareOriginCaCertificate:             &cloudflareorigincacertificatev1alpha1.CloudflareOriginCaCertificate{},
+	cloudresourcekind.CloudResourceKind_CloudflarePagesProject:                    &cloudflarepagesprojectv1alpha1.CloudflarePagesProject{},
+	cloudresourcekind.CloudResourceKind_CloudflareQueue:                           &cloudflarequeuev1alpha1.CloudflareQueue{},
+	cloudresourcekind.CloudResourceKind_CloudflareR2Bucket:                        &cloudflarer2bucketv1alpha1.CloudflareR2Bucket{},
+	cloudresourcekind.CloudResourceKind_CloudflareRuleset:                         &cloudflarerulesetv1alpha1.CloudflareRuleset{},
+	cloudresourcekind.CloudResourceKind_CloudflareTurnstileWidget:                 &cloudflareturnstilewidgetv1alpha1.CloudflareTurnstileWidget{},
+	cloudresourcekind.CloudResourceKind_CloudflareWorker:                          &cloudflareworkerv1alpha1.CloudflareWorker{},
+	cloudresourcekind.CloudResourceKind_CloudflareWorkersKvPair:                   &cloudflareworkerskvpairv1alpha1.CloudflareWorkersKvPair{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessApplication:      &cloudflarezerotrustaccessapplicationv1alpha1.CloudflareZeroTrustAccessApplication{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessGroup:            &cloudflarezerotrustaccessgroupv1alpha1.CloudflareZeroTrustAccessGroup{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessIdentityProvider: &cloudflarezerotrustaccessidentityproviderv1alpha1.CloudflareZeroTrustAccessIdentityProvider{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessPolicy:           &cloudflarezerotrustaccesspolicyv1alpha1.CloudflareZeroTrustAccessPolicy{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessServiceToken:     &cloudflarezerotrustaccessservicetokenv1alpha1.CloudflareZeroTrustAccessServiceToken{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustGatewayPolicy:          &cloudflarezerotrustgatewaypolicyv1alpha1.CloudflareZeroTrustGatewayPolicy{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustList:                   &cloudflarezerotrustlistv1alpha1.CloudflareZeroTrustList{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustTunnel:                 &cloudflarezerotrusttunnelv1alpha1.CloudflareZeroTrustTunnel{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustTunnelRoute:            &cloudflarezerotrusttunnelroutev1alpha1.CloudflareZeroTrustTunnelRoute{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustTunnelVirtualNetwork:   &cloudflarezerotrusttunnelvirtualnetworkv1alpha1.CloudflareZeroTrustTunnelVirtualNetwork{},
+	cloudresourcekind.CloudResourceKind_CloudflareZoneSettings:                    &cloudflarezonesettingsv1alpha1.CloudflareZoneSettings{},
+	cloudresourcekind.CloudResourceKind_CloudflareZoneTlsSettings:                 &cloudflarezonetlssettingsv1alpha1.CloudflareZoneTlsSettings{},
 }
 
 var ProviderDigitalOceanMap = map[cloudresourcekind.CloudResourceKind]proto.Message{

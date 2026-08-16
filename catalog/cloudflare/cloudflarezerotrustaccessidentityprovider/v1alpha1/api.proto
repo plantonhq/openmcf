@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustaccessidentityprovider.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarezerotrustaccessidentityprovider/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarezerotrustaccessidentityprovider/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareZeroTrustAccessIdentityProvider is a KRM-style resource for managing
+// how users sign in to Cloudflare Access: the connection to an identity provider
+// (Google, Okta, Azure AD, GitHub, generic OIDC/SAML, or one-time PIN).
+message CloudflareZeroTrustAccessIdentityProvider {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareZeroTrustAccessIdentityProvider'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareZeroTrustAccessIdentityProviderSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareZeroTrustAccessIdentityProviderStatus status = 5;
+}
+
+// CloudflareZeroTrustAccessIdentityProviderStatus represents the observed state
+// of an Access identity provider.
+message CloudflareZeroTrustAccessIdentityProviderStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareZeroTrustAccessIdentityProviderStackOutputs outputs = 1;
+}

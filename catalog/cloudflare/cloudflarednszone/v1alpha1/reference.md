@@ -1221,6 +1221,8 @@ Fields on other kinds that can point at this resource:
 | CloudflareWorker | `spec.routes[].zoneId` | `status.outputs.zone_id` |
 | CloudflareZeroTrustAccessApplication | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareZeroTrustAccessGroup | `spec.zoneId` | `status.outputs.zone_id` |
+| CloudflareZeroTrustAccessIdentityProvider | `spec.zoneId` | `status.outputs.zone_id` |
+| CloudflareZeroTrustAccessServiceToken | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareZoneSettings | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareZoneTlsSettings | `spec.zoneId` | `status.outputs.zone_id` |
 | KubernetesExternalDns | `spec.cloudflare.zoneIdFilters` | `status.outputs.zone_id` |
