@@ -1,0 +1,16 @@
+# Where each placeholder in this component's import-ID formats comes
+# from (the formats themselves live in aa_import/catalog.yaml).
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awscloudwatchlogresourcepolicy
+spec:
+  values:
+    - name: policy_id
+      derivations:
+        - from_stack_output: policy_id
+      where_to_find: >-
+        Account scope: the policy's name (`aws logs
+        describe-resource-policies` shows policyName). Resource scope:
+        the target log group's ARN -- an ARN-shaped import ID selects
+        the resource scope.

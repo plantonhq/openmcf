@@ -1,0 +1,14 @@
+# Where each placeholder in this component's import-ID formats comes
+# from (the formats themselves live in aa_import/catalog.yaml).
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awscloudwatchdashboard
+spec:
+  values:
+    - name: dashboard_name
+      derivations:
+        - from_spec_field: dashboard_name
+      where_to_find: >-
+        The dashboard's name -- CloudWatch console -> Dashboards, or
+        `aws cloudwatch list-dashboards` (DashboardName).

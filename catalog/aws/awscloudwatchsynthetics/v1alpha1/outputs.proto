@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package dev.planton.aws.awscloudwatchsynthetics.v1alpha1;
+
+// AwsCloudwatchSyntheticsStackOutputs captures the observable state of
+// the canary and owned groups after apply.
+message AwsCloudwatchSyntheticsStackOutputs {
+  // The canary's name (the provider's import ID for the canary).
+  // Empty on groups-only instances.
+  string canary_name = 1;
+
+  // The canary's ARN. Empty on groups-only instances.
+  string canary_arn = 2;
+
+  // ARN of the Synthetics-managed Lambda behind the canary.
+  string engine_arn = 3;
+
+  // ARN of the canary's staged code location.
+  string source_location_arn = 4;
+
+  // The canary's lifecycle status after apply (READY, RUNNING, ...).
+  string canary_status = 5;
+
+  // Owned group ARNs keyed by group name.
+  map<string, string> group_arns = 6;
+
+  // Owned group IDs keyed by group name (with the group name, the
+  // console's group identity).
+  map<string, string> group_ids = 7;
+}

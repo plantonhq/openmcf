@@ -1,0 +1,29 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchDashboard
+metadata:
+  name: alarm-overview
+spec:
+  region: us-east-1
+  dashboardName: AlarmOverview
+  dashboardBody:
+    widgets:
+      - type: alarm
+        x: 0
+        y: 0
+        width: 24
+        height: 4
+        properties:
+          title: Production alarms
+          alarms:
+            - arn:aws:cloudwatch:us-east-1:123456789012:alarm:prod-api-5xx
+            - arn:aws:cloudwatch:us-east-1:123456789012:alarm:prod-db-cpu
+      - type: log
+        x: 0
+        y: 4
+        width: 24
+        height: 6
+        properties:
+          query: "SOURCE '/app/api' | fields @timestamp, @message | filter @message like /ERROR/ | sort @timestamp desc | limit 20"
+          region: us-east-1
+          title: Recent errors
+          view: table

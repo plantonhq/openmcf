@@ -60,7 +60,13 @@ import (
 	awscloudtraileventdatastorev1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudtraileventdatastore/v1alpha1"
 	awscloudwatchalarmv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchalarm/v1alpha1"
 	awscloudwatchcompositealarmv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchcompositealarm/v1alpha1"
+	awscloudwatchdashboardv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchdashboard/v1alpha1"
+	awscloudwatchlogaccountpolicyv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchlogaccountpolicy/v1alpha1"
+	awscloudwatchloganomalydetectorv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchloganomalydetector/v1alpha1"
+	awscloudwatchlogdeliveryv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchlogdelivery/v1alpha1"
 	awscloudwatchloggroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchloggroup/v1alpha1"
+	awscloudwatchlogresourcepolicyv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchlogresourcepolicy/v1alpha1"
+	awscloudwatchsyntheticsv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchsynthetics/v1alpha1"
 	awscodebuildprojectv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscodebuildproject/v1alpha1"
 	awscodepipelinev1alpha1 "github.com/plantonhq/planton/catalog/aws/awscodepipeline/v1alpha1"
 	awscognitoidentityproviderv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscognitoidentityprovider/v1alpha1"
@@ -126,6 +132,8 @@ import (
 	awslblistenerv1alpha1 "github.com/plantonhq/planton/catalog/aws/awslblistener/v1alpha1"
 	awslblistenerrulev1alpha1 "github.com/plantonhq/planton/catalog/aws/awslblistenerrule/v1alpha1"
 	awslbtargetgroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awslbtargetgroup/v1alpha1"
+	awsmanagedprometheusv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsmanagedprometheus/v1alpha1"
+	awsmanagedprometheusscraperv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsmanagedprometheusscraper/v1alpha1"
 	awsmemcachedelasticachev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsmemcachedelasticache/v1alpha1"
 	awsmemorydbaclv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsmemorydbacl/v1alpha1"
 	awsmemorydbclusterv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsmemorydbcluster/v1alpha1"
@@ -714,7 +722,13 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsCloudTrailEventDataStore:            &awscloudtraileventdatastorev1alpha1.AwsCloudTrailEventDataStore{},
 	cloudresourcekind.CloudResourceKind_AwsCloudwatchAlarm:                     &awscloudwatchalarmv1alpha1.AwsCloudwatchAlarm{},
 	cloudresourcekind.CloudResourceKind_AwsCloudwatchCompositeAlarm:            &awscloudwatchcompositealarmv1alpha1.AwsCloudwatchCompositeAlarm{},
+	cloudresourcekind.CloudResourceKind_AwsCloudwatchDashboard:                 &awscloudwatchdashboardv1alpha1.AwsCloudwatchDashboard{},
+	cloudresourcekind.CloudResourceKind_AwsCloudwatchLogAccountPolicy:          &awscloudwatchlogaccountpolicyv1alpha1.AwsCloudwatchLogAccountPolicy{},
+	cloudresourcekind.CloudResourceKind_AwsCloudwatchLogAnomalyDetector:        &awscloudwatchloganomalydetectorv1alpha1.AwsCloudwatchLogAnomalyDetector{},
+	cloudresourcekind.CloudResourceKind_AwsCloudwatchLogDelivery:               &awscloudwatchlogdeliveryv1alpha1.AwsCloudwatchLogDelivery{},
 	cloudresourcekind.CloudResourceKind_AwsCloudwatchLogGroup:                  &awscloudwatchloggroupv1alpha1.AwsCloudwatchLogGroup{},
+	cloudresourcekind.CloudResourceKind_AwsCloudwatchLogResourcePolicy:         &awscloudwatchlogresourcepolicyv1alpha1.AwsCloudwatchLogResourcePolicy{},
+	cloudresourcekind.CloudResourceKind_AwsCloudwatchSynthetics:                &awscloudwatchsyntheticsv1alpha1.AwsCloudwatchSynthetics{},
 	cloudresourcekind.CloudResourceKind_AwsCodeBuildProject:                    &awscodebuildprojectv1alpha1.AwsCodeBuildProject{},
 	cloudresourcekind.CloudResourceKind_AwsCodePipeline:                        &awscodepipelinev1alpha1.AwsCodePipeline{},
 	cloudresourcekind.CloudResourceKind_AwsCognitoIdentityProvider:             &awscognitoidentityproviderv1alpha1.AwsCognitoIdentityProvider{},
@@ -780,6 +794,8 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsLbListener:                          &awslblistenerv1alpha1.AwsLbListener{},
 	cloudresourcekind.CloudResourceKind_AwsLbListenerRule:                      &awslblistenerrulev1alpha1.AwsLbListenerRule{},
 	cloudresourcekind.CloudResourceKind_AwsLbTargetGroup:                       &awslbtargetgroupv1alpha1.AwsLbTargetGroup{},
+	cloudresourcekind.CloudResourceKind_AwsManagedPrometheus:                   &awsmanagedprometheusv1alpha1.AwsManagedPrometheus{},
+	cloudresourcekind.CloudResourceKind_AwsManagedPrometheusScraper:            &awsmanagedprometheusscraperv1alpha1.AwsManagedPrometheusScraper{},
 	cloudresourcekind.CloudResourceKind_AwsMemcachedElasticache:                &awsmemcachedelasticachev1alpha1.AwsMemcachedElasticache{},
 	cloudresourcekind.CloudResourceKind_AwsMemorydbAcl:                         &awsmemorydbaclv1alpha1.AwsMemorydbAcl{},
 	cloudresourcekind.CloudResourceKind_AwsMemorydbCluster:                     &awsmemorydbclusterv1alpha1.AwsMemorydbCluster{},

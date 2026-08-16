@@ -1,0 +1,41 @@
+# Canonical AwsCloudwatchSynthetics example (hack/dev manifest and
+# refgen Example source): a heartbeat canary with an owned group and
+# its join, run config, and retention. Literal values stand in for
+# composed references so the offline `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchSynthetics
+metadata:
+  name: checkout-heartbeat
+  id: checkout-heartbeat
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  canary:
+    artifactBucket:
+      value: my-canary-artifacts
+    artifactPrefix: canary/checkout
+    executionRoleArn:
+      value: arn:aws:iam::123456789012:role/canary-exec
+    handler: heartbeat.handler
+    runtimeVersion: syn-nodejs-puppeteer-9.1
+    code:
+      s3Bucket:
+        value: my-canary-code
+      s3Key: e2e/canary-heartbeat.zip
+    schedule:
+      expression: rate(5 minutes)
+      maxRetries: 1
+    runConfig:
+      memoryInMb: 960
+      timeoutInSeconds: 60
+      environmentVariables:
+        TARGET_URL: https://checkout.example.com/health
+    failureRetentionPeriod: 31
+    successRetentionPeriod: 7
+    startCanary: false
+    deleteLambda: true
+  groups:
+    - name: checkout-canaries
+  groupNames:
+    - checkout-canaries

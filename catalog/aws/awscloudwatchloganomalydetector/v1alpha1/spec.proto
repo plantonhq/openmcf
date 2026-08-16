@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package dev.planton.aws.awscloudwatchloganomalydetector.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsCloudwatchLogAnomalyDetectorSpec defines one CloudWatch Logs
+// anomaly detector: a machine-learning model that trains over a LIST
+// of log groups and surfaces unusual patterns (new error classes,
+// volume spikes, format drift) as anomalies.
+//
+// One detector spans many log groups - it is multi-parent by design,
+// never a single group's satellite. Anomalies appear after the model's
+// initial training period (up to 24 hours on real traffic).
+message AwsCloudwatchLogAnomalyDetectorSpec {
+  // The AWS region the detector runs in. Example: "us-east-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The detector's display name in AWS. Unset lets AWS show the
+  // detector unnamed (identity is the generated ARN either way).
+  string detector_name = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // The log groups the detector trains over. Reference
+  // AwsCloudwatchLogGroup log_group_arn outputs or pass literal log
+  // group ARNs (the bare group ARN, no ":*" suffix). NOTE: AWS's API
+  // models this as a list but currently accepts exactly ONE entry -
+  // additional entries fail at apply until AWS lifts its cap.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef log_group_arns = 3 [
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCloudwatchLogGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.log_group_arn"
+  ];
+
+  // Whether the detector is actively analyzing. AWS requires an
+  // explicit value; both engines always send it. Set false to pause
+  // analysis without losing the trained model.
+  bool enabled = 4;
+
+  // How often the detector evaluates new log events. Unset keeps AWS's
+  // default cadence. Longer frequencies cost less and lag more.
+  string evaluation_frequency = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "ONE_MIN",
+        "FIVE_MIN",
+        "TEN_MIN",
+        "FIFTEEN_MIN",
+        "THIRTY_MIN",
+        "ONE_HOUR"
+      ]
+    }
+  ];
+
+  // Limits training to events matching this CloudWatch Logs filter
+  // pattern. Unset trains on everything.
+  string filter_pattern = 6 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Customer-managed KMS key that encrypts the detector's findings.
+  // Reference an AwsKmsKey key_arn output or pass a literal key ARN.
+  // Changing it replaces the detector (AWS cannot re-encrypt a trained
+  // model in place).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // How many days a surfaced anomaly stays visible before aging out
+  // (7-90). Unset keeps AWS's default (21). Presence-typed so the
+  // boundary values are expressible.
+  optional int64 anomaly_visibility_time = 8 [(buf.validate.field).int64 = {
+    gte: 7
+    lte: 90
+  }];
+}

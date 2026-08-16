@@ -1553,6 +1553,70 @@ func TestAwsIamAccountSettings_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsiamaccountsettings", "terraform")
 }
 
+func TestAwsCloudwatchDashboard_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchdashboard", "pulumi")
+}
+
+func TestAwsCloudwatchDashboard_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchdashboard", "terraform")
+}
+
+func TestAwsCloudwatchSynthetics_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchsynthetics", "pulumi")
+}
+
+func TestAwsCloudwatchSynthetics_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchsynthetics", "terraform")
+}
+
+func TestAwsCloudwatchLogDelivery_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchlogdelivery", "pulumi")
+}
+
+func TestAwsCloudwatchLogDelivery_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchlogdelivery", "terraform")
+}
+
+func TestAwsCloudwatchLogAccountPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchlogaccountpolicy", "pulumi")
+}
+
+func TestAwsCloudwatchLogAccountPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchlogaccountpolicy", "terraform")
+}
+
+func TestAwsCloudwatchLogAnomalyDetector_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchloganomalydetector", "pulumi")
+}
+
+func TestAwsCloudwatchLogAnomalyDetector_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchloganomalydetector", "terraform")
+}
+
+func TestAwsCloudwatchLogResourcePolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchlogresourcepolicy", "pulumi")
+}
+
+func TestAwsCloudwatchLogResourcePolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchlogresourcepolicy", "terraform")
+}
+
+func TestAwsManagedPrometheus_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmanagedprometheus", "pulumi")
+}
+
+func TestAwsManagedPrometheus_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmanagedprometheus", "terraform")
+}
+
+func TestAwsManagedPrometheusScraper_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmanagedprometheusscraper", "pulumi")
+}
+
+func TestAwsManagedPrometheusScraper_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmanagedprometheusscraper", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

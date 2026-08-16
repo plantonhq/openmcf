@@ -1741,6 +1741,8 @@ Fields on other kinds that can point at this resource:
 | AwsBedrockInvocationLogging | `spec.s3.bucketName` | `status.outputs.bucket_id` |
 | AwsBedrockKnowledgeBase | `spec.dataSources[].s3.bucketArn` | `status.outputs.bucket_arn` |
 | AwsCloudTrail | `spec.s3BucketName` | `status.outputs.bucket_id` |
+| AwsCloudwatchSynthetics | `spec.canary.artifactBucket` | `status.outputs.bucket_id` |
+| AwsCloudwatchSynthetics | `spec.canary.code.s3Bucket` | `status.outputs.bucket_id` |
 | AwsCodeBuildProject | `spec.artifacts.location` | `status.outputs.bucket_id` |
 | AwsCodeBuildProject | `spec.secondaryArtifacts[].location` | `status.outputs.bucket_id` |
 | AwsCodeBuildProject | `spec.cache.location` | `status.outputs.bucket_id` |

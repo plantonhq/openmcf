@@ -414,6 +414,7 @@ Fields on other kinds that can point at this resource:
 | AwsBedrockAgentCoreTools | `spec.codeInterpreters[].network.vpcConfig.securityGroups` | `status.outputs.security_group_id` |
 | AwsBedrockCustomModel | `spec.vpcConfig.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsClientVpn | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsCloudwatchSynthetics | `spec.canary.vpcConfig.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsCodeBuildProject | `spec.environment.dockerServer.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsCodeBuildProject | `spec.vpcConfig.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsDocumentDb | `spec.securityGroupIds` | `status.outputs.security_group_id` |
@@ -434,6 +435,8 @@ Fields on other kinds that can point at this resource:
 | AwsLambda | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsLaunchTemplate | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsLaunchTemplate | `spec.networkInterfaces[].securityGroupIds` | `status.outputs.security_group_id` |
+| AwsManagedPrometheusScraper | `spec.sourceEks.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsManagedPrometheusScraper | `spec.sourceVpc.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsMemcachedElasticache | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsMemorydbCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsMskCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |

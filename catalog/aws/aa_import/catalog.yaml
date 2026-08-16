@@ -1531,3 +1531,167 @@ spec:
         The organization's ID ("o-..."; `aws organizations
         describe-organization` shows Id) -- the resource is the org's
         root-access-management singleton.
+
+    # --- CloudWatch dashboards --------------------------------------------------
+    - terraform_type: aws_cloudwatch_dashboard
+      pulumi_type: aws:cloudwatch/dashboard:Dashboard
+      id_format: "{dashboard_name}"
+      notes: >-
+        The dashboard's name (`aws cloudwatch list-dashboards` shows
+        DashboardName).
+
+    # --- CloudWatch Synthetics (canary + groups + joins) -----------------------
+    - terraform_type: aws_synthetics_canary
+      pulumi_type: aws:synthetics/canary:Canary
+      id_format: "{canary_name}"
+      # delete_lambda is delete-time engine behavior (whether teardown
+      # also removes the Synthetics-managed Lambda), never a canary
+      # property AWS returns.
+      config_only_attributes: [delete_lambda]
+      notes: >-
+        The canary's name (`aws synthetics describe-canaries` shows
+        Name).
+    - terraform_type: aws_synthetics_group
+      pulumi_type: aws:synthetics/group:Group
+      id_format: "{group_name}"
+      notes: >-
+        The group's name (`aws synthetics list-groups` shows Name).
+    - terraform_type: aws_synthetics_group_association
+      pulumi_type: aws:synthetics/groupAssociation:GroupAssociation
+      id_format: "{canary_arn},{group_name}"
+      notes: >-
+        Comma-separated canary ARN and group name (`aws synthetics
+        list-group-resources --group-identifier <name>` shows the
+        joined canary ARNs).
+
+    # --- CloudWatch Logs delivery (vended pipeline + legacy destination) -------
+    - terraform_type: aws_cloudwatch_log_delivery_source
+      pulumi_type: aws:cloudwatch/logDeliverySource:LogDeliverySource
+      id_format: "{source_name}"
+      notes: >-
+        The delivery source's name (`aws logs describe-delivery-sources`
+        shows name).
+    - terraform_type: aws_cloudwatch_log_delivery_destination
+      pulumi_type: aws:cloudwatch/logDeliveryDestination:LogDeliveryDestination
+      id_format: "{destination_name}"
+      notes: >-
+        The delivery destination's name (`aws logs
+        describe-delivery-destinations` shows name).
+    - terraform_type: aws_cloudwatch_log_delivery_destination_policy
+      pulumi_type: aws:cloudwatch/logDeliveryDestinationPolicy:LogDeliveryDestinationPolicy
+      id_format: "{destination_name}"
+      # The Get response does not round-trip the document; the
+      # post-import plan re-puts it (idempotent).
+      config_only_attributes: [delivery_destination_policy]
+      notes: >-
+        The owning delivery destination's name (one policy per
+        destination).
+    - terraform_type: aws_cloudwatch_log_delivery
+      pulumi_type: aws:cloudwatch/logDelivery:LogDelivery
+      id_format: "{delivery_id}"
+      # field_delimiter and the S3 layout members are not round-tripped
+      # by GetDelivery for every source type; post-import plans showing
+      # only them are clean (the provider's own import test ignores
+      # them).
+      config_only_attributes: [field_delimiter, s3_delivery_configuration]
+      notes: >-
+        The AWS-generated delivery ID (`aws logs describe-deliveries`
+        shows id).
+    - terraform_type: aws_cloudwatch_log_destination
+      pulumi_type: aws:cloudwatch/logDestination:LogDestination
+      id_format: "{cross_account_destination_name}"
+      notes: >-
+        The destination's name (`aws logs describe-destinations` shows
+        destinationName).
+    - terraform_type: aws_cloudwatch_log_destination_policy
+      pulumi_type: aws:cloudwatch/logDestinationPolicy:LogDestinationPolicy
+      id_format: "{cross_account_destination_name}"
+      notes: >-
+        The owning destination's name (`aws logs describe-destinations`
+        shows accessPolicy on the destination).
+
+    # --- CloudWatch Logs account-level policies --------------------------------
+    - terraform_type: aws_cloudwatch_log_account_policy
+      pulumi_type: aws:cloudwatch/logAccountPolicy:LogAccountPolicy
+      id_format: "{policy_name}:{policy_type}"
+      notes: >-
+        Colon-separated policy name and policy type (`aws logs
+        describe-account-policies --policy-type <type>` shows
+        policyName).
+
+    # --- CloudWatch Logs anomaly detectors -------------------------------------
+    - terraform_type: aws_cloudwatch_log_anomaly_detector
+      pulumi_type: aws:cloudwatch/logAnomalyDetector:LogAnomalyDetector
+      id_format: "{anomaly_detector_arn}"
+      # The Get response does not reliably round-trip the enabled flag;
+      # the provider's own import test ignores it.
+      config_only_attributes: [enabled]
+      notes: >-
+        The detector's ARN (`aws logs list-log-anomaly-detectors` shows
+        anomalyDetectorArn).
+
+    # --- CloudWatch Logs resource policies -------------------------------------
+    - terraform_type: aws_cloudwatch_log_resource_policy
+      pulumi_type: aws:cloudwatch/logResourcePolicy:LogResourcePolicy
+      id_format: "{policy_id}"
+      notes: >-
+        The policy's name for account-scoped policies (`aws logs
+        describe-resource-policies` shows policyName) or the target
+        resource ARN for resource-scoped ones -- an ARN-shaped import
+        ID selects the resource scope.
+
+    # --- Managed Prometheus (workspace + satellites) ---------------------------
+    - terraform_type: aws_prometheus_workspace
+      pulumi_type: aws:amp/workspace:Workspace
+      id_format: "{workspace_id}"
+      notes: >-
+        The workspace's ID ("ws-..."; `aws amp list-workspaces` shows
+        workspaceId).
+    - terraform_type: aws_prometheus_workspace_configuration
+      pulumi_type: aws:amp/workspaceConfiguration:WorkspaceConfiguration
+      id_format: "{workspace_id}"
+      notes: >-
+        The owning workspace's ID (one configuration per workspace).
+    - terraform_type: aws_prometheus_alert_manager_definition
+      pulumi_type: aws:amp/alertManagerDefinition:AlertManagerDefinition
+      id_format: "{workspace_id}"
+      notes: >-
+        The owning workspace's ID (one definition per workspace).
+    - terraform_type: aws_prometheus_rule_group_namespace
+      pulumi_type: aws:amp/ruleGroupNamespace:RuleGroupNamespace
+      id_format: "{namespace_arn}"
+      notes: >-
+        The namespace's ARN
+        ("...rulegroupsnamespace/{workspace_id}/{name}"; `aws amp
+        list-rule-groups-namespaces --workspace-id <id>` shows arn).
+    - terraform_type: aws_prometheus_query_logging_configuration
+      pulumi_type: aws:amp/queryLoggingConfiguration:QueryLoggingConfiguration
+      id_format: "{workspace_id}"
+      notes: >-
+        The owning workspace's ID (one query-logging configuration per
+        workspace).
+    - terraform_type: aws_prometheus_resource_policy
+      pulumi_type: aws:amp/resourcePolicy:ResourcePolicy
+      id_format: "{workspace_id}"
+      notes: >-
+        The owning workspace's ID (one resource policy per workspace).
+    - terraform_type: aws_prometheus_anomaly_detector
+      pulumi_type: aws:amp/anomalyDetector:AnomalyDetector
+      id_format: "{anomaly_detector_id},{workspace_id}"
+      notes: >-
+        Comma-separated detector ID and workspace ID (`aws amp
+        list-anomaly-detectors --workspace-id <id>` shows
+        anomalyDetectorId).
+
+    # --- Managed Prometheus scrapers --------------------------------------------
+    - terraform_type: aws_prometheus_scraper
+      pulumi_type: aws:amp/scraper:Scraper
+      id_format: "{scraper_id}"
+      notes: >-
+        The scraper's AWS-generated ID ("s-..."; `aws amp list-scrapers`
+        shows scraperId).
+    - terraform_type: aws_prometheus_scraper_logging_configuration
+      pulumi_type: aws:amp/scraperLoggingConfiguration:ScraperLoggingConfiguration
+      id_format: "{scraper_id}"
+      notes: >-
+        The owning scraper's ID (one logging configuration per scraper).

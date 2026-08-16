@@ -393,6 +393,7 @@ Fields on other kinds that can point at this resource:
 | AwsBedrockCustomModel | `spec.vpcConfig.subnetIds` | `status.outputs.subnet_id` |
 | AwsClientVpn | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsClientVpn | `spec.routes[].targetSubnetId` | `status.outputs.subnet_id` |
+| AwsCloudwatchSynthetics | `spec.canary.vpcConfig.subnetIds` | `status.outputs.subnet_id` |
 | AwsCodeBuildProject | `spec.vpcConfig.subnetIds` | `status.outputs.subnet_id` |
 | AwsDocumentDb | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsEc2Instance | `spec.subnetId` | `status.outputs.subnet_id` |
@@ -419,6 +420,8 @@ Fields on other kinds that can point at this resource:
 | AwsLambda | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsLaunchTemplate | `spec.networkInterfaces[].subnetId` | `status.outputs.subnet_id` |
 | AwsLaunchTemplate | `spec.secondaryInterfaces[].secondarySubnetId` | `status.outputs.subnet_id` |
+| AwsManagedPrometheusScraper | `spec.sourceEks.subnetIds` | `status.outputs.subnet_id` |
+| AwsManagedPrometheusScraper | `spec.sourceVpc.subnetIds` | `status.outputs.subnet_id` |
 | AwsMemcachedElasticache | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsMemorydbCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsMskCluster | `spec.subnetIds` | `status.outputs.subnet_id` |

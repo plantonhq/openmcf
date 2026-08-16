@@ -28,10 +28,10 @@ that has progressed.
 | | |
 |---|---|
 | Provider schema (parity baseline) | `aws@6.58.0` |
-| Kinds in the catalog | 175 |
-| Distinct provider resources consumed | 427 |
-| Spec fields authored across all kinds | 6632 |
-| Module pins on `aws` | `~> 6.58` × 175 |
+| Kinds in the catalog | 183 |
+| Distinct provider resources consumed | 449 |
+| Spec fields authored across all kinds | 6741 |
+| Module pins on `aws` | `~> 6.58` × 183 |
 | Module pins on `time` | `~> 0.13` × 1 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -46,7 +46,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**175 of 175 kinds are at total accounting; 113 proven live.**
+**183 of 183 kinds are at total accounting; 113 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -93,7 +93,13 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsCloudTrailEventDataStore | 19 | 6 | 10 | 3 | 0 | ✅ | — |
 | AwsCloudwatchAlarm | 39 | 24 | 12 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCloudwatchCompositeAlarm | 13 | 10 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCloudwatchDashboard | 3 | 3 | 0 | 0 | 0 | ✅ | — |
+| AwsCloudwatchLogAccountPolicy | 6 | 5 | 0 | 1 | 0 | ✅ | — |
+| AwsCloudwatchLogAnomalyDetector | 9 | 7 | 1 | 1 | 0 | ✅ | — |
+| AwsCloudwatchLogDelivery | 31 | 13 | 10 | 8 | 0 | ✅ | — |
 | AwsCloudwatchLogGroup | 100 | 19 | 70 | 11 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCloudwatchLogResourcePolicy | 4 | 4 | 0 | 0 | 0 | ✅ | — |
+| AwsCloudwatchSynthetics | 36 | 18 | 11 | 7 | 0 | ✅ | — |
 | AwsCodeBuildProject | 115 | 97 | 11 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCodePipeline | 84 | 4 | 75 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCognitoIdentityProvider | 7 | 6 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
@@ -159,6 +165,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsLbListener | 76 | 13 | 59 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbListenerRule | 61 | 3 | 55 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbTargetGroup | 48 | 34 | 7 | 7 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsManagedPrometheus | 45 | 12 | 21 | 12 | 0 | ✅ | — |
+| AwsManagedPrometheusScraper | 17 | 5 | 10 | 2 | 0 | ✅ | — |
 | AwsMemcachedElasticache | 48 | 21 | 3 | 24 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsMemorydbAcl | 6 | 2 | 0 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsMemorydbCluster | 46 | 29 | 3 | 14 | 0 | ✅ | — |
@@ -232,10 +240,10 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 426 | consumed by a kind's Terraform module today |
+| Modeled | 448 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 30 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 562 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 540 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 544 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
@@ -245,7 +253,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (426)
+### Modeled (448)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -370,15 +378,25 @@ rather than trusted.
 | `aws_cloudtrail_event_data_store` | consumed by AwsCloudTrailEventDataStore |
 | `aws_cloudtrail_organization_delegated_admin_account` | consumed by AwsCloudTrail |
 | `aws_cloudwatch_composite_alarm` | consumed by AwsCloudwatchCompositeAlarm |
+| `aws_cloudwatch_dashboard` | consumed by AwsCloudwatchDashboard |
 | `aws_cloudwatch_event_archive` | consumed by AwsEventBridgeBus |
 | `aws_cloudwatch_event_bus` | consumed by AwsEventBridgeBus |
 | `aws_cloudwatch_event_bus_policy` | consumed by AwsEventBridgeBus |
 | `aws_cloudwatch_event_rule` | consumed by AwsEventBridgeRule |
 | `aws_cloudwatch_event_target` | consumed by AwsEventBridgeRule |
+| `aws_cloudwatch_log_account_policy` | consumed by AwsCloudwatchLogAccountPolicy |
+| `aws_cloudwatch_log_anomaly_detector` | consumed by AwsCloudwatchLogAnomalyDetector |
 | `aws_cloudwatch_log_data_protection_policy` | consumed by AwsCloudwatchLogGroup |
+| `aws_cloudwatch_log_delivery` | consumed by AwsCloudwatchLogDelivery |
+| `aws_cloudwatch_log_delivery_destination` | consumed by AwsCloudwatchLogDelivery |
+| `aws_cloudwatch_log_delivery_destination_policy` | consumed by AwsCloudwatchLogDelivery |
+| `aws_cloudwatch_log_delivery_source` | consumed by AwsCloudwatchLogDelivery |
+| `aws_cloudwatch_log_destination` | consumed by AwsCloudwatchLogDelivery |
+| `aws_cloudwatch_log_destination_policy` | consumed by AwsCloudwatchLogDelivery |
 | `aws_cloudwatch_log_group` | consumed by AwsCloudwatchLogGroup, AwsEcsTaskDefinition, AwsPlantonRunner |
 | `aws_cloudwatch_log_index_policy` | consumed by AwsCloudwatchLogGroup |
 | `aws_cloudwatch_log_metric_filter` | consumed by AwsCloudwatchLogGroup |
+| `aws_cloudwatch_log_resource_policy` | consumed by AwsCloudwatchLogResourcePolicy |
 | `aws_cloudwatch_log_stream` | consumed by AwsCloudwatchLogGroup |
 | `aws_cloudwatch_log_subscription_filter` | consumed by AwsCloudwatchLogGroup |
 | `aws_cloudwatch_log_transformer` | consumed by AwsCloudwatchLogGroup |
@@ -566,6 +584,15 @@ rather than trusted.
 | `aws_organizations_policy` | consumed by AwsOrganizationPolicy |
 | `aws_organizations_policy_attachment` | consumed by AwsOrganizationPolicy |
 | `aws_organizations_resource_policy` | consumed by AwsOrganization |
+| `aws_prometheus_alert_manager_definition` | consumed by AwsManagedPrometheus |
+| `aws_prometheus_anomaly_detector` | consumed by AwsManagedPrometheus |
+| `aws_prometheus_query_logging_configuration` | consumed by AwsManagedPrometheus |
+| `aws_prometheus_resource_policy` | consumed by AwsManagedPrometheus |
+| `aws_prometheus_rule_group_namespace` | consumed by AwsManagedPrometheus |
+| `aws_prometheus_scraper` | consumed by AwsManagedPrometheusScraper |
+| `aws_prometheus_scraper_logging_configuration` | consumed by AwsManagedPrometheusScraper |
+| `aws_prometheus_workspace` | consumed by AwsManagedPrometheus |
+| `aws_prometheus_workspace_configuration` | consumed by AwsManagedPrometheus |
 | `aws_rds_cluster` | consumed by AwsRdsCluster |
 | `aws_rds_cluster_activity_stream` | consumed by AwsRdsCluster |
 | `aws_rds_cluster_endpoint` | consumed by AwsRdsCluster |
@@ -664,6 +691,9 @@ rather than trusted.
 | `aws_ssm_patch_baseline` | consumed by AwsSsmPatchBaseline |
 | `aws_ssm_patch_group` | consumed by AwsSsmPatchBaseline |
 | `aws_subnet` | consumed by AwsSubnet |
+| `aws_synthetics_canary` | consumed by AwsCloudwatchSynthetics |
+| `aws_synthetics_group` | consumed by AwsCloudwatchSynthetics |
+| `aws_synthetics_group_association` | consumed by AwsCloudwatchSynthetics |
 | `aws_vpc` | consumed by AwsVpc |
 | `aws_vpc_encryption_control` | consumed by AwsVpc |
 | `aws_vpc_endpoint` | consumed by AwsVpcEndpoint |
@@ -711,7 +741,7 @@ rather than trusted.
 | `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
 | `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (562)
+### Planned (540)
 
 | Resource | Recorded reason |
 |---|---|
@@ -776,18 +806,8 @@ rather than trusted.
 | `aws_cloudfrontkeyvaluestore_key` | judged as part of the planned AwsCloudFrontFunction kind (key-value stores and keys) |
 | `aws_cloudfrontkeyvaluestore_keys_exclusive` | judged as part of the planned AwsCloudFrontFunction kind (key-value stores and keys) |
 | `aws_cloudwatch_alarm_mute_rule` | judged as a planned AwsCloudwatchAlarmMuteRule kind: one rule mutes up to 100 alarms on a recurring schedule -- multi-alarm scope, not per-alarm configuration, so a fold onto AwsCloudwatchAlarm would misrepresent it (the CloudFront-companion class) |
-| `aws_cloudwatch_dashboard` | judged as a planned AwsCloudwatchDashboard kind |
 | `aws_cloudwatch_event_api_destination` | judged as a planned AwsEventbridgeApiDestination kind (API destinations with connections) |
 | `aws_cloudwatch_event_connection` | judged as a planned AwsEventbridgeApiDestination kind (API destinations with connections) |
-| `aws_cloudwatch_log_account_policy` | judged as a planned AwsCloudwatchLogAccountPolicy kind: an account-wide policy per type (data protection / subscription filter / field index / transformer) optionally scoped by selection criteria -- standalone account-scoped configuration, never a per-group satellite |
-| `aws_cloudwatch_log_anomaly_detector` | judged as a planned AwsCloudwatchLogAnomalyDetector kind: one detector trains over a LIST of log groups (log_group_arn_list) -- multi-parent scope, not a single group's satellite (the CloudFront-companion class) |
-| `aws_cloudwatch_log_delivery` | judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies) |
-| `aws_cloudwatch_log_delivery_destination` | judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies) |
-| `aws_cloudwatch_log_delivery_destination_policy` | judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies) |
-| `aws_cloudwatch_log_delivery_source` | judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies) |
-| `aws_cloudwatch_log_destination` | judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies) |
-| `aws_cloudwatch_log_destination_policy` | judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies) |
-| `aws_cloudwatch_log_resource_policy` | judged as a planned AwsCloudwatchLogResourcePolicy kind: account-scoped named policies that grant AWS services log-delivery permission (Route53 query logging, EventBridge, ...) -- standalone glue many kinds need; nothing in the catalog renders it today, so composed would overstate coverage |
 | `aws_cloudwatch_metric_stream` | judged as a planned AwsCloudwatchMetricStream kind |
 | `aws_codeartifact_domain` | judged as a planned AwsCodeArtifact kind (domains and repositories with permission policies) |
 | `aws_codeartifact_domain_permissions_policy` | judged as a planned AwsCodeArtifact kind (domains and repositories with permission policies) |
@@ -1044,15 +1064,6 @@ rather than trusted.
 | `aws_opensearchserverless_vpc_endpoint` | the consumer-side VPC endpoint referenced by many collections' network policies -- own lifecycle in the consumer's VPC (the managed-OpenSearch vpc_endpoint split, verbatim); judged as a future AwsOpenSearchServerlessVpcEndpoint kind (AwsOpenSearchServerlessCollection models the reference side via network.vpc_endpoint_ids) |
 | `aws_pipes_pipe` | judged as a planned AwsEventbridgePipe kind |
 | `aws_placement_group` | judged as a planned AwsPlacementGroup kind (re-judged 2026-08-11 from the blanket fold-into-AwsEc2Instance reason): an account-level placement strategy (cluster/partition/spread) consumed by many instances and ASGs -- AwsEc2Instance.placement references a group by name/id but cannot create one |
-| `aws_prometheus_alert_manager_definition` | judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging) |
-| `aws_prometheus_anomaly_detector` | judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging) |
-| `aws_prometheus_query_logging_configuration` | judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging) |
-| `aws_prometheus_resource_policy` | judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging) |
-| `aws_prometheus_rule_group_namespace` | judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging) |
-| `aws_prometheus_scraper` | judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging) |
-| `aws_prometheus_scraper_logging_configuration` | judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging) |
-| `aws_prometheus_workspace` | judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging) |
-| `aws_prometheus_workspace_configuration` | judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging) |
 | `aws_ram_permission` | judged as a planned AwsResourceShare kind (shares with principal/resource associations, accepters, permissions) |
 | `aws_ram_principal_association` | judged as a planned AwsResourceShare kind (shares with principal/resource associations, accepters, permissions) |
 | `aws_ram_resource_association` | judged as a planned AwsResourceShare kind (shares with principal/resource associations, accepters, permissions) |
@@ -1204,9 +1215,6 @@ rather than trusted.
 | `aws_storagegateway_tape_pool` | judged as a planned AwsStorageGateway kind (gateways, file shares, volumes, tape pools, caches) |
 | `aws_storagegateway_upload_buffer` | judged as a planned AwsStorageGateway kind (gateways, file shares, volumes, tape pools, caches) |
 | `aws_storagegateway_working_storage` | judged as a planned AwsStorageGateway kind (gateways, file shares, volumes, tape pools, caches) |
-| `aws_synthetics_canary` | judged as a planned AwsCloudwatchSynthetics kind (canaries, groups, associations) |
-| `aws_synthetics_group` | judged as a planned AwsCloudwatchSynthetics kind (canaries, groups, associations) |
-| `aws_synthetics_group_association` | judged as a planned AwsCloudwatchSynthetics kind (canaries, groups, associations) |
 | `aws_transfer_access` | judged as a planned AwsTransferServer kind (servers, users, SSH keys, access, host keys, workflows, web apps, tags) |
 | `aws_transfer_agreement` | judged as a planned AwsTransferConnector kind (connectors, agreements, profiles, certificates) |
 | `aws_transfer_certificate` | judged as a planned AwsTransferConnector kind (connectors, agreements, profiles, certificates) |

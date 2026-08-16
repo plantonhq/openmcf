@@ -1,0 +1,65 @@
+# Canonical AwsManagedPrometheus example (hack/dev manifest and refgen
+# Example source): a workspace with every satellite arm - alias,
+# configuration (retention + a label-set series cap), workspace
+# logging, the alert manager definition, a recording-rules namespace,
+# query logging, the resource policy, and an anomaly detector. Literal
+# values stand in for composed references so the offline `tofu plan`
+# renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsManagedPrometheus
+metadata:
+  name: platform-metrics
+  id: platform-metrics
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  alias: platform-metrics
+  logging:
+    logGroupArn:
+      value: arn:aws:logs:us-west-2:123456789012:log-group:/amp/workspace
+  configuration:
+    retentionPeriodInDays: 90
+    limitsPerLabelSet:
+      - labelSet:
+          team: ingest
+        maxSeries: 1000000
+  alertManagerDefinition: |
+    alertmanager_config: |
+      route:
+        receiver: default
+      receivers:
+        - name: default
+          sns_configs:
+            - topic_arn: arn:aws:sns:us-west-2:123456789012:amp-alerts
+              sigv4:
+                region: us-west-2
+  ruleGroupNamespaces:
+    - name: slo-rules
+      data: |
+        groups:
+          - name: request-rates
+            rules:
+              - record: job:http_requests:rate5m
+                expr: sum(rate(http_requests_total[5m])) by (job)
+  queryLogging:
+    destinations:
+      - logGroupArn:
+          value: arn:aws:logs:us-west-2:123456789012:log-group:/amp/queries
+        qspThreshold: 10000
+  resourcePolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          AWS: arn:aws:iam::210987654321:root
+        Action:
+          - aps:RemoteWrite
+        Resource: "*"
+  anomalyDetectors:
+    - alias: request-rate
+      query: sum(rate(http_requests_total[5m]))
+      evaluationIntervalInSeconds: 60
+      missingDataAction: SKIP
+      ignoreNearExpectedFromAbove:
+        ratio: 0.1

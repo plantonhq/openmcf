@@ -470,9 +470,6 @@ resources:
   - resource: aws_cloudwatch_contributor_managed_insight_rule
     disposition: deferred
     reason: "Contributor Insights rules; deferred pending demand"
-  - resource: aws_cloudwatch_dashboard
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudwatchDashboard kind"
   - resource: aws_cloudwatch_event_api_destination
     disposition: model-planned
     reason: "judged as a planned AwsEventbridgeApiDestination kind (API destinations with connections)"
@@ -485,33 +482,6 @@ resources:
   - resource: aws_cloudwatch_event_permission
     disposition: composed
     reason: "per-statement delivery (PutPermission with a StatementId) of the same bus policy AwsEventBridgeBus.spec.resource_policy models as one whole document via aws_cloudwatch_event_bus_policy -- mixing them fights over one policy (the bus-policy delete issues RemoveAllPermissions, wiping permission-managed statements)"
-  - resource: aws_cloudwatch_log_account_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudwatchLogAccountPolicy kind: an account-wide policy per type (data protection / subscription filter / field index / transformer) optionally scoped by selection criteria -- standalone account-scoped configuration, never a per-group satellite"
-  - resource: aws_cloudwatch_log_anomaly_detector
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudwatchLogAnomalyDetector kind: one detector trains over a LIST of log groups (log_group_arn_list) -- multi-parent scope, not a single group's satellite (the CloudFront-companion class)"
-  - resource: aws_cloudwatch_log_delivery
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies)"
-  - resource: aws_cloudwatch_log_delivery_destination
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies)"
-  - resource: aws_cloudwatch_log_delivery_destination_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies)"
-  - resource: aws_cloudwatch_log_delivery_source
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies)"
-  - resource: aws_cloudwatch_log_destination
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies)"
-  - resource: aws_cloudwatch_log_destination_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudWatchLogDelivery kind (vended-log deliveries, sources, destinations and their policies)"
-  - resource: aws_cloudwatch_log_resource_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudwatchLogResourcePolicy kind: account-scoped named policies that grant AWS services log-delivery permission (Route53 query logging, EventBridge, ...) -- standalone glue many kinds need; nothing in the catalog renders it today, so composed would overstate coverage"
   - resource: aws_cloudwatch_log_s3_table_integration_source
     disposition: deferred
     reason: "attaches a data source to an S3 Tables log INTEGRATION ARN whose parent integration has no provider resource (console/API-created) -- not log-group-scoped despite the former blanket; deferred until the S3 Tables integration surface is modelable end to end"
@@ -2366,33 +2336,6 @@ resources:
   - resource: aws_placement_group
     disposition: model-planned
     reason: "judged as a planned AwsPlacementGroup kind (re-judged 2026-08-11 from the blanket fold-into-AwsEc2Instance reason): an account-level placement strategy (cluster/partition/spread) consumed by many instances and ASGs -- AwsEc2Instance.placement references a group by name/id but cannot create one"
-  - resource: aws_prometheus_alert_manager_definition
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging)"
-  - resource: aws_prometheus_anomaly_detector
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging)"
-  - resource: aws_prometheus_query_logging_configuration
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging)"
-  - resource: aws_prometheus_resource_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging)"
-  - resource: aws_prometheus_rule_group_namespace
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging)"
-  - resource: aws_prometheus_scraper
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging)"
-  - resource: aws_prometheus_scraper_logging_configuration
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging)"
-  - resource: aws_prometheus_workspace
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging)"
-  - resource: aws_prometheus_workspace_configuration
-    disposition: model-planned
-    reason: "judged as a planned AwsManagedPrometheus kind (workspaces with alert-manager/rule definitions, scrapers, anomaly detectors, logging)"
   - resource: aws_proxy_protocol_policy
     disposition: excluded-deprecated
     reason: "Classic Load Balancer surface, superseded by ALB/NLB (covered by AwsAlb and AwsNlb)"
@@ -3305,15 +3248,6 @@ resources:
   - resource: aws_swf_domain
     disposition: excluded-deprecated
     reason: "SWF is superseded by Step Functions (covered by AwsStepFunction)"
-  - resource: aws_synthetics_canary
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudwatchSynthetics kind (canaries, groups, associations)"
-  - resource: aws_synthetics_group
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudwatchSynthetics kind (canaries, groups, associations)"
-  - resource: aws_synthetics_group_association
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudwatchSynthetics kind (canaries, groups, associations)"
   - resource: aws_timestreaminfluxdb_db_cluster
     disposition: deferred
     reason: "time-series database vertical (Timestream); deferred pending demand"

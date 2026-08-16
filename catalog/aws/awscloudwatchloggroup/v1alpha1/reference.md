@@ -1358,6 +1358,8 @@ Fields on other kinds that can point at this resource:
 | AwsBedrockInvocationLogging | `spec.cloudwatch.logGroupName` | `status.outputs.log_group_name` |
 | AwsClientVpn | `spec.connectionLog.cloudwatchLogGroup` | `status.outputs.log_group_name` |
 | AwsCloudTrail | `spec.cloudwatchLogs.logGroupArn` | `status.outputs.log_group_arn` |
+| AwsCloudwatchLogAnomalyDetector | `spec.logGroupArns` | `status.outputs.log_group_arn` |
+| AwsCloudwatchLogResourcePolicy | `spec.resourceArn` | `status.outputs.log_group_arn` |
 | AwsCodeBuildProject | `spec.logsConfig.cloudwatchLogs.groupName` | `status.outputs.log_group_name` |
 | AwsCognitoUserPool | `spec.logConfigurations[].cloudwatchLogGroupArn` | `status.outputs.log_group_arn` |
 | AwsEcsTaskDefinition | `spec.logging.logGroup` | `status.outputs.log_group_name` |
@@ -1365,6 +1367,9 @@ Fields on other kinds that can point at this resource:
 | AwsFsxWindowsFileSystem | `spec.auditLogConfiguration.auditLogDestination` | `status.outputs.log_group_arn` |
 | AwsHttpApiGateway | `spec.stage.accessLog.destinationArn` | `status.outputs.log_group_arn` |
 | AwsLambda | `spec.loggingConfig.logGroup` | `status.outputs.log_group_name` |
+| AwsManagedPrometheus | `spec.logging.logGroupArn` | `status.outputs.log_group_arn` |
+| AwsManagedPrometheus | `spec.queryLogging.destinations[].logGroupArn` | `status.outputs.log_group_arn` |
+| AwsManagedPrometheusScraper | `spec.logging.logGroupArn` | `status.outputs.log_group_arn` |
 | AwsMskCluster | `spec.logging.cloudwatchLogs.logGroup` | `status.outputs.log_group_name` |
 | AwsOpenSearchDomain | `spec.logPublishingOptions[].cloudwatchLogGroupArn` | `status.outputs.log_group_arn` |
 | AwsRestApiGateway | `spec.stage.accessLog.destinationArn` | `status.outputs.log_group_arn` |

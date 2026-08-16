@@ -1,0 +1,32 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsManagedPrometheusScraper
+metadata:
+  name: vpc-scraper
+spec:
+  region: us-east-1
+  alias: vpc-scraper
+  sourceVpc:
+    subnetIds:
+      - valueFrom:
+          kind: AwsSubnet
+          name: private-a
+          fieldPath: status.outputs.subnet_id
+    securityGroupIds:
+      - valueFrom:
+          kind: AwsSecurityGroup
+          name: scraper-egress
+          fieldPath: status.outputs.security_group_id
+  ampWorkspaceArn:
+    valueFrom:
+      kind: AwsManagedPrometheus
+      name: platform-metrics
+      fieldPath: status.outputs.workspace_arn
+  scrapeConfiguration: |
+    global:
+      scrape_interval: 30s
+    scrape_configs:
+      - job_name: ec2-node-exporters
+        static_configs:
+          - targets:
+              - 10.0.1.10:9100
+              - 10.0.1.11:9100

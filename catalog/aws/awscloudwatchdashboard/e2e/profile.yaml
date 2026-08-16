@@ -1,0 +1,16 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awscloudwatchdashboard
+spec:
+  # A two-widget dashboard (text + metric) proving the Struct-to-JSON
+  # body path, the PutDashboard upsert, and the no-tags contract.
+  # Minutes-lived, ~$0 (the monthly dashboard charge prorates to
+  # nothing).
+  #
+  # pending_proof: forged this session to the full offline bar -- Q44
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

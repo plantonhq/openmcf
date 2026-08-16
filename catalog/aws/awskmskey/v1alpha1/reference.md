@@ -416,7 +416,9 @@ Fields on other kinds that can point at this resource:
 | AwsBedrockPrompt | `spec.customerEncryptionKeyArn` | `status.outputs.key_arn` |
 | AwsCloudTrail | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsCloudTrailEventDataStore | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsCloudwatchLogAnomalyDetector | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsCloudwatchLogGroup | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsCloudwatchSynthetics | `spec.canary.artifactEncryptionKmsKeyArn` | `status.outputs.key_arn` |
 | AwsCodeBuildProject | `spec.encryptionKey` | `status.outputs.key_arn` |
 | AwsCodePipeline | `spec.artifactStores[].encryptionKeyId` | `status.outputs.key_arn` |
 | AwsCognitoUserPool | `spec.lambdaConfig.kmsKeyId` | `status.outputs.key_arn` |
@@ -459,6 +461,7 @@ Fields on other kinds that can point at this resource:
 | AwsLambda | `spec.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsLambdaEventSourceMapping | `spec.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsLaunchTemplate | `spec.blockDeviceMappings[].ebs.kmsKeyId` | `status.outputs.key_arn` |
+| AwsManagedPrometheus | `spec.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsMemorydbCluster | `spec.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsMskCluster | `spec.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsMwaaEnvironment | `spec.kmsKeyArn` | `status.outputs.key_arn` |

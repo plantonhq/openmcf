@@ -1,0 +1,29 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awscloudwatchlogdelivery
+spec:
+  # Two lanes: the vended pipeline (KB-fixture source -> owned S3
+  # destination -> delivery, the full modern arm) and the legacy
+  # cross-account Kinesis destination with its access policy. Both ~$0.
+  #
+  # Deliberately not exercised live:
+  #   - the destination POLICY on the vended arm -- a cross-account
+  #     grant needs a second account to prove anything real; the
+  #     document render is offline-proven and the same Put path carries
+  #     it. Unblock: a second-account fixture (none exists today).
+  #   - XRAY / CWL / Firehose destination types -- S3 proves the
+  #     destination lifecycle; the types differ by ARN service (AWS
+  #     derives the type). Unblock: dedicated lanes when the proof
+  #     queue wants per-type evidence.
+  #   - record_fields / field_delimiter -- source-type-specific wire
+  #     tuning the provider does not round-trip for every source;
+  #     offline-proven. Unblock: a CloudFront-source lane (its field
+  #     set is documented).
+  #
+  # pending_proof: forged this session to the full offline bar -- Q44
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 45

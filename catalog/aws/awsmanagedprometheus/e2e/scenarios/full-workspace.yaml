@@ -1,0 +1,77 @@
+# The workspace with every live-provable satellite: configuration
+# (retention + label-set cap - REMEMBER its no-op-delete contract:
+# destroy leaves the last-applied values on AWS's side while the
+# workspace itself is deleted, so nothing persists), workspace logging
+# and query logging into the log-group fixture, the alert manager
+# definition (SNS receiver on a placeholder topic - AWS validates the
+# document shape, not topic reachability), a recording-rules
+# namespace, the resource policy, and an anomaly detector. Idle
+# workspaces bill nothing; the detector evaluates against zero series
+# (~$0).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsManagedPrometheus
+metadata:
+  name: planton-oss-e2e-awsamp-full
+  id: planton-oss-e2e-awsamp-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsmanagedprometheus
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsCloudwatchLogGroup"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  alias: planton-oss-e2e-awsamp-full
+  logging:
+    logGroupArn:
+      valueFrom:
+        kind: AwsCloudwatchLogGroup
+        name: planton-oss-e2e-awsamp-lg
+        fieldPath: status.outputs.log_group_arn
+  configuration:
+    retentionPeriodInDays: 30
+    limitsPerLabelSet:
+      - labelSet:
+          e2e: planton
+        maxSeries: 1000
+  alertManagerDefinition: |
+    alertmanager_config: |
+      route:
+        receiver: default
+      receivers:
+        - name: default
+  ruleGroupNamespaces:
+    - name: planton-oss-e2e-rules
+      data: |
+        groups:
+          - name: e2e-recording
+            rules:
+              - record: e2e:up:count
+                expr: count(up)
+  queryLogging:
+    destinations:
+      - logGroupArn:
+          valueFrom:
+            kind: AwsCloudwatchLogGroup
+            name: planton-oss-e2e-awsamp-lg
+            fieldPath: status.outputs.log_group_arn
+        qspThreshold: 0
+  resourcePolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          AWS: arn:aws:iam::${E2E_ENV:PLANTON_E2E_AWS_ACCOUNT_ID}:root
+        Action:
+          - aps:RemoteWrite
+        Resource: "*"
+  anomalyDetectors:
+    - alias: planton-oss-e2e-request-rate
+      query: sum(rate(http_requests_total[5m]))
+      missingDataAction: SKIP
+      ignoreNearExpectedFromAbove:
+        ratio: 0.1

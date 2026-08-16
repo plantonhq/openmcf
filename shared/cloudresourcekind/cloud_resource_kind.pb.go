@@ -650,6 +650,60 @@ const (
 	// deletes, the password policy resets to AWS defaults, the STS
 	// preference is a no-op delete that persists.
 	CloudResourceKind_AwsIamAccountSettings CloudResourceKind = 1292
+	// A CloudWatch dashboard: one named dashboard whose widget layout is
+	// the dashboard-body JSON document (modeled as a typed Struct, the
+	// catalog's uniform policy-document idiom). Dashboards are untaggable
+	// at AWS. Identity is the dashboard name; every change is an in-place
+	// PutDashboard upsert. 1300 opens the CloudWatch observability P1
+	// sub-band (1300-1309).
+	CloudResourceKind_AwsCloudwatchDashboard CloudResourceKind = 1300
+	// CloudWatch Synthetics: a canary (a scheduled scripted probe running
+	// from an S3-staged code bundle under an execution role, writing run
+	// artifacts to S3) plus the grouping surface - owned groups and the
+	// canary's group associations (joins by group NAME, so shared groups
+	// are referenced, never fought over). A groups-only instance manages
+	// shared groups with no canary.
+	CloudResourceKind_AwsCloudwatchSynthetics CloudResourceKind = 1301
+	// CloudWatch Logs delivery: the two ways logs leave CloudWatch. The
+	// vended-log arm pivots on a delivery SOURCE (one AWS resource whose
+	// service vends logs) with name-keyed deliveries fanning out to
+	// delivery destinations (S3 / CloudWatch Logs / Firehose / X-Ray),
+	// each created inline or referenced by ARN. The cross-account arm is
+	// the legacy Kinesis subscription destination with its access policy
+	// (whose delete is a no-op at AWS - the policy persists).
+	CloudResourceKind_AwsCloudwatchLogDelivery CloudResourceKind = 1302
+	// A CloudWatch Logs account-level policy: one policy object per
+	// (name, type) pair per region - data protection, subscription
+	// filter, field index, transformer, or metric extraction - applied
+	// account-wide, optionally narrowed by selection criteria. Standalone
+	// account configuration, never a per-log-group satellite.
+	CloudResourceKind_AwsCloudwatchLogAccountPolicy CloudResourceKind = 1303
+	// A CloudWatch Logs anomaly detector: one detector trains over a
+	// LIST of log groups (multi-parent scope - never a single group's
+	// satellite), surfacing anomalies on a chosen evaluation frequency
+	// with a bounded visibility window.
+	CloudResourceKind_AwsCloudwatchLogAnomalyDetector CloudResourceKind = 1304
+	// A CloudWatch Logs resource policy: the account-scoped named policy
+	// (or resource-scoped policy on one log group ARN) that grants AWS
+	// services permission to write logs - Route53 query logging,
+	// EventBridge, and friends. Exactly one scope per instance.
+	CloudResourceKind_AwsCloudwatchLogResourcePolicy CloudResourceKind = 1305
+	// An Amazon Managed Prometheus workspace with its folded satellites:
+	// workspace configuration (retention, label-set limits - a
+	// created-via-update singleton whose delete is a no-op at AWS), the
+	// alert manager definition (strictly one per workspace), name-keyed
+	// rule group namespaces, query logging, the workspace resource
+	// policy, and alias-keyed anomaly detectors. Scrapers are deliberately
+	// NOT folded here - a scraper can target CloudWatch with zero AMP
+	// workspaces, so it is its own kind.
+	CloudResourceKind_AwsManagedPrometheus CloudResourceKind = 1306
+	// An Amazon Managed Prometheus scraper: the agentless collector.
+	// Source is an EKS cluster or a bare VPC placement (both
+	// replace-on-change); destination is an AMP workspace or a CloudWatch
+	// dataset. Carries its own scraper logging configuration satellite.
+	// Scrape configuration is optional on the EKS arm (AWS publishes a
+	// default, resolved at deploy) and required on the VPC arm.
+	CloudResourceKind_AwsManagedPrometheusScraper CloudResourceKind = 1307
 	// Account/region settings singleton (one SES account object per
 	// account+region): the suppression list and VDM posture. 1360 opens
 	// the SES P1 sub-band (1360-1369).
@@ -2089,6 +2143,14 @@ var (
 		1290: "AwsIamGroup",
 		1291: "AwsIamSamlProvider",
 		1292: "AwsIamAccountSettings",
+		1300: "AwsCloudwatchDashboard",
+		1301: "AwsCloudwatchSynthetics",
+		1302: "AwsCloudwatchLogDelivery",
+		1303: "AwsCloudwatchLogAccountPolicy",
+		1304: "AwsCloudwatchLogAnomalyDetector",
+		1305: "AwsCloudwatchLogResourcePolicy",
+		1306: "AwsManagedPrometheus",
+		1307: "AwsManagedPrometheusScraper",
 		1360: "AwsSesAccountSettings",
 		2000: "AzureResourceGroup",
 		2001: "AzureAksCluster",
@@ -2725,6 +2787,14 @@ var (
 		"AwsIamGroup":                                    1290,
 		"AwsIamSamlProvider":                             1291,
 		"AwsIamAccountSettings":                          1292,
+		"AwsCloudwatchDashboard":                         1300,
+		"AwsCloudwatchSynthetics":                        1301,
+		"AwsCloudwatchLogDelivery":                       1302,
+		"AwsCloudwatchLogAccountPolicy":                  1303,
+		"AwsCloudwatchLogAnomalyDetector":                1304,
+		"AwsCloudwatchLogResourcePolicy":                 1305,
+		"AwsManagedPrometheus":                           1306,
+		"AwsManagedPrometheusScraper":                    1307,
 		"AwsSesAccountSettings":                          1360,
 		"AzureResourceGroup":                             2000,
 		"AzureAksCluster":                                2001,
@@ -3562,7 +3632,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xa2\xa3\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\x8e\xa7\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -3752,7 +3822,23 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x12AwsIamSamlProvider\x10\x8b\n" +
 	"\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawssaml\x126\n" +
 	"\x15AwsIamAccountSettings\x10\x8c\n" +
-	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsiamas\x126\n" +
+	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsiamas\x125\n" +
+	"\x16AwsCloudwatchDashboard\x10\x94\n" +
+	"\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awscwd\x12<\n" +
+	"\x17AwsCloudwatchSynthetics\x10\x95\n" +
+	"\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\x06awssyn:\x04\xf0\a\xf5\a\x128\n" +
+	"\x18AwsCloudwatchLogDelivery\x10\x96\n" +
+	"\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawscwld\x12>\n" +
+	"\x1dAwsCloudwatchLogAccountPolicy\x10\x97\n" +
+	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawscwlap\x12D\n" +
+	"\x1fAwsCloudwatchLogAnomalyDetector\x10\x98\n" +
+	"\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawscwlad:\x02\xd6\b\x12?\n" +
+	"\x1eAwsCloudwatchLogResourcePolicy\x10\x99\n" +
+	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawscwlrp\x123\n" +
+	"\x14AwsManagedPrometheus\x10\x9a\n" +
+	"\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awsamp\x12?\n" +
+	"\x1bAwsManagedPrometheusScraper\x10\x9b\n" +
+	"\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsamps:\x02\xbc\b\x126\n" +
 	"\x15AwsSesAccountSettings\x10\xd0\n" +
 	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssesas\x121\n" +
 	"\x12AzureResourceGroup\x10\xd0\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\bv1alpha1\"\x04azrg0\x01\x121\n" +

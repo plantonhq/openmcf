@@ -341,7 +341,9 @@ Fields on other kinds that can point at this resource:
 | AwsBudget | `spec.actions[].executionRoleArn` | `status.outputs.role_arn` |
 | AwsBudget | `spec.actions[].iamActionDefinition.roles` | `status.outputs.role_name` |
 | AwsCloudTrail | `spec.cloudwatchLogs.roleArn` | `status.outputs.role_arn` |
+| AwsCloudwatchLogDelivery | `spec.crossAccountDestination.roleArn` | `status.outputs.role_arn` |
 | AwsCloudwatchLogGroup | `spec.subscriptionFilters[].roleArn` | `status.outputs.role_arn` |
+| AwsCloudwatchSynthetics | `spec.canary.executionRoleArn` | `status.outputs.role_arn` |
 | AwsCodeBuildProject | `spec.serviceRole` | `status.outputs.role_arn` |
 | AwsCodeBuildProject | `spec.buildBatchConfig.serviceRole` | `status.outputs.role_arn` |
 | AwsCodeBuildProject | `spec.resourceAccessRole` | `status.outputs.role_arn` |
@@ -412,6 +414,8 @@ Fields on other kinds that can point at this resource:
 | AwsKmsKey | `spec.grants[].granteePrincipal` | `status.outputs.role_arn` |
 | AwsKmsKey | `spec.grants[].retiringPrincipal` | `status.outputs.role_arn` |
 | AwsLambda | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsManagedPrometheusScraper | `spec.roleConfiguration.sourceRoleArn` | `status.outputs.role_arn` |
+| AwsManagedPrometheusScraper | `spec.roleConfiguration.targetRoleArn` | `status.outputs.role_arn` |
 | AwsMwaaEnvironment | `spec.executionRoleArn` | `status.outputs.role_arn` |
 | AwsNeptuneCluster | `spec.iamRoles` | `status.outputs.role_arn` |
 | AwsOpenSearchDomain | `spec.advancedSecurityOptions.masterUserArn` | `status.outputs.role_arn` |

@@ -1,0 +1,33 @@
+# Consumer-scoped AwsIamRole install profile for the canary's
+# execution role: the Synthetics-managed Lambda assumes it, so the
+# trust is lambda.amazonaws.com, and CloudWatchSyntheticsFullAccess
+# plus the Lambda basic-execution policy carry the run permissions
+# (artifact writes, logs, metrics). Scoping the fixture here keeps the
+# synthetics permission shape off the shared fixed-name set (the
+# concurrent-session collision class).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-awssyn-exec
+  id: planton-oss-e2e-awssyn-exec
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: lambda.amazonaws.com
+        Action: sts:AssumeRole
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/CloudWatchSyntheticsFullAccess
+    - value: arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole

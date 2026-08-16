@@ -1,0 +1,285 @@
+syntax = "proto3";
+
+package dev.planton.aws.awscloudwatchlogdelivery.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsCloudwatchLogDeliverySpec defines the two ways logs leave
+// CloudWatch, as two independently deployable arms:
+//
+// The VENDED arm is the modern delivery framework: a delivery SOURCE
+// wraps one AWS resource whose service vends logs (CloudFront access
+// logs, Bedrock knowledge-base logs, SES mail events, ...), owned
+// delivery DESTINATIONS wrap where logs land (S3, CloudWatch Logs,
+// Firehose, X-Ray), and DELIVERIES join this source to destinations -
+// owned ones by name or destinations that exist elsewhere by ARN. One
+// instance owns at most one source; a destination shared by many
+// sources is owned by one instance and referenced by ARN from the
+// rest.
+//
+// The CROSS-ACCOUNT arm is the legacy subscription destination: a
+// named Kinesis-backed receiving endpoint (with its access policy)
+// that OTHER accounts' subscription filters target. Its access policy
+// PERSISTS at AWS after destroy - deleting the destination is real,
+// deleting the policy alone is a provider no-op.
+message AwsCloudwatchLogDeliverySpec {
+  // At least one arm must be configured.
+  option (buf.validate.message).cel = {
+    id: "spec.at_least_one_arm"
+    message: "configure the vended arm, the cross_account_destination arm, or both - an empty spec manages nothing"
+    expression: "has(this.vended) || has(this.cross_account_destination)"
+  };
+
+  // The AWS region the delivery objects live in. Example:
+  // "us-east-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The vended-log delivery arm.
+  AwsVendedLogDelivery vended = 2;
+
+  // The legacy cross-account subscription destination arm.
+  AwsCrossAccountLogDestination cross_account_destination = 3;
+}
+
+// AwsVendedLogDelivery is the modern delivery pipeline: one optional
+// source, owned destinations, and the deliveries joining them.
+message AwsVendedLogDelivery {
+  // An empty vended arm manages nothing.
+  option (buf.validate.message).cel = {
+    id: "vended.at_least_one_object"
+    message: "configure a source, at least one owned destination, or both"
+    expression: "has(this.source) || this.destinations.size() > 0"
+  };
+  // Deliveries join THIS instance's source to destinations.
+  option (buf.validate.message).cel = {
+    id: "vended.deliveries_require_source"
+    message: "deliveries join this instance's source to destinations - configure the source or drop the deliveries"
+    expression: "this.deliveries.size() == 0 || has(this.source)"
+  };
+  // Names key the for_each entries in both engines.
+  option (buf.validate.message).cel = {
+    id: "vended.destination_names_unique"
+    message: "destinations entries must have unique names"
+    expression: "this.destinations.map(d, d.name).unique()"
+  };
+  option (buf.validate.message).cel = {
+    id: "vended.delivery_names_unique"
+    message: "deliveries entries must have unique names"
+    expression: "this.deliveries.map(d, d.name).unique()"
+  };
+  // Owned-destination joins must name destinations this spec owns.
+  option (buf.validate.message).cel = {
+    id: "vended.delivery_destination_names_exist"
+    message: "each delivery's destination_name must match a destinations entry"
+    expression: "this.deliveries.all(d, d.destination_name == '' || this.destinations.exists(o, o.name == d.destination_name))"
+  };
+
+  // The delivery source: the AWS resource whose vended logs this
+  // pipeline carries.
+  AwsVendedLogSource source = 1;
+
+  // Owned delivery destinations, keyed by name. A destination shared
+  // by many pipelines lives in ONE owning instance; other instances
+  // reference it by ARN in their deliveries.
+  repeated AwsVendedLogDestination destinations = 2;
+
+  // The deliveries joining this source to destinations. AWS allows at
+  // most one delivery per (source, destination-type) pair - e.g. one
+  // to S3 plus one to Firehose, never two to S3.
+  repeated AwsVendedLogDeliveryEntry deliveries = 3;
+}
+
+// AwsVendedLogSource wraps one AWS resource as a named delivery
+// source. AWS models it per (resource, log_type) - a second log type
+// from the same resource is a second source (a second instance).
+message AwsVendedLogSource {
+  // The source's name in AWS (its identity - renaming replaces it).
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 60
+  }];
+
+  // The log type this source vends, as the producing service names it
+  // (e.g. "ACCESS_LOGS" for CloudFront, "APPLICATION_LOGS" for
+  // Bedrock knowledge bases - each service's vended-logs docs list its
+  // types). Changing it replaces the source.
+  string log_type = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 255
+  }];
+
+  // ARN of the resource whose logs this source vends (a CloudFront
+  // distribution, a Bedrock knowledge base, ...). Any vended-logs
+  // producer works - reference the producing kind's ARN output or
+  // pass a literal ARN. Changing it replaces the source.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_arn = 3 [(buf.validate.field).required = true];
+}
+
+// AwsVendedLogDestination is one owned delivery destination.
+message AwsVendedLogDestination {
+  // X-Ray destinations carry no resource ARN (X-Ray is the account's
+  // trace store); every other type requires one.
+  option (buf.validate.message).cel = {
+    id: "destination.arn_matches_type"
+    message: "destination_resource_arn is required unless delivery_destination_type is XRAY (which forbids it)"
+    expression: "(this.delivery_destination_type == 'XRAY') ? !has(this.destination_resource_arn) : has(this.destination_resource_arn)"
+  };
+
+  // The destination's name in AWS (its identity - renaming replaces
+  // it). Also the key deliveries join on.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 60
+  }];
+
+  // ARN of the receiving resource: an S3 bucket, a CloudWatch log
+  // group, or a Firehose delivery stream. AWS infers the destination
+  // type from the ARN's service. Forbidden for XRAY destinations.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef destination_resource_arn = 2;
+
+  // The destination's type. Usually unset - AWS derives it from
+  // destination_resource_arn. XRAY must be declared explicitly (it
+  // has no ARN to infer from).
+  string delivery_destination_type = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "S3",
+        "CWL",
+        "FH",
+        "XRAY"
+      ]
+    }
+  ];
+
+  // The wire format written to the destination. Unset keeps AWS's
+  // default for the destination type. Changing it replaces the
+  // destination.
+  string output_format = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "json",
+        "plain",
+        "w3c",
+        "raw",
+        "parquet"
+      ]
+    }
+  ];
+
+  // The destination's resource policy - the cross-account grant
+  // letting OTHER accounts' delivery sources deliver here. Statements
+  // allow logs:CreateDelivery to the producer accounts. Unset for
+  // same-account pipelines.
+  google.protobuf.Struct policy = 5;
+}
+
+// AwsVendedLogDeliveryEntry joins the instance's source to one
+// destination, with the delivery's wire-format settings.
+message AwsVendedLogDeliveryEntry {
+  // Exactly one destination reference shape.
+  option (buf.validate.message).cel = {
+    id: "delivery.exactly_one_destination_ref"
+    message: "set exactly one of destination_name (an owned destination) and destination_arn (a destination that exists elsewhere)"
+    expression: "(this.destination_name != '') != has(this.destination_arn)"
+  };
+
+  // The delivery's name within this instance - the key the modules
+  // use for the for_each entry and the outputs map. Planton-side
+  // only; AWS identifies deliveries by a generated ID.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 63
+  }];
+
+  // An owned destination's name (a destinations entry in this spec).
+  string destination_name = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // ARN of a delivery destination that exists elsewhere - another
+  // instance's owned destination (reference its
+  // destination_arns output) or any pre-existing one.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef destination_arn = 3;
+
+  // The record fields written per log event, in order. Unset delivers
+  // the source's default field set (each log type documents its
+  // fields).
+  repeated string record_fields = 4 [(buf.validate.field).repeated = {
+    max_items: 128
+    items: {
+      string: {
+        min_len: 1
+        max_len: 64
+      }
+    }
+  }];
+
+  // The field delimiter for plain/w3c text formats (up to 5
+  // characters). Unset keeps the format's default.
+  string field_delimiter = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 5
+  ];
+
+  // S3-destination layout settings. Ignored for non-S3 destinations.
+  AwsVendedLogS3DeliveryConfiguration s3_configuration = 6;
+}
+
+// AwsVendedLogS3DeliveryConfiguration shapes how an S3 destination
+// lays out delivered objects.
+message AwsVendedLogS3DeliveryConfiguration {
+  // Write Hive-compatible key paths (year=.../month=... partitions),
+  // so Athena/Glue partition discovery works out of the box.
+  bool enable_hive_compatible_path = 1;
+
+  // The key suffix path under the destination bucket. For CloudFront
+  // sources AWS silently prepends "AWSLogs/{account-id}/CloudFront/";
+  // both engines store the suffix WITHOUT that AWS-added prefix, so
+  // configure only your own path segment here.
+  string suffix_path = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+}
+
+// AwsCrossAccountLogDestination is the legacy cross-account
+// subscription destination: a named endpoint backed by a Kinesis
+// stream that other accounts' subscription filters send to.
+message AwsCrossAccountLogDestination {
+  // The destination's name (its identity - renaming replaces it). No
+  // colons or asterisks, up to 512 characters.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 512
+    pattern: "^[^:*]*$"
+  }];
+
+  // The role CloudWatch Logs assumes to write into the Kinesis
+  // stream. Its trust policy must allow logs.amazonaws.com; IAM
+  // propagation makes the first create eventually consistent (both
+  // engines retry for up to two minutes). Reference an AwsIamRole
+  // role_arn output or pass a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // The Kinesis stream that receives the forwarded log events.
+  // Reference an AwsKinesisStream stream_arn output or pass a literal
+  // ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target_arn = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKinesisStream,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.stream_arn"
+  ];
+
+  // The destination's access policy: which accounts/principals may
+  // logs:PutSubscriptionFilter against this destination. NOTE the
+  // AWS contract: destroying the policy alone never removes it -
+  // only destroying the whole destination does.
+  google.protobuf.Struct access_policy = 4 [(buf.validate.field).required = true];
+
+  // Update the policy even while it is actively in use by
+  // subscription filters. Unset keeps AWS's default behavior.
+  optional bool force_update = 5;
+}

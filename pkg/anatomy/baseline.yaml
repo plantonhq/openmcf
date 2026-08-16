@@ -184,9 +184,27 @@ violations:
   - catalog/aws/awscloudwatchcompositealarm/iac:missing-permissions
   - catalog/aws/awscloudwatchcompositealarm:missing-control-profile
   - catalog/aws/awscloudwatchcompositealarm:missing-cost-profile
+  - catalog/aws/awscloudwatchdashboard/iac:missing-permissions
+  - catalog/aws/awscloudwatchdashboard:missing-control-profile
+  - catalog/aws/awscloudwatchdashboard:missing-cost-profile
+  - catalog/aws/awscloudwatchlogaccountpolicy/iac:missing-permissions
+  - catalog/aws/awscloudwatchlogaccountpolicy:missing-control-profile
+  - catalog/aws/awscloudwatchlogaccountpolicy:missing-cost-profile
+  - catalog/aws/awscloudwatchloganomalydetector/iac:missing-permissions
+  - catalog/aws/awscloudwatchloganomalydetector:missing-control-profile
+  - catalog/aws/awscloudwatchloganomalydetector:missing-cost-profile
+  - catalog/aws/awscloudwatchlogdelivery/iac:missing-permissions
+  - catalog/aws/awscloudwatchlogdelivery:missing-control-profile
+  - catalog/aws/awscloudwatchlogdelivery:missing-cost-profile
   - catalog/aws/awscloudwatchloggroup/iac:missing-permissions
   - catalog/aws/awscloudwatchloggroup:missing-control-profile
   - catalog/aws/awscloudwatchloggroup:missing-cost-profile
+  - catalog/aws/awscloudwatchlogresourcepolicy/iac:missing-permissions
+  - catalog/aws/awscloudwatchlogresourcepolicy:missing-control-profile
+  - catalog/aws/awscloudwatchlogresourcepolicy:missing-cost-profile
+  - catalog/aws/awscloudwatchsynthetics/iac:missing-permissions
+  - catalog/aws/awscloudwatchsynthetics:missing-control-profile
+  - catalog/aws/awscloudwatchsynthetics:missing-cost-profile
   - catalog/aws/awscodebuildproject/iac/pulumi:missing-iac-readme
   - catalog/aws/awscodebuildproject/iac/tf:missing-iac-readme
   - catalog/aws/awscodebuildproject/iac:missing-permissions
@@ -394,6 +412,12 @@ violations:
   - catalog/aws/awslbtargetgroup/iac:missing-permissions
   - catalog/aws/awslbtargetgroup:missing-control-profile
   - catalog/aws/awslbtargetgroup:missing-cost-profile
+  - catalog/aws/awsmanagedprometheus/iac:missing-permissions
+  - catalog/aws/awsmanagedprometheus:missing-control-profile
+  - catalog/aws/awsmanagedprometheus:missing-cost-profile
+  - catalog/aws/awsmanagedprometheusscraper/iac:missing-permissions
+  - catalog/aws/awsmanagedprometheusscraper:missing-control-profile
+  - catalog/aws/awsmanagedprometheusscraper:missing-cost-profile
   - catalog/aws/awsmemorydbacl/iac/pulumi:missing-iac-readme
   - catalog/aws/awsmemorydbacl/iac/tf:missing-iac-readme
   - catalog/aws/awsmemorydbacl/iac:missing-permissions
