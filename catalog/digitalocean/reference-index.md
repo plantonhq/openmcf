@@ -12,7 +12,7 @@
 | [DigitalOceanBucket](digitaloceanbucket/v1alpha1/reference.md) | DigitalOceanBucketSpec defines the user configuration for a DigitalOcean Spaces bucket. | yes |  |
 | [DigitalOceanCertificate](digitaloceancertificate/v1alpha1/reference.md) | DigitalOceanCertificateSpec defines the fields required to create an SSL certificate in DigitalOcean. |  |  |
 | [DigitalOceanContainerRegistry](digitaloceancontainerregistry/v1alpha1/reference.md) | **DigitalOceanContainerRegistrySpec** defines the configuration for creating a DigitalOcean Container Registry (DOCR). | yes |  |
-| [DigitalOceanDatabaseCluster](digitaloceandatabasecluster/v1alpha1/reference.md) | DigitalOceanDatabaseClusterSpec defines the essential configuration for creating a managed database cluster on DigitalOcean. | yes |  |
+| [DigitalOceanDatabaseCluster](digitaloceandatabasecluster/v1alpha1/reference.md) | DigitalOceanDatabaseClusterSpec models the full digitalocean_database_cluster resource surface: engine/version/size/region/node topology, private networking, custom storage with autoscale, maintenance windows, backup-restore provisioning, engine-conditional tuning (sql_mode, eviction_policy), project placement, and tags. | yes | yes |
 | [DigitalOceanDnsRecord](digitaloceandnsrecord/v1alpha1/reference.md) | DigitalOceanDnsRecordSpec defines the configuration for creating a DNS record in a DigitalOcean DNS zone (domain). | yes |  |
 | [DigitalOceanDnsZone](digitaloceandnszone/v1alpha1/reference.md) | DigitalOceanDnsZoneSpec defines the specification required to create a DNS zone (domain) on DigitalOcean. | yes |  |
 | [DigitalOceanDroplet](digitaloceandroplet/v1alpha1/reference.md) | DigitalOceanDropletSpec defines the user configuration for a DigitalOcean Droplet (VM). | yes |  |

@@ -1,15 +1,14 @@
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDatabaseCluster
 metadata:
-  name: my-redis-cache
+  name: my-kafka
 spec:
-  clusterName: my-redis-cache
-  engine: redis
-  engineVersion: "7"
+  clusterName: my-kafka
+  engine: kafka
+  engineVersion: "3.5"
   region: nyc3
-  sizeSlug: db-s-1vcpu-1gb
-  nodeCount: 1
-  evictionPolicy: allkeys_lru
+  sizeSlug: db-s-2vcpu-2gb
+  nodeCount: 3
   vpc:
     valueFrom:
       kind: DigitalOceanVpc

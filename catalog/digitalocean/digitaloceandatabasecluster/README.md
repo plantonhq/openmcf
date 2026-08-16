@@ -1,389 +1,115 @@
 # DigitalOcean Database Cluster
 
-Manage fully-managed database clusters on DigitalOcean using a type-safe, protobuf-defined API with Planton.
+Managed databases on DigitalOcean: one Planton component models the full `digitalocean_database_cluster` resource — every engine DigitalOcean offers (PostgreSQL, MySQL, Redis, MongoDB, Kafka, OpenSearch, Valkey), node topology and sizing, VPC-private networking, custom storage with automatic growth, weekly maintenance windows, restore-from-backup provisioning, engine-specific tuning, project placement, and tags.
 
-## Overview
+## What this component models
 
-**DigitalOceanDatabaseCluster** enables you to provision and manage highly-available, fully-managed database clusters on DigitalOcean. Supports PostgreSQL, MySQL, Redis, and MongoDB with automated backups, patching, and monitoring.
+The spec maps one-to-one onto DigitalOcean's managed database cluster:
 
-DigitalOcean Managed Databases delivers simplicity and predictable pricing for startups and SMBs. Unlike AWS RDS or Google Cloud SQL with overwhelming configuration options, DigitalOcean focuses on the essential 80% of features with transparent, flat-rate pricing.
+| Spec field | What it controls |
+|---|---|
+| `clusterName` | The cluster's name in DigitalOcean (up to 64 characters) |
+| `engine` | `pg`, `mysql`, `redis`, `mongodb`, `kafka`, `opensearch`, or `valkey` |
+| `engineVersion` | Major or major.minor version (`"16"`, `"8"`, `"3.5"`); changing it performs an in-place major upgrade — DigitalOcean never downgrades |
+| `region` | Data-center region; changing it live-migrates the cluster |
+| `sizeSlug` | Per-node CPU/memory (`db-s-1vcpu-1gb`, `db-s-2vcpu-4gb`, ...); changing it resizes in place |
+| `nodeCount` | Engine-specific: 1–3 for most engines, 3+ for Kafka, up to 15 for OpenSearch |
+| `vpc` | Optional private-network placement — a literal UUID or a reference to a `DigitalOceanVpc`; create-only |
+| `storageGib` | Optional custom disk beyond the slug's default; increase-only |
+| `storageAutoscale` | Optional automatic disk growth (threshold percent, increment) |
+| `maintenanceWindow` | Optional weekly slot (`day`, `hour` in UTC) for automatic updates |
+| `backupRestore` | Optional provision-from-backup of an existing cluster (write-once, create-time only) |
+| `evictionPolicy` | Redis/Valkey only: key eviction under memory pressure |
+| `sqlMode` | MySQL only: comma-separated SQL modes |
+| `projectId` | Optional DigitalOcean project placement (UUID); create-only |
+| `tags` | Your tags, applied alongside the standard Planton labels |
 
-## Why Use This Component?
+Engine pairing is validated at manifest time: `sqlMode` with anything but MySQL, or `evictionPolicy` with anything but Redis/Valkey, is rejected before any provisioner runs — the same rules DigitalOcean enforces server-side.
 
-- **Type-Safe Configuration**: Protobuf-based API with compile-time validation prevents invalid cluster configurations
-- **80/20 Focused**: Exposes only essential fields (name, engine, version, size, nodes, region, VPC, storage)
-- **Production-Ready Defaults**: Enforces best practices (HA node counts, VPC networking, private connectivity)
-- **Cost-Effective**: DigitalOcean's bandwidth is $0.01/GB vs AWS's $0.15/GB—10x cheaper for data-heavy workloads
+Database users, logical databases, connection pools, read replicas, firewall rules, and per-engine config parameters are separate DigitalOcean resources with their own lifecycles, not part of the cluster resource.
 
-## Quick Start
+## Quick start
 
-### Development PostgreSQL Cluster (Single Node)
-
-For non-production workloads:
-
-```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanDatabaseCluster
-metadata:
-  name: dev-postgres
-spec:
-  cluster_name: dev-postgres
-  engine: postgres
-  engine_version: "16"
-  region: nyc3
-  size_slug: db-s-1vcpu-1gb
-  node_count: 1
-  enable_public_connectivity: false
-```
-
-### Production PostgreSQL Cluster (High Availability)
-
-For mission-critical workloads:
+A production PostgreSQL cluster with failover, private networking, and managed disk growth:
 
 ```yaml
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanDatabaseCluster
 metadata:
-  name: prod-postgres
+  name: app-db
+  org: acme-corp
+  env: prod
 spec:
-  cluster_name: prod-postgres
-  engine: postgres
-  engine_version: "16"
+  clusterName: app-db
+  engine: pg
+  engineVersion: "16"
   region: nyc3
-  size_slug: db-s-4vcpu-8gb
-  node_count: 3  # Primary + 2 standbys (HA)
+  sizeSlug: db-s-2vcpu-4gb
+  nodeCount: 3
   vpc:
-    value: "12345678-1234-1234-1234-123456789012"  # VPC UUID
-  storage_gib: 100
-  enable_public_connectivity: false
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: app-network
+      fieldPath: status.outputs.vpc_id
+  storageAutoscale:
+    enabled: true
+    thresholdPercent: 80
+  maintenanceWindow:
+    day: sunday
+    hour: "02:00"
 ```
 
-## Key Features
+```shell
+planton apply -f app-db.yaml
+```
 
-### Supported Engines
-- **PostgreSQL**: Industry-standard relational database with ACID guarantees
-- **MySQL**: Popular open-source RDBMS for web applications
-- **Redis**: In-memory data store for caching and session management
-- **MongoDB**: Document-oriented NoSQL database
+A single-node Valkey cache with an LRU eviction policy:
 
-### High Availability
-- **Single Node (node_count: 1)**: No redundancy, dev/test only
-- **Two Nodes (node_count: 2)**: Minimum HA, automatic failover
-- **Three Nodes (node_count: 3)**: Maximum HA, production-ready
-
-### VPC Integration
-- **Private Networking**: Deploy clusters in DigitalOcean VPCs for security
-- **Zero Egress Costs**: VPC-internal traffic is free (saves 10x vs public bandwidth)
-- **Network Isolation**: Clusters accessible only from authorized VPC resources
-
-### Automated Operations
-- **Daily Backups**: Automatic backups with point-in-time recovery
-- **Automatic Patching**: Security updates applied during maintenance windows
-- **Monitoring**: Built-in metrics for CPU, memory, disk, connections
-- **Connection Pooling**: PgBouncer for PostgreSQL (required for production)
-
-## Configuration Reference
-
-### Core Fields
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `cluster_name` | string | Yes | Unique cluster identifier (max 64 chars) |
-| `engine` | enum | Yes | postgres, mysql, redis, or mongodb |
-| `engine_version` | string | Yes | Major.minor version (e.g., "16", "8.0") |
-| `region` | enum | Yes | DigitalOcean region (nyc3, sfo3, etc.) |
-| `size_slug` | string | Yes | Node size (db-s-1vcpu-1gb, db-s-4vcpu-8gb, etc.) |
-| `node_count` | uint32 | Yes | Number of nodes (1-3) |
-| `vpc` | StringValueOrRef | No | VPC UUID for private networking |
-| `storage_gib` | uint32 | No | Custom storage size (if larger than default) |
-| `enable_public_connectivity` | bool | No | Allow public internet access (default: false) |
-
-### Size Slugs
-
-**Development:**
-- `db-s-1vcpu-1gb` - $15/month, suitable for dev/test
-- `db-s-1vcpu-2gb` - $30/month, small production workloads
-
-**Production:**
-- `db-s-2vcpu-4gb` - $60/month, standard production
-- `db-s-4vcpu-8gb` - $120/month, high-traffic production
-- `db-s-8vcpu-16gb` - $240/month, enterprise workloads
-
-### Version Support
-
-- **PostgreSQL**: 12, 13, 14, 15, 16
-- **MySQL**: 8 (8.0.x)
-- **Redis**: 6, 7
-- **MongoDB**: 4.4, 5.0, 6.0, 7.0
+```yaml
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseCluster
+metadata:
+  name: session-cache
+spec:
+  clusterName: session-cache
+  engine: valkey
+  engineVersion: "8"
+  region: nyc3
+  sizeSlug: db-s-1vcpu-1gb
+  nodeCount: 1
+  evictionPolicy: allkeys_lru
+```
 
 ## Outputs
 
-After successful provisioning:
+Both provisioners export the identical output set:
 
 | Output | Description |
-|--------|-------------|
-| `cluster_id` | DigitalOcean cluster UUID |
-| `connection_uri` | Full connection string (includes credentials) |
-| `host` | Cluster hostname |
-| `port` | Cluster port |
-| `database_name` | Default database name |
-| `username` | Admin username |
-| `password` | Admin password (sensitive) |
+|---|---|
+| `cluster_id` | The cluster's UUID |
+| `connection_uri` | Full public connection URI (credentials included) — sensitive |
+| `host` / `port` | Public connection endpoint |
+| `database_user` / `database_password` | Default user credentials — password is sensitive |
+| `private_host` / `private_uri` | Private-network endpoint, reachable from the same VPC |
+| `database_name` | The default database's name |
+| `ui_host`, `ui_port`, `ui_uri`, `ui_database`, `ui_user`, `ui_password` | OpenSearch Dashboards connection details (populated for OpenSearch clusters only) |
 
-## Common Use Cases
+## Behavior worth knowing
 
-### 1. Development PostgreSQL (Single Node, Public Access)
+- **Storage never shrinks.** `storageGib` can only grow. Growing `sizeSlug` with `storageGib` unset adopts the new size's default base storage.
+- **Version changes upgrade in place.** Setting a higher `engineVersion` runs a major version upgrade on the live cluster. There is no downgrade path.
+- **Region changes migrate live.** The cluster stays up while DigitalOcean moves it; plan for elevated latency during the move.
+- **Removing `evictionPolicy` resets to `noeviction`** rather than leaving the last policy in place.
+- **`backupRestore` acts only at creation.** DigitalOcean never reports it back; changing it on an existing cluster does nothing.
+- **`storageAutoscale` is Terraform-only today.** The Pulumi bridge (v4.49.0) has no such field; the Pulumi module fails loudly if it is set rather than silently dropping it.
 
-```yaml
-spec:
-  cluster_name: dev-pg
-  engine: postgres
-  engine_version: "16"
-  region: nyc3
-  size_slug: db-s-1vcpu-1gb
-  node_count: 1
-  enable_public_connectivity: true  # For dev access
-```
+See `GUIDE.md` for operational judgment (sizing, engine selection, upgrade practice) and `catalog.md` for the deployment-store page.
 
-### 2. Production PostgreSQL (HA, VPC-Private)
+## Module layout
 
-```yaml
-spec:
-  cluster_name: prod-pg
-  engine: postgres
-  engine_version: "16"
-  region: nyc3
-  size_slug: db-s-4vcpu-8gb
-  node_count: 3  # HA configuration
-  vpc:
-    value: "vpc-12345678"
-  storage_gib: 200
-  enable_public_connectivity: false
-```
-
-### 3. MySQL for Web Applications
-
-```yaml
-spec:
-  cluster_name: prod-mysql
-  engine: mysql
-  engine_version: "8"
-  region: sfo3
-  size_slug: db-s-2vcpu-4gb
-  node_count: 2  # HA
-  vpc:
-    value: "vpc-87654321"
-```
-
-### 4. Redis Cache Cluster
-
-```yaml
-spec:
-  cluster_name: prod-redis-cache
-  engine: redis
-  engine_version: "7"
-  region: nyc3
-  size_slug: db-s-2vcpu-4gb
-  node_count: 2  # HA
-  vpc:
-    value: "vpc-abcdef12"
-```
-
-### 5. MongoDB Document Store
-
-```yaml
-spec:
-  cluster_name: prod-mongodb
-  engine: mongodb
-  engine_version: "7.0"
-  region: fra1
-  size_slug: db-s-4vcpu-8gb
-  node_count: 3  # HA
-  vpc:
-    value: "vpc-xyz789"
-  storage_gib: 500
-```
-
-## Best Practices
-
-### High Availability
-1. **Use node_count ≥ 2 for production** - Automatic failover requires standbys
-2. **Implement retry logic** - Applications must handle brief connection drops during failover
-3. **Test failover scenarios** - Validate your app gracefully handles primary node failure
-
-### Security
-1. **VPC-First**: Always deploy in a VPC, never expose to public internet for production
-2. **Use Private Connection Strings**: Faster, more secure, zero bandwidth costs
-3. **Tag-Based Firewalls**: Use DigitalOcean tags instead of IP addresses for access control
-4. **Rotate Credentials**: Change default admin password immediately after provisioning
-
-### Cost Optimization
-1. **Start Small**: Use db-s-1vcpu-1gb for dev, upgrade for production
-2. **Leverage Free VPC Bandwidth**: Keep apps and databases in same region/VPC
-3. **Monitor Storage Growth**: Databases don't autoscale storage; plan for growth
-4. **Use Read Replicas**: Offload read traffic to replicas instead of oversizing primary
-
-### PostgreSQL-Specific
-1. **Mandatory PgBouncer**: Connection limits are severely restricted (97 connections for 4GB RAM)
-2. **Enable Connection Pooling**: DigitalOcean provides built-in PgBouncer pools
-3. **Monitor Connections**: Alert when approaching connection limit
-
-### MySQL-Specific
-1. **Backup Limitations**: Native `mysqldump` restricted; use DigitalOcean's backup system
-2. **No SUPER Privileges**: Cannot SET GLOBAL variables or install plugins
-3. **Vendor Lock-In Warning**: Limited backup portability (see research doc)
-
-### Redis-Specific
-1. **Valkey Migration**: Redis 7+ is actually Valkey (SSPL licensing)
-2. **No Clustering**: DigitalOcean Redis doesn't support Redis Cluster mode
-3. **Use for Caching**: Treat as ephemeral; don't rely on persistence for critical data
-
-## Production Checklist
-
-Before deploying to production:
-
-- ✅ Set `node_count` ≥ 2 for high availability
-- ✅ Deploy in VPC (`vpc` field specified)
-- ✅ Set `enable_public_connectivity: false` (private only)
-- ✅ Choose production-appropriate `size_slug` (≥ db-s-2vcpu-4gb)
-- ✅ Plan storage growth (`storage_gib` for databases that will grow)
-- ✅ Configure firewall rules (via separate DigitalOceanDatabaseFirewall resource)
-- ✅ Enable PgBouncer for PostgreSQL (via connection pool resource)
-- ✅ Test application retry/reconnection logic
-
-## Integration
-
-### With DigitalOcean VPC
-
-```yaml
-# First, create VPC
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanVpc
-metadata:
-  name: prod-vpc
-spec:
-  name: prod-vpc
-  region: nyc3
-  ip_range: 10.10.0.0/16
-
----
-# Then reference VPC in database cluster
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanDatabaseCluster
-metadata:
-  name: prod-postgres
-spec:
-  cluster_name: prod-postgres
-  engine: postgres
-  engine_version: "16"
-  region: nyc3
-  size_slug: db-s-4vcpu-8gb
-  node_count: 3
-  vpc:
-    ref:
-      kind: DigitalOceanVpc
-      name: prod-vpc
-      field_path: status.outputs.vpc_id
-```
-
-### With Application Workloads
-
-Applications retrieve connection details from outputs:
-
-```yaml
-# Application deployment references database outputs
-env:
-  - name: DATABASE_URL
-    value: ${digitalocean_database_cluster.prod_postgres.connection_uri}
-  - name: DB_HOST
-    value: ${digitalocean_database_cluster.prod_postgres.host}
-  - name: DB_PORT
-    value: ${digitalocean_database_cluster.prod_postgres.port}
-```
-
-## Troubleshooting
-
-### Cluster Creation Fails
-
-**Cause**: Invalid size_slug for selected engine/version.
-
-**Solution**: Verify size_slug compatibility:
-```bash
-doctl databases options sizes --engine postgres
-```
-
-### Connection Timeouts
-
-**Cause**: Firewall rules not configured or VPC misconfigured.
-
-**Solution**:
-1. Verify cluster is in same VPC as application
-2. Check firewall rules allow VPC CIDR or application tags
-3. Use private connection string, not public
-
-### PostgreSQL: "Too Many Connections"
-
-**Cause**: Exceeded connection limit (97 for 4GB RAM cluster).
-
-**Solution**:
-1. **Mandatory**: Enable PgBouncer connection pooling
-2. Configure application to use connection pool instead of direct connections
-3. Monitor connection usage in DigitalOcean dashboard
-
-### MySQL: Cannot Restore mysqldump Backup
-
-**Cause**: DigitalOcean restricts native MySQL utilities.
-
-**Solution**: Use DigitalOcean's backup system. For migrations, export data as SQL and import via supported methods.
-
-## Validation Rules
-
-The protobuf spec enforces these constraints:
-
-- `cluster_name`: Max 64 characters
-- `engine`: Must be postgres, mysql, redis, or mongodb
-- `engine_version`: Must match pattern `^[0-9]+(\.[0-9]+)?$` (e.g., "16", "8.0")
-- `node_count`: 1-3 nodes (enforced by buf.validate)
-- `region`: Must be valid DigitalOcean region enum
-- `size_slug`: Required, no pattern validation (validated by DigitalOcean API)
-
-## Limitations
-
-### What DigitalOcean Manages
-✅ Automatic daily backups (retained 7 days)  
-✅ Automatic security patching  
-✅ Automatic failover (multi-node clusters)  
-✅ Monitoring and alerting  
-✅ PgBouncer connection pooling (PostgreSQL)
-
-### What You Must Manage
-❌ Application connection retry logic  
-❌ Query optimization and indexing  
-❌ Database schema migrations  
-❌ Firewall rules (separate resource)  
-❌ User management (beyond default admin)  
-❌ Read replicas (separate resource)
-
-### Platform Limitations
-- **PostgreSQL**: Severely limited connection counts (requires PgBouncer)
-- **MySQL**: No SUPER privileges, restricted mysqldump
-- **Redis**: No Redis Cluster mode (single-instance only)
-- **MongoDB**: No sharding support (replica sets only)
-- **Storage**: No autoscaling (plan for growth upfront)
-
-## Further Reading
-
-- **Pulumi Module**: See [iac/pulumi/README.md](./iac/pulumi/README.md) for standalone Pulumi usage
-- **Terraform Module**: See [iac/tf/README.md](./iac/tf/README.md) for standalone Terraform usage
-
-## Support
-
-For issues, questions, or contributions, refer to the [Planton documentation](https://planton.dev) or file an issue in the repository.
-
----
-
-**TL;DR**: Use node_count ≥ 2 for production HA. Always deploy in VPC. Enable PgBouncer for PostgreSQL. Plan storage growth upfront (no autoscaling).
-
----
-
-© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).
+- `v1alpha1/` — the versioned contract: `spec.proto`, `outputs.proto`, validation tests, generated reference
+- `iac/tf/` and `iac/pulumi/` — the two provisioner modules implementing the same contract with identical outputs
+- `iac/provider-parity.yaml` — the recorded mapping judgment against the pinned provider
+- `iac/import-map.yaml` — how an existing cluster's identity derives for import
+- `presets/` — ready-to-deploy starting points (PostgreSQL HA/dev, Redis, Kafka, OpenSearch)
+- `e2e/` — test profile, canonical manifests, and live-lane scenarios

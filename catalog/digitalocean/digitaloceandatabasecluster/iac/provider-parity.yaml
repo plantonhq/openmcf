@@ -3,14 +3,9 @@
 # lint.provider-parity CI lane; format documented in pkg/providerparity).
 #
 # Only divergences are recorded -- an argument absent from this file must
-# match its spec field by exact name. Every exclusion carries its reason:
-# omission is a decision, never an accident.
-#
-# spec.storage_gib is deliberately NOT mapped to storage_size_mib: the
-# Terraform module's current wiring for it does not match the provider's
-# schema at the pin, so recording the mapping would claim coverage the
-# module does not deliver. Both sides stay on the checker's work list until
-# the kind's storage wiring is rebuilt.
+# match its spec field by exact name. The nested maintenance_window,
+# backup_restore, storage_autoscale, eviction_policy, sql_mode, project_id,
+# and tags surfaces all match by name, so five renames are the whole story.
 resources:
   digitalocean_database_cluster:
     mappings:
@@ -24,3 +19,7 @@ resources:
       # kind.
       - spec: spec.vpc
         arg: private_network_uuid
+      # The spec carries GiB for ergonomics; both modules convert to the
+      # provider's bare-MiB string.
+      - spec: spec.storage_gib
+        arg: storage_size_mib

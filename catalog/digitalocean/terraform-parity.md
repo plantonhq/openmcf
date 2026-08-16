@@ -30,7 +30,7 @@ that has progressed.
 | Provider schema (parity baseline) | `digitalocean@2.99.1` |
 | Kinds in the catalog | 15 |
 | Distinct provider resources consumed | 15 |
-| Spec fields authored across all kinds | 457 |
+| Spec fields authored across all kinds | 467 |
 | Module pins on `digitalocean` | `~> 2.99` × 15 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**4 of 15 kinds are at total accounting; 0 proven live.**
+**5 of 15 kinds are at total accounting; 0 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -53,7 +53,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | DigitalOceanBucket | 13 | 1 | 3 | 0 | 10 | ❌ | — |
 | DigitalOceanCertificate | 6 | 1 | 5 | 0 | 3 | ❌ | — |
 | DigitalOceanContainerRegistry | 6 | 2 | 1 | 1 | 3 | ❌ | — |
-| DigitalOceanDatabaseCluster | 19 | 3 | 4 | 0 | 14 | ❌ | — |
+| DigitalOceanDatabaseCluster | 19 | 14 | 5 | 0 | 0 | ✅ | — |
 | DigitalOceanDnsRecord | 10 | 9 | 1 | 0 | 0 | ✅ | — |
 | DigitalOceanDnsZone | 12 | 7 | 3 | 1 | 1 | ❌ | — |
 | DigitalOceanDroplet | 21 | 6 | 5 | 0 | 11 | ❌ | — |

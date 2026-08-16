@@ -15,7 +15,6 @@ entries:
   - kind:DigitalOceanBucket
   - kind:DigitalOceanCertificate
   - kind:DigitalOceanContainerRegistry
-  - kind:DigitalOceanDatabaseCluster
   - kind:DigitalOceanDnsZone
   - kind:DigitalOceanDroplet
   - kind:DigitalOceanKubernetesCluster

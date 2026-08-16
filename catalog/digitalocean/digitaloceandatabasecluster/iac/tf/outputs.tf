@@ -1,31 +1,20 @@
+# Stack outputs — exactly the DigitalOceanDatabaseClusterStackOutputs
+# contract, identical across both provisioners.
+
 output "cluster_id" {
   description = "The unique identifier (UUID) of the database cluster"
   value       = digitalocean_database_cluster.cluster.id
 }
 
-output "cluster_name" {
-  description = "The name of the database cluster"
-  value       = digitalocean_database_cluster.cluster.name
-}
-
-output "engine" {
-  description = "The database engine (pg, mysql, redis, mongodb)"
-  value       = digitalocean_database_cluster.cluster.engine
-}
-
-output "version" {
-  description = "The engine version"
-  value       = digitalocean_database_cluster.cluster.version
+output "connection_uri" {
+  description = "The full public connection URI (includes credentials and database name)"
+  value       = digitalocean_database_cluster.cluster.uri
+  sensitive   = true
 }
 
 output "host" {
-  description = "The hostname for database connections"
+  description = "The public hostname for database connections"
   value       = digitalocean_database_cluster.cluster.host
-}
-
-output "private_host" {
-  description = "The private hostname (VPC-internal) for database connections"
-  value       = digitalocean_database_cluster.cluster.private_host
 }
 
 output "port" {
@@ -33,62 +22,62 @@ output "port" {
   value       = digitalocean_database_cluster.cluster.port
 }
 
-output "database_name" {
-  description = "The default database name"
-  value       = digitalocean_database_cluster.cluster.database
-}
-
-output "username" {
-  description = "The admin username"
+output "database_user" {
+  description = "The username for the cluster's default database user"
   value       = digitalocean_database_cluster.cluster.user
   sensitive   = true
 }
 
-output "password" {
-  description = "The admin password"
+output "database_password" {
+  description = "The password for the cluster's default database user"
   value       = digitalocean_database_cluster.cluster.password
   sensitive   = true
 }
 
-output "connection_uri" {
-  description = "The full connection URI (includes credentials)"
-  value       = digitalocean_database_cluster.cluster.uri
-  sensitive   = true
+output "private_host" {
+  description = "The private-network hostname, reachable from the same VPC"
+  value       = digitalocean_database_cluster.cluster.private_host
 }
 
 output "private_uri" {
-  description = "The private connection URI (VPC-internal, includes credentials)"
+  description = "The private-network connection URI (includes credentials)"
   value       = digitalocean_database_cluster.cluster.private_uri
   sensitive   = true
 }
 
-output "region" {
-  description = "The region where the cluster is deployed"
-  value       = digitalocean_database_cluster.cluster.region
+output "database_name" {
+  description = "The name of the cluster's default database"
+  value       = digitalocean_database_cluster.cluster.database
 }
 
-output "node_count" {
-  description = "The number of nodes in the cluster"
-  value       = digitalocean_database_cluster.cluster.node_count
+output "ui_host" {
+  description = "OpenSearch only: hostname of the OpenSearch Dashboards endpoint"
+  value       = digitalocean_database_cluster.cluster.ui_host
 }
 
-output "size" {
-  description = "The size slug of the cluster nodes"
-  value       = digitalocean_database_cluster.cluster.size
+output "ui_port" {
+  description = "OpenSearch only: port of the OpenSearch Dashboards endpoint"
+  value       = digitalocean_database_cluster.cluster.ui_port
 }
 
-output "status" {
-  description = "The current status of the cluster"
-  value       = digitalocean_database_cluster.cluster.status
+output "ui_uri" {
+  description = "OpenSearch only: OpenSearch Dashboards connection URI (includes credentials)"
+  value       = digitalocean_database_cluster.cluster.ui_uri
+  sensitive   = true
 }
 
-output "created_at" {
-  description = "The timestamp when the cluster was created"
-  value       = digitalocean_database_cluster.cluster.created_at
+output "ui_database" {
+  description = "OpenSearch only: default database of the Dashboards connection"
+  value       = digitalocean_database_cluster.cluster.ui_database
 }
 
-output "vpc_uuid" {
-  description = "The VPC UUID (if cluster is in a VPC)"
-  value       = digitalocean_database_cluster.cluster.private_network_uuid
+output "ui_user" {
+  description = "OpenSearch only: username for OpenSearch Dashboards"
+  value       = digitalocean_database_cluster.cluster.ui_user
 }
 
+output "ui_password" {
+  description = "OpenSearch only: password for OpenSearch Dashboards"
+  value       = digitalocean_database_cluster.cluster.ui_password
+  sensitive   = true
+}
