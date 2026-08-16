@@ -1,0 +1,18 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsssmparameter
+spec:
+  # The parameter imports by its name -- the explicit spec field
+  # (hierarchical names carry slashes metadata.name cannot), so the
+  # value derives with zero user input; a pasted ARN's resource id is
+  # the name too.
+  values:
+    - name: parameter_name
+      derivations:
+        - from_spec_field: parameter_name
+        - from_stack_output: parameter_name
+      where_to_find: >-
+        Systems Manager console -> Parameter Store (the parameter's
+        name including any path), or `aws ssm describe-parameters`
+        (Name).

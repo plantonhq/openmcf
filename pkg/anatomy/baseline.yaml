@@ -74,6 +74,24 @@ violations:
   - catalog/aws/awsautoscalinggroup/iac:missing-permissions
   - catalog/aws/awsautoscalinggroup:missing-control-profile
   - catalog/aws/awsautoscalinggroup:missing-cost-profile
+  - catalog/aws/awsbackupframework/iac:missing-permissions
+  - catalog/aws/awsbackupframework:missing-control-profile
+  - catalog/aws/awsbackupframework:missing-cost-profile
+  - catalog/aws/awsbackupplan/iac:missing-permissions
+  - catalog/aws/awsbackupplan:missing-control-profile
+  - catalog/aws/awsbackupplan:missing-cost-profile
+  - catalog/aws/awsbackupreportplan/iac:missing-permissions
+  - catalog/aws/awsbackupreportplan:missing-control-profile
+  - catalog/aws/awsbackupreportplan:missing-cost-profile
+  - catalog/aws/awsbackuprestoretestingplan/iac:missing-permissions
+  - catalog/aws/awsbackuprestoretestingplan:missing-control-profile
+  - catalog/aws/awsbackuprestoretestingplan:missing-cost-profile
+  - catalog/aws/awsbackupsettings/iac:missing-permissions
+  - catalog/aws/awsbackupsettings:missing-control-profile
+  - catalog/aws/awsbackupsettings:missing-cost-profile
+  - catalog/aws/awsbackupvault/iac:missing-permissions
+  - catalog/aws/awsbackupvault:missing-control-profile
+  - catalog/aws/awsbackupvault:missing-cost-profile
   - catalog/aws/awsbatchcomputeenvironment/iac/pulumi:missing-iac-readme
   - catalog/aws/awsbatchcomputeenvironment/iac/tf:missing-iac-readme
   - catalog/aws/awsbatchcomputeenvironment/iac:missing-permissions
@@ -154,6 +172,9 @@ violations:
   - catalog/aws/awscloudtrail/iac:missing-permissions
   - catalog/aws/awscloudtrail:missing-control-profile
   - catalog/aws/awscloudtrail:missing-cost-profile
+  - catalog/aws/awscloudtraileventdatastore/iac:missing-permissions
+  - catalog/aws/awscloudtraileventdatastore:missing-control-profile
+  - catalog/aws/awscloudtraileventdatastore:missing-cost-profile
   - catalog/aws/awscloudwatchalarm/iac:missing-permissions
   - catalog/aws/awscloudwatchalarm:missing-control-profile
   - catalog/aws/awscloudwatchalarm:missing-cost-profile
@@ -187,6 +208,12 @@ violations:
   - catalog/aws/awscognitouserpoolclient/iac:missing-permissions
   - catalog/aws/awscognitouserpoolclient:missing-control-profile
   - catalog/aws/awscognitouserpoolclient:missing-cost-profile
+  - catalog/aws/awsconfigaggregator/iac:missing-permissions
+  - catalog/aws/awsconfigaggregator:missing-control-profile
+  - catalog/aws/awsconfigaggregator:missing-cost-profile
+  - catalog/aws/awsconfigconformancepack/iac:missing-permissions
+  - catalog/aws/awsconfigconformancepack:missing-control-profile
+  - catalog/aws/awsconfigconformancepack:missing-cost-profile
   - catalog/aws/awsconfigrecorder/iac:missing-permissions
   - catalog/aws/awsconfigrecorder:missing-control-profile
   - catalog/aws/awsconfigrecorder:missing-cost-profile
@@ -281,6 +308,9 @@ violations:
   - catalog/aws/awsguardduty/iac:missing-permissions
   - catalog/aws/awsguardduty:missing-control-profile
   - catalog/aws/awsguardduty:missing-cost-profile
+  - catalog/aws/awsguarddutymalwareprotectionplan/iac:missing-permissions
+  - catalog/aws/awsguarddutymalwareprotectionplan:missing-control-profile
+  - catalog/aws/awsguarddutymalwareprotectionplan:missing-cost-profile
   - catalog/aws/awshttpapidomain/iac:missing-permissions
   - catalog/aws/awshttpapidomain:missing-control-profile
   - catalog/aws/awshttpapidomain:missing-cost-profile
@@ -448,6 +478,21 @@ violations:
   - catalog/aws/awssnssubscription/iac:missing-permissions
   - catalog/aws/awssnssubscription:missing-control-profile
   - catalog/aws/awssnssubscription:missing-cost-profile
+  - catalog/aws/awsssmassociation/iac:missing-permissions
+  - catalog/aws/awsssmassociation:missing-control-profile
+  - catalog/aws/awsssmassociation:missing-cost-profile
+  - catalog/aws/awsssmdocument/iac:missing-permissions
+  - catalog/aws/awsssmdocument:missing-control-profile
+  - catalog/aws/awsssmdocument:missing-cost-profile
+  - catalog/aws/awsssmmaintenancewindow/iac:missing-permissions
+  - catalog/aws/awsssmmaintenancewindow:missing-control-profile
+  - catalog/aws/awsssmmaintenancewindow:missing-cost-profile
+  - catalog/aws/awsssmparameter/iac:missing-permissions
+  - catalog/aws/awsssmparameter:missing-control-profile
+  - catalog/aws/awsssmparameter:missing-cost-profile
+  - catalog/aws/awsssmpatchbaseline/iac:missing-permissions
+  - catalog/aws/awsssmpatchbaseline:missing-control-profile
+  - catalog/aws/awsssmpatchbaseline:missing-cost-profile
   - catalog/aws/awsstepfunction/iac:missing-permissions
   - catalog/aws/awsstepfunction:missing-control-profile
   - catalog/aws/awsstepfunction:missing-cost-profile

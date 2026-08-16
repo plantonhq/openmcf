@@ -1,0 +1,12 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupFramework
+metadata:
+  name: immutable-backup-posture
+spec:
+  region: <aws-region>
+  frameworkName: immutable_backup_posture
+  description: Are recovery points encrypted, undeletable, and inside a vault lock
+  controls:
+    - name: BACKUP_RECOVERY_POINT_ENCRYPTED
+    - name: BACKUP_RECOVERY_POINT_MANUAL_DELETION_DISABLED
+    - name: BACKUP_RESOURCES_PROTECTED_BY_BACKUP_VAULT_LOCK

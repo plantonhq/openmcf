@@ -1,0 +1,34 @@
+# An account-scoped pack deploying one parameter-less managed rule
+# from an inline template. Runs in us-east-2, DELIBERATELY away from
+# the us-west-2 Config lanes: the pack's fixture recorder is the same
+# one-per-region singleton the AwsConfigRecorder and AwsConfigRule
+# lanes manage, and a different region removes the collision class
+# entirely. The recorder fixture chain (recorder + role + history
+# bucket) is consumer-scoped, recording S3 buckets only. Destroy is a
+# REAL delete of the pack and the rule it created.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsConfigConformancePack
+metadata:
+  name: planton-oss-e2e-awscfgcp-account
+  id: planton-oss-e2e-awscfgcp-account
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsconfigconformancepack
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsConfigRecorder,AwsIamRole,AwsS3Bucket"
+  tags:
+    - planton-e2e
+spec:
+  region: us-east-2
+  templateBody: |
+    Resources:
+      S3BucketVersioningEnabled:
+        Type: AWS::Config::ConfigRule
+        Properties:
+          ConfigRuleName: s3-bucket-versioning-enabled
+          Source:
+            Owner: AWS
+            SourceIdentifier: S3_BUCKET_VERSIONING_ENABLED

@@ -1,0 +1,34 @@
+target:
+    apiVersion: aws.planton.dev/v1alpha1
+    kind: AwsConfigConformancePack
+    metadata:
+        env: dev
+        id: s3-best-practices
+        name: s3-best-practices
+        org: test-org
+    spec:
+        inputParameters:
+            - parameterName: S3BucketPublicReadProhibitedParamCheckPeriod
+              parameterValue: TwentyFour_Hours
+        region: us-west-2
+        templateBody: |
+            Parameters:
+              S3BucketPublicReadProhibitedParamCheckPeriod:
+                Type: String
+            Resources:
+              S3BucketPublicReadProhibited:
+                Type: AWS::Config::ConfigRule
+                Properties:
+                  ConfigRuleName: s3-bucket-public-read-prohibited
+                  Source:
+                    Owner: AWS
+                    SourceIdentifier: S3_BUCKET_PUBLIC_READ_PROHIBITED
+                  MaximumExecutionFrequency:
+                    Ref: S3BucketPublicReadProhibitedParamCheckPeriod
+              S3BucketVersioningEnabled:
+                Type: AWS::Config::ConfigRule
+                Properties:
+                  ConfigRuleName: s3-bucket-versioning-enabled
+                  Source:
+                    Owner: AWS
+                    SourceIdentifier: S3_BUCKET_VERSIONING_ENABLED

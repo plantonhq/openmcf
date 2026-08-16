@@ -1,0 +1,78 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_backup_vault:
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The standard-arm union nests the vault's own knobs.
+      - arg: kms_key_arn
+        spec: spec.standard.kms_key_arn
+      - arg: force_destroy
+        spec: spec.standard.force_destroy
+    exclusions:
+      - arg: name
+        reason: metadata.name is the vault name on both engines -- never free-form spec surface
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+      # (No tags_all exclusion on the air-gapped resource below: on that
+      # Plugin Framework resource tagsAll is computed-only at the pin --
+      # outside the audit's configurable surface.)
+  aws_backup_vault_lock_configuration:
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: changeable_for_days
+        spec: spec.standard.lock.changeable_for_days
+      - arg: min_retention_days
+        spec: spec.standard.lock.min_retention_days
+      - arg: max_retention_days
+        spec: spec.standard.lock.max_retention_days
+    exclusions:
+      - arg: backup_vault_name
+        reason: wired by the module to the folded vault's own name -- the satellite always locks THIS vault, never a foreign one
+  aws_backup_vault_policy:
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: policy
+        spec: spec.standard.policy
+    exclusions:
+      - arg: backup_vault_name
+        reason: wired by the module to the folded vault's own name -- the satellite always attaches to THIS vault, never a foreign one
+  aws_backup_vault_notifications:
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: backup_vault_events
+        spec: spec.standard.notifications.events
+      - arg: sns_topic_arn
+        spec: spec.standard.notifications.sns_topic_arn
+    exclusions:
+      - arg: backup_vault_name
+        reason: wired by the module to the folded vault's own name -- the satellite always attaches to THIS vault, never a foreign one
+  aws_backup_logically_air_gapped_vault:
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: min_retention_days
+        spec: spec.air_gapped.min_retention_days
+      - arg: max_retention_days
+        spec: spec.air_gapped.max_retention_days
+      - arg: encryption_key_arn
+        spec: spec.air_gapped.encryption_key_arn
+    exclusions:
+      - arg: name
+        reason: metadata.name is the vault name on both engines -- never free-form spec surface
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface

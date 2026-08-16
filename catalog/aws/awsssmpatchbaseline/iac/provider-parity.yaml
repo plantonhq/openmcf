@@ -1,0 +1,73 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_ssm_patch_baseline:
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The provider's singular blocks are the spec's plural lists.
+      - arg: approval_rule.approve_after_days
+        spec: spec.approval_rules.approve_after_days
+      - arg: approval_rule.approve_until_date
+        spec: spec.approval_rules.approve_until_date
+      - arg: approval_rule.compliance_level
+        spec: spec.approval_rules.compliance_level
+      - arg: approval_rule.enable_non_security
+        spec: spec.approval_rules.enable_non_security
+      - arg: approval_rule.patch_filter.key
+        spec: spec.approval_rules.patch_filters.key
+      - arg: approval_rule.patch_filter.values
+        spec: spec.approval_rules.patch_filters.values
+      - arg: global_filter.key
+        spec: spec.global_filters.key
+      - arg: global_filter.values
+        spec: spec.global_filters.values
+      - arg: source.name
+        spec: spec.sources.name
+      - arg: source.configuration
+        spec: spec.sources.configuration
+      - arg: source.products
+        spec: spec.sources.products
+    exclusions:
+      - arg: name
+        reason: metadata.name is the baseline name on both engines -- never free-form spec surface
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+  aws_ssm_patch_group:
+    mappings:
+      - arg: region
+        spec: spec.region
+      # Patch groups fold into the baseline as the repeated group-name
+      # list -- each entry registers one group.
+      - arg: patch_group
+        spec: spec.patch_groups
+    exclusions:
+      - arg: baseline_id
+        reason: wired by the module to the folded baseline's own AWS-generated ID -- a registration always binds THIS baseline, never a foreign one
+  aws_ssm_default_patch_baseline:
+    mappings:
+      - arg: region
+        spec: spec.region
+      # Folded designation: the account/region default pointer, claimed
+      # by set_as_default_baseline (the transit-gateway default-table
+      # precedent: the flag's only payload is which baseline the
+      # pointer names -- and unlike the App Runner claim, delete
+      # RESTORES AWS's own predefined default).
+      - arg: baseline_id
+        spec: spec.set_as_default_baseline
+      # Derived from the folded baseline's own resolved OS -- the fold
+      # makes the standalone resource's OS-mismatch failure mode
+      # unrepresentable.
+      - arg: operating_system
+        spec: spec.operating_system
+    exclusions: []

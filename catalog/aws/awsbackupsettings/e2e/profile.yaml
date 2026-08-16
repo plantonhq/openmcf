@@ -1,0 +1,29 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbackupsettings
+spec:
+  # The Backup settings singleton under live E2E: the region arm
+  # asserting opt-ins that MATCH AWS's defaults (EBS/EC2 true), so the
+  # no-op-delete persistence leaves the shared account as AWS ships it
+  # (~$0). The verifier's absent phase asserts the settings object
+  # still answers -- destroy is a no-op on both arms by provider
+  # design, never a reset.
+  #
+  # Deliberately not exercised live:
+  #   - the global arm (isCrossAccountBackupEnabled) -- an
+  #     organizations-level, account-wide control whose no-op delete
+  #     would leave the shared test account permanently changed.
+  #     Unblock: an owner call on flipping it true+false in one lane,
+  #     or a dedicated org test account.
+  #   - resource_type_management_preference -- one-way at AWS (never
+  #     clearable back to unset); asserting it would permanently
+  #     change the shared account's DynamoDB backup ownership.
+  #     Unblock: same owner call.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q41
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 10

@@ -1,0 +1,35 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsconfigconformancepack
+spec:
+  # A conformance pack under live E2E: the scenario deploys an
+  # account-scoped pack (one parameter-less managed S3 rule, inline
+  # template) under a consumer-scoped recorder fixture chain, waits for
+  # CREATE_COMPLETE (the provider's own create waiter), verifies the
+  # Describe surfaces echo it, then destroys -- a REAL delete of the
+  # pack and the rule it created. The lane runs in us-east-2 so its
+  # recorder-singleton fixture can never collide with the us-west-2
+  # Config lanes (awsconfigrecorder / awsconfigrule). Cost: managed-rule
+  # evaluations over a recorder scoped to S3 buckets round to zero.
+  #
+  # Deliberately not exercised live:
+  #   - organization_scope (and excluded_accounts) -- the
+  #     single-account wall (needs an AWS Organization management
+  #     account with Config org integration). Unblock: an
+  #     organization-enabled test account pair.
+  #   - template_s3_uri -- the S3-template arm is proven arm-for-arm
+  #     offline; it needs a template object staged in-region. Unblock:
+  #     fold an AwsS3ObjectSet fixture in when the proof lane wants the
+  #     arm.
+  #   - delivery_s3_bucket / delivery_s3_key_prefix -- the results
+  #     delivery arm is proven arm-for-arm offline (results stay
+  #     queryable through the Config APIs without it). Unblock: fold
+  #     into the scenario when the proof lane wants it.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q40
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

@@ -1,0 +1,18 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupReportPlan
+metadata:
+  name: daily-job-report
+spec:
+  region: <aws-region>
+  reportPlanName: daily_backup_jobs
+  description: Daily backup job outcomes delivered to S3
+  deliveryChannel:
+    s3BucketName:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: <backup-reports-bucket>
+        fieldPath: status.outputs.bucket_id
+    s3KeyPrefix: backup-reports
+    formats: ["CSV", "JSON"]
+  reportSetting:
+    reportTemplate: BACKUP_JOB_REPORT

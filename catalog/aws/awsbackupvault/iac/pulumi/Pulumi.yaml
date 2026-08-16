@@ -1,0 +1,3 @@
+name: awsbackupvault
+runtime: go
+description: Pulumi module to manage an AWS Backup vault (standard or logically air-gapped) with its lock, policy, and notification satellites

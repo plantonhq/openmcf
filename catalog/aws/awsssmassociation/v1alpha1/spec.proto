@@ -1,0 +1,190 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsssmassociation.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsSsmAssociationSpec defines the desired configuration for one AWS
+// Systems Manager State Manager association: the binding of an SSM
+// document to targets on a schedule ("run AWS-RunPatchBaseline on
+// every instance tagged env=prod every night").
+//
+// The document reference accepts ANY document name - an AWS-managed
+// document (AWS-RunShellScript, AmazonCloudWatch-ManageAgent, ...) as
+// a literal value, or a customer-owned AwsSsmDocument by reference -
+// which is why the association is its own component rather than a
+// document satellite. Changing the document forces replacement; every
+// other change creates a new association version in place.
+//
+// AWS identifies the association by a generated UUID (the import ID),
+// not by name.
+message AwsSsmAssociationSpec {
+  // The AWS region the association lives in.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The SSM document to associate: an AWS-managed document's name as a
+  // literal value, or a customer-owned AwsSsmDocument by reference.
+  // Changing it forces replacement.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef document_name = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSsmDocument,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.document_name"
+  ];
+
+  // A descriptive name for the association (shown in the State
+  // Manager console). Unset = AWS shows the association unnamed.
+  string association_name = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len: 3
+      max_len: 128
+      pattern: "^[0-9A-Za-z_.-]{3,128}$"
+    }
+  ];
+
+  // The document version to associate: "$LATEST", "$DEFAULT", or a
+  // concrete version number. Unset = "$DEFAULT". AWS updates the
+  // association when the pinned version's meaning changes.
+  string document_version = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^([$]LATEST|[$]DEFAULT|[1-9][0-9]*)$"
+  ];
+
+  // Values for the document's input parameters (parameter name to
+  // value; list-typed document parameters take comma-separated
+  // values). AWS materializes the document's declared defaults into
+  // this map server-side, so a freshly imported association shows the
+  // merged result - the first plan reconciles it.
+  map<string, string> parameters = 5;
+
+  // What the association runs on: up to 5 target entries (instance
+  // IDs, tag matches, or resource groups). Unset targets a document
+  // that manages its own scope (e.g. automation runbooks driven by
+  // automation_target_parameter_name).
+  repeated AwsSsmAssociationTarget targets = 6 [(buf.validate.field).repeated.max_items = 5];
+
+  // When the association (re)applies, as a cron or rate expression
+  // (e.g. "cron(0 2 ? * SUN *)", "rate(7 days)"). Unset = the
+  // association applies once on create and on every association
+  // change.
+  string schedule_expression = 7 [(buf.validate.field).string.max_len = 256];
+
+  // Run ONLY at the next cron interval instead of immediately on
+  // create/update. Meaningful only with a cron schedule_expression.
+  bool apply_only_at_cron_interval = 8;
+
+  // Severity the association's compliance records report when a run
+  // fails. Unset = AWS's UNSPECIFIED.
+  string compliance_severity = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "CRITICAL",
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+        "UNSPECIFIED"
+      ]
+    }
+  ];
+
+  // How compliance is reported: AUTO (Systems Manager marks compliance
+  // from the association run itself) or MANUAL (an external process
+  // writes compliance via PutComplianceItems). Unset = AUTO.
+  string sync_compliance = 10 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "AUTO",
+        "MANUAL"
+      ]
+    }
+  ];
+
+  // Maximum targets the association runs on concurrently: an absolute
+  // count ("10") or a percentage ("10%"). Unset = AWS's default (all
+  // targets at once).
+  string max_concurrency = 11 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^([1-9][0-9]*|[1-9][0-9]%|[1-9]%|100%)$"
+  ];
+
+  // Failures after which AWS stops scheduling new runs for this
+  // association interval: an absolute count ("1", "0") or a
+  // percentage ("10%").
+  string max_errors = 12 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^([1-9][0-9]*|[0]|[1-9][0-9]%|[0-9]%|100%)$"
+  ];
+
+  // For Automation documents: the document parameter the target
+  // resource IDs feed into (rate-controlled automation on targets).
+  string automation_target_parameter_name = 13 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 50
+    }
+  ];
+
+  // Change Calendar document names (or ARNs) gating the association:
+  // it runs only when every named calendar is open.
+  repeated string calendar_names = 14 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Where command output lands (S3). Unset = output is not stored.
+  AwsSsmAssociationOutputLocation output_location = 15;
+
+  // Seconds the CREATE waits for the association's first run to
+  // succeed before failing the deploy. Deploy-side behavior, never
+  // read back from AWS - a freshly imported association shows it
+  // unset. Leave unset when no targets exist yet (the wait would
+  // always time out).
+  int32 wait_for_success_timeout_seconds = 16 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+}
+
+// AwsSsmAssociationTarget selects what the association runs on.
+message AwsSsmAssociationTarget {
+  // The target key: "InstanceIds", "tag:<key>", "resource-groups:Name",
+  // or "aws:PrincipalTag/<key>" forms per the SSM targeting grammar.
+  string key = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 163
+  }];
+
+  // The values for the key (instance IDs, the tag value, the resource
+  // group name; "*" with key "InstanceIds" targets everything).
+  repeated string values = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 50
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+}
+
+// AwsSsmAssociationOutputLocation stores command output in S3.
+message AwsSsmAssociationOutputLocation {
+  // The destination bucket.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef s3_bucket_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // Key prefix inside the bucket.
+  string s3_key_prefix = 2 [(buf.validate.field).string.max_len = 500];
+
+  // The bucket's region, when it differs from the association's.
+  string s3_region = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len: 3
+      max_len: 20
+    }
+  ];
+}

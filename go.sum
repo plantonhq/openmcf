@@ -93,6 +93,8 @@ github.com/aws/aws-sdk-go-v2/service/athena v1.59.0 h1:s2CbOBPESon78rnO7OUoY8sVK
 github.com/aws/aws-sdk-go-v2/service/athena v1.59.0/go.mod h1:T0Gh/6hdclavTDygr544bGGSbmYYnN7sVcfy8PWDqSo=
 github.com/aws/aws-sdk-go-v2/service/autoscaling v1.68.1 h1:qcR6IvAMNpnM9ghsWos203zZ7YnmRsNeAS0sHs85c8I=
 github.com/aws/aws-sdk-go-v2/service/autoscaling v1.68.1/go.mod h1:sN7IK8djnxCOQDGVhOvUlIA83i1wIA5jYnzr2TlY9a8=
+github.com/aws/aws-sdk-go-v2/service/backup v1.60.1 h1:2PCe8wGAKzZGUQYYxhDqIO79YTxAeXc+vB5eS1SC9nY=
+github.com/aws/aws-sdk-go-v2/service/backup v1.60.1/go.mod h1:S2R23yHAJonp+JgDcTAYUaZlLRLPIQbC5C39D/aoh1M=
 github.com/aws/aws-sdk-go-v2/service/batch v1.67.0 h1:amCRVhE7xgdElZrfKzQ8PvWMzRsXT8j+0ereSPQB2jI=
 github.com/aws/aws-sdk-go-v2/service/batch v1.67.0/go.mod h1:xAqGFEks3zOMleaWMlPj8WiRL1hrZCgLKctJde6Sn3U=
 github.com/aws/aws-sdk-go-v2/service/bedrock v1.66.2 h1:Y0BRJzxaHonjV8f2cNwIKrxV700LTYLkIGG/q/Ur0Fs=
@@ -205,6 +207,8 @@ github.com/aws/aws-sdk-go-v2/service/sns v1.40.3 h1:ZgC0JhdV3xY7u0nt2Rg91NY6p3Si
 github.com/aws/aws-sdk-go-v2/service/sns v1.40.3/go.mod h1:5EnTxMpMVeiY0vcjjN/a958FFaHrS6XfXcyRBzDKDCE=
 github.com/aws/aws-sdk-go-v2/service/sqs v1.37.1 h1:39WvSrVq9DD6UHkD+fx5x19P5KpRQfNdtgReDVNbelc=
 github.com/aws/aws-sdk-go-v2/service/sqs v1.37.1/go.mod h1:3gwPzC9LER/BTQdQZ3r6dUktb1rSjABF1D3Sr6nS7VU=
+github.com/aws/aws-sdk-go-v2/service/ssm v1.73.5 h1:b6t4ebbd9Jxmdb1/993JoB2ddaJzRBdK/geJGHfX9jo=
+github.com/aws/aws-sdk-go-v2/service/ssm v1.73.5/go.mod h1:hXZFSldJTdhJpScM8gUpOyEs8OFw9cegOQpm3opVITY=
 github.com/aws/aws-sdk-go-v2/service/sso v1.31.3 h1:ey1XLTYXb9PcLt4535632o5kCGXNXEhNb620Dqwuylo=
 github.com/aws/aws-sdk-go-v2/service/sso v1.31.3/go.mod h1:Lk7PlmoTYryQmyBG0EXqj5BcUbj3whXdU2s3yGI3EAc=
 github.com/aws/aws-sdk-go-v2/service/ssooidc v1.36.6 h1:yLr03zQE/5Eu5l3QU0Si+xMbLMbSDF2YXsigqXngs6g=

@@ -1,0 +1,26 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSsmMaintenanceWindow
+metadata:
+  name: nightly-automation
+spec:
+  region: <aws-region>
+  schedule: rate(1 day)
+  duration: 2
+  cutoff: 1
+  description: Nightly automation runbook window
+  tasks:
+    - name: cleanup-runbook
+      taskType: AUTOMATION
+      taskArn:
+        valueFrom:
+          kind: AwsSsmDocument
+          name: <automation-runbook>
+          fieldPath: status.outputs.document_name
+      priority: 1
+      invocation:
+        automation:
+          documentVersion: $DEFAULT
+          parameters:
+            - name: <runbook-parameter>
+              values:
+                - <value>

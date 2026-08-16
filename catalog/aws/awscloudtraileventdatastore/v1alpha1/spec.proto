@@ -1,0 +1,175 @@
+syntax = "proto3";
+
+package dev.planton.aws.awscloudtraileventdatastore.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsCloudTrailEventDataStoreSpec defines the desired configuration
+// for a CloudTrail Lake event data store - a queryable, immutable
+// store of AWS activity events, independent of any trail.
+//
+// An event data store ingests events matched by its advanced event
+// selectors and keeps them queryable with CloudTrail Lake SQL for the
+// retention period. It needs no trail and no S3 bucket - Lake owns
+// its own storage and its own billing (per GB ingested plus, on the
+// fixed pricing mode, per GB retained). The store's name is
+// metadata.name (AWS requires 3-128 characters).
+//
+// Destroying this component soft-deletes the store: AWS holds it in
+// PENDING_DELETION for 7 days (the name stays reserved) before the
+// purge. The delete is REFUSED while termination protection is on -
+// set termination_protection_enabled to false and apply before
+// destroying.
+message AwsCloudTrailEventDataStoreSpec {
+  // The AWS region the event data store lives in. A multi-region
+  // store still has exactly one home region - manage it from there.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The pricing mode. EXTENDABLE_RETENTION_PRICING (the AWS default
+  // when unset) bills ingestion once and includes up to 10 years of
+  // retention; FIXED_RETENTION_PRICING bills less on ingest but
+  // charges for retention and caps it at 7 years (2555 days). Pick at
+  // creation - AWS allows changing it later only from fixed to
+  // extendable.
+  string billing_mode = 2 [(buf.validate.field).string = {
+    in: [
+      "",
+      "EXTENDABLE_RETENTION_PRICING",
+      "FIXED_RETENTION_PRICING"
+    ]
+  }];
+
+  // KMS key that encrypts the stored events (SSE-KMS instead of the
+  // default AWS-owned key). The key policy must allow CloudTrail to
+  // use it, and losing the key makes the store unreadable - AWS
+  // recommends multi-region keys for multi-region stores. Changing
+  // this after creation forces a replacement. Unset = AWS-owned key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Ingest events from ALL regions, not just the home region. Unset =
+  // enabled (the AWS default) - a single-region store misses activity
+  // everywhere else. Set false only for deliberately region-scoped
+  // stores.
+  optional bool multi_region_enabled = 4;
+
+  // Ingest events from EVERY account in the AWS Organization.
+  // Requires running in the organization's management account (or its
+  // delegated CloudTrail administrator) with all-features
+  // organizations enabled.
+  bool organization_enabled = 5;
+
+  // How many days events stay queryable, 7-2555. Unset = 2555 (the
+  // AWS default, 7 years). On EXTENDABLE_RETENTION_PRICING the
+  // effective ceiling AWS accepts is 3653 days via the console, but
+  // the Terraform provider caps at 2555 - stay within it.
+  int32 retention_period_days = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 7
+      lte: 2555
+    }
+  ];
+
+  // Refuse deletion while enabled. Unset = enabled (the AWS default).
+  // A destroy of this component FAILS until this is set to false and
+  // applied - the two-step teardown is deliberate AWS behavior, not a
+  // module defect.
+  optional bool termination_protection_enabled = 7;
+
+  // Pause ingestion without deleting the store (already-ingested
+  // events stay queryable; retention keeps counting). Unset = active.
+  // AWS never reports this back, so it is asserted on every apply and
+  // invisible to imports.
+  optional bool suspend = 8;
+
+  // Which events to ingest: fine-grained field matching (eventName,
+  // resources.ARN prefixes, eventCategory, ...) over management,
+  // data, and network-activity events. Unset = AWS materializes a
+  // default selector ingesting ALL management events - scope
+  // deliberately, ingestion is what Lake bills. AWS requires every
+  // selector to carry an eventCategory condition (a server-side rule
+  // the provider does not pre-check).
+  repeated AwsCloudTrailEventDataStoreAdvancedEventSelector advanced_event_selectors = 9;
+}
+
+// AwsCloudTrailEventDataStoreAdvancedEventSelector is one advanced
+// selector: a named AND-set of field conditions. An event is ingested
+// when EVERY field selector matches; multiple selectors OR together.
+message AwsCloudTrailEventDataStoreAdvancedEventSelector {
+  // Display name for the selector (shown in the CloudTrail console).
+  string name = 1 [(buf.validate.field).string.max_len = 1000];
+
+  // The AND-set of field conditions. AWS requires at least a field
+  // selector on "eventCategory".
+  repeated AwsCloudTrailEventDataStoreFieldSelector field_selectors = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsCloudTrailEventDataStoreFieldSelector is one field condition
+// inside an advanced selector.
+message AwsCloudTrailEventDataStoreFieldSelector {
+  // The event field to match.
+  string field = 1 [(buf.validate.field).string = {
+    in: [
+      "errorCode",
+      "eventCategory",
+      "eventName",
+      "eventSource",
+      "eventType",
+      "readOnly",
+      "resources.ARN",
+      "resources.type",
+      "sessionCredentialFromConsole",
+      "userIdentity.arn",
+      "vpcEndpointId"
+    ]
+  }];
+
+  // Exact-match values (OR within the list).
+  repeated string equals = 2 [(buf.validate.field).repeated.items.string = {
+    min_len: 1
+    max_len: 2048
+  }];
+
+  // Exact-mismatch values.
+  repeated string not_equals = 3 [(buf.validate.field).repeated.items.string = {
+    min_len: 1
+    max_len: 2048
+  }];
+
+  // Prefix-match values.
+  repeated string starts_with = 4 [(buf.validate.field).repeated.items.string = {
+    min_len: 1
+    max_len: 2048
+  }];
+
+  // Prefix-mismatch values.
+  repeated string not_starts_with = 5 [(buf.validate.field).repeated.items.string = {
+    min_len: 1
+    max_len: 2048
+  }];
+
+  // Suffix-match values.
+  repeated string ends_with = 6 [(buf.validate.field).repeated.items.string = {
+    min_len: 1
+    max_len: 2048
+  }];
+
+  // Suffix-mismatch values.
+  repeated string not_ends_with = 7 [(buf.validate.field).repeated.items.string = {
+    min_len: 1
+    max_len: 2048
+  }];
+
+  // AWS requires each field selector to carry at least one condition
+  // list.
+  option (buf.validate.message).cel = {
+    id: "field_selector_has_condition"
+    message: "set at least one of equals, not_equals, starts_with, not_starts_with, ends_with, not_ends_with"
+    expression: "size(this.equals) + size(this.not_equals) + size(this.starts_with) + size(this.not_starts_with) + size(this.ends_with) + size(this.not_ends_with) > 0"
+  };
+}

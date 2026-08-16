@@ -1,0 +1,36 @@
+# Canonical AwsSsmAssociation example (hack/dev manifest and refgen
+# Example source): a nightly patch scan of tagged instances via the
+# AWS-managed AWS-RunPatchBaseline document, with S3 output and the
+# full compliance/rate surface. Literal values stand in for composed
+# references so the offline `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSsmAssociation
+metadata:
+  name: nightly-patch-scan
+  id: nightly-patch-scan
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  documentName:
+    value: AWS-RunPatchBaseline
+  associationName: nightly-patch-scan
+  documentVersion: $DEFAULT
+  parameters:
+    Operation: Scan
+  targets:
+    - key: tag:env
+      values:
+        - prod
+  scheduleExpression: cron(0 2 ? * * *)
+  applyOnlyAtCronInterval: true
+  complianceSeverity: HIGH
+  syncCompliance: AUTO
+  maxConcurrency: 10%
+  maxErrors: "0"
+  calendarNames:
+    - change-freeze-calendar
+  outputLocation:
+    s3BucketName:
+      value: patch-scan-output-bucket
+    s3KeyPrefix: ssm/patch-scans

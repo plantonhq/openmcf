@@ -25,6 +25,12 @@ import (
 	awsapprunnervpcconnectorv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsapprunnervpcconnector/v1alpha1"
 	awsathenaworkgroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsathenaworkgroup/v1alpha1"
 	awsautoscalinggroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsautoscalinggroup/v1alpha1"
+	awsbackupframeworkv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbackupframework/v1alpha1"
+	awsbackupplanv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbackupplan/v1alpha1"
+	awsbackupreportplanv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbackupreportplan/v1alpha1"
+	awsbackuprestoretestingplanv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbackuprestoretestingplan/v1alpha1"
+	awsbackupsettingsv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbackupsettings/v1alpha1"
+	awsbackupvaultv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbackupvault/v1alpha1"
 	awsbatchcomputeenvironmentv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbatchcomputeenvironment/v1alpha1"
 	awsbatchjobdefinitionv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbatchjobdefinition/v1alpha1"
 	awsbatchjobqueuev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbatchjobqueue/v1alpha1"
@@ -50,6 +56,7 @@ import (
 	awsclientvpnv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsclientvpn/v1alpha1"
 	awscloudfrontv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudfront/v1alpha1"
 	awscloudtrailv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudtrail/v1alpha1"
+	awscloudtraileventdatastorev1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudtraileventdatastore/v1alpha1"
 	awscloudwatchalarmv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchalarm/v1alpha1"
 	awscloudwatchcompositealarmv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchcompositealarm/v1alpha1"
 	awscloudwatchloggroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchloggroup/v1alpha1"
@@ -59,6 +66,8 @@ import (
 	awscognitoresourceserverv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscognitoresourceserver/v1alpha1"
 	awscognitouserpoolv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscognitouserpool/v1alpha1"
 	awscognitouserpoolclientv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscognitouserpoolclient/v1alpha1"
+	awsconfigaggregatorv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsconfigaggregator/v1alpha1"
+	awsconfigconformancepackv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsconfigconformancepack/v1alpha1"
 	awsconfigrecorderv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsconfigrecorder/v1alpha1"
 	awsconfigrulev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsconfigrule/v1alpha1"
 	awsdocumentdbv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsdocumentdb/v1alpha1"
@@ -91,6 +100,7 @@ import (
 	awsglobalacceleratorv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsglobalaccelerator/v1alpha1"
 	awsgluecatalogdatabasev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsgluecatalogdatabase/v1alpha1"
 	awsguarddutyv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsguardduty/v1alpha1"
+	awsguarddutymalwareprotectionplanv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsguarddutymalwareprotectionplan/v1alpha1"
 	awshttpapidomainv1alpha1 "github.com/plantonhq/planton/catalog/aws/awshttpapidomain/v1alpha1"
 	awshttpapigatewayv1alpha1 "github.com/plantonhq/planton/catalog/aws/awshttpapigateway/v1alpha1"
 	awshttpapivpclinkv1alpha1 "github.com/plantonhq/planton/catalog/aws/awshttpapivpclink/v1alpha1"
@@ -157,6 +167,11 @@ import (
 	awssnssubscriptionv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssnssubscription/v1alpha1"
 	awssnstopicv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssnstopic/v1alpha1"
 	awssqsqueuev1alpha1 "github.com/plantonhq/planton/catalog/aws/awssqsqueue/v1alpha1"
+	awsssmassociationv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsssmassociation/v1alpha1"
+	awsssmdocumentv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsssmdocument/v1alpha1"
+	awsssmmaintenancewindowv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsssmmaintenancewindow/v1alpha1"
+	awsssmparameterv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsssmparameter/v1alpha1"
+	awsssmpatchbaselinev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsssmpatchbaseline/v1alpha1"
 	awsstepfunctionv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsstepfunction/v1alpha1"
 	awssubnetv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssubnet/v1alpha1"
 	awstransitgatewayv1alpha1 "github.com/plantonhq/planton/catalog/aws/awstransitgateway/v1alpha1"
@@ -654,6 +669,12 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsAppRunnerVpcConnector:               &awsapprunnervpcconnectorv1alpha1.AwsAppRunnerVpcConnector{},
 	cloudresourcekind.CloudResourceKind_AwsAthenaWorkgroup:                     &awsathenaworkgroupv1alpha1.AwsAthenaWorkgroup{},
 	cloudresourcekind.CloudResourceKind_AwsAutoScalingGroup:                    &awsautoscalinggroupv1alpha1.AwsAutoScalingGroup{},
+	cloudresourcekind.CloudResourceKind_AwsBackupFramework:                     &awsbackupframeworkv1alpha1.AwsBackupFramework{},
+	cloudresourcekind.CloudResourceKind_AwsBackupPlan:                          &awsbackupplanv1alpha1.AwsBackupPlan{},
+	cloudresourcekind.CloudResourceKind_AwsBackupReportPlan:                    &awsbackupreportplanv1alpha1.AwsBackupReportPlan{},
+	cloudresourcekind.CloudResourceKind_AwsBackupRestoreTestingPlan:            &awsbackuprestoretestingplanv1alpha1.AwsBackupRestoreTestingPlan{},
+	cloudresourcekind.CloudResourceKind_AwsBackupSettings:                      &awsbackupsettingsv1alpha1.AwsBackupSettings{},
+	cloudresourcekind.CloudResourceKind_AwsBackupVault:                         &awsbackupvaultv1alpha1.AwsBackupVault{},
 	cloudresourcekind.CloudResourceKind_AwsBatchComputeEnvironment:             &awsbatchcomputeenvironmentv1alpha1.AwsBatchComputeEnvironment{},
 	cloudresourcekind.CloudResourceKind_AwsBatchJobDefinition:                  &awsbatchjobdefinitionv1alpha1.AwsBatchJobDefinition{},
 	cloudresourcekind.CloudResourceKind_AwsBatchJobQueue:                       &awsbatchjobqueuev1alpha1.AwsBatchJobQueue{},
@@ -679,6 +700,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsClientVpn:                           &awsclientvpnv1alpha1.AwsClientVpn{},
 	cloudresourcekind.CloudResourceKind_AwsCloudFront:                          &awscloudfrontv1alpha1.AwsCloudFront{},
 	cloudresourcekind.CloudResourceKind_AwsCloudTrail:                          &awscloudtrailv1alpha1.AwsCloudTrail{},
+	cloudresourcekind.CloudResourceKind_AwsCloudTrailEventDataStore:            &awscloudtraileventdatastorev1alpha1.AwsCloudTrailEventDataStore{},
 	cloudresourcekind.CloudResourceKind_AwsCloudwatchAlarm:                     &awscloudwatchalarmv1alpha1.AwsCloudwatchAlarm{},
 	cloudresourcekind.CloudResourceKind_AwsCloudwatchCompositeAlarm:            &awscloudwatchcompositealarmv1alpha1.AwsCloudwatchCompositeAlarm{},
 	cloudresourcekind.CloudResourceKind_AwsCloudwatchLogGroup:                  &awscloudwatchloggroupv1alpha1.AwsCloudwatchLogGroup{},
@@ -688,6 +710,8 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsCognitoResourceServer:               &awscognitoresourceserverv1alpha1.AwsCognitoResourceServer{},
 	cloudresourcekind.CloudResourceKind_AwsCognitoUserPool:                     &awscognitouserpoolv1alpha1.AwsCognitoUserPool{},
 	cloudresourcekind.CloudResourceKind_AwsCognitoUserPoolClient:               &awscognitouserpoolclientv1alpha1.AwsCognitoUserPoolClient{},
+	cloudresourcekind.CloudResourceKind_AwsConfigAggregator:                    &awsconfigaggregatorv1alpha1.AwsConfigAggregator{},
+	cloudresourcekind.CloudResourceKind_AwsConfigConformancePack:               &awsconfigconformancepackv1alpha1.AwsConfigConformancePack{},
 	cloudresourcekind.CloudResourceKind_AwsConfigRecorder:                      &awsconfigrecorderv1alpha1.AwsConfigRecorder{},
 	cloudresourcekind.CloudResourceKind_AwsConfigRule:                          &awsconfigrulev1alpha1.AwsConfigRule{},
 	cloudresourcekind.CloudResourceKind_AwsDocumentDb:                          &awsdocumentdbv1alpha1.AwsDocumentDb{},
@@ -720,6 +744,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsGlobalAccelerator:                   &awsglobalacceleratorv1alpha1.AwsGlobalAccelerator{},
 	cloudresourcekind.CloudResourceKind_AwsGlueCatalogDatabase:                 &awsgluecatalogdatabasev1alpha1.AwsGlueCatalogDatabase{},
 	cloudresourcekind.CloudResourceKind_AwsGuardDuty:                           &awsguarddutyv1alpha1.AwsGuardDuty{},
+	cloudresourcekind.CloudResourceKind_AwsGuardDutyMalwareProtectionPlan:      &awsguarddutymalwareprotectionplanv1alpha1.AwsGuardDutyMalwareProtectionPlan{},
 	cloudresourcekind.CloudResourceKind_AwsHttpApiDomain:                       &awshttpapidomainv1alpha1.AwsHttpApiDomain{},
 	cloudresourcekind.CloudResourceKind_AwsHttpApiGateway:                      &awshttpapigatewayv1alpha1.AwsHttpApiGateway{},
 	cloudresourcekind.CloudResourceKind_AwsHttpApiVpcLink:                      &awshttpapivpclinkv1alpha1.AwsHttpApiVpcLink{},
@@ -786,6 +811,11 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsSnsSubscription:                     &awssnssubscriptionv1alpha1.AwsSnsSubscription{},
 	cloudresourcekind.CloudResourceKind_AwsSnsTopic:                            &awssnstopicv1alpha1.AwsSnsTopic{},
 	cloudresourcekind.CloudResourceKind_AwsSqsQueue:                            &awssqsqueuev1alpha1.AwsSqsQueue{},
+	cloudresourcekind.CloudResourceKind_AwsSsmAssociation:                      &awsssmassociationv1alpha1.AwsSsmAssociation{},
+	cloudresourcekind.CloudResourceKind_AwsSsmDocument:                         &awsssmdocumentv1alpha1.AwsSsmDocument{},
+	cloudresourcekind.CloudResourceKind_AwsSsmMaintenanceWindow:                &awsssmmaintenancewindowv1alpha1.AwsSsmMaintenanceWindow{},
+	cloudresourcekind.CloudResourceKind_AwsSsmParameter:                        &awsssmparameterv1alpha1.AwsSsmParameter{},
+	cloudresourcekind.CloudResourceKind_AwsSsmPatchBaseline:                    &awsssmpatchbaselinev1alpha1.AwsSsmPatchBaseline{},
 	cloudresourcekind.CloudResourceKind_AwsStepFunction:                        &awsstepfunctionv1alpha1.AwsStepFunction{},
 	cloudresourcekind.CloudResourceKind_AwsSubnet:                              &awssubnetv1alpha1.AwsSubnet{},
 	cloudresourcekind.CloudResourceKind_AwsTransitGateway:                      &awstransitgatewayv1alpha1.AwsTransitGateway{},

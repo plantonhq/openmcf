@@ -1,0 +1,16 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsbackupreportplan
+spec:
+  # The report plan imports by its AWS name - the explicit spec field
+  # (AWS report plan names forbid hyphens, so metadata.name never
+  # reaches AWS).
+  values:
+    - name: report_plan_name
+      derivations:
+        - from_spec_field: report_plan_name
+      where_to_find: >-
+        AWS Backup console -> Audit Manager -> Reports (the report
+        plan's name), or `aws backup list-report-plans`
+        (ReportPlanName).

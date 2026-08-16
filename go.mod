@@ -20,6 +20,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/apprunner v1.41.0
 	github.com/aws/aws-sdk-go-v2/service/athena v1.59.0
 	github.com/aws/aws-sdk-go-v2/service/autoscaling v1.68.1
+	github.com/aws/aws-sdk-go-v2/service/backup v1.60.1
 	github.com/aws/aws-sdk-go-v2/service/batch v1.67.0
 	github.com/aws/aws-sdk-go-v2/service/bedrock v1.66.2
 	github.com/aws/aws-sdk-go-v2/service/bedrockagent v1.58.5
@@ -70,6 +71,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sfn v1.44.0
 	github.com/aws/aws-sdk-go-v2/service/sns v1.40.3
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.37.1
+	github.com/aws/aws-sdk-go-v2/service/ssm v1.73.5
 	github.com/aws/aws-sdk-go-v2/service/sts v1.43.3
 	github.com/aws/aws-sdk-go-v2/service/wafv2 v1.75.0
 	github.com/aws/smithy-go v1.27.7

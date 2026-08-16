@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbackupreportplan.v1alpha1;
+
+// AwsBackupReportPlanStackOutputs captures the observable state of
+// the report plan after apply.
+message AwsBackupReportPlanStackOutputs {
+  // The report plan's ARN.
+  string report_plan_arn = 1;
+}

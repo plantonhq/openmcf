@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbackupreportplan.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/aws/awsbackupreportplan/v1alpha1/outputs.proto";
+import "catalog/aws/awsbackupreportplan/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+message AwsBackupReportPlan {
+  string api_version = 1 [(buf.validate.field).string.const = 'aws.planton.dev/v1alpha1'];
+  string kind = 2 [(buf.validate.field).string.const = 'AwsBackupReportPlan'];
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+  AwsBackupReportPlanSpec spec = 4 [(buf.validate.field).required = true];
+  AwsBackupReportPlanStatus status = 5;
+}
+
+message AwsBackupReportPlanStatus {
+  AwsBackupReportPlanStackOutputs outputs = 1;
+}

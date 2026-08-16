@@ -1,0 +1,22 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupReportPlan
+metadata:
+  name: compliance-evidence
+spec:
+  region: <aws-region>
+  reportPlanName: control_compliance_evidence
+  description: Control compliance over the audit frameworks
+  deliveryChannel:
+    s3BucketName:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: <backup-reports-bucket>
+        fieldPath: status.outputs.bucket_id
+    s3KeyPrefix: compliance
+  reportSetting:
+    reportTemplate: CONTROL_COMPLIANCE_REPORT
+    frameworkArns:
+      - valueFrom:
+          kind: AwsBackupFramework
+          name: <backup-framework>
+          fieldPath: status.outputs.framework_arn

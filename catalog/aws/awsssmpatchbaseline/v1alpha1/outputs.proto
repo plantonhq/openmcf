@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsssmpatchbaseline.v1alpha1;
+
+// AwsSsmPatchBaselineStackOutputs captures the observable state of the
+// patch baseline after apply.
+message AwsSsmPatchBaselineStackOutputs {
+  // The baseline's AWS-generated ID ("pb-..." - also the provider's
+  // import ID; each folded patch group imports as
+  // "{patch_group},{baseline_id}").
+  string baseline_id = 1;
+
+  // The baseline's ARN.
+  string baseline_arn = 2;
+
+  // The operating system the baseline governs (the provider echoes
+  // WINDOWS when the spec leaves it unset; also the default
+  // designation's import ID).
+  string operating_system = 3;
+}

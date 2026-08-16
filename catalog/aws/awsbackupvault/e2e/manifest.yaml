@@ -1,0 +1,34 @@
+# Canonical AwsBackupVault example (hack/dev manifest and refgen
+# Example source): a KMS-encrypted standard vault with a
+# governance-mode lock, an access policy, and failure notifications.
+# Literal ARNs stand in for composed references so the offline
+# `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupVault
+metadata:
+  name: app-backup-vault
+  id: app-backup-vault
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  standard:
+    kmsKeyArn:
+      value: arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab
+    lock:
+      minRetentionDays: 7
+      maxRetentionDays: 365
+    policy:
+      Version: "2012-10-17"
+      Statement:
+        - Sid: DenyRecoveryPointDelete
+          Effect: Deny
+          Principal: "*"
+          Action: backup:DeleteRecoveryPoint
+          Resource: "*"
+    notifications:
+      snsTopicArn:
+        value: arn:aws:sns:us-west-2:123456789012:backup-events
+      events:
+        - BACKUP_JOB_FAILED
+        - RESTORE_JOB_FAILED

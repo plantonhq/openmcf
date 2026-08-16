@@ -1,0 +1,23 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsbackupplan
+spec:
+  # The plan imports by its AWS-generated UUID (the name is NOT its
+  # identity at AWS). Selections compose the plan id with their own
+  # AWS-generated ids, derived blind from the selection_ids output map
+  # keyed exactly like the module's for_each entries.
+  values:
+    - name: plan_id
+      derivations:
+        - from_stack_output: plan_id
+      where_to_find: >-
+        AWS Backup console -> Backup plans -> <plan> (the ID in the
+        ARN), or `aws backup list-backup-plans` (BackupPlanId).
+    - name: selection_id
+      derivations:
+        - from_stack_output_keyed_by_address: selection_ids
+      where_to_find: >-
+        `aws backup list-backup-selections --backup-plan-id <id>` lists
+        selections with SelectionId; match each to its spec.selections
+        entry by SelectionName.

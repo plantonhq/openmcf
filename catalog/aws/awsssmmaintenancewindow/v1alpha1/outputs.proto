@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsssmmaintenancewindow.v1alpha1;
+
+// AwsSsmMaintenanceWindowStackOutputs captures the observable state of
+// the maintenance window after apply.
+message AwsSsmMaintenanceWindowStackOutputs {
+  // The window's AWS-generated ID ("mw-..." - also the provider's
+  // import ID).
+  string window_id = 1;
+
+  // AWS-generated target registration IDs keyed by target name (each
+  // registration imports as "{window_id}/{target_id}"; tasks reference
+  // these with the "WindowTargetIds" key).
+  map<string, string> target_ids = 2;
+
+  // AWS-generated task registration IDs keyed by task name (each
+  // registration imports as "{window_id}/{task_id}").
+  map<string, string> task_ids = 3;
+}

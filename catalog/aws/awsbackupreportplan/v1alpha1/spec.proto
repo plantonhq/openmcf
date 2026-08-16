@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbackupreportplan.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsBackupReportPlanSpec defines a Backup Audit Manager report plan:
+// a scheduled report (daily, AWS-managed cadence) of backup jobs,
+// copy jobs, restore jobs, or control compliance, delivered as
+// CSV/JSON files to an S3 bucket.
+//
+// AWS report plan names forbid hyphens (letter first, then letters,
+// digits, and underscores), which is stricter than metadata.name
+// conventions - so the name is an explicit field rather than
+// metadata.name. Changing it forces replacement.
+message AwsBackupReportPlanSpec {
+  // The AWS region the report plan lives in.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The report plan's name in AWS: a letter followed by up to 255
+  // letters, digits, or underscores (NO hyphens). Changing it forces
+  // replacement.
+  string report_plan_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+    pattern: "^[A-Za-z][0-9A-Za-z_]{0,255}$"
+  }];
+
+  // What the report covers, shown in the Backup console.
+  string description = 3 [(buf.validate.field).string.max_len = 1024];
+
+  // Where the report files land.
+  AwsBackupReportPlanDeliveryChannel delivery_channel = 4 [(buf.validate.field).required = true];
+
+  // What the report contains.
+  AwsBackupReportPlanReportSetting report_setting = 5 [(buf.validate.field).required = true];
+}
+
+// AwsBackupReportPlanDeliveryChannel is the report's S3 destination.
+// The bucket policy must allow the AWS Backup report service to write
+// (s3:PutObject from reports.backup.amazonaws.com... AWS documents
+// the exact statement in the Backup Audit Manager guide).
+message AwsBackupReportPlanDeliveryChannel {
+  // The destination S3 bucket (by name).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef s3_bucket_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // Key prefix inside the bucket. Unset = the bucket root.
+  string s3_key_prefix = 2;
+
+  // Report file formats. Unset = CSV (the AWS default).
+  repeated string formats = 3 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: [
+          "CSV",
+          "JSON"
+        ]
+      }
+    }
+  }];
+}
+
+// AwsBackupReportPlanReportSetting selects the report template and
+// its coverage.
+message AwsBackupReportPlanReportSetting {
+  // The report template. CHANGING THE TEMPLATE REPLACES THE WHOLE
+  // REPORT PLAN (a ForceNew field nested inside the provider's
+  // report_setting block - easy to miss). The two *_COMPLIANCE
+  // templates report on Audit Manager frameworks and need
+  // framework_arns; the three job templates report on backup, copy,
+  // and restore jobs.
+  string report_template = 1 [(buf.validate.field).string = {
+    in: [
+      "BACKUP_JOB_REPORT",
+      "CONTROL_COMPLIANCE_REPORT",
+      "COPY_JOB_REPORT",
+      "RESOURCE_COMPLIANCE_REPORT",
+      "RESTORE_JOB_REPORT"
+    ]
+  }];
+
+  // The Audit Manager frameworks the compliance templates report on.
+  // A report plan may reference frameworks from many components -
+  // this is a many-to-many edge, which is why report plans are their
+  // own kind rather than a framework field.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef framework_arns = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsBackupFramework,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.framework_arn"
+  ];
+
+  // The number of frameworks the report covers. The provider sends
+  // this only when positive and AWS computes it otherwise - set it
+  // only when pinning the framework count deliberately.
+  int32 number_of_frameworks = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Restrict the report to these account IDs ("*" for all accounts
+  // in the organization). Unset = the current account.
+  repeated string accounts = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Restrict the report to these organizational units.
+  repeated string organization_units = 5 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Restrict the report to these regions ("*" for all regions).
+  // Unset = the report plan's own region.
+  repeated string regions = 6 [(buf.validate.field).repeated.items.string.min_len = 1];
+}
