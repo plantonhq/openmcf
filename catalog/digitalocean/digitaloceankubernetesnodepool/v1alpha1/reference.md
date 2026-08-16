@@ -6,27 +6,59 @@
 
 **apiVersion**: `digital-ocean.planton.dev/v1alpha1`
 
-DigitalOceanKubernetesNodePoolSpec defines the specification for creating a node pool in an existing DigitalOcean Kubernetes cluster (DOKS).
-It focuses on essential parameters, following the 80/20 principle to expose only the most commonly used settings.
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
+DigitalOceanKubernetesNodePoolSpec models the full surface of the
+digitalocean_kubernetes_node_pool resource: an additional worker pool
+attached to an existing DOKS cluster. The cluster's own default pool is
+part of the DigitalOceanKubernetesCluster kind; use this kind to grow a
+cluster with separately sized, labeled, tainted, or GPU pools.
 
 ## Example
 
 ```yaml
+# Example DigitalOceanKubernetesNodePool manifests.
+#
+# Deploy with: planton apply -f manifest.yaml
+#
+# The first document is the smallest real pool: a fixed one-node pool on an
+# existing cluster (referenced by UUID). The second exercises the full
+# surface: autoscaling bounds, Kubernetes node labels, a taint isolating
+# the pool's nodes, pool-level Droplet tags, and AMD GPU partitioning.
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanKubernetesNodePool
 metadata:
-  name: first-node-pool                   # K8s resource name (unique per namespace)
+  name: example-doknp-minimal
 spec:
-  nodePoolName: first-node-pool           # Must be unique within the target DOKS cluster
+  nodePoolName: example-doknp-minimal
   cluster:
     value: fb7d9b81-fe06-4ee5-87f1-b9efc5af46fd
-  size: s-4vcpu-8gb           # Any valid Droplet size slug
-  nodeCount: 1                    # Desired nodes (initial count when autoScale true)
-  autoScale: false                 # Enable autoscaling
-  minNodes: 1                     # Lower bound when autoscaling
-  maxNodes: 2                     # Upper bound when autoscaling
+  size: s-1vcpu-2gb
+  nodeCount: 1
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanKubernetesNodePool
+metadata:
+  name: example-doknp-full
+spec:
+  nodePoolName: gpu-workers
+  cluster:
+    value: fb7d9b81-fe06-4ee5-87f1-b9efc5af46fd
+  size: gpu-mi300x1-192gb
+  nodeCount: 1
+  autoScale: true
+  minNodes: 1
+  maxNodes: 3
+  labels:
+    workload: ml-training
+  taints:
+    - key: nvidia.com/gpu
+      value: "true"
+      effect: NoSchedule
   tags:
-    - planton
+    - team:ml
+    - env:prod
+  gpuPartitionMode: AMD_PARTITION_MODE_SPX_NPS1
 ```
 
 ## Spec Fields
@@ -34,7 +66,7 @@ spec:
 | Path | Type | Required | Default | References |
 |---|---|---|---|---|
 | `spec.nodePoolName` | `string` | yes |  |  |
-| `spec.cluster` | `string \| valueFrom` | yes |  | DigitalOceanKubernetesCluster (`metadata.name`) |
+| `spec.cluster` | `string \| valueFrom` | yes |  | DigitalOceanKubernetesCluster (`status.outputs.cluster_id`) |
 | `spec.size` | `string` | yes |  |  |
 | `spec.nodeCount` | `uint32` | yes |  |  |
 | `spec.autoScale` | `bool` |  |  |  |
@@ -46,6 +78,7 @@ spec:
 | `spec.taints[].value` | `string` |  |  |  |
 | `spec.taints[].effect` | `string` | yes |  |  |
 | `spec.tags` | `[]string` |  |  |  |
+| `spec.gpuPartitionMode` | `string` |  |  |  |
 
 ## Field Details
 
@@ -61,19 +94,20 @@ A name for the node pool. Must be unique within the Kubernetes cluster.
 
 `string | valueFrom` · required
 
-Reference to the DigitalOcean Kubernetes Cluster in which to create this node pool.
-Accepts the cluster's name or a reference to the DigitalOceanKubernetesCluster resource.
+The DOKS cluster that owns this pool. Accepts the cluster UUID directly
+or a reference to a DigitalOceanKubernetesCluster resource (resolved
+from its cluster_id output). Changing it replaces the pool.
 
-- references: DigitalOceanKubernetesCluster (`metadata.name`)
+- references: DigitalOceanKubernetesCluster (`status.outputs.cluster_id`)
 - rule: {"required":true}
-- rule: write as {value: <literal>} or {valueFrom: {kind: DigitalOceanKubernetesCluster, name: <that resource's name>, fieldPath: metadata.name}} -- a bare string does not parse
+- rule: write as {value: <literal>} or {valueFrom: {kind: DigitalOceanKubernetesCluster, name: <that resource's name>, fieldPath: status.outputs.cluster_id}} -- a bare string does not parse
 
 ### spec.size
 
 `string` · required
 
-The slug identifier for the Droplet size to use for each node (e.g., "s-4vcpu-8gb").
-This defines the CPU and memory of the nodes in the pool.
+The slug identifier for the Droplet size of each node (e.g.
+"s-2vcpu-4gb"). Changing it replaces the pool.
 
 - rule: {"required":true}
 
@@ -81,8 +115,9 @@ This defines the CPU and memory of the nodes in the pool.
 
 `uint32` · required
 
-The number of nodes to provision in the pool.
-Must be at least 1. If auto_scale is enabled, this acts as the initial desired node count.
+The number of nodes in the pool. With auto_scale enabled this is the
+initial count; the live count then drifts freely between min_nodes and
+max_nodes without producing configuration diffs.
 
 - rule: {"required":true,"uint32":{"gt":0}}
 
@@ -90,44 +125,42 @@ Must be at least 1. If auto_scale is enabled, this acts as the initial desired n
 
 `bool`
 
-Enable auto-scaling for this node pool.
-If true, the platform will manage node count between min_nodes and max_nodes.
+Whether DigitalOcean's cluster-autoscaler manages this pool's node count
+between min_nodes and max_nodes.
 
 ### spec.minNodes
 
 `uint32`
 
-Minimum number of nodes when auto-scaling is enabled.
-Required if auto_scale is true.
+Minimum node count when auto_scale is enabled.
 
 ### spec.maxNodes
 
 `uint32`
 
-Maximum number of nodes when auto-scaling is enabled.
-Required if auto_scale is true.
+Maximum node count when auto_scale is enabled.
 
 ### spec.labels
 
 `map<string, string>`
 
-Kubernetes labels to apply to all nodes in this pool.
-Labels are key-value pairs used for node selection and workload scheduling.
-Example: {"workload": "web", "env": "production"}
+(Optional) Kubernetes labels applied to every node in the pool, in
+addition to the standard Planton labels both provisioners always apply.
+Labels drive Kubernetes scheduling (nodeSelector, affinity).
 
 ### spec.taints
 
 `[]DigitalOceanKubernetesNodePoolTaint`
 
-Kubernetes taints to apply to all nodes in this pool.
-Taints prevent pods from being scheduled on these nodes unless they have matching tolerations.
-Commonly used for workload isolation (e.g., GPU nodes, dedicated system pools).
+(Optional) Kubernetes taints applied to every node in the pool. Taints
+keep pods without a matching toleration off these nodes -- the standard
+isolation mechanism for GPU or dedicated system pools.
 
 ### spec.taints[].key
 
 `string` · required
 
-The taint key (e.g., "nvidia.com/gpu", "workload", "dedicated")
+Taint key, e.g. "dedicated".
 
 - rule: {"required":true}
 
@@ -135,26 +168,42 @@ The taint key (e.g., "nvidia.com/gpu", "workload", "dedicated")
 
 `string`
 
-The taint value (e.g., "true", "gpu", "system")
+(Optional) Taint value, e.g. "gpu-workloads". Kubernetes allows
+valueless taints, so empty is legal; the provisioners always send the
+value (possibly empty), which is all the provider's required leaf asks.
 
 ### spec.taints[].effect
 
 `string` · required
 
-The taint effect: NoSchedule, PreferNoSchedule, or NoExecute
-- NoSchedule: Pods that don't tolerate this taint will not be scheduled on the node
-- PreferNoSchedule: Kubernetes will try to avoid scheduling pods that don't tolerate this taint
-- NoExecute: Pods that don't tolerate this taint will be evicted if already running
+Taint effect. One of NoSchedule, PreferNoSchedule, NoExecute
+(case-sensitive, exactly as Kubernetes spells them).
 
-- rule: {"required":true}
+- rule: {"required":true,"string":{"in":["NoSchedule","PreferNoSchedule","NoExecute"]}}
 
 ### spec.tags
 
 `[]string`
 
-A list of DigitalOcean tags to apply to the node pool Droplets.
-Tags are used for cost attribution and organizational purposes in DigitalOcean's billing and management.
-Note: This is different from Kubernetes labels. Tags affect DO billing, labels affect K8s scheduling.
+(Optional) DigitalOcean tags applied to the pool's Droplets, in addition
+to the standard Planton tags both provisioners always apply. Tags drive
+DigitalOcean-side grouping and billing attribution; they are unrelated
+to Kubernetes labels.
+
+- rule: {"repeated":{"items":{"string":{"pattern":"^[a-zA-Z0-9:\\-_]{1,255}$"}}}}
+
+### spec.gpuPartitionMode
+
+`string`
+
+(Optional) GPU partitioning mode for AMD GPU Droplet sizes. Changing it
+replaces the pool.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["AMD_PARTITION_MODE_SPX_NPS1","AMD_PARTITION_MODE_DPX_NPS2"]}}
+
+## Validation Rules
+
+- `autoscale_bounds`: auto_scale requires min_nodes >= 1 and max_nodes >= min_nodes
 
 ## Outputs
 
@@ -163,7 +212,9 @@ Reference an output from another manifest as `valueFrom: {kind: DigitalOceanKube
 | Output | Type | Description |
 |---|---|---|
 | `status.outputs.node_pool_id` | `string` | The unique identifier (UUID) of the created node pool. |
-| `status.outputs.node_ids` | `[]string` | The IDs of the individual Droplet nodes in the pool. |
+| `status.outputs.node_ids` | `[]string` | The DOKS node object UUIDs of the pool's current members (the node ids the Kubernetes API reports, not the backing Droplet ids). |
+| `status.outputs.cluster_id` | `string` | The UUID of the cluster that owns this pool. The API addresses the pool as /v2/kubernetes/clusters/{cluster_id}/node_pools/{node_pool_id}, so consumers need both ids to reach it. |
+| `status.outputs.droplet_ids` | `[]string` | The integer ids (as strings) of the Droplets backing the pool's nodes, for wiring Droplet-scoped resources (e.g. firewalls) to the pool's machines. |
 
 ## References
 
@@ -171,7 +222,7 @@ Fields that can point at another resource's outputs:
 
 | Field | Kind | Output |
 |---|---|---|
-| `spec.cluster` | DigitalOceanKubernetesCluster | `metadata.name` |
+| `spec.cluster` | DigitalOceanKubernetesCluster | `status.outputs.cluster_id` |
 
 ## See Also
 

@@ -147,6 +147,29 @@ spec:
       # false by the importer; acl is write-only -- Read never calls
       # GetBucketAcl, so the canned ACL stays at its config value.
       config_only_attributes: [force_destroy, acl]
+    - terraform_type: digitalocean_spaces_bucket_cors_configuration
+      pulumi_type: digitalocean:index/spacesBucketCorsConfiguration:SpacesBucketCorsConfiguration
+      id_format: "{region},{bucket_name}"
+      notes: >-
+        Shares the bucket's importer, so the same region,name composite.
+        Unlike the bucket's deprecated inline cors_rule, this resource's
+        Read calls GetBucketCors -- rules round-trip with real drift
+        detection.
+    - terraform_type: digitalocean_spaces_bucket_policy
+      pulumi_type: digitalocean:index/spacesBucketPolicy:SpacesBucketPolicy
+      id_format: "{region},{bucket_name}"
+      # The provider normalizes the policy JSON (whitespace, key order) via
+      # a StateFunc on write and stores the API's normalized form on Read;
+      # a configured document that differs only in formatting is suppressed
+      # by the provider's own JSON-diff comparison.
+      write_normalized_attributes: [policy]
+    - terraform_type: digitalocean_spaces_bucket_logging
+      pulumi_type: digitalocean:index/spacesBucketLogging:SpacesBucketLogging
+      id_format: "{region},{bucket_name}"
+      notes: >-
+        Shares the bucket importer's region,name composite. Read fetches
+        target_bucket and target_prefix unconditionally from
+        GetBucketLogging.
 
     # --- Certificates ----------------------------------------------------------
     - terraform_type: digitalocean_certificate

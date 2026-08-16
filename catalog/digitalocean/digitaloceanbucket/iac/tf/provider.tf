@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.0"
+  required_version = ">= 1.5"
 
   required_providers {
     digitalocean = {
@@ -14,4 +14,3 @@ provider "digitalocean" {
   spaces_access_id  = var.spaces_access_id
   spaces_secret_key = var.spaces_secret_key
 }
-

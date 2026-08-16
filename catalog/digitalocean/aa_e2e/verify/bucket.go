@@ -27,12 +27,12 @@ type bucketVerifier struct{}
 func (*bucketVerifier) IDOutputKey() string { return "bucket_id" }
 
 func (v *bucketVerifier) VerifyExists(ctx context.Context, client *godo.Client, id string) error {
-	return pkgerrors.New("digitaloceanbucket requires the full outputs map (bucket_name + region); " +
+	return pkgerrors.New("digitaloceanbucket requires the full outputs map (bucket_id + region); " +
 		"the harness dispatches through VerifyExistsFromOutputs")
 }
 
 func (v *bucketVerifier) VerifyAbsent(ctx context.Context, client *godo.Client, id string) error {
-	return pkgerrors.New("digitaloceanbucket requires the full outputs map (bucket_name + region); " +
+	return pkgerrors.New("digitaloceanbucket requires the full outputs map (bucket_id + region); " +
 		"the harness dispatches through VerifyAbsentFromOutputs")
 }
 
@@ -42,7 +42,7 @@ func (v *bucketVerifier) VerifyExistsFromOutputs(ctx context.Context, client *go
 		return pkgerrors.Wrap(err, "digitaloceanbucket verify-exists failed")
 	}
 	if !exists {
-		return pkgerrors.Errorf("digitaloceanbucket %q not found after deploy", StringOutput(outputs, "bucket_name"))
+		return pkgerrors.Errorf("digitaloceanbucket %q not found after deploy", StringOutput(outputs, "bucket_id"))
 	}
 	return nil
 }
@@ -53,16 +53,18 @@ func (v *bucketVerifier) VerifyAbsentFromOutputs(ctx context.Context, client *go
 		return pkgerrors.Wrap(err, "digitaloceanbucket verify-absent failed")
 	}
 	if exists {
-		return pkgerrors.Errorf("digitaloceanbucket %q still exists after destroy", StringOutput(outputs, "bucket_name"))
+		return pkgerrors.Errorf("digitaloceanbucket %q still exists after destroy", StringOutput(outputs, "bucket_id"))
 	}
 	return nil
 }
 
 func spacesBucketExistsFromOutputs(ctx context.Context, outputs map[string]interface{}) (bool, error) {
-	name := StringOutput(outputs, "bucket_name")
+	// The bucket_id output IS the bucket name (a Spaces bucket's provider
+	// resource id); region completes the S3 endpoint address.
+	name := StringOutput(outputs, "bucket_id")
 	region := StringOutput(outputs, "region")
 	if name == "" || region == "" {
-		return false, pkgerrors.Errorf("outputs must carry bucket_name and region (got bucket_name=%q, region=%q)", name, region)
+		return false, pkgerrors.Errorf("outputs must carry bucket_id and region (got bucket_id=%q, region=%q)", name, region)
 	}
 
 	accessKey := os.Getenv("SPACES_ACCESS_KEY_ID")

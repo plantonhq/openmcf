@@ -1,12 +1,15 @@
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanBucket
 metadata:
-  name: my-private-bucket
+  name: app-data
 spec:
-  bucketName: my-private-bucket
+  bucketName: app-data
   region: nyc3
   accessControl: PRIVATE
   versioningEnabled: true
-  tags:
-    - storage
-    - backups
+  lifecycleRules:
+    - id: cleanup
+      enabled: true
+      abortIncompleteMultipartUploadDays: 7
+      noncurrentVersionExpiration:
+        days: 90

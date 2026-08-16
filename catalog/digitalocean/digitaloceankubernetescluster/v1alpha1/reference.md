@@ -733,7 +733,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
-| DigitalOceanKubernetesNodePool | `spec.cluster` | `metadata.name` |
+| DigitalOceanKubernetesNodePool | `spec.cluster` | `status.outputs.cluster_id` |
 
 ## See Also
 

@@ -1,9 +1,19 @@
 package module
 
 const (
-	// OpBucketId is the exported stack output containing the bucket ID.
+	// OpBucketId exports the provider's resource id for the bucket, which
+	// IS the bucket name.
 	OpBucketId = "bucket_id"
 
-	// OpEndpoint is the exported stack output containing the regional endpoint.
+	// OpEndpoint exports the region-level Spaces endpoint host.
 	OpEndpoint = "endpoint"
+
+	// OpRegion exports the region slug the bucket lives in.
+	OpRegion = "region"
+
+	// OpBucketDomainName exports the bucket's virtual-host-style FQDN.
+	OpBucketDomainName = "bucket_domain_name"
+
+	// OpUrn exports the uniform resource name (do:space:<name>).
+	OpUrn = "urn"
 )

@@ -83,10 +83,11 @@ func getKubernetesCluster(ctx context.Context, client *godo.Client, id string) (
 
 // kubernetesNodePoolVerifier verifies a DigitalOceanKubernetesNodePool. The
 // API addresses node pools as /v2/kubernetes/clusters/{cluster_id}/node_pools/{id},
-// but the kind's stack outputs carry only node_pool_id (no cluster id) -- a
-// recorded gap for the kind's depth wave -- so the verifier resolves the
-// owning cluster by scanning the account's clusters, exactly as the upstream
-// provider's own node-pool importer does.
+// and the kind's stack outputs carry BOTH ids, so the outputs form addresses
+// the pool directly -- one GET validates both claimed outputs against live
+// state at once. The plain-id forms keep the account-wide cluster scan (the
+// same discovery the upstream provider's own node-pool importer performs)
+// for callers that only hold the pool UUID.
 type kubernetesNodePoolVerifier struct{}
 
 func (*kubernetesNodePoolVerifier) IDOutputKey() string { return "node_pool_id" }
@@ -111,6 +112,53 @@ func (*kubernetesNodePoolVerifier) VerifyAbsent(ctx context.Context, client *god
 		return pkgerrors.Errorf("digitaloceankubernetesnodepool %q still exists after destroy", id)
 	}
 	return nil
+}
+
+func (v *kubernetesNodePoolVerifier) VerifyExistsFromOutputs(ctx context.Context, client *godo.Client, outputs map[string]interface{}) error {
+	poolID := StringOutput(outputs, "node_pool_id")
+	if poolID == "" {
+		return pkgerrors.New("node_pool_id output missing after deploy")
+	}
+	clusterID := StringOutput(outputs, "cluster_id")
+	if clusterID == "" {
+		return pkgerrors.New("cluster_id output missing after deploy")
+	}
+
+	// Direct addressing: finding the pool under the claimed cluster proves
+	// both outputs against live state in one call. Node-level assertions
+	// are deliberately absent -- with autoscaling the live node set drifts
+	// from the apply-time snapshot by design.
+	_, _, err := client.Kubernetes.GetNodePool(ctx, clusterID, poolID)
+	if err != nil {
+		if isNotFound(err) {
+			return pkgerrors.Errorf("digitaloceankubernetesnodepool %q not found under cluster %q after deploy", poolID, clusterID)
+		}
+		return pkgerrors.Wrapf(err, "digitaloceankubernetesnodepool verify-exists failed for %q", poolID)
+	}
+
+	return nil
+}
+
+func (v *kubernetesNodePoolVerifier) VerifyAbsentFromOutputs(ctx context.Context, client *godo.Client, outputs map[string]interface{}) error {
+	poolID := StringOutput(outputs, "node_pool_id")
+	if poolID == "" {
+		return pkgerrors.New("node_pool_id output missing for destroy verification")
+	}
+	clusterID := StringOutput(outputs, "cluster_id")
+	if clusterID == "" {
+		return pkgerrors.New("cluster_id output missing for destroy verification")
+	}
+
+	// A destroyed pool 404s directly; a destroyed owning cluster (torn down
+	// as the scenario's fixture) also proves the pool is gone.
+	_, _, err := client.Kubernetes.GetNodePool(ctx, clusterID, poolID)
+	if err != nil {
+		if isNotFound(err) {
+			return nil
+		}
+		return pkgerrors.Wrapf(err, "digitaloceankubernetesnodepool verify-absent failed for %q", poolID)
+	}
+	return pkgerrors.Errorf("digitaloceankubernetesnodepool %q still exists after destroy", poolID)
 }
 
 func kubernetesNodePoolExists(ctx context.Context, client *godo.Client, poolID string) (bool, error) {

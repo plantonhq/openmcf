@@ -29,8 +29,8 @@ that has progressed.
 |---|---|
 | Provider schema (parity baseline) | `digitalocean@2.99.1` |
 | Kinds in the catalog | 15 |
-| Distinct provider resources consumed | 15 |
-| Spec fields authored across all kinds | 536 |
+| Distinct provider resources consumed | 18 |
+| Spec fields authored across all kinds | 554 |
 | Module pins on `digitalocean` | `~> 2.99` × 15 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -45,12 +45,12 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**8 of 15 kinds are at total accounting; 0 proven live.**
+**10 of 15 kinds are at total accounting; 0 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
 | DigitalOceanApp | 292 | 0 | 282 | 10 | 0 | ✅ | — |
-| DigitalOceanBucket | 13 | 1 | 3 | 0 | 10 | ❌ | — |
+| DigitalOceanBucket | 28 | 6 | 19 | 3 | 0 | ✅ | — |
 | DigitalOceanCertificate | 6 | 1 | 5 | 0 | 3 | ❌ | — |
 | DigitalOceanContainerRegistry | 6 | 2 | 1 | 1 | 3 | ❌ | — |
 | DigitalOceanDatabaseCluster | 19 | 14 | 5 | 0 | 0 | ✅ | — |
@@ -60,7 +60,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | DigitalOceanFirewall | 17 | 3 | 14 | 0 | 0 | ✅ | — |
 | DigitalOceanFunction | 292 | 0 | 36 | 256 | 0 | ✅ | — |
 | DigitalOceanKubernetesCluster | 47 | 31 | 15 | 1 | 0 | ✅ | — |
-| DigitalOceanKubernetesNodePool | 13 | 7 | 5 | 0 | 1 | ❌ | — |
+| DigitalOceanKubernetesNodePool | 13 | 8 | 5 | 0 | 0 | ✅ | — |
 | DigitalOceanLoadBalancer | 46 | 31 | 15 | 0 | 0 | ✅ | — |
 | DigitalOceanVolume | 8 | 4 | 3 | 0 | 1 | ❌ | — |
 | DigitalOceanVpc | 4 | 2 | 1 | 1 | 1 | ❌ | — |
@@ -71,9 +71,9 @@ All resources of `digitalocean@2.99.1` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 15 | consumed by a kind's Terraform module today |
+| Modeled | 18 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
-| Composed | 23 | capability covered through an existing kind's surface rather than a kind of its own |
+| Composed | 20 | capability covered through an existing kind's surface rather than a kind of its own |
 | Planned | 22 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 17 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 2 | deprecated or superseded provider surface |
@@ -84,7 +84,7 @@ All resources of `digitalocean@2.99.1` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (15)
+### Modeled (18)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -101,10 +101,13 @@ rather than trusted.
 | `digitalocean_loadbalancer` | consumed by DigitalOceanLoadBalancer |
 | `digitalocean_record` | consumed by DigitalOceanDnsRecord, DigitalOceanDnsZone |
 | `digitalocean_spaces_bucket` | consumed by DigitalOceanBucket |
+| `digitalocean_spaces_bucket_cors_configuration` | consumed by DigitalOceanBucket |
+| `digitalocean_spaces_bucket_logging` | consumed by DigitalOceanBucket |
+| `digitalocean_spaces_bucket_policy` | consumed by DigitalOceanBucket |
 | `digitalocean_volume` | consumed by DigitalOceanVolume |
 | `digitalocean_vpc` | consumed by DigitalOceanVpc |
 
-### Composed (23)
+### Composed (20)
 
 | Resource | Recorded reason |
 |---|---|
@@ -126,9 +129,6 @@ rather than trusted.
 | `digitalocean_reserved_ip_assignment` | attach/detach is a nullable droplet FK on the planned DigitalOceanReservedIp kind, not a separate object |
 | `digitalocean_reserved_ipv6` | same reserved-IP concept, v6 flavor; a separate kind would be a bundled duplicate -- folds into the planned DigitalOceanReservedIp kind |
 | `digitalocean_reserved_ipv6_assignment` | same reasoning as the v4 assignment -- a nullable droplet FK on the planned DigitalOceanReservedIp kind |
-| `digitalocean_spaces_bucket_cors_configuration` | per-bucket CORS settings singleton, lifecycle identical to the bucket; folds into DigitalOceanBucket |
-| `digitalocean_spaces_bucket_logging` | per-bucket logging target singleton; folds into DigitalOceanBucket |
-| `digitalocean_spaces_bucket_policy` | one policy document per bucket, settings-of-parent; folds into DigitalOceanBucket |
 | `digitalocean_uptime_alert` | alerts are many-per-check rows that cannot exist without the check and are always managed alongside it; the planned DigitalOceanUptimeCheck kind carries an alerts list |
 | `digitalocean_volume_attachment` | attachment is a nullable droplet FK on DigitalOceanVolume (the droplet kind's volume_ids covers it today); attach/detach is a field change, not a separate object lifecycle worth a kind |
 

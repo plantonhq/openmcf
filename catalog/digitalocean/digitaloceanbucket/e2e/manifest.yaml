@@ -1,11 +1,64 @@
+# Example DigitalOceanBucket manifests.
+#
+# Deploy with: planton apply -f manifest.yaml
+#
+# The first document is the smallest real bucket (name only; the provider
+# applies its own default region, nyc3). The second exercises the full
+# surface: explicit region, public-read access, versioning, lifecycle
+# rules, CORS for a browser application, a bucket policy, access logging
+# to a second bucket, and force_destroy.
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanBucket
 metadata:
-  name: first-bucket          # K8s resource name
+  name: example-dobkt-minimal
 spec:
-  bucketName: first-bucket-planton    # DNS‑compatible, 3‑63 chars
-  region: blr1                   # any valid DigitalOceanRegion enum (e.g., NYC3, FRA1)
-  accessControl: PRIVATE         # PRIVATE | PUBLIC_READ
-  versioningEnabled: true        # set to false if not needed
-  tags:
-    - planton
+  bucketName: example-dobkt-minimal
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanBucket
+metadata:
+  name: example-dobkt-full
+spec:
+  bucketName: example-dobkt-full
+  region: fra1
+  accessControl: PUBLIC_READ
+  versioningEnabled: true
+  forceDestroy: true
+  lifecycleRules:
+    - id: expire-uploads
+      prefix: uploads/
+      enabled: true
+      abortIncompleteMultipartUploadDays: 7
+      expiration:
+        days: 30
+      noncurrentVersionExpiration:
+        days: 90
+  corsRules:
+    - allowedMethods:
+        - GET
+        - HEAD
+      allowedOrigins:
+        - "https://www.example.com"
+      allowedHeaders:
+        - "*"
+      exposeHeaders:
+        - ETag
+      id: site-assets
+      maxAgeSeconds: 3600
+  policy: |
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "PublicReadAssets",
+          "Effect": "Allow",
+          "Principal": "*",
+          "Action": "s3:GetObject",
+          "Resource": "arn:aws:s3:::example-dobkt-full/assets/*"
+        }
+      ]
+    }
+  logging:
+    targetBucket:
+      value: my-log-sink-bucket
+    targetPrefix: access-logs/

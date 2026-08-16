@@ -1,0 +1,28 @@
+# Minimal DigitalOceanKubernetesNodePool: a fixed one-node pool on the
+# cheapest DOKS-capable slug, attached to the cluster registry prerequisite
+# (the DigitalOceanKubernetesCluster minimal profile, which itself composes
+# the VPC fixture). Proves the full create/verify/destroy lifecycle and the
+# node_pool_id / cluster_id outputs the verifier addresses the pool with.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanKubernetesNodePool
+metadata:
+  name: planton-oss-e2e-digitaloceankubernetesnodepool-min
+  id: planton-oss-e2e-digitaloceankubernetesnodepool-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceankubernetesnodepool
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  nodePoolName: pltn-e2e-doknp-min
+  cluster:
+    valueFrom:
+      kind: DigitalOceanKubernetesCluster
+      name: planton-oss-e2e-digitaloceankubernetescluster-min
+      fieldPath: status.outputs.cluster_id
+  size: s-1vcpu-2gb
+  nodeCount: 1

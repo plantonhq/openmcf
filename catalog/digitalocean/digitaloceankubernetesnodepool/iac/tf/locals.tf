@@ -1,41 +1,32 @@
 locals {
-  # Node pool name from spec
-  node_pool_name = var.spec.node_pool_name
-  
-  # Cluster ID from spec
-  cluster_id = var.spec.cluster.value
-  
-  # Droplet size
-  size = var.spec.size
-  
-  # Node count
-  node_count = var.spec.node_count
-  
-  # Autoscaling configuration
-  auto_scale = var.spec.auto_scale
-  min_nodes  = var.spec.min_nodes
-  max_nodes  = var.spec.max_nodes
-  
-  # Merge metadata labels with spec labels
-  all_labels = merge(
-    {
-      "planton-resource"      = "true"
-      "planton-resource-name" = var.metadata.name
-      "planton-resource-kind" = "DigitalOceanKubernetesNodePool"
-    },
-    var.metadata.org != null ? { "planton-organization" = var.metadata.org } : {},
-    var.metadata.env != null ? { "planton-environment" = var.metadata.env } : {},
-    var.metadata.id != null ? { "planton-resource-id" = var.metadata.id } : {},
-    var.spec.labels
+  # Standard Planton labels rendered as DigitalOcean "key:value" tags —
+  # the exact set and key spelling the Pulumi module applies, so both
+  # provisioners tag identically.
+  planton_tags = concat(
+    [
+      "planton-ai_resource:true",
+      "planton-ai_name:${var.metadata.name}",
+      "planton-ai_kind:DigitalOceanKubernetesNodePool",
+    ],
+    try(var.metadata.org, "") != "" && var.metadata.org != null ? ["planton-ai_organization:${var.metadata.org}"] : [],
+    try(var.metadata.env, "") != "" && var.metadata.env != null ? ["planton-ai_environment:${var.metadata.env}"] : [],
+    try(var.metadata.id, "") != "" && var.metadata.id != null ? ["planton-ai_id:${var.metadata.id}"] : [],
   )
-  
-  # Tags - merge metadata tags with spec tags
-  all_tags = concat(
-    var.metadata.tags != null ? var.metadata.tags : [],
-    var.spec.tags
-  )
-  
-  # Taints from spec
-  taints = var.spec.taints
-}
 
+  tags = distinct(concat(coalesce(var.spec.tags, []), local.planton_tags))
+
+  # The same Planton identity as Kubernetes node labels, with user labels
+  # winning on key collisions — the exact map the Pulumi module applies.
+  planton_labels = merge(
+    {
+      "planton-ai_resource" = "true"
+      "planton-ai_name"     = var.metadata.name
+      "planton-ai_kind"     = "DigitalOceanKubernetesNodePool"
+    },
+    try(var.metadata.org, "") != "" && var.metadata.org != null ? { "planton-ai_organization" = var.metadata.org } : {},
+    try(var.metadata.env, "") != "" && var.metadata.env != null ? { "planton-ai_environment" = var.metadata.env } : {},
+    try(var.metadata.id, "") != "" && var.metadata.id != null ? { "planton-ai_id" = var.metadata.id } : {},
+  )
+
+  node_labels = merge(local.planton_labels, coalesce(var.spec.labels, {}))
+}

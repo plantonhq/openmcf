@@ -175,18 +175,9 @@ resources:
   - resource: digitalocean_reserved_ipv6_assignment
     disposition: composed
     reason: "same reasoning as the v4 assignment -- a nullable droplet FK on the planned DigitalOceanReservedIp kind"
-  - resource: digitalocean_spaces_bucket_cors_configuration
-    disposition: composed
-    reason: "per-bucket CORS settings singleton, lifecycle identical to the bucket; folds into DigitalOceanBucket"
-  - resource: digitalocean_spaces_bucket_logging
-    disposition: composed
-    reason: "per-bucket logging target singleton; folds into DigitalOceanBucket"
   - resource: digitalocean_spaces_bucket_object
     disposition: deferred
     reason: "uploading object content is data-plane work, not infrastructure; a declarative kind for file contents is marginal and invites abuse as a deployment mechanism"
-  - resource: digitalocean_spaces_bucket_policy
-    disposition: composed
-    reason: "one policy document per bucket, settings-of-parent; folds into DigitalOceanBucket"
   - resource: digitalocean_spaces_key
     disposition: model-planned
     reason: "judged as a planned DigitalOceanSpacesKey kind (access keys have independent create/rotate lifecycles and are the credential workloads actually reference; FK buckets via per-bucket grants)"

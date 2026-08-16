@@ -1,28 +1,21 @@
-# Public Static Website Bucket
+# Public Static Site Assets
 
-This preset creates a public-read DigitalOcean Spaces bucket suitable for hosting static websites, CDN origins, or publicly served assets (JS, CSS, images). Objects are readable by anyone with the URL. Use with a CDN or custom domain for production sites.
+This preset creates a public-read Spaces bucket for a website's static assets, with a CORS rule letting the site's browser code fetch them cross-origin and cache preflight responses for an hour.
 
 ## When to Use
 
-- Static site hosting (HTML, JS, CSS, images)
-- CDN origin for cached assets
-- Public documentation or media files
-- JAMstack deployments (build output to bucket)
+- Hosting images, scripts, stylesheets, fonts, or downloads a website serves directly from Spaces
+- Single-page applications fetching assets from the bucket's endpoint on a different origin
+- Anything meant to be read anonymously; keep private data in a PRIVATE bucket instead
 
 ## Key Configuration Choices
 
-- **Public read** (`accessControl: PUBLIC_READ`) -- objects are publicly accessible; suitable for static assets.
-- **Versioning disabled** (`versioningEnabled: false`) -- typical for static sites where overwrites are intentional.
-- **Tags** (`static-site`, `cdn`) -- for organization and billing visibility.
-- **Bucket name** (`bucketName`) -- use a subdomain-friendly name if serving via custom domain (e.g., `assets-myapp`).
+- **Public-read ACL** (`accessControl: PUBLIC_READ`) -- anyone can GET objects; only credentialed clients can write.
+- **CORS rule** (`corsRules`) -- allows `GET`/`HEAD` from the site's origin, lets browsers read the `ETag` header for cache validation, and caches the preflight for 3600 seconds. CORS is managed through DigitalOcean's standalone CORS-configuration resource, so rules round-trip with real drift detection.
+- **No versioning** -- static assets are rebuilt and re-uploaded by pipelines; version history is rarely worth the storage. Add `versioningEnabled: true` if you overwrite in place and want rollback.
 
 ## Placeholders to Replace
 
-| Placeholder | Description | Where to Find |
-|-------------|-------------|---------------|
-| `nyc3` | Target DigitalOcean region slug | [DigitalOcean Regions API](https://docs.digitalocean.com/reference/api/api-reference/#tag/Regions) |
-| `my-static-website` | Unique bucket name (3-63 chars, DNS-compatible) | Choose a unique name; consider region endpoint format for custom domains |
-
-## Related Presets
-
-- **01-private** -- Use for sensitive data or when access must be restricted to authenticated users
+- `metadata.name` / `bucketName` -- your bucket's name. It must be globally unique within the region (across ALL DigitalOcean customers) and DNS-compatible.
+- `corsRules[0].allowedOrigins` -- your website's exact origin (scheme + host); use `"*"` only for truly public assets.
+- `region` -- a Spaces-capable region slug (ams3, atl1, blr1, fra1, lon1, nyc3, sfo2, sfo3, sgp1, syd1, tor1).

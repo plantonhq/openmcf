@@ -23,44 +23,51 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// DigitalOceanKubernetesNodePoolSpec defines the specification for creating a node pool in an existing DigitalOcean Kubernetes cluster (DOKS).
-// It focuses on essential parameters, following the 80/20 principle to expose only the most commonly used settings.
+// DigitalOceanKubernetesNodePoolSpec models the full surface of the
+// digitalocean_kubernetes_node_pool resource: an additional worker pool
+// attached to an existing DOKS cluster. The cluster's own default pool is
+// part of the DigitalOceanKubernetesCluster kind; use this kind to grow a
+// cluster with separately sized, labeled, tainted, or GPU pools.
 type DigitalOceanKubernetesNodePoolSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// A name for the node pool. Must be unique within the Kubernetes cluster.
 	NodePoolName string `protobuf:"bytes,1,opt,name=node_pool_name,json=nodePoolName,proto3" json:"node_pool_name,omitempty"`
-	// Reference to the DigitalOcean Kubernetes Cluster in which to create this node pool.
-	// Accepts the cluster's name or a reference to the DigitalOceanKubernetesCluster resource.
+	// The DOKS cluster that owns this pool. Accepts the cluster UUID directly
+	// or a reference to a DigitalOceanKubernetesCluster resource (resolved
+	// from its cluster_id output). Changing it replaces the pool.
 	Cluster *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=cluster,proto3" json:"cluster,omitempty"`
-	// The slug identifier for the Droplet size to use for each node (e.g., "s-4vcpu-8gb").
-	// This defines the CPU and memory of the nodes in the pool.
+	// The slug identifier for the Droplet size of each node (e.g.
+	// "s-2vcpu-4gb"). Changing it replaces the pool.
 	Size string `protobuf:"bytes,3,opt,name=size,proto3" json:"size,omitempty"`
-	// The number of nodes to provision in the pool.
-	// Must be at least 1. If auto_scale is enabled, this acts as the initial desired node count.
+	// The number of nodes in the pool. With auto_scale enabled this is the
+	// initial count; the live count then drifts freely between min_nodes and
+	// max_nodes without producing configuration diffs.
 	NodeCount uint32 `protobuf:"varint,4,opt,name=node_count,json=nodeCount,proto3" json:"node_count,omitempty"`
-	// Enable auto-scaling for this node pool.
-	// If true, the platform will manage node count between min_nodes and max_nodes.
+	// Whether DigitalOcean's cluster-autoscaler manages this pool's node count
+	// between min_nodes and max_nodes.
 	AutoScale bool `protobuf:"varint,5,opt,name=auto_scale,json=autoScale,proto3" json:"auto_scale,omitempty"`
-	// Minimum number of nodes when auto-scaling is enabled.
-	// Required if auto_scale is true.
+	// Minimum node count when auto_scale is enabled.
 	MinNodes uint32 `protobuf:"varint,6,opt,name=min_nodes,json=minNodes,proto3" json:"min_nodes,omitempty"`
-	// Maximum number of nodes when auto-scaling is enabled.
-	// Required if auto_scale is true.
+	// Maximum node count when auto_scale is enabled.
 	MaxNodes uint32 `protobuf:"varint,7,opt,name=max_nodes,json=maxNodes,proto3" json:"max_nodes,omitempty"`
-	// Kubernetes labels to apply to all nodes in this pool.
-	// Labels are key-value pairs used for node selection and workload scheduling.
-	// Example: {"workload": "web", "env": "production"}
+	// (Optional) Kubernetes labels applied to every node in the pool, in
+	// addition to the standard Planton labels both provisioners always apply.
+	// Labels drive Kubernetes scheduling (nodeSelector, affinity).
 	Labels map[string]string `protobuf:"bytes,8,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	// Kubernetes taints to apply to all nodes in this pool.
-	// Taints prevent pods from being scheduled on these nodes unless they have matching tolerations.
-	// Commonly used for workload isolation (e.g., GPU nodes, dedicated system pools).
+	// (Optional) Kubernetes taints applied to every node in the pool. Taints
+	// keep pods without a matching toleration off these nodes -- the standard
+	// isolation mechanism for GPU or dedicated system pools.
 	Taints []*DigitalOceanKubernetesNodePoolTaint `protobuf:"bytes,9,rep,name=taints,proto3" json:"taints,omitempty"`
-	// A list of DigitalOcean tags to apply to the node pool Droplets.
-	// Tags are used for cost attribution and organizational purposes in DigitalOcean's billing and management.
-	// Note: This is different from Kubernetes labels. Tags affect DO billing, labels affect K8s scheduling.
-	Tags          []string `protobuf:"bytes,10,rep,name=tags,proto3" json:"tags,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// (Optional) DigitalOcean tags applied to the pool's Droplets, in addition
+	// to the standard Planton tags both provisioners always apply. Tags drive
+	// DigitalOcean-side grouping and billing attribution; they are unrelated
+	// to Kubernetes labels.
+	Tags []string `protobuf:"bytes,10,rep,name=tags,proto3" json:"tags,omitempty"`
+	// (Optional) GPU partitioning mode for AMD GPU Droplet sizes. Changing it
+	// replaces the pool.
+	GpuPartitionMode string `protobuf:"bytes,11,opt,name=gpu_partition_mode,json=gpuPartitionMode,proto3" json:"gpu_partition_mode,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *DigitalOceanKubernetesNodePoolSpec) Reset() {
@@ -163,18 +170,25 @@ func (x *DigitalOceanKubernetesNodePoolSpec) GetTags() []string {
 	return nil
 }
 
-// DigitalOcean Kubernetes Node Pool Taint
-// Taints prevent pods from being scheduled on nodes unless they tolerate the taint.
+func (x *DigitalOceanKubernetesNodePoolSpec) GetGpuPartitionMode() string {
+	if x != nil {
+		return x.GpuPartitionMode
+	}
+	return ""
+}
+
+// DigitalOceanKubernetesNodePoolTaint is a Kubernetes taint applied to every
+// node in the pool.
 type DigitalOceanKubernetesNodePoolTaint struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The taint key (e.g., "nvidia.com/gpu", "workload", "dedicated")
+	// Taint key, e.g. "dedicated".
 	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// The taint value (e.g., "true", "gpu", "system")
+	// (Optional) Taint value, e.g. "gpu-workloads". Kubernetes allows
+	// valueless taints, so empty is legal; the provisioners always send the
+	// value (possibly empty), which is all the provider's required leaf asks.
 	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	// The taint effect: NoSchedule, PreferNoSchedule, or NoExecute
-	// - NoSchedule: Pods that don't tolerate this taint will not be scheduled on the node
-	// - PreferNoSchedule: Kubernetes will try to avoid scheduling pods that don't tolerate this taint
-	// - NoExecute: Pods that don't tolerate this taint will be evicted if already running
+	// Taint effect. One of NoSchedule, PreferNoSchedule, NoExecute
+	// (case-sensitive, exactly as Kubernetes spells them).
 	Effect        string `protobuf:"bytes,3,opt,name=effect,proto3" json:"effect,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -235,10 +249,10 @@ var File_catalog_digitalocean_digitaloceankubernetesnodepool_v1alpha1_spec_proto
 
 const file_catalog_digitalocean_digitaloceankubernetesnodepool_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Gcatalog/digitalocean/digitaloceankubernetesnodepool/v1alpha1/spec.proto\x12@dev.planton.digitalocean.digitaloceankubernetesnodepool.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xb7\x05\n" +
+	"Gcatalog/digitalocean/digitaloceankubernetesnodepool/v1alpha1/spec.proto\x12@dev.planton.digitalocean.digitaloceankubernetesnodepool.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x86\b\n" +
 	"\"DigitalOceanKubernetesNodePoolSpec\x12,\n" +
-	"\x0enode_pool_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fnodePoolName\x12j\n" +
-	"\acluster\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\xbaH\x03\xc8\x01\x01\x88\xd4a\x90'\x92\xd4a\rmetadata.nameR\acluster\x12\x1a\n" +
+	"\x0enode_pool_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fnodePoolName\x12v\n" +
+	"\acluster\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x90'\x92\xd4a\x19status.outputs.cluster_idR\acluster\x12\x1a\n" +
 	"\x04size\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04size\x12)\n" +
 	"\n" +
 	"node_count\x18\x04 \x01(\rB\n" +
@@ -248,16 +262,19 @@ const file_catalog_digitalocean_digitaloceankubernetesnodepool_v1alpha1_spec_pro
 	"\tmin_nodes\x18\x06 \x01(\rR\bminNodes\x12\x1b\n" +
 	"\tmax_nodes\x18\a \x01(\rR\bmaxNodes\x12\x88\x01\n" +
 	"\x06labels\x18\b \x03(\v2p.dev.planton.digitalocean.digitaloceankubernetesnodepool.v1alpha1.DigitalOceanKubernetesNodePoolSpec.LabelsEntryR\x06labels\x12}\n" +
-	"\x06taints\x18\t \x03(\v2e.dev.planton.digitalocean.digitaloceankubernetesnodepool.v1alpha1.DigitalOceanKubernetesNodePoolTaintR\x06taints\x12\x12\n" +
+	"\x06taints\x18\t \x03(\v2e.dev.planton.digitalocean.digitaloceankubernetesnodepool.v1alpha1.DigitalOceanKubernetesNodePoolTaintR\x06taints\x128\n" +
 	"\x04tags\x18\n" +
-	" \x03(\tR\x04tags\x1a9\n" +
+	" \x03(\tB$\xbaH!\x92\x01\x1e\"\x1cr\x1a2\x18^[a-zA-Z0-9:\\-_]{1,255}$R\x04tags\x12p\n" +
+	"\x12gpu_partition_mode\x18\v \x01(\tBB\xbaH?\xd8\x01\x01r:R\x1bAMD_PARTITION_MODE_SPX_NPS1R\x1bAMD_PARTITION_MODE_DPX_NPS2R\x10gpuPartitionMode\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"u\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xa8\x01\xbaH\xa4\x01\x1a\xa1\x01\n" +
+	"\x10autoscale_bounds\x12=auto_scale requires min_nodes >= 1 and max_nodes >= min_nodes\x1aN!this.auto_scale || (this.min_nodes >= 1u && this.max_nodes >= this.min_nodes)\"\xa0\x01\n" +
 	"#DigitalOceanKubernetesNodePoolTaint\x12\x18\n" +
 	"\x03key\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\x12\x1e\n" +
-	"\x06effect\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06effectB\xf9\x03\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\x12I\n" +
+	"\x06effect\x18\x03 \x01(\tB1\xbaH.\xc8\x01\x01r)R\n" +
+	"NoScheduleR\x10PreferNoScheduleR\tNoExecuteR\x06effectB\xf9\x03\n" +
 	"Dcom.dev.planton.digitalocean.digitaloceankubernetesnodepool.v1alpha1B\tSpecProtoP\x01Z\x80\x01github.com/plantonhq/planton/catalog/digitalocean/digitaloceankubernetesnodepool/v1alpha1;digitaloceankubernetesnodepoolv1alpha1\xa2\x02\x04DPDD\xaa\x02@Dev.Planton.Digitalocean.Digitaloceankubernetesnodepool.V1alpha1\xca\x02@Dev\\Planton\\Digitalocean\\Digitaloceankubernetesnodepool\\V1alpha1\xe2\x02LDev\\Planton\\Digitalocean\\Digitaloceankubernetesnodepool\\V1alpha1\\GPBMetadata\xea\x02DDev::Planton::Digitalocean::Digitaloceankubernetesnodepool::V1alpha1b\x06proto3"
 
 var (
