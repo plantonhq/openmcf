@@ -1,0 +1,32 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpfirewallrule
+spec:
+  gcp:
+    groups:
+      - purpose: ManageFirewallRule
+        permissions:
+          - compute.firewalls.create
+          - compute.firewalls.get
+          - compute.firewalls.update
+          - compute.firewalls.delete
+          - compute.globalOperations.get
+        provenance: derived
+        notes: Covers google_compute_firewall -- create, read/refresh, in-place updates (allow/deny sets, ranges, tags, priority, disabled, log_config are mutable; resource_manager_tags changes REPLACE the rule), destroy, and polling the global operation every mutation returns. Unlike the other load-balancing modules, this one declares no google_project_service, so no serviceusage permissions are needed.
+      - purpose: AuthorizeNetworkPolicyChange
+        permissions:
+          - compute.networks.updatePolicy
+        provenance: derived
+        notes: A service-side check, not a module API call -- GCP's firewalls.insert reference documents that authorization requires compute.networks.updatePolicy on the referenced network, so firewall mutations are a two-key operation (the compute.firewalls permission on the project plus policy-change on the network the rule attaches to). Grant it on the network's project, which differs from the rule's project in Shared VPC setups.
+      - purpose: ApplyResourceManagerTags
+        permissions:
+          - compute.firewalls.createTagBinding
+          - resourcemanager.tagValueBindings.create
+        provenance: derived
+        notes: Required only when resource_manager_tags is set -- attaching a tag at create time authorizes on both sides, the binding on the firewall rule and the use of each named tag value (tag values are org-level resources, so the tagValueBindings grant lives there). The module sends tags only through the create-only params block; tag changes replace the rule, re-running these checks. Not needed for untagged rules.

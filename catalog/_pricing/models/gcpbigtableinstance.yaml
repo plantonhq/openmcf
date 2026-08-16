@@ -1,0 +1,61 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. A hand model rather than a derivation: the billed quantity
+# is the SUM of each cluster's node count across the repeated clusters
+# list (fixed num_nodes on some clusters, autoscaling floors on others),
+# and derivation rules cannot read per-element values inside a repeated
+# field -- each preset's node sum is computed here and defended in its
+# quantity basis. Autoscaling presets are priced at the documented floor
+# (min_nodes, below which the autoscaler never scales), labeled as a
+# floor in every basis and note. Schema:
+# finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: gcpbigtableinstance
+spec:
+  presets:
+    - preset: 01-dev-single-node
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: provisioned nodes
+          price: bigtable-node
+          pricing_quantity: "730"
+          quantity_basis: one cluster with a fixed num_nodes of 1 -- one node billed every hour of the month at the ENTERPRISE edition rate (edition unset means GCP's ENTERPRISE default)
+      exclusions:
+        - data storage bills per GiB-month actually stored (SSD on this cluster, the unset default) and grows with the tables
+        - network egress follows client placement; in-region ingress is free
+      notes: The single-node, single-cluster shape is the smallest footprint that behaves like production -- no replication, one zone of failure, one node-hour meter.
+    - preset: 02-ha-production
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: provisioned nodes
+          price: bigtable-node
+          pricing_quantity: "4380"
+          quantity_basis: two autoscaling clusters, each with a documented floor of min_nodes 3 the autoscaler never drops below -- 6 floor nodes x 730 hours, at the ENTERPRISE edition rate (edition unset means GCP's ENTERPRISE default); this is the committed floor, not the ceiling
+      exclusions:
+        - autoscaling can raise each cluster toward max_nodes 30 on CPU above the 65% target -- up to 60 nodes total, ten times the floor priced here
+        - data storage bills per GiB-month, stored in full in BOTH clusters (replication doubles stored GiB)
+        - inter-cluster replication traffic and network egress follow write volume and client placement
+      notes: "Priced at the autoscaling floor: min_nodes is the committed spend, and every node above it is traffic-driven. The two clusters replicate automatically and fail over client-side."
+    - preset: 03-enterprise-encrypted
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: provisioned nodes
+          price: bigtable-node
+          pricing_quantity: "7300"
+          quantity_basis: two CMEK-encrypted autoscaling clusters, each with a documented floor of min_nodes 5 -- 10 floor nodes x 730 hours at the ENTERPRISE edition rate (edition unset means GCP's ENTERPRISE default); this is the committed floor, not the ceiling
+      exclusions:
+        - autoscaling can raise each cluster toward max_nodes 50 -- up to 100 nodes total at peak
+        - data storage bills per GiB-month, stored in full in both clusters; the 4096-GB storage_target also adds nodes when storage per node crosses it
+        - the Cloud KMS key bills on its own GcpKmsKey resource, not here
+        - inter-cluster replication traffic and network egress follow write volume and client placement
+      notes: "Priced at the autoscaling floor: min_nodes is the committed spend. CMEK changes posture, not the node price -- the ENTERPRISE node rate reads the same with customer-managed keys."

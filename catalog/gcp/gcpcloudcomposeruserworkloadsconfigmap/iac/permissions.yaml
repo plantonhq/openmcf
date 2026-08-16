@@ -1,0 +1,20 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpcloudcomposeruserworkloadsconfigmap
+spec:
+  gcp:
+    groups:
+      - purpose: ManageUserWorkloadsConfigMap
+        permissions:
+          - composer.userworkloadsconfigmaps.create
+          - composer.userworkloadsconfigmaps.get
+          - composer.userworkloadsconfigmaps.update
+          - composer.userworkloadsconfigmaps.delete
+        provenance: derived
+        notes: Covers google_composer_user_workloads_config_map -- create, read/refresh, in-place data updates, and the removal at destroy (deletion_policy PREVENT and ABANDON are client-side and never call the API). Although Composer manages the ConfigMap as a Kubernetes object inside the environment's cluster, GCP defines a DEDICATED IAM permission family for it rather than authorizing through composer.environments.update -- verified against IAM's testable-permissions inventory, which lists these all-lowercase spellings (the API surface camelCases the resource as userWorkloadsConfigMaps; the permission strings do not). Contrast with GKE node pools, where no nodePools.* permissions exist and mutations authorize on the parent cluster. No serviceusage group -- the module deliberately enables no API (the Composer API is enabled by the environment this ConfigMap is delivered into).

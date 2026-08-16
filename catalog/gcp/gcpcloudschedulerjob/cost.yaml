@@ -1,0 +1,29 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpcloudschedulerjob
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Cloud Scheduler
+      sku_meter: job days
+      pricing_unit: job-days
+      description: "A flat fee per job per day it exists -- roughly $0.10 per job per month -- accruing from creation regardless of how many times the schedule fires. Executions themselves are not metered at all."
+  cost_drivers:
+    - field_path: paused
+      sku_meter: job days
+      impact: Pausing stops executions, not the meter -- Cloud Scheduler bills job-days of existence, not dispatches, so a paused job keeps accruing its flat fee.
+    - field_path: pubsub_target
+      sku_meter: job days
+      impact: The target choice moves cost downstream, not on this job -- a Pub/Sub target bills the topic's message charges per dispatch, and an HTTP target bills whatever compute serves the request. The job's own fee is identical for all three target types.
+    - field_path: retry_config.retry_count
+      sku_meter: job days
+      impact: Retries multiply downstream invocations of the target on failures, never the job's own flat fee.
+  free_tier: "Cloud Scheduler's free allotment is per billing account, not per project: the job-day meter's first 93 job-days each month are free -- exactly three always-on jobs (3 jobs x 31 days). From the fourth concurrent job onward, each job-day bills at the list rate. Unused allotment does not roll over."
+  estimate_exclusions:
+    - whatever the dispatch invokes -- Cloud Run/Cloud Functions compute behind an HTTP target, Pub/Sub message charges behind a topic target -- bills on those components
+    - network egress of dispatch requests follows target placement
+  notes: "The meter is unusual and worth internalizing: Google bills job-days of existence (aggregated monthly per billing account), so a job that fires every minute costs exactly the same as one that fires once a year. Dispatch volume is free; existence is not."

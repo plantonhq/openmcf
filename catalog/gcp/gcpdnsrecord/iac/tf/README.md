@@ -68,12 +68,8 @@ module "dns_record" {
 
 ## Required Permissions
 
-The identity running the module needs:
-- `roles/dns.admin` — full DNS management
-
-Or more restrictive:
-- `roles/dns.recordset.editor` plus `roles/serviceusage.serviceUsageAdmin`
-  (for the API enablement)
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege
+permission set the deploying principal needs.
 
 ## Examples
 

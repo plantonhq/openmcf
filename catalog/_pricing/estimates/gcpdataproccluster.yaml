@@ -1,0 +1,117 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpdataproccluster
+spec:
+  presets:
+    - preset: 01-dev-jupyter
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Compute Engine
+          sku_meter: node vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "8760"
+          quantity_basis: master count (provider default 1 when unset) x 4 vCPUs -- the published e2-standard-4 shape -- x 730 hours at the E2 per-core rate; primary worker count (provider default 2 when unset) x 4 vCPUs -- the published e2-standard-4 shape -- x 730 hours at the E2 per-core rate
+          list_unit_price: "0.02181159"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "191.0695284"
+        - service_name: Compute Engine
+          sku_meter: node memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "35040"
+          quantity_basis: master count x 16 GiB -- the published e2-standard-4 shape -- x 730 hours at the E2 per-GiB rate; primary worker count x 16 GiB -- the published e2-standard-4 shape -- x 730 hours at the E2 per-GiB rate
+          list_unit_price: "0.00292353"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "102.4404912"
+        - service_name: Compute Engine
+          sku_meter: Dataproc vCPU fee
+          pricing_unit: vCPU-hours
+          pricing_quantity: "8760"
+          quantity_basis: the flat Dataproc licensing fee on every master vCPU -- master count x 4 vCPUs x 730 hours; the flat Dataproc licensing fee on every primary-worker vCPU -- worker count x 4 vCPUs x 730 hours
+          list_unit_price: "0.01"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "87.6000"
+        - service_name: Compute Engine
+          sku_meter: node boot disk storage
+          pricing_unit: GiB-months
+          pricing_quantity: "300"
+          quantity_basis: master count x boot disk GiB (provider default 500 GB when unset) billed per GiB-month at the pd-standard rate -- the GCP default disk class when boot_disk_type is unset; primary worker count x boot disk GiB (provider default 500 GB when unset) billed per GiB-month at the pd-standard rate -- the GCP default disk class when boot_disk_type is unset
+          list_unit_price: "0.04"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "12.0000"
+      total_list_cost: "393.1100196"
+      exclusions:
+        - network egress and Cloud Logging/Monitoring ingestion follow what the jobs do
+        - the auto-created staging and temp buckets bill Cloud Storage rates by actual usage
+      notes: The estimate assumes the cluster exists all 730 hours of the month; the idle-delete TTL deletes it once jobs stop, so the real bill for an ephemeral cluster can be far lower than this always-on figure.
+    - preset: 02-ha-production
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Compute Engine
+          sku_meter: node vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "46720"
+          quantity_basis: master count (provider default 1 when unset) x 8 vCPUs -- the published n2-standard-8 shape -- x 730 hours at the N2 per-core rate; primary worker count (provider default 2 when unset) x 8 vCPUs -- the published n2-standard-8 shape -- x 730 hours at the N2 per-core rate
+          list_unit_price: "0.031611"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "1476.86592"
+        - service_name: Compute Engine
+          sku_meter: node memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "186880"
+          quantity_basis: master count x 32 GiB -- the published n2-standard-8 shape -- x 730 hours at the N2 per-GiB rate; primary worker count x 32 GiB -- the published n2-standard-8 shape -- x 730 hours at the N2 per-GiB rate
+          list_unit_price: "0.004237"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "791.81056"
+        - service_name: Compute Engine
+          sku_meter: node boot disk storage
+          pricing_unit: GiB-months
+          pricing_quantity: "3100"
+          quantity_basis: master count x boot disk GiB (provider default 500 GB when unset) billed per GiB-month at the pd-ssd rate; primary worker count x boot disk GiB (provider default 500 GB when unset) billed per GiB-month at the pd-ssd rate
+          list_unit_price: "0.17"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "527.0000"
+        - service_name: Compute Engine
+          sku_meter: Dataproc vCPU fee
+          pricing_unit: vCPU-hours
+          pricing_quantity: "46720"
+          quantity_basis: the flat Dataproc licensing fee on every master vCPU -- master count x 8 vCPUs x 730 hours; the flat Dataproc licensing fee on every primary-worker vCPU -- worker count x 8 vCPUs x 730 hours
+          list_unit_price: "0.01"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "467.2000"
+        - service_name: Compute Engine
+          sku_meter: local SSD storage
+          pricing_unit: GiB-months
+          pricing_quantity: "3750"
+          quantity_basis: primary worker count x local SSD count x 375 GB per device (the fixed GCP device size) billed per GiB-month; zero devices emits nothing
+          list_unit_price: "0.08"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "300.0000"
+      total_list_cost: "3562.87648"
+      exclusions:
+        - network egress and Cloud Logging/Monitoring ingestion follow what the jobs do
+        - internal-only nodes need Cloud NAT for internet egress -- a separate component with its own hourly and per-GB charges
+        - the auto-created staging and temp buckets bill Cloud Storage rates by actual usage

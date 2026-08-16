@@ -1,0 +1,338 @@
+# Cost derivation: the machine-executable rules turning any
+# GcpVertexAiNotebook manifest's spec values into metered quantities and
+# price choices. A Workbench instance bills through the Notebooks service:
+# Compute Engine-equivalent passthrough rates for cores, memory, GPUs, and
+# disks, each with a Workbench management fee layered per unit -- so every
+# component here carries a usage line and a fee line. The machine type
+# picks the family's per-vCPU and per-GiB rates (the documented shape of
+# each pinned type supplies the quantity constants); machine types, GPU
+# types, and disk types outside the pinned set refuse. desired_state
+# STOPPED parks the compute meters while both disks keep billing. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/gcpvertexainotebook.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: gcpvertexainotebook
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: location
+    assumption: us-central1
+    zone_to_region: true
+  refusals:
+    - when:
+        - field_path: machine_type
+          op: not_equals
+          value: e2-standard-4
+        - field_path: machine_type
+          op: not_equals
+          value: n1-standard-8
+        - field_path: machine_type
+          op: not_equals
+          value: n2d-standard-4
+      reason: the machine type's Workbench passthrough and management-fee rates are not pinned in the price book (only e2-standard-4, n1-standard-8, and n2d-standard-4 are) -- pricing an unpinned shape would be a guess wearing a dollar sign
+    - when:
+        - field_path: accelerator_config
+          op: is_set
+        - field_path: accelerator_config.type
+          op: not_equals
+          value: NVIDIA_TESLA_T4
+      reason: only the NVIDIA_TESLA_T4 rate is pinned in the price book, and GPU rates differ by an order of magnitude across types -- an estimate priced at the wrong GPU would mislead more than a refusal
+    - when:
+        - field_path: accelerator_config
+          op: is_set
+        - field_path: accelerator_config.core_count
+          op: is_unset
+      reason: an accelerator block without a core count leaves the GPU count to the API, a number the manifest does not state -- and the GPU line usually dominates the bill
+    - when:
+        - field_path: boot_disk.disk_type
+          op: is_set
+        - field_path: boot_disk.disk_type
+          op: not_equals
+          value: PD_SSD
+        - field_path: boot_disk.disk_type
+          op: not_equals
+          value: PD_BALANCED
+        - field_path: boot_disk.disk_type
+          op: not_equals
+          value: PD_STANDARD
+      reason: the boot disk pins an extreme or hyperdisk type whose capacity and provisioned-performance rates are not in the price book -- hyperdisks add IOPS and throughput charges these rules cannot compute
+    - when:
+        - field_path: data_disk.disk_type
+          op: is_set
+        - field_path: data_disk.disk_type
+          op: not_equals
+          value: PD_SSD
+        - field_path: data_disk.disk_type
+          op: not_equals
+          value: PD_BALANCED
+        - field_path: data_disk.disk_type
+          op: not_equals
+          value: PD_STANDARD
+      reason: the data disk pins an extreme or hyperdisk type whose capacity and provisioned-performance rates are not in the price book -- hyperdisks add IOPS and throughput charges these rules cannot compute
+  lines:
+    - sku_meter: instance vCPU
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: e2-standard-4
+        - field_path: desired_state
+          op: not_equals
+          value: STOPPED
+      quantity:
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: workbench-e2-core-usage-us-central1
+      basis: e2-standard-4 carries 4 vCPUs x 730 hours at the E2 Workbench passthrough per-vCPU rate
+    - sku_meter: vCPU management fee
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: e2-standard-4
+        - field_path: desired_state
+          op: not_equals
+          value: STOPPED
+      quantity:
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: workbench-e2-core-mgmt-us-central1
+      basis: the Workbench management fee on the same 4 vCPUs x 730 hours at the E2 per-vCPU fee rate
+    - sku_meter: instance memory
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: e2-standard-4
+        - field_path: desired_state
+          op: not_equals
+          value: STOPPED
+      quantity:
+        - constant: "16"
+        - hours_in_month: true
+      price_slug: workbench-e2-ram-usage-us-central1
+      basis: e2-standard-4 carries 16 GB of memory x 730 hours at the E2 Workbench passthrough per-GiB rate
+    - sku_meter: memory management fee
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: e2-standard-4
+        - field_path: desired_state
+          op: not_equals
+          value: STOPPED
+      quantity:
+        - constant: "16"
+        - hours_in_month: true
+      price_slug: workbench-e2-ram-mgmt-us-central1
+      basis: the Workbench management fee on the same 16 GB x 730 hours at the E2 per-GiB fee rate
+    - sku_meter: instance vCPU
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: n1-standard-8
+        - field_path: desired_state
+          op: not_equals
+          value: STOPPED
+      quantity:
+        - constant: "8"
+        - hours_in_month: true
+      price_slug: workbench-n1-core-usage-us-central1
+      basis: n1-standard-8 carries 8 vCPUs x 730 hours at the N1 Workbench passthrough per-vCPU rate
+    - sku_meter: vCPU management fee
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: n1-standard-8
+        - field_path: desired_state
+          op: not_equals
+          value: STOPPED
+      quantity:
+        - constant: "8"
+        - hours_in_month: true
+      price_slug: workbench-n1-core-mgmt-us-central1
+      basis: the Workbench management fee on the same 8 vCPUs x 730 hours at the N1 per-vCPU fee rate
+    - sku_meter: instance memory
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: n1-standard-8
+        - field_path: desired_state
+          op: not_equals
+          value: STOPPED
+      quantity:
+        - constant: "30"
+        - hours_in_month: true
+      price_slug: workbench-n1-ram-usage-us-central1
+      basis: n1-standard-8 carries 30 GB of memory (the N1 standard 3.75 GB-per-vCPU ratio) x 730 hours at the N1 Workbench passthrough per-GiB rate
+    - sku_meter: memory management fee
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: n1-standard-8
+        - field_path: desired_state
+          op: not_equals
+          value: STOPPED
+      quantity:
+        - constant: "30"
+        - hours_in_month: true
+      price_slug: workbench-n1-ram-mgmt-us-central1
+      basis: the Workbench management fee on the same 30 GB x 730 hours at the N1 per-GiB fee rate
+    - sku_meter: instance vCPU
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: n2d-standard-4
+        - field_path: desired_state
+          op: not_equals
+          value: STOPPED
+      quantity:
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: workbench-n2d-core-usage-us-central1
+      basis: n2d-standard-4 carries 4 vCPUs x 730 hours at the N2D Workbench passthrough per-vCPU rate
+    - sku_meter: vCPU management fee
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: n2d-standard-4
+        - field_path: desired_state
+          op: not_equals
+          value: STOPPED
+      quantity:
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: workbench-n2d-core-mgmt-us-central1
+      basis: the Workbench management fee on the same 4 vCPUs x 730 hours at the N2D per-vCPU fee rate
+    - sku_meter: instance memory
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: n2d-standard-4
+        - field_path: desired_state
+          op: not_equals
+          value: STOPPED
+      quantity:
+        - constant: "16"
+        - hours_in_month: true
+      price_slug: workbench-n2d-ram-usage-us-central1
+      basis: n2d-standard-4 carries 16 GB of memory x 730 hours at the N2D Workbench passthrough per-GiB rate
+    - sku_meter: memory management fee
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: n2d-standard-4
+        - field_path: desired_state
+          op: not_equals
+          value: STOPPED
+      quantity:
+        - constant: "16"
+        - hours_in_month: true
+      price_slug: workbench-n2d-ram-mgmt-us-central1
+      basis: the Workbench management fee on the same 16 GB x 730 hours at the N2D per-GiB fee rate
+    - sku_meter: accelerator hours
+      applies_when:
+        - field_path: accelerator_config.type
+          op: equals
+          value: NVIDIA_TESLA_T4
+        - field_path: desired_state
+          op: not_equals
+          value: STOPPED
+      quantity:
+        - field_value:
+            field_path: accelerator_config.core_count
+        - hours_in_month: true
+      price_slug: workbench-t4-gpu-usage-us-central1
+      basis: accelerator_config.core_count T4 GPUs x 730 hours at the T4 Workbench passthrough hourly rate
+    - sku_meter: accelerator management fee
+      applies_when:
+        - field_path: accelerator_config.type
+          op: equals
+          value: NVIDIA_TESLA_T4
+        - field_path: desired_state
+          op: not_equals
+          value: STOPPED
+      quantity:
+        - field_value:
+            field_path: accelerator_config.core_count
+        - hours_in_month: true
+      price_slug: workbench-t4-gpu-mgmt-us-central1
+      basis: the Workbench management fee on the same GPU count x 730 hours at the T4 per-GPU fee rate
+    - sku_meter: boot disk storage
+      quantity:
+        - field_value:
+            field_path: boot_disk.disk_size_gb
+            default_when_unset: "150"
+      price_lookup:
+        service_name: Notebooks
+        pricing_unit: GiB-months
+        attributes:
+          - key: disk_type
+            from_field: boot_disk.disk_type
+            assumption_when_unset: PD_SSD
+          - key: fee_class
+            constant: usage
+      basis: the boot disk's provisioned GiB (boot_disk.disk_size_gb, defaulting to GCP's documented 150 GB) at the disk type's Workbench passthrough capacity rate (an unset type defaults to PD_SSD), billing full or empty and continuing while the instance is stopped
+    - sku_meter: boot disk management fee
+      quantity:
+        - field_value:
+            field_path: boot_disk.disk_size_gb
+            default_when_unset: "150"
+      price_lookup:
+        service_name: Notebooks
+        pricing_unit: GiB-months
+        attributes:
+          - key: disk_type
+            from_field: boot_disk.disk_type
+            assumption_when_unset: PD_SSD
+          - key: fee_class
+            constant: management-fee
+      basis: the Workbench management fee on the same boot-disk GiB at the disk type's per-GiB-month fee rate
+    - sku_meter: data disk storage
+      quantity:
+        - field_value:
+            field_path: data_disk.disk_size_gb
+            default_when_unset: "100"
+      price_lookup:
+        service_name: Notebooks
+        pricing_unit: GiB-months
+        attributes:
+          - key: disk_type
+            from_field: data_disk.disk_type
+            assumption_when_unset: PD_STANDARD
+          - key: fee_class
+            constant: usage
+      basis: the data disk's provisioned GiB (data_disk.disk_size_gb, defaulting to GCP's documented 100 GB -- the service attaches the data disk even when the manifest omits the block) at the disk type's Workbench passthrough capacity rate (an unset type defaults to PD_STANDARD)
+    - sku_meter: data disk management fee
+      quantity:
+        - field_value:
+            field_path: data_disk.disk_size_gb
+            default_when_unset: "100"
+      price_lookup:
+        service_name: Notebooks
+        pricing_unit: GiB-months
+        attributes:
+          - key: disk_type
+            from_field: data_disk.disk_type
+            assumption_when_unset: PD_STANDARD
+          - key: fee_class
+            constant: management-fee
+      basis: the Workbench management fee on the same data-disk GiB at the disk type's per-GiB-month fee rate
+  exclusions:
+    - applies_when:
+        - field_path: disable_public_ip
+          op: not_equals
+          value: "true"
+      text: external IPv4 usage -- the instance holds a public IP (ephemeral, or the pinned GcpAddress in network_interface.external_ip) that bills hourly while attached, a Compute Engine charge outside this book's pinned set
+    - applies_when:
+        - field_path: reservation_affinity
+          op: is_set
+      text: reservation economics -- compute consumed from a reservation still bills these on-demand rates, but the reservation itself bills for its reserved capacity whether used or not, a purchase outside this manifest
+    - text: network egress and any Cloud Logging or Monitoring ingestion from agents installed via metadata
+  notes:
+    - applies_when:
+        - field_path: desired_state
+          op: equals
+          value: STOPPED
+      text: The manifest parks the instance at STOPPED -- vCPU, memory, and accelerator meters (and their management fees) are stopped, and only the two disks and their management fees bill until desired_state starts it again.
+    - text: "The estimate assumes the instance runs all 730 hours; stopping it stops the compute meters but both disks keep billing. Rates are the Notebooks service's own SKUs: Compute Engine-equivalent passthrough usage plus the Workbench management fee, priced per unit -- there is no flat per-instance fee."

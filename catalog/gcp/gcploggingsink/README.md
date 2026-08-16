@@ -18,7 +18,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### GCP Scope and Destination
 
-- **The scope**: a project (default), folder, organization, or billing account. Folder/org/billing sinks require `roles/logging.configWriter` AT that scope.
+- **The scope**: a project (default), folder, organization, or billing account. See [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying identity needs — folder/org/billing sinks require those permissions AT that scope.
 - **The destination**: a GCS bucket, BigQuery dataset, or Pub/Sub topic (reference the Planton resources) — or a raw destination URI for log buckets.
 
 ## Deploy

@@ -1,0 +1,89 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpmonitoringuptimecheck
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The check's configuration -- including probe headers and basic-auth credentials -- is stored by Cloud Monitoring encrypted at rest with Google-managed keys without configuration.
+      notes: http_check.mask_headers additionally hides header values from console and API reads (a display control, not encryption); once enabled it is permanent for the check's life.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Cloud Monitoring exposes no customer-managed-key surface for uptime check configuration -- there is no CMEK field in the API.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: http_check.use_ssl
+      evidence:
+        type: spec_default
+        reference: Unset (false) probes over plain HTTP; true probes over TLS, and validate_ssl additionally fails the probe on an invalid certificate chain instead of passing silently.
+      notes: The 01-public-https-check and 03-authenticated-api-check presets set both use_ssl and validate_ssl. A tcp_check is a raw connect with no TLS layer (the 02-tcp-port-check preset probes an AMQP port).
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The check is an outbound prober with no addressable inbound surface -- there is nothing of it to reach from the internet; the probed target's exposure is that component's concern.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress exists to restrict -- see no-public-access.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The check serves no inbound traffic for a WAF to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Creating, updating, and deleting uptime checks is governed by Cloud Monitoring IAM roles unconditionally.
+    - control_id: workload-identity
+      status: configurable
+      field_path: http_check.service_agent_authentication
+      evidence:
+        type: spec_default
+        reference: Unset probes carry no platform identity; setting OIDC_TOKEN makes each probe authenticate as the project's Monitoring service agent with a short-lived identity token -- the keyless way to probe endpoints requiring authenticated invocation.
+      notes: No preset enables it; the 03-authenticated-api-check preset uses static basic-auth instead, the trade-off no-legacy-auth records.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: http_check.service_agent_authentication
+      evidence:
+        type: spec_default
+        reference: The weaker path is http_check.auth_info -- a static basic-auth username and password stored in the check; service_agent_authentication (OIDC) retires it with short-lived platform-minted tokens.
+      notes: "The 03-authenticated-api-check preset deliberately uses basic-auth over validated TLS: the password rides as a managed-secret reference, never plaintext in the manifest."
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Uptime check create, update, and delete land in Cloud Audit Logs (Admin Activity) unconditionally.
+      notes: log_check_failures additionally writes each failed probe's observed status and latency to Cloud Logging.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The check IS the monitoring integration -- every probe records availability and latency as Cloud Monitoring metrics (uptime_check_passed and request_latency) without further configuration.
+      notes: Pair it with a GcpMonitoringAlertPolicy filtering on uptime_check_id to be paged on failure -- measurement alone never alerts.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The check is a stateless configuration object holding no data to back up -- the manifest itself is the recovery path.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain -- see backup-recovery.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: GCP requires every uptime check to run from at least three checker locations and rejects configurations covering fewer; an empty selected_regions list probes from all six.
+      notes: selected_regions can narrow the coverage but never below the three-location floor the API enforces.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: DELETE (the default) removes the check with the manifest; PREVENT makes the IaC engine refuse any destroying plan -- protecting production availability monitoring; ABANDON detaches the check while it keeps probing.
+      notes: An engine-side guard -- the Monitoring API has no deletion-protection flag of its own. Deleting the check silences any alert policy filtering on its uptime_check_id.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The check carries no software surface of its own to patch -- the prober fleet is Google-managed infrastructure maintained invisibly.

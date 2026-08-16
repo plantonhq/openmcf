@@ -1,0 +1,34 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpserverlessvpcconnector
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Compute Engine
+      sku_meter: connector instance vCPU
+      pricing_unit: vCPU-hours
+      description: The connector's forwarding fleet -- min_instances VMs of machine_type -- bills vCPU-hours around the clock like any other Compute Engine instances, traffic or none.
+    - service_name: Compute Engine
+      sku_meter: connector instance memory
+      pricing_unit: GiB-hours
+      description: Each forwarding instance bills its machine type's memory hourly alongside its vCPUs.
+  cost_drivers:
+    - field_path: machine_type
+      sku_meter: connector instance vCPU
+      pricing_unit: vCPU-hours
+      impact: Each forwarding instance is a Compute Engine VM billed at the machine type's ordinary vCPU and memory rates -- e2-micro (~200 Mbps each) for modest egress, e2-standard-4 (~1 Gbps class) at roughly 45x the cost per instance. Unset defaults to e2-micro. Mutable in place -- the fleet-wide capacity lever.
+    - field_path: min_instances
+      sku_meter: connector instance vCPU
+      pricing_unit: vCPU-hours
+      impact: The committed floor -- at least this many instances (2-9, GCP defaults to 2) run around the clock whether any serverless traffic flows or not. An idle connector still bills its whole floor.
+    - field_path: max_instances
+      sku_meter: connector instance vCPU
+      impact: The scaling ceiling AND the ratchet's reach -- the connector NEVER scales in on its own, so after one traffic burst the fleet stays at its high-water mark (up to this cap) billing full rates until the instances are manually reduced (which replaces the connector).
+  estimate_exclusions:
+    - scaling above the floor -- and staying there; the never-scale-in ratchet means the actual bill trends toward the high-water mark, not back to min_instances
+    - network egress through the connector follows the workload's traffic, at standard Compute Engine egress rates
+  notes: "Serverless egress paid for with decidedly non-serverless VMs: the fleet bills like ordinary Compute Engine instances, floor-committed and ratcheting upward. The /28 range itself and the connector object are free -- the instances are the entire bill."

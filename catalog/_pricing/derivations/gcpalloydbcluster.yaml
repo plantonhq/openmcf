@@ -1,0 +1,118 @@
+# Cost derivation: the machine-executable rules turning any
+# GcpAlloydbCluster manifest's spec values into metered quantities and
+# price choices. The committed spend is the bundled primary's compute:
+# vCPUs at the N2 rate plus the N2 highmem memory shape of 8 GiB per vCPU
+# (Google's documented shape for cpu_count-only instances), doubled when
+# availability_type is REGIONAL (the default) because a high-availability
+# primary runs an active node plus an in-region standby. Cluster storage
+# and backup storage bill by what is actually stored -- named in the
+# exclusions, never guessed. Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: gcpalloydbcluster
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: location
+    assumption: us-central1
+    zone_to_region: true
+  refusals:
+    - when:
+        - field_path: primary_instance.machine_type
+          op: is_set
+      reason: an explicit machine_type selects a machine family (Z3, C4, C4A) with its own vCPU and memory rates -- the price book pins only the default N2 rates, so this manifest's compute rate is not covered
+    - when:
+        - field_path: primary_instance.machine_type
+          op: is_unset
+        - field_path: primary_instance.cpu_count
+          op: equals
+          value: "0"
+      reason: the manifest names no machine shape -- AlloyDB requires cpu_count or machine_type on the primary instance, so there is no compute quantity to price
+    - when:
+        - field_path: primary_instance.cpu_count
+          op: equals
+          value: "128"
+      reason: "the 128-vCPU N2 shape carries 864 GB of RAM, not the 8-GiB-per-vCPU convention every other cpu_count shape follows -- pricing it with the convention would misstate the memory line"
+  lines:
+    - sku_meter: instance vCPU
+      applies_when:
+        - field_path: primary_instance.availability_type
+          op: equals
+          value: ZONAL
+        - field_path: primary_instance.activation_policy
+          op: not_equals
+          value: NEVER
+      quantity:
+        - field_value:
+            field_path: primary_instance.cpu_count
+        - hours_in_month: true
+      price_slug: alloydb-instance-vcpu-us-central1
+      basis: a ZONAL primary runs one node -- cpu_count vCPUs billed every hour of the month at the N2 rate
+    - sku_meter: instance vCPU
+      applies_when:
+        - field_path: primary_instance.availability_type
+          op: not_equals
+          value: ZONAL
+        - field_path: primary_instance.activation_policy
+          op: not_equals
+          value: NEVER
+      quantity:
+        - field_value:
+            field_path: primary_instance.cpu_count
+        - constant: "2"
+        - hours_in_month: true
+      price_slug: alloydb-instance-vcpu-us-central1
+      basis: a REGIONAL primary (GCP's default when availability_type is unset) runs two nodes -- the active primary and its in-region standby -- so cpu_count vCPUs bill twice every hour
+    - sku_meter: instance memory
+      applies_when:
+        - field_path: primary_instance.availability_type
+          op: equals
+          value: ZONAL
+        - field_path: primary_instance.activation_policy
+          op: not_equals
+          value: NEVER
+      quantity:
+        - field_value:
+            field_path: primary_instance.cpu_count
+        - constant: "8"
+        - hours_in_month: true
+      price_slug: alloydb-instance-ram-us-central1
+      basis: cpu_count-only manifests get the N2 highmem shape of 8 GiB per vCPU (Google's documented mapping, e.g. 2 vCPUs carry 16 GB) -- one node's memory billed hourly
+    - sku_meter: instance memory
+      applies_when:
+        - field_path: primary_instance.availability_type
+          op: not_equals
+          value: ZONAL
+        - field_path: primary_instance.activation_policy
+          op: not_equals
+          value: NEVER
+      quantity:
+        - field_value:
+            field_path: primary_instance.cpu_count
+        - constant: "8"
+        - constant: "2"
+        - hours_in_month: true
+      price_slug: alloydb-instance-ram-us-central1
+      basis: the N2 highmem shape of 8 GiB per vCPU on both nodes of a REGIONAL primary (active plus standby), billed hourly
+  exclusions:
+    - text: cluster database storage bills per GiB-hour of data actually stored in the shared regional storage layer -- it grows with the database, which no manifest can know
+    - text: backup storage and continuous-backup (PITR) log storage grow with database size and write churn; both are on by default with 14-day retention
+    - text: network egress follows client placement; cross-region backup networking bills per GiB when backups land in another region
+    - applies_when:
+        - field_path: cluster_type
+          op: equals
+          value: SECONDARY
+      text: cross-region replication networking from the primary cluster to this secondary bills per GiB of replicated writes
+  notes:
+    - applies_when:
+        - field_path: primary_instance.activation_policy
+          op: equals
+          value: NEVER
+      text: "activation_policy NEVER keeps the primary stopped: compute bills nothing while stopped, so the committed compute total is zero -- cluster storage and backups keep accruing per the exclusions."
+    - applies_when:
+        - field_path: subscription_type
+          op: equals
+          value: TRIAL
+      text: A TRIAL cluster runs on trial credits until they end, then converts to STANDARD; the total shown is the list price without trial credits.

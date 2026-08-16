@@ -15,7 +15,7 @@ Global addresses reserve static external or internal IP addresses (or CIDR range
    ```bash
    gcloud auth application-default login
    ```
-5. **IAM permissions**: `roles/compute.networkAdmin` on the target project
+5. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Directory Structure
 

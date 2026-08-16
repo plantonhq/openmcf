@@ -1,0 +1,102 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpcloudcomposerenvironment
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every Composer-managed resource -- GKE node disks, the Cloud SQL metadata database, and the DAG bucket -- is encrypted at rest with Google-managed keys without configuration.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_name
+      evidence:
+        type: spec_default
+        reference: Unset means Google-managed encryption; naming a Cloud KMS key encrypts all Composer-managed resources (GKE nodes, Cloud SQL, Cloud Storage) with the customer-managed key. Immutable after creation.
+      notes: The 03-enterprise-encrypted preset pins a CMEK by reference to a GcpKmsKey.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Airflow web server and Composer APIs are HTTPS-only, and traffic between the environment's managed components rides Google's network with VM-to-VM encryption at the network layer.
+    - control_id: no-public-access
+      status: configurable
+      field_path: private_environment_config.enable_private_endpoint
+      evidence:
+        type: spec_default
+        reference: Unset gives the environment's web server and GKE master public endpoints (IAM-authenticated); true makes the web server reachable only via private IP inside the VPC. Composer 3 environments use the top-level enable_private_environment flag instead.
+      notes: The 02-production-private and 03-enterprise-encrypted presets enable the private endpoint over VPC peering.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: web_server_network_access_control.allowed_ip_ranges
+      evidence:
+        type: spec_default
+        reference: Unset admits any IAM-authenticated source to the web server; a configured list is the complete network allowlist for the Airflow UI. master_authorized_networks_config restricts the environment's GKE control plane the same way.
+      notes: The 03-enterprise-encrypted preset allows only the corporate and VPN ranges; the 02-production-private preset restricts the GKE master to the corporate network.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The Airflow web server is a Google-managed, IAM-authenticated endpoint with IP allowlisting -- there is no attachment point for a WAF in this API, and the environment fronts no customer web traffic.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Environment management is governed by Cloud Composer IAM roles, and the Airflow UI enforces Airflow's own role-based model mapped from IAM identities -- both always active.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Airflow workloads authenticate to Google APIs as the environment's service account through GKE Workload Identity -- short-lived tokens, no static keys on nodes.
+      notes: node_config.service_account pins the identity (presets 02 and 03 do; Composer 3 requires it explicitly). Legacy Composer 2 environments without it fall back to the broad Compute Engine default account.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The web server and Composer APIs accept only Google-authenticated identities -- no basic-auth, anonymous, or API-key path exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Environment create, update, and delete land in Cloud Audit Logs unconditionally, and Airflow task logs stream to Cloud Logging.
+      notes: data_retention_config.task_logs_storage_mode chooses whether task logs also land in the environment's bucket.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Composer publishes environment health, Airflow component, and DAG-run metrics to Cloud Monitoring for every environment without configuration.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: recovery_config.enabled
+      evidence:
+        type: spec_default
+        reference: Unset means no scheduled snapshots; enabling writes periodic environment snapshots (metadata database, DAGs, configuration) to the named Cloud Storage location on the cron schedule, restorable into a new environment.
+      notes: The 03-enterprise-encrypted preset snapshots daily at 04:00 UTC.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Snapshot retention is not a dial this API exposes -- snapshots accumulate in the named Cloud Storage location, where the bucket's own lifecycle policy governs how long they live.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: resilience_mode
+      evidence:
+        type: spec_default
+        reference: Unset (standard resilience) runs single-zone; HIGH_RESILIENCE spreads schedulers, workers, and the metadata database across zones with automatic failover.
+      notes: Presets 02 and 03 run HIGH_RESILIENCE.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: DELETE (the default) tears the environment down with the manifest; PREVENT makes the IaC engine refuse any destroying plan; ABANDON detaches the environment while it keeps running.
+      notes: An engine-side guard -- the Composer API has no deletion-protection flag of its own. The auto-created DAG bucket survives deletion either way.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Google patches the environment's managed infrastructure (GKE cluster, Cloud SQL, web server) through scheduled maintenance; maintenance_window steers when, never whether.
+      notes: Airflow and Composer version upgrades are explicit image_version changes, not automatic.

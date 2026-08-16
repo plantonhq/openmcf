@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpsslpolicy
+spec:
+  billing_model: free
+  free_tier: "An SSL policy is pure Cloud Load Balancing configuration -- a named set of TLS floor and cipher choices that proxies reference -- and Google meters none of it. The complete Cloud Load Balancing meter list on Google's network pricing page (forwarding rules, data processing, internal-ALB proxy instances, authorization policies, custom request headers, and self-managed-certificate connections) contains no charge for SSL policies, global or regional, at any count or strictness."
+  notes: "No field of this spec buys anything: profile, min_tls_version, custom_features, and the post-quantum rollout stance all shape the TLS handshake without touching a meter -- tightening a fleet's TLS floor to TLS 1.2 costs exactly what leaving it at GCP's permissive default costs. The real spend lives on the load balancer enforcing the policy: the forwarding rule bills per hour (first 5 rules $0.025/hour per project, each additional $0.01/hour) and the load balancer bills per-GiB inbound and outbound data processing where traffic is processed -- both belong to the frontend kinds that reference this policy, never to the policy. One adjacent meter to know: connections established with self-managed RSA-3072/RSA-4096 certificates bill $0.45 per million on the certificate side, regardless of which SSL policy governs the handshake."

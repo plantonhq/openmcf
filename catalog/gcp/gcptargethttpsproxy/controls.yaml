@@ -1,0 +1,74 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcptargethttpsproxy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The proxy stores no customer data -- it holds references to certificates, a URL map, and TLS policies; the sensitive key material lives (encrypted) in the certificate resources themselves.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest exists to key (see enc-at-rest); the resource exposes no Cloud KMS surface.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A target HTTPS proxy accepts only TLS (and QUIC/HTTP-3) connections from clients -- plaintext HTTP has no path through it; that is the sibling GcpTargetHttpProxy.
+      notes: "Two dials tune the posture without being able to disable it: ssl_policy sets the TLS floor and ciphers (see no-legacy-auth), and tls_early_data governs replayable TLS 1.3 0-RTT payloads -- GCP's default is DISABLED, and preset 03 pins it explicitly. The proxy-to-backend leg is the backend service's protocol choice, not this resource's."
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The proxy has no address of its own; whether the frontend is internet-facing is the forwarding rule's scheme and address. proxy_bind only rebinds the proxy into a Traffic Director mesh's private IPs.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The proxy exposes no source-filtering surface; inbound restriction on an Application Load Balancer path lives in Cloud Armor policies attached to the backend services. server_tls_policy can demand client certificates (mTLS), which is authentication rather than source restriction.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: TLS termination is not request filtering. Web application firewalling (Cloud Armor) attaches to the backend services the URL map routes to -- there is no request-filtering attachment point on a target proxy.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management access is governed by Compute Engine IAM (the compute.targetHttpsProxies permission family, plus use/get checks on every referenced URL map, certificate, SSL policy, certificate map, and server TLS policy) on every project; the resource has no data plane to govern separately.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Nothing authenticates to cloud APIs through a target proxy. The mTLS surface (server_tls_policy) authenticates CLIENTS to the frontend, which is a different concern than keyless workload identity.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: ssl_policy
+      evidence:
+        type: spec_default
+        reference: Unset applies GCP's permissive default TLS policy -- minimum TLS 1.0 with the COMPATIBLE cipher set -- so legacy protocol versions and weak ciphers stay negotiable; referencing a GcpSslPolicy with a TLS 1.2+ floor and MODERN/RESTRICTED ciphers retires them, swapped in place via setSslPolicy.
+      notes: Preset 01 wires a modern SSL policy alongside the managed certificate; presets 02 and 03 accept the GCP default and should be paired with a policy in production.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Proxy create, delete, and every in-place mutation (setUrlMap, setSslCertificates, setSslPolicy, setQuicOverride, setCertificateMap, patch) land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The proxy publishes no metrics of its own; the load balancer's request metrics and logs are keyed by the URL map and backend services, and request logging is enabled per backend service.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The proxy is declarative configuration fully re-creatable from source control; there is no data to back up or restore.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: No zonal placement exists to configure -- the global proxy is served by Google's global frontend fabric; availability is the platform's, not a spec choice.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE; PREVENT makes destroy fail outright, protecting a production TLS frontend, and ABANDON unmanages the proxy while it keeps terminating TLS.
+      notes: GCP independently refuses to delete a proxy still referenced by a forwarding rule, so a TLS frontend cannot be torn down out from under its VIP. Certificate rotation is attach-new-then-detach-old with no proxy churn.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software surface here to patch; the Google Front End and Envoy fabric that terminate TLS are patched by Google as platform infrastructure -- which is also how new protocol capability (QUIC versions, post-quantum key exchange) arrives -- with no version or channel exposed on this resource.

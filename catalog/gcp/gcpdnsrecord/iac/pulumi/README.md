@@ -72,11 +72,8 @@ The module reads its configuration from the `GcpDnsRecordStackInput` proto messa
 
 ## Required Permissions
 
-The GCP service account needs the following roles:
-- `roles/dns.admin` - Full DNS management permissions
-
-Or more restrictive:
-- `roles/dns.recordset.editor` - For record set operations only
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege
+permission set the deploying principal needs.
 
 ## Troubleshooting
 

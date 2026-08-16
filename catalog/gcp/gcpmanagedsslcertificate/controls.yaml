@@ -1,0 +1,70 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpmanagedsslcertificate
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Google generates and holds the certificate's private key entirely inside its own infrastructure, stored under Google Cloud's default encryption at rest -- the key is never exportable and never passes through operator hands.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Compute Engine exposes no customer-managed-key surface for SSL certificates; the Google-held private key cannot be re-keyed under Cloud KMS.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The resource exists solely to terminate TLS at a global external Application Load Balancer -- Google issues publicly trusted certificate material for the declared domains and the proxy referencing it encrypts every client connection with it. There is no self-managed arm and no non-TLS configuration of this kind.
+      notes: The TLS protocol floor (minimum version, ciphers) is the SSL policy on the serving proxy. Until DNS points each domain at the balancer the certificate stays PROVISIONING and the domain serves Google's default certificate -- a provisioning gap operators should sequence around, not a weakening of this resource.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A certificate has no network endpoint of its own -- public exposure belongs to the forwarding rule and proxy that serve it, each a separate catalog kind with its own posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; the certificate is control-plane configuration consumed by load balancer proxies.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Request filtering (Cloud Armor) attaches to the load balancer's backend services, not to the certificate the proxy presents.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is project IAM posture (Compute Engine roles), not a component choice; the certificate exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The certificate runs no workloads and calls no APIs; its private key is TLS material Google holds, not a cloud credential.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own exist to retire; TLS version floors are the serving proxy's SSL policy.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Control-plane changes to the certificate land in Cloud Audit Logs as project-level posture.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The certificate publishes no metrics of its own; provisioning state is resource status, and TLS serving metrics belong to the load balancer kinds.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Nothing to back up -- Google holds the key material, and the certificate re-issues declaratively from the manifest's domain list (subject to re-provisioning through DNS).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A global Compute Engine control-plane object -- the certificate does not run anywhere and has no zonal placement to configure; Google serves it across the global load-balancing fabric.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Unset defaults to DELETE; setting deletion_policy=PREVENT makes destroy fail before touching the certificate. GCP separately refuses to delete a certificate any proxy still references, so a naive destroy fails rather than dropping TLS -- dependency ordering, not a configurable control.
+      notes: No preset sets PREVENT. Because name and domains are ForceNew, rotation is create-before-destroy -- the replacement must be serving before the old certificate becomes deletable.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Issuance and renewal are entirely Google's -- the certificate rotates before expiry with no operator action, and no spec field can opt out of the managed channel. Renewal is this resource's only patch-like surface.

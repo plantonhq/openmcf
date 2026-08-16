@@ -1,0 +1,35 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpbigtableinstance
+spec:
+  gcp:
+    groups:
+      - purpose: EnableBigtableAdminApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling bigtableadmin.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageInstance
+        permissions:
+          - bigtable.instances.create
+          - bigtable.instances.get
+          - bigtable.instances.update
+          - bigtable.instances.delete
+        provenance: derived
+        notes: Covers the instance half of google_bigtable_instance -- create, read/refresh, in-place updates (display name, labels, edition upgrade), and destroy.
+      - purpose: ManageClusters
+        permissions:
+          - bigtable.clusters.create
+          - bigtable.clusters.get
+          - bigtable.clusters.list
+          - bigtable.clusters.update
+          - bigtable.clusters.delete
+        provenance: derived
+        notes: "Covers the inline cluster blocks of google_bigtable_instance. Unlike GKE node pools (which have no container.nodePools.* permissions and authorize as container.clusters.update), Bigtable clusters ARE separately authorized objects: bigtable.clusters.create/get/list/update/delete all exist in IAM's testable-permissions inventory, and adding, resizing, or removing a cluster block authorizes against them even though the clusters are declared inline on the instance resource."

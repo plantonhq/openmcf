@@ -1,0 +1,110 @@
+# Cost derivation: the machine-executable rules turning any
+# GcpServerlessVpcConnector manifest's spec values into metered quantities
+# and price choices. The connector's forwarding fleet bills as ordinary
+# Compute Engine VMs: min_instances (GCP defaults to 2 when unset -- the
+# spec floor makes zero impossible) x the machine type's vCPU and memory
+# at E2 family rates. An unset machine_type is priced as e2-micro, the
+# documented API default the module passes through. f1-micro refuses --
+# its dedicated SKU is not pinned in the price book. The estimate
+# generator replays the catalog presets through these rules to emit
+# ../estimates/gcpserverlessvpcconnector.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: gcpserverlessvpcconnector
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-central1
+  refusals:
+    - when:
+        - field_path: machine_type
+          op: equals
+          value: f1-micro
+      reason: f1-micro bills a dedicated legacy per-instance SKU that is not pinned in the price book -- pricing it would be a guess wearing a dollar sign
+  lines:
+    - sku_meter: connector instance vCPU
+      applies_when:
+        - field_path: machine_type
+          op: is_unset
+      quantity:
+        - field_value:
+            field_path: min_instances
+            default_when_unset: "2"
+        - constant: "0.25"
+        - hours_in_month: true
+      price_slug: e2-instance-core-us-central1
+      basis: machine_type unset means GCP's documented default e2-micro -- min_instances (API default 2) x its documented 0.25 fractional vCPU x 730 hours at the E2 per-vCPU rate
+    - sku_meter: connector instance memory
+      applies_when:
+        - field_path: machine_type
+          op: is_unset
+      quantity:
+        - field_value:
+            field_path: min_instances
+            default_when_unset: "2"
+        - constant: "1"
+        - hours_in_month: true
+      price_slug: e2-instance-ram-us-central1
+      basis: machine_type unset means GCP's documented default e2-micro -- min_instances x its 1 GB of memory x 730 hours at the E2 per-GiB rate
+    - sku_meter: connector instance vCPU
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: e2-micro
+      quantity:
+        - field_value:
+            field_path: min_instances
+            default_when_unset: "2"
+        - constant: "0.25"
+        - hours_in_month: true
+      price_slug: e2-instance-core-us-central1
+      basis: min_instances forwarding instances (GCP defaults to 2 when unset) x e2-micro's documented 0.25 fractional vCPU x 730 hours at the E2 per-vCPU rate
+    - sku_meter: connector instance memory
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: e2-micro
+      quantity:
+        - field_value:
+            field_path: min_instances
+            default_when_unset: "2"
+        - constant: "1"
+        - hours_in_month: true
+      price_slug: e2-instance-ram-us-central1
+      basis: min_instances forwarding instances x e2-micro's 1 GB of memory x 730 hours at the E2 per-GiB rate
+    - sku_meter: connector instance vCPU
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: e2-standard-4
+      quantity:
+        - field_value:
+            field_path: min_instances
+            default_when_unset: "2"
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: e2-instance-core-us-central1
+      basis: min_instances forwarding instances x e2-standard-4's 4 vCPUs x 730 hours at the E2 per-vCPU rate
+    - sku_meter: connector instance memory
+      applies_when:
+        - field_path: machine_type
+          op: equals
+          value: e2-standard-4
+      quantity:
+        - field_value:
+            field_path: min_instances
+            default_when_unset: "2"
+        - constant: "16"
+        - hours_in_month: true
+      price_slug: e2-instance-ram-us-central1
+      basis: min_instances forwarding instances x e2-standard-4's 16 GB of memory x 730 hours at the E2 per-GiB rate
+  exclusions:
+    - text: scaling above the floor -- each instance beyond min_instances bills the full rate while it exists, and the connector NEVER scales in on its own, so after a burst the fleet stays at its high-water mark (up to max_instances, GCP default 10) until manually reduced, which replaces the connector
+    - text: network egress through the connector follows the workload's traffic, at standard Compute Engine egress rates
+  notes:
+    - text: The estimate is the committed floor -- min_instances forwarding VMs around the clock, traffic or none. The realistic bill trends toward the high-water mark because the fleet ratchets up and never back down; the ceiling is max_instances divided by min_instances times this estimate.
+    - text: The connector object and its /28 range are free -- the Compute Engine instances are the entire bill, priced here at ordinary E2 on-demand rates (e2-micro bills its documented 0.25 fractional vCPU).

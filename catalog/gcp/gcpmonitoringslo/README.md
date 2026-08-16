@@ -21,7 +21,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** where the SLO is created (directly or via a GcpProject reference).
-- **IAM**: the deploying identity needs `roles/monitoring.editor` or broader.
+- **IAM**: see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying identity needs.
 - **The metrics the SLI filters reference must exist** (or begin existing) for the SLO to measure anything — filters are validated syntactically at create, not against live data.
 
 ## Deploy

@@ -22,7 +22,7 @@ A key ring carries no encryption policy itself; it exists to group and scope key
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **A GCP project** (the Cloud KMS API is enabled automatically)
-- **IAM permissions** — `roles/cloudkms.admin` or `roles/cloudkms.keyRingCreator` on the target project
+- **IAM permissions** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying identity needs
 
 ## Quick Start
 

@@ -1,0 +1,39 @@
+# Cost derivation: the machine-executable rules turning any
+# GcpCloudSchedulerJob manifest's spec values into metered quantities
+# and price choices. Cloud Scheduler's meter is existence, not
+# activity: the single global SKU counts job-days aggregated monthly
+# per billing account (its displayed monthly quantity is 31), with the
+# first 93 job-days free -- Google's published "three free jobs per
+# billing account" -- and roughly $0.10 per job-month beyond them. The
+# schedule, target type, and dispatch volume never touch the meter, so
+# every manifest prices to the same one line. The estimate generator
+# replays the catalog presets through these rules to emit
+# ../estimates/gcpcloudschedulerjob.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: gcpcloudschedulerjob
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: location
+    assumption: us-central1
+    zone_to_region: true
+  lines:
+    - sku_meter: job days
+      quantity:
+        - constant: "31"
+      price_slug: cloudscheduler-job-day
+      basis: "one job existing every day of the month -- 31 job-days, the SKU's own displayed monthly quantity (31 x the per-job-day rate is Google's published $0.10 per job per month) -- billed regardless of how many times the schedule fires"
+  exclusions:
+    - text: "dispatch volume is free -- the meter counts job-days, not executions -- but whatever each dispatch invokes bills on its own component: Cloud Run or Cloud Functions compute behind an HTTP target, Pub/Sub message charges behind a topic target"
+    - text: network egress of dispatch requests follows target placement
+  notes:
+    - text: "The first 93 job-days per billing account per month are free -- exactly three always-on jobs (3 jobs x 31 days) -- so an account's first three jobs pay nothing and this may be one of them. List total shown without the free allotment, which is account-wide and not visible from any single manifest."
+    - applies_when:
+        - field_path: paused
+          op: equals
+          value: "true"
+      text: The job is created paused -- executions will not fire, but the meter counts job-days of existence rather than dispatches, so pausing is not documented to stop the fee.

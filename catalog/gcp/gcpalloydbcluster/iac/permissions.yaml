@@ -1,0 +1,35 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpalloydbcluster
+spec:
+  gcp:
+    groups:
+      - purpose: EnableAlloydbApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling alloydb.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageCluster
+        permissions:
+          - alloydb.clusters.create
+          - alloydb.clusters.get
+          - alloydb.clusters.update
+          - alloydb.clusters.delete
+        provenance: derived
+        notes: Covers google_alloydb_cluster -- create, read/refresh, in-place updates (backup policies, maintenance window, labels, deletion guards), and destroy. All four exist in IAM's testable-permissions inventory as alloydb.clusters.* dotted permissions.
+      - purpose: ManagePrimaryInstance
+        permissions:
+          - alloydb.instances.create
+          - alloydb.instances.get
+          - alloydb.instances.update
+          - alloydb.instances.delete
+          - alloydb.operations.get
+        provenance: derived
+        notes: Covers google_alloydb_instance for the bundled primary. AlloyDB instance mutations are long-running operations the provider polls to completion, which authorizes as alloydb.operations.get (a real dotted permission in the IAM inventory, unlike some services where polling rides the resource's own get).

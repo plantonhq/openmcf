@@ -1,0 +1,92 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpsecretmanagersecret
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Secret Manager encrypts every payload at rest with Google-managed AES-256 keys on every secret without configuration -- there is no unencrypted storage mode.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: customer_managed_encryption
+      evidence:
+        type: spec_default
+        reference: Unset means Google-managed encryption. A regional secret takes its Cloud KMS key here directly; a global secret takes it inside replication (replication.auto.customer_managed_encryption, or per replica under replication.user_managed.replicas). The Secret Manager service agent needs encrypt/decrypt on the key as a prerequisite.
+      notes: The 02-regional-cmek-secret preset encrypts with a same-region KMS key. With user-managed replicas, either every replica names a key or none does (the API's own rule).
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Payloads are written and read exclusively through the TLS-encrypted Secret Manager API; no plaintext transport path exists.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A secret is an API object with no network placement of its own -- it is reachable only through the IAM-gated Secret Manager API, so exposure is an identity question (see rbac), not a network one. Org-level VPC Service Controls can add an API perimeter, but that lives outside this spec.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network ingress surface exists to restrict -- callers reach the secret only through the Secret Manager API, where IAM grants (not network sources) decide who reads.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: There is no request-filtering attachment point on a secret; the Secret Manager API front end is Google-operated infrastructure.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: No principal reads a payload without an explicit secretmanager IAM grant -- access control is always on and cannot be disabled. The spec's iam_members field makes the consumer grants (typically roles/secretmanager.secretAccessor, optionally under an IAM condition) first-class, additive, and reviewable in the manifest.
+      notes: The 01-app-secret-with-access preset grants secretAccessor to exactly one workload service account.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The component's whole purpose is keyless consumption -- workloads fetch payloads at runtime with their IAM identity and short-lived OAuth tokens instead of baking credentials into images or env vars; iam_members targets serviceAccount principals for exactly that pattern.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The Secret Manager API has exactly one authentication path -- IAM with OAuth 2.0 -- so no legacy or weaker path exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Administrative actions on the secret (create, update, IAM changes, version destroy) land in Cloud Audit Logs Admin Activity logs unconditionally. Per-read Data Access logs for AccessSecretVersion calls are a project-level audit-config toggle outside this spec.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Secret Manager API request counts, error rates, and latency are exported per secret to Cloud Monitoring through the standard consumed-API metrics without configuration; lifecycle events can additionally fan out to Pub/Sub via the topics field.
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every payload is an immutable, durably stored version -- adding a new version never overwrites the old one, and any prior version remains readable (and re-pointable via version_aliases) until explicitly destroyed. Version history is the backup.
+      notes: initial_version.deletion_policy=DISABLE keeps the seeded payload recoverable even when the resource is destroyed.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: version_destroy_ttl
+      evidence:
+        type: spec_default
+        reference: Unset means version destruction is immediate and final; setting it (minimum 86400s) holds every destroyed version DISABLED-but-recoverable for the window, so how long deleted payloads stay restorable is organizational policy.
+      notes: The 03-rotated-secret preset keeps a 7-day (604800s) undo buffer.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Payloads are stored redundantly across zones within each serving location; global secrets additionally replicate across regions (Google-chosen under automatic replication, pinned under replication.user_managed). Single-zone operation is unrepresentable.
+      notes: replication.user_managed widens or narrows the geographic spread; a regional secret trades multi-region spread for residency while keeping in-region zonal redundancy.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_protection
+      evidence:
+        type: spec_default
+        reference: Off by default; when true, any plan that would delete the secret fails engine-side before reaching the API. The sibling deletion_policy field adds PREVENT (API-refusing) and ABANDON (leave readable in GCP) on top of the default DELETE.
+      notes: The 02-regional-cmek-secret preset sets both deletion_protection=true and deletion_policy=PREVENT -- belt and suspenders for production credentials.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Google operates and patches the storage and serving fleet; no customer-visible patch surface or maintenance window exists on a secret.

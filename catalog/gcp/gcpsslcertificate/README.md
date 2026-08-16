@@ -10,7 +10,7 @@ A single SSL certificate uploaded from your PEM material. Leave `region` empty f
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **An existing GCP project** — referenced via `projectId` (or the provider's default project)
-- **IAM permissions** — any role carrying `compute.sslCertificates.*` on the target project
+- **IAM permissions** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 - **A PEM certificate chain and unencrypted private key** — issued by your CA or purchased commercially
 
 ## Quick Start

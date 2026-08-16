@@ -1,0 +1,72 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpmemorystoreinstance
+spec:
+  presets:
+    - preset: 01-dev-single-shard
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloud Memorystore
+          sku_meter: node hours
+          pricing_unit: node-hours
+          pricing_quantity: "730"
+          quantity_basis: one primary node per shard -- shard_count nodes billed every hour of the month at the node_type's rate; a manifest that leaves node_type unset refuses because GCP would pick the default type and rate on its behalf
+          list_unit_price: "0.0318"
+          price_source: https://cloudbilling.googleapis.com/v1/services/A2B5-E0F1-B0F3/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "23.2140"
+      total_list_cost: "23.2140"
+      exclusions:
+        - network egress follows client placement
+      notes: Billing is per second of node existence; the 730-hour figure assumes the instance runs all month.
+    - preset: 02-ha-production
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloud Memorystore
+          sku_meter: node hours
+          pricing_unit: node-hours
+          pricing_quantity: "4380"
+          quantity_basis: one primary node per shard -- shard_count nodes billed every hour of the month at the node_type's rate; a manifest that leaves node_type unset refuses because GCP would pick the default type and rate on its behalf; replica_count replicas per shard, each a full node at the same node_type rate -- shard_count x replica_count nodes billed hourly; zero replicas add nothing
+          list_unit_price: "0.1923"
+          price_source: https://cloudbilling.googleapis.com/v1/services/A2B5-E0F1-B0F3/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "842.2740"
+      total_list_cost: "842.2740"
+      exclusions:
+        - network egress follows client placement
+      notes: Billing is per second of node existence; the 730-hour figure assumes the instance runs all month.
+    - preset: 03-enterprise-cluster
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloud Memorystore
+          sku_meter: node hours
+          pricing_unit: node-hours
+          pricing_quantity: "10950"
+          quantity_basis: one primary node per shard -- shard_count nodes billed every hour of the month at the node_type's rate; a manifest that leaves node_type unset refuses because GCP would pick the default type and rate on its behalf; replica_count replicas per shard, each a full node at the same node_type rate -- shard_count x replica_count nodes billed hourly; zero replicas add nothing
+          list_unit_price: "0.8581"
+          price_source: https://cloudbilling.googleapis.com/v1/services/A2B5-E0F1-B0F3/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "9396.1950"
+      total_list_cost: "9396.1950"
+      exclusions:
+        - AOF persistence bills the append-only log's storage per GB-hour, which follows the keyspace and write churn
+        - backup storage bills per GB-hour of backup data held across the retention window
+        - network egress follows client placement
+      notes: Billing is per second of node existence; the 730-hour figure assumes the instance runs all month.

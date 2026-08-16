@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpcertmanagerdnsauthorization
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The authorization stores no sensitive data -- its contents are a domain name and a CNAME validation token that is deliberately published in public DNS; both are control-plane metadata inside Google's infrastructure.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest); Certificate Manager exposes no KMS surface for authorizations.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The authorization terminates no connections. It proves domain control over public DNS so that GcpCertManagerCert certificates -- the actual TLS material -- can issue; the encryption posture lives on those certificates and the proxies serving them.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: No network endpoint exists to expose. The exported CNAME validation record is INTENTIONALLY public -- certificate authorities must resolve it -- so public visibility is the mechanism, not a weakness.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; the authorization is Certificate Manager control-plane configuration.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The authorization receives no HTTP requests -- request filters have nothing to attach to.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is project IAM posture (Certificate Manager roles), not a component choice; the authorization exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The authorization runs no workloads and holds no credentials.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own exist to retire.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Control-plane changes land in Cloud Audit Logs as project-level posture, not per-authorization configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The authorization publishes no metrics; its only observable state is the exported validation record and the issuance state of certificates that reference it.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration fully re-creatable from the manifest -- recreating the authorization re-exports the validation record for the same domain.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A control-plane object with no zonal placement; Google serves it through the Certificate Manager control plane.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Unset defaults to DELETE; setting deletion_policy=PREVENT makes destroy fail before touching the authorization -- a guard for the validation chain a certificate migration depends on, since deleting it stops renewal validating for domains not yet serving through the load balancer.
+      notes: Neither preset sets PREVENT; ABANDON leaves the authorization validating in GCP after it leaves management.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A pure configuration object with no software to patch; certificate renewal posture lives on the certificates that consume the authorization.

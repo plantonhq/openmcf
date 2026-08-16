@@ -11,7 +11,7 @@ A single global URL map in the chosen project. Target HTTP(S) proxies reference 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **An existing GCP project** — referenced via `projectId` (or the provider's default project)
 - **At least one backend target** — typically a `GcpBackendService` or `GcpBackendBucket` self-link for the default route
-- **IAM permissions** — any role carrying `compute.urlMaps.*` on the target project
+- **IAM permissions** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Quick Start
 

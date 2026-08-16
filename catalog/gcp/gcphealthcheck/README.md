@@ -15,7 +15,7 @@ Both scopes expose an identical probe surface in GCP — only `sourceRegions` (g
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **An existing GCP project** — referenced via `projectId` (or the provider's default project)
-- **IAM permissions** — `roles/compute.instanceAdmin` or any role carrying `compute.healthChecks.*` on the target project
+- **IAM permissions** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Quick Start
 

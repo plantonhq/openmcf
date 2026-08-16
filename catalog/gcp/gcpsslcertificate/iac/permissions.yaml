@@ -1,0 +1,34 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpsslcertificate
+spec:
+  gcp:
+    groups:
+      - purpose: EnableComputeApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling compute.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageGlobalSslCertificate
+        permissions:
+          - compute.sslCertificates.create
+          - compute.sslCertificates.get
+          - compute.sslCertificates.delete
+          - compute.globalOperations.get
+        provenance: derived
+        notes: Covers google_compute_ssl_certificate (created when spec.region is empty) -- create, read/refresh, destroy, and polling the global operation every mutation returns. GCP defines NO compute.sslCertificates.update permission (verified against IAM's testable-permissions inventory) -- every certificate argument is immutable, so any change authorizes as delete plus create, never as an update.
+      - purpose: ManageRegionalSslCertificate
+        permissions:
+          - compute.regionSslCertificates.create
+          - compute.regionSslCertificates.get
+          - compute.regionSslCertificates.delete
+          - compute.regionOperations.get
+        provenance: derived
+        notes: Covers google_compute_region_ssl_certificate (created when spec.region is set). Regional certificates authorize against their own compute.regionSslCertificates family (verified in the testable-permissions inventory), not the global family -- and like the global family it has no update verb. Not needed for global certificates.

@@ -13,7 +13,7 @@ This directory contains the Pulumi implementation for deploying a Secret Manager
    ```bash
    gcloud auth application-default login
    ```
-5. **IAM permissions**: `roles/secretmanager.admin` on the target project (creation + IAM grants)
+5. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Directory Structure
 

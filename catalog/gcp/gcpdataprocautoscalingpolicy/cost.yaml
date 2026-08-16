@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpdataprocautoscalingpolicy
+spec:
+  billing_model: free
+  free_tier: "An autoscaling policy carries no meter -- it is Dataproc control-plane configuration, and Google's pricing page for the service (now Managed Service for Apache Spark) bills only cluster uptime (a management fee of $0.010 per vCPU-hour across all cluster nodes, plus the underlying Compute Engine VMs and persistent disks) and serverless compute units. A policy that no cluster attaches costs nothing forever; a policy attached to a hundred clusters still costs nothing itself."
+  notes: "No field of this spec buys anything directly, but nearly every field steers what attached CLUSTERS spend, and clusters bill hard: each worker the autoscaler adds is a Compute Engine VM plus its persistent disk plus the $0.010/vCPU-hour Dataproc management fee, accruing until the worker is removed (billing as the cluster's own catalog kind). worker_config.max_instances and secondary_worker_config.max_instances are the spend ceilings -- the largest cluster the policy may ever buy; the min_instances floors are the always-running base. The secondary group runs preemptible/spot VMs, so weight decides how much of each scale-up lands on cheap interruptible capacity versus on-demand primaries. And basic_algorithm.yarn_config.scale_down_factor is the trap worth naming: 0.0 disables scale-down entirely, so the cluster only ever grows -- capacity added for a burst keeps billing until someone intervenes. Google's own scaling recommendations also warn that scaling primary workers (HDFS carriers) is riskier and slower than scaling secondaries."

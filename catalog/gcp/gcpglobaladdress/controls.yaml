@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpglobaladdress
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An address reservation stores no data -- it is a control-plane claim on an IP number or range. There is nothing to encrypt.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No stored data, no key to manage.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The reservation carries no traffic -- packets flow through the global load balancer or peered service that uses the address, and transport encryption is that resource's posture.
+    - control_id: no-public-access
+      status: configurable
+      field_path: address_type
+      evidence:
+        type: spec_default
+        reference: The default (EXTERNAL) reserves a public IPv4; INTERNAL carves a private range inside your VPC for peering or Private Service Connect that can never receive internet traffic.
+      notes: Reserving a public IP exposes nothing by itself -- nothing answers on it until a forwarding rule attaches it. Presets 02 and 03 are INTERNAL; 01 is the global-LB frontend shape.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No listener, no firewall attachment point -- what the world can reach through this IP is decided by the forwarding rule and load balancer that hold it.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Cloud Armor attaches to the load balancer this IP will front, not to the reservation.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Reserving, attaching, and releasing the address are all governed by Compute Engine IAM permissions -- no principal can consume the reservation without IAM saying so.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: An address holds no identity and calls no APIs.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication surface exists beyond IAM.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every administrative action on the reservation (reserve, label, release) lands in Cloud Audit Logs' Admin Activity stream unconditionally.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A reservation emits no metrics -- traffic metrics belong to the load balancer holding the IP; the reservation's observables are inventory and audit logs.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Nothing to back up -- the reservation is one API call to re-create. The unrecoverable part is the IP number itself, which is deletion-protection's territory.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A global address is anycast-announced from Google's entire edge -- there is no zone or region to fail out of. Availability is built into what "global" means here.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Default ("" = DELETE) releases the IP on destroy -- and a released global IP returns to Google's pool where anyone can claim it, breaking every DNS record pointing at the load balancer. PREVENT fails the destroy; ABANDON keeps the reservation alive outside management.
+      notes: For a global LB frontend, the IP is the public identity of the whole service -- deletion protection IS the data protection. Releasing a VPC_PEERING range in use by managed services is similarly destructive.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: No software runs here.

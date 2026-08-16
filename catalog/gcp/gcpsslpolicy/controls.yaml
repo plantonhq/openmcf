@@ -1,0 +1,75 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpsslpolicy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The policy stores no customer data -- it is a named set of TLS handshake constraints, configuration metadata Google holds on its own encrypted control plane.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest exists to key (see enc-at-rest); the resource exposes no Cloud KMS surface.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: min_tls_version
+      evidence:
+        type: spec_default
+        reference: Unset leaves GCP's default TLS floor of TLS_1_0 in force on every proxy referencing the policy; TLS_1_2 raises the floor to what PCI DSS and most modern regimes require, and TLS_1_3 (with the RESTRICTED profile) is the strictest floor GCP offers.
+      notes: This object IS the load balancer's TLS-in-transit posture -- proxies without any SSL policy get GCP's permissive default (min TLS 1.0, COMPATIBLE ciphers). All three presets pin TLS_1_2. GCP has no maximum-version dial; TLS 1.3 stays negotiable whatever the floor.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The policy has no network endpoint; it constrains handshakes on whatever proxies reference it, and those frontends' exposure is the forwarding rule's affair.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: An SSL policy decides HOW clients may negotiate TLS, never WHICH sources may connect -- source restriction lives on firewall rules and Cloud Armor policies.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Cipher and protocol constraints are not request filtering; a web application firewall (Cloud Armor) attaches to backend services, not to SSL policies.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management access is governed by Compute Engine IAM (the compute.sslPolicies and compute.regionSslPolicies permission families) on every project; the resource has no data plane to govern separately.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Nothing authenticates to cloud APIs through an SSL policy; it carries no credential surface.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: profile
+      evidence:
+        type: spec_default
+        reference: Unset defaults to COMPATIBLE, GCP's widest and weakest cipher set; MODERN drops broken ciphers, RESTRICTED narrows to suites with forward secrecy and AEAD, CUSTOM pins an explicit allowlist, and FIPS_202205 pins the FIPS-validated set.
+      notes: "The legacy-weak paths here are old TLS protocol versions and weak cipher suites: profile retires the ciphers and min_tls_version (see enc-in-transit) retires TLS 1.0/1.1. Presets: 01 pins MODERN, 02 RESTRICTED, 03 CUSTOM with a four-suite AEAD allowlist. TLS 1.3 suites are never listable -- GCP always enables them."
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Policy create, update, and delete land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The policy publishes no metrics of its own; TLS handshake and traffic telemetry surface on the load balancer's monitoring resources, not here.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The policy is declarative configuration fully re-creatable from source control; there is no data to back up or restore.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The policy is control-plane configuration with no failure domain of its own; Google enforces it wherever the referencing proxies serve.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE; PREVENT makes destroy fail outright -- a guard for a compliance-mandated TLS posture -- and ABANDON unmanages the policy while every referencing proxy keeps enforcing it.
+      notes: GCP independently refuses to delete a policy still referenced by a proxy, so a destroy fails rather than silently dropping a fleet back to the permissive default.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software here to patch. Google evolves cipher availability platform-side, and post_quantum_key_exchange chooses a stance on Google's post-quantum rollout timeline rather than managing any upgrade channel of this resource.

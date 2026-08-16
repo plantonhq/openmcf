@@ -1,0 +1,26 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpalloydbuser
+spec:
+  gcp:
+    groups:
+      - purpose: EnableAlloydbApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling alloydb.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageUser
+        permissions:
+          - alloydb.users.create
+          - alloydb.users.get
+          - alloydb.users.update
+          - alloydb.users.delete
+        provenance: derived
+        notes: Covers google_alloydb_user -- create, read/refresh, in-place updates (password rotation, database_roles changes), and destroy. User mutations return the user synchronously rather than a long-running operation, so no alloydb.operations.* permission is needed; the module never reads the parent cluster either (the cluster path is passed through verbatim), so no alloydb.clusters.get.

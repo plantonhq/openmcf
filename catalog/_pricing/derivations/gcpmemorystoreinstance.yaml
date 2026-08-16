@@ -1,0 +1,65 @@
+# Cost derivation: the machine-executable rules turning any
+# GcpMemorystoreInstance manifest's spec values into metered quantities
+# and price choices. Memorystore for Valkey bills per node-hour at a
+# node_type-keyed rate, and replicas are nodes: the instance runs
+# shard_count primaries plus shard_count x replica_count replicas.
+# Those two populations are sibling rules resolving to the same meter
+# and price, so they merge into one bill line by summing quantities --
+# and a replica_count of zero emits nothing. The price lookup binds
+# node_type with no fallback: a manifest that leaves node_type to GCP's
+# default refuses rather than guessing which rate GCP would pick.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: gcpmemorystoreinstance
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: location
+    assumption: us-central1
+  lines:
+    - sku_meter: node hours
+      quantity:
+        - field_value:
+            field_path: shard_count
+        - hours_in_month: true
+      price_lookup:
+        service_name: Cloud Memorystore
+        pricing_unit: node-hours
+        attributes:
+          - key: node_type
+            from_field: node_type
+      basis: one primary node per shard -- shard_count nodes billed every hour of the month at the node_type's rate; a manifest that leaves node_type unset refuses because GCP would pick the default type and rate on its behalf
+    - sku_meter: node hours
+      quantity:
+        - field_value:
+            field_path: shard_count
+        - field_value:
+            field_path: replica_count
+        - hours_in_month: true
+      price_lookup:
+        service_name: Cloud Memorystore
+        pricing_unit: node-hours
+        attributes:
+          - key: node_type
+            from_field: node_type
+      basis: replica_count replicas per shard, each a full node at the same node_type rate -- shard_count x replica_count nodes billed hourly; zero replicas add nothing
+  exclusions:
+    - applies_when:
+        - field_path: persistence_config.mode
+          op: equals
+          value: AOF
+      text: AOF persistence bills the append-only log's storage per GB-hour, which follows the keyspace and write churn
+    - applies_when:
+        - field_path: automated_backup_config
+          op: is_set
+      text: backup storage bills per GB-hour of backup data held across the retention window
+    - applies_when:
+        - field_path: cross_instance_replication_config
+          op: is_set
+      text: the replication peer is its own fully billed instance, and inter-region replication traffic bills per GiB of replicated writes
+    - text: network egress follows client placement
+  notes:
+    - text: Billing is per second of node existence; the 730-hour figure assumes the instance runs all month.

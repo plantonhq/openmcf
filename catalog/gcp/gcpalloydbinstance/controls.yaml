@@ -1,0 +1,96 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpalloydbinstance
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: An AlloyDB instance serves data from the parent cluster's shared storage layer, which is always encrypted at rest (Google-managed keys, or the cluster's CMEK when configured).
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Encryption keys are a cluster property -- the parent GcpAlloydbCluster's kms_key_name decides Google-managed versus customer-managed keys, and this instance spec carries no key field of its own.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: ssl_mode
+      evidence:
+        type: spec_default
+        reference: Unset means GCP's ENCRYPTED_ONLY default -- the instance rejects unencrypted client connections unless ALLOW_UNENCRYPTED_AND_ENCRYPTED is chosen explicitly.
+      notes: The 03-read-pool-production preset pins ENCRYPTED_ONLY explicitly; require_connectors goes further by demanding the connectors' identity-bound TLS.
+    - control_id: no-public-access
+      status: configurable
+      field_path: enable_public_ip
+      evidence:
+        type: spec_default
+        reference: Unset (false) means no public IP -- the instance is reachable only over the parent cluster's private connectivity (PSA peering or PSC); a public address is an explicit opt-in.
+      notes: All three presets are private-only.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: authorized_external_networks
+      evidence:
+        type: spec_default
+        reference: For an instance with a public IP, the authorized external network CIDRs are the complete allowlist of sources that may connect; the spec rejects the list without enable_public_ip.
+      notes: Private-only instances (all presets) restrict ingress by network topology instead.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A managed PostgreSQL endpoint is protected by TLS, IAM, and network scoping rather than a WAF; no request-filtering attachment point exists.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management-plane access is governed by AlloyDB IAM roles, and database-plane access by PostgreSQL's grant system inherited from the parent cluster; both are always active.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AlloyDB IAM database authentication and the Auth Proxy / Language Connectors let workloads authenticate with short-lived IAM credentials instead of static passwords; the surface is always present.
+      notes: require_connectors (preset 03) makes the identity-bound connector path the only path.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: ssl_mode
+      evidence:
+        type: spec_default
+        reference: The legacy-weak path is cleartext database protocol, and it exists only when ALLOW_UNENCRYPTED_AND_ENCRYPTED is chosen explicitly -- the unset default is ENCRYPTED_ONLY.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Administrative actions on the instance land in Cloud Audit Logs unconditionally; database logs flow to Cloud Logging.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AlloyDB publishes per-instance metrics (CPU, memory, connections, replication lag) to Cloud Monitoring for every instance without configuration.
+      notes: query_insights_config (preset 03) adds per-query performance telemetry on top.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A read pool holds no independent data -- automated backups and continuous backup (PITR) are configured on the parent GcpAlloydbCluster, whose storage layer this instance serves from.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Backup retention lives on the parent GcpAlloydbCluster's backup policies; this instance spec has no retention surface.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: read_pool_config.node_count
+      evidence:
+        type: spec_default
+        reference: Read-pool availability is derived from node count -- one node is zonal, two or more nodes spread across zones (regional); the spec forbids an explicit availability_type on read pools because the API derives and does not store it.
+      notes: Presets 02 and 03 run 2 and 3 nodes (regional by derivation); the dev preset runs 1 node (zonal). For PRIMARY/SECONDARY instance types, availability_type is the control instead.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Unset means DELETE; setting PREVENT makes any destroy fail while the instance exists -- protection for serving capacity applications still connect to.
+      notes: No preset sets it -- read pools are rebuildable capacity; the parent cluster carries the data-protecting guards.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AlloyDB applies engine patches and system updates through managed maintenance windows configured on the parent cluster; the instance cannot opt out.

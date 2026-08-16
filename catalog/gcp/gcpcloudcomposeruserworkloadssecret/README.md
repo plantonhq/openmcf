@@ -14,7 +14,7 @@ No API enablement is needed: the Composer API is enabled by the environment the 
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **An existing Composer environment** (deploy via GcpCloudComposerEnvironment first) — referenced via `environment`
-- **IAM permissions** — Composer environment admin access (e.g. `roles/composer.admin`)
+- **IAM permissions** — [`iac/permissions.yaml`](iac/permissions.yaml) lists the exact least-privilege permissions
 
 ## Quick Start
 

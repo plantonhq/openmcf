@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpcloudrundomainmapping
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The mapping stores no customer data -- it is routing configuration binding a domain to a service. The managed certificate AUTOMATIC mode provisions is Google-generated key material Google holds inside its own infrastructure under default encryption at rest, never passing through operator hands.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest); Cloud Run exposes no KMS surface for domain mappings.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: certificate_mode
+      evidence:
+        type: spec_default
+        reference: The default AUTOMATIC has Cloud Run provision and renew a Google-managed certificate, so the mapped domain serves HTTPS from the moment issuance completes; NONE creates the mapping with no certificate, leaving the domain serving without TLS until one exists -- a deliberate migration shape for publishing DNS records before issuance can succeed.
+      notes: Preset 01 is the AUTOMATIC shape; preset 02 is the explicit NONE migration shape meant to be flipped back. Domain mappings expose no SSL-policy surface -- the TLS protocol floor is not configurable here the way a load balancer's SSL policy is, which is one of the trade-offs against the load-balancer composition.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Publishing the service at a public domain is the mapping's entire function -- public reachability is the feature. Whether the SERVICE behind it restricts callers (ingress settings, IAM invoker bindings) is the GcpCloudRun kind's posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The mapping has no filtering surface; caller restriction lives on the Cloud Run service's ingress and invoker configuration, a separate kind's posture.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Cloud Armor attaches to load balancer backend services, and a domain mapping exists precisely to serve a domain WITHOUT the load balancer -- choosing this kind is choosing to forgo that attachment point. Domains needing edge policy belong on the load-balancer composition instead.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is project IAM posture, not a component choice. One ownership gate is worth knowing -- GCP refuses to map a domain the provisioning identity has not verified (Search Console / gcloud domains verify), an out-of-band domain-ownership control that no IAM grant substitutes for.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The mapping runs no workloads and holds no credentials; the service's runtime identity is the GcpCloudRun kind's posture.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own exist to retire.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Mapping changes land in Cloud Audit Logs as project-level posture; request logs belong to the service.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The mapping publishes no metrics of its own; serving metrics, latency, and error rates belong to the Cloud Run service, and certificate/DNS readiness surfaces as the mapping's resource status outputs.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration fully re-creatable from the manifest -- the underlying resource is create-only, so recreation IS its normal change mechanism, with a brief serving gap while the certificate re-issues.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The mapping is regional control-plane configuration pinned to its service's region with no zonal placement of its own; the service's availability across zones is the GcpCloudRun kind's posture, and multi-region serving of one domain is load-balancer territory.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Unset defaults to DELETE; setting deletion_policy=PREVENT makes destroy fail before the mapping is removed -- deleting a live mapping stops the domain routing immediately (the service keeps running, unreachable at that name).
+      notes: Preset 02 sets PREVENT -- a mid-migration domain is exactly the thing an accidental destroy must not take down. ABANDON keeps the domain serving in GCP after the mapping leaves management.
+    - control_id: managed-patching
+      status: configurable
+      field_path: certificate_mode
+      evidence:
+        type: spec_default
+        reference: Certificate renewal is the mapping's only patch-like surface, and the default AUTOMATIC puts issuance and renewal entirely on Google's managed channel -- the certificate rotates before expiry with no operator action. NONE opts out of the channel by having no certificate at all, not by shifting renewal to the operator.
+      notes: The NONE shape (preset 02) is a temporary migration state; leaving it in place indefinitely means the domain never gains TLS, which enc-in-transit already flags.

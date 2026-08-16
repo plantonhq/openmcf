@@ -1,0 +1,39 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpsecretmanagersecret
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Secret Manager
+      sku_meter: active secret version storage
+      pricing_unit: version-location-months
+      description: Every active secret version (ENABLED or DISABLED) bills a prorated monthly fee per replication location from the moment it exists. An automatic replication policy bills as a single location, and a regional secret has exactly one location by definition. The empty secret container itself is free.
+  cost_drivers:
+    - field_path: replication.user_managed.replicas
+      sku_meter: active secret version storage
+      pricing_unit: version-location-months
+      impact: Each user-managed replica location multiplies every version's monthly storage fee -- a version replicated to three regions bills three version-location units. Immutable at creation.
+    - field_path: initial_version
+      sku_meter: active secret version storage
+      pricing_unit: version-location-months
+      impact: Seeding the first payload starts the version meter at creation; omitting it creates a free empty container that bills nothing until versions are added. A version seeded disabled (enabled=false) still bills -- both ENABLED and DISABLED versions count as active.
+    - field_path: rotation.rotation_period
+      sku_meter: rotation notifications
+      pricing_unit: notifications
+      impact: Every SECRET_ROTATE reminder published to the configured topics bills $0.05 beyond the billing account's 3 free notifications per month; the cadence sets how many fire.
+    - field_path: version_destroy_ttl
+      sku_meter: active secret version storage
+      pricing_unit: version-location-months
+      impact: Destroyed versions first spend this window DISABLED -- still active, still billing -- before permanent destruction, so a longer undo buffer extends every destroyed version's billing tail.
+    - field_path: region
+      sku_meter: active secret version storage
+      impact: A regional secret bills exactly one location at the same per-version rate as global automatic replication -- the field changes residency posture, not price.
+  free_tier: 6 active secret versions (per location), 10,000 access operations, and 3 rotation notifications free per month, aggregated across projects by billing account; unused allowance never rolls over.
+  estimate_exclusions:
+    - access operations -- reads of secret payloads bill per 10,000 calls beyond the free allowance and follow workload traffic no manifest can know
+    - versions added after provisioning -- rotation pipelines and manual adds each start another version-location meter
+  notes: "Version storage is prorated to actual active hours, and the per-version-location rate is identical across all Secret Manager locations. Only DESTROYED versions stop billing; disabling a version does not. Deleting the secret ends all charges (expire_time/ttl automate that endpoint)."

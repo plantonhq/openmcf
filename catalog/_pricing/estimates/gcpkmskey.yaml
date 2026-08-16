@@ -1,0 +1,82 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpkmskey
+spec:
+  presets:
+    - preset: 01-symmetric-cmek
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloud Key Management Service (KMS)
+          sku_meter: active key version months
+          pricing_unit: version-months
+          pricing_quantity: "1"
+          quantity_basis: one active key version -- the STATED assumption is the single initial version the key is created with; an unset purpose is assumed ENCRYPT_DECRYPT and an unset protection level SOFTWARE, the documented GCP defaults. Cloud KMS version rates are location-independent, one list price across locations.
+          list_unit_price: "0.06"
+          price_source: https://cloudbilling.googleapis.com/v1/services/EE2F-D110-890C/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "0.0600"
+      total_list_cost: "0.0600"
+      exclusions:
+        - cryptographic operations -- every encrypt, decrypt, sign, verify, or MAC call bills per 10,000 operations and follows request traffic no manifest can know
+        - versions created or imported after provisioning -- each one is another active version billing monthly at the key's protection-level rate
+      notes: The estimate prices the single version present at creation. Automatic rotation mints a new active version every rotation period while old versions keep billing until destroyed -- the active-version count, and this line with it, grows by one per period unless old versions are destroyed. Rotation itself is a free administrative operation. Version fees are prorated to actual active hours, and a version bills while ENABLED, DISABLED, or DESTROY_SCHEDULED -- only permanent destruction stops the meter. The key object itself is free and can never be deleted.
+    - preset: 02-hsm-symmetric-encryption
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloud Key Management Service (KMS)
+          sku_meter: active key version months
+          pricing_unit: version-months
+          pricing_quantity: "1"
+          quantity_basis: one active key version -- the STATED assumption is the single initial version the key is created with; an unset purpose is assumed ENCRYPT_DECRYPT and an unset protection level SOFTWARE, the documented GCP defaults. Cloud KMS version rates are location-independent, one list price across locations.
+          list_unit_price: "1"
+          price_source: https://cloudbilling.googleapis.com/v1/services/EE2F-D110-890C/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "1.0000"
+      total_list_cost: "1.0000"
+      exclusions:
+        - cryptographic operations -- every encrypt, decrypt, sign, verify, or MAC call bills per 10,000 operations and follows request traffic no manifest can know
+        - versions created or imported after provisioning -- each one is another active version billing monthly at the key's protection-level rate
+      notes: The estimate prices the single version present at creation. Automatic rotation mints a new active version every rotation period while old versions keep billing until destroyed -- the active-version count, and this line with it, grows by one per period unless old versions are destroyed. Rotation itself is a free administrative operation. Version fees are prorated to actual active hours, and a version bills while ENABLED, DISABLED, or DESTROY_SCHEDULED -- only permanent destruction stops the meter. The key object itself is free and can never be deleted.
+    - preset: 03-asymmetric-signing
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloud Key Management Service (KMS)
+          sku_meter: active key version months
+          pricing_unit: version-months
+          pricing_quantity: "1"
+          quantity_basis: one active key version -- the STATED assumption is the single initial version the key is created with; an unset purpose is assumed ENCRYPT_DECRYPT and an unset protection level SOFTWARE, the documented GCP defaults. Cloud KMS version rates are location-independent, one list price across locations.
+          list_unit_price: "0.06"
+          price_source: https://cloudbilling.googleapis.com/v1/services/EE2F-D110-890C/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "0.0600"
+      total_list_cost: "0.0600"
+      exclusions:
+        - cryptographic operations -- every encrypt, decrypt, sign, verify, or MAC call bills per 10,000 operations and follows request traffic no manifest can know
+        - versions created or imported after provisioning -- each one is another active version billing monthly at the key's protection-level rate
+      notes: Version fees are prorated to actual active hours, and a version bills while ENABLED, DISABLED, or DESTROY_SCHEDULED -- only permanent destruction stops the meter. The key object itself is free and can never be deleted.
+    - preset: 04-import-only-byok
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - cryptographic operations -- every encrypt, decrypt, sign, verify, or MAC call bills per 10,000 operations and follows request traffic no manifest can know
+        - versions created or imported after provisioning -- each one is another active version billing monthly at the key's protection-level rate
+      notes: "The key is created with no versions, so its committed cost at creation is honestly zero -- not free: every version later created or imported bills monthly at the key's protection-level rate from the moment it exists. Version fees are prorated to actual active hours, and a version bills while ENABLED, DISABLED, or DESTROY_SCHEDULED -- only permanent destruction stops the meter. The key object itself is free and can never be deleted."

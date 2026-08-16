@@ -1,0 +1,76 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpfirewallrule
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The rule stores no customer data -- it is a traffic-matching predicate, configuration metadata Google holds on its own encrypted control plane.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest exists to key (see enc-at-rest); the resource exposes no Cloud KMS surface.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A firewall rule matches and passes or drops packets at L3/L4; it neither terminates nor requires encryption. Whether the traffic it admits is encrypted is the workloads' affair.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The rule has no endpoint to expose -- it is the INSTRUMENT that opens or closes public reachability for the instances it targets; that stance is assessed under restricted-ingress.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: source_ranges
+      evidence:
+        type: spec_validation
+        reference: The ingress_requires_source rule makes a sourceless INGRESS rule unrepresentable -- every INGRESS rule must declare at least one of source_ranges, source_tags, or source_service_accounts, so the admitted sources are always an explicit, reviewable choice.
+      notes: "This component IS the restricted-ingress control for VPC workloads. How restrictive is a per-rule choice: preset 01 deliberately admits 0.0.0.0/0 on tcp:80/443 for a public web tier; preset 02 narrows SSH to Google IAP's 35.235.240.0/20 and only onto instances tagged allow-ssh (target_tags); preset 03 is a default-deny egress at priority 65534. source/target_service_accounts select traffic by workload identity instead of tags. Two caveats a reviewer should hear: disabled=true leaves the rule in place but unenforced, and at equal priority DENY beats ALLOW."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: L3/L4 protocol/port/source filtering is not a web application firewall -- no request-level inspection happens here. L7 filtering lives in Cloud Armor policies (on backend services) and Cloud NGFW Enterprise firewall policies, both different resources.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management access is governed by Compute Engine IAM on every project, with a two-key model -- mutations authorize against the compute.firewalls family AND compute.networks.updatePolicy on the network the rule attaches to; the resource has no data plane to govern separately.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Nothing authenticates to cloud APIs through a firewall rule. The service-account targeting fields consume workload identities as traffic selectors; they grant no credentials.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The rule carries no authentication paths to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Rule create, update, and delete land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+      notes: Admin Activity covers changes TO the rule; per-connection visibility of traffic THROUGH the rule is log_config's job (see monitoring-integration).
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: log_config
+      evidence:
+        type: spec_default
+        reference: Omitted (the default) means no traffic logs; setting the block enables Firewall Rules Logging, exporting a Cloud Logging entry per matched connection with EXCLUDE_ALL_METADATA or INCLUDE_ALL_METADATA detail.
+      notes: Firewall Rules Logging records TCP and UDP connections only, and log generation bills under Network Telemetry -- enable it deliberately on high-traffic allow rules.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The rule is declarative configuration fully re-creatable from source control; there is no data to back up or restore.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The rule is network-wide configuration enforced by GCP's VPC fabric wherever the targeted instances run; no failure-domain choice exists on the resource.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE (the rule is removed and traffic falls through to the next matching rule); PREVENT makes destroy fail outright -- a guard for a rule other teams' traffic silently depends on; ABANDON unmanages the rule while it keeps enforcing.
+      notes: Deleting an ALLOW rule fails closed (traffic gets blocked by the implied-deny ingress default); deleting a DENY rule fails open -- PREVENT is most valuable on DENY rules.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software surface here to patch; the VPC fabric that evaluates the rule is Google's own infrastructure, patched as part of the platform with no version or channel exposed on this resource.

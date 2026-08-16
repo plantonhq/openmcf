@@ -1,0 +1,53 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpalloydbcluster
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: AlloyDB
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      description: The bundled primary instance's vCPUs bill every hour from creation, serving or idle. A REGIONAL (high-availability) primary runs two nodes -- the active primary and an in-region standby -- so the same vCPU count bills twice.
+    - service_name: AlloyDB
+      sku_meter: instance memory
+      pricing_unit: GiB-hours
+      description: The primary instance's memory bills per GiB-hour alongside the vCPUs; a cpu_count-only manifest gets the N2 highmem shape of 8 GiB per vCPU, doubled on a REGIONAL primary for the standby node.
+  cost_drivers:
+    - field_path: primary_instance.cpu_count
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      impact: The vCPU count is the dominant lever -- every vCPU accrues hourly, and the paired memory scales with it (8 GiB per vCPU on the default N2 shape).
+    - field_path: primary_instance.availability_type
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      impact: REGIONAL (the default when unset) runs an active node plus a synchronous in-region standby, doubling both the vCPU and memory bills; ZONAL runs a single node at half the compute cost and a single zone of failure.
+    - field_path: primary_instance.machine_type
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      impact: Naming an explicit machine family (Z3, C4, C4A) moves the instance onto that family's own vCPU and memory rates instead of the default N2 rates.
+    - field_path: primary_instance.activation_policy
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      impact: NEVER stops the primary -- compute billing stops while cluster storage and backups keep accruing; ALWAYS (the default) keeps it running and billing around the clock.
+    - field_path: continuous_backup_config.recovery_window_days
+      sku_meter: continuous backup log storage
+      pricing_unit: GiB-hours
+      impact: Continuous backup (on by default with a 14-day window) retains write-ahead logs for the whole recovery window; a longer window holds more log GiB, billed hourly.
+    - field_path: automated_backup_policy.time_based_retention_period
+      sku_meter: backup storage
+      pricing_unit: GiB-hours
+      impact: Automated backups (on by default, 14-day retention) bill per GiB-hour of backup data held; longer retention holds more backup generations.
+    - field_path: cluster_type
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      impact: A SECONDARY cluster is a full second deployment -- its own primary instance compute and storage in another region -- plus cross-region replication networking between the pair.
+  free_tier: ""
+  estimate_exclusions:
+    - cluster database storage bills per GiB-hour of data actually stored in the shared regional storage layer -- it grows with the database, which no manifest can know
+    - backup storage and continuous-backup (PITR) log storage grow with database size and write churn
+    - network egress follows client placement; cross-region backup and replication networking bill per GiB transferred
+  notes: "The compute is the committed spend: vCPUs and memory bill from creation whether or not a single query runs. Storage is deliberately elastic -- AlloyDB's shared regional storage layer bills only for what is stored, so an empty cluster's storage line rounds to zero and grows with the data. A TRIAL subscription_type runs on trial credits until they end, then converts to STANDARD list pricing."

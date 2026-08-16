@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpmonitoringnotificationchannel
+spec:
+  billing_model: free
+  free_tier: "A notification channel carries no meter -- it is pure Cloud Monitoring configuration (a delivery endpoint description), and Google's Observability pricing page lists no charge for channels or for delivering notifications through them: the page prices metric ingestion, API reads, uptime checks, synthetic monitors, and (from September 2027) alerting policies, and states that all other product features are free. Creating one sends nothing on its own; email, SMS, Slack, PagerDuty, and webhook deliveries add no GCP charge at any volume."
+  notes: "No field of this spec buys anything: type, channel_labels, sensitive_labels, and the enabled flag are control-plane configuration. Two adjacencies shape spend that bills elsewhere. A pubsub-type channel delivers every notification as a message into the topic named in channel_labels, and that topic's throughput and any retention bill on GcpPubSubTopic's Pub/Sub meters ($40/TiB publish and delivery beyond the shared 10 GiB monthly allotment) -- notification volumes rarely dent that allotment, but the meter is the topic's, not the channel's. And the scheduled alerting-policy pricing (effective no sooner than September 1, 2027) attaches to the ALERT POLICIES referencing this channel -- per metric reference in their conditions, never per channel or per notification -- so wiring one channel into many policies changes nothing on this resource's bill."

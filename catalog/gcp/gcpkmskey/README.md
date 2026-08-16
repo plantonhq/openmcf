@@ -20,7 +20,7 @@ Three properties define the operational model:
 ## Prerequisites
 
 - An existing key ring (see [GcpKmsKeyRing](../gcpkmskeyring/)); the key inherits its project and location, and the Cloud KMS API is enabled automatically
-- IAM to create keys (`roles/cloudkms.admin`); consumers additionally need `roles/cloudkms.cryptoKeyEncrypterDecrypter` granted to their service agents
+- Deployer permissions: the least-privilege permission set the IaC runner's principal needs lives in [`iac/permissions.yaml`](iac/permissions.yaml). Consumers additionally need `roles/cloudkms.cryptoKeyEncrypterDecrypter` granted to their service agents
 
 ## Quick Start
 

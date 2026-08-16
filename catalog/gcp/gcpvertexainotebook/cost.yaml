@@ -1,0 +1,92 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpvertexainotebook
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Notebooks
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      description: The Workbench VM's cores bill per vCPU-hour around the clock while the instance runs, at Compute Engine-equivalent rates passed through the Notebooks service.
+    - service_name: Notebooks
+      sku_meter: vCPU management fee
+      pricing_unit: vCPU-hours
+      description: The Workbench management fee layered on every running vCPU-hour -- the premium over a plain Compute Engine VM that pays for the managed JupyterLab service.
+    - service_name: Notebooks
+      sku_meter: instance memory
+      pricing_unit: GiB-hours
+      description: The VM's memory bills per GiB-hour while the instance runs, at the machine family's Compute Engine-equivalent rate.
+    - service_name: Notebooks
+      sku_meter: memory management fee
+      pricing_unit: GiB-hours
+      description: The Workbench management fee layered on every running memory GiB-hour.
+    - service_name: Notebooks
+      sku_meter: accelerator hours
+      pricing_unit: hours
+      description: When accelerator_config attaches GPUs, each one bills per hour while the instance runs -- on a GPU notebook this line usually outweighs the VM itself.
+    - service_name: Notebooks
+      sku_meter: accelerator management fee
+      pricing_unit: hours
+      description: The Workbench management fee layered on every running GPU-hour.
+    - service_name: Notebooks
+      sku_meter: boot disk storage
+      pricing_unit: GiB-months
+      description: The boot disk's provisioned capacity bills per GiB-month from creation, full or empty -- and keeps billing while the instance is stopped.
+    - service_name: Notebooks
+      sku_meter: boot disk management fee
+      pricing_unit: GiB-months
+      description: The Workbench management fee layered on every boot-disk GiB-month.
+    - service_name: Notebooks
+      sku_meter: data disk storage
+      pricing_unit: GiB-months
+      description: The data disk's provisioned capacity bills per GiB-month -- GCP attaches a 100 GB PD_STANDARD data disk even when the manifest omits the block.
+    - service_name: Notebooks
+      sku_meter: data disk management fee
+      pricing_unit: GiB-months
+      description: The Workbench management fee layered on every data-disk GiB-month.
+  cost_drivers:
+    - field_path: machine_type
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      impact: Sets the vCPU count and the machine family's per-core and per-GiB rates -- the dominant lever on a CPU notebook (e2-standard-4 lands near $137/month running 24x7 before disks; n1-standard-8 more than doubles that).
+    - field_path: accelerator_config.type
+      sku_meter: accelerator hours
+      pricing_unit: hours
+      impact: Picks the per-GPU hourly rate -- a single T4 adds about $358/month (usage plus management fee) running 24x7; A100-class types cost many times more.
+    - field_path: accelerator_config.core_count
+      sku_meter: accelerator hours
+      pricing_unit: hours
+      impact: Multiplies the GPU line -- each additional core bills the same hourly rate.
+    - field_path: boot_disk.disk_type
+      sku_meter: boot disk storage
+      pricing_unit: GiB-months
+      impact: Picks the per-GiB-month rate -- PD_SSD bills more than four times PD_STANDARD; an unset type defaults to PD_SSD.
+    - field_path: boot_disk.disk_size_gb
+      sku_meter: boot disk storage
+      pricing_unit: GiB-months
+      impact: Scales the boot-disk line linearly; unset defaults to 150 GB.
+    - field_path: data_disk.disk_type
+      sku_meter: data disk storage
+      pricing_unit: GiB-months
+      impact: Picks the data disk's per-GiB-month rate; an unset type defaults to PD_STANDARD.
+    - field_path: data_disk.disk_size_gb
+      sku_meter: data disk storage
+      pricing_unit: GiB-months
+      impact: Scales the data-disk line linearly; unset defaults to 100 GB.
+    - field_path: desired_state
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      impact: STOPPED parks the instance -- vCPU, memory, and accelerator meters (and their management fees) stop, while both disks and their management fees keep billing until the instance starts again.
+    - field_path: location
+      sku_meter: instance vCPU
+      impact: The zone fixes the region, and every rate here -- compute, GPU, disk, and management fee -- is regional.
+  free_tier: ""
+  estimate_exclusions:
+    - external IPv4 usage -- unless disable_public_ip is true, the instance holds a public IP (ephemeral or a pinned GcpAddress) that bills hourly while attached
+    - network egress and any Cloud Logging or Monitoring ingestion from agents installed via metadata
+    - GPU types other than the pinned set and reservation economics -- an unused reservation bills on its own terms outside this manifest
+  notes: "Usage bills through the Notebooks service at Compute Engine-equivalent passthrough rates, with Workbench management fees layered on every unit -- cores, memory, GPUs, and disk capacity each carry both a usage rate and a fee rate. Destroy under deletion_policy DELETE removes the instance and both disks; ABANDON leaves the VM running -- and billing -- unmanaged in GCP; PREVENT blocks deletion but changes no meter."
