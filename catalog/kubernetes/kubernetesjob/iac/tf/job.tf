@@ -829,6 +829,21 @@ resource "kubernetes_job_v1" "this" {
                 read_only  = try(persistent_volume_claim.value.read_only, false)
               }
             }
+
+            # Kubelet-rotated, audience-bound ServiceAccount tokens ride the
+            # "projected" volume type in the Kubernetes API.
+            dynamic "projected" {
+              for_each = try(volume.value[0].service_account_token, null) != null ? [volume.value[0].service_account_token] : []
+              content {
+                sources {
+                  service_account_token {
+                    audience           = projected.value.audience
+                    expiration_seconds = try(projected.value.expiration_seconds, 0) > 0 ? projected.value.expiration_seconds : null
+                    path               = try(projected.value.path, "") != "" ? projected.value.path : "token"
+                  }
+                }
+              }
+            }
           }
         }
       }

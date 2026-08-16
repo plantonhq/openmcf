@@ -1,0 +1,37 @@
+# Projected ServiceAccount token: the kubelet mints an audience-bound identity
+# token for the pod's ServiceAccount, writes it into the volume, and rotates it
+# automatically. No prerequisite fixture — the namespace's default
+# ServiceAccount is the token's subject.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesDeployment
+metadata:
+  name: e2e-dep-satoken
+spec:
+  namespace:
+    value: default
+  version: main
+  container:
+    app:
+      image:
+        repo: nginx
+        tag: "1.27-alpine"
+      resources:
+        requests:
+          cpu: "10m"
+          memory: "32Mi"
+        limits:
+          cpu: "100m"
+          memory: "64Mi"
+      ports:
+        - name: http
+          container_port: 80
+          network_protocol: TCP
+          app_protocol: http
+          service_port: 80
+      volume_mounts:
+        - name: workload-identity
+          mount_path: /var/run/secrets/tokens
+          read_only: true
+          service_account_token:
+            audience: e2e-test-audience
+            expiration_seconds: 3600

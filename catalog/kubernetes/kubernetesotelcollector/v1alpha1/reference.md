@@ -194,6 +194,10 @@ spec:
 | `spec.volumes[].pvc` | `PvcVolumeSource` |  |  |  |
 | `spec.volumes[].pvc.claimName` | `string` | yes |  |  |
 | `spec.volumes[].pvc.readOnly` | `bool` |  |  |  |
+| `spec.volumes[].serviceAccountToken` | `ServiceAccountTokenVolumeSource` |  |  |  |
+| `spec.volumes[].serviceAccountToken.audience` | `string` | yes |  |  |
+| `spec.volumes[].serviceAccountToken.expirationSeconds` | `int64` |  |  |  |
+| `spec.volumes[].serviceAccountToken.path` | `string` |  |  |  |
 | `spec.additionalPorts` | `[]KubernetesOtelCollectorPort` |  |  |  |
 | `spec.additionalPorts[].name` | `string` | yes |  |  |
 | `spec.additionalPorts[].port` | `int32` |  |  |  |
@@ -573,6 +577,43 @@ For StatefulSets, this can be the name of a volumeClaimTemplate.
 
 Whether the PVC should be mounted read-only.
 Default is false.
+
+### spec.volumes[].serviceAccountToken
+
+`ServiceAccountTokenVolumeSource`
+
+Projected ServiceAccount token volume source.
+Use this to mount a short-lived, audience-bound identity token that the
+kubelet issues for the pod's ServiceAccount and rotates automatically.
+
+### spec.volumes[].serviceAccountToken.audience
+
+`string` · required
+
+Intended audience of the token. The receiving service must identify
+itself with this audience when verifying the token; a token minted for a
+different audience is rejected. Required: an audience-less token would be
+replayable against any service in the cluster.
+
+- rule: {"required":true}
+
+### spec.volumes[].serviceAccountToken.expirationSeconds
+
+`int64`
+
+Requested lifetime of the token in seconds. The kubelet starts rotating
+the token when it passes 80% of its lifetime or 24 hours, whichever is
+shorter. Defaults to 3600 (1 hour). The Kubernetes API enforces a
+minimum of 600 (10 minutes).
+
+- rule: Expiration must be at least 600 seconds (the Kubernetes API minimum)
+
+### spec.volumes[].serviceAccountToken.path
+
+`string`
+
+Filename for the token relative to the mount path.
+Defaults to "token".
 
 ### spec.additionalPorts
 
