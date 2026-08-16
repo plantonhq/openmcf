@@ -23,6 +23,8 @@ package validatecmd
 import (
 	"errors"
 	"fmt"
+	"runtime"
+	"sync"
 
 	"github.com/plantonhq/planton/internal/cli/cliprint"
 	"github.com/plantonhq/planton/pkg/infrachart"
@@ -106,9 +108,35 @@ func chartValidateHandler(cmd *cobra.Command, args []string) error {
 		return errors.New("no charts found (a chart directory contains a Chart.yaml)")
 	}
 
+	// Charts validate CONCURRENTLY -- each is an independent, CPU-bound unit
+	// (template rendering + CEL evaluation), the shared protovalidate
+	// validator is documented safe for concurrent use, and rendering shares
+	// only a read-only environment (the sandbox bans every stateful template
+	// construct). All printing happens AFTER the wait, strictly in discovery
+	// order, so output is deterministic and byte-identical to the sequential
+	// predecessor's -- workers never print.
+	type outcome struct {
+		report *infrachart.Report
+		err    error
+	}
+	outcomes := make([]outcome, len(dirs))
+	semaphore := make(chan struct{}, runtime.NumCPU())
+	var wg sync.WaitGroup
+	for i, dir := range dirs {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+			report, err := infrachart.Validate(dir, infrachart.Options{Org: org, Env: env, Set: setOverrides})
+			outcomes[i] = outcome{report: report, err: err}
+		}()
+	}
+	wg.Wait()
+
 	passed, failed := 0, 0
-	for _, dir := range dirs {
-		report, err := infrachart.Validate(dir, infrachart.Options{Org: org, Env: env, Set: setOverrides})
+	for i, dir := range dirs {
+		report, err := outcomes[i].report, outcomes[i].err
 		if err != nil {
 			failed++
 			cliprint.PrintError(fmt.Sprintf("✘ %s: %v", dir, err))
