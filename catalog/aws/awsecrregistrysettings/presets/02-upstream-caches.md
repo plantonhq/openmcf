@@ -1,0 +1,3 @@
+# Upstream Registry Caches
+
+Insulate builds from upstream rate limits and outages: Docker Hub (authenticated — its anonymous limits bite CI first), registry.k8s.io, and quay.io pulled through as `{registry_url}/{prefix}/...` and cached locally. Each cache prefix pairs with a creation template so minted repositories arrive governed — immutable tags and a 90-day expiry that keeps the cache from growing forever. The Docker Hub credential lives in a Secrets Manager secret named under `ecr-pullthroughcache/` (AWS's required prefix).

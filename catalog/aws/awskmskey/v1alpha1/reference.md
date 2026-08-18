@@ -400,6 +400,7 @@ Fields on other kinds that can point at this resource:
 | AwsAthenaWorkgroup | `spec.customerContentEncryptionKmsKey` | `status.outputs.key_arn` |
 | AwsAthenaWorkgroup | `spec.monitoring.managedLogging.kmsKey` | `status.outputs.key_arn` |
 | AwsAthenaWorkgroup | `spec.monitoring.s3Logging.kmsKey` | `status.outputs.key_arn` |
+| AwsAuroraDsql | `spec.kmsEncryptionKey` | `status.outputs.key_arn` |
 | AwsBackupVault | `spec.standard.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsBackupVault | `spec.airGapped.encryptionKeyArn` | `status.outputs.key_arn` |
 | AwsBedrockAgent | `spec.customerEncryptionKeyArn` | `status.outputs.key_arn` |
@@ -434,6 +435,7 @@ Fields on other kinds that can point at this resource:
 | AwsEbsVolume | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsEc2Instance | `spec.rootBlockDevice.kmsKeyId` | `status.outputs.key_arn` |
 | AwsEc2Instance | `spec.ebsBlockDevices[].kmsKeyId` | `status.outputs.key_arn` |
+| AwsEcrRegistrySettings | `spec.repositoryCreationTemplates[].encryption.kmsKey` | `status.outputs.key_arn` |
 | AwsEcrRepo | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsEcsCluster | `spec.executeCommandConfiguration.kmsKeyId` | `status.outputs.key_arn` |
 | AwsEcsCluster | `spec.managedStorageConfiguration.fargateEphemeralStorageKmsKeyId` | `status.outputs.key_arn` |

@@ -465,7 +465,12 @@ message AwsBedrockAgentCoreRuntimeFilesystem {
   }];
 
   // Mount an EFS access point (durable, shared across sessions).
-  dev.planton.shared.foreignkey.v1.StringValueOrRef efs_access_point_arn = 2 [(dev.planton.shared.foreignkey.v1.default_kind) = AwsEfsAccessPoint];
+  // Reference an AwsEfsAccessPoint access_point_arn output or pass a
+  // literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef efs_access_point_arn = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsEfsAccessPoint,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.access_point_arn"
+  ];
 
   // Mount an S3 files access point.
   dev.planton.shared.foreignkey.v1.StringValueOrRef s3_files_access_point_arn = 3;

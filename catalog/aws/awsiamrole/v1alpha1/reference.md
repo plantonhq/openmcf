@@ -358,6 +358,9 @@ Fields on other kinds that can point at this resource:
 | AwsConfigAggregator | `spec.aggregation.organizationSource.roleArn` | `status.outputs.role_arn` |
 | AwsConfigRecorder | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsDlmLifecyclePolicy | `spec.executionRoleArn` | `status.outputs.role_arn` |
+| AwsEcrRegistrySettings | `spec.pullThroughCacheRules[].customRoleArn` | `status.outputs.role_arn` |
+| AwsEcrRegistrySettings | `spec.repositoryCreationTemplates[].customRoleArn` | `status.outputs.role_arn` |
+| AwsEcrRegistrySettings | `spec.pullTimeUpdateExclusions` | `status.outputs.role_arn` |
 | AwsEcsCluster | `spec.managedInstancesCapacityProviders[].infrastructureRoleArn` | `status.outputs.role_arn` |
 | AwsEcsService | `spec.loadBalancers[].advancedConfiguration.roleArn` | `status.outputs.role_arn` |
 | AwsEcsService | `spec.deploymentConfiguration.lifecycleHooks[].roleArn` | `status.outputs.role_arn` |
@@ -434,6 +437,7 @@ Fields on other kinds that can point at this resource:
 | AwsRdsInstance | `spec.monitoringRoleArn` | `status.outputs.role_arn` |
 | AwsRdsInstance | `spec.s3Import.ingestionRole` | `status.outputs.role_arn` |
 | AwsRdsInstance | `spec.iamRoles[].role` | `status.outputs.role_arn` |
+| AwsRdsProxy | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsRedshiftCluster | `spec.iamRoles` | `status.outputs.role_arn` |
 | AwsRedshiftCluster | `spec.defaultIamRoleArn` | `status.outputs.role_arn` |
 | AwsRedshiftCluster | `spec.scheduledActions[].iamRoleArn` | `status.outputs.role_arn` |

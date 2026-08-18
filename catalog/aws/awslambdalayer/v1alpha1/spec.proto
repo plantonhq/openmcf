@@ -1,0 +1,167 @@
+syntax = "proto3";
+
+package dev.planton.aws.awslambdalayer.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsLambdaLayerSpec defines one Lambda layer version - a shared code
+// archive (libraries, custom runtimes, config files) that many Lambda
+// functions attach by ARN - with its cross-account/organization share
+// grants managed in-line.
+//
+// A layer VERSION is immutable at AWS: every argument below is fixed
+// for life, so changing any of them publishes a NEW version (a
+// replacement in IaC terms). Functions pin the exact version ARN they
+// were configured with and keep running through a replacement; roll
+// the consumers to the new version ARN at their own pace. The layer
+// NAME persists across versions - it is wired from metadata.name.
+//
+// The archive itself lives in S3 (upload it there first - an
+// AwsS3Bucket plus your build pipeline, or an AwsS3ObjectSet). Lambda
+// copies the archive at publish time, so the S3 object only needs to
+// exist while this resource is being created.
+message AwsLambdaLayerSpec {
+  // Share grants key the for_each on both engines and the
+  // revision_ids output map.
+  option (buf.validate.message).cel = {
+    id: "spec.permission_statement_ids_unique"
+    message: "permission statement_ids must be unique - each grant is one policy statement keyed by its statement_id"
+    expression: "this.permissions.map(p, p.statement_id).unique()"
+  };
+
+  // The AWS region the layer version is published in. Example:
+  // "us-west-2".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The zip archive holding the layer content, in S3. Layout the
+  // runtimes expect: libraries under python/, nodejs/node_modules/,
+  // java/lib/, etc. (Lambda unpacks the archive into /opt).
+  AwsLambdaLayerS3Code code = 2 [(buf.validate.field).required = true];
+
+  // Base64-encoded SHA256 of the archive. Set it (usually from your
+  // build pipeline) to make content updates declarative: a new hash
+  // publishes a new version, an unchanged hash is a no-op even when
+  // the S3 object is rewritten in place. Leave empty to publish only
+  // when the S3 key or object version changes. (AWS never reports
+  // this value back - it is a local change detector.)
+  string source_code_hash = 3;
+
+  // What this layer provides. AWS caps the description at 256
+  // characters.
+  string description = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 256
+  ];
+
+  // The runtimes this layer is built for, e.g. "python3.13",
+  // "nodejs22.x", "java21", "provided.al2023". Purely advisory
+  // metadata AWS uses for console filtering and compatibility
+  // warnings - a function with a runtime outside this list can still
+  // attach the layer via the API. AWS caps the list at 15.
+  repeated string compatible_runtimes = 5 [(buf.validate.field).repeated = {
+    max_items: 15
+    unique: true
+  }];
+
+  // The instruction-set architectures the layer's binaries support.
+  // Leave empty when the content is architecture-neutral (pure
+  // Python/JS). AWS caps the list at 2 (both architectures).
+  repeated string compatible_architectures = 6 [(buf.validate.field).repeated = {
+    max_items: 2
+    unique: true
+    items: {
+      string: {
+        in: [
+          "x86_64",
+          "arm64"
+        ]
+      }
+    }
+  }];
+
+  // The layer content's software license: an SPDX identifier
+  // ("MIT", "Apache-2.0"), a URL, or the full text (up to 512
+  // characters).
+  string license_info = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 512
+  ];
+
+  // Keep the published version in AWS when this resource is destroyed
+  // or replaced (a replacement then leaves the OLD version available
+  // to the functions still pinning it). AWS keeps billing nothing for
+  // dormant layer versions; the trade-off is manual cleanup via
+  // DeleteLayerVersion when versions accumulate.
+  bool skip_destroy = 8;
+
+  // Who else may use this layer version, keyed by statement_id. Each
+  // grant is one statement in the version's resource policy giving
+  // lambda:GetLayerVersion (the only action AWS supports on layers -
+  // the modules pin it).
+  repeated AwsLambdaLayerPermission permissions = 9;
+}
+
+// AwsLambdaLayerS3Code locates the layer content zip in S3.
+message AwsLambdaLayerS3Code {
+  // The S3 bucket holding the archive. Must be in the layer's region.
+  // Reference an AwsS3Bucket bucket_id output or pass a literal
+  // bucket name.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // The object key (path) of the layer content zip.
+  string key = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Pin a specific object version (versioned buckets). Empty
+  // publishes from the current version; pair with source_code_hash
+  // for fully deterministic publishes.
+  string version = 3;
+}
+
+// AwsLambdaLayerPermission is one share grant on the layer version -
+// one statement in its resource policy.
+message AwsLambdaLayerPermission {
+  // An organization grant only makes sense on a wildcard principal:
+  // AWS scopes "principal *" DOWN to the organization; a specific
+  // account id already names the grantee exactly.
+  option (buf.validate.message).cel = {
+    id: "permission.organization_requires_wildcard_principal"
+    message: "organization_id requires principal \"*\" - AWS narrows the wildcard to the organization; with a specific account id the organization filter has nothing to narrow"
+    expression: "this.organization_id == '' || this.principal == '*'"
+  };
+
+  // The statement's identity within the version's policy - the
+  // for_each key on both engines and the key in the revision_ids
+  // output map.
+  string statement_id = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+    pattern: "^[a-zA-Z0-9-_]+$"
+  }];
+
+  // Who may fetch the layer: a 12-digit AWS account id, or "*" for
+  // everyone (scope a wildcard with organization_id to keep it
+  // org-internal).
+  string principal = 2 [(buf.validate.field).cel = {
+    id: "permission.principal_account_or_wildcard"
+    message: "principal must be a 12-digit AWS account id or \"*\""
+    expression: "this == '*' || this.matches('^[0-9]{12}$')"
+  }];
+
+  // Restrict a wildcard principal to one AWS Organization
+  // (o-... id). Every account in the organization may then use the
+  // layer; accounts outside it may not.
+  string organization_id = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^o-[a-z0-9]{10,32}$"
+  ];
+
+  // Keep the grant in AWS when this entry is removed or the resource
+  // is destroyed (the layer-version analog of the spec-level
+  // skip_destroy).
+  bool skip_destroy = 4;
+}

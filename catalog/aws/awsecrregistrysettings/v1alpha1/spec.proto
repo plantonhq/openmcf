@@ -1,0 +1,471 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsecrregistrysettings.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsEcrRegistrySettingsSpec defines the REGISTRY-level ECR
+// configuration for one AWS region: the registry permissions policy,
+// scanning configuration, cross-region/cross-account replication,
+// pull-through cache rules, repository creation templates, account
+// settings, and pull-time update exclusions. Individual repositories
+// are the AwsEcrRepo kind; everything here governs the registry all
+// repositories in the region share.
+//
+// This is a SETTINGS SINGLETON: AWS keeps exactly one private
+// registry per account+region, and this component manages its
+// registry-wide posture. Deploy at most one instance per region -
+// two instances targeting the same region fight over the same
+// registry objects. metadata.name never reaches AWS (identity tags
+// aside) - it is Planton-side identity only.
+//
+// Destroy semantics DIFFER per arm (each taught on its arm below):
+// the registry policy and the keyed collections (cache rules,
+// creation templates, exclusions) genuinely delete; scanning and
+// replication RESET to their empty defaults; account settings
+// PERSIST at their last-applied values.
+message AwsEcrRegistrySettingsSpec {
+  option (buf.validate.message).cel = {
+    id: "spec.at_least_one_arm"
+    message: "configure at least one arm (registry_policy / scanning / replication_rules / pull_through_cache_rules / repository_creation_templates / account_settings / pull_time_update_exclusions) - an instance managing nothing is dead configuration"
+    expression: "this.registry_policy != '' || has(this.scanning) || this.replication_rules.size() > 0 || this.pull_through_cache_rules.size() > 0 || this.repository_creation_templates.size() > 0 || has(this.account_settings) || this.pull_time_update_exclusions.size() > 0"
+  };
+  // Prefixes key the for_each on both engines and are the resources'
+  // own import IDs.
+  option (buf.validate.message).cel = {
+    id: "spec.cache_rule_prefixes_unique"
+    message: "pull_through_cache_rules prefixes must be unique - each rule owns one repository prefix in the registry"
+    expression: "this.pull_through_cache_rules.map(r, r.ecr_repository_prefix).unique()"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.creation_template_prefixes_unique"
+    message: "repository_creation_templates prefixes must be unique - each template owns one repository prefix in the registry"
+    expression: "this.repository_creation_templates.map(t, t.prefix).unique()"
+  };
+
+  // The AWS region whose registry this instance manages. The region
+  // IS the resource identity - one instance per region. Example:
+  // "us-west-2".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The registry permissions policy (JSON) - the IAM resource policy
+  // that grants OTHER accounts registry-level actions: replication
+  // into this registry (ecr:ReplicateImage) and pull-through cache
+  // sharing. Repository-level grants belong on AwsEcrRepo's
+  // repository policy instead. Destroying this arm deletes the
+  // policy.
+  string registry_policy = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "spec.registry_policy_valid_json"
+      message: "registry_policy must be a valid JSON policy document"
+      expression: "this == '' || (this.startsWith('{') && this.endsWith('}'))"
+    }
+  ];
+
+  // How images in this registry are scanned for vulnerabilities.
+  // Destroying this arm RESETS the registry to BASIC scanning with
+  // no rules (AWS has no delete - the modules put the empty default
+  // back).
+  AwsEcrRegistryScanning scanning = 3;
+
+  // Where this registry replicates images, evaluated in order.
+  // Cross-account destinations also need the DESTINATION registry's
+  // policy to allow ecr:ReplicateImage from this account. AWS caps
+  // the rules at 10. Destroying this arm RESETS replication to none
+  // (AWS has no delete - the modules put the empty rule set back).
+  repeated AwsEcrReplicationRule replication_rules = 4 [(buf.validate.field).repeated.max_items = 10];
+
+  // Pull-through cache rules, keyed by ecr_repository_prefix: pulls
+  // of "{prefix}/..." transparently fetch from the upstream registry
+  // and cache the image here. Destroying an entry deletes the rule
+  // (already-cached repositories and images remain).
+  repeated AwsEcrPullThroughCacheRule pull_through_cache_rules = 5;
+
+  // Templates applied to repositories the registry creates on your
+  // behalf (replication, pull-through cache, or create-on-push),
+  // keyed by prefix. Without a matching template such repositories
+  // are created with bare defaults. Destroying an entry deletes the
+  // template (repositories it already stamped keep their settings).
+  repeated AwsEcrRepositoryCreationTemplate repository_creation_templates = 6;
+
+  // Account-level ECR feature toggles. These PERSIST after destroy at
+  // their last-applied values (AWS has no delete or reset for them) -
+  // to change a value back, apply the desired value before
+  // destroying.
+  AwsEcrAccountSettings account_settings = 7;
+
+  // IAM principals whose image pushes do NOT refresh pull-time
+  // metrics, keyed by principal ARN - keeps automation (CI/CD roles,
+  // replication roles) from masking real image usage in lifecycle
+  // policies that expire by days-since-last-pull. Reference
+  // AwsIamRole role_arn outputs or pass literal principal ARNs.
+  // Destroying an entry deregisters the exclusion.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef pull_time_update_exclusions = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+}
+
+// AwsEcrRegistryScanning configures vulnerability scanning for the
+// whole registry.
+message AwsEcrRegistryScanning {
+  // CONTINUOUS_SCAN re-scans as new CVEs publish - an
+  // Inspector-backed ENHANCED capability; BASIC scans only at push
+  // or on demand.
+  option (buf.validate.message).cel = {
+    id: "scanning.continuous_requires_enhanced"
+    message: "scan_frequency CONTINUOUS_SCAN requires scan_type ENHANCED - basic scanning only scans on push or manually"
+    expression: "this.scan_type == 'ENHANCED' || this.rules.all(r, r.scan_frequency != 'CONTINUOUS_SCAN')"
+  };
+
+  // The scanning engine: "BASIC" (the built-in scanner, OS packages
+  // only, free) or "ENHANCED" (Amazon Inspector - OS + language
+  // packages, continuous re-scanning, Inspector pricing applies).
+  string scan_type = 1 [(buf.validate.field).string = {
+    in: [
+      "BASIC",
+      "ENHANCED"
+    ]
+  }];
+
+  // Which repositories are scanned, and when. No matching rule means
+  // no automatic scanning for that repository. AWS caps the rules at
+  // 100.
+  repeated AwsEcrRegistryScanningRule rules = 2 [(buf.validate.field).repeated.max_items = 100];
+}
+
+// AwsEcrRegistryScanningRule scans the repositories matching its
+// filters at the given frequency.
+message AwsEcrRegistryScanningRule {
+  // When matched repositories are scanned: "SCAN_ON_PUSH" (each
+  // pushed image once), "CONTINUOUS_SCAN" (re-scan as new CVEs
+  // publish; ENHANCED only), or "MANUAL" (only on demand).
+  string scan_frequency = 1 [(buf.validate.field).string = {
+    in: [
+      "SCAN_ON_PUSH",
+      "CONTINUOUS_SCAN",
+      "MANUAL"
+    ]
+  }];
+
+  // Repository name patterns this rule matches - "*" for every
+  // repository, "prod-*" for a prefix. (AWS wildcard filters:
+  // lowercase letters, digits, dot, underscore, hyphen, slash, and
+  // "*".)
+  repeated string filters = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    unique: true
+    items: {
+      string: {
+        min_len: 1
+        max_len: 256
+        pattern: "^[0-9a-z*](?:[0-9a-z_./*-]?[0-9a-z*]+)*$"
+      }
+    }
+  }];
+}
+
+// AwsEcrReplicationRule replicates this registry's images to one or
+// more destination registries.
+message AwsEcrReplicationRule {
+  // Where matched images are copied. AWS caps a rule at 25
+  // destinations.
+  repeated AwsEcrReplicationDestination destinations = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 25
+  }];
+
+  // Replicate only repositories whose names start with these
+  // prefixes. Empty replicates EVERY repository in the registry. AWS
+  // caps the filters at 100.
+  repeated string repository_filters = 2 [(buf.validate.field).repeated = {
+    max_items: 100
+    unique: true
+    items: {
+      string: {
+        min_len: 1
+        max_len: 256
+      }
+    }
+  }];
+}
+
+// AwsEcrReplicationDestination is one region+account a replication
+// rule copies images to.
+message AwsEcrReplicationDestination {
+  // The destination region ("us-east-1"). Same-account cross-region,
+  // or cross-account with registry_id.
+  string region = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^[a-z]{2}(-[a-z]+)+-\\d$"
+  }];
+
+  // The destination registry's AWS account id. Your own account id
+  // for cross-region replication; another account for cross-account
+  // (that registry's policy must allow it).
+  string registry_id = 2 [(buf.validate.field).string.pattern = "^[0-9]{12}$"];
+}
+
+// AwsEcrPullThroughCacheRule caches an upstream registry under one
+// repository prefix.
+message AwsEcrPullThroughCacheRule {
+  // A credential belongs to EXTERNAL upstreams; a custom role
+  // belongs to cross-account ECR upstreams - the two auth modes
+  // never combine on one rule.
+  option (buf.validate.message).cel = {
+    id: "cache_rule.credential_xor_custom_role"
+    message: "set at most one of credential_arn (external upstreams - Docker Hub, GitHub, Kubernetes, ...) and custom_role_arn (cross-account ECR upstreams)"
+    expression: "!(has(this.credential_arn) && has(this.custom_role_arn))"
+  };
+
+  // The prefix pulls are cached under - "docker.io/library/nginx"
+  // pulled as "{prefix}/library/nginx". "ROOT" caches at the
+  // registry root (no prefix). The for_each key on both engines and
+  // the rule's import ID. Fixed for life.
+  string ecr_repository_prefix = 1 [(buf.validate.field).string = {
+    min_len: 2
+    max_len: 30
+    pattern: "^((?:[a-z0-9]+(?:[._-][a-z0-9]+)*/)*[a-z0-9]+(?:[._-][a-z0-9]+)*/?|ROOT)$"
+  }];
+
+  // The upstream registry's URL, e.g.
+  // "registry-1.docker.io" (Docker Hub), "public.ecr.aws",
+  // "ghcr.io", "registry.k8s.io", "quay.io", or another account's
+  // "<account>.dkr.ecr.<region>.amazonaws.com". Fixed for life.
+  string upstream_registry_url = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Re-root the upstream namespace: cache
+  // "{upstream_repository_prefix}/..." instead of mirroring the
+  // upstream's full paths. AWS requires 2-30 characters. Fixed for
+  // life. (No min_len here - a zero-length floor keeps the field
+  // OPTIONAL for the variables generator; AWS enforces the 2-char
+  // minimum server-side.)
+  string upstream_repository_prefix = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 30
+      pattern: "^((?:[a-z0-9]+(?:[._-][a-z0-9]+)*/)*[a-z0-9]+(?:[._-][a-z0-9]+)*/?|ROOT)$"
+    }
+  ];
+
+  // The Secrets Manager secret holding the upstream's credentials
+  // (for authenticated upstreams like Docker Hub; the secret name
+  // must start with "ecr-pullthroughcache/"). Reference an
+  // AwsSecretsManagerSecret secret_arn output or pass a literal ARN.
+  // NOTE: once set, clearing this back to empty is not propagated by
+  // the provider - replace the rule to drop credentials.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef credential_arn = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecretsManagerSecret,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_arn"
+  ];
+
+  // The IAM role this registry assumes to pull from a cross-account
+  // ECR upstream. Reference an AwsIamRole role_arn output or pass a
+  // literal ARN. The same clearing caveat as credential_arn applies.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef custom_role_arn = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+}
+
+// AwsEcrRepositoryCreationTemplate stamps settings onto repositories
+// the registry creates automatically under one prefix.
+message AwsEcrRepositoryCreationTemplate {
+  // The exclusion filters only mean something when the mutability
+  // mode carries exclusions (the guard AWS enforces at the API; the
+  // provider's repository resource enforces it at plan time and the
+  // template resource forgot to).
+  option (buf.validate.message).cel = {
+    id: "template.exclusion_filters_require_exclusion_mutability"
+    message: "image_tag_mutability_exclusion_filters requires image_tag_mutability IMMUTABLE_WITH_EXCLUSION or MUTABLE_WITH_EXCLUSION"
+    expression: "this.image_tag_mutability_exclusion_filters.size() == 0 || this.image_tag_mutability in ['IMMUTABLE_WITH_EXCLUSION', 'MUTABLE_WITH_EXCLUSION']"
+  };
+  // AWS caps exclusion filters at 2 wildcards each.
+  option (buf.validate.message).cel = {
+    id: "template.exclusion_filters_max_two_wildcards"
+    message: "an image_tag_mutability exclusion filter can contain at most 2 wildcards (*)"
+    expression: "this.image_tag_mutability_exclusion_filters.all(f, f.split('*').size() <= 3)"
+  };
+
+  // The repository-name prefix this template stamps - "ROOT" applies
+  // to every auto-created repository without a more specific match.
+  // The for_each key on both engines and the template's import ID.
+  // Fixed for life.
+  string prefix = 1 [(buf.validate.field).string = {
+    min_len: 2
+    max_len: 256
+    pattern: "^(ROOT|(?:[a-z0-9]+(?:[._-][a-z0-9]+)*/)*[a-z0-9]+(?:[._-][a-z0-9]+)*)$"
+  }];
+
+  // What this template is for.
+  string description = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 255
+  ];
+
+  // Which auto-creation paths use this template: "REPLICATION"
+  // (repositories created to receive replicated images),
+  // "PULL_THROUGH_CACHE" (repositories created by cache pulls), or
+  // "CREATE_ON_PUSH" (repositories created by a first push).
+  repeated string applied_for = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    unique: true
+    items: {
+      string: {
+        in: [
+          "REPLICATION",
+          "PULL_THROUGH_CACHE",
+          "CREATE_ON_PUSH"
+        ]
+      }
+    }
+  }];
+
+  // The IAM role ECR assumes when creating repositories from this
+  // template. Reference an AwsIamRole role_arn output or pass a
+  // literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef custom_role_arn = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Tag mutability for stamped repositories: "MUTABLE" (AWS's
+  // default), "IMMUTABLE", or the *_WITH_EXCLUSION modes that carry
+  // per-filter exceptions.
+  string image_tag_mutability = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "MUTABLE",
+        "IMMUTABLE",
+        "IMMUTABLE_WITH_EXCLUSION",
+        "MUTABLE_WITH_EXCLUSION"
+      ]
+    }
+  ];
+
+  // Tag patterns exempted from the mutability mode (e.g. "latest",
+  // "dev-*"). Wildcard patterns, at most 2 "*" each, AWS caps the
+  // list at 5.
+  repeated string image_tag_mutability_exclusion_filters = 6 [(buf.validate.field).repeated = {
+    max_items: 5
+    unique: true
+    items: {
+      string: {
+        min_len: 1
+        max_len: 128
+        pattern: "^[a-zA-Z0-9._*-]+$"
+      }
+    }
+  }];
+
+  // How stamped repositories encrypt images at rest. Omit for AES256
+  // (the AWS default).
+  AwsEcrTemplateEncryption encryption = 7;
+
+  // The lifecycle policy (JSON) stamped onto created repositories -
+  // image expiration rules.
+  string lifecycle_policy = 8 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "template.lifecycle_policy_valid_json"
+      message: "lifecycle_policy must be a valid JSON lifecycle policy document"
+      expression: "this == '' || (this.startsWith('{') && this.endsWith('}'))"
+    }
+  ];
+
+  // The repository permissions policy (JSON) stamped onto created
+  // repositories.
+  string repository_policy = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "template.repository_policy_valid_json"
+      message: "repository_policy must be a valid JSON policy document"
+      expression: "this == '' || (this.startsWith('{') && this.endsWith('}'))"
+    }
+  ];
+
+  // AWS tags stamped onto created repositories (these are the
+  // repositories' tags, not this template's).
+  map<string, string> resource_tags = 10 [(buf.validate.field).map = {
+    keys: {
+      string: {
+        min_len: 1
+        max_len: 128
+      }
+    }
+    values: {
+      string: {max_len: 256}
+    }
+  }];
+}
+
+// AwsEcrTemplateEncryption is the at-rest encryption stamped
+// repositories use.
+message AwsEcrTemplateEncryption {
+  // A key only pairs with KMS modes.
+  option (buf.validate.message).cel = {
+    id: "encryption.kms_key_requires_kms_type"
+    message: "kms_key applies only when type is KMS or KMS_DSSE - AES256 uses an Amazon-managed key"
+    expression: "!has(this.kms_key) || this.type in ['KMS', 'KMS_DSSE']"
+  };
+
+  // The encryption mode: "AES256" (Amazon-managed, the default),
+  // "KMS" (your key, single-layer), or "KMS_DSSE" (your key,
+  // dual-layer).
+  string type = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "AES256",
+        "KMS",
+        "KMS_DSSE"
+      ]
+    }
+  ];
+
+  // The KMS key for KMS/KMS_DSSE modes. Reference an AwsKmsKey
+  // key_arn output or pass a literal key ARN. Empty with a KMS mode
+  // uses the AWS-managed aws/ecr key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+}
+
+// AwsEcrAccountSettings are the account-level ECR feature toggles for
+// the region.
+message AwsEcrAccountSettings {
+  // Which engine BASIC scanning uses: "AWS_NATIVE" (the current
+  // Amazon scanner) or "CLAIR" (the legacy scanner, on its way out).
+  // Unset leaves the account's current setting.
+  string basic_scan_type_version = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "AWS_NATIVE",
+        "CLAIR"
+      ]
+    }
+  ];
+
+  // Whether layer blob mounting between repositories is enabled
+  // (faster pushes of images sharing base layers). Unset leaves the
+  // account's current setting.
+  optional bool blob_mounting = 2;
+
+  // The registry policy permission scope: "V2" (current semantics -
+  // registry policies grant only registry-level actions) or "V1"
+  // (legacy). Unset leaves the account's current setting.
+  string registry_policy_scope = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "V1",
+        "V2"
+      ]
+    }
+  ];
+}

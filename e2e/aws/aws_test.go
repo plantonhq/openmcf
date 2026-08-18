@@ -1745,6 +1745,46 @@ func TestAwsCloudMapNamespace_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awscloudmapnamespace", "terraform")
 }
 
+func TestAwsLambdaLayer_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awslambdalayer", "pulumi")
+}
+
+func TestAwsLambdaLayer_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awslambdalayer", "terraform")
+}
+
+func TestAwsRdsProxy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrdsproxy", "pulumi")
+}
+
+func TestAwsRdsProxy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrdsproxy", "terraform")
+}
+
+func TestAwsAuroraDsql_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsauroradsql", "pulumi")
+}
+
+func TestAwsAuroraDsql_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsauroradsql", "terraform")
+}
+
+func TestAwsEcrRegistrySettings_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsecrregistrysettings", "pulumi")
+}
+
+func TestAwsEcrRegistrySettings_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsecrregistrysettings", "terraform")
+}
+
+func TestAwsPrivateCa_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsprivateca", "pulumi")
+}
+
+func TestAwsPrivateCa_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsprivateca", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

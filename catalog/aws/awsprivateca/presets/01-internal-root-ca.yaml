@@ -1,0 +1,17 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsPrivateCa
+metadata:
+  name: corp-root-ca
+spec:
+  region: us-east-1
+  type: ROOT
+  keyAlgorithm: RSA_2048
+  signingAlgorithm: SHA256WITHRSA
+  subject:
+    commonName: Corp Internal Root CA G1
+    organization: Example Corp
+    country: US
+  rootCaValidity:
+    type: YEARS
+    value: "10"
+  acmRenewalPermission: true

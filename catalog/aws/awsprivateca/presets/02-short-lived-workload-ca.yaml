@@ -1,0 +1,25 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsPrivateCa
+metadata:
+  name: workload-mtls-ca
+spec:
+  region: us-east-1
+  type: SUBORDINATE
+  keyAlgorithm: EC_prime256v1
+  signingAlgorithm: SHA256WITHECDSA
+  subject:
+    commonName: Workload mTLS CA
+    organization: Example Corp
+    country: US
+  usageMode: SHORT_LIVED_CERTIFICATE
+  subordinateActivation:
+    parentCaArn:
+      valueFrom:
+        kind: AwsPrivateCa
+        name: corp-root-ca
+        fieldPath: status.outputs.certificate_authority_arn
+    pathLength: 0
+    validity:
+      type: YEARS
+      value: "5"
+  permanentDeletionTimeInDays: 7

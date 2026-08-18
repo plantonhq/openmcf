@@ -2001,3 +2001,154 @@ spec:
       notes: >-
         Slash-separated service ID and the user-chosen instance ID
         (`aws servicediscovery list-instances --service-id <id>`).
+    # --- Lambda layers ---------------------------------------------------------
+    - terraform_type: aws_lambda_layer_version
+      pulumi_type: aws:lambda/layerVersion:LayerVersion
+      id_format: "{layer_version_arn}"
+      # The archive location (s3_bucket/s3_key/s3_object_version) and the
+      # change-detector hash are never returned by the API (the provider
+      # suppresses their post-import diffs); skip_destroy is engine
+      # behavior. None can ride an import.
+      config_only_attributes: [skip_destroy, source_code_hash]
+      notes: >-
+        The full layer-version ARN
+        (arn:...:layer:{name}:{version}) - `aws lambda list-layer-versions
+        --layer-name <name>` (LayerVersionArn). The provider also accepts
+        "{name}/{version}".
+    - terraform_type: aws_lambda_layer_version_permission
+      pulumi_type: aws:lambda/layerVersionPermission:LayerVersionPermission
+      id_format: "{layer_arn},{layer_version}"
+      config_only_attributes: [skip_destroy]
+      notes: >-
+        Comma-separated layer name-or-ARN and version number. The
+        provider's importer reads only the FIRST policy statement - a
+        version carrying several grants round-trips lossily upstream
+        (each imported permission reflects statement one).
+    # --- RDS Proxy -------------------------------------------------------------
+    - terraform_type: aws_db_proxy
+      pulumi_type: aws:rds/proxy:Proxy
+      id_format: "{db_proxy_name}"
+      notes: >-
+        The proxy's name (`aws rds describe-db-proxies` shows
+        DBProxyName) - the API has no ARN-addressed reads.
+    - terraform_type: aws_db_proxy_default_target_group
+      pulumi_type: aws:rds/proxyDefaultTargetGroup:ProxyDefaultTargetGroup
+      id_format: "{db_proxy_name}"
+      notes: >-
+        The owning proxy's name - the default target group has no id of
+        its own (its name is always "default").
+    - terraform_type: aws_db_proxy_endpoint
+      pulumi_type: aws:rds/proxyEndpoint:ProxyEndpoint
+      id_format: "{db_proxy_name}/{db_proxy_endpoint_name}"
+      notes: >-
+        Slash-separated proxy name and endpoint name (`aws rds
+        describe-db-proxy-endpoints --db-proxy-name <name>`).
+    - terraform_type: aws_db_proxy_target
+      pulumi_type: aws:rds/proxyTarget:ProxyTarget
+      id_format: "{db_proxy_name}/{target_group_name}/{target_type}/{target_rds_resource_id}"
+      notes: >-
+        Four slash-separated parts - proxy name, target group name
+        (always "default"), target type (RDS_INSTANCE or
+        TRACKED_CLUSTER), and the RDS resource id (`aws rds
+        describe-db-proxy-targets --db-proxy-name <name>` shows Type and
+        RdsResourceId).
+    # --- Aurora DSQL -----------------------------------------------------------
+    - terraform_type: aws_dsql_cluster
+      pulumi_type: aws:dsql/cluster:Cluster
+      id_format: "{dsql_cluster_identifier}"
+      # force_destroy is engine behavior (disable-protection-then-delete);
+      # the provider forces it false on import.
+      config_only_attributes: [force_destroy]
+      notes: >-
+        The AWS-generated cluster identifier (`aws dsql list-clusters`
+        shows identifier) - the tail of the cluster ARN.
+    - terraform_type: aws_dsql_cluster_peering
+      pulumi_type: aws:dsql/clusterPeering:ClusterPeering
+      id_format: "{dsql_cluster_identifier}"
+      notes: >-
+        The owning cluster's identifier - the peering is state ON the
+        cluster (an UpdateCluster call), not an object of its own.
+    # --- ECR registry plane ----------------------------------------------------
+    - terraform_type: aws_ecr_registry_policy
+      pulumi_type: aws:ecr/registryPolicy:RegistryPolicy
+      id_format: "{registry_id}"
+      notes: >-
+        The registry id - the account's 12-digit id (`aws ecr
+        describe-registry` shows registryId).
+    - terraform_type: aws_ecr_registry_scanning_configuration
+      pulumi_type: aws:ecr/registryScanningConfiguration:RegistryScanningConfiguration
+      id_format: "{registry_id}"
+      notes: >-
+        The registry id - the account's 12-digit id.
+    - terraform_type: aws_ecr_replication_configuration
+      pulumi_type: aws:ecr/replicationConfiguration:ReplicationConfiguration
+      id_format: "{registry_id}"
+      notes: >-
+        The registry id - the account's 12-digit id.
+    - terraform_type: aws_ecr_pull_through_cache_rule
+      pulumi_type: aws:ecr/pullThroughCacheRule:PullThroughCacheRule
+      id_format: "{ecr_repository_prefix}"
+      notes: >-
+        The rule's repository prefix (`aws ecr
+        describe-pull-through-cache-rules` shows ecrRepositoryPrefix).
+    - terraform_type: aws_ecr_repository_creation_template
+      pulumi_type: aws:ecr/repositoryCreationTemplate:RepositoryCreationTemplate
+      id_format: "{template_prefix}"
+      notes: >-
+        The template's prefix (`aws ecr
+        describe-repository-creation-templates` shows prefix; "ROOT" for
+        the catch-all template).
+    - terraform_type: aws_ecr_account_setting
+      pulumi_type: aws:ecr/accountSetting:AccountSetting
+      id_format: "{account_setting_name}"
+      notes: >-
+        The setting's name - BASIC_SCAN_TYPE_VERSION, BLOB_MOUNTING, or
+        REGISTRY_POLICY_SCOPE (`aws ecr get-account-setting --name <name>`).
+    - terraform_type: aws_ecr_pull_time_update_exclusion
+      pulumi_type: aws:ecr/pullTimeUpdateExclusion:PullTimeUpdateExclusion
+      id_format: "{exclusion_principal_arn}"
+      notes: >-
+        The excluded IAM principal's ARN (`aws ecr
+        list-pull-time-update-exclusions`).
+    # --- ACM Private CA --------------------------------------------------------
+    - terraform_type: aws_acmpca_certificate_authority
+      pulumi_type: aws:acmpca/certificateAuthority:CertificateAuthority
+      id_format: "{certificate_authority_arn}"
+      # The restore window is never returned by the API - the provider
+      # stuffs its default back on import.
+      config_only_attributes: [permanent_deletion_time_in_days]
+      notes: >-
+        The CA's ARN (`aws acm-pca list-certificate-authorities` shows
+        Arn).
+    - terraform_type: aws_acmpca_certificate
+      pulumi_type: aws:acmpca/certificate:Certificate
+      id_format: "{issued_certificate_arn}"
+      # The issue-request arguments are never returned by the API - an
+      # import carries only the issued PEM, so the request fields are
+      # config-only by upstream design (the provider's own import test
+      # ignores all four).
+      config_only_attributes: [certificate_signing_request, signing_algorithm, template_arn, validity]
+      notes: >-
+        The certificate's full ARN
+        (arn:...:certificate-authority/{ca_id}/certificate/{cert_id}).
+        Issued certificates are not listable via the CLI - take the ARN
+        from the issue call's output or the CA's audit report.
+    - terraform_type: aws_acmpca_certificate_authority_certificate
+      pulumi_type: aws:acmpca/certificateAuthorityCertificate:CertificateAuthorityCertificate
+      id_format: "{certificate_authority_arn}"
+      notes: >-
+        The CA's ARN - the installed certificate is state ON the CA, not
+        an object of its own.
+    - terraform_type: aws_acmpca_permission
+      pulumi_type: aws:acmpca/permission:Permission
+      not_importable_upstream_reason: >-
+        The provider ships no importer at v6.58.0 (the internal composite
+        id exists but no import path is wired). The grant is a single
+        three-action statement to acm.amazonaws.com; an adopter
+        re-creates it with one apply after importing the CA.
+    - terraform_type: aws_acmpca_policy
+      pulumi_type: aws:acmpca/policy:Policy
+      id_format: "{certificate_authority_arn}"
+      notes: >-
+        The CA's ARN (the policy attaches to the CA; `aws acm-pca
+        get-policy --resource-arn <arn>`).

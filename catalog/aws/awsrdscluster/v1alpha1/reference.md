@@ -1332,6 +1332,7 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | AwsBedrockKnowledgeBase | `spec.storage.rds.resourceArn` | `status.outputs.arn` |
+| AwsRdsProxy | `spec.target.dbClusterIdentifier` | `status.outputs.cluster_identifier` |
 
 ## See Also
 

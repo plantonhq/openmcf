@@ -438,6 +438,8 @@ Fields on other kinds that can point at this resource:
 | AwsPlantonRunner | `spec.subnets` | `status.outputs.subnet_id` |
 | AwsRdsCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsRdsInstance | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsRdsProxy | `spec.vpcSubnetIds` | `status.outputs.subnet_id` |
+| AwsRdsProxy | `spec.endpoints[].vpcSubnetIds` | `status.outputs.subnet_id` |
 | AwsRedisElasticache | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsRedshiftCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsRedshiftServerlessWorkgroup | `spec.subnetIds` | `status.outputs.subnet_id` |

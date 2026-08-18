@@ -797,6 +797,38 @@ const (
 	// prerequisite because the private-DNS arm binds its hosted zone to
 	// a referenced VPC.
 	CloudResourceKind_AwsCloudMapNamespace CloudResourceKind = 1343
+	// A Lambda layer version - a shared code archive (libraries, custom
+	// runtimes) functions attach by ARN - with its cross-account and
+	// organization share grants managed in-line. The archive lives in
+	// S3 (an optional reference, so no registry prerequisite - lanes
+	// compose their own bucket fixture). 1351 sits in the app & data
+	// services sub-band (1350-1359; 1350 is reserved for AwsAppSyncApi).
+	CloudResourceKind_AwsLambdaLayer CloudResourceKind = 1351
+	// An RDS Proxy - the managed connection pool between
+	// connection-hungry applications and a database - with its
+	// connection-pool tuning, additional endpoints, and database target
+	// managed in-line. AwsIamRole is a prerequisite because the proxy
+	// assumes a required role to read database credentials from Secrets
+	// Manager; AwsSubnet because the proxy's network interfaces require
+	// at least two subnets.
+	CloudResourceKind_AwsRdsProxy CloudResourceKind = 1352
+	// An Aurora DSQL cluster - serverless, PostgreSQL-compatible
+	// distributed SQL with active-active multi-region pairing managed
+	// in-line. No prerequisites: a single-region cluster deploys from
+	// defaults alone (the KMS and peer references are optional arms).
+	CloudResourceKind_AwsAuroraDsql CloudResourceKind = 1353
+	// Region settings singleton (one private ECR registry per
+	// account+region): the registry policy, scanning configuration,
+	// replication rules, pull-through cache rules, repository creation
+	// templates, account settings, and pull-time update exclusions.
+	// Repository-scoped surface stays on AwsEcrRepo.
+	CloudResourceKind_AwsEcrRegistrySettings CloudResourceKind = 1354
+	// An AWS Private Certificate Authority with composed activation (a
+	// ROOT self-signs at apply; a subordinate activates from a parent
+	// AwsPrivateCa), issued certificates, the ACM renewal permission,
+	// and the resource policy managed in-line. No prerequisites: the
+	// S3 (CRL) and parent-CA references are optional arms.
+	CloudResourceKind_AwsPrivateCa CloudResourceKind = 1355
 	// Account/region settings singleton (one SES account object per
 	// account+region): the suppression list and VDM posture. 1360 opens
 	// the SES P1 sub-band (1360-1369).
@@ -2260,6 +2292,11 @@ var (
 		1341: "AwsRoute53ResolverFirewall",
 		1342: "AwsRoute53ResolverQueryLog",
 		1343: "AwsCloudMapNamespace",
+		1351: "AwsLambdaLayer",
+		1352: "AwsRdsProxy",
+		1353: "AwsAuroraDsql",
+		1354: "AwsEcrRegistrySettings",
+		1355: "AwsPrivateCa",
 		1360: "AwsSesAccountSettings",
 		2000: "AzureResourceGroup",
 		2001: "AzureAksCluster",
@@ -2920,6 +2957,11 @@ var (
 		"AwsRoute53ResolverFirewall":                     1341,
 		"AwsRoute53ResolverQueryLog":                     1342,
 		"AwsCloudMapNamespace":                           1343,
+		"AwsLambdaLayer":                                 1351,
+		"AwsRdsProxy":                                    1352,
+		"AwsAuroraDsql":                                  1353,
+		"AwsEcrRegistrySettings":                         1354,
+		"AwsPrivateCa":                                   1355,
 		"AwsSesAccountSettings":                          1360,
 		"AzureResourceGroup":                             2000,
 		"AzureAksCluster":                                2001,
@@ -3757,7 +3799,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x9e\xae\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\x97\xb0\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -3997,7 +4039,17 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1aAwsRoute53ResolverQueryLog\x10\xbe\n" +
 	"\x1a\x1f\xa2\xf7\x04\x1b\b\f\x12\bv1alpha1\"\tawsr53rql:\x02\xf8\a\x128\n" +
 	"\x14AwsCloudMapNamespace\x10\xbf\n" +
-	"\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawscmns:\x02\xf8\a\x126\n" +
+	"\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawscmns:\x02\xf8\a\x12/\n" +
+	"\x0eAwsLambdaLayer\x10\xc7\n" +
+	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawslayer\x121\n" +
+	"\vAwsRdsProxy\x10\xc8\n" +
+	"\x1a\x1f\xa2\xf7\x04\x1b\b\f\x12\bv1alpha1\"\aawsrdsp:\x04\xf0\a\xbc\b\x12-\n" +
+	"\rAwsAuroraDsql\x10\xc9\n" +
+	"\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsdsql\x127\n" +
+	"\x16AwsEcrRegistrySettings\x10\xca\n" +
+	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsecrrs\x12+\n" +
+	"\fAwsPrivateCa\x10\xcb\n" +
+	"\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awspca\x126\n" +
 	"\x15AwsSesAccountSettings\x10\xd0\n" +
 	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssesas\x121\n" +
 	"\x12AzureResourceGroup\x10\xd0\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\bv1alpha1\"\x04azrg0\x01\x121\n" +

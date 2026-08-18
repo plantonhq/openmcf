@@ -24,6 +24,7 @@ import (
 	awsapprunnerservicev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsapprunnerservice/v1alpha1"
 	awsapprunnervpcconnectorv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsapprunnervpcconnector/v1alpha1"
 	awsathenaworkgroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsathenaworkgroup/v1alpha1"
+	awsauroradsqlv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsauroradsql/v1alpha1"
 	awsautoscalinggroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsautoscalinggroup/v1alpha1"
 	awsbackupframeworkv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbackupframework/v1alpha1"
 	awsbackupplanv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbackupplan/v1alpha1"
@@ -86,6 +87,7 @@ import (
 	awsebssnapshotv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsebssnapshot/v1alpha1"
 	awsebsvolumev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsebsvolume/v1alpha1"
 	awsec2instancev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsec2instance/v1alpha1"
+	awsecrregistrysettingsv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsecrregistrysettings/v1alpha1"
 	awsecrrepov1alpha1 "github.com/plantonhq/planton/catalog/aws/awsecrrepo/v1alpha1"
 	awsecsclusterv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsecscluster/v1alpha1"
 	awsecsservicev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsecsservice/v1alpha1"
@@ -135,6 +137,7 @@ import (
 	awskmskeyv1alpha1 "github.com/plantonhq/planton/catalog/aws/awskmskey/v1alpha1"
 	awslambdav1alpha1 "github.com/plantonhq/planton/catalog/aws/awslambda/v1alpha1"
 	awslambdaeventsourcemappingv1alpha1 "github.com/plantonhq/planton/catalog/aws/awslambdaeventsourcemapping/v1alpha1"
+	awslambdalayerv1alpha1 "github.com/plantonhq/planton/catalog/aws/awslambdalayer/v1alpha1"
 	awslaunchtemplatev1alpha1 "github.com/plantonhq/planton/catalog/aws/awslaunchtemplate/v1alpha1"
 	awslblistenerv1alpha1 "github.com/plantonhq/planton/catalog/aws/awslblistener/v1alpha1"
 	awslblistenerrulev1alpha1 "github.com/plantonhq/planton/catalog/aws/awslblistenerrule/v1alpha1"
@@ -160,8 +163,10 @@ import (
 	awsorganizationalunitv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsorganizationalunit/v1alpha1"
 	awsorganizationpolicyv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsorganizationpolicy/v1alpha1"
 	awsplantonrunnerv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsplantonrunner/v1alpha1"
+	awsprivatecav1alpha1 "github.com/plantonhq/planton/catalog/aws/awsprivateca/v1alpha1"
 	awsrdsclusterv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsrdscluster/v1alpha1"
 	awsrdsinstancev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsrdsinstance/v1alpha1"
+	awsrdsproxyv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsrdsproxy/v1alpha1"
 	awsrediselasticachev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsrediselasticache/v1alpha1"
 	awsredshiftclusterv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsredshiftcluster/v1alpha1"
 	awsredshiftserverlessnamespacev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsredshiftserverlessnamespace/v1alpha1"
@@ -702,6 +707,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsAppRunnerService:                    &awsapprunnerservicev1alpha1.AwsAppRunnerService{},
 	cloudresourcekind.CloudResourceKind_AwsAppRunnerVpcConnector:               &awsapprunnervpcconnectorv1alpha1.AwsAppRunnerVpcConnector{},
 	cloudresourcekind.CloudResourceKind_AwsAthenaWorkgroup:                     &awsathenaworkgroupv1alpha1.AwsAthenaWorkgroup{},
+	cloudresourcekind.CloudResourceKind_AwsAuroraDsql:                          &awsauroradsqlv1alpha1.AwsAuroraDsql{},
 	cloudresourcekind.CloudResourceKind_AwsAutoScalingGroup:                    &awsautoscalinggroupv1alpha1.AwsAutoScalingGroup{},
 	cloudresourcekind.CloudResourceKind_AwsBackupFramework:                     &awsbackupframeworkv1alpha1.AwsBackupFramework{},
 	cloudresourcekind.CloudResourceKind_AwsBackupPlan:                          &awsbackupplanv1alpha1.AwsBackupPlan{},
@@ -764,6 +770,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsEbsSnapshot:                         &awsebssnapshotv1alpha1.AwsEbsSnapshot{},
 	cloudresourcekind.CloudResourceKind_AwsEbsVolume:                           &awsebsvolumev1alpha1.AwsEbsVolume{},
 	cloudresourcekind.CloudResourceKind_AwsEc2Instance:                         &awsec2instancev1alpha1.AwsEc2Instance{},
+	cloudresourcekind.CloudResourceKind_AwsEcrRegistrySettings:                 &awsecrregistrysettingsv1alpha1.AwsEcrRegistrySettings{},
 	cloudresourcekind.CloudResourceKind_AwsEcrRepo:                             &awsecrrepov1alpha1.AwsEcrRepo{},
 	cloudresourcekind.CloudResourceKind_AwsEcsCluster:                          &awsecsclusterv1alpha1.AwsEcsCluster{},
 	cloudresourcekind.CloudResourceKind_AwsEcsService:                          &awsecsservicev1alpha1.AwsEcsService{},
@@ -813,6 +820,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsKmsKey:                              &awskmskeyv1alpha1.AwsKmsKey{},
 	cloudresourcekind.CloudResourceKind_AwsLambda:                              &awslambdav1alpha1.AwsLambda{},
 	cloudresourcekind.CloudResourceKind_AwsLambdaEventSourceMapping:            &awslambdaeventsourcemappingv1alpha1.AwsLambdaEventSourceMapping{},
+	cloudresourcekind.CloudResourceKind_AwsLambdaLayer:                         &awslambdalayerv1alpha1.AwsLambdaLayer{},
 	cloudresourcekind.CloudResourceKind_AwsLaunchTemplate:                      &awslaunchtemplatev1alpha1.AwsLaunchTemplate{},
 	cloudresourcekind.CloudResourceKind_AwsLbListener:                          &awslblistenerv1alpha1.AwsLbListener{},
 	cloudresourcekind.CloudResourceKind_AwsLbListenerRule:                      &awslblistenerrulev1alpha1.AwsLbListenerRule{},
@@ -838,8 +846,10 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsOrganizationPolicy:                  &awsorganizationpolicyv1alpha1.AwsOrganizationPolicy{},
 	cloudresourcekind.CloudResourceKind_AwsOrganizationalUnit:                  &awsorganizationalunitv1alpha1.AwsOrganizationalUnit{},
 	cloudresourcekind.CloudResourceKind_AwsPlantonRunner:                       &awsplantonrunnerv1alpha1.AwsPlantonRunner{},
+	cloudresourcekind.CloudResourceKind_AwsPrivateCa:                           &awsprivatecav1alpha1.AwsPrivateCa{},
 	cloudresourcekind.CloudResourceKind_AwsRdsCluster:                          &awsrdsclusterv1alpha1.AwsRdsCluster{},
 	cloudresourcekind.CloudResourceKind_AwsRdsInstance:                         &awsrdsinstancev1alpha1.AwsRdsInstance{},
+	cloudresourcekind.CloudResourceKind_AwsRdsProxy:                            &awsrdsproxyv1alpha1.AwsRdsProxy{},
 	cloudresourcekind.CloudResourceKind_AwsRedisElasticache:                    &awsrediselasticachev1alpha1.AwsRedisElasticache{},
 	cloudresourcekind.CloudResourceKind_AwsRedshiftCluster:                     &awsredshiftclusterv1alpha1.AwsRedshiftCluster{},
 	cloudresourcekind.CloudResourceKind_AwsRedshiftServerlessNamespace:         &awsredshiftserverlessnamespacev1alpha1.AwsRedshiftServerlessNamespace{},

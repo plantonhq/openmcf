@@ -26,21 +26,6 @@ resources:
   - resource: aws_accessanalyzer_archive_rule
     disposition: model-planned
     reason: "judged as a planned AwsIamAccessAnalyzer kind (analyzer with archive rules folding in)"
-  - resource: aws_acmpca_certificate
-    disposition: model-planned
-    reason: "judged as a planned AwsPrivateCa kind (certificate authority, CA certificate, issued certificates, permission, policy)"
-  - resource: aws_acmpca_certificate_authority
-    disposition: model-planned
-    reason: "judged as a planned AwsPrivateCa kind (certificate authority, CA certificate, issued certificates, permission, policy)"
-  - resource: aws_acmpca_certificate_authority_certificate
-    disposition: model-planned
-    reason: "judged as a planned AwsPrivateCa kind (certificate authority, CA certificate, issued certificates, permission, policy)"
-  - resource: aws_acmpca_permission
-    disposition: model-planned
-    reason: "judged as a planned AwsPrivateCa kind (certificate authority, CA certificate, issued certificates, permission, policy)"
-  - resource: aws_acmpca_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsPrivateCa kind (certificate authority, CA certificate, issued certificates, permission, policy)"
   - resource: aws_alb
     disposition: excluded-deprecated
     reason: "legacy aws_alb* alias of the aws_lb* resource set already consumed by the load-balancer kinds"
@@ -788,18 +773,6 @@ resources:
   - resource: aws_db_instance_automated_backups_replication
     disposition: model-planned
     reason: "judged as a planned AwsRdsAutomatedBackupsReplication kind -- the replication is created in the DESTINATION region, a cross-region lifecycle outside the single-region instance kind (the replica-key class)"
-  - resource: aws_db_proxy
-    disposition: model-planned
-    reason: "judged as a planned AwsRdsProxy kind (proxies, endpoints, target groups, targets)"
-  - resource: aws_db_proxy_default_target_group
-    disposition: model-planned
-    reason: "judged as a planned AwsRdsProxy kind (proxies, endpoints, target groups, targets)"
-  - resource: aws_db_proxy_endpoint
-    disposition: model-planned
-    reason: "judged as a planned AwsRdsProxy kind (proxies, endpoints, target groups, targets)"
-  - resource: aws_db_proxy_target
-    disposition: model-planned
-    reason: "judged as a planned AwsRdsProxy kind (proxies, endpoints, target groups, targets)"
   - resource: aws_db_snapshot
     disposition: deferred
     reason: "database snapshot operations are imperative backup actions, a poor declarative fit; deferred"
@@ -932,12 +905,6 @@ resources:
   - resource: aws_drs_replication_configuration_template
     disposition: deferred
     reason: "Elastic Disaster Recovery vertical; deferred pending demand"
-  - resource: aws_dsql_cluster
-    disposition: model-planned
-    reason: "judged as a planned AwsAuroraDsql kind (clusters with peering)"
-  - resource: aws_dsql_cluster_peering
-    disposition: model-planned
-    reason: "judged as a planned AwsAuroraDsql kind (clusters with peering)"
   - resource: aws_dx_bgp_peer
     disposition: model-planned
     reason: "judged as a planned AwsDxVirtualInterface kind (private/public/transit and hosted virtual interfaces, accepters, BGP peers)"
@@ -1148,27 +1115,6 @@ resources:
   - resource: aws_ec2_transit_gateway_vpc_attachment_accepter
     disposition: model-planned
     reason: "accepter-side half of a cross-account VPC attachment on a RAM-shared gateway -- runs in the sharing account's deployment scope, judged as a future AwsTransitGatewayVpcAttachmentAccepter kind alongside RAM-share modeling"
-  - resource: aws_ecr_account_setting
-    disposition: model-planned
-    reason: "judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings)"
-  - resource: aws_ecr_pull_through_cache_rule
-    disposition: model-planned
-    reason: "judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings)"
-  - resource: aws_ecr_pull_time_update_exclusion
-    disposition: model-planned
-    reason: "judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings)"
-  - resource: aws_ecr_registry_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings)"
-  - resource: aws_ecr_registry_scanning_configuration
-    disposition: model-planned
-    reason: "judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings)"
-  - resource: aws_ecr_replication_configuration
-    disposition: model-planned
-    reason: "judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings)"
-  - resource: aws_ecr_repository_creation_template
-    disposition: model-planned
-    reason: "judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings)"
   - resource: aws_ecrpublic_repository
     disposition: deferred
     reason: "public ECR gallery repositories; deferred pending demand"
@@ -1736,12 +1682,6 @@ resources:
   - resource: aws_lambda_invocation
     disposition: deferred
     reason: "function invocation is an imperative operation, a poor declarative fit"
-  - resource: aws_lambda_layer_version
-    disposition: model-planned
-    reason: "judged as a planned AwsLambdaLayer kind (layer versions with permissions)"
-  - resource: aws_lambda_layer_version_permission
-    disposition: model-planned
-    reason: "judged as a planned AwsLambdaLayer kind (layer versions with permissions)"
   - resource: aws_launch_configuration
     disposition: excluded-deprecated
     reason: "launch configurations are deprecated by AWS; launch templates (AwsLaunchTemplate) are the successor"

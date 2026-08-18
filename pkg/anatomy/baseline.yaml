@@ -69,6 +69,9 @@ violations:
   - catalog/aws/awsathenaworkgroup/iac:missing-permissions
   - catalog/aws/awsathenaworkgroup:missing-control-profile
   - catalog/aws/awsathenaworkgroup:missing-cost-profile
+  - catalog/aws/awsauroradsql/iac:missing-permissions
+  - catalog/aws/awsauroradsql:missing-control-profile
+  - catalog/aws/awsauroradsql:missing-cost-profile
   - catalog/aws/awsautoscalinggroup/iac/pulumi:missing-iac-readme
   - catalog/aws/awsautoscalinggroup/iac/tf:missing-iac-readme
   - catalog/aws/awsautoscalinggroup/iac:missing-permissions
@@ -259,6 +262,9 @@ violations:
   - catalog/aws/awsebsvolume/iac:missing-permissions
   - catalog/aws/awsebsvolume:missing-control-profile
   - catalog/aws/awsebsvolume:missing-cost-profile
+  - catalog/aws/awsecrregistrysettings/iac:missing-permissions
+  - catalog/aws/awsecrregistrysettings:missing-control-profile
+  - catalog/aws/awsecrregistrysettings:missing-cost-profile
   - catalog/aws/awsecrrepo/iac:missing-permissions
   - catalog/aws/awsecrrepo:missing-control-profile
   - catalog/aws/awsecrrepo:missing-cost-profile
@@ -413,6 +419,9 @@ violations:
   - catalog/aws/awskmskey:missing-control-profile
   - catalog/aws/awskmskey:missing-cost-profile
   - catalog/aws/awslambdaeventsourcemapping/iac/tf:missing-iac-readme
+  - catalog/aws/awslambdalayer/iac:missing-permissions
+  - catalog/aws/awslambdalayer:missing-control-profile
+  - catalog/aws/awslambdalayer:missing-cost-profile
   - catalog/aws/awslaunchtemplate/iac/pulumi:missing-iac-readme
   - catalog/aws/awslaunchtemplate/iac/tf:missing-iac-readme
   - catalog/aws/awslaunchtemplate/iac:missing-permissions
@@ -481,6 +490,12 @@ violations:
   - catalog/aws/awsplantonrunner/iac:missing-permissions
   - catalog/aws/awsplantonrunner:missing-control-profile
   - catalog/aws/awsplantonrunner:missing-cost-profile
+  - catalog/aws/awsprivateca/iac:missing-permissions
+  - catalog/aws/awsprivateca:missing-control-profile
+  - catalog/aws/awsprivateca:missing-cost-profile
+  - catalog/aws/awsrdsproxy/iac:missing-permissions
+  - catalog/aws/awsrdsproxy:missing-control-profile
+  - catalog/aws/awsrdsproxy:missing-cost-profile
   - catalog/aws/awsredshiftserverlessnamespace/iac:missing-permissions
   - catalog/aws/awsredshiftserverlessnamespace:missing-control-profile
   - catalog/aws/awsredshiftserverlessnamespace:missing-cost-profile

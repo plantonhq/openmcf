@@ -28,10 +28,10 @@ that has progressed.
 | | |
 |---|---|
 | Provider schema (parity baseline) | `aws@6.58.0` |
-| Kinds in the catalog | 199 |
-| Distinct provider resources consumed | 492 |
-| Spec fields authored across all kinds | 7212 |
-| Module pins on `aws` | `~> 6.58` × 199 |
+| Kinds in the catalog | 204 |
+| Distinct provider resources consumed | 512 |
+| Spec fields authored across all kinds | 7324 |
+| Module pins on `aws` | `~> 6.58` × 204 |
 | Module pins on `time` | `~> 0.13` × 1 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -46,7 +46,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**199 of 199 kinds are at total accounting; 113 proven live.**
+**204 of 204 kinds are at total accounting; 113 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -57,6 +57,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsAppRunnerService | 55 | 6 | 38 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAppRunnerVpcConnector | 6 | 1 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAthenaWorkgroup | 37 | 4 | 26 | 7 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsAuroraDsql | 11 | 5 | 3 | 3 | 0 | ✅ | — |
 | AwsAutoScalingGroup | 217 | 54 | 146 | 17 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBackupFramework | 11 | 1 | 8 | 2 | 0 | ✅ | — |
 | AwsBackupPlan | 44 | 3 | 37 | 4 | 0 | ✅ | — |
@@ -119,6 +120,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsEbsSnapshot | 46 | 13 | 20 | 13 | 0 | ✅ | — |
 | AwsEbsVolume | 29 | 10 | 14 | 5 | 0 | ✅ | — |
 | AwsEc2Instance | 92 | 42 | 43 | 7 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsEcrRegistrySettings | 36 | 7 | 25 | 4 | 0 | ✅ | — |
 | AwsEcrRepo | 17 | 5 | 7 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEcsCluster | 80 | 7 | 64 | 9 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEcsService | 98 | 53 | 34 | 11 | 0 | ✅ | ✅ pulumi, terraform |
@@ -168,6 +170,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsKmsKey | 29 | 15 | 6 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLambda | 108 | 51 | 30 | 27 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLambdaEventSourceMapping | 45 | 11 | 31 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsLambdaLayer | 20 | 8 | 7 | 5 | 0 | ✅ | — |
 | AwsLaunchTemplate | 139 | 99 | 26 | 14 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbListener | 76 | 13 | 59 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbListenerRule | 61 | 3 | 55 | 3 | 0 | ✅ | ✅ pulumi, terraform |
@@ -193,8 +196,10 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsOrganizationPolicy | 10 | 3 | 2 | 5 | 0 | ✅ | — |
 | AwsOrganizationalUnit | 4 | 1 | 1 | 2 | 0 | ✅ | — |
 | AwsPlantonRunner | 0 | 0 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsPrivateCa | 51 | 10 | 23 | 18 | 0 | ✅ | — |
 | AwsRdsCluster | 143 | 84 | 19 | 40 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRdsInstance | 119 | 65 | 20 | 34 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsRdsProxy | 40 | 19 | 11 | 10 | 0 | ✅ | — |
 | AwsRedisElasticache | 66 | 40 | 12 | 14 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRedshiftCluster | 105 | 61 | 12 | 32 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRedshiftServerlessNamespace | 15 | 10 | 0 | 5 | 0 | ✅ | ✅ pulumi, terraform |
@@ -256,10 +261,10 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 491 | consumed by a kind's Terraform module today |
+| Modeled | 511 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 34 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 493 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 473 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 544 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
@@ -269,7 +274,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (491)
+### Modeled (511)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -278,6 +283,11 @@ rather than trusted.
 | `aws_account_region` | consumed by AwsOrganizationAccount |
 | `aws_acm_certificate` | consumed by AwsCertManagerCert |
 | `aws_acm_certificate_validation` | consumed by AwsCertManagerCert |
+| `aws_acmpca_certificate` | consumed by AwsPrivateCa |
+| `aws_acmpca_certificate_authority` | consumed by AwsPrivateCa |
+| `aws_acmpca_certificate_authority_certificate` | consumed by AwsPrivateCa |
+| `aws_acmpca_permission` | consumed by AwsPrivateCa |
+| `aws_acmpca_policy` | consumed by AwsPrivateCa |
 | `aws_api_gateway_account` | consumed by AwsApiGatewayAccountSettings |
 | `aws_api_gateway_api_key` | consumed by AwsRestApiUsagePlan |
 | `aws_api_gateway_authorizer` | consumed by AwsRestApiGateway |
@@ -448,12 +458,18 @@ rather than trusted.
 | `aws_db_instance_role_association` | consumed by AwsRdsInstance |
 | `aws_db_option_group` | consumed by AwsRdsInstance |
 | `aws_db_parameter_group` | consumed by AwsRdsInstance |
+| `aws_db_proxy` | consumed by AwsRdsProxy |
+| `aws_db_proxy_default_target_group` | consumed by AwsRdsProxy |
+| `aws_db_proxy_endpoint` | consumed by AwsRdsProxy |
+| `aws_db_proxy_target` | consumed by AwsRdsProxy |
 | `aws_db_subnet_group` | consumed by AwsRdsCluster, AwsRdsInstance |
 | `aws_dlm_lifecycle_policy` | consumed by AwsDlmLifecyclePolicy |
 | `aws_docdb_cluster` | consumed by AwsDocumentDb |
 | `aws_docdb_cluster_instance` | consumed by AwsDocumentDb |
 | `aws_docdb_cluster_parameter_group` | consumed by AwsDocumentDb |
 | `aws_docdb_subnet_group` | consumed by AwsDocumentDb |
+| `aws_dsql_cluster` | consumed by AwsAuroraDsql |
+| `aws_dsql_cluster_peering` | consumed by AwsAuroraDsql |
 | `aws_dynamodb_contributor_insights` | consumed by AwsDynamodb |
 | `aws_dynamodb_kinesis_streaming_destination` | consumed by AwsDynamodb |
 | `aws_dynamodb_resource_policy` | consumed by AwsDynamodb |
@@ -478,8 +494,15 @@ rather than trusted.
 | `aws_ec2_transit_gateway_route_table_association` | consumed by AwsTransitGatewayRouteTable |
 | `aws_ec2_transit_gateway_route_table_propagation` | consumed by AwsTransitGatewayRouteTable |
 | `aws_ec2_transit_gateway_vpc_attachment` | consumed by AwsTransitGatewayVpcAttachment |
+| `aws_ecr_account_setting` | consumed by AwsEcrRegistrySettings |
 | `aws_ecr_lifecycle_policy` | consumed by AwsEcrRepo |
+| `aws_ecr_pull_through_cache_rule` | consumed by AwsEcrRegistrySettings |
+| `aws_ecr_pull_time_update_exclusion` | consumed by AwsEcrRegistrySettings |
+| `aws_ecr_registry_policy` | consumed by AwsEcrRegistrySettings |
+| `aws_ecr_registry_scanning_configuration` | consumed by AwsEcrRegistrySettings |
+| `aws_ecr_replication_configuration` | consumed by AwsEcrRegistrySettings |
 | `aws_ecr_repository` | consumed by AwsEcrRepo |
+| `aws_ecr_repository_creation_template` | consumed by AwsEcrRegistrySettings |
 | `aws_ecr_repository_policy` | consumed by AwsEcrRepo |
 | `aws_ecs_capacity_provider` | consumed by AwsEcsCluster |
 | `aws_ecs_cluster` | consumed by AwsEcsCluster, AwsPlantonRunner |
@@ -567,6 +590,8 @@ rather than trusted.
 | `aws_lambda_function_recursion_config` | consumed by AwsLambda |
 | `aws_lambda_function_scaling_config` | consumed by AwsLambda |
 | `aws_lambda_function_url` | consumed by AwsLambda |
+| `aws_lambda_layer_version` | consumed by AwsLambdaLayer |
+| `aws_lambda_layer_version_permission` | consumed by AwsLambdaLayer |
 | `aws_lambda_permission` | consumed by AwsLambda |
 | `aws_lambda_provisioned_concurrency_config` | consumed by AwsLambda |
 | `aws_lambda_runtime_management_config` | consumed by AwsLambda |
@@ -804,17 +829,12 @@ rather than trusted.
 | `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
 | `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (493)
+### Planned (473)
 
 | Resource | Recorded reason |
 |---|---|
 | `aws_accessanalyzer_analyzer` | judged as a planned AwsIamAccessAnalyzer kind (analyzer with archive rules folding in) |
 | `aws_accessanalyzer_archive_rule` | judged as a planned AwsIamAccessAnalyzer kind (analyzer with archive rules folding in) |
-| `aws_acmpca_certificate` | judged as a planned AwsPrivateCa kind (certificate authority, CA certificate, issued certificates, permission, policy) |
-| `aws_acmpca_certificate_authority` | judged as a planned AwsPrivateCa kind (certificate authority, CA certificate, issued certificates, permission, policy) |
-| `aws_acmpca_certificate_authority_certificate` | judged as a planned AwsPrivateCa kind (certificate authority, CA certificate, issued certificates, permission, policy) |
-| `aws_acmpca_permission` | judged as a planned AwsPrivateCa kind (certificate authority, CA certificate, issued certificates, permission, policy) |
-| `aws_acmpca_policy` | judged as a planned AwsPrivateCa kind (certificate authority, CA certificate, issued certificates, permission, policy) |
 | `aws_ami` | judged as a planned AwsAmi kind (image, copy, launch permissions; instance capture folds in) |
 | `aws_ami_copy` | judged as a planned AwsAmi kind (image, copy, launch permissions; instance capture folds in) |
 | `aws_ami_from_instance` | judged as a planned AwsAmi kind (image, copy, launch permissions; instance capture folds in) |
@@ -906,10 +926,6 @@ rather than trusted.
 | `aws_datasync_task` | judged as a planned AwsDataSyncTask kind |
 | `aws_db_event_subscription` | judged as a planned AwsRdsEventSubscription kind -- an event subscription binds an SNS topic to account-wide source sets (all instances, all clusters, or explicit lists) with its own lifecycle, never satellite to one database |
 | `aws_db_instance_automated_backups_replication` | judged as a planned AwsRdsAutomatedBackupsReplication kind -- the replication is created in the DESTINATION region, a cross-region lifecycle outside the single-region instance kind (the replica-key class) |
-| `aws_db_proxy` | judged as a planned AwsRdsProxy kind (proxies, endpoints, target groups, targets) |
-| `aws_db_proxy_default_target_group` | judged as a planned AwsRdsProxy kind (proxies, endpoints, target groups, targets) |
-| `aws_db_proxy_endpoint` | judged as a planned AwsRdsProxy kind (proxies, endpoints, target groups, targets) |
-| `aws_db_proxy_target` | judged as a planned AwsRdsProxy kind (proxies, endpoints, target groups, targets) |
 | `aws_directory_service_conditional_forwarder` | judged as a planned AwsManagedAd kind (directories with forwarders, log subscriptions, RADIUS, regions, sharing, trusts) |
 | `aws_directory_service_directory` | judged as a planned AwsManagedAd kind (directories with forwarders, log subscriptions, RADIUS, regions, sharing, trusts) |
 | `aws_directory_service_log_subscription` | judged as a planned AwsManagedAd kind (directories with forwarders, log subscriptions, RADIUS, regions, sharing, trusts) |
@@ -929,8 +945,6 @@ rather than trusted.
 | `aws_docdb_event_subscription` | judged as a planned AwsDocumentDbEventSubscription kind -- an event subscription binds an SNS topic to account-wide source sets with its own lifecycle, never satellite to one cluster (the AwsRdsEventSubscription precedent) |
 | `aws_docdb_global_cluster` | judged as a planned AwsDocumentDbGlobalCluster kind -- the cross-region umbrella clusters join through spec.global_cluster_identifier (the AwsRdsGlobalCluster precedent) |
 | `aws_docdbelastic_cluster` | judged as a planned AwsDocumentDbElasticCluster kind -- elastic clusters are a different architecture (sharded, shard-capacity-sized, no instances list), not the instance-based cluster this kind models |
-| `aws_dsql_cluster` | judged as a planned AwsAuroraDsql kind (clusters with peering) |
-| `aws_dsql_cluster_peering` | judged as a planned AwsAuroraDsql kind (clusters with peering) |
 | `aws_dx_bgp_peer` | judged as a planned AwsDxVirtualInterface kind (private/public/transit and hosted virtual interfaces, accepters, BGP peers) |
 | `aws_dx_connection` | judged as a planned AwsDxConnection kind (connections, hosted connections, associations, MACsec keys) |
 | `aws_dx_connection_association` | judged as a planned AwsDxConnection kind (connections, hosted connections, associations, MACsec keys) |
@@ -974,13 +988,6 @@ rather than trusted.
 | `aws_ec2_transit_gateway_policy_table` | dynamic-routing policy table (used with Connect/Cloud WAN peering) -- a standalone table with its own lifecycle, judged as a future AwsTransitGatewayPolicyTable kind |
 | `aws_ec2_transit_gateway_policy_table_association` | attachment membership of a policy table -- table-scoped satellite; folds into the future AwsTransitGatewayPolicyTable kind |
 | `aws_ec2_transit_gateway_vpc_attachment_accepter` | accepter-side half of a cross-account VPC attachment on a RAM-shared gateway -- runs in the sharing account's deployment scope, judged as a future AwsTransitGatewayVpcAttachmentAccepter kind alongside RAM-share modeling |
-| `aws_ecr_account_setting` | judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings) |
-| `aws_ecr_pull_through_cache_rule` | judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings) |
-| `aws_ecr_pull_time_update_exclusion` | judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings) |
-| `aws_ecr_registry_policy` | judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings) |
-| `aws_ecr_registry_scanning_configuration` | judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings) |
-| `aws_ecr_replication_configuration` | judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings) |
-| `aws_ecr_repository_creation_template` | judged as a planned AwsEcrRegistrySettings kind (registry policy, scanning, replication, pull-through caches, creation templates, account settings) |
 | `aws_ecs_account_setting_default` | account-level ECS setting defaults (a per-account singleton, not per-cluster surface); planned as its own account-posture admission, not a fold into AwsEcsCluster |
 | `aws_ecs_daemon` | the ECS daemon workload paradigm (provider 6.50); planned alongside aws_ecs_daemon_task_definition as its own admission when daemon demand lands -- DAEMON-strategy services remain covered by AwsEcsService |
 | `aws_ecs_daemon_task_definition` | the ECS daemon workload paradigm (provider 6.50); planned alongside aws_ecs_daemon as its own admission when daemon demand lands |
@@ -1067,8 +1074,6 @@ rather than trusted.
 | `aws_lakeformation_resource_lf_tags` | judged as a planned AwsLakeFormation kind (data-lake settings, permissions, resources, LF-tags, opt-ins, Identity Center config) |
 | `aws_lambda_capacity_provider` | judged as a planned AwsLambdaCapacityProvider kind: account-scoped shared infrastructure (own VPC config, scaling policies, KMS key, tags, 30-minute delete) that many functions reference by ARN -- AwsLambda models the function-side attachment (managed_instances.capacity_provider_arn) and upgrades it to a reference when the kind ships |
 | `aws_lambda_code_signing_config` | judged as a planned AwsLambdaCodeSigningConfig kind: a shareable trust policy (allowed signing profiles + enforcement mode) many functions reference -- AwsLambda already models the function-side attachment (code_signing_config_arn) and upgrades it to a reference when the kind ships |
-| `aws_lambda_layer_version` | judged as a planned AwsLambdaLayer kind (layer versions with permissions) |
-| `aws_lambda_layer_version_permission` | judged as a planned AwsLambdaLayer kind (layer versions with permissions) |
 | `aws_lb_trust_store` | standalone mTLS CA-bundle store with its own ARN, name, tags, revocation sub-resources, and many-listener sharing -- a future AwsLbTrustStore kind (the listener's trust_store_arn reference gains its default kind then); never a fold into AwsLbListener, whose spec records trust stores as deliberately not modeled |
 | `aws_lb_trust_store_revocation` | certificate revocation lists attached to a trust store -- folds into the future AwsLbTrustStore kind as its revocations surface (pure sub-resource of the store, no cross-store identity) |
 | `aws_macie2_account` | judged as a planned AwsMacie kind (account enablement, classification jobs, custom identifiers, findings filters, organization administration) |

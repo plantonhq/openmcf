@@ -1,0 +1,7 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsAuroraDsql
+metadata:
+  name: orders-dsql
+spec:
+  region: us-east-1
+  deletionProtectionEnabled: true

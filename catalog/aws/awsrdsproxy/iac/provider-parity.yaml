@@ -1,0 +1,66 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_db_proxy:
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the resource's identity comes from the manifest, never a second free-form field
+      - arg: auth.auth_scheme
+        reason: one-value vocabulary -- SECRETS is the only auth scheme AWS supports; the modules pin it
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+  aws_db_proxy_default_target_group:
+    mappings:
+      # The default target group folds in as spec.connection_pool (a PATCH
+      # satellite - it always exists on the proxy).
+      - arg: connection_pool_config.connection_borrow_timeout
+        spec: spec.connection_pool.connection_borrow_timeout
+      - arg: connection_pool_config.init_query
+        spec: spec.connection_pool.init_query
+      - arg: connection_pool_config.max_connections_percent
+        spec: spec.connection_pool.max_connections_percent
+      - arg: connection_pool_config.max_idle_connections_percent
+        spec: spec.connection_pool.max_idle_connections_percent
+      - arg: connection_pool_config.session_pinning_filters
+        spec: spec.connection_pool.session_pinning_filters
+    exclusions:
+      - arg: db_proxy_name
+        reason: wired by the module to the folded proxy's own name -- the group always tunes THIS proxy
+  aws_db_proxy_endpoint:
+    mappings:
+      # Endpoints fold in as the spec.endpoints list keyed by name.
+      - arg: db_proxy_endpoint_name
+        spec: spec.endpoints.name
+      - arg: target_role
+        spec: spec.endpoints.target_role
+      - arg: vpc_subnet_ids
+        spec: spec.endpoints.vpc_subnet_ids
+      - arg: vpc_security_group_ids
+        spec: spec.endpoints.vpc_security_group_ids
+    exclusions:
+      - arg: db_proxy_name
+        reason: wired by the module to the folded proxy's own name -- an endpoint always belongs to THIS proxy
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+  aws_db_proxy_target:
+    mappings:
+      # The one database the proxy fronts (instance XOR cluster).
+      - arg: db_instance_identifier
+        spec: spec.target.db_instance_identifier
+      - arg: db_cluster_identifier
+        spec: spec.target.db_cluster_identifier
+    exclusions:
+      - arg: db_proxy_name
+        reason: wired by the module to the folded proxy's own name -- the target always registers with THIS proxy
+      - arg: target_group_name
+        reason: wired by the module to the managed default target group (always "default" at AWS -- the only target group a proxy has)
