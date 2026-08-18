@@ -1,0 +1,83 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpsubnetwork
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A subnetwork stores no customer data -- it is an address-space plan (CIDR ranges, purpose, IPv6 wiring), configuration metadata Google holds on its own encrypted control plane.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest exists to key (see enc-at-rest); the resource exposes no Cloud KMS surface.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Google encrypts VM-to-VM traffic that crosses a physical boundary within the VPC automatically (encryption in transit by default between Google datacenters); the subnet exposes no switch to weaken it.
+      notes: Payload-level TLS between workloads remains the workloads' responsibility; this control covers the network fabric Google operates under the subnet.
+    - control_id: no-public-access
+      status: configurable
+      field_path: ipv6_access_type
+      evidence:
+        type: spec_default
+        reference: The default IPV4_ONLY stack assigns no internet-routable addresses from this resource -- IPv4 exposure is decided per workload (external IPs, forwarding rules), never by the subnet. Opting into IPv6 forces the choice explicit -- EXTERNAL hands every dual-stack VM an internet-routable GUA, INTERNAL keeps ULAs routable only inside the VPC.
+      notes: private_ip_google_access (set by presets 01 and 02) is the privacy enabler -- VMs with no external IP reach Google APIs over the subnet's internal addresses, removing the most common reason to give workloads public IPs. Whether admitted traffic actually reaches instances stays governed by VPC firewall rules, a separate component.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The subnet defines address space, not admission -- which sources may reach the workloads addressed in it is decided by VPC firewall rules and policies, separate catalog kinds. No field here opens or closes a path.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Request-level filtering lives on edge components (load balancers, Cloud Armor policies). A REGIONAL_MANAGED_PROXY subnet reserves address space FOR the region's Envoy load balancers but performs no filtering itself.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management access is governed by Compute Engine IAM on every project, and the subnetwork additionally carries resource-level IAM (compute.subnetworks.getIamPolicy/setIamPolicy) -- the Shared VPC mechanism where compute.networkUser granted on a specific subnet decides which principals may place workloads in it.
+      notes: Per-subnet IAM is what makes a subnet an access-control boundary in Shared VPC setups; there is no data plane to govern separately.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Nothing authenticates to cloud APIs through a subnetwork; it assigns addresses, not credentials.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The subnet carries no authentication paths to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Subnetwork create, update (range expansion, secondary-range edits, flow-log changes), and delete land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+      notes: Admin Activity covers changes TO the subnet; per-connection visibility of traffic THROUGH it is log_config's job (see monitoring-integration).
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: log_config
+      evidence:
+        type: spec_default
+        reference: Omitted (the default) means no flow logs; setting the block enables VPC Flow Logs with GCP's own defaults (5-second aggregation, 0.5 sampling, all metadata), delivering per-flow records to Cloud Logging for network monitoring and forensics.
+      notes: Flow-log generation bills under Network Telemetry per GiB -- tune flow_sampling and filter_expr on busy subnets. No preset enables it; turning it on is a deliberate observability-for-cost trade.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The subnet is declarative configuration fully re-creatable from source control; there is no data to back up or restore.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A subnetwork is a regional resource by design -- workloads in every zone of its region draw addresses from it, and no single-zone failure mode exists on the resource.
+      notes: Region choice is the failure-domain decision; cross-region redundancy means a second subnet in another region, not a knob here.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE (GCP rejects the delete while any VM, connector, or proxy still holds an address in the subnet); PREVENT makes destroy fail outright -- a guard for address space workloads and peers may still route to; ABANDON unmanages the subnet while its CIDR stays claimed in the VPC.
+      notes: GCP's refusal to delete an occupied subnet is dependency ordering, not protection -- an EMPTIED subnet deletes silently, so PREVENT is the deliberate guard for address plans other teams depend on.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software surface here to patch; the VPC fabric that routes the subnet's traffic is Google's own infrastructure, patched as part of the platform with no version or channel exposed on this resource.

@@ -1,0 +1,46 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsstepfunction
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: type
+      sku_meter: state transitions
+      pricing_unit: transitions
+      impact: The type field selects the pricing model, not just execution semantics -- STANDARD bills per state transition (every node the execution traverses, retries included), while EXPRESS bills per request plus GB-second duration. The two meters differ by orders of magnitude at volume, and type cannot change after creation.
+    - field_path: definition
+      sku_meter: state transitions
+      pricing_unit: transitions
+      impact: The workflow's shape IS the multiplier -- a Standard execution bills one transition per state entered, so a nine-state happy path bills nine times per run, and a Distributed Map bills one transition per iteration. For Express, the definition's serialized size feeds the billed-memory formula (50 MB base plus definition size plus payload times map/parallel fan-out, rounded up in 64-MB chunks).
+    - field_path: logging.level
+      sku_meter: vended log ingestion
+      pricing_unit: GB
+      impact: Execution-history logging writes to the referenced CloudWatch log group at the vended-logs rate -- ALL logs every event type per execution, ERROR and FATAL log only failures. For Express workflows this is the only execution history that exists at all.
+    - field_path: logging.include_execution_data
+      sku_meter: vended log ingestion
+      pricing_unit: GB
+      impact: Including execution data copies the full JSON payloads passed between states into every log record -- log volume tracks payload size times state count, not just event count.
+    - field_path: tracing_enabled
+      sku_meter: trace records
+      pricing_unit: traces
+      impact: X-Ray tracing records trace segments per execution at X-Ray's per-trace rates.
+    - field_path: encryption.kms_key_id
+      sku_meter: KMS requests
+      pricing_unit: requests
+      impact: A customer-managed key makes Step Functions call KMS for data keys to encrypt state, execution history, and payloads -- each call bills at KMS request rates.
+    - field_path: encryption.kms_data_key_reuse_period_seconds
+      sku_meter: KMS requests
+      pricing_unit: requests
+      impact: The reuse window (60-900 seconds, AWS default 300) is the direct dial on KMS call frequency -- a longer window fewer GenerateDataKey calls, at the price of longer key reuse.
+  free_tier: The first 4,000 Standard state transitions each month are free -- a permanent allotment that does not expire with the 12-month AWS free-tier term. Express requests and duration carry no free allotment.
+  estimate_exclusions:
+    - execution volume is entirely workload-driven -- an idle state machine bills nothing
+    - the services each state invokes (Lambda, ECS, SQS, DynamoDB) bill on their own components -- in most workflows they dwarf the orchestration charge
+    - Express duration depends on runtime memory (definition size plus payload times fan-out) and execution length, unknowable from the manifest
+    - invoking private endpoints through AWS PrivateLink or VPC Lattice bills their data-transfer rates
+    - vended-log ingestion bills on CloudWatch Logs at its own rates
+  notes: "A state machine's existence is free -- the bill starts with the first execution, and the type field decides its shape. STANDARD's meter is deceptively granular: every state entered is a billed transition, every retry is another one, and a Distributed Map bills a transition per iteration -- a million-object map run is a million transitions before its nested workloads bill anything. EXPRESS flips the model to per-request plus GB-second duration billed in 64-MB memory chunks and 100ms increments -- cheap for short high-volume event processing, and the common surprise is that Express records NO execution history in Step Functions itself: logging.level is the only way to see what ran, at vended-log rates. The heavy spend in most workflows lives in the invoked services, which bill on their own components."

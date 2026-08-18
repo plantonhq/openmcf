@@ -1,0 +1,30 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awstransitgateway
+spec:
+  aws:
+    statements:
+      - sid: ManageTransitGateway
+        actions:
+          - ec2:CreateTransitGateway
+          - ec2:DeleteTransitGateway
+          - ec2:ModifyTransitGateway
+          - ec2:CreateTags
+          - ec2:DeleteTags
+        resources:
+          - arn:aws:ec2:*:*:transit-gateway/*
+        provenance: derived
+        notes: Covers aws_ec2_transit_gateway / ec2transitgateway.TransitGateway -- the single resource both modules manage. All five actions take resource-level scoping on the transit-gateway ARN per the service reference. ModifyTransitGateway serves the in-place updates (description, the routing and feature dials, CIDR-block changes) AND post-create encryption_support enablement, which AWS only accepts on an existing gateway. The default-table dials' asymmetric ForceNew (disable-to-enable replaces the gateway) routes through Delete+Create, already granted here. CreateTags rides the create call; DeleteTags serves later tag reconciliation.
+      - sid: DescribeTransitGateways
+        actions:
+          - ec2:DescribeTransitGateways
+        resources:
+          - "*"
+        provenance: derived
+        notes: Gateway state, options, and tags during plan/refresh, plus the create and delete wait loops (the provider polls until the gateway reaches available, and until it is deleted). EC2 Describe APIs support no resource-level scoping (the service reference lists no resource types), so the wildcard is the narrowest possible scope.

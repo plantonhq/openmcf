@@ -1,0 +1,46 @@
+# Cost derivation: the machine-executable rules turning any AwsClientVpn
+# manifest's spec values into metered quantities and price choices. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/awsclientvpn.yaml; a server-side estimator evaluates
+# the same rules against live manifests. Prices live in the provider's
+# price book (../pricebook/). Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsclientvpn
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  refusals:
+    - when:
+        - field_path: transit_gateway_configuration
+          op: is_set
+      reason: a transit-gateway-attached endpoint carries no subnet associations, so the endpoint-association-hour quantity AWS meters is not derivable from this manifest
+  lines:
+    - sku_meter: endpoint association hours
+      quantity:
+        - count_of: subnet_ids
+        - hours_in_month: true
+      price_slug: client-vpn-endpoint-association-hours-us-east-1
+      basis: one hourly endpoint association per associated subnet x 730 hours, billed whether or not anyone is connected
+  exclusions:
+    - text: client connection hours bill per concurrently connected client every hour a session stays up -- entirely workforce-dependent (session_timeout_hours and disconnect_on_session_timeout are the levers on lingering sessions)
+    - text: data transfer out of the VPC (internet, cross-AZ, on-premises) bills at the network components that carry it
+    - applies_when:
+        - field_path: split_tunnel
+          op: equals
+          value: "false"
+      text: full tunnel routes ALL client internet traffic into the VPC, so egress rides the NAT gateway's data-processing and data-transfer meters on the NAT-ed subnet's own components
+    - applies_when:
+        - field_path: connection_log
+          op: is_set
+      text: connection-log ingestion and storage bill to the destination CloudWatch log group, not the endpoint
+  notes:
+    - text: The association hours are the committed floor; every other dollar follows connected clients, and no manifest can know how many people connect.
+    - applies_when:
+        - field_path: subnet_ids
+          op: is_unset
+      text: Zero associations bill nothing -- a valid pre-staged endpoint -- but the endpoint routes no traffic until a subnet is associated, and each association starts its own hourly meter.

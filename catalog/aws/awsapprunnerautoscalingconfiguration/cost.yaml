@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsapprunnerautoscalingconfiguration
+spec:
+  billing_model: free
+  free_tier: An auto scaling configuration is a reusable scaling policy object in the App Runner control plane -- AWS's App Runner meters bill the compute and memory of container instances (provisioned instances for memory, active instances for vCPU plus memory), and none of those meters count configurations. Registering one configuration or a hundred revisions of it adds nothing to the bill, whether zero services or a whole fleet reference it.
+  notes: "No field of this spec buys anything directly, yet every scaling field is a first-order cost LEVER on the services that reference this configuration: min_size sets how many warm instances each referencing service keeps provisioned around the clock (billed for memory only, ~$0.007/GB-hour in most regions), max_size is each service's scale-out spend ceiling, and max_concurrency decides how much traffic one instance absorbs before another (billed for vCPU and memory while active) is launched. All of that spend accrues on the referencing AwsAppRunnerService components -- their instance size and traffic price this policy's decisions. set_as_account_default only changes WHICH future services adopt the policy; it moves no meter."

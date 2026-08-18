@@ -1,0 +1,112 @@
+# Cost derivation: the machine-executable rules turning any AwsKinesisStream
+# manifest's spec values into metered quantities and price choices. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/awskinesisstream.yaml; a server-side estimator evaluates
+# the same rules against live manifests. Prices live in the provider's price
+# book (../pricebook/). stream_mode selects between the two rule sets:
+# PROVISIONED commits shard-hours (plus the extended-retention surcharge);
+# ON_DEMAND commits only the per-stream hourly fee, with the data charges
+# named in exclusions. Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awskinesisstream
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  lines:
+    - sku_meter: provisioned shard hours
+      applies_when:
+        - field_path: stream_mode
+          op: equals
+          value: PROVISIONED
+      quantity:
+        - field_value:
+            field_path: shard_count
+        - hours_in_month: true
+      price_slug: kinesis-provisioned-shard-hour-us-east-1
+      basis: every open shard bills every hour of the month -- shard_count x 730 shard-hours; priced at the us-east-1 list rate, the assumed region when the manifest leaves region unset
+    - sku_meter: extended retention shard hours
+      applies_when:
+        - field_path: stream_mode
+          op: equals
+          value: PROVISIONED
+        - field_path: retention_period_hours
+          op: not_equals
+          value: "0"
+        - field_path: retention_period_hours
+          op: not_equals
+          value: "24"
+      quantity:
+        - field_value:
+            field_path: shard_count
+        - hours_in_month: true
+      price_slug: kinesis-extended-retention-shard-hour-us-east-1
+      basis: retention beyond 24 hours adds the extended-retention surcharge on every shard-hour -- the spec validates any explicit retention to at least 24, so any other non-zero value is beyond a day; the surcharge covers data up to 7 days old, and priced at the us-east-1 list rate, the assumed region when the manifest leaves region unset
+    - sku_meter: on-demand stream hours
+      applies_when:
+        - field_path: stream_mode
+          op: equals
+          value: ON_DEMAND
+      quantity:
+        - hours_in_month: true
+      price_slug: kinesis-on-demand-stream-hour-us-east-1
+      basis: an ON_DEMAND stream bills a flat per-stream fee every hour of the month -- the committed part of a bill whose data charges follow traffic; priced at the us-east-1 list rate, the assumed region when the manifest leaves region unset
+  exclusions:
+    - applies_when:
+        - field_path: stream_mode
+          op: equals
+          value: ON_DEMAND
+      text: data written and data read bill per GB and follow traffic entirely -- the usually dominant part of an on-demand bill
+    - applies_when:
+        - field_path: stream_mode
+          op: equals
+          value: ON_DEMAND
+        - field_path: retention_period_hours
+          op: not_equals
+          value: "0"
+        - field_path: retention_period_hours
+          op: not_equals
+          value: "24"
+      text: on-demand extended retention (data 1-7 days old) bills per GB-month on the data actually stored -- data-volume-dependent
+    - applies_when:
+        - field_path: retention_period_hours
+          op: not_equals
+          value: "0"
+        - field_path: retention_period_hours
+          op: not_equals
+          value: "24"
+      text: if retention_period_hours exceeds 168, data older than 7 days bills long-term storage per GB-month plus a per-GB retrieval charge when read back -- both data-volume-dependent
+    - applies_when:
+        - field_path: stream_mode
+          op: equals
+          value: PROVISIONED
+      text: PUT payload units bill per million units and follow write volume
+    - applies_when:
+        - field_path: shard_level_metrics
+          op: is_set
+      text: enhanced shard-level metrics bill CloudWatch custom-metric charges per enabled metric per shard
+    - applies_when:
+        - field_path: warm_throughput_mib_ps
+          op: not_equals
+          value: "0"
+      text: pre-provisioned warm throughput bills per MiB/s-hour on top of the on-demand charges -- the us-east-1 offer document carries no published rate for it, so it is named here rather than priced
+    - applies_when:
+        - field_path: kms_key_id
+          op: is_set
+      text: KMS request charges follow record volume, and a customer-managed key bills its monthly fee on its own AwsKmsKey component
+    - text: enhanced fan-out consumers bill consumer-shard hours and retrieved GB on their own AwsKinesisStreamConsumer components
+  notes:
+    - applies_when:
+        - field_path: stream_mode
+          op: equals
+          value: PROVISIONED
+      text: The committed floor is exact -- shards times hours, plus the retention surcharge. Traffic above shard capacity throttles rather than bills; resizing shard_count is the cost lever.
+    - applies_when:
+        - field_path: stream_mode
+          op: equals
+          value: ON_DEMAND
+      text: Only the stream-hour fee is committed at manifest time; the real bill follows the data written and read.

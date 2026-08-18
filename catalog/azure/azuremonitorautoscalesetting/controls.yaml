@@ -1,0 +1,65 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremonitorautoscalesetting
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An autoscale setting is a rule book held by Azure Monitor; it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The setting carries no traffic of its own; managing it flows through ARM's TLS-only management API. Webhook notifications travel to whatever service_uri the operator configures -- the spec accepts http:// as Azure does, so transport strength there is the receiver's posture.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: An autoscale setting has no network endpoint -- nothing exists to reach from the internet.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: The setting is capacity automation, not an access grant; creating and editing it is governed by ARM RBAC on its resource group, which is platform posture for every ARM resource.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The setting authenticates nobody; Azure's autoscale engine reads metrics and resizes the target as platform machinery, with no credential in this spec.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The setting exposes no authentication path of its own. Its one auth-adjacent surface already has the legacy path retired by Azure -- the classic subscription-administrator email flags were removed in April 2024, and the spec reserves those fields so only explicit custom_emails remain.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Every scale action the setting takes lands in the Azure Activity Log automatically (the AUTOSCALE category) as subscription-level posture, alongside creation and edits of the setting itself; no logging toggle exists on this resource.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: notification
+      evidence:
+        type: spec_default
+        reference: The notification block exports every scale action as an operational signal -- email to explicit recipients and/or webhooks wired to chat, paging, or automation endpoints (a CEL requires at least one channel on the block, so a configured notification always delivers somewhere). Omitting the block leaves scale events visible only in the Activity Log and the portal's autoscale history.
+      notes: The setting also CONSUMES monitoring -- rules evaluate Azure Monitor metrics -- but the exportable signal this resource emits is the scale-event notification.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless rule book -- nothing to back up; the manifest recreates the setting declaratively.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The setting has no runtime footprint with a zonal failure mode; the autoscale engine is Microsoft-operated. The zonal spread of the INSTANCES it scales is the target resource's posture, not this rule book's.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for an autoscale setting; deleting one freezes the target at its current instance count and is recreated declaratively (enabled false does the same freeze while keeping the rule book).
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The engine that evaluates profiles, forecasts predictive load, and resizes targets is Microsoft-operated Azure Monitor infrastructure; no customer-visible patch surface exists.

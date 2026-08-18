@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsbackupreportplan
+spec:
+  aws:
+    statements:
+      - sid: ManageReportPlan
+        actions:
+          - backup:CreateReportPlan
+          - backup:DescribeReportPlan
+          - backup:UpdateReportPlan
+          - backup:DeleteReportPlan
+        resources:
+          - arn:aws:backup:*:*:report-plan:*
+        provenance: derived
+        notes: Covers aws_backup_report_plan / backup.ReportPlan -- the modules' single resource -- across create, refresh reads, in-place delivery/setting updates, and destroy. Remember report_template is ForceNew inside an otherwise-updatable block -- a template change runs the full delete/create pair. All four actions authorize on the reportPlan ARN format (arn:...:report-plan:${ReportPlanName}-${ReportPlanId}) per the service reference, which also offers a backup:FrameworkArns condition key on Create/Update for pinning which frameworks a report plan may reference.
+      - sid: ManageTags
+        actions:
+          - backup:TagResource
+          - backup:UntagResource
+          - backup:ListTags
+        resources:
+          - arn:aws:backup:*:*:report-plan:*
+        provenance: derived
+        notes: TagResource rides CreateReportPlan for the module's identity tags and serves later tag reconciliation; ListTags backs every refresh. All three list the reportPlan resource type in the service reference, so they stay ARN-scoped. The delivery bucket needs NO grant here -- AWS Backup writes reports under its own service principal, authorized by the bucket's policy, not by the deploying principal.

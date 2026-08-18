@@ -1,0 +1,101 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremysqlflexibleserver
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Flexible Server encrypts data, backups, and temporary files at rest with service-managed keys on every server; encryption cannot be disabled.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: customer_managed_key
+      evidence:
+        type: spec_default
+        reference: Unset means service-managed encryption; configuring the block encrypts the server with a Key Vault key unwrapped through the named user-assigned identity (MySQL supports user-assigned identities only), with a separate key and identity for the geo-backup region when geo-redundant backups are on.
+      notes: The 03-hardened-cmk-entra preset enables it.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Flexible Server requires TLS by default (require_secure_transport is ON unless deliberately relaxed through server_parameters); client connections negotiate TLS 1.2+.
+      notes: Presets 02 and 03 pin require_secure_transport ON explicitly so a drifted parameter cannot silently relax it.
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_network_access
+      evidence:
+        type: spec_default
+        reference: Unset lets Azure derive the value -- ENABLED for a public server gated by the firewall allowlist, DISABLED when the server is VNet-injected (delegated_subnet_id plus private_dns_zone_id give it a private address only; Azure rejects a public endpoint on an injected server).
+      notes: The 02-production-private-ha preset is VNet-injected; the 01 dev preset stays public behind firewall rules by design.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: firewall_rules
+      evidence:
+        type: spec_default
+        reference: For public servers, the firewall rules are the complete allowlist of client address ranges; an empty list admits no direct client. The 0.0.0.0-0.0.0.0 range admits Azure-internal services only, not the internet. VNet-injected servers scope ingress by subnet topology instead.
+      notes: The 01-dev-burstable preset allowlists Azure services plus explicitly added ranges.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A managed database endpoint is protected by TLS, authentication, and network scoping rather than a WAF; no request-filtering attachment point exists.
+    - control_id: rbac
+      status: configurable
+      field_path: aad_administrator
+      evidence:
+        type: spec_default
+        reference: Unset means password authentication only; configuring the block names a Microsoft Entra principal (use a group to admit a team) as administrator, letting directory identities authenticate with short-lived tokens through the identity in user_assigned_identity_ids.
+      notes: The 03-hardened-cmk-entra preset grants an Entra group. Management-plane access is always Azure RBAC.
+    - control_id: workload-identity
+      status: configurable
+      field_path: aad_administrator
+      evidence:
+        type: spec_default
+        reference: With the Entra administrator configured, workloads holding managed identities connect with directory-issued tokens instead of static passwords -- the identity path exists only when this block is set.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: MySQL Flexible Server always keeps password authentication enabled -- unlike PostgreSQL Flexible Server it cannot be disabled -- so static credentials cannot be retired from this spec; the mitigation is keeping the password in a secret manager and layering the Entra administrator on top for token-based access.
+    - control_id: audit-logging
+      status: configurable
+      field_path: server_parameters
+      evidence:
+        type: spec_default
+        reference: Off by Azure's default; setting the audit_log_enabled server parameter to ON turns on the MySQL audit log, which flows to Azure Monitor per the server's diagnostic settings. Administrative actions land in the Azure Activity Log unconditionally either way.
+      notes: The 03-hardened-cmk-entra preset pins audit_log_enabled ON.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Flexible Server publishes compute, storage, IOPS, and connection metrics to Azure Monitor for every server without configuration.
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Automated backups with point-in-time restore inside the retention window are always on -- the platform takes snapshots plus continuous binlog archiving; create_mode POINT_IN_TIME_RESTORE and GEO_RESTORE are the restore paths.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: backup_retention_days
+      evidence:
+        type: spec_default
+        reference: Defaults to 7 days, configurable up to 35; geo_redundant_backup_enabled additionally replicates backups to the paired region (a creation-time decision).
+      notes: Presets 02 and 03 retain 35 days; 02 adds geo-redundancy.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: high_availability
+      evidence:
+        type: spec_default
+        reference: Absent means a single-zone server; mode ZONE_REDUNDANT provisions a synchronously maintained standby in another availability zone (standby_availability_zone pins it) with automatic failover, and SAME_ZONE keeps the standby local for faster failover without zone-level protection.
+      notes: The 02-production-private-ha preset is zone-redundant with pinned zones. Burstable B-series skus do not support HA.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Flexible Server API nor this spec offers a deletion-protection flag (Azure resource locks are subscription-side governance outside the manifest); point-in-time restore inside the retention window is the recovery path after an accidental deletion is noticed.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Microsoft applies minor versions and security patches through managed maintenance; maintenance_window steers when disruption may happen, never whether patching occurs.

@@ -1,0 +1,65 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremysqlflexibleserver
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Azure Database for MySQL
+      sku_meter: server compute
+      pricing_unit: vCore-hours
+      description: General Purpose and Business Critical servers bill per provisioned vCore-hour from creation -- the sku_name's size fixes the vCore count, the tier's series fixes the per-vCore rate.
+    - service_name: Azure Database for MySQL
+      sku_meter: burstable server compute
+      pricing_unit: hours
+      description: Burstable B-series servers bill a per-server hourly meter for the whole instance instead of per-vCore -- the budget tier's own meter class.
+    - service_name: Azure Database for MySQL
+      sku_meter: server storage
+      pricing_unit: GB-months
+      description: Provisioned storage bills per GiB-month whether used or empty; storage only ever grows -- shrinking replaces the server.
+  cost_drivers:
+    - field_path: sku_name
+      sku_meter: server compute
+      pricing_unit: vCore-hours
+      impact: The dominant lever -- General Purpose D-series is the production tier and Business Critical E-series the RAM-heavy tier, each billing its size's vCore count at the series' per-vCore rate.
+    - field_path: sku_name
+      sku_meter: burstable server compute
+      pricing_unit: hours
+      impact: A Burstable B-series sku_name selects the budget tier's per-server hourly meter instead of per-vCore billing.
+    - field_path: high_availability
+      sku_meter: server compute
+      pricing_unit: vCore-hours
+      impact: Presence provisions a standby replica with the same compute and storage configuration as the primary -- Microsoft bills an HA server for both replicas' provisioned compute AND storage, doubling both lines. Burstable servers do not support high availability.
+    - field_path: storage.size_gb
+      sku_meter: server storage
+      pricing_unit: GB-months
+      impact: Provisioned GiB (20 to 16384, Azure defaults 20 when unset), billed monthly whether used or not; it can never shrink.
+    - field_path: storage.auto_grow_enabled
+      sku_meter: server storage
+      pricing_unit: GB-months
+      impact: On, storage grows automatically when free space runs low and the bill follows; there is no configurable ceiling.
+    - field_path: storage.iops
+      sku_meter: provisioned IOPS
+      impact: Provisioning IOPS above the storage size's included default adds a monthly per-IOPS charge.
+    - field_path: storage.io_scaling_enabled
+      sku_meter: provisioned IOPS
+      impact: Elastic IOPS scaling bills additional IO on demand instead of a provisioned value -- spiky workloads pay for what they burst to.
+    - field_path: backup_retention_days
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: Backup storage up to 100% of provisioned storage is free; longer retention (up to 35 days) grows consumed backup GiB past that free allowance on busy databases.
+    - field_path: geo_redundant_backup_enabled
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: Geo-redundant backups bill at a higher rate than local backups and cannot be toggled after creation.
+    - field_path: create_mode
+      sku_meter: server compute
+      pricing_unit: hours
+      impact: REPLICA creates a full server billed at its own compute and storage rates; the primary it follows bills separately on its own component.
+  estimate_exclusions:
+    - backup storage beyond the free allowance (100% of provisioned storage) follows database churn and retention settings
+    - network egress follows client placement
+  notes: "Azure bills the flexible server as machine-plus-disk: an hourly compute SKU and a provisioned-GiB storage line. High availability is the honest doubler -- Microsoft's documentation states you pay for the provisioned compute and storage of both the primary and the standby replica -- so the availability decision is a 2x line item, visible in the estimate, not a footnote."

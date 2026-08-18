@@ -1,0 +1,62 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsroute53healthcheck
+spec:
+  presets:
+    - preset: 01-https-endpoint
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Route 53
+          sku_meter: optional health check features
+          pricing_unit: feature-months
+          pricing_quantity: "1"
+          quantity_basis: HTTPS probing is one billed optional feature per month, at the non-AWS-endpoint feature rate under the same endpoint-class assumption as the basic fee
+          list_unit_price: "2"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260527092459/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "2.0000"
+        - service_name: Amazon Route 53
+          sku_meter: health checks
+          pricing_unit: health-check-months
+          pricing_quantity: "1"
+          quantity_basis: one endpoint health check at the non-AWS-endpoint basic rate -- the manifest's fqdn/ip_address cannot prove the target is an AWS resource in (or billed to) this account, so the non-AWS class is the stated assumption; AWS-endpoint checks bill a lower basic rate with the account's first 50 free
+          list_unit_price: "0.75"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260527092459/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "0.7500"
+      total_list_cost: "2.7500"
+      exclusions:
+        - the probed endpoint's own infrastructure, and any Route 53 hosted zones or DNS records the check gates, bill as their own components -- this fee covers only the health check itself
+      notes: Health-check fees are global -- one published rate regardless of the manifest's region -- and prorated for partial months. If the probed target is an AWS resource in (or billed to) this account, the basic fee drops to the AWS-endpoint rate (with the first 50 such checks free) and each optional feature bills at half the non-AWS feature rate -- this estimate states the conservative non-AWS class.
+    - preset: 02-cloudwatch-alarm
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Route 53
+          sku_meter: health checks
+          pricing_unit: health-check-months
+          pricing_quantity: "1"
+          quantity_basis: AWS's pricing terms bill metric-based health checks as health checks of an AWS endpoint; priced at the beyond-free-tier rate -- the account's first 50 AWS-endpoint checks are free
+          list_unit_price: "0.5"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260527092459/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "0.5000"
+      total_list_cost: "0.5000"
+      exclusions:
+        - the probed endpoint's own infrastructure, and any Route 53 hosted zones or DNS records the check gates, bill as their own components -- this fee covers only the health check itself
+        - the mirrored CloudWatch alarm and its metrics bill on CloudWatch, outside this component
+      notes: Health-check fees are global -- one published rate regardless of the manifest's region -- and prorated for partial months.

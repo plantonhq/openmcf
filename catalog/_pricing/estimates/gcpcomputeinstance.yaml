@@ -1,0 +1,105 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpcomputeinstance
+spec:
+  presets:
+    - preset: 01-dev-spot-vm
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the boot disk's size comes from the image or snapshot, invisible in this manifest -- its GiB-month charge is excluded
+        - running hours bill the fluctuating Spot market rate below the on-demand ceiling -- no committed instance rate exists, and preemption can end the run at any time
+        - external IPv4 usage bills hourly per interface holding an access config while the VM runs -- the per-interface configs live inside the repeated NIC list, beyond these rules' reach
+        - OS license premiums for premium images (Windows Server, RHEL, SLES) bill on top of the machine rate; the catalog presets pin license-free Debian
+        - network egress and disk snapshots follow the workload's behavior
+      notes: Spot has no committed list price -- the market sets the hourly rate under the published on-demand ceiling, which is why this estimate carries no vCPU or memory line. Priced at on-demand rates for the machine type's documented vCPU and memory. The estimate assumes the VM runs all 730 hours; stopping it stops the compute meters but every disk keeps billing.
+    - preset: 02-hardened-web-server
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Compute Engine
+          sku_meter: instance vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "1460"
+          quantity_basis: e2-standard-2 carries 2 vCPUs x 730 hours at the E2 per-vCPU rate
+          list_unit_price: "0.02181159"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "31.8449214"
+        - service_name: Compute Engine
+          sku_meter: instance memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "5840"
+          quantity_basis: e2-standard-2 carries 8 GB of memory x 730 hours at the E2 per-GiB rate
+          list_unit_price: "0.00292353"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "17.0734152"
+        - service_name: Compute Engine
+          sku_meter: boot disk storage
+          pricing_unit: GiB-months
+          pricing_quantity: "20"
+          quantity_basis: the reshaped boot disk's size (boot_disk.size_gb) at the pd-balanced rate, billing from creation full or empty and continuing while the VM is stopped
+          list_unit_price: "0.1"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "2.0000"
+      total_list_cost: "50.9183366"
+      exclusions:
+        - external IPv4 usage bills hourly per interface holding an access config while the VM runs -- the per-interface configs live inside the repeated NIC list, beyond these rules' reach
+        - OS license premiums for premium images (Windows Server, RHEL, SLES) bill on top of the machine rate; the catalog presets pin license-free Debian
+        - network egress and disk snapshots follow the workload's behavior
+      notes: Priced at on-demand rates for the machine type's documented vCPU and memory. The estimate assumes the VM runs all 730 hours; stopping it stops the compute meters but every disk keeps billing.
+    - preset: 03-stateful-data-vm
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Compute Engine
+          sku_meter: instance vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "2920"
+          quantity_basis: n2-standard-4 carries 4 vCPUs x 730 hours at the N2 per-vCPU rate
+          list_unit_price: "0.031611"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "92.30412"
+        - service_name: Compute Engine
+          sku_meter: instance memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "11680"
+          quantity_basis: n2-standard-4 carries 16 GB of memory (the 4 GB-per-vCPU standard ratio) x 730 hours at the N2 per-GiB rate
+          list_unit_price: "0.004237"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "49.48816"
+        - service_name: Compute Engine
+          sku_meter: boot disk storage
+          pricing_unit: GiB-months
+          pricing_quantity: "50"
+          quantity_basis: the reshaped boot disk's size (boot_disk.size_gb) at the pd-balanced rate, billing from creation full or empty and continuing while the VM is stopped
+          list_unit_price: "0.1"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "5.0000"
+      total_list_cost: "146.79228"
+      exclusions:
+        - attached data disks are first-class GcpComputeDisk resources with their own estimates
+        - external IPv4 usage bills hourly per interface holding an access config while the VM runs -- the per-interface configs live inside the repeated NIC list, beyond these rules' reach
+        - OS license premiums for premium images (Windows Server, RHEL, SLES) bill on top of the machine rate; the catalog presets pin license-free Debian
+        - network egress and disk snapshots follow the workload's behavior
+      notes: Priced at on-demand rates for the machine type's documented vCPU and memory. The estimate assumes the VM runs all 730 hours; stopping it stops the compute meters but every disk keeps billing.

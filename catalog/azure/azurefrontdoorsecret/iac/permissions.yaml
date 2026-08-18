@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurefrontdoorsecret
+spec:
+  azure:
+    groups:
+      - purpose: ManageSecret
+        actions:
+          - Microsoft.Cdn/profiles/secrets/read
+          - Microsoft.Cdn/profiles/secrets/write
+          - Microsoft.Cdn/profiles/secrets/delete
+        provenance: derived
+        notes: Covers azurerm_cdn_frontdoor_secret -- create, read/refresh, and destroy (the resource is immutable; any change replaces it). The parent profile is addressed by its ARM ID parsed from the profile_id reference, and key_vault_certificate_id is passed through as a data-plane identifier -- the RUNNER needs no Key Vault access, because Front Door itself reads the certificate with Microsoft's own service principal (the Microsoft.AzureFrontDoor-Cdn enterprise application), granted read on the vault once per tenant outside this module. Held via CDN Profile Contributor, Contributor, or narrower custom roles.

@@ -1,0 +1,52 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. All four presets are zero-committed: the meter is monthly
+# ACTIVE users, and a pool with no active users in a month bills nothing
+# on any tier -- including the PLUS tier the two hardened presets pin,
+# which merely removes the free allotment once users do arrive -- stated
+# in exclusions, never padded into fabricated dollars.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awscognitouserpool
+spec:
+  presets:
+    - preset: 01-email-auth-basic
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - with no tier set the pool lands on ESSENTIALS (AWS's default), billing per monthly active user at the flat Essentials rate -- inside the 10,000 free MAUs LITE and ESSENTIALS pools share each month per account
+        - a user bills only in a calendar month where an identity operation touches them; dormant accounts sit free, so directory size is never the bill
+        - verification email rides the built-in COGNITO_DEFAULT sender -- free, but hard-capped at a daily volume fit only for development
+      notes: Zero committed cost -- an empty pool is free, and a small app's active users can live entirely inside the shared 10,000-MAU monthly allotment.
+    - preset: 02-oauth-with-hosted-ui
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - MAUs bill at the default ESSENTIALS rate against the shared 10,000-MAU monthly free allotment -- the hosted-UI domain and password policy add no rate of their own
+        - built-in email delivery stays on the free, daily-capped COGNITO_DEFAULT sender
+        - machine-to-machine token requests, if client-credentials app clients are added later, bill per successful token response with no free tier
+      notes: Zero committed cost -- the hosted UI is a sign-in surface, not a meter; the pool bills nothing until users authenticate through it.
+    - preset: 03-production-hardened
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - the pinned PLUS tier (required for ENFORCED threat protection) bills every monthly active user from the first -- PLUS has no free allotment, so the first sign-in of the month starts the meter at the highest per-MAU rate
+        - MFA, verification, and invitation email route through the referenced SES identity at SES per-message rates on that component
+        - if SMS factors are added later, every code the pool texts rides SNS per-message rates on the account -- the classic Cognito bill surprise
+      notes: Zero committed cost -- hardening is free at rest; what PLUS removes is the free tier, not the usage gate, so an idle month still bills zero.
+    - preset: 04-threat-protected
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - the PLUS tier bills every monthly active user from the first with no free allotment -- the price of ENFORCED threat protection with automated risk responses
+        - risk-notification and MFA email (block notices, verification challenges) route through the referenced SES identity at SES per-message rates
+        - user groups, risk exceptions, and takeover response actions add no meter of their own -- they shape what happens per sign-in, not what a sign-in costs beyond the PLUS MAU rate
+      notes: Zero committed cost -- the takeover defenses bill nothing until users exist to defend; from the first active user, PLUS prices protection into every MAU.

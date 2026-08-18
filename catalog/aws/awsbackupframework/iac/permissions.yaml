@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsbackupframework
+spec:
+  aws:
+    statements:
+      - sid: ManageFramework
+        actions:
+          - backup:CreateFramework
+          - backup:DescribeFramework
+          - backup:UpdateFramework
+          - backup:DeleteFramework
+        resources:
+          - arn:aws:backup:*:*:framework:*
+        provenance: derived
+        notes: Covers aws_backup_framework / backup.Framework -- the modules' single resource -- across create, refresh (DescribeFramework also polls deployment_status until the framework leaves its transitional states), in-place control/description updates, and destroy. All four actions authorize on the framework ARN format (arn:...:framework:${FrameworkName}-${FrameworkId}) per the service reference.
+      - sid: ManageTags
+        actions:
+          - backup:TagResource
+          - backup:UntagResource
+          - backup:ListTags
+        resources:
+          - arn:aws:backup:*:*:framework:*
+        provenance: derived
+        notes: TagResource rides CreateFramework for the module's identity tags and serves later tag reconciliation; ListTags backs every refresh. All three list the framework resource type in the service reference, so they stay ARN-scoped.

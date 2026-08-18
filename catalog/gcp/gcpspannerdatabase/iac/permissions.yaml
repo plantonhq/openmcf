@@ -1,0 +1,29 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpspannerdatabase
+spec:
+  gcp:
+    groups:
+      - purpose: EnableSpannerApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling spanner.googleapis.com on the target project. disable_on_destroy is false in both modules, so the disable permission is never needed.
+      - purpose: ManageDatabase
+        permissions:
+          - spanner.databaseOperations.get
+          - spanner.databases.create
+          - spanner.databases.drop
+          - spanner.databases.get
+          - spanner.databases.getDdl
+          - spanner.databases.update
+          - spanner.databases.updateDdl
+        provenance: derived
+        notes: Covers google_spanner_database -- create with initial DDL and CMEK; get plus getDdl for read/refresh (the provider reads both the database and its schema back); update for enable_drop_protection; updateDdl for appended DDL statements and for version_retention_period and default_time_zone (both are ALTER DATABASE SET OPTIONS statements under the hood); drop on destroy once the deletion guards allow it. Create and DDL mutations return long-running operations the provider polls via databaseOperations.get.

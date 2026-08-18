@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsiamuser
+spec:
+  billing_model: free
+  free_tier: An IAM user is a long-lived identity inside AWS IAM, and IAM is a feature of the AWS account offered at no additional charge -- no meter counts users, access keys, policy attachments, or permissions boundaries. The one access key this component mints by default costs nothing whether it signs one request or millions, Active or Inactive.
+  notes: "No field of this spec buys anything: the user name, path, policy wiring, boundary, and access-key lifecycle are all IAM control-plane configuration. The real spend lives entirely in what the user's credentials DO -- every AWS service called with the access key bills on that service's own meters, exactly as it would for any other principal. Nothing about the user itself ever appears on an invoice."

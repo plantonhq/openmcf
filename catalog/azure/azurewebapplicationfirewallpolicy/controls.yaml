@@ -1,0 +1,70 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurewebapplicationfirewallpolicy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A rule document held by Azure's network control plane; it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The policy carries no traffic of its own; TLS termination, protocol policy, and certificates live on the Application Gateway's listeners, a separate kind.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A policy document has no network endpoint; it governs how PUBLIC traffic reaching the attached gateway is filtered, not whether the gateway is public.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: custom_rules
+      evidence:
+        type: spec_default
+        reference: Custom rules are the source-restriction layer, evaluated FIRST by ascending priority -- IP_MATCH conditions on REMOTE_ADDR (or the XFF header behind another proxy) with BLOCK express IP denylists, GEO_MATCH expresses country-level restriction, negation_condition turns either into an allowlist, and RATE_LIMIT_RULE caps request rates per client address, per XFF address, or per geography before the managed rules ever run.
+      notes: An ALLOW action skips the remaining custom AND managed rules -- the allowlist gesture -- so ordering by priority is part of the security design; rate-limit rules deliberately cannot ALLOW (spec-enforced, mirroring Azure).
+    - control_id: edge-protection
+      status: enforced_by_default
+      field_path: managed_rules
+      evidence:
+        type: spec_default
+        reference: Request filtering IS the resource, and the spec refuses to deploy an empty shell -- managed_rules is required with at least one managed rule set (Azure rejects a WAF policy without one; the OWASP core rule set is the baseline), and omitted policy_settings applies Azure's defaults of enabled=true and PREVENTION mode, so a freshly attached policy BLOCKS SQL-injection, XSS, and the rest of the curated catalog out of the box rather than merely logging it.
+      notes: DETECTION mode is the deliberate tuning downgrade (log-only) for new policies watching real traffic; per-rule overrides and scoped exclusions tune false positives without disabling whole rule sets. Enforcement happens on Application Gateways that attach the policy by its policy_id output -- gateway-wide, per listener, or per URL path rule.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the policy exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The policy runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Policy creation, rule changes, and deletion land in the Azure Activity Log automatically as subscription-level posture. WAF match/block logs are emitted by the ATTACHED gateway's diagnostic settings (a separate kind) -- and this policy's log_scrubbing rules redact sensitive request parts (auth headers, PII arguments, client IPs) from those logs before they land.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The policy emits no metrics of its own; WAF metrics and firewall logs ride the attached Application Gateway's monitoring surface.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless declarative configuration -- nothing to back up; the manifest recreates the policy and its rules as one document.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A regional configuration object with no runtime footprint -- zone redundancy is the attached WAF_v2 gateway's deployment posture, a separate kind.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a WAF policy (Azure resource locks are subscription-side governance outside the manifest); Azure refuses to delete a policy still attached to a gateway, but that is dependency ordering, not a control.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The WAF engine and the managed rule content are Microsoft-maintained -- Microsoft curates and updates the OWASP core rule set, its own default rule set, and the bot manager set the policy references; no customer-visible patch surface exists on the engine.
+      notes: The rule-set VERSION is pinned by the spec (managed_rule_sets[].version) -- adopting a newer curated version (e.g. OWASP 3.2) is an explicit one-field change, which is version discipline rather than unpatched software.

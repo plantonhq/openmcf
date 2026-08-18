@@ -1,0 +1,49 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awskinesisstream
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon Kinesis
+      sku_meter: provisioned shard hours
+      pricing_unit: shard-hours
+      description: A PROVISIONED stream bills every shard every hour from creation, traffic or not -- shard_count times 730 hours is the committed core of its month.
+    - service_name: Amazon Kinesis
+      sku_meter: on-demand stream hours
+      pricing_unit: stream-hours
+      description: An ON_DEMAND stream bills a flat per-stream hourly fee from creation, on top of per-GB charges for the data actually written and read.
+  cost_drivers:
+    - field_path: stream_mode
+      sku_meter: provisioned shard hours
+      pricing_unit: shard-hours
+      impact: The fundamental pricing choice -- PROVISIONED bills shard-hours you size yourself; ON_DEMAND bills a per-stream hourly fee plus per-GB data charges that follow traffic.
+    - field_path: shard_count
+      sku_meter: provisioned shard hours
+      pricing_unit: shard-hours
+      impact: The direct multiplier on a PROVISIONED stream's committed bill -- every shard is 730 billed hours a month.
+    - field_path: retention_period_hours
+      sku_meter: extended retention shard hours
+      pricing_unit: shard-hours
+      impact: Retention beyond 24 hours adds an extended-retention surcharge (per shard-hour on PROVISIONED, per GB-month on ON_DEMAND); data kept beyond 7 days moves to long-term storage billed per GB-month plus a per-GB retrieval charge when read back.
+    - field_path: warm_throughput_mib_ps
+      sku_meter: warm throughput
+      pricing_unit: MiBps-hours
+      impact: Pre-provisioned warm burst capacity on an ON_DEMAND stream bills per MiB/s-hour on top of the on-demand charges, whether or not the burst arrives.
+    - field_path: shard_level_metrics
+      sku_meter: enhanced shard-level metrics
+      pricing_unit: metric-months
+      impact: Enhanced monitoring bills CloudWatch custom-metric charges per enabled metric per shard -- the spec's own doc flags the added cost; leave it empty for free stream-level metrics.
+    - field_path: kms_key_id
+      sku_meter: KMS key usage
+      impact: KMS encryption adds per-request key usage as records flow, and a customer-managed key bills its monthly fee on its own AwsKmsKey component; "alias/aws/kinesis" uses the AWS-managed key instead.
+  estimate_exclusions:
+    - ON_DEMAND data charges follow traffic -- per GB written and per GB read, plus per-GB-month extended retention on the data actually stored
+    - PROVISIONED PUT payload units bill per million units and follow write volume
+    - data older than 7 days bills long-term storage per GB-month and long-term retrieval per GB, both data-volume-dependent
+    - enhanced fan-out consumers bill consumer-shard hours and retrieved GB on their own AwsKinesisStreamConsumer components
+    - KMS request charges and customer-managed key fees bill through the referenced AwsKmsKey component
+  notes: "PROVISIONED commits its whole baseline at manifest time (shards times hours, plus the retention surcharge); ON_DEMAND commits only the per-stream hourly fee and lets the data charges follow traffic. The stream_mode choice is the cost model choice."

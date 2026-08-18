@@ -1,0 +1,24 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureeventhub
+spec:
+  azure:
+    groups:
+      - purpose: ManageEventHub
+        actions:
+          - Microsoft.EventHub/namespaces/eventhubs/read
+          - Microsoft.EventHub/namespaces/eventhubs/write
+          - Microsoft.EventHub/namespaces/eventhubs/Delete
+        provenance: derived
+        notes: Covers azurerm_eventhub -- create, read/refresh, in-place updates (retention, status, capture), and destroy, addressed under the parent namespace resolved from namespace_id. Azure's operation inventory spells the delete action with a capital D. Held via Azure Event Hubs Data Owner is NOT enough (that is data-plane); use Contributor or a custom role carrying these control-plane actions.
+      - purpose: ReadParentNamespace
+        actions:
+          - Microsoft.EventHub/namespaces/read
+        provenance: derived
+        notes: Exercised only when a plan increases partition_count on an existing hub -- the provider's diff logic Gets the parent namespace to verify the SKU is Premium or the namespace sits on a dedicated cluster before allowing the change. Never called on create, plain refresh, or destroy.

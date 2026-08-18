@@ -1,0 +1,97 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpfilestoreinstance
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Filestore encrypts all file-share data at rest with Google-managed keys on every instance without configuration.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_name
+      evidence:
+        type: spec_default
+        reference: Unset means Google-managed encryption; naming a Cloud KMS key at creation encrypts the share's data at rest with the customer-managed key. Immutable after creation.
+      notes: The 03-high-performance-zonal preset sets it. The Filestore service agent needs encrypt/decrypt on the key as a prerequisite.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: protocol
+      evidence:
+        type: spec_default
+        reference: Unset means NFS_V3 -- NFS traffic is cleartext, confined to the instance's VPC; NFS_V4_1 (HIGH_SCALE_SSD, ZONAL, REGIONAL, ENTERPRISE tiers) supports Kerberos, including krb5p privacy mode that encrypts NFS traffic on the wire. Immutable after creation.
+      notes: No preset enables NFS_V4_1 -- all rely on VPC confinement for transport. Kerberos itself is mount-time client configuration on top of the protocol choice.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The instance serves only private VPC addresses -- via peering, private services access, or PSC endpoints per network_config.connect_mode -- and no public endpoint exists on the service.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: file_share.nfs_export_options
+      evidence:
+        type: spec_default
+        reference: Empty means every client that can route to the instance mounts with READ_WRITE and NO_ROOT_SQUASH; export options narrow access to named ip_ranges with per-range access_mode and squash_mode.
+      notes: The 02-production-enterprise preset allowlists 10.0.0.0/8 with ROOT_SQUASH. Reachability is further bounded by the VPC in network_config.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: An NFS file server on private VPC addresses is protected by network scoping and export controls rather than a WAF; no HTTP request-filtering attachment point exists.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management-plane access (create, resize, delete, backup) is governed by Cloud IAM roles unconditionally.
+      notes: The NFS data plane is NOT role-based -- file access is UNIX permissions plus export options (ip_ranges, access_mode, squash_mode), and with NFS_V4_1 optionally LDAP-mapped identities via the ldap block.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: NFS mounts carry no cloud credential to manage -- clients authenticate by network reachability and UNIX identity (or Kerberos principals on NFS_V4_1), so there is no service-credential surface on this resource.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: protocol
+      evidence:
+        type: spec_default
+        reference: The weak path is NFS_V3's AUTH_SYS -- client-asserted numeric UID/GID with no cryptographic identity, and it is the unset default; NFS_V4_1 enables Kerberos authentication. Immutable after creation.
+      notes: No preset opts up to NFS_V4_1; ROOT_SQUASH in export options (preset 02) blunts the sharpest AUTH_SYS edge but does not authenticate anyone.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Administrative operations on the instance land in Cloud Audit Logs (Admin Activity) unconditionally.
+      notes: File-level reads and writes over NFS are not audit-logged -- a caveat for data-access forensics.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Filestore publishes instance metrics (used bytes, free bytes, IOPS, throughput) to Cloud Monitoring for every instance without configuration.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Backup creation and scheduling live outside this spec -- Filestore backups are separate resources created via the backups API or Backup and DR Service; this spec only CONSUMES backups at restore time (file_share.source_backup / source_backupdr_backup). initial_replication provides DR standby, not point-in-time recovery.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup schedule on this resource there is no retention knob here; retention is set where the backup or Backup and DR plan is defined.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: tier
+      evidence:
+        type: spec_default
+        reference: REGIONAL and ENTERPRISE tiers replicate the share across zones within the region and take a region as location; BASIC_HDD, BASIC_SSD, HIGH_SCALE_SSD, and ZONAL are single-zone. Immutable after creation.
+      notes: The 02-production-enterprise preset uses ENTERPRISE; presets 01 and 03 are zonal tiers.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_protection_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to false; when true the instance cannot be deleted until the flag is deliberately flipped back.
+      notes: The 02-production-enterprise preset enables it with a stated reason. deletion_policy PREVENT is a second, independent destroy-time guard.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Filestore is fully managed -- GCP applies OS and service patches to the underlying file servers with no customer-exposed patching surface or opt-out.

@@ -85,12 +85,3 @@ module "hq_port" {
   the facility completes the physical cross-connect.
 - The provider serializes the port and its authorization children with
   its own lock (ARM allows one port mutation at a time).
-
-## Required Permissions
-
-The deploying credential needs
-`Microsoft.Network/expressRoutePorts/write` (and
-`.../authorizations/write` when issuing keys) -- held via Network
-Contributor, Contributor, or Owner. MACsec additionally needs the
-port's user-assigned identity to hold Key Vault secret GET on the
-CAK/CKN secrets.

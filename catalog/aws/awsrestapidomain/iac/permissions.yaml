@@ -1,0 +1,43 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsrestapidomain
+spec:
+  aws:
+    statements:
+      - sid: ManageDomainAndMappings
+        actions:
+          - apigateway:GET
+          - apigateway:POST
+          - apigateway:PATCH
+          - apigateway:PUT
+          - apigateway:DELETE
+        resources:
+          - arn:aws:apigateway:*::/domainnames
+          - arn:aws:apigateway:*::/domainnames/*
+          - arn:aws:apigateway:*:*:/domainnames/*
+          - arn:aws:apigateway:*::/tags/*
+        provenance: derived
+        notes: Covers aws_api_gateway_domain_name and aws_api_gateway_base_path_mapping (tf) / apigateway.DomainName and apigateway.BasePathMapping (pulumi). API Gateway authorizes by HTTP verb against resource paths -- POST on /domainnames creates, GET/PATCH/DELETE act on /domainnames/{domain} and its /basepathmappings children. Public domain ARNs carry no account-id segment, but PRIVATE domains (and their base path mappings) use account-qualified ARNs of the form arn:aws:apigateway:region:account:/domainnames/{domain}+{domainIdentifier}, per the service reference -- both patterns are required. The Tags resource authorizes GET/PUT/DELETE; PUT serves only tagging here.
+      - sid: ManageDomainAccessAssociations
+        actions:
+          - apigateway:GET
+          - apigateway:POST
+          - apigateway:DELETE
+        resources:
+          - arn:aws:apigateway:*:*:/domainnameaccessassociations
+          - arn:aws:apigateway:*:*:/domainnameaccessassociations/*
+        provenance: derived
+        notes: Covers aws_api_gateway_domain_name_access_association (tf) / apigateway.DomainNameAccessAssociation (pulumi), created when the spec's access_associations grant VPC endpoints access to a PRIVATE domain. POST on the collection creates, DELETE removes; no PATCH exists -- associations are replace-only, matching the modules. These ARNs are account-qualified per the service reference.
+      - sid: CreateApiGatewayServiceLinkedRole
+        actions:
+          - iam:CreateServiceLinkedRole
+        resources:
+          - arn:aws:iam::*:role/aws-service-role/ops.apigateway.amazonaws.com/AWSServiceRoleForAPIGateway
+        provenance: derived
+        notes: AWS auto-creates the AWSServiceRoleForAPIGateway service-linked role (used, among other things, to read the referenced ACM certificate) when the first API, custom domain name, or VPC link is created in an account. Only the account's first such creation exercises this permission.

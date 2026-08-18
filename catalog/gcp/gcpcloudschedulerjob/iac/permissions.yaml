@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpcloudschedulerjob
+spec:
+  gcp:
+    groups:
+      - purpose: EnableCloudSchedulerApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling cloudscheduler.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageJob
+        permissions:
+          - cloudscheduler.jobs.create
+          - cloudscheduler.jobs.get
+          - cloudscheduler.jobs.update
+          - cloudscheduler.jobs.delete
+        provenance: derived
+        notes: Covers google_cloud_scheduler_job for all three target arms -- create, read/refresh, in-place updates (schedule, targets, retry config, paused state), and destroy. Job mutations return synchronously, so no operations permission exists or is needed (Cloud Scheduler defines no cloudscheduler.operations.* permissions in IAM's testable-permissions inventory -- verified live). Pause/resume driven through the paused field authorizes as cloudscheduler.jobs.update on this provider version, not the separate jobs.pause/jobs.enable permissions the API also defines for its dedicated pause/resume RPCs.
+      - purpose: ActAsDispatchServiceAccount
+        permissions:
+          - iam.serviceAccounts.actAs
+        provenance: derived
+        notes: Required only when http_target.oauth_token or http_target.oidc_token names a service account for authenticated dispatch (the 03-secure-cloud-run-trigger preset does) -- the Cloud Scheduler API demands actAs on that account at job create/update time.

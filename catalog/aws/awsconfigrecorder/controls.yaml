@@ -1,0 +1,79 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsconfigrecorder
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Delivered configuration history and snapshot files are server-side encrypted in S3 (SSE-S3) when no key is referenced, and AWS Config's own internal store of recorded items is AWS-managed encrypted storage; an unencrypted posture is not representable.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: delivery_channel.s3_kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Unset means SSE-S3 for the delivered files; referencing a KMS key switches delivery to SSE-KMS under a key you own. The key policy must let AWS Config use it -- delivery fails silently against a key that refuses the service.
+      notes: The key covers the S3-delivered files only -- Config's internal item store stays under AWS-managed encryption regardless.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Config API is HTTPS-only, and delivery to S3 and SNS rides AWS's TLS service channels; no plaintext path exists.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The recorder is a regional API resource with no endpoint of its own. Whether the delivered configuration history -- a detailed map of the account's infrastructure -- is exposed is the referenced AwsS3Bucket's posture, decided on that component.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens on a recorder; there is no inbound network surface to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: With no request-serving surface there is no WAF attachment point.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every recorder operation -- configure, start, stop, delete, retention changes -- is IAM-authorized; there is no non-IAM path to alter what the region records.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The recorder runs no user workload. AWS Config assumes the referenced service role (role_arn, trusting config.amazonaws.com) with short-lived credentials to read resource configurations and write deliveries -- service plumbing fixed by AWS's design, not a workload-identity choice.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: AWS Config has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Operations on the recorder itself -- who stopped recording, who narrowed the scope, who deleted the channel -- are management events captured in CloudTrail unconditionally, so turning off the account's change history is itself on the record.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: delivery_channel.sns_topic_arn
+      evidence:
+        type: spec_default
+        reference: Unset means recorded changes land silently in S3 and the Config timeline; referencing an SNS topic publishes a notification per configuration change and delivery, the hook monitoring pipelines subscribe to.
+      notes: The recorder is itself the account's change-observability primitive -- what it records feeds the Config timeline, rules, and aggregators.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The recorder stores nothing a backup could protect -- recorded items live in AWS Config's managed store until retention lapses, and the delivered files' durability is the referenced bucket's posture. Recreating the recorder resumes recording; history survives it.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility there is no backup retention to set. retention_period_in_days (30-2557, default 2557) governs how long RECORDED items stay queryable -- data retention, not backup retention.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AWS Config is a regional managed service AWS operates across availability zones; the recorder has no zonal footprint the manifest could configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the recorder, channel, nor retention configuration carries a deletion-protection flag. Destroy stops the recorder and removes all three; already-recorded items stay queryable until their retention lapses, so deletion loses future capture, not history.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the recording and delivery pipeline; the recorder exposes no runtime, version, or maintenance surface.

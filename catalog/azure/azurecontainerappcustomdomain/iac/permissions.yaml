@@ -1,0 +1,18 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurecontainerappcustomdomain
+spec:
+  azure:
+    groups:
+      - purpose: ManageCustomDomainBinding
+        actions:
+          - Microsoft.App/containerapps/read
+          - Microsoft.App/containerapps/write
+        provenance: derived
+        notes: Covers both azurerm_container_app_custom_domain variants (byo and managed). The binding has no ARM collection of its own -- it is an entry in the parent Container App's ingress configuration -- so every lifecycle operation is a read-modify-write of the app itself. Create reads the app and writes it back with the domain appended, refresh reads the app, and destroy is another WRITE that removes the entry (no delete operation exists for this resource). Verified against Microsoft.App's published operations; held via Contributor or a ContainerApp-scoped contributor role on the app's resource group. The referenced environment certificate is passed by ARM ID and never read by the module.

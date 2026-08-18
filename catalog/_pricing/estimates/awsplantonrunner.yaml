@@ -1,0 +1,130 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsplantonrunner
+spec:
+  presets:
+    - preset: 01-private-vpc-worker
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: AWS Fargate
+          sku_meter: Fargate vCPU hours
+          pricing_unit: vCPU-hours
+          pricing_quantity: "365"
+          quantity_basis: one always-on task x cpu CPU units (the spec default 512 when unset) x 1/1024 vCPU per CPU unit (0.0009765625 exactly) x 730 hours, at Linux/x86_64 Fargate rates -- the modules set no runtime platform, so the AWS default architecture applies; every catalog preset leaves region a placeholder, so this prices the us-east-1 rate
+          list_unit_price: "0.04048"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonECS/20260707160651/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "14.7752"
+        - service_name: AWS Fargate
+          sku_meter: Fargate memory hours
+          pricing_unit: GB-hours
+          pricing_quantity: "730"
+          quantity_basis: one always-on task x memory MiB (the spec default 1024 when unset) x 1/1024 GB per MiB (0.0009765625 exactly) x 730 hours at the us-east-1 Fargate memory rate
+          list_unit_price: "0.004445"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonECS/20260707160651/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "3.24485"
+        - service_name: AWS Secrets Manager
+          sku_meter: credentials secret
+          pricing_unit: secret-months
+          pricing_quantity: "1"
+          quantity_basis: the modules store the credentials document as exactly one Secrets Manager secret, billed the flat per-secret monthly fee for the runner's lifetime -- priced at the us-east-1 rate under the same stated region assumption as the compute lines (the per-secret fee is region-uniform on AWS's published sheet)
+          list_unit_price: "0.4"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSSecretsManager/20250828153804/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "0.4000"
+      total_list_cost: "18.42005"
+      exclusions:
+        - CloudWatch Logs ingestion and storage bill per GB and follow how many operations the runner executes; log_retention_days caps how long stored bytes keep billing
+        - data transfer -- image pulls and control-plane traffic follow standard AWS data transfer rates
+        - in the recommended private-subnet posture the runner's outbound path rides a NAT gateway, whose hours and per-GB processing bill on that component, not here
+      notes: The modules fix the task count at one -- scaling execution capacity means more runners (more registrations), never more copies of this one -- so the estimate never multiplies by a replica count. The task's 20 GB of Fargate ephemeral storage is included at no charge (the modules request no more), and the ECS cluster, task definition, security group, and IAM roles are free resources. The credentials secret is created with a zero-day recovery window, so destroying the runner stops the secret's meter immediately.
+    - preset: 02-dual-mode
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: AWS Fargate
+          sku_meter: Fargate vCPU hours
+          pricing_unit: vCPU-hours
+          pricing_quantity: "365"
+          quantity_basis: one always-on task x cpu CPU units (the spec default 512 when unset) x 1/1024 vCPU per CPU unit (0.0009765625 exactly) x 730 hours, at Linux/x86_64 Fargate rates -- the modules set no runtime platform, so the AWS default architecture applies; every catalog preset leaves region a placeholder, so this prices the us-east-1 rate
+          list_unit_price: "0.04048"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonECS/20260707160651/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "14.7752"
+        - service_name: AWS Fargate
+          sku_meter: Fargate memory hours
+          pricing_unit: GB-hours
+          pricing_quantity: "730"
+          quantity_basis: one always-on task x memory MiB (the spec default 1024 when unset) x 1/1024 GB per MiB (0.0009765625 exactly) x 730 hours at the us-east-1 Fargate memory rate
+          list_unit_price: "0.004445"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonECS/20260707160651/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "3.24485"
+        - service_name: AWS Secrets Manager
+          sku_meter: credentials secret
+          pricing_unit: secret-months
+          pricing_quantity: "1"
+          quantity_basis: the modules store the credentials document as exactly one Secrets Manager secret, billed the flat per-secret monthly fee for the runner's lifetime -- priced at the us-east-1 rate under the same stated region assumption as the compute lines (the per-secret fee is region-uniform on AWS's published sheet)
+          list_unit_price: "0.4"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSSecretsManager/20250828153804/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "0.4000"
+      total_list_cost: "18.42005"
+      exclusions:
+        - CloudWatch Logs ingestion and storage bill per GB and follow how many operations the runner executes; log_retention_days caps how long stored bytes keep billing
+        - data transfer -- image pulls and control-plane traffic follow standard AWS data transfer rates
+        - in the recommended private-subnet posture the runner's outbound path rides a NAT gateway, whose hours and per-GB processing bill on that component, not here
+      notes: The modules fix the task count at one -- scaling execution capacity means more runners (more registrations), never more copies of this one -- so the estimate never multiplies by a replica count. The task's 20 GB of Fargate ephemeral storage is included at no charge (the modules request no more), and the ECS cluster, task definition, security group, and IAM roles are free resources. The credentials secret is created with a zero-day recovery window, so destroying the runner stops the secret's meter immediately.
+    - preset: 03-high-capacity
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: AWS Fargate
+          sku_meter: Fargate vCPU hours
+          pricing_unit: vCPU-hours
+          pricing_quantity: "730"
+          quantity_basis: one always-on task x cpu CPU units (the spec default 512 when unset) x 1/1024 vCPU per CPU unit (0.0009765625 exactly) x 730 hours, at Linux/x86_64 Fargate rates -- the modules set no runtime platform, so the AWS default architecture applies; every catalog preset leaves region a placeholder, so this prices the us-east-1 rate
+          list_unit_price: "0.04048"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonECS/20260707160651/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "29.5504"
+        - service_name: AWS Fargate
+          sku_meter: Fargate memory hours
+          pricing_unit: GB-hours
+          pricing_quantity: "2920"
+          quantity_basis: one always-on task x memory MiB (the spec default 1024 when unset) x 1/1024 GB per MiB (0.0009765625 exactly) x 730 hours at the us-east-1 Fargate memory rate
+          list_unit_price: "0.004445"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonECS/20260707160651/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "12.9794"
+        - service_name: AWS Secrets Manager
+          sku_meter: credentials secret
+          pricing_unit: secret-months
+          pricing_quantity: "1"
+          quantity_basis: the modules store the credentials document as exactly one Secrets Manager secret, billed the flat per-secret monthly fee for the runner's lifetime -- priced at the us-east-1 rate under the same stated region assumption as the compute lines (the per-secret fee is region-uniform on AWS's published sheet)
+          list_unit_price: "0.4"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSSecretsManager/20250828153804/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "0.4000"
+      total_list_cost: "42.9298"
+      exclusions:
+        - CloudWatch Logs ingestion and storage bill per GB and follow how many operations the runner executes; log_retention_days caps how long stored bytes keep billing
+        - data transfer -- image pulls and control-plane traffic follow standard AWS data transfer rates
+        - in the recommended private-subnet posture the runner's outbound path rides a NAT gateway, whose hours and per-GB processing bill on that component, not here
+      notes: The modules fix the task count at one -- scaling execution capacity means more runners (more registrations), never more copies of this one -- so the estimate never multiplies by a replica count. The task's 20 GB of Fargate ephemeral storage is included at no charge (the modules request no more), and the ECS cluster, task definition, security group, and IAM roles are free resources. The credentials secret is created with a zero-day recovery window, so destroying the runner stops the secret's meter immediately.

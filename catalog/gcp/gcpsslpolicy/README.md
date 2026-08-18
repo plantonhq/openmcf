@@ -10,7 +10,7 @@ A single SSL policy. Leave `region` empty for a **global** policy (global extern
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **An existing GCP project** — referenced via `projectId` (or the provider's default project)
-- **IAM permissions** — any role carrying `compute.sslPolicies.*` on the target project
+- **IAM permissions** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Quick Start
 

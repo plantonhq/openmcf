@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsinternetgateway
+spec:
+  billing_model: free
+  free_tier: An internet gateway carries no meter of its own -- AWS charges nothing for creating one, attaching it to a VPC, or keeping it attached, and there is no hourly or per-GB gateway fee at any traffic volume. AWS's own pricing note says it plainly -- there is no charge for an internet gateway; data transfer is charged to the EC2 resources that use it.
+  notes: "No field of this spec buys anything: the VPC attachment is free configuration. The real spend rides the traffic, billed elsewhere -- data transfer OUT to the internet lands on the EC2 data-transfer meters of the instances and services sending it (inbound from the internet is free), and every public IPv4 address that makes something reachable through this gateway bills per-hour on the resource holding the address, never on the gateway. A gateway attached to a silent VPC costs exactly nothing."

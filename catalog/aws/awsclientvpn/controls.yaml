@@ -1,0 +1,87 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsclientvpn
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The endpoint terminates VPN tunnels and forwards traffic; it stores no customer data at rest. Connection logs persist in CloudWatch Logs under that component's encryption posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every client session is a TLS-protected OpenVPN tunnel; the spec requires server_certificate_arn (the endpoint's TLS identity, mandatory for every authentication type), and no unencrypted session mode exists.
+      notes: transport_protocol picks udp or tcp for the tunnel transport -- both carry the same encrypted OpenVPN payload.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The endpoint is the public front door for remote clients by design -- there is no private-only mode. The security boundary is authentication (authentication_options) plus per-CIDR authorization rules, covered under no-legacy-auth and restricted-ingress.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: authorization_rules
+      evidence:
+        type: spec_default
+        reference: The endpoint authorizes no traffic by default -- without at least one rule, connected clients can reach NOTHING. Each rule grants exactly one destination CIDR to all authenticated clients or to one identity-provider group.
+      notes: security_group_ids additionally govern traffic between the endpoint's network interfaces and VPC resources (the VPC's default group applies when omitted). Presets grant the VPC CIDR (01), 0.0.0.0/0 for full tunnel (02), and per-group scopes (03).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Not an HTTP surface -- WAF cannot associate with a Client VPN endpoint. The adjacent connection-level gate is client_connect_options, which runs a Lambda posture check (device compliance, source IP policy) on every new connection.
+    - control_id: rbac
+      status: configurable
+      field_path: authorization_rules
+      evidence:
+        type: spec_default
+        reference: access_group_id scopes a destination CIDR to one identity-provider group (an Active Directory group SID or a SAML group attribute value); authorize_all_groups grants every authenticated client. Exactly one arm per rule, CEL-enforced (exactly_one_grantee).
+      notes: The 03-saml-sso preset is the worked example -- engineering reaches the whole VPC, contractors only the tools subnet. Certificate-only endpoints have no group concept and use authorize_all_groups.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The endpoint runs no workloads and holds no cloud credentials of its own; the optional client_connect_options Lambda executes under its own function role, owned by the referenced AwsLambda.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: authentication_options
+      evidence:
+        type: spec_validation
+        reference: The auth_type_valid_values rule restricts authentication to certificate-authentication (mutual TLS), directory-service-authentication (AWS Directory Service), or federated-authentication (SAML 2.0) -- no shared-secret or anonymous mode is representable, and every option is create-time immutable.
+      notes: Directory user/password is the weakest arm; the presets choose mutual TLS (01, 02) and SAML federation (03). Up to two options may combine, and a client passes on ANY one -- combining a weak option weakens the endpoint.
+    - control_id: audit-logging
+      status: configurable
+      field_path: connection_log
+      evidence:
+        type: spec_default
+        reference: Unset means no connection logging; presence streams connection events (connect, disconnect, authentication failures) to the named CloudWatch log group.
+      notes: All three presets enable it. The spec doc's own warning stands -- without it there is no record of who connected.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AWS publishes Client VPN metrics (active connections, authentication failures, ingress/egress bytes and packets, certificate days-to-expiry) to CloudWatch every five minutes for every endpoint; this cannot be disabled.
+      notes: Endpoints using client_connect_options additionally get posture-assessment metrics (handler timeouts, denied connections).
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless network front door -- no data to back up. The configuration is declarative and re-creatable from the manifest (authentication options are ForceNew, so recreation replaces the endpoint wholesale).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: subnet_ids
+      evidence:
+        type: spec_default
+        reference: Each associated subnet attaches the endpoint to that subnet's Availability Zone; associating subnets in two AZs gives zone resilience (each association bills hourly).
+      notes: The 03-saml-sso preset associates two AZs; 01 and 02 run single-AZ. Zero associations is valid (a pre-staged endpoint) but routes no traffic.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor this spec offers a deletion-protection flag for a Client VPN endpoint; the blast radius of deletion is dropped VPN sessions, recreated declaratively -- though each subnet re-association takes AWS several minutes.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the OpenVPN server fleet; no customer-visible patch surface exists.

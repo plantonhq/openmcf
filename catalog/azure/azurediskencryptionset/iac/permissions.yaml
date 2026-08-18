@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurediskencryptionset
+spec:
+  azure:
+    groups:
+      - purpose: ManageDiskEncryptionSet
+        actions:
+          - Microsoft.Compute/diskEncryptionSets/read
+          - Microsoft.Compute/diskEncryptionSets/write
+          - Microsoft.Compute/diskEncryptionSets/delete
+        provenance: derived
+        notes: Covers azurerm_disk_encryption_set -- create, read/refresh, in-place updates (key reference, rotation flag, identity, tags), and destroy. The module passes key_vault_key_id through as-is; ARM validates the key and the vault's purge-protection posture server-side, so the RUNNER needs no Key Vault permission. The Key Vault crypto access ("Key Vault Crypto Service Encryption User" on the key) belongs to the SET'S managed identity at runtime, not to the runner, and is granted through a role-assignment fixture composed alongside the set.

@@ -83,11 +83,3 @@ module "remote_workforce" {
   reads -- the import map declares the matching tolerance.
 - Policy groups deploy as standalone ARM children keyed by name;
   `name` and `is_default` are ForceNew on each group.
-
-## Required Permissions
-
-The deploying credential needs
-`Microsoft.Network/vpnServerConfigurations/write` (and
-`.../vpnServerConfigurations/configurationPolicyGroups/write` when
-policy groups are configured) -- held via Network Contributor,
-Contributor, or Owner on the resource group.

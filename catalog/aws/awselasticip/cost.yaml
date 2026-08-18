@@ -1,0 +1,32 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awselasticip
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Amazon Virtual Private Cloud
+      sku_meter: public IPv4 address usage
+      pricing_unit: IP-hours
+      description: The address bills every hour from allocation until release, attached or not -- attached it meters as an in-use public IPv4 address, unattached as an idle one, at the same hourly rate in both states.
+  cost_drivers:
+    - field_path: instance
+      sku_meter: public IPv4 address usage
+      pricing_unit: IP-hours
+      impact: Associating with an instance moves the address from the idle meter to the in-use meter; the hourly rate is identical, so attachment changes what the bill line says, not what it costs.
+    - field_path: network_interface
+      sku_meter: public IPv4 address usage
+      pricing_unit: IP-hours
+      impact: Associating with a network interface moves the address from the idle meter to the in-use meter at the same hourly rate (see instance).
+    - field_path: public_ipv4_pool
+      sku_meter: public IPv4 address usage
+      impact: An address allocated from your own BYOIP pool is not charged the public IPv4 rate at all -- AWS bills only addresses from its own space -- so a BYOIP EIP removes this component's entire bill.
+    - field_path: ipam_pool_id
+      sku_meter: public IPv4 address usage
+      impact: What an IPAM-pool address costs depends on what the pool holds -- BYOIP space bills nothing, while an Amazon-provided contiguous block bills per address on the block itself from the moment the block is provisioned, not on this EIP.
+  estimate_exclusions:
+    - when the address is allocated from an IPAM pool, IPAM Advanced Tier bills its own hourly fee per active IP it manages, outside this component
+  notes: The address-hours are the whole bill -- there is no usage dimension on an Elastic IP itself. An address referenced by a consumer through its allocation id (an NLB subnet mapping, a NAT gateway) is in-use even though this spec's association fields are empty; the rate is the same either way. Releasing the address is the only way to stop the meter.

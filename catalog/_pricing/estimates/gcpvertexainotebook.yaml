@@ -1,0 +1,280 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpvertexainotebook
+spec:
+  presets:
+    - preset: 01-basic-notebook
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Notebooks
+          sku_meter: instance vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "2920"
+          quantity_basis: e2-standard-4 carries 4 vCPUs x 730 hours at the E2 Workbench passthrough per-vCPU rate
+          list_unit_price: "0.026173908"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "76.42781136"
+        - service_name: Notebooks
+          sku_meter: instance memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "11680"
+          quantity_basis: e2-standard-4 carries 16 GB of memory x 730 hours at the E2 Workbench passthrough per-GiB rate
+          list_unit_price: "0.003508236"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "40.97619648"
+        - service_name: Notebooks
+          sku_meter: boot disk storage
+          pricing_unit: GiB-months
+          pricing_quantity: "200"
+          quantity_basis: the boot disk's provisioned GiB (boot_disk.disk_size_gb, defaulting to GCP's documented 150 GB) at the disk type's Workbench passthrough capacity rate (an unset type defaults to PD_SSD), billing full or empty and continuing while the instance is stopped
+          list_unit_price: "0.204"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "40.8000"
+        - service_name: Notebooks
+          sku_meter: vCPU management fee
+          pricing_unit: vCPU-hours
+          pricing_quantity: "2920"
+          quantity_basis: the Workbench management fee on the same 4 vCPUs x 730 hours at the E2 per-vCPU fee rate
+          list_unit_price: "0.004362318"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "12.73796856"
+        - service_name: Notebooks
+          sku_meter: memory management fee
+          pricing_unit: GiB-hours
+          pricing_quantity: "11680"
+          quantity_basis: the Workbench management fee on the same 16 GB x 730 hours at the E2 per-GiB fee rate
+          list_unit_price: "0.000584706"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "6.82936608"
+        - service_name: Notebooks
+          sku_meter: boot disk management fee
+          pricing_unit: GiB-months
+          pricing_quantity: "200"
+          quantity_basis: the Workbench management fee on the same boot-disk GiB at the disk type's per-GiB-month fee rate
+          list_unit_price: "0.034"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "6.8000"
+        - service_name: Notebooks
+          sku_meter: data disk storage
+          pricing_unit: GiB-months
+          pricing_quantity: "100"
+          quantity_basis: the data disk's provisioned GiB (data_disk.disk_size_gb, defaulting to GCP's documented 100 GB -- the service attaches the data disk even when the manifest omits the block) at the disk type's Workbench passthrough capacity rate (an unset type defaults to PD_STANDARD)
+          list_unit_price: "0.048"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "4.8000"
+        - service_name: Notebooks
+          sku_meter: data disk management fee
+          pricing_unit: GiB-months
+          pricing_quantity: "100"
+          quantity_basis: the Workbench management fee on the same data-disk GiB at the disk type's per-GiB-month fee rate
+          list_unit_price: "0.008"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "0.8000"
+      total_list_cost: "190.17134248"
+      exclusions:
+        - external IPv4 usage -- the instance holds a public IP (ephemeral, or the pinned GcpAddress in network_interface.external_ip) that bills hourly while attached, a Compute Engine charge outside this book's pinned set
+        - network egress and any Cloud Logging or Monitoring ingestion from agents installed via metadata
+      notes: "The estimate assumes the instance runs all 730 hours; stopping it stops the compute meters but both disks keep billing. Rates are the Notebooks service's own SKUs: Compute Engine-equivalent passthrough usage plus the Workbench management fee, priced per unit -- there is no flat per-instance fee."
+    - preset: 02-gpu-ml-notebook
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Notebooks
+          sku_meter: accelerator hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: accelerator_config.core_count T4 GPUs x 730 hours at the T4 Workbench passthrough hourly rate
+          list_unit_price: "0.42"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "306.6000"
+        - service_name: Notebooks
+          sku_meter: instance vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "5840"
+          quantity_basis: n1-standard-8 carries 8 vCPUs x 730 hours at the N1 Workbench passthrough per-vCPU rate
+          list_unit_price: "0.0379332"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "221.529888"
+        - service_name: Notebooks
+          sku_meter: instance memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "21900"
+          quantity_basis: n1-standard-8 carries 30 GB of memory (the N1 standard 3.75 GB-per-vCPU ratio) x 730 hours at the N1 Workbench passthrough per-GiB rate
+          list_unit_price: "0.0050844"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "111.34836"
+        - service_name: Notebooks
+          sku_meter: data disk storage
+          pricing_unit: GiB-months
+          pricing_quantity: "500"
+          quantity_basis: the data disk's provisioned GiB (data_disk.disk_size_gb, defaulting to GCP's documented 100 GB -- the service attaches the data disk even when the manifest omits the block) at the disk type's Workbench passthrough capacity rate (an unset type defaults to PD_STANDARD)
+          list_unit_price: "0.204"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "102.0000"
+        - service_name: Notebooks
+          sku_meter: accelerator management fee
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: the Workbench management fee on the same GPU count x 730 hours at the T4 per-GPU fee rate
+          list_unit_price: "0.07"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "51.1000"
+        - service_name: Notebooks
+          sku_meter: boot disk storage
+          pricing_unit: GiB-months
+          pricing_quantity: "200"
+          quantity_basis: the boot disk's provisioned GiB (boot_disk.disk_size_gb, defaulting to GCP's documented 150 GB) at the disk type's Workbench passthrough capacity rate (an unset type defaults to PD_SSD), billing full or empty and continuing while the instance is stopped
+          list_unit_price: "0.204"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "40.8000"
+        - service_name: Notebooks
+          sku_meter: vCPU management fee
+          pricing_unit: vCPU-hours
+          pricing_quantity: "5840"
+          quantity_basis: the Workbench management fee on the same 8 vCPUs x 730 hours at the N1 per-vCPU fee rate
+          list_unit_price: "0.0063222"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "36.921648"
+        - service_name: Notebooks
+          sku_meter: memory management fee
+          pricing_unit: GiB-hours
+          pricing_quantity: "21900"
+          quantity_basis: the Workbench management fee on the same 30 GB x 730 hours at the N1 per-GiB fee rate
+          list_unit_price: "0.0008474"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "18.55806"
+        - service_name: Notebooks
+          sku_meter: data disk management fee
+          pricing_unit: GiB-months
+          pricing_quantity: "500"
+          quantity_basis: the Workbench management fee on the same data-disk GiB at the disk type's per-GiB-month fee rate
+          list_unit_price: "0.034"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "17.0000"
+        - service_name: Notebooks
+          sku_meter: boot disk management fee
+          pricing_unit: GiB-months
+          pricing_quantity: "200"
+          quantity_basis: the Workbench management fee on the same boot-disk GiB at the disk type's per-GiB-month fee rate
+          list_unit_price: "0.034"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "6.8000"
+      total_list_cost: "912.657956"
+      exclusions:
+        - external IPv4 usage -- the instance holds a public IP (ephemeral, or the pinned GcpAddress in network_interface.external_ip) that bills hourly while attached, a Compute Engine charge outside this book's pinned set
+        - reservation economics -- compute consumed from a reservation still bills these on-demand rates, but the reservation itself bills for its reserved capacity whether used or not, a purchase outside this manifest
+        - network egress and any Cloud Logging or Monitoring ingestion from agents installed via metadata
+      notes: "The estimate assumes the instance runs all 730 hours; stopping it stops the compute meters but both disks keep billing. Rates are the Notebooks service's own SKUs: Compute Engine-equivalent passthrough usage plus the Workbench management fee, priced per unit -- there is no flat per-instance fee."
+    - preset: 03-secure-private-notebook
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Notebooks
+          sku_meter: instance vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "2920"
+          quantity_basis: n2d-standard-4 carries 4 vCPUs x 730 hours at the N2D Workbench passthrough per-vCPU rate
+          list_unit_price: "0.0330024"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "96.367008"
+        - service_name: Notebooks
+          sku_meter: data disk storage
+          pricing_unit: GiB-months
+          pricing_quantity: "500"
+          quantity_basis: the data disk's provisioned GiB (data_disk.disk_size_gb, defaulting to GCP's documented 100 GB -- the service attaches the data disk even when the manifest omits the block) at the disk type's Workbench passthrough capacity rate (an unset type defaults to PD_STANDARD)
+          list_unit_price: "0.12"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "60.0000"
+        - service_name: Notebooks
+          sku_meter: instance memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "11680"
+          quantity_basis: n2d-standard-4 carries 16 GB of memory x 730 hours at the N2D Workbench passthrough per-GiB rate
+          list_unit_price: "0.0044232"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "51.662976"
+        - service_name: Notebooks
+          sku_meter: boot disk storage
+          pricing_unit: GiB-months
+          pricing_quantity: "200"
+          quantity_basis: the boot disk's provisioned GiB (boot_disk.disk_size_gb, defaulting to GCP's documented 150 GB) at the disk type's Workbench passthrough capacity rate (an unset type defaults to PD_SSD), billing full or empty and continuing while the instance is stopped
+          list_unit_price: "0.204"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "40.8000"
+        - service_name: Notebooks
+          sku_meter: vCPU management fee
+          pricing_unit: vCPU-hours
+          pricing_quantity: "2920"
+          quantity_basis: the Workbench management fee on the same 4 vCPUs x 730 hours at the N2D per-vCPU fee rate
+          list_unit_price: "0.0055004"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "16.061168"
+        - service_name: Notebooks
+          sku_meter: data disk management fee
+          pricing_unit: GiB-months
+          pricing_quantity: "500"
+          quantity_basis: the Workbench management fee on the same data-disk GiB at the disk type's per-GiB-month fee rate
+          list_unit_price: "0.02"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "10.0000"
+        - service_name: Notebooks
+          sku_meter: memory management fee
+          pricing_unit: GiB-hours
+          pricing_quantity: "11680"
+          quantity_basis: the Workbench management fee on the same 16 GB x 730 hours at the N2D per-GiB fee rate
+          list_unit_price: "0.0007372"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "8.610496"
+        - service_name: Notebooks
+          sku_meter: boot disk management fee
+          pricing_unit: GiB-months
+          pricing_quantity: "200"
+          quantity_basis: the Workbench management fee on the same boot-disk GiB at the disk type's per-GiB-month fee rate
+          list_unit_price: "0.034"
+          price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "6.8000"
+      total_list_cost: "290.301648"
+      exclusions:
+        - network egress and any Cloud Logging or Monitoring ingestion from agents installed via metadata
+      notes: "The estimate assumes the instance runs all 730 hours; stopping it stops the compute meters but both disks keep billing. Rates are the Notebooks service's own SKUs: Compute Engine-equivalent passthrough usage plus the Workbench management fee, priced per unit -- there is no flat per-instance fee."

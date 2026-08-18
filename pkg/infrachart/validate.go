@@ -254,11 +254,22 @@ func (r *VariantResult) validateDoc(file string, docYaml []byte) {
 	spec, err := manifest.ExtractSpec(msg)
 	if err != nil {
 		addIssue(SeverityError, "manifest has no spec: %v", err)
-	} else {
-		validator, err := protovalidate.New(protovalidate.WithDisableLazy(), protovalidate.WithMessages(spec))
-		if err != nil {
-			addIssue(SeverityError, "failed to initialize validator: %v", err)
-		} else if validationErr := validator.Validate(spec); validationErr != nil {
+	} else if validationErr := protovalidate.GlobalValidator.Validate(spec); validationErr != nil {
+		// One shared validator for the whole run, not a fresh instance per
+		// document. The per-doc `New(WithDisableLazy(), WithMessages(spec))`
+		// this replaces looked principled -- eager compile-error surfacing --
+		// but recompiled the same kind's full CEL rule set for EVERY document
+		// of EVERY variant of EVERY chart: ~253 CPU-seconds of redundant
+		// compilation across the charts tree, the charts lane's dominant
+		// cost. protovalidate's own docs prescribe the fix ("each Validator
+		// instance has its own caches"): GlobalValidator lazily compiles each
+		// message type once per process and is safe for concurrent use.
+		// Compile failures still get their distinct diagnosis -- Validate
+		// returns them typed, branched below.
+		var compileErr *protovalidate.CompilationError
+		if errors.As(validationErr, &compileErr) {
+			addIssue(SeverityError, "failed to initialize validator: %v", validationErr)
+		} else {
 			addIssue(SeverityError, "spec validation failed: %s", compactError(validationErr))
 		}
 	}

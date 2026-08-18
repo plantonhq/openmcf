@@ -1,0 +1,40 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurecontainerregistry
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Container Registry
+      sku_meter: Registry unit
+      pricing_unit: days
+      description: The registry bills a flat per-day rate fixed by its SKU tier -- Basic, Standard, or Premium -- every day it exists, images or no images.
+    - service_name: Container Registry
+      sku_meter: Geo-replication units
+      pricing_unit: days
+      description: Each Premium geo-replica is one more registry unit per day, billed at the Premium rate in the replica's region.
+  cost_drivers:
+    - field_path: sku
+      sku_meter: Registry unit
+      pricing_unit: days
+      impact: The whole baseline -- each tier steps the daily rate up (Premium is roughly ten times Basic) and buys more included storage, higher throughput, and the Premium-only features (geo-replication, network rules, CMK, zone redundancy).
+    - field_path: georeplications
+      sku_meter: Geo-replication units
+      pricing_unit: days
+      impact: Every entry multiplies the Premium daily rate -- a registry with two replicas bills three registry units a day -- plus replicated storage and cross-region sync traffic.
+    - field_path: zone_redundancy_enabled
+      sku_meter: Registry unit
+      pricing_unit: days
+      impact: Free on the meter -- zone redundancy changes where the Premium registry's data lives, not the daily rate.
+    - field_path: retention_policy_in_days
+      sku_meter: Registry unit
+      pricing_unit: days
+      impact: Indirect -- purging untagged manifests caps storage growth, which is what keeps a busy CI registry from climbing into overage storage.
+  estimate_exclusions:
+    - storage beyond the SKU's included quota bills per GB-month (the Data Stored meter), and each geo-replica's storage bills again in its region
+    - ACR Tasks (image builds) bill per vCPU-second of build time (the Task vCPU Duration meter)
+    - image pulls bill network egress to wherever the pullers run
+  notes: "A container registry is a per-day subscription, not a usage meter: the SKU tier fixes a flat daily rate, and Premium geo-replication multiplies it by the number of locations. Usage shows up at the edges -- storage past the included quota, build minutes, and pull egress -- which is why the tier choice and replica count are the only levers a manifest controls directly."

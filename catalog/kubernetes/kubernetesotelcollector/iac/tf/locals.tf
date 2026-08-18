@@ -115,6 +115,19 @@ locals {
             readOnly  = try(v.pvc.read_only, false) ? true : null
           } : pk => pv if pv != null
         }
+        # Kubelet-rotated, audience-bound ServiceAccount tokens ride the
+        # "projected" volume type in the Kubernetes API.
+        projected = try(v.service_account_token, null) == null ? null : {
+          sources = [{
+            serviceAccountToken = {
+              for tk, tv in {
+                audience          = v.service_account_token.audience
+                expirationSeconds = try(v.service_account_token.expiration_seconds, 0) > 0 ? v.service_account_token.expiration_seconds : null
+                path              = try(v.service_account_token.path, "") != "" ? v.service_account_token.path : "token"
+              } : tk => tv if tv != null
+            }
+          }]
+        }
       } : vk => vv if vv != null
     }
   ]

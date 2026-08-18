@@ -1,0 +1,57 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpvertexaideployedindex
+spec:
+  presets:
+    - preset: 02-dedicated
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Vertex AI
+          sku_meter: index serving node hours
+          pricing_unit: hours
+          pricing_quantity: "1460"
+          quantity_basis: "min_replica_count serving nodes of the pinned machine type, every hour of the month, at the regional Vector Search node-hour rate. STATED assumption: a single-shard index -- replicas run per index shard, and the shard count is a property of the referenced GcpVertexAiIndex, invisible here; a multi-shard index multiplies this line by its shard count."
+          list_unit_price: "0.7504672"
+          price_source: https://cloudbilling.googleapis.com/v1/services/C7E2-9256-1C43/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "1095.682112"
+      total_list_cost: "1095.682112"
+      exclusions:
+        - autoscaling above the min-replica floor -- under query load the node count grows toward max_replica_count, each extra node billing the same hourly rate that query traffic alone decides
+        - shard multiplication -- a multi-shard index runs the replica set per shard, and the shard count belongs to the referenced GcpVertexAiIndex, not this manifest
+        - index building and update charges ($3.00 per GiB processed for batch builds, $0.45 per GiB for streaming inserts) -- they bill the GcpVertexAiIndex resource, not this deployment
+      notes: The meter starts when the deployment succeeds and stops only on undeploy -- destroy under deletion_policy DELETE undeploys, while ABANDON leaves the nodes serving and billing unmanaged in GCP. The index endpoint itself is free; the deployment's nodes are the entire bill.
+    - preset: 03-peered-reserved-ranges
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Vertex AI
+          sku_meter: index serving node hours
+          pricing_unit: hours
+          pricing_quantity: "1460"
+          quantity_basis: "min_replica_count serving nodes of the pinned machine type, every hour of the month, at the regional Vector Search node-hour rate. STATED assumption: a single-shard index -- replicas run per index shard, and the shard count is a property of the referenced GcpVertexAiIndex, invisible here; a multi-shard index multiplies this line by its shard count."
+          list_unit_price: "0.7504672"
+          price_source: https://cloudbilling.googleapis.com/v1/services/C7E2-9256-1C43/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "1095.682112"
+      total_list_cost: "1095.682112"
+      exclusions:
+        - autoscaling above the min-replica floor -- under query load the node count grows toward max_replica_count, each extra node billing the same hourly rate that query traffic alone decides
+        - shard multiplication -- a multi-shard index runs the replica set per shard, and the shard count belongs to the referenced GcpVertexAiIndex, not this manifest
+        - index building and update charges ($3.00 per GiB processed for batch builds, $0.45 per GiB for streaming inserts) -- they bill the GcpVertexAiIndex resource, not this deployment
+        - access-log ingestion -- private-endpoint query logs flow to Cloud Logging and bill per GiB ingested, following query traffic no manifest can know
+      notes: The meter starts when the deployment succeeds and stops only on undeploy -- destroy under deletion_policy DELETE undeploys, while ABANDON leaves the nodes serving and billing unmanaged in GCP. The index endpoint itself is free; the deployment's nodes are the entire bill.

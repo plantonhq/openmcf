@@ -1,0 +1,37 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurevirtualnetworkgateway
+spec:
+  azure:
+    groups:
+      - purpose: ManageVirtualNetworkGateway
+        actions:
+          - Microsoft.Network/virtualNetworkGateways/read
+          - Microsoft.Network/virtualNetworkGateways/write
+          - Microsoft.Network/virtualNetworkGateways/delete
+        provenance: derived
+        notes: Covers azurerm_virtual_network_gateway / network.NewVirtualNetworkGateway -- create (a 25-45 minute operation), refresh, in-place updates (SKU resizes within the VpnGw family, BGP settings, custom routes, the point-to-site client configuration, tags), and destroy (10-20 minutes). All three actions are included in Azure's built-in Network Contributor role, the coarse grant this manifest replaces.
+      - purpose: ManageNatRules
+        actions:
+          - Microsoft.Network/virtualNetworkGateways/natRules/read
+          - Microsoft.Network/virtualNetworkGateways/natRules/write
+          - Microsoft.Network/virtualNetworkGateways/natRules/delete
+        provenance: derived
+        notes: Covers azurerm_virtual_network_gateway_nat_rule / network.NewVirtualNetworkGatewayNatRule -- one ARM child resource per spec nat_rules entry, keyed by name. NAT rules are children of the gateway, so their actions live under the virtualNetworkGateways namespace, not a top-level one.
+      - purpose: JoinGatewaySubnetAndPublicIps
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/join/action
+          - Microsoft.Network/publicIPAddresses/join/action
+        provenance: derived
+        notes: The modules never call the subnet or public-IP APIs -- they pass the resolved ARM ids in the gateway payload -- but ARM authorizes each ip_configuration's references service-side at create; join/action is required on the GatewaySubnet's scope and on every referenced public IP's scope. ExpressRoute-type gateways reference no public IPs (the spec forbids them), so the publicIPAddresses join applies to VPN-type gateways only.
+      - purpose: ReadLocalNetworkGateway
+        actions:
+          - Microsoft.Network/localnetworkgateways/read
+        provenance: derived
+        notes: Needed only when default_local_network_gateway_id (forced tunneling) is set -- ARM validates the referenced local network gateway at create (service-side; the modules only pass the resolved id). Microsoft's providerOperations inventory spells this resource type in all-lowercase (localnetworkgateways), unlike its camel-cased siblings -- the action is spelled verbatim as the inventory publishes it.

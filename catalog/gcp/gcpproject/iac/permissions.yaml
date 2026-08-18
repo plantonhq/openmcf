@@ -1,0 +1,45 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpproject
+spec:
+  gcp:
+    groups:
+      - purpose: ManageProject
+        permissions:
+          - resourcemanager.projects.create
+          - resourcemanager.projects.get
+          - resourcemanager.projects.update
+          - resourcemanager.projects.delete
+        provenance: derived
+        notes: Covers the whole google_project lifecycle -- create, read/refresh, in-place updates (display name, labels), and destroy. delete performs the shutdown that starts the 30-day pending-deletion window; deletion_policy PREVENT and ABANDON are client-side stances that never call the API. Grant placement for create differs from its siblings -- resourcemanager.projects.create authorizes on the PARENT node (the organization or folder named by parent_type/parent_id), never on the project itself (it lives in IAM's org/folder-scoped inventory and is the grant inside roles/resourcemanager.projectCreator), so grant it to the deploying principal on the destination parent.
+      - purpose: MoveProjectParent
+        permissions:
+          - resourcemanager.projects.move
+        provenance: derived
+        notes: Required only when a plan changes parent_type/parent_id -- migrating the project within the hierarchy authorizes as a move on the project itself, paired with CreateProject's permission on the destination parent.
+      - purpose: LinkBillingAccount
+        permissions:
+          - resourcemanager.projects.createBillingAssignment
+          - resourcemanager.projects.deleteBillingAssignment
+          - billing.resourceAssociations.create
+        provenance: derived
+        notes: Required only when billing_account_id is set. The link is authorized on BOTH sides -- the project-side assignments, and billing.resourceAssociations.create on the billing account itself (it lives in IAM's billing-account-scoped inventory and is the heart of roles/billing.user), so grant that one to the deploying principal ON the billing account, not the project. deleteBillingAssignment covers unlinking or switching accounts on update.
+      - purpose: EnableApis
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service for every enabled_apis entry, plus the provider's own enablement of compute.googleapis.com when auto_create_network is false (the module default) -- the provider documents that it enables the Compute API on the new project to delete the default network. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: DeleteDefaultNetwork
+        permissions:
+          - compute.networks.get
+          - compute.networks.delete
+          - compute.globalOperations.get
+        provenance: derived
+        notes: Exercised on the module's DEFAULT path -- with auto_create_network false, GCP still creates the default VPC momentarily and the provider deletes it immediately after project creation, polling the global operation the delete returns. Not needed only when a spec opts INTO keeping the default network (auto_create_network true).

@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremachinelearningdatastore
+spec:
+  azure:
+    groups:
+      - purpose: ManageDatastore
+        actions:
+          - Microsoft.MachineLearningServices/workspaces/datastores/read
+          - Microsoft.MachineLearningServices/workspaces/datastores/write
+          - Microsoft.MachineLearningServices/workspaces/datastores/delete
+        provenance: derived
+        notes: Covers all three variant resources -- azurerm_machine_learning_datastore_blobstorage, ..._datalake_gen2, and ..._fileshare -- which write the same .../workspaces/{ws}/dataStores/{name} ARM collection (exactly one exists per deployment). Create/update via write (only credentials and the identity mode update in place; everything else replaces), read/refresh, and destroy. Credentials are write-only -- ARM never returns account keys, SAS tokens, or client secrets, and the provider echoes them from configuration -- so the datastores/listsecrets action published in the namespace is deliberately NOT granted. The parent workspace and storage targets are addressed by resolved literal ARM IDs; the module reads neither. Migrated from the module README's summary ("workspaces/datastores/* on the workspace's resource group; AzureML Data Scientist covers writes, Contributor covers all"), tightened here to the three verbs the module actually exercises.

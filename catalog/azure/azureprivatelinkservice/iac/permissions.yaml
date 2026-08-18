@@ -1,0 +1,29 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureprivatelinkservice
+spec:
+  azure:
+    groups:
+      - purpose: ManagePrivateLinkService
+        actions:
+          - Microsoft.Network/privateLinkServices/read
+          - Microsoft.Network/privateLinkServices/write
+          - Microsoft.Network/privateLinkServices/delete
+        provenance: derived
+        notes: Covers azurerm_private_link_service -- create, read/refresh, in-place updates (NAT configurations, visibility, auto-approval, PROXY protocol, FQDNs), and destroy. Held via Network Contributor, Contributor, or narrower custom roles.
+      - purpose: JoinNatSubnets
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/join/action
+        provenance: derived
+        notes: Every nat_ip_configuration draws a NAT address from a referenced subnet (subnet_id); ARM authorizes that reference as a subnet join on each subnet used.
+      - purpose: JoinLoadBalancerFrontends
+        actions:
+          - Microsoft.Network/loadBalancers/frontendIPConfigurations/join/action
+        provenance: derived
+        notes: Needed only for the load-balancer shape -- when load_balancer_frontend_ip_configuration_ids points the service at Standard load balancer frontends, ARM authorizes each reference as a frontend join; the destination_ip_address shape references no load balancer and needs none.

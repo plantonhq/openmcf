@@ -1,0 +1,34 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpvertexaiindex
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: contents_delta_uri
+      sku_meter: index building
+      pricing_unit: GiB processed
+      impact: Pointing at a Cloud Storage directory makes the create (and every later change to this field) a batch build billed at $3.00 per GiB of data processed -- the charge follows the corpus at the URI, so an empty directory builds for pennies and a billion-vector corpus builds for real money, every rebuild.
+    - field_path: is_complete_overwrite
+      sku_meter: index building
+      pricing_unit: GiB processed
+      impact: True makes every update with contents_delta_uri reprocess the ENTIRE corpus at $3.00/GiB; false (the default) processes only the delta files -- on a large index the overwrite-vs-delta choice is the difference between paying for the whole corpus and paying for what changed.
+    - field_path: index_update_method
+      sku_meter: streaming update ingestion
+      pricing_unit: GiB ingested
+      impact: STREAM_UPDATE bills $0.45/GiB ingested on every upsert, and the background compactions it triggers (always once the oldest uncompacted data is five days old) rebuild the index at the batch $3.00/GiB rate on top -- a continuously-updated corpus pays both meters. BATCH_UPDATE pays only per rebuild.
+    - field_path: config.dimensions
+      sku_meter: index building
+      pricing_unit: GiB processed
+      impact: Data size is vectors x dimensions x 4 bytes, so dimensions scale every per-GiB charge linearly -- a 1536-dimension index costs twice as much to build and stream into as a 768-dimension index over the same vectors.
+    - field_path: config.shard_size
+      sku_meter: index serving
+      impact: Shard size fixes how much data each shard holds and which machine types can serve it -- it sets the node count and per-node rate the index bills once deployed. The serving meter itself (per node-hour) starts on the GcpVertexAiDeployedIndex placing this index onto an endpoint, never on the index alone.
+  estimate_exclusions:
+    - an undeployed index with no data bills nothing -- Google publishes no at-rest storage meter for the index object; every build charge follows GiB actually processed
+    - serving bills per node-hour (machine type x region) and starts only when a GcpVertexAiDeployedIndex places this index onto a GcpVertexAiIndexEndpoint
+    - the embedding files at contents_delta_uri live in Cloud Storage and bill as ordinary GCS storage on their bucket's project
+  notes: "An index is a corpus with a build meter: creating the object is free, and the money follows GiB -- $3.00 per GiB processed for batch builds and compactions, $0.45 per GiB ingested for streaming upserts (Vertex AI pricing page, Vector Search section, all regions). The expensive meter -- serving node-hours -- belongs to the deployment components; deletion_policy ABANDON leaves the corpus standing for them to keep serving."

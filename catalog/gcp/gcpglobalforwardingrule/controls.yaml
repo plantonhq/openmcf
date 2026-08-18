@@ -1,0 +1,84 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpglobalforwardingrule
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The rule is pure network configuration -- an IP, a port range, and a pointer at a target proxy -- holding no data at rest of its own.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest means no key to manage -- see enc-at-rest.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: target
+      evidence:
+        type: spec_default
+        reference: The frontend serves TLS when target references a target HTTPS proxy (the spec's default reference kind); a target HTTP proxy serves plaintext. The rule itself never terminates TLS -- the proxy behind it does -- but the target choice decides which the VIP speaks.
+      notes: The 01-https-frontend preset points at an HTTPS proxy on port 443; the 02-http-redirect-frontend preset deliberately runs the plaintext port-80 rule whose URL map bounces clients to HTTPS.
+    - control_id: no-public-access
+      status: configurable
+      field_path: load_balancing_scheme
+      evidence:
+        type: spec_default
+        reference: The default EXTERNAL (and EXTERNAL_MANAGED) creates an internet-facing VIP on Google's edge -- public by design. INTERNAL_MANAGED, INTERNAL_SELF_MANAGED, and NONE (Private Service Connect) frontends carry VPC-internal addresses no internet client can reach.
+      notes: For an external load balancer the public VIP is the point; the control's lever is choosing an internal scheme when the service should not face the internet, as the 03-psc-google-apis preset does.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: port_range
+      evidence:
+        type: spec_default
+        reference: The rule admits only its configured protocol and port or contiguous range ("443") -- everything else never enters the chain. Two external rules on one IP cannot overlap ranges, which is how the port-80 and port-443 rules split one VIP.
+      notes: Source-IP restriction is not the rule's surface -- Cloud Armor policies attach to the backend services behind the target proxy, a separate component.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: WAF filtering (Cloud Armor) attaches to the backend services behind the target proxy, not to the forwarding rule -- posture for it belongs to those components.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Creating, repointing, and deleting forwarding rules is governed by Compute Engine IAM unconditionally, including the dedicated setTarget authorization for frontend swaps.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The rule runs no workload and holds no identity -- it is an entry point, not a principal.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The rule has no authentication surface of its own; client authentication happens behind it, at proxies and backends.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Forwarding-rule create, setTarget, and delete land in Cloud Audit Logs (Admin Activity) unconditionally.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Traffic through the frontend is recorded automatically as Cloud Monitoring load-balancer metrics keyed by forwarding rule -- request counts and latencies need no configuration.
+      notes: Request logging (per-request log entries) is enabled on the backend service behind the proxy, a separate component.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The rule is a stateless configuration object -- the manifest itself is the recovery path; nothing accumulates to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain -- see backup-recovery.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A global forwarding rule is an anycast VIP announced from Google's edge worldwide -- no single zone, region, or appliance embodies it, and no configuration can reduce it to one.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: DELETE (the default) removes the rule with the manifest -- traffic to the VIP stops routing that instant; PREVENT makes the IaC engine refuse any destroying plan, protecting the entry point of a live load balancer; ABANDON detaches the rule while it keeps serving.
+      notes: An engine-side guard -- the Compute API has no deletion-protection flag on forwarding rules. The reserved IP behind a deleted rule stays reserved (its own kind's policy governs it), so recreation restores the same VIP.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The rule carries no software surface to patch -- the global load-balancing data plane is Google-managed infrastructure maintained invisibly.

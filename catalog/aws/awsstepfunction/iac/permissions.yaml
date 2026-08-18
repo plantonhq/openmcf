@@ -1,0 +1,44 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsstepfunction
+spec:
+  aws:
+    statements:
+      - sid: ManageStateMachine
+        actions:
+          - states:CreateStateMachine
+          - states:DescribeStateMachine
+          - states:UpdateStateMachine
+          - states:DeleteStateMachine
+          - states:PublishStateMachineVersion
+          - states:ListStateMachineVersions
+          - states:TagResource
+          - states:UntagResource
+          - states:ListTagsForResource
+        resources:
+          - arn:aws:states:*:*:stateMachine:*
+        provenance: derived
+        notes: Covers aws_sfn_state_machine (and its Pulumi twin) -- create, refresh, in-place update, and destroy, plus tag reconciliation. The service reference folds extra actions into the CRUD calls -- CreateStateMachine also authorizes states:TagResource (tags ride the create) and, whenever spec.publish is true, both create and update additionally authorize states:PublishStateMachineVersion; an unpublished-only grant denies the first publishing apply. Every action here scopes to the stateMachine ARN per the service reference. Version and alias qualifiers extend the same ARN, so the single pattern carries them.
+      - sid: ManageAliases
+        actions:
+          - states:CreateStateMachineAlias
+          - states:DescribeStateMachineAlias
+          - states:UpdateStateMachineAlias
+          - states:DeleteStateMachineAlias
+        resources:
+          - arn:aws:states:*:*:stateMachine:*
+        provenance: derived
+        notes: Covers aws_sfn_alias for spec.aliases entries -- each alias routes 100% of traffic to the version this deployment published (spec validation requires publish alongside aliases). Alias ARNs are the state machine ARN with an alias-name qualifier (stateMachine:name:alias), so the same ARN pattern scopes them; the service reference also offers the states:StateMachineQualifier condition key for pinning specific alias names.
+      - sid: PassExecutionRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: CreateStateMachine and UpdateStateMachine pass the referenced execution role (role_arn, required by the spec) to Step Functions, which assumes it for every service call the workflow makes. Add an iam:PassedToService=states.amazonaws.com condition and narrow to the actual role ARN in a hardened deployment. Note the log-delivery permissions for logging.level (logs:CreateLogDelivery, logs:PutResourcePolicy, and friends) belong to that EXECUTION role per AWS's logging documentation -- the runner principal needs none of them.

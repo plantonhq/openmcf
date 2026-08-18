@@ -1,10 +1,12 @@
 # GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
-# This file joins the component's estimate model (../models/, the authored
-# quantities with their derivations) with the provider's price book
-# (../pricebook/, pinned unit prices with source URL and retrieval date):
-# every line cost and preset total is computed exactly, lines are ordered
-# largest cost first, and the catalog-data conformance gate re-verifies all
-# arithmetic. Schema: finops/componentcostestimate/v1.
+# This file replays the component's presets through its capacity derivation
+# (../capacity/, the machine-executable value-to-capacity rules): each
+# preset states the CPU/memory requests and limits and the persistent
+# volume storage it reserves from its target cluster, with a basis sentence
+# tracing every total back to the manifest's values. Cluster-capacity
+# components carry no priced lines -- the dollar value of the reservation
+# is the target cluster's node and storage-class economics, which this
+# catalog cannot know. Schema: finops/componentcostestimate/v1.
 apiVersion: finops.planton.dev/v1
 kind: ComponentCostEstimate
 metadata:
@@ -18,7 +20,7 @@ spec:
         cpu_limits: 500m
         memory_limits: 512Mi
         persistent_storage: 5Gi
-        basis: 1 instance x (100m CPU / 256Mi memory requests, 500m / 512Mi limits) + 1 x 5Gi data volume
+        basis: 1 instance x (100m CPU / 256Mi memory requests, 500m CPU / 512Mi limits) + 1 x 5Gi data volume
       exclusions:
         - the dollar value of this capacity is the target cluster's node and storage-class economics
     - preset: 02-production-ha
@@ -31,7 +33,7 @@ spec:
         basis: 3 instances x (1 CPU / 2Gi memory requests, 2 CPU / 4Gi limits) + 3 x (100Gi data + 20Gi WAL) volumes
       exclusions:
         - the dollar value of this capacity is the target cluster's node and storage-class economics
-        - S3 object storage for the daily backups and WAL archive (30-day retention) grows with database churn
+        - object storage for the base backups and WAL archive grows with database churn across the retention window
     - preset: 03-s3-compatible-backups
       capacity_footprint:
         cpu_requests: 1500m
@@ -42,4 +44,4 @@ spec:
         basis: 3 instances x (500m CPU / 1Gi memory requests, 2 CPU / 2Gi limits) + 3 x 50Gi data volumes
       exclusions:
         - the dollar value of this capacity is the target cluster's node and storage-class economics
-        - object storage on the S3-compatible endpoint (MinIO) for daily backups and WAL archive (30-day retention)
+        - object storage on the configured S3-compatible endpoint for the base backups and WAL archive grows with database churn across the retention window

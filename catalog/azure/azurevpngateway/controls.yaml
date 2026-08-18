@@ -1,0 +1,76 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurevpngateway
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The gateway stores no customer data -- it is a managed packet-forwarding appliance whose only state is ARM configuration. Tunnel pre-shared keys live on the AzureVpnGatewayConnection resources, held by Azure's control plane, not on any disk this manifest governs.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With no data store there is no encryption key to bring -- neither the vpnGateways API nor this spec carries a customer-managed-key surface.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Everything the gateway carries rides IPsec -- each tunnel is an IKE-negotiated, encrypted security association, and the gateway offers no unencrypted transport. Azure's default proposal set applies unless a connection pins its own.
+      notes: Algorithm pinning is per tunnel, on the connection's vpn_links ipsec_policies -- outside this manifest by design.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Terminating tunnels from the public internet is the gateway's function -- Azure assigns each of the two instances a public IP unconditionally (published in the public_ip_addresses output for branch devices to dial), and no field can remove it. routing_preference shapes which egress path tunnel traffic rides, not whether the endpoints are public.
+    - control_id: restricted-ingress
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The gateway establishes tunnels only with branch endpoints declared to it -- each AzureVpnGatewayConnection binds one AzureVpnSite's links, and traffic enters the hub only through a security association negotiated with those declared endpoints. There is no open forwarding path.
+      notes: The IKE listener itself is internet-reachable (that is how branches dial in); what is restricted is passage, which requires successful negotiation against a configured connection.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A VPN terminator is not an HTTP surface -- there is no request stream for a web application firewall to filter and no WAF attachment point on the vpnGateways API.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane operation on the gateway and its NAT rules -- create, scale, delete -- is authorized by Azure RBAC unconditionally. The gateway has no data-plane credential of its own; tunnel authentication is per-connection pre-shared keys.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The gateway runs no customer workloads and calls no cloud APIs on the customer's behalf -- there is no identity block on the vpnGateways API and nothing here that could hold a credential.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The gateway spec carries no authentication choices -- IKE protocol version (IKEv1 exists for legacy branch devices) and pre-shared keys are chosen per tunnel on the AzureVpnGatewayConnection's vpn_links, deliberately outside this manifest.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane action on the gateway lands in the Azure Activity Log unconditionally -- who created it, who changed the scale units, who deleted it. Tunnel-level diagnostics (IKE negotiation logs, route logs) are opt-in via Azure Monitor diagnostic settings, composed outside this spec.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Platform metrics for the gateway (tunnel bandwidth, packet counts, BGP peer status) flow to Azure Monitor for every Virtual WAN VPN gateway with no configuration -- ARM registers metric definitions on the vpnGateways resource type itself.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: There is no data to back up -- the gateway is regenerable configuration, restored by redeploying the manifest. Branch reachability state (BGP routes, security associations) is renegotiated live, never restored.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility there is no retention to configure.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure runs every Virtual WAN VPN gateway as a managed active-active instance pair (Microsoft's pricing FAQ's own words -- dual instances are deployed for resiliency), each instance with its own public IP and BGP peering address. Instance placement is Azure-managed and not configurable.
+      notes: The two-instance pair is the reason bgp_settings carries per-instance APIPA address blocks -- branch devices can hold a tunnel to each instance.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the vpnGateways API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. ARM does refuse to delete a gateway that still has connections -- an ordering constraint the runner's reverse teardown handles, not a protection toggle.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The gateway is a fully managed appliance -- Microsoft owns the instances' operating system, patch cadence, and upgrades, and exposes no version or maintenance surface to configure or neglect.

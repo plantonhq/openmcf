@@ -1,0 +1,28 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsTransitGatewayVpcAttachment manifest's spec values into metered
+# quantities and price choices. The estimate generator replays the catalog
+# presets through these rules to emit
+# ../estimates/awstransitgatewayvpcattachment.yaml; a server-side estimator
+# evaluates the same rules against live manifests. Prices live in the
+# provider's price book (../pricebook/).
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awstransitgatewayvpcattachment
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  lines:
+    - sku_meter: Transit Gateway attachment hours
+      quantity:
+        - hours_in_month: true
+      price_slug: tgw-vpc-attachment-hours-us-east-1
+      basis: one VPC attachment, billed every hour of the month regardless of subnet count; every catalog preset leaves region a placeholder, so this prices the us-east-1 rate
+  exclusions:
+    - text: data processing bills per GB on every byte the gateway sends to or receives from this attachment (TransitGateway-Bytes) -- the dominant real-world cost on busy spokes, entirely traffic-dependent
+  notes:
+    - text: The hourly fee is flat per attachment -- adding or removing subnets (Availability Zones) changes reachability, not the rate.

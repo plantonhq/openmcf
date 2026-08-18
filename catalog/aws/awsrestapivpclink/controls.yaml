@@ -1,0 +1,62 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsrestapivpclink
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A VPC link stores no data -- it is a managed network path between API Gateway and an internal Network Load Balancer.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest exists (see enc-at-rest), so no key choice arises.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The link tunnels API Gateway to the NLB; whether the integration speaks TLS to the backend is decided by the REST API's integration configuration and the NLB's listeners -- both on other components. The link imposes no protocol posture of its own.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A VPC link IS the private-reachability lever -- it lets REST API integrations reach an internal NLB that never gets a public address. The link itself has no public endpoint at any configuration.
+      notes: The public exposure decision moves to the front -- the REST APIs and custom domains routing through the link -- while the NLB and its targets stay internal.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Unlike its v2 counterpart, the REST API VPC link carries no subnet or security-group surface -- the network path to the NLB is AWS-managed end to end. Inbound filtering lives on the NLB's security posture and its targets' security groups, on their own components.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The link carries no HTTP request surface of its own; web ACLs attach to the REST APIs' stages upstream.
+    - control_id: rbac
+      status: not_applicable
+      notes: The link has no principal-facing surface; which API integrations may use it is governed by IAM on the apigateway API -- account-level posture, not a spec field.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The link runs no workloads and holds no credentials of any kind.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The link authenticates nothing -- there is no auth path here, legacy or otherwise.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane operations on the link land in CloudTrail as account-level posture; request logging is the APIs' stage-level access logging.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The link has no CloudWatch metric dimension; traffic through it appears in the routed APIs' metrics (including IntegrationLatency) and the fronted NLB's metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration fully re-creatable from the manifest; no data lives here.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at this level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The link exposes no zonal configuration -- availability follows the fronted NLB's subnet layout, chosen on the AwsNlb component, and the AWS-managed path to it.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists for VPC links. Deleting one severs every REST API integration that references it; the NLB itself is untouched.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The link's forwarding fabric is fully AWS-managed with no customer-visible software to patch.

@@ -1,0 +1,26 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurenetworksecuritygroup
+spec:
+  azure:
+    groups:
+      - purpose: ManageNetworkSecurityGroup
+        actions:
+          - Microsoft.Network/networkSecurityGroups/read
+          - Microsoft.Network/networkSecurityGroups/write
+          - Microsoft.Network/networkSecurityGroups/delete
+        provenance: derived
+        notes: Covers azurerm_network_security_group -- create, read/refresh, tag updates, and destroy. Held via Network Contributor, Contributor, or Owner on the resource group.
+      - purpose: ManageSecurityRules
+        actions:
+          - Microsoft.Network/networkSecurityGroups/securityRules/read
+          - Microsoft.Network/networkSecurityGroups/securityRules/write
+          - Microsoft.Network/networkSecurityGroups/securityRules/delete
+        provenance: derived
+        notes: Covers azurerm_network_security_rule -- the module manages each rule as a STANDALONE child resource under the group (one per security_rules entry), so the securityRules child operations are exercised directly rather than through the group's PUT.

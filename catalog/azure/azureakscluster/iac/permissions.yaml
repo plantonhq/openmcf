@@ -17,9 +17,18 @@ spec:
           - Microsoft.ContainerService/managedClusters/delete
           - Microsoft.ContainerService/managedClusters/listClusterUserCredential/action
         provenance: derived
-        notes: Covers azurerm_kubernetes_cluster -- create, refresh, in-place updates, and destroy on the resource group, plus the credential listing the provider performs to export kube_config outputs. Held via Azure Kubernetes Service Contributor, Contributor, or Owner on the resource group. Prerequisite grants belong to the CLUSTER identity, not the runner -- a BYO subnet needs the cluster identity to hold Network Contributor on the subnet, and a BYO private DNS zone needs Private DNS Zone Contributor, both composed via AzureRoleAssignment.
-      - purpose: ReadResourceGroup
+        notes: Covers azurerm_kubernetes_cluster -- create, refresh, in-place updates, and destroy on the resource group, plus the credential listing the provider performs on every read to export kube_config outputs (ListClusterUserCredentials). Held via Azure Kubernetes Service Contributor, Contributor, or Owner on the resource group. Prerequisite grants belong to the CLUSTER identity, not the runner -- a BYO subnet needs the cluster identity to hold Network Contributor on the subnet, and a BYO private DNS zone needs Private DNS Zone Contributor, both composed via AzureRoleAssignment.
+      - purpose: UpdateDefaultNodePool
         actions:
-          - Microsoft.Resources/subscriptions/resourceGroups/read
+          - Microsoft.ContainerService/managedClusters/agentPools/read
+          - Microsoft.ContainerService/managedClusters/agentPools/write
+          - Microsoft.ContainerService/managedClusters/agentPools/delete
         provenance: derived
-        notes: The provider resolves the target resource group before creating the cluster in it.
+        notes: Needed only for in-place updates that touch default_node_pool -- the provider updates the default pool through the agent-pools API directly (not the cluster PUT), and changes to ForceNew-like pool properties cycle the pool via temporary_name_for_rotation, which creates a temporary agent pool, deletes the original, recreates it, and deletes the temporary pool. Create and destroy of the cluster itself never touch this API (the default pool rides the managed-cluster payload).
+      - purpose: ManageMaintenanceWindows
+        actions:
+          - Microsoft.ContainerService/managedClusters/maintenanceConfigurations/read
+          - Microsoft.ContainerService/managedClusters/maintenanceConfigurations/write
+          - Microsoft.ContainerService/managedClusters/maintenanceConfigurations/delete
+        provenance: derived
+        notes: Needed when maintenance_window, maintenance_window_auto_upgrade, or maintenance_window_node_os is set -- the provider manages each window as a maintenanceConfigurations child resource (write on create/update, delete when a window is removed). The provider also Gets the three well-known configurations on every read but deliberately ignores errors there, so read is only strictly exercised when windows are in use.

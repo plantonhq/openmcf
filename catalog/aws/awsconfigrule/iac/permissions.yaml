@@ -1,0 +1,56 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsconfigrule
+spec:
+  aws:
+    statements:
+      - sid: ManageConfigRule
+        actions:
+          - config:PutConfigRule
+          - config:DeleteConfigRule
+        resources:
+          - arn:aws:config:*:*:config-rule/*
+        provenance: derived
+        notes: Covers the account-scoped aws_config_config_rule (managed, custom-lambda, and custom-policy sources all flow through the same PutConfigRule API). Both actions take resource-level scoping on the ConfigRule ARN. A custom-lambda rule requires config.amazonaws.com invoke permission on the function BEFORE create -- that lambda:AddPermission grant is the referenced AwsLambda's contract (invoke_permissions), never the runner's.
+      - sid: TagConfigRule
+        actions:
+          - config:TagResource
+          - config:UntagResource
+          - config:ListTagsForResource
+        resources:
+          - arn:aws:config:*:*:config-rule/*
+        provenance: derived
+        notes: Tag-on-create plus tag reconciliation and the tag read on every refresh -- account-scoped rules only (the organization rule resources carry no tags). All three actions scope to the ConfigRule ARN per the service reference.
+      - sid: ManageOrganizationRules
+        actions:
+          - config:PutOrganizationConfigRule
+          - config:DeleteOrganizationConfigRule
+          - config:GetOrganizationConfigRuleDetailedStatus
+        resources:
+          - arn:aws:config:*:*:organization-config-rule/*
+        provenance: derived
+        notes: Covers the three organization-scoped resources (aws_config_organization_managed_rule / _custom_rule / _custom_policy_rule) -- one renders, chosen by the spec's source arm. The provider polls member-account rollout after Put and before completing Delete, which is what GetOrganizationConfigRuleDetailedStatus serves. Deployment only succeeds from the organization's management account or Config delegated administrator with Config trusted access enabled -- an account-side prerequisite, not a module call. All three actions scope to the OrganizationConfigRule ARN.
+      - sid: ReadRuleState
+        actions:
+          - config:DescribeConfigRules
+          - config:DescribeOrganizationConfigRules
+          - config:DescribeOrganizationConfigRuleStatuses
+        resources:
+          - "*"
+        provenance: derived
+        notes: The read side of plan/refresh for both scopes, plus the org-rule creation wait loop. The service reference lists NO resource types for these Describe APIs -- IAM evaluates them against Resource "*", so an ARN-scoped grant would deny at runtime and the wildcard is the narrowest possible scope.
+      - sid: ManageRemediation
+        actions:
+          - config:PutRemediationConfigurations
+          - config:DeleteRemediationConfiguration
+          - config:DescribeRemediationConfigurations
+        resources:
+          - arn:aws:config:*:*:remediation-configuration/*
+        provenance: derived
+        notes: Covers aws_config_remediation_configuration, rendered only when spec.remediation is set (account-scoped rules only -- the spec CEL forbids it on organization rules). All three actions scope to the RemediationConfiguration ARN. The SSM document the remediation runs executes under Config's service-side automation, not the runner -- the runner needs no ssm grants to provision the attachment.

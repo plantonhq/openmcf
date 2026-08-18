@@ -1,0 +1,37 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awscloudwatchalarm
+spec:
+  aws:
+    statements:
+      - sid: ManageMetricAlarm
+        actions:
+          - cloudwatch:PutMetricAlarm
+          - cloudwatch:DeleteAlarms
+        resources:
+          - arn:aws:cloudwatch:*:*:alarm:*
+          - arn:aws:cloudwatch:*:*:dataset/*
+        provenance: derived
+        notes: Covers aws_cloudwatch_metric_alarm -- creation, in-place updates (PutMetricAlarm is also the update call), and deletion. The service reference authorizes PutMetricAlarm against both the alarm and dataset ARN formats, so both are granted.
+      - sid: DescribeAlarms
+        actions:
+          - cloudwatch:DescribeAlarms
+        resources:
+          - arn:aws:cloudwatch:*:*:alarm:*
+        provenance: derived
+        notes: Read-side of aws_cloudwatch_metric_alarm during plan/refresh. The service reference authorizes DescribeAlarms against the alarm ARN format.
+      - sid: TagAlarm
+        actions:
+          - cloudwatch:TagResource
+          - cloudwatch:UntagResource
+          - cloudwatch:ListTagsForResource
+        resources:
+          - arn:aws:cloudwatch:*:*:alarm:*
+        provenance: derived
+        notes: Covers the resource-identity tags both modules apply to the alarm. Scoped to the alarm ARN format -- the only CloudWatch resource kind this component tags.

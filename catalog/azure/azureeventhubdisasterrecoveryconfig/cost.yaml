@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureeventhubdisasterrecoveryconfig
+spec:
+  billing_model: free
+  free_tier: The geo-DR pairing itself -- the alias DNS name and the continuous metadata replication between the two namespaces -- never bills. Azure has no meter for disaster recovery configs; the pairing, failovers, and break-pairs all cost nothing.
+  notes: "The real spend is the PARTNER namespace this pairing requires: geo-DR needs a second AzureEventHubNamespace in a different region on the same tier (STANDARD or higher), and that namespace bills its own throughput/processing/capacity units the whole time it stands by -- effectively doubling the namespace-level spend for the paired workload. Both namespace references in this spec (primary_namespace_id, partner_namespace_id) point at that separate catalog kind, where the cost profile lives."

@@ -9,17 +9,28 @@ charts/*/*/template.yaml
 helm/*/charts/
 build/
 bin/
+# Website (site/) dependency, build, and toolchain artifacts: Next.js static
+# export output, the Yarn Berry cache, and files every `make -C site build`
+# regenerates (next-env.d.ts, the recent-changelog JSON). Nested .gitignore
+# files inside site/ (e.g. the R2 image inbox) handle their own local zones.
 site/node_modules/
+site/.next/
+site/out/
 site/build/
+site/coverage/
 site/.yarn/*
-site/!next-env.d.ts
+!site/.yarn/patches
+!site/.yarn/plugins
+!site/.yarn/releases
+!site/.yarn/versions
+site/.pnp.*
+site/next-env.d.ts
+site/*.tsbuildinfo
+site/.env*
+site/public/changelog/recent.json
+site/.venv/
 # Pinned proto toolchain, provisioned by `make proto-tools`
 .tools/
-
-# Swap the comments on the following lines if you don't wish to use zero-installs
-# Documentation here: https://yarnpkg.com/features/zero-installs
-site/!.yarn/cache
-#.pnp.*
 
 # Terraform init/plan/apply artifacts (generated locally, never committed)
 **/.terraform/

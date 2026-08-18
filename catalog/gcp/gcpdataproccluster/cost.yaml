@@ -1,0 +1,85 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpdataproccluster
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Compute Engine
+      sku_meter: node vCPU
+      pricing_unit: vCPU-hours
+      description: Every master, worker, and secondary-worker VM bills Compute Engine per-vCPU rates around the clock until the cluster is deleted or stopped.
+    - service_name: Compute Engine
+      sku_meter: node memory
+      pricing_unit: GiB-hours
+      description: The same VMs bill Compute Engine per-GiB memory rates around the clock, in the ratio the machine type fixes.
+    - service_name: Compute Engine
+      sku_meter: Dataproc vCPU fee
+      pricing_unit: vCPU-hours
+      description: The Dataproc management premium -- a flat per-vCPU-hour licensing fee on every virtual CPU in the cluster, billed under the Compute Engine service as the Dataproc licensing SKU.
+    - service_name: Compute Engine
+      sku_meter: node boot disk storage
+      pricing_unit: GiB-months
+      description: Every node's persistent boot disk bills per GiB-month at the rate of its disk class (pd-standard by default) for as long as the cluster exists.
+    - service_name: Compute Engine
+      sku_meter: local SSD storage
+      pricing_unit: GiB-months
+      description: Local SSDs attached to node groups bill per GiB-month (each device is a fixed 375 GB) for the cluster's lifetime.
+  cost_drivers:
+    - field_path: cluster_config.worker_config.num_instances
+      sku_meter: node vCPU
+      pricing_unit: vCPU-hours
+      impact: Each primary worker is a full always-on VM; this count is the main multiplier on compute, memory, disk, and the Dataproc fee. It is one of the few fields that scales in place.
+    - field_path: cluster_config.worker_config.machine_type
+      sku_meter: node vCPU
+      pricing_unit: vCPU-hours
+      impact: The machine type fixes each worker's vCPU count and memory, and with them the per-node hourly rate on every compute meter including the per-vCPU Dataproc fee.
+    - field_path: cluster_config.master_config.num_instances
+      sku_meter: node vCPU
+      pricing_unit: vCPU-hours
+      impact: "1 master is standard; 3 masters (HA) triples the master-side compute, disk, and Dataproc-fee spend."
+    - field_path: cluster_config.master_config.machine_type
+      sku_meter: node vCPU
+      pricing_unit: vCPU-hours
+      impact: Fixes the master VM shape and its hourly compute and memory rates.
+    - field_path: cluster_config.secondary_worker_config.num_instances
+      sku_meter: node vCPU
+      pricing_unit: vCPU-hours
+      impact: Secondary workers add burst VMs, usually at Spot or preemptible market rates well below list -- cheaper per node but evictable, and their market rate is not a committed list price.
+    - field_path: cluster_config.master_config.disk_config.boot_disk_size_gb
+      sku_meter: node boot disk storage
+      pricing_unit: GiB-months
+      impact: Boot disk GiB per node times node count; GCP defaults each node to 500 GB when unset, so the default is not small. disk_config.boot_disk_type picks the price class.
+    - field_path: cluster_config.worker_config.disk_config.num_local_ssds
+      sku_meter: local SSD storage
+      pricing_unit: GiB-months
+      impact: Each local SSD adds a fixed 375 GB billed per GiB-month on every node in the group.
+    - field_path: cluster_config.autoscaling_policy_uri
+      sku_meter: node vCPU
+      impact: Attaching an autoscaling policy hands worker counts to the policy -- the bill then follows the policy's bounds, not the manifest's counts.
+    - field_path: cluster_config.lifecycle_config.idle_delete_ttl
+      sku_meter: node vCPU
+      impact: The main cost brake -- an idle cluster deletes itself after this window instead of billing all month. Without it, a forgotten cluster bills every hour indefinitely.
+    - field_path: cluster_config.master_config.accelerators
+      sku_meter: GPU accelerators
+      pricing_unit: GPU-hours
+      impact: Each attached GPU bills its accelerator type's hourly rate per node, on top of the VM.
+    - field_path: cluster_config.cluster_tier
+      sku_meter: Dataproc vCPU fee
+      impact: CLUSTER_TIER_PREMIUM buys premium Dataproc capabilities billed at a higher per-vCPU rate than the standard fee.
+    - field_path: cluster_config.engine
+      sku_meter: Dataproc vCPU fee
+      impact: The LIGHTNING engine adds a per-vCPU Lightning Engine licensing surcharge on top of the standard Dataproc fee.
+    - field_path: virtual_cluster_config
+      sku_meter: node vCPU
+      impact: The Dataproc-on-GKE arm creates no VMs of its own -- Spark pods consume the referenced GKE cluster's node capacity, so compute cost lives on the GcpGkeCluster and GcpGkeNodePool resources.
+  free_tier: ""
+  estimate_exclusions:
+    - Spot and preemptible secondary workers bill floating market rates no list price commits to
+    - network egress, Cloud NAT for internal-only nodes, and Cloud Logging/Monitoring ingestion follow workload behavior
+    - auto-created staging and temp buckets bill Cloud Storage rates by actual usage
+    - jobs' shuffle spill and HDFS usage beyond provisioned disks depends on the workloads
+  notes: "Dataproc clusters are always-on the moment they are created: every node VM, its boot disk, and the per-vCPU Dataproc fee bill around the clock until deletion. The design intent is ephemerality -- lifecycle_config's idle TTLs and autoscaling are the levers that keep the meter honest, and a cluster that outlives its jobs is the classic Dataproc cost failure."

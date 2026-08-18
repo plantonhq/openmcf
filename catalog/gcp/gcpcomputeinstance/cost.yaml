@@ -1,0 +1,69 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpcomputeinstance
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Compute Engine
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      description: Every vCPU of the machine type bills hourly from creation while the VM runs -- shared-core E2 types (e2-micro/small/medium) bill their documented fractional vCPU (0.25/0.5/1) instead of the two vCPUs the guest sees.
+    - service_name: Compute Engine
+      sku_meter: instance memory
+      pricing_unit: GiB-hours
+      description: The machine type's memory bills hourly alongside the vCPUs while the VM runs.
+    - service_name: Compute Engine
+      sku_meter: boot disk storage
+      pricing_unit: GiB-months
+      description: The boot disk's provisioned capacity bills full or empty from creation -- and keeps billing while the VM is stopped or suspended.
+  cost_drivers:
+    - field_path: machine_type
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      impact: The single biggest lever -- the machine type fixes the vCPU count and memory that bill every running hour, and its family (e2, n2, c3, ...) picks the per-vCPU and per-GiB rates.
+    - field_path: scheduling.provisioning_model
+      sku_meter: Spot instance hours
+      impact: SPOT swaps the committed on-demand rates for a fluctuating market rate well below list -- the price of being reclaimable at any time. FLEX_START and RESERVATION_BOUND bill through Dynamic Workload Scheduler discounts and pre-purchased reservations instead of on-demand list rates.
+    - field_path: desired_status
+      sku_meter: instance vCPU
+      impact: '"TERMINATED" stops the vCPU and memory meters without destroying the VM; "SUSPENDED" stops them too but bills the persisted memory image as storage. Disks keep billing in every state.'
+    - field_path: guest_accelerators
+      sku_meter: GPU hours
+      pricing_unit: GPU-hours
+      impact: Each attached accelerator card bills hourly on top of the machine rate, at per-GPU-model rates that usually dwarf the VM itself.
+    - field_path: boot_disk.size_gb
+      sku_meter: boot disk storage
+      pricing_unit: GiB-months
+      impact: Every provisioned GiB of the boot disk bills monthly from creation; when unset, the image or snapshot size is provisioned instead.
+    - field_path: boot_disk.type
+      sku_meter: boot disk storage
+      impact: Picks the capacity price class -- pd-standard (cheapest), pd-balanced, pd-ssd, or hyperdisk types whose IOPS/throughput are separately provisioned and billed.
+    - field_path: boot_disk.image
+      sku_meter: OS license premium
+      impact: Premium OS images (Windows Server, RHEL, SLES) add per-vCPU or per-instance license charges on top of the machine rate every running hour; Debian, Ubuntu, and other free images add nothing.
+    - field_path: scratch_disks
+      sku_meter: local SSD capacity
+      pricing_unit: GiB-months
+      impact: Each ephemeral local-SSD unit (375 GB, or 3000 GB on Z3) bills its provisioned capacity for the life of the VM even though its contents vanish on stop or preemption.
+    - field_path: network_interfaces.access_configs
+      sku_meter: external IPv4 usage
+      pricing_unit: IP-hours
+      impact: Every interface with an access config holds an external IPv4 that bills hourly while in use on a running standard VM (a lower rate applies on Spot VMs).
+    - field_path: total_egress_bandwidth_tier
+      sku_meter: Tier_1 networking premium
+      impact: TIER_1 raises the egress bandwidth cap on supported shapes for a premium billed on top of the machine rate.
+    - field_path: confidential_instance_config
+      sku_meter: confidential computing premium
+      impact: Confidential VM (SEV/SEV-SNP/TDX) adds a per-vCPU and per-GiB premium on supported machine families.
+  free_tier: Google's free VM program covers one e2-micro VM per month (referenced from the VM instance pricing page), and the Storage PD Capacity SKU zero-rates the first 30 GiB-months of pd-standard boot disk -- neither reaches the machine types or disk types the catalog presets pin.
+  estimate_exclusions:
+    - attached data disks -- each is a first-class GcpComputeDisk resource with its own cost profile and estimate
+    - Spot market rates -- SPOT VMs bill a fluctuating rate under the on-demand ceiling, never a committed list price
+    - external IPv4 hours -- access configs live per network interface, and their hourly usage depends on the VM actually running
+    - OS license premiums for premium images (Windows, RHEL, SLES); the catalog presets pin license-free Debian
+    - network egress, disk snapshots, and Cloud KMS key operations for CMEK-encrypted disks
+  notes: "The machine rate is the bill's center of gravity: vCPU and memory bill hourly while the VM runs, and stop when desired_status parks it at TERMINATED. The disks never stop billing -- a stopped VM is a storage bill, not zero."

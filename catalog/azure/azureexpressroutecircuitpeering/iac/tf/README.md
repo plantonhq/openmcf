@@ -81,10 +81,3 @@ module "hq_private_peering" {
 - The provider serializes all peering operations per circuit through an
   internal lock -- concurrent peerings on one circuit apply in
   sequence.
-
-## Required Permissions
-
-The deploying credential needs
-`Microsoft.Network/expressRouteCircuits/peerings/write` (and
-`.../connections/write` for Global Reach) -- held via Network
-Contributor, Contributor, or Owner.

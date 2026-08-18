@@ -1,0 +1,37 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurefirewall
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Azure Firewall
+      sku_meter: firewall deployment hours
+      pricing_unit: hours
+      description: Every firewall bills a flat hourly deployment fee at its tier's rate from creation until deletion, regardless of scale -- Azure autoscales the underlying instances without changing this meter.
+  cost_drivers:
+    - field_path: sku_tier
+      sku_meter: firewall deployment hours
+      pricing_unit: hours
+      impact: The rate ladder for both meters -- BASIC is the SMB-scale tier at a fraction of the price, STANDARD the production default, and PREMIUM (TLS inspection + IDPS enforcement) the dearest; each tier also carries its own per-GB data-processing rate.
+    - field_path: sku_name
+      sku_meter: firewall deployment hours
+      pricing_unit: hours
+      impact: The deployment model picks the meter family -- an AZFW_HUB firewall inside a Virtual WAN hub bills the Secured Virtual Hub deployment and data-processing meters instead of the standalone ones (equal list rates today, distinct meters on the invoice).
+    - field_path: ip_configurations
+      sku_meter: public IP addresses
+      pricing_unit: IP-hours
+      impact: Each configuration references a Standard public IP billing hourly on its own component -- the firewall adds no per-IP meter of its own; extra IPs buy SNAT ports and DNAT frontends, not firewall charges.
+    - field_path: management_ip_configuration
+      sku_meter: public IP addresses
+      pricing_unit: IP-hours
+      impact: The forced-tunneling management path requires its own referenced public IP (billing on its component) but changes nothing on the firewall's own meters.
+  estimate_exclusions:
+    - data processing bills every GB the firewall inspects at the tier's per-GB rate -- the variable half of every firewall bill, following traffic
+    - the referenced public IPs bill hourly on their own components
+    - the attached AzureFirewallPolicy carries its own billing rules on its own component
+    - prescaled capacity units are an opt-in reservation configured outside this spec; by default the firewall bills no capacity-unit charges
+  notes: "Azure Firewall is the flat-fee-plus-traffic shape: one always-on deployment-hour meter fixed by the tier, plus per-GB data processing that follows whatever the firewall inspects. Availability zones are free -- spanning all three zones costs exactly what one zone costs -- which is why zone redundancy is the production posture. The rules themselves (the policy) and the addresses (public IPs) bill where they live: on their own referenced components."

@@ -97,10 +97,7 @@ the workflow act as the identity.
 
 ## Required Permissions
 
-The deploying credential needs
-`Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials/write`
-on the parent identity -- held via Managed Identity Contributor, Contributor,
-or Owner on the identity's scope.
+See [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege action set the deploying principal needs.
 
 ## Subject Format Reference
 

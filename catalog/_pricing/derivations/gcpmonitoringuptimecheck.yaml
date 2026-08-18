@@ -1,0 +1,167 @@
+# Cost derivation: machine-executable rules deriving metered quantities and
+# price choices from a manifest's spec fields. Field paths are spec-relative
+# proto field names. Price slugs resolve in the GCP price book
+# (catalog/_pricing/pricebook/gcp.yaml). Schema:
+# finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: gcpmonitoringuptimecheck
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    assumption: us-central1
+  refusals:
+    - when:
+        - field_path: synthetic_monitor
+          op: is_set
+      reason: a synthetic monitor bills the separate, dearer Synthetic Monitor Executions meter plus the referenced Cloud Function's own invocations and compute -- charges this derivation carries no rates for
+    - when:
+        - field_path: resource_group
+          op: is_set
+      reason: a group target probes every member each cycle, and the group's membership count lives in Cloud Monitoring, not in this manifest -- the execution volume is indeterminate here
+  lines:
+    # --- default six locations (selected_regions empty), by cadence ---
+    - sku_meter: uptime check executions
+      applies_when:
+        - field_path: selected_regions
+          op: is_unset
+        - field_path: period
+          op: is_unset
+      quantity:
+        - constant: "6"
+        - constant: "12"
+        - hours_in_month: true
+      price_slug: monitoring-uptime-check-execution
+      basis: six checker locations (the empty selected_regions default -- three USA plus Europe, South America, and Asia Pacific) x 12 probes per hour at the 300s provider-default cadence x 730 hours, at the per-execution list rate
+    - sku_meter: uptime check executions
+      applies_when:
+        - field_path: selected_regions
+          op: is_unset
+        - field_path: period
+          op: equals
+          value: 300s
+      quantity:
+        - constant: "6"
+        - constant: "12"
+        - hours_in_month: true
+      price_slug: monitoring-uptime-check-execution
+      basis: six checker locations (the empty selected_regions default) x 12 probes per hour at the 300s cadence x 730 hours, at the per-execution list rate
+    - sku_meter: uptime check executions
+      applies_when:
+        - field_path: selected_regions
+          op: is_unset
+        - field_path: period
+          op: equals
+          value: 60s
+      quantity:
+        - constant: "6"
+        - constant: "60"
+        - hours_in_month: true
+      price_slug: monitoring-uptime-check-execution
+      basis: six checker locations (the empty selected_regions default) x 60 probes per hour at the 60s cadence x 730 hours, at the per-execution list rate
+    - sku_meter: uptime check executions
+      applies_when:
+        - field_path: selected_regions
+          op: is_unset
+        - field_path: period
+          op: equals
+          value: 600s
+      quantity:
+        - constant: "6"
+        - constant: "6"
+        - hours_in_month: true
+      price_slug: monitoring-uptime-check-execution
+      basis: six checker locations (the empty selected_regions default) x 6 probes per hour at the 600s cadence x 730 hours, at the per-execution list rate
+    - sku_meter: uptime check executions
+      applies_when:
+        - field_path: selected_regions
+          op: is_unset
+        - field_path: period
+          op: equals
+          value: 900s
+      quantity:
+        - constant: "6"
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: monitoring-uptime-check-execution
+      basis: six checker locations (the empty selected_regions default) x 4 probes per hour at the 900s cadence x 730 hours, at the per-execution list rate
+    # --- narrowed locations (selected_regions set), by cadence ---
+    - sku_meter: uptime check executions
+      applies_when:
+        - field_path: selected_regions
+          op: is_set
+        - field_path: period
+          op: is_unset
+      quantity:
+        - count_of: selected_regions
+        - constant: "12"
+        - hours_in_month: true
+      price_slug: monitoring-uptime-check-execution
+      basis: one checker location per selected region x 12 probes per hour at the 300s provider-default cadence x 730 hours, at the per-execution list rate
+    - sku_meter: uptime check executions
+      applies_when:
+        - field_path: selected_regions
+          op: is_set
+        - field_path: period
+          op: equals
+          value: 300s
+      quantity:
+        - count_of: selected_regions
+        - constant: "12"
+        - hours_in_month: true
+      price_slug: monitoring-uptime-check-execution
+      basis: one checker location per selected region x 12 probes per hour at the 300s cadence x 730 hours, at the per-execution list rate
+    - sku_meter: uptime check executions
+      applies_when:
+        - field_path: selected_regions
+          op: is_set
+        - field_path: period
+          op: equals
+          value: 60s
+      quantity:
+        - count_of: selected_regions
+        - constant: "60"
+        - hours_in_month: true
+      price_slug: monitoring-uptime-check-execution
+      basis: one checker location per selected region x 60 probes per hour at the 60s cadence x 730 hours, at the per-execution list rate
+    - sku_meter: uptime check executions
+      applies_when:
+        - field_path: selected_regions
+          op: is_set
+        - field_path: period
+          op: equals
+          value: 600s
+      quantity:
+        - count_of: selected_regions
+        - constant: "6"
+        - hours_in_month: true
+      price_slug: monitoring-uptime-check-execution
+      basis: one checker location per selected region x 6 probes per hour at the 600s cadence x 730 hours, at the per-execution list rate
+    - sku_meter: uptime check executions
+      applies_when:
+        - field_path: selected_regions
+          op: is_set
+        - field_path: period
+          op: equals
+          value: 900s
+      quantity:
+        - count_of: selected_regions
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: monitoring-uptime-check-execution
+      basis: one checker location per selected region x 4 probes per hour at the 900s cadence x 730 hours, at the per-execution list rate
+  exclusions:
+    - applies_when:
+        - field_path: log_check_failures
+          op: equals
+          value: "true"
+      text: each failed probe writes a Cloud Logging entry billed at ingestion rates -- negligible for healthy targets, real for flapping ones
+    - text: the alerting built on this check (alert policies and their notification channels) bills on those components
+  notes:
+    - text: "The first 1,000,000 uptime check executions per project each month are free -- the SKU's own tiered rate, aggregated monthly at project level -- so a project's early checks pay nothing and this may be one of them. List total shown without the free allotment, which is project-wide and not visible from any single manifest."
+    - applies_when:
+        - field_path: selected_regions
+          op: is_set
+      text: Each selected region counts here as one checker location; the aggregate USA value expands to three US locations and bills three executions per cycle while counting once in this estimate -- a manifest using it bills more than shown. GCP also rejects any selection covering fewer than three locations.

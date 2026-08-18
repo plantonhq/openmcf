@@ -19,13 +19,10 @@ spec:
       - purpose: ManageNodePool
         permissions:
           - container.clusters.get
-          - container.nodePools.create
-          - container.nodePools.get
-          - container.nodePools.update
-          - container.nodePools.delete
+          - container.clusters.update
           - container.operations.get
         provenance: derived
-        notes: Covers google_container_node_pool -- the provider reads the parent cluster, creates/reads/updates/deletes the pool, and polls the long-running operation every mutation returns.
+        notes: Covers google_container_node_pool -- the provider reads the parent cluster and polls the long-running operation every mutation returns. GCP defines NO container.nodePools.* IAM permissions (verified against IAM's testable-permissions inventory and the published container roles reference); node pool create/update/delete all authorize as container.clusters.update on the parent cluster.
       - purpose: ActAsNodeServiceAccount
         permissions:
           - iam.serviceAccounts.actAs

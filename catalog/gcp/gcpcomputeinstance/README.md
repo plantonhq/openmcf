@@ -25,8 +25,7 @@ Zone, boot source, NIC count and their networks, scratch disks, hostname, confid
 
 ## Prerequisites
 
-- GCP credentials with `roles/compute.instanceAdmin.v1` on the target project (the Compute Engine API is enabled automatically)
-- To attach a service account: `roles/iam.serviceAccountUser` on that account
+- GCP credentials for the deploying principal — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set (the Compute Engine API is enabled automatically)
 - For CMEK boot disks: a `GcpKmsKey` the Compute Engine service agent can use (`roles/cloudkms.cryptoKeyEncrypterDecrypter`)
 
 ## Quick Start

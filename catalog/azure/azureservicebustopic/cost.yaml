@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureservicebustopic
+spec:
+  billing_model: free
+  free_tier: The topic itself -- its name, size and dedup dials, ordering support, and gate status -- never bills. A topic is an entity inside a Service Bus NAMESPACE, and Azure meters everything at the namespace level; creating more topics inside a namespace adds nothing to the bill, and Service Bus does not charge for the storage messages occupy (max_size_in_megabytes is a quota, not a meter).
+  notes: "The real spend lives on the parent AzureServiceBusNamespace, a separate catalog kind: the hourly base charge plus per-million operations and brokered connections on STANDARD, or the flat daily messaging-unit rate on PREMIUM. Topics require STANDARD or PREMIUM (BASIC is queue-only), so the tier choice that unlocks topics is itself priced on the namespace; each publish to this topic plus each delivery through its subscriptions is a namespace-metered operation on STANDARD, and the size/partitioning dials only consume capacity the namespace already pays for."

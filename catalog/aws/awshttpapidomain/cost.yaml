@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awshttpapidomain
+spec:
+  billing_model: free
+  free_tier: An API Gateway custom domain name carries no meter -- the AWS price list for API Gateway (offer AmazonApiGateway) meters API calls, caching, and WebSocket usage, and nothing in it counts domain names, API mappings, or routing rules. Creating the domain, mapping APIs to base paths, and layering routing rules on top never bills.
+  notes: "The real spend flows through the domain rather than to it: requests reaching the mapped HTTP APIs bill on those API components' per-million request meter. The ACM certificate the domain references is free in its default form (Amazon-issued, non-exportable public certificate -- the AwsCertManagerCert fact sheet covers the exportable and private-CA exceptions). A mutual-TLS truststore is an ordinary S3 object billing cents of storage on its bucket. Route 53 alias queries resolve against the hosted zone's own billing, and data transfer out bills at standard EC2 rates on the account -- none of it metered by this component."

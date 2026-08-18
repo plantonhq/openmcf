@@ -1,0 +1,80 @@
+# Cost derivation: the machine-executable rules turning any AwsNlb
+# manifest's spec values into metered quantities and price choices. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/awsnlb.yaml; a server-side estimator evaluates the
+# same rules against live manifests. Prices live in the provider's price
+# book (../pricebook/). Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsnlb
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  lines:
+    - sku_meter: Network Load Balancer hours
+      quantity:
+        - hours_in_month: true
+      price_slug: nlb-hours-us-east-1
+      basis: one load balancer, billed every hour of the month; every catalog preset leaves region a placeholder, so this prices the us-east-1 rate
+    - sku_meter: reserved Load Balancer Capacity Units
+      applies_when:
+        - field_path: minimum_load_balancer_capacity_units
+          op: is_set
+      quantity:
+        - field_value:
+            field_path: minimum_load_balancer_capacity_units
+        - hours_in_month: true
+      price_slug: nlb-reserved-lcu-us-east-1
+      basis: minimum_load_balancer_capacity_units reserves that many NLCUs every hour of the month
+    - sku_meter: public IPv4 address usage
+      applies_when:
+        - field_path: internal
+          op: not_equals
+          value: "true"
+      quantity:
+        - count_of: subnet_mappings
+        - hours_in_month: true
+      price_slug: public-ipv4-in-use-us-east-1
+      basis: internet-facing -- one public IPv4 node per subnet mapping's Availability Zone, held every hour of the month; the in-use rate applies whether the address is AWS-assigned or a pinned Elastic IP
+  exclusions:
+    - applies_when:
+        - field_path: minimum_load_balancer_capacity_units
+          op: is_unset
+      text: NLCU usage (billed per used Network load balancer capacity unit-hour) is traffic-dependent
+    - applies_when:
+        - field_path: minimum_load_balancer_capacity_units
+          op: is_set
+      text: NLCU usage beyond the reserved NLCUs is traffic-dependent
+    - applies_when:
+        - field_path: internal
+          op: not_equals
+          value: "true"
+      text: data transfer out to the internet
+    - applies_when:
+        - field_path: cross_zone_load_balancing_enabled
+          op: equals
+          value: "true"
+      text: inter-AZ data transfer bills per GB while cross-zone load balancing is enabled -- entirely traffic-dependent
+    - applies_when:
+        - field_path: access_logs
+          op: is_set
+      text: access-log bytes (TLS listeners only) bill to the destination S3 bucket, not the load balancer
+  notes:
+    - applies_when:
+        - field_path: internal
+          op: equals
+          value: "true"
+      text: Internal scheme holds no public IPv4 addresses, removing that charge entirely.
+    - applies_when:
+        - field_path: internal
+          op: not_equals
+          value: "true"
+      text: The public IPv4 address hours are counted here on the load balancer, whether AWS assigns the addresses or subnet mappings pin Elastic IPs -- the in-use rate is the same either way.
+    - applies_when:
+        - field_path: minimum_load_balancer_capacity_units
+          op: is_set
+      text: The reservation is priced as a steady month-long hold; it exists for surge windows and should be removed after them, so real spend depends on how long the reservation stays set.

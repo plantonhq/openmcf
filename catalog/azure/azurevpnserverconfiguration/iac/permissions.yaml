@@ -1,0 +1,26 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurevpnserverconfiguration
+spec:
+  azure:
+    groups:
+      - purpose: ManageVpnServerConfiguration
+        actions:
+          - Microsoft.Network/vpnServerConfigurations/read
+          - Microsoft.Network/vpnServerConfigurations/write
+          - Microsoft.Network/vpnServerConfigurations/delete
+        provenance: derived
+        notes: Covers azurerm_vpn_server_configuration -- create, read/refresh, in-place updates (everything except the ForceNew name/region/resource_group), and destroy. Held via Network Contributor, Contributor, or Owner on the resource group.
+      - purpose: ManageConfigurationPolicyGroups
+        actions:
+          - Microsoft.Network/vpnServerConfigurations/configurationPolicyGroups/read
+          - Microsoft.Network/vpnServerConfigurations/configurationPolicyGroups/write
+          - Microsoft.Network/vpnServerConfigurations/configurationPolicyGroups/delete
+        provenance: derived
+        notes: Covers azurerm_vpn_server_configuration_policy_group, the composed ARM children created for each policy_groups entry -- needed only when the spec configures them. Included in the same roles that carry the parent configuration's permissions.

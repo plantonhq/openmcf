@@ -1,0 +1,49 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpspannerinstance
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Cloud Spanner
+      sku_meter: compute capacity
+      pricing_unit: replica-hours
+      description: The provisioned compute bills hourly from creation, queried or idle. Spanner meters per replica -- a regional configuration runs three read-write replicas per node, so one node bills three replica-hours each hour.
+  cost_drivers:
+    - field_path: num_nodes
+      sku_meter: compute capacity
+      pricing_unit: replica-hours
+      impact: Each node is 1000 processing units billed across the configuration's replicas every hour -- the coarse capacity lever, and GCP defaults a PROVISIONED instance to 1 node when no capacity field is set.
+    - field_path: processing_units
+      sku_meter: compute capacity
+      pricing_unit: replica-hours
+      impact: The fine-grained alternative -- capacity below one node in multiples of 100 processing units (the smallest billable footprint is 100, a tenth of a node's price).
+    - field_path: autoscaling_config.autoscaling_limits
+      sku_meter: compute capacity
+      pricing_unit: replica-hours
+      impact: Autoscaling floats capacity between the min and max bounds on CPU and storage utilization -- the minimum is the committed floor, the maximum the worst-case ceiling.
+    - field_path: edition
+      sku_meter: compute capacity
+      pricing_unit: replica-hours
+      impact: The edition keys the hourly rate -- ENTERPRISE bills more than STANDARD per replica-hour, and ENTERPRISE_PLUS more again for the 99.999% multi-region SLA tier.
+    - field_path: config
+      sku_meter: compute capacity
+      pricing_unit: replica-hours
+      impact: The instance configuration decides how many replicas each node runs and at what regional rate -- a multi-region configuration bills substantially more per node than a regional one, and the choice is immutable.
+    - field_path: instance_type
+      sku_meter: compute capacity
+      pricing_unit: replica-hours
+      impact: FREE_INSTANCE is the billing account's one zero-cost development instance (about 10 GB storage, no capacity fields allowed); PROVISIONED bills normally.
+    - field_path: default_backup_schedule_type
+      sku_meter: backup storage
+      pricing_unit: GiB-months
+      impact: AUTOMATIC attaches a default backup schedule to every new database on the instance, so backup storage starts accruing with the first database.
+  free_tier: One FREE_INSTANCE per billing account -- a zero-cost development instance with roughly 10 GB of storage that can be upgraded to PROVISIONED in place but never back.
+  estimate_exclusions:
+    - database storage bills per GiB-month of data actually stored across the configuration's replicas -- it grows with the databases, which no manifest can know
+    - backup storage bills per GiB-month and follows database size and schedule retention
+    - network egress, inter-region data replication (multi-region and custom configurations), and Data Boost usage are workload-dependent
+  notes: "Compute capacity is the committed spend and Spanner meters it per replica: the published regional node price is the per-replica rate times the configuration's three read-write replicas. Storage is deliberately elastic -- Spanner bills stored GiB, not provisioned GiB, though each node also caps how much storage the instance may hold."

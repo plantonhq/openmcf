@@ -1,0 +1,70 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurepublicip
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A public IP is an address, not a store -- it holds no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The address terminates nothing -- transport encryption is decided by whatever resource attaches it (load balancer backends, the VM's services), never by the address resource.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Internet reachability is the product -- this kind exists to give a resource a public address. Architectures avoiding public exposure simply never attach one; the private path is a subnet address, not a configuration of this resource.
+    - control_id: restricted-ingress
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Standard SKU (the only inbound-capable SKU modeled; Basic retired September 2025) is secure by default -- the address is closed to inbound traffic until a network security group on the attached resource's NIC or subnet explicitly allows it.
+      notes: The allow rules live on AzureNetworkSecurityGroup components at the point of attachment, deliberately outside this manifest. An unattached address has no ingress surface at all.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: An address offers no request-filtering attachment point -- WAF is composed on the HTTP-aware tier (Application Gateway, Front Door) in front of whatever the address fronts. The address's own edge defense is volumetric, not request-level -- see ddos_protection_mode, which attaches dedicated DDoS mitigation at the IP level.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the address exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The address runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own. The nearest analogue -- domain_name_label_scope, which hashes the Azure-managed DNS name to defeat dangling-DNS subdomain takeover -- is a naming defense, not an authentication path.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane changes (creation, DNS label edits, deletion) land in the Azure Activity Log as subscription-level posture; the address itself sees no access events to audit -- those belong to the attached resource.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure publishes public IP platform metrics to Azure Monitor automatically for every address -- bytes and packets in and out, plus the DDoS telemetry set (under-attack flag, inbound dropped/forwarded packets) that feeds attack alerting with no configuration.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Nothing to back up -- the resource is a reservation, recreated declaratively. The caveat worth knowing is that recreation assigns a DIFFERENT address from Azure's pool; addresses that must survive recreation are reserved through an AzurePublicIpPrefix instead, whose block persists while individual addresses come and go.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: zones
+      evidence:
+        type: spec_default
+        reference: '["1","2","3"] anchors the address zone-redundantly (the production default posture); a single entry pins it to one zone, sharing that zone''s fate; empty leaves it non-zonal. Fixed at creation. STANDARD_V2 addresses are zone-redundant by design.'
+      notes: All three presets pin the zone-redundant posture. In regions Azure has upgraded, formerly non-zonal Standard addresses have been made zone-redundant platform-side.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. Deletion is consequential -- the actual address returns to Azure's pool and cannot be recovered -- unless the address came from a prefix, whose block retains it for reuse.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Microsoft operates the address infrastructure; no customer-visible patch surface exists.

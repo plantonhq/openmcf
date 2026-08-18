@@ -1,0 +1,24 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsapprunnerobservabilityconfiguration
+spec:
+  aws:
+    statements:
+      - sid: ManageObservabilityConfiguration
+        actions:
+          - apprunner:CreateObservabilityConfiguration
+          - apprunner:DescribeObservabilityConfiguration
+          - apprunner:DeleteObservabilityConfiguration
+          - apprunner:TagResource
+          - apprunner:UntagResource
+          - apprunner:ListTagsForResource
+        resources:
+          - arn:aws:apprunner:*:*:observabilityconfiguration/*
+        provenance: derived
+        notes: Covers aws_apprunner_observability_configuration, the only resource either module registers (the Pulumi module drives the same provider through the pulumi-aws bridge). Create registers the configuration with its optional trace block and the platform's identity tags; Describe and ListTagsForResource serve plan/refresh; the provider's only real update path is tag reconciliation via Tag/Untag (trace changes are a documented upstream no-op); Delete removes the revision. The service reference authorizes all six actions on the observabilityconfiguration ARN format (name/version/id path -- the single trailing wildcard covers all revisions).

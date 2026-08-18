@@ -1,0 +1,32 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpbigtabletable
+spec:
+  gcp:
+    groups:
+      - purpose: EnableBigtableAdminApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling bigtableadmin.googleapis.com on the target project. disable_on_destroy is false in both modules, so the disable permission is never needed.
+      - purpose: ManageTable
+        permissions:
+          - bigtable.tables.create
+          - bigtable.tables.delete
+          - bigtable.tables.get
+          - bigtable.tables.update
+        provenance: derived
+        notes: Covers google_bigtable_table -- create with column families, pre-splits, change streams, automated backups, and deletion protection; get for read/refresh; update for mutable fields (families, change-stream retention, backup policy, deletion protection); delete on destroy once deletion_protection is UNPROTECTED. The predefined roles/bigtable.admin carries all of these.
+      - purpose: ManageGcPolicies
+        permissions:
+          - bigtable.tables.get
+          - bigtable.tables.update
+        provenance: derived
+        notes: Covers google_bigtable_gc_policy (one per column family that declares a policy). GC policies are column-family metadata -- the provider applies them through the Admin API's ModifyColumnFamilies call, which authorizes as a table update, and reads them back through the table's get.

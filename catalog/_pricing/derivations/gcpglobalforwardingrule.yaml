@@ -1,0 +1,70 @@
+# Cost derivation: machine-executable rules deriving metered quantities and
+# price choices from a manifest's spec fields. Field paths are spec-relative
+# proto field names. Price slugs resolve in the GCP price book
+# (catalog/_pricing/pricebook/gcp.yaml). Schema:
+# finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: gcpglobalforwardingrule
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    assumption: us-central1
+  refusals:
+    - when:
+        - field_path: load_balancing_scheme
+          op: equals
+          value: INTERNAL_MANAGED
+      reason: a cross-region internal ALB frontend bills envoy proxy-instance hours -- a minimum of three instances per forwarding rule, scaling with traffic -- a meter this derivation carries no rates for
+    - when:
+        - field_path: load_balancing_scheme
+          op: equals
+          value: INTERNAL_SELF_MANAGED
+      reason: a Traffic Director frontend is configuration consumed by the service mesh -- what it costs follows the mesh deployment, not any rate this derivation carries
+  lines:
+    # --- external frontends: the shared global forwarding-rule band ---
+    - sku_meter: forwarding rule hours
+      applies_when:
+        - field_path: load_balancing_scheme
+          op: is_unset
+      quantity:
+        - hours_in_month: true
+      price_slug: gclb-forwarding-rule-minimum-global
+      basis: the global forwarding-rule minimum service charge for every hour of the month, under the provider-default EXTERNAL scheme (the classic global external Application LB) -- the full band rate a project's first global rule pays
+    - sku_meter: forwarding rule hours
+      applies_when:
+        - field_path: load_balancing_scheme
+          op: equals
+          value: EXTERNAL
+      quantity:
+        - hours_in_month: true
+      price_slug: gclb-forwarding-rule-minimum-global
+      basis: the global forwarding-rule minimum service charge for every hour of the month under the classic EXTERNAL scheme -- the full band rate a project's first global rule pays
+    - sku_meter: forwarding rule hours
+      applies_when:
+        - field_path: load_balancing_scheme
+          op: equals
+          value: EXTERNAL_MANAGED
+      quantity:
+        - hours_in_month: true
+      price_slug: gclb-forwarding-rule-minimum-global
+      basis: the global forwarding-rule minimum service charge for every hour of the month under the envoy-based EXTERNAL_MANAGED scheme -- the same band as the classic external LB, the full rate a project's first global rule pays
+    # --- Private Service Connect frontend (scheme NONE) ---
+    - sku_meter: PSC endpoint hours
+      applies_when:
+        - field_path: load_balancing_scheme
+          op: equals
+          value: NONE
+      quantity:
+        - hours_in_month: true
+      price_slug: psc-consumer-endpoint-hour
+      basis: "the flat Private Service Connect endpoint fee for every hour of the month -- Google's published $0.01/hour applies to both endpoint forms this rule can take: the all-apis / vpc-sc Google-APIs bundles and a producer's service attachment"
+  exclusions:
+    - text: "data processing follows traffic: an external frontend bills inbound and outbound data processing per GiB at the rate of the region where it is processed; a PSC endpoint targeting a published service attachment bills consumer data processing per GiB; the all-apis and vpc-sc Google-APIs bundles carry no data charge at all"
+    - text: internet data transfer out to clients follows traffic volume and destination
+    - text: everything behind the VIP -- target proxies, URL maps, backend services, Cloud Armor policies, Cloud CDN, SSL certificates -- is separate wiring billing on its own components
+    - text: a reserved static address referenced by ip_address bills nothing while attached to this rule; the reservation itself is the GcpGlobalAddress component's concern
+  notes:
+    - text: "The forwarding-rule charge is a project-wide band invisible from any single manifest: the first five global rules share one minimum service charge, so a project's first rule pays the full rate shown here, rules two through five add nothing (the classic port-80-redirect-plus-port-443 pair costs no more than one rule), and each rule beyond five bills $0.01/hour instead."

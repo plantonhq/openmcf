@@ -1,0 +1,61 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. All five presets are zero-committed: an idle log group
+# bills nothing, ingestion dominates once events flow, and the features a
+# preset switches on (metric filters, transformers) meter only alongside
+# that flow -- stated in exclusions, never padded into fabricated dollars.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awscloudwatchloggroup
+spec:
+  presets:
+    - preset: 01-standard-retention-30d
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - ingestion bills per GB at the Standard-class rate once events arrive -- the ingest rate is more than an order of magnitude above the storage rate, so the sender's volume is the bill
+        - stored (compressed) bytes bill per GB-month for at most 30 days before retention deletes them -- the bounded-storage posture the unset default (keep forever) lacks
+        - the AWS Free Tier's 5 GB of monthly log data spans ingestion, storage, and Insights scanning
+      notes: Zero committed cost -- an empty group is a free container; the meters start with the first log event sent to it.
+    - preset: 02-encrypted-retention-90d
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - ingestion bills per GB at the Standard rate as events arrive; compressed storage bills per GB-month for the 90-day retention window
+        - CMK encryption adds no CloudWatch Logs rate -- the customer-managed key's own charges bill on the referenced AwsKmsKey component
+        - Logs Insights queries bill per GB scanned, following who queries rather than what this manifest configures
+      notes: Zero committed cost -- encryption is posture, not a rate; spend still follows ingested volume alone, tripled in retention window versus the 30-day preset.
+    - preset: 03-infrequent-access-long-retention
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - the INFREQUENT_ACCESS class ingests at half the Standard rate -- the trade is giving up metric filters, subscription filters, and transformers, which this archive posture does not use
+        - compressed storage bills per GB-month (the same rate as Standard) across the full 365-day retention -- long retention on the cheap-ingest class is the archive economics working as intended
+        - the customer-managed KMS key bills on its own component
+      notes: Zero committed cost -- the half-rate class only discounts data that actually arrives; nothing is billed for choosing it on an idle group.
+    - preset: 04-error-metric-filter
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - ingestion bills per GB and compressed storage per GB-month over the 30-day window as events flow
+        - the ERROR filter publishes one custom metric, billed at CloudWatch's custom-metric monthly rate prorated by the hours it is actually written -- a meter this preset starts, but only once log events arrive for the filter to evaluate
+        - the single dimensionless metric avoids the cardinality multiplier -- each unique dimension-value combination would bill as its own metric
+        - alarms built on the filter's metric bill on their own alarm components
+      notes: Zero committed cost -- the filter watches, it does not bill; the custom-metric meter runs only in hours the group ingests events for it to count.
+    - preset: 05-transformed-ingest-pipeline
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - transformation itself is included in the Standard-class ingestion price -- but storage bills on the POST-transformation event size, and the parse/rename/add/convert pipeline adds structure that can exceed the original line
+        - ingestion bills per GB as events arrive; compressed post-transform storage bills per GB-month over the 90-day window
+        - the server-error metric filter (matching transformed output) bills one custom metric prorated by hours written, starting only when events flow
+      notes: Zero committed cost -- the pipeline reshapes events in flight at no extra ingest rate; its quiet cost is that structured output stores slightly larger, a multiplier on volume that is zero until traffic exists.

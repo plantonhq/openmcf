@@ -1,0 +1,87 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awscognitouserpool
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The user directory -- profiles, attributes, password hashes, MFA secrets -- is encrypted at rest by the service on every pool; no toggle exists in the spec or the API to weaken it.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Cognito offers no customer-managed key for the directory itself -- the data rests on AWS-owned encryption only. The one customer key in this spec, lambda_config.kms_key_id, encrypts the one-time codes handed to custom email/SMS sender triggers in flight to your Lambda, not the stored directory.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every path to the pool is TLS -- the cognito-idp API, the hosted-UI domain (a Cognito prefix domain or a custom domain fronted by AWS's managed CloudFront with an ACM certificate), and the OAuth2 token endpoints. No plaintext listener exists.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: An end-user authentication service exists to be reached -- the sign-in API and hosted UI are public by design, and no private-only mode exists in the spec or the API. The defense model is authentication policy and threat protection (user_pool_add_ons), not network isolation.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: risk_configuration.risk_exception
+      evidence:
+        type: spec_default
+        reference: Unset means sign-in is accepted from any source address; blocked_ip_ranges refuses authentication from listed CIDR ranges regardless of risk assessment (and skipped_ip_ranges exempts trusted ranges from risk evaluation). Requires threat protection active, and is the only network-source control the pool offers.
+      notes: This filters WHO can authenticate, not reachability -- the endpoints themselves remain publicly routable.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: AWS WAF can protect a user pool's hosted endpoints, but the web ACL associates from the WAF side against the pool's ARN -- no field of this spec carries it, deliberately, matching AWS's model where the association lives on the web ACL.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane operation -- create, update, delete, group and risk-configuration changes, admin user APIs -- is authorized by IAM unconditionally against the pool ARN. End-user data-plane access is governed by the pool's own authentication flows, and user_groups memberships flow into tokens as the cognito:groups claim for downstream authorization.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Everywhere the pool touches other AWS services it uses platform identities, never stored credentials -- SMS publishes through SNS by assuming sms_configuration.sns_caller_arn (with a required external_id as the confused-deputy guard), DEVELOPER email sends through an authorized SES identity, and Lambda triggers are invoked through resource-policy grants to the Cognito service principal.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: mfa_configuration
+      evidence:
+        type: spec_default
+        reference: OFF (AWS's default) leaves single-factor password sign-in as a complete authentication path; OPTIONAL lets users enroll a second factor and ON requires one for every user. allowed_first_auth_factors can additionally replace passwords entirely with EMAIL_OTP, SMS_OTP, or WEB_AUTHN passkeys on the ESSENTIALS tier and above.
+      notes: Which token flows an application may use (SRP versus plain-password ADMIN flows) is app-client configuration, governed on the AwsCognitoUserPoolClient components.
+    - control_id: audit-logging
+      status: configurable
+      field_path: log_configurations
+      evidence:
+        type: spec_default
+        reference: Omitted means no detailed event-log delivery; each entry routes one source -- userNotification delivery logs, or userAuthEvents sign-in/risk events (threat protection required) -- to a CloudWatch log group, Firehose stream, or S3 bucket. Management-plane calls land in CloudTrail by default regardless.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cognito publishes sign-up, sign-in, token-refresh, and federation metrics to CloudWatch automatically for every pool; threat protection adds risk-evaluation metrics and the console's threat dashboard on top.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Neither the API nor this spec carries a backup facility, and none exists to compose -- user profiles can be exported as CSV but password hashes, MFA secrets, and device registrations can NEVER leave the pool, so a deleted pool's credentials are unrecoverable and every user must reset. deletion_protection is the guard that matters; treat the pool as irreplaceable state, not recreatable configuration.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility there is no retention to configure -- delivered event logs retain per the referenced log-group/bucket components' own policies.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A user pool is a fully managed regional service AWS operates across the region's availability zones -- no zonal placement exists in the spec or the API, and no single-zone mode is offered.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_protection
+      evidence:
+        type: spec_default
+        reference: False by default; true makes the pool refuse deletion until protection is explicitly lifted -- the one guard against unrecoverably destroying every user account, since credentials cannot be exported or restored. Both hardened presets enable it.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the identity provider; no customer-visible patch surface exists.

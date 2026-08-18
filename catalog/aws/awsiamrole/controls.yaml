@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsiamrole
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A role stores no customer data -- its trust and permission documents are IAM control-plane metadata held inside AWS's own service infrastructure, not a data store this component owns.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); IAM exposes no KMS surface for roles.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A role terminates no connections of its own. The only wire traffic involving it -- IAM management calls and the STS AssumeRole exchange -- happens on AWS API endpoints, which serve exclusively over TLS as account-wide provider behavior, not per-role configuration.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A role has no network endpoint to expose. Its real exposure surface is identity, not network -- WHO may assume it is exactly what the required trust declaration governs (see rbac).
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; a role is an identity object with no addresses or ports.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A role receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: configurable
+      field_path: trust_policy
+      evidence:
+        type: spec_default
+        reference: The role IS an RBAC surface -- the spec's required trust oneof forces every role to declare WHO may assume it. The trust_policy arm carries the assume-role document (exact principals plus confused-deputy conditions like aws:SourceAccount and sts:ExternalId); the alternative oidc_trust arm composes federated trust scoped to declared subjects and audiences. What the role can DO once assumed is governed by managed_policy_arns, inline_policies, and the permissions_boundary ceiling (effective permissions are the intersection of boundary and policies).
+      notes: A trust document is mandatory, but its quality is the operator's -- a Principal of "*" would open assumption to anyone, so the control is configurable rather than enforced. The permissions_boundary field caps the maximum grant regardless of attached policies.
+    - control_id: workload-identity
+      status: configurable
+      field_path: oidc_trust
+      evidence:
+        type: spec_default
+        reference: The oidc_trust arm makes this role the keyless-identity mechanism itself -- both modules compose an sts:AssumeRoleWithWebIdentity trust document from an AwsIamOidcProvider's outputs, so workloads (EKS IRSA service accounts, GitHub Actions pipelines) authenticate with short-lived federated tokens instead of static keys. Exact and wildcard subjects render as separate statements so IAM ORs them instead of ANDing condition operators.
+      notes: The composed document defaults the audience condition to sts.amazonaws.com and requires at least one subject -- a role trusting every token the provider mints cannot validate. The role itself never holds long-lived credentials in either trust form.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: An IAM role carries no long-lived credential path at all -- no password, no access keys. The only way to use it is an STS assume call that mints temporary session credentials, expiring within max_session_duration (AWS default 1 hour, hard ceiling 12).
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. IAM management calls and every sts:AssumeRole against the role are recorded by AWS CloudTrail as account-level posture, not per-role configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: IAM publishes no CloudWatch metrics per role; usage signals (role last-used, access-analyzer findings) are account-level IAM features outside this spec and the modules.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A role holds no data to back up -- it is declarative configuration fully re-creatable from the manifest; attachments and inline policies re-apply with it.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: IAM is a global control-plane service -- AWS replicates role definitions across its own infrastructure, and the role is assumable in every region with no zonal placement to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for roles. With force_detach_policies at its default (false), deletion does fail while out-of-band policy attachments exist -- a dependency guard that surfaces other owners' wiring, not a configurable protection.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A role is a pure configuration object with no software to patch.

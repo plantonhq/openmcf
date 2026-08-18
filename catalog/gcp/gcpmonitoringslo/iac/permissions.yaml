@@ -1,0 +1,34 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpmonitoringslo
+spec:
+  gcp:
+    groups:
+      - purpose: EnableMonitoringApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling monitoring.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageSlo
+        permissions:
+          - monitoring.slos.create
+          - monitoring.slos.get
+          - monitoring.slos.update
+          - monitoring.slos.delete
+        provenance: derived
+        notes: Covers google_monitoring_slo -- create, read/refresh, in-place updates (goal, display name, SLI tuning), and destroy. All four verified present in IAM's testable-permissions inventory. Measuring an EXISTING service (service.service_id) needs no service-side permission -- the SLO API stores the parent service name without a separate read.
+      - purpose: ManageMonitoringService
+        permissions:
+          - monitoring.services.create
+          - monitoring.services.get
+          - monitoring.services.update
+          - monitoring.services.delete
+        provenance: derived
+        notes: Required only when the spec's service arm CREATES a service -- google_monitoring_custom_service (service.custom_service) or google_monitoring_service (service.basic_service); the existing-service arm never touches the services API. All four verified present in IAM's testable-permissions inventory.

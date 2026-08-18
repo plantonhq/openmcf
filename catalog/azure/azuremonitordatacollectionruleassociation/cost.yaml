@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremonitordatacollectionruleassociation
+spec:
+  billing_model: free
+  free_tier: An association is a pure attachment record -- an extension resource living on the target machine that points it at a data collection rule or endpoint. Creating, holding, and deleting associations bills nothing; no meter exists on the linkage.
+  notes: "No field of this spec buys anything: target_resource_id, the rule or endpoint binding, name, and description are all attachment coordinates. The real spend is what the attachment UNLEASHES -- once associated, the Azure Monitor Agent on the target starts collecting per the rule, and the telemetry bills at the rule's destinations (Log Analytics ingestion per GB, Event Hub throughput, storage capacity) exactly as the AzureMonitorDataCollectionRule's own profile locates it. Detaching (deleting the association) is also the cost kill-switch for one machine without touching the rule."

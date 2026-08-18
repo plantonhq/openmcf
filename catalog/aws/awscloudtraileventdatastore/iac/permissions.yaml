@@ -1,0 +1,39 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awscloudtraileventdatastore
+spec:
+  aws:
+    statements:
+      - sid: ManageEventDataStore
+        actions:
+          - cloudtrail:CreateEventDataStore
+          - cloudtrail:UpdateEventDataStore
+          - cloudtrail:DeleteEventDataStore
+          - cloudtrail:GetEventDataStore
+        resources:
+          - arn:aws:cloudtrail:*:*:eventdatastore/*
+        provenance: derived
+        notes: Covers aws_cloudtrail_event_data_store / cloudtrail.EventDataStore. GetEventDataStore serves every plan/refresh. Teardown needs UpdateEventDataStore AND DeleteEventDataStore in sequence -- AWS refuses deletion while termination protection is on (the default), so the two-step (apply protection off, then destroy) is real API traffic, and the deleted store lingers 7 days in PENDING_DELETION with its name reserved. An organization store (organization_enabled) only provisions from the organization's management account or its delegated CloudTrail administrator with trusted access enabled -- an account-side prerequisite, not a module call. A customer-managed key's policy must allow cloudtrail.amazonaws.com to use it; that policy is the referenced AwsKmsKey's contract, so no kms grants appear here. All four actions take resource-level scoping on the eventdatastore ARN per the service reference.
+      - sid: ControlIngestion
+        actions:
+          - cloudtrail:StartEventDataStoreIngestion
+          - cloudtrail:StopEventDataStoreIngestion
+        resources:
+          - arn:aws:cloudtrail:*:*:eventdatastore/*
+        provenance: derived
+        notes: Reconciles spec.suspend -- the provider stops ingestion when suspend is true and restarts it when it flips back. AWS never reports the suspend state, so the provider asserts it on every apply; both actions scope to the eventdatastore ARN.
+      - sid: TagEventDataStore
+        actions:
+          - cloudtrail:AddTags
+          - cloudtrail:RemoveTags
+          - cloudtrail:ListTags
+        resources:
+          - arn:aws:cloudtrail:*:*:eventdatastore/*
+        provenance: derived
+        notes: Tag-on-create plus later tag reconciliation and the tag read on every refresh. The service reference scopes all three tagging actions to the eventdatastore ARN format used here.

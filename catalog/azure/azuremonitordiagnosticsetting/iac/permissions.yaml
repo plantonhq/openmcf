@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremonitordiagnosticsetting
+spec:
+  azure:
+    groups:
+      - purpose: ManageDiagnosticSetting
+        actions:
+          - Microsoft.Insights/DiagnosticSettings/Read
+          - Microsoft.Insights/DiagnosticSettings/Write
+          - Microsoft.Insights/DiagnosticSettings/Delete
+        provenance: derived
+        notes: Covers azurerm_monitor_diagnostic_setting -- create, read/refresh, in-place updates (selections and destinations), and destroy. The setting is an extension resource living ON the target ({target_id}/providers/Microsoft.Insights/diagnosticSettings/{name}), so these must be held at the TARGET resource's scope -- and the provider polls the setting after create and delete until it is readable/gone (Azure's API is eventually consistent here), all through the same Read. The module passes every destination reference (log_analytics_workspace_id, storage_account_id, eventhub_authorization_rule_id, eventhub_name, partner_solution_id) as opaque values and performs no secondary reads or key listings; Azure validates the references server-side at PUT, so deployments conventionally also hold read on the referenced destinations. ARM's inventory spells these operations with PascalCase verbs (Read/Write/Delete). Monitoring Contributor carries all three.

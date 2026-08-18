@@ -21,7 +21,7 @@ Use GcpPubSubTopic when you need:
 ## Prerequisites
 
 - A GCP project (the Pub/Sub API is enabled automatically by both modules)
-- Appropriate IAM permissions (`roles/pubsub.admin` or `roles/pubsub.editor`)
+- IAM permissions — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 - For CMEK: an existing KMS key with `roles/cloudkms.cryptoKeyEncrypterDecrypter` granted to the Pub/Sub service account
 - For schema validation: a `GcpPubSubSchema` resource to reference
 

@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awssecuritygroup
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A security group stores nothing -- its rules are VPC control-plane configuration, and the connection state AWS tracks to make it stateful is internal and ephemeral.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A security group filters at layers 3 and 4 -- it neither terminates nor inspects TLS, and cannot require the traffic it admits to be encrypted. Transport encryption belongs to the workloads on each side.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The group has no endpoint of its own to expose. Whether the workloads BEHIND it are internet-reachable is exactly what its ingress rules decide -- that surface is assessed under restricted-ingress, where this component is the enforcement mechanism.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: ingress
+      evidence:
+        type: spec_default
+        reference: The security group IS the restricted-ingress mechanism -- a default-deny stateful firewall where inbound traffic is admitted ONLY when a rule declares its source (CIDR, managed prefix list, another security group, or the group itself). An empty ingress list means deny all inbound; every open port is an explicit declaration in this spec, and traffic not matching a rule is dropped with no permissive mode to fall into.
+      notes: Restriction quality is the operator's -- a 0.0.0.0/0 source declares "everywhere" and validates fine, so review ingress for public CIDRs on sensitive ports. The module is stricter than AWS on the outbound side too - an empty egress list DENIES all outbound (both modules revoke the allow-all egress rule AWS adds to new groups), so the manifest is the complete statement of what the group permits in both directions.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A layer-3/4 packet filter is not a web application firewall -- it cannot inspect HTTP requests. Edge protection attaches at layer 7 (AWS WAF on the fronting load balancer, CloudFront, or API Gateway), complementing rather than replacing this group.
+    - control_id: rbac
+      status: not_applicable
+      notes: The group has no management or data plane of its own to gate -- managing it is the EC2 API, governed by the account's IAM posture, and the packets it filters carry no identity model (its cross-group rules trust network placement, not principals).
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The group runs no workloads and holds no credentials of any kind.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The group exposes no authentication path at all -- there is nothing to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Rule changes land in AWS CloudTrail as account-level posture, and per-connection visibility (which rules admitted what) is VPC Flow Logs, configured on the VPC, subnet, or interface -- none of it per-group configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A security group publishes no CloudWatch metrics of its own -- traffic it admits appears in the metrics of the attached resources and in VPC Flow Logs, both owned elsewhere.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The group is declarative configuration fully re-creatable from the manifest -- rules live inline on the group and re-create with it; there is no data to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A security group has no zonal existence to replicate -- it applies VPC-wide across every availability zone automatically, and additional_vpc_ids extends the same definition across VPCs. There is nothing to place or fail over.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag. AWS does refuse to delete a group that other groups' rules still reference (DependencyViolation) -- a dependency guard, and one this spec's revoke_rules_on_delete deliberately bypasses for teardown-must-succeed groups, which is the opposite of a protection lever.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A security group is a pure configuration object with no software to patch.

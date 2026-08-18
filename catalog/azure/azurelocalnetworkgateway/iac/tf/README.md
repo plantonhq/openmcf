@@ -69,6 +69,4 @@ module "hq_site" {
 
 ## Required Permissions
 
-The deploying credential needs
-`Microsoft.Network/localNetworkGateways/write` on the resource group --
-held via Network Contributor, Contributor, or Owner.
+Least-privilege runner permissions for this component are declared in [`../permissions.yaml`](../permissions.yaml).

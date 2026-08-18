@@ -1,0 +1,35 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurevirtualnetworkgatewayconnection
+spec:
+  azure:
+    groups:
+      - purpose: ManageConnections
+        actions:
+          - Microsoft.Network/connections/read
+          - Microsoft.Network/connections/write
+          - Microsoft.Network/connections/delete
+          - Microsoft.Network/connections/sharedkey/action
+        provenance: derived
+        notes: Covers azurerm_virtual_network_gateway_connection / network.NewVirtualNetworkGatewayConnection -- create, refresh, in-place updates (routing weight, BGP, IPsec policy, NAT rule opt-ins, tags), and destroy. The pre-shared key travels inside the connection PUT payload (authorized by connections/write), but every provider REFRESH also calls the dedicated shared-key GET -- even on ExpressRoute connections, where ARM returns an empty body -- and Azure authorizes that read as its own action; without it, plan/refresh fails with LinkedAccessCheckFailed. Microsoft's providerOperations inventory spells that action all-lowercase (connections/sharedkey/action) while its read/write siblings are camel-cased (connections/sharedKey/read, connections/sharedKey/write) -- spelled verbatim as the inventory publishes them. Every action in this manifest is included in Azure's built-in Network Contributor role, the coarse grant this manifest replaces.
+      - purpose: ReadReferencedGateways
+        actions:
+          - Microsoft.Network/virtualNetworkGateways/read
+        provenance: derived
+        notes: The modules never call the gateway API -- they pass the resolved virtual_network_gateway_id (and, on VNET_TO_VNET connections, peer_virtual_network_gateway_id) in the connection payload -- but ARM validates every referenced gateway at create (service-side), which requires read on each gateway's scope.
+      - purpose: ReadLocalNetworkGateway
+        actions:
+          - Microsoft.Network/localnetworkgateways/read
+        provenance: derived
+        notes: Needed for IPSEC (site-to-site) connections -- ARM validates the referenced local_network_gateway_id at create (service-side). Microsoft's providerOperations inventory spells this resource type in all-lowercase (localnetworkgateways), unlike its camel-cased siblings -- the action is spelled verbatim as the inventory publishes it.
+      - purpose: JoinExpressRouteCircuit
+        actions:
+          - Microsoft.Network/expressRouteCircuits/join/action
+        provenance: derived
+        notes: Needed for EXPRESS_ROUTE connections in the SAME subscription -- ARM authorizes linking a gateway to the referenced circuit with join/action on the circuit's scope (service-side). For a circuit in ANOTHER subscription the authorization_key redeems the circuit owner's issued authorization instead -- the key substitutes for RBAC the runner cannot hold on the foreign scope.

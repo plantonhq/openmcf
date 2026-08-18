@@ -1,0 +1,37 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuretrafficmanagerendpoint
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Traffic Manager
+      sku_meter: endpoint health checks
+      pricing_unit: endpoint-months
+      description: Every monitored endpoint bills a flat monthly health-check fee on a GLOBAL meter (one worldwide rate, region "Global" on the price list) -- the rate is keyed by endpoint type, with Azure endpoints cheapest, external endpoints dearer, and nested endpoints (a child profile as the destination) carrying their own higher monthly fee.
+  cost_drivers:
+    - field_path: azure
+      sku_meter: Azure endpoint health checks
+      pricing_unit: endpoint-months
+      impact: Declaring the destination as a public Azure resource puts the endpoint on the cheapest monitoring rate -- Azure tracks the target's address from the resource itself, and the probe fee is the endpoint's whole bill.
+    - field_path: external
+      sku_meter: external endpoint health checks
+      pricing_unit: endpoint-months
+      impact: A DNS-name or IP destination (other clouds, on-premises) bills the dearer external-endpoint monitoring rate -- half again the Azure-endpoint fee for the same probing.
+    - field_path: nested
+      sku_meter: nested endpoint fee
+      pricing_unit: endpoint-months
+      impact: Composing another Traffic Manager profile as the destination bills the nested-endpoint monthly fee -- an order of magnitude above either flat endpoint type, the price of building routing trees.
+    - field_path: enabled
+      sku_meter: endpoint health checks
+      pricing_unit: endpoint-months
+      impact: Traffic Manager charges per MONITORED endpoint -- setting enabled false drains the endpoint from DNS answers, stops its probes, and stops its monthly fee without deleting the configuration.
+  estimate_exclusions:
+    - DNS queries bill per million against the referenced profile and follow client traffic (recursive-resolver caching, tuned by the profile's TTL, absorbs most of it) -- the profile component's spend, not this endpoint's
+    - the fast-interval health-check add-on bills per monitored endpoint but is switched by the referenced profile's probing interval, invisible in this manifest
+    - the HTTPS health-check add-on bills per monitored endpoint but is switched by the referenced profile's monitor protocol, invisible in this manifest
+    - the destination itself -- the Azure resource, external service, or child profile -- bills on its own components
+  notes: "A Traffic Manager endpoint is a DNS routing entry whose entire bill is its health monitoring: a flat monthly fee per monitored endpoint, keyed by type (Azure, external, nested), on global meters with one worldwide rate. Traffic never flows through Traffic Manager -- it answers DNS queries and steps aside -- so there is no data-processing meter to watch here. The two per-endpoint add-ons (fast probing interval, HTTPS probes) are switched on the PROFILE's monitor configuration and land on each monitored endpoint's line, a cross-component coupling worth knowing when the profile's probe settings change."

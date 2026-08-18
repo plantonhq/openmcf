@@ -389,7 +389,9 @@ generate-reference: generate-proto-docs
 # (catalog/_pricing/estimates/): derived components replay every preset
 # through their cost derivation (catalog/_pricing/derivations/), modeled
 # components join their estimate model (catalog/_pricing/models/) with the
-# provider's price book (catalog/_pricing/pricebook/). Always whole-tree:
+# provider's price book (catalog/_pricing/pricebook/), and cluster-capacity
+# components replay their presets through their capacity derivation
+# (catalog/_pricing/capacity/) into footprint estimates. Always whole-tree:
 # the dead-price sweep
 # needs every model's references. Offline and deterministic: unchanged
 # inputs regenerate byte-identical files (enforced by the drift test in
@@ -410,12 +412,20 @@ generate-cost-estimates:
 generate-price-book:
 	go run ./pkg/finops/pricebook/fetcher
 
-# Refreshes the committed AWS action-inventory snapshot
-# (pkg/iac/actioninventory/aws.yaml) from AWS's machine-readable service
-# reference, scoped to the services the committed runner permissions
-# manifests reference. Requires network access; CI never fetches -- it
-# validates every manifest action against the committed snapshot (an
-# invented or misspelled action name cannot ship).
+# Refreshes the committed action-inventory snapshots
+# (pkg/iac/actioninventory/{aws,azure,gcp}.yaml) from each provider's own
+# published inventory -- AWS's machine-readable service reference
+# (including each action's resource-scopability, which the scopability
+# gate holds statements to), ARM's provider-operations metadata (the
+# Azure arm needs a signed-in Azure CLI for its bearer token), and GCP
+# IAM's testable-permissions inventory (the GCP arm needs gcloud
+# application-default credentials, an active gcloud project, and the
+# PLANTON_GCP_ORG / PLANTON_GCP_BILLING_ACCOUNT anchors -- any org and
+# billing account the credential can query; they only type the queries,
+# whose results union) -- scoped to the services the committed runner
+# permissions manifests reference. Requires network access; CI never
+# fetches -- it validates every manifest action against the committed
+# snapshots (an invented or misspelled action name cannot ship).
 .PHONY: generate-action-inventory
 generate-action-inventory:
 	go run ./pkg/iac/actioninventory/fetcher
@@ -505,6 +515,18 @@ release:  ## auto-bump version, tag & push (bump=major|minor|patch, default: pat
 
 .PHONY: test-and-release
 test-and-release: test release
+
+# ── Website (site/) ───────────────────────────────────────────────────────────
+# The planton.ai website lives in site/ with its own Makefile; these targets
+# just delegate. run-site starts the Next.js dev server; preview-site builds
+# the full static export (what GitHub Pages serves) and serves it locally.
+.PHONY: run-site
+run-site:
+	$(MAKE) -C site run
+
+.PHONY: preview-site
+preview-site:
+	$(MAKE) -C site preview-site
 
 # ── E2E Tests ─────────────────────────────────────────────────────────────────
 # Every provider test package sets up its harness in TestMain BEFORE Go applies

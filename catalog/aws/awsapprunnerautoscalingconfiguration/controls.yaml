@@ -1,0 +1,59 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsapprunnerautoscalingconfiguration
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An auto scaling configuration stores no customer data -- its three scaling values are App Runner control-plane metadata held inside AWS's own service infrastructure, not a data store this component owns.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); App Runner exposes no KMS surface for auto scaling configurations.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A scaling policy terminates no connections of its own. The only wire traffic involving it is App Runner management calls, which happen on AWS API endpoints serving exclusively over TLS as account-wide provider behavior, not per-configuration settings.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The configuration has no network endpoint to expose -- it is a named set of scaling values that App Runner services reference by ARN. Network exposure is decided entirely on the referencing service.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; a scaling policy carries no addresses, ports, or security groups.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A scaling policy receives no HTTP requests -- web ACLs and request filters have nothing to attach to. The referencing App Runner service is where WAF association lives.
+    - control_id: rbac
+      status: not_applicable
+      notes: The spec carries no principal or access surface of its own -- who may create, revise, or claim configurations is governed by IAM permissions on the App Runner API, account-level posture outside this spec and the modules.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The configuration runs no workloads and holds no credentials of any kind -- it is three integers and a default flag.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The configuration exposes no authentication path at all -- there is no protocol, credential, or client negotiation to harden.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Every management call against the configuration (create, revise, claim default, delete) is recorded by AWS CloudTrail as account-level posture, not per-configuration settings.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: App Runner publishes no CloudWatch metrics per auto scaling configuration -- the scaling behavior it drives appears in the referencing services' metrics (ActiveInstances and request counts), which belong to those services.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The configuration holds no data to back up -- it is declarative configuration fully re-creatable from the manifest, and AWS itself versions every change as a retained revision under the same name.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery); AWS's own revision history is service behavior, not a configurable retention policy.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A control-plane configuration object has no zonal placement -- AWS stores it in the regional App Runner service infrastructure, and the multi-AZ behavior of instances belongs to the referencing services' managed runtime.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for auto scaling configurations. Note the account-default designation outlives deletion -- AWS has no restore API, so deleting a default-holding configuration leaves the designation orphaned rather than protected.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A scaling policy is a pure configuration object with no software to patch.

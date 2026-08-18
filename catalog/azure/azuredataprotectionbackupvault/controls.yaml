@@ -1,0 +1,81 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuredataprotectionbackupvault
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure Backup encrypts all vault-stored backup data at rest with platform-managed keys; no configuration at any level can disable encryption of vault contents.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: encryption
+      evidence:
+        type: spec_default
+        reference: Unset leaves backup data on Microsoft-managed keys; setting encryption.key_id encrypts it with your own Key Vault key, unwrapped by the vault's SYSTEM-assigned identity (the provider hardcodes that; spec CEL requires the identity flavor). Once enabled, CMK can never be removed -- the provider's delete for the CMK resource is a documented no-op; only the key rotates in place.
+      notes: The 02-immutable-cmk-vault preset enables it with a system-assigned identity and a versionless key reference (rotation propagates automatically). Grant the vault's identity wrap/unwrap on the key first.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Backup traffic between protected datasources and the vault travels over TLS to Azure service endpoints; no plaintext transfer path to a Data Protection backup vault exists.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: This spec carries no network-access surface -- unlike the classic Recovery Services vault, the provider resource exposes no public-network toggle for this vault generation; its endpoints are Microsoft-operated ARM/backup endpoints, and private-endpoint posture is configured outside the manifest.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No CIDR/firewall surface on the vault; see no-public-access.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Not a web-facing component; requests go to Azure's backup management endpoints, operated by Microsoft.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is ARM RBAC (subscription/resource-group posture); the vault adds no authentication plane of its own. This spec carries no Resource Guard association field -- Multi-User Authorization for Data Protection vaults is configured outside the manifest.
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: Unset leaves the vault without a managed identity; configuring it attaches a system-assigned and/or user-assigned Azure-managed identity the vault uses to unwrap your Key Vault key and to authenticate to the datasources it backs up -- platform-issued and rotated, never a static credential.
+      notes: CMK encryption requires SYSTEM_ASSIGNED or SYSTEM_AND_USER_ASSIGNED (spec CEL -- Azure unwraps the key with the system identity). The 02-immutable-cmk-vault preset uses SYSTEM_ASSIGNED.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: All access is Entra-ID-authenticated ARM; the vault exposes no legacy authentication path to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Vault and instance operations land in the Azure Activity Log as subscription-level posture; exporting backup-job logs is a diagnostic-settings resource, not a field of this spec.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: This spec carries no monitoring surface (the classic Recovery Services vault's built-in alert switches have no counterpart here); backup alerting for Data Protection vaults is configured through Azure Monitor resources outside the manifest.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The vault IS the backup destination, not a data source -- its contents are the recovery points of other components; what gets backed up (and restored) is declared per datasource on AzureDataProtectionBackupInstance bindings.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Backup retention lives on AzureDataProtectionBackupPolicy children. This vault's retention_duration_in_days is the SOFT-DELETE window -- how long deleted backups stay recoverable -- recorded under deletion-protection, not a backup-retention dial.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: redundancy
+      evidence:
+        type: spec_validation
+        reference: redundancy is a required creation-time choice among LocallyRedundant, ZoneRedundant (replicas across availability zones in-region), and GeoRedundant (a copy in the paired region); cross_region_restore_enabled additionally unlocks paired-region restores and requires GeoRedundant (spec CEL mirrors the provider's plan-time check).
+      notes: Fixed at creation -- changing redundancy replaces the vault. Both presets ship GeoRedundant; 01-standard-backup-vault also enables cross-region restore (one-way -- disabling it replaces the vault).
+    - control_id: deletion-protection
+      status: configurable
+      field_path: immutability
+      evidence:
+        type: spec_default
+        reference: Unspecified applies Disabled; Unlocked stops backup data being deleted and retention being reduced while remaining reversible; Locked makes that permanent (leaving Locked replaces the vault -- the provider's one-way ForceNew).
+      notes: Soft delete stacks underneath -- soft_delete defaults On, retaining deleted backup data for retention_duration_in_days (default 14, up to 180) before permanent removal; AlwaysOn locks soft delete on permanently (also one-way). The 02-immutable-cmk-vault preset sets Unlocked with a 30-day soft-delete window.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed PaaS -- Microsoft operates and patches the Azure Backup (Data Protection) service infrastructure behind the vault; no customer-visible patch surface exists.

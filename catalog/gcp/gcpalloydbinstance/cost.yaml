@@ -1,0 +1,44 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpalloydbinstance
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: AlloyDB
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      description: Every node's vCPUs bill hourly from creation, serving or idle -- a read pool bills node_count times cpu_count vCPUs each hour.
+    - service_name: AlloyDB
+      sku_meter: instance memory
+      pricing_unit: GiB-hours
+      description: Every node's memory bills per GiB-hour alongside the vCPUs; a cpu_count-only manifest gets the N2 highmem shape of 8 GiB per vCPU on each node.
+  cost_drivers:
+    - field_path: read_pool_config.node_count
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      impact: Each read-pool node is a full compute copy -- node_count multiplies both the vCPU and memory bills hourly.
+    - field_path: cpu_count
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      impact: The per-node size -- every vCPU accrues hourly on every node, and memory scales with it (8 GiB per vCPU on the default N2 shape).
+    - field_path: machine_type
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      impact: Naming an explicit machine family (Z3, C4, C4A) moves every node onto that family's own vCPU and memory rates instead of the default N2 rates.
+    - field_path: instance_type
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      impact: READ_POOL bills node_count nodes; a PRIMARY bills one node when ZONAL or two (active plus standby) when REGIONAL -- the type picks which node math applies.
+    - field_path: activation_policy
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      impact: NEVER stops the instance -- compute billing stops while the parent cluster's storage keeps accruing; ALWAYS (the default) keeps every node billing around the clock.
+  free_tier: ""
+  estimate_exclusions:
+    - the parent cluster bills separately -- its primary instance compute, cluster storage, and backups belong to the referenced GcpAlloydbCluster
+    - network egress follows client placement
+  notes: "A read pool is pure compute multiplication: node_count times cpu_count vCPUs (plus 8 GiB memory per vCPU) billed every hour. It stores nothing of its own -- data, backups, and storage all live on the parent cluster's shared storage layer."

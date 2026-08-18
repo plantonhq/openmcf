@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurewebapplicationfirewallpolicy
+spec:
+  billing_model: free
+  free_tier: This is the APPLICATION GATEWAY WAF policy (ARM type ApplicationGatewayWebApplicationFirewallPolicies), and for that class Microsoft's WAF pricing FAQ is explicit -- the WAF_v2 SKU "includes the use of WAF Policy and WAF rules at no additional cost." The policy document, its custom rules, managed rule sets, and settings carry no meter; authoring one and attaching it to any number of gateways never bills.
+  notes: "No field of this spec buys anything: custom rules, managed rule sets, exclusions, and policy settings are enforcement configuration the gateway's WAF engine reads for free. The real spend lives in the APPLICATION GATEWAY that enforces the policy: running the WAF_v2 tier bills a fixed gateway-hour rate plus capacity units, both priced above the Standard_v2 tier -- the WAF premium is paid on the gateway, never per policy or per rule; that gateway is its own catalog kind. Do not confuse this kind with Azure Front Door's WAF policy, a DIFFERENT ARM resource that does carry per-policy and per-rule charges under Front Door pricing -- a claim that does not apply here."

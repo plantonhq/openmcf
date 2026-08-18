@@ -1,0 +1,72 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurecontainerappenvironmentdaprcomponent
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The sensitive data this resource holds -- the secrets list carrying connection strings and access keys -- is stored by the Container Apps platform, and Azure encrypts service-held data at rest with Microsoft-managed keys as platform posture; the spec additionally forbids secrets as plain metadata values (a metadata entry takes a value XOR a secret_name reference).
+      notes: The application data the component moves (state entries, messages) rests in the BACKEND the component points at -- that kind's at-rest posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: The environment's component store exposes no customer-managed-key surface; CMK posture for stored application data belongs to the backend kinds.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The registration carries no traffic of its own. Transport security between the Dapr sidecar and the backend is decided by the component type's metadata (e.g. a broker's TLS settings) and the backend's own posture -- documented per component type in the Dapr reference, enforced by the backend kinds.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A component registration has no network endpoint -- nothing exists to reach from the internet; the sidecar consuming it runs inside the environment.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound traffic exists to restrict (component-level access scoping is covered under rbac).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request path exists to filter.
+    - control_id: rbac
+      status: configurable
+      field_path: scopes
+      evidence:
+        type: spec_default
+        reference: scopes is the component's own access-control surface -- only Container Apps whose dapr.app_id appears in the list may use the component through Dapr's runtime. An empty list (the default) exposes the component to EVERY Dapr-enabled app in the environment; the spec documents scoping production components deliberately.
+      notes: Management-plane access to the registration itself is subscription/resource-group RBAC posture, outside the manifest.
+    - control_id: workload-identity
+      status: configurable
+      field_path: metadata
+      evidence:
+        type: spec_default
+        reference: Metadata values accept foreign-key references precisely for the keyless posture -- the canonical case is an azureClientId entry tracking an AzureUserAssignedIdentity's client_id output, so azure-backed component types (state.azure.blobstorage, secretstores.azure.keyvault, pubsub.azure.servicebus) authenticate with a managed identity instead of a connection-string secret.
+      notes: The alternative is the secrets list -- static connection strings or keys referenced from metadata by secret_name. Prefer the azureClientId pattern wherever the component type supports it.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The registration exposes no authentication path of its own; whether the backend connection uses keys or managed identity is the workload-identity choice above, and the backend's accepted auth modes are that kind's posture.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Create/update/delete of the registration land in the Azure Activity Log automatically as subscription-level posture; data-plane access logs belong to the backend kinds.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The registration publishes no metrics of its own; Dapr sidecar telemetry rides the apps and environment, separate kinds. Note ignore_errors defaults false so a broken component fails loudly at sidecar startup instead of surfacing as runtime errors.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless configuration -- nothing to back up; the manifest recreates the registration declaratively. The data the component brokers lives in the backend, that kind's backup posture.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A registration has no runtime footprint with a zonal failure mode; the sidecars reading it run wherever the apps run, the environment's posture.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a Dapr component (Azure resource locks are subscription-side governance outside the manifest); deleting one breaks the building block for consuming apps and is recreated declaratively.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Dapr runtime in Container Apps is Microsoft-managed -- Azure operates and upgrades the sidecar injector and the Dapr version; the component pins only its own component version ("v1" for stable components), not the runtime.

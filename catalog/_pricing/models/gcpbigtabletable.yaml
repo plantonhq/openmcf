@@ -1,0 +1,40 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Presets with no quantity lines have no committed always-on
+# spend and estimate to zero. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: gcpbigtabletable
+spec:
+  presets:
+    - preset: 01-time-series
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - an empty table bills nothing -- stored bytes accrue per GiB-month at the parent instance's storage rate (SSD or HDD, per replicated cluster) as sensors write, and the 90-day and 1-version GC policies bound how long they bill
+        - node compute and replication traffic bill on the GcpBigtableInstance the table lives in
+        - network egress follows read traffic out of the region
+      notes: Creation and pre-splitting are free; the estimate is zero because the manifest commits no bytes, not because Bigtable storage is free.
+    - preset: 02-cdc-enabled
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - stored order data bills per GiB-month at the parent instance's storage rate; the UNION GC policy (1 year OR 5 versions) bounds accumulation
+        - the 72h change stream stores data change records at standard Bigtable storage rates -- roughly 1.5x each day's writes per retained day, per Google's own sizing rule -- and the Dataflow pipeline reading it bills on its own service
+        - daily automated backups retained 3 days bill at the standard backup storage rate per GiB-month from the moment the table holds data (a backup is never larger than the table)
+        - node compute and replication bill on the GcpBigtableInstance
+      notes: Zero committed at creation -- the CDC and backup meters are armed by the manifest but bill nothing until workloads write data.
+    - preset: 03-aggregate-counters
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - counter cells and their dimensional attributes bill per GiB-month at the parent instance's storage rate as they accumulate; the 1-year age and 1-version GC policies are the retention bound
+        - server-side intsum aggregation is a write-path feature, not a separate meter -- writes cost node compute, which bills on the GcpBigtableInstance
+        - network egress follows read traffic
+      notes: The zero is commitment-absence -- an aggregate table starts billing with the first counter increment, at the instance's storage and compute rates.

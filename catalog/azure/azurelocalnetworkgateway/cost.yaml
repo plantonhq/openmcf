@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurelocalnetworkgateway
+spec:
+  billing_model: free
+  free_tier: The local network gateway never bills -- it is Azure's DESCRIPTION of the on-premises side of a site-to-site VPN (the device's public endpoint and the address space behind it). It deploys nothing on-premises and costs nothing to keep.
+  notes: "No field of this spec buys anything: gateway_address/gateway_fqdn, address_spaces, and bgp_settings are address-book entries ARM stores for free. The tunnel's real spend lives on the Azure side of the connection -- the virtual network gateway bills per hour by its SKU, and the traffic through the tunnel bills as egress -- separate resources with their own cost profiles."

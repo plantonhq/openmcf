@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureroutetable
+spec:
+  azure:
+    groups:
+      - purpose: ManageRouteTable
+        actions:
+          - Microsoft.Network/routeTables/read
+          - Microsoft.Network/routeTables/write
+          - Microsoft.Network/routeTables/delete
+        provenance: derived
+        notes: Covers azurerm_route_table -- create, read/refresh, in-place updates, and destroy. The module manages routes INLINE on the table (the route list is part of the table's PUT payload), so the routeTables/routes/* child operations are not separately required. Held via Network Contributor, Contributor, or Owner on the resource group.

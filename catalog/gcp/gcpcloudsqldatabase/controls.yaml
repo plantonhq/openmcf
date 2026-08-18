@@ -1,0 +1,66 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpcloudsqldatabase
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every byte in this database lives on the parent Cloud SQL instance's storage, which Google encrypts at rest unconditionally -- there is no unencrypted Cloud SQL storage for a database to land on.
+      notes: The encryption is inherited, not chosen here -- the instance's posture covers all databases it hosts.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: The customer-managed-key decision is the parent instance's encryption_key_name, made once for the whole instance at creation; a database cannot choose its own key.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Client connections terminate at the instance, not the database -- TLS enforcement is the instance's network.ssl_mode posture, shared by every database it hosts.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A database is not separately addressable -- reachability is the instance's public-IP and private-network posture; every database on the instance shares it.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Source restrictions (authorized networks, private-only topology) are the instance's; a database has no network surface of its own to scope.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A logical database behind a managed SQL endpoint has no Layer-7 entry point for a WAF to front.
+    - control_id: rbac
+      status: not_applicable
+      notes: The spec carries no access surface -- who may touch this database is decided by GcpCloudSqlUser identities and in-engine GRANTs on the management side, and by Cloud SQL IAM on the control plane. Nothing here widens or narrows either.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A database authenticates nothing -- keyless IAM database authentication is a property of the instance's flags and each GcpCloudSqlUser's type.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Authentication paths (password vs IAM, cleartext vs TLS) are instance- and user-level choices; a database exposes no auth path of its own to retire.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Creating or dropping the database lands in Cloud Audit Logs as project-level posture; statement-level auditing inside the database (pgAudit, SQL Server audit) is configured through the parent instance's flags.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Cloud SQL publishes metrics on instance dimensions; a database is not a metric dimension and has no export knob.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A database rides the parent instance's automated backups and point-in-time recovery -- every backup captures all databases on the instance; no per-database backup surface exists in this spec.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Retention (retained_backups, transaction-log days) is configured on the parent instance (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Zone redundancy is the instance's availability_type; a database inherits whatever failover topology its instance runs.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Unset means DELETE -- destroy drops the database and its data; PREVENT makes any dropping plan fail; ABANDON removes it from management while it keeps serving -- the documented answer for PostgreSQL databases that cannot be dropped while clients hold connections.
+      notes: Neither preset sets it; both are application databases meant to follow their stack's lifecycle.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A database is a logical namespace on a fully managed engine -- patching is the parent instance's managed maintenance.

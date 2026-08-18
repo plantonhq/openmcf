@@ -50,9 +50,15 @@ spec:
           - wafv2:AssociateWebACL
           - wafv2:DisassociateWebACL
           - wafv2:GetWebACLForResource
-          - elasticloadbalancing:SetWebAcl
         resources:
           - arn:aws:wafv2:*:*:regional/webacl/*/*
           - arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*
         provenance: derived
-        notes: Covers aws_wafv2_web_acl_association -- created only when spec.web_acl_arn is set. WAFv2 association with an ALB additionally requires the elasticloadbalancing:SetWebAcl action on the load balancer.
+        notes: Covers aws_wafv2_web_acl_association -- created only when spec.web_acl_arn is set. The wafv2 association actions scope to the web ACL and load balancer ARNs; the companion elasticloadbalancing:SetWebAcl grant lives in its own statement because it cannot be resource-scoped.
+      - sid: SetWebAclOnLoadBalancer
+        actions:
+          - elasticloadbalancing:SetWebAcl
+        resources:
+          - "*"
+        provenance: derived
+        notes: WAFv2 association with an ALB additionally requires elasticloadbalancing:SetWebAcl. The service reference lists NO resource types for it (unlike the Describe and lifecycle actions, which scope), so IAM evaluates it against Resource "*" -- an ARN-scoped grant never matches and would deny the association at runtime. The wildcard is the narrowest possible scope.

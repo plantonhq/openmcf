@@ -1,0 +1,25 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremachinelearningonlinedeployment
+spec:
+  azure:
+    groups:
+      - purpose: ManageOnlineDeployment
+        actions:
+          - Microsoft.MachineLearningServices/workspaces/onlineEndpoints/deployments/read
+          - Microsoft.MachineLearningServices/workspaces/onlineEndpoints/deployments/write
+          - Microsoft.MachineLearningServices/workspaces/onlineEndpoints/deployments/delete
+        provenance: derived
+        notes: Covers both engines' writes of the same ARM shape -- the Terraform module's azapi_resource at Microsoft.MachineLearningServices/workspaces/onlineEndpoints/deployments@2025-06-01 and the Pulumi module's azure-native OnlineDeployment. Create and update go through full PUT; only the SKU capacity (instance_count) updates without rolling containers.
+      - purpose: PollDeploymentOperations
+        actions:
+          - Microsoft.MachineLearningServices/locations/mfeOperationsStatus/read
+          - Microsoft.MachineLearningServices/locations/mfeOperationResults/read
+        provenance: derived
+        notes: Deployment create, update, and delete are long-running operations -- ARM answers with location-scoped Machine Learning operation URLs that both providers poll to completion. A SERVICE-side need on the deploying principal, not a call the module sources make by name.

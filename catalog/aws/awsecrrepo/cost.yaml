@@ -1,0 +1,37 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsecrrepo
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: lifecycle_rules
+      sku_meter: image storage
+      pricing_unit: GB-months
+      impact: The only automatic brake on the storage meter -- expire rules delete images CI/CD would otherwise accumulate forever, and transition rules move disused images to the cheaper archive storage class, trading retrieval convenience for a lower GB-month rate.
+    - field_path: image_tag_mutability
+      sku_meter: image storage
+      pricing_unit: GB-months
+      impact: IMMUTABLE repositories keep one image per release permanently by design -- reproducible deploys at the cost of unbounded storage growth, which is why the immutable presets pair the setting with lifecycle rules.
+    - field_path: encryption_type
+      sku_meter: KMS requests
+      pricing_unit: requests
+      impact: AES256 (the default) encrypts for free; KMS routes every push through GenerateDataKey and every pull through Decrypt at KMS request rates. KMS_DSSE adds a second envelope layer with its own charge listed under the pricing page's Encryption section, and is available only in the AWS GovCloud (US) regions.
+    - field_path: kms_key_id
+      sku_meter: KMS requests
+      pricing_unit: requests
+      impact: Naming a customer-managed key points the KMS request traffic at a key whose monthly charge bills on the referenced AwsKmsKey component; omitting it with KMS encryption uses the AWS-managed aws/ecr key, which carries no monthly key charge.
+    - field_path: repository_policy
+      sku_meter: data transfer out
+      pricing_unit: GB
+      impact: Cross-account and service-principal grants invite pulls from outside the repository's region -- and every cross-region or internet pull bills data transfer out per GB from the repository's region, while in-region pulls to AWS compute stay free.
+  free_tier: New AWS accounts get 500 MB per month of private-repository storage free for their first 12 months. The always-free 50 GB storage tier applies only to Amazon ECR Public -- a separate registry, not the private repositories this component provisions.
+  estimate_exclusions:
+    - storage volume is push-driven -- GB-months by storage class (standard or archive) grow with CI/CD output, and an empty repository bills nothing
+    - data transfer out follows pull traffic and puller placement -- in-region pulls to EC2, ECS, Fargate, and Lambda are free; cross-region and internet pulls bill per GB (cross-region replication copies bill from the source region)
+    - KMS request and key charges apply only to the KMS encryption types, and the customer-managed key bills on its own AwsKmsKey component
+    - enhanced vulnerability scanning is an account-level registry configuration outside this spec and bills through Amazon Inspector
+  notes: "An ECR repository idles free: applying this manifest creates registry configuration, and the meters start when images land. The bill is storage per GB-month plus data transfer out on pulls, and ECR's own pricing examples draw the line that matters -- pulls into AWS compute in the same region transfer for free, while cross-region and internet pulls bill per GB from the repository's region. Push-time basic scanning (scan_on_push) carries no meter on ECR's pricing page; the scanning that bills is enhanced scanning through Amazon Inspector, a registry-wide account setting deliberately outside this repository-scoped spec, as are pull-through cache rules and replication configuration."

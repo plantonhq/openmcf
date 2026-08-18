@@ -1,0 +1,74 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbatchjobdefinition
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A job definition stores no customer data -- it is a registered blueprint held in the Batch control plane. The storage a job touches encrypts where it lives -- EFS volumes on the file system, Fargate ephemeral storage encrypted by AWS unconditionally, node disks on the compute environment. Note that plain environment values ARE readable by anyone who can DescribeJobDefinitions, which is why the spec routes secrets through container.secrets references instead.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest here to key (see enc-at-rest); Batch exposes no KMS surface on job definitions. Key choices belong to the storage the jobs use (EFS, EBS on the compute environment's instances).
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The one wire surface this spec declares -- EFS volume mounts -- is always encrypted in transit. Both modules hardcode transitEncryption ENABLED on every EFS volume configuration (AWS requires it for access points and IAM authorization anyway, and there is no good reason to mount EFS unencrypted), with no spec field to turn it off.
+      notes: Everything else on the wire belongs to the workload -- what the job's code talks to, and how, is the application's own protocol choice, outside any job-definition surface.
+    - control_id: no-public-access
+      status: configurable
+      field_path: container.assign_public_ip
+      evidence:
+        type: spec_default
+        reference: Default false keeps a Fargate job's network interface private -- internet egress must route through NAT from private subnets. Setting it true gives the job's ENI a public IP, the one way this spec can place a job on the public internet; EC2 jobs inherit the compute environment's subnet and security-group posture instead.
+      notes: A batch job listens for nothing, so a public IP here is an egress convenience rather than a service endpoint -- but it is still public exposure, and the private default is the right posture for jobs in NAT-routed private subnets.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound filtering is owned by the compute environment's security groups on the instances and ENIs that run jobs; the job definition carries no security-group surface of its own.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A batch job serves no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: not_applicable
+      notes: The spec carries no principal-facing access surface of its own -- who may register, deregister, or submit jobs from the definition is governed by IAM permissions on the Batch API, account-level posture. The identities the definition assigns to running jobs are the workload-identity story below.
+    - control_id: workload-identity
+      status: configurable
+      field_path: container.job_role
+      evidence:
+        type: spec_default
+        reference: job_role is the IAM role the job's code assumes at runtime -- every AWS API call the workload makes uses short-lived role credentials delivered by the container agent, never static keys baked into the image or environment. It is deliberately distinct from execution_role (the agent's setup identity for image pulls, secret resolution, and log writes) so runtime and setup permissions are never one role. The EKS arm's counterpart is eks.service_account_name, the IRSA / Pod Identity path on the attached cluster.
+      notes: Both fields are optional -- a job without them runs with no AWS identity (EC2 jobs fall back to the instance role, a broader-than-necessary grant). container.secrets and repository_credentials_secret_arn reinforce the pattern by injecting Secrets Manager / SSM references resolved at job start instead of literal values.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The definition exposes no authentication path of its own -- there is no protocol, credential, or client negotiation to harden. Registry credentials, when needed, are Secrets Manager references rather than embedded passwords.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Every management call (RegisterJobDefinition, DeregisterJobDefinition, SubmitJob) is recorded by AWS CloudTrail as account-level posture, not per-definition settings.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: container.log_configuration
+      evidence:
+        type: provider_default
+        reference: With log_configuration unset, Batch ships every container's stdout/stderr to CloudWatch Logs under the /aws/batch/job log group with zero configuration -- runtime signals are exported by default. The block exists to redirect that stream (a different awslogs group, splunk, fluentd, gelf, syslog, journald) -- or to keep logs node-local with json-file, which is the one setting that opts OUT of exported logs.
+      notes: Job state-change events additionally flow to EventBridge as Batch service behavior. For the EKS arm, log shipping belongs to the attached cluster's logging stack, not this spec.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "A job definition holds no data to back up -- it is declarative configuration fully re-creatable from the manifest, and AWS itself retains every registered revision (deregister_on_new_revision: false keeps historical revisions ACTIVE for out-of-band consumers)."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery); AWS's revision history is service behavior, not a configurable retention policy.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Job placement across zones is the compute environment's subnet layout; the definition has no zonal surface. retry_strategy restarts failed attempts (the classic use retries Spot reclaims) but that is failure recovery within the queue, not zone replication.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for job definitions. Deregistering marks a revision INACTIVE -- already-running jobs finish, and INACTIVE revisions simply refuse new submissions.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The definition is metadata; the software that runs is the operator's container image, rebuilt and re-referenced by the operator. No managed patch channel exists on a job definition.

@@ -51,6 +51,10 @@ Credentials are provided via stack input (by the CLI), not in the manifest `spec
 | `primary_version_name` | Current primary version resource name (ENCRYPT_DECRYPT keys; empty otherwise) |
 | `primary_state` | Lifecycle state of the primary version |
 
+## Required Permissions
+
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs.
+
 ## Lifecycle Notes
 
 Only `rotation_period`, `version_template.algorithm`, and `labels` update in place; every other field is ForceNew, which for an undeletable resource means "abandon and create under a new name". Grant each consuming service agent `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the key before pointing CMEK fields at it.

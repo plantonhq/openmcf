@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureuserassignedidentity
+spec:
+  azure:
+    groups:
+      - purpose: ManageIdentity
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/read
+          - Microsoft.ManagedIdentity/userAssignedIdentities/write
+          - Microsoft.ManagedIdentity/userAssignedIdentities/delete
+        provenance: derived
+        notes: Covers azurerm_user_assigned_identity -- create, read/refresh, in-place updates (tags, isolation_scope), and destroy. Held via Managed Identity Contributor, Contributor, or Owner in the target resource group. Note the assign/action operation is NOT needed here -- it belongs to the resources that later attach the identity, not to creating it.

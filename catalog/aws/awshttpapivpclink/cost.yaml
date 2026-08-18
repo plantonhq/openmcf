@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awshttpapivpclink
+spec:
+  billing_model: free
+  free_tier: An HTTP API (v2) VPC link has no meter of its own -- the AWS price list for API Gateway (offer AmazonApiGateway) contains no VPC-link SKU of any kind, hourly or per-request; it meters only API calls, caching, and WebSocket usage. The link is a set of AWS-managed elastic network interfaces placed in your subnets, and ENIs themselves carry no charge.
+  notes: "The real spend flows through the link: requests on the HTTP APIs that route through it bill on those API components' per-million request meter, and the private targets it reaches -- internal ALBs, NLBs, Cloud Map services -- bill on their own components. Third-party cost guides claiming an hourly VPC-link charge conflate this resource with the interface VPC endpoints used by PRIVATE REST APIs, which do bill PrivateLink hourly and per-GB rates -- a different resource entirely. An idle link is reclaimed by AWS after 60 days of no traffic (status INACTIVE); idleness costs nothing."

@@ -1,0 +1,25 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurebackupcontainerstorageaccount
+spec:
+  azure:
+    groups:
+      - purpose: ManageRegistration
+        actions:
+          - Microsoft.RecoveryServices/Vaults/backupFabrics/protectionContainers/read
+          - Microsoft.RecoveryServices/Vaults/backupFabrics/protectionContainers/write
+          - Microsoft.RecoveryServices/Vaults/backupFabrics/protectionContainers/delete
+          - Microsoft.RecoveryServices/Vaults/backupOperations/read
+        provenance: derived
+        notes: Covers azurerm_backup_container_storage_account -- register (write), read/refresh, and unregister (delete). Registration and unregistration are long-running, and the provider polls them at the VAULT-scoped backup-operations endpoint (vaults/{vault}/backupOperations/{operationId} -- it only parses the container-scoped operation ID out of the Location header, it never GETs the container's operationResults sub-resource), so the polling grant is Vaults/backupOperations/read. Every argument is ForceNew, so there is no in-place update path. Azure spells the backup surface with capital "Vaults" (verified against the live Microsoft.RecoveryServices operation inventory); Backup Contributor on the vault's resource group covers the group.
+      - purpose: ReadStorageAccount
+        actions:
+          - Microsoft.Storage/storageAccounts/read
+        provenance: derived
+        notes: The registration references the storage account by ARM ID (spec.storage_account_id); Azure Backup validates the account during registration, so the deploying principal needs read on it in the ACCOUNT's scope (which may be a different resource group than the vault's). The resource lock Azure Backup places on the account is created by the Backup service itself, not by the deploying principal.

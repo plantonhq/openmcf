@@ -1,0 +1,78 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureRedisCache manifest's spec values into metered quantities and
+# price choices -- the (sku_name, capacity) pair selects the hourly rate
+# and Premium clustering multiplies it by shard count. The estimate
+# generator replays the catalog presets through these rules to emit
+# ../estimates/azurerediscache.yaml; a server-side estimator evaluates
+# the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azurerediscache
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  refusals:
+    - when:
+        - field_path: replicas_per_primary
+          op: is_set
+      reason: extra read replicas add billed nodes beyond the pair the Premium rate includes, at a per-additional-node rate the price book does not yet pin -- pricing only the base pair would understate the bill
+  lines:
+    - sku_meter: cache instance
+      applies_when:
+        - field_path: sku_name
+          op: not_equals
+          value: azure_redis_cache_sku_unspecified
+      quantity:
+        - field_value:
+            field_path: shard_count
+            default_when_unset: "1"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Redis Cache
+        pricing_unit: hours
+        attributes:
+          - key: cache_sku
+            from_field: sku_name
+          - key: cache_capacity
+            from_field: capacity
+      basis: shard count (1 unless Premium clustering sets it) x 730 hours at the tier-and-size rate -- Microsoft's listed rate covers the tier's full node complement, so no per-node multiplication applies
+    - sku_meter: cache instance
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: azure_redis_cache_sku_unspecified
+      quantity:
+        - field_value:
+            field_path: shard_count
+            default_when_unset: "1"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Redis Cache
+        pricing_unit: hours
+        attributes:
+          - key: cache_sku
+            constant: STANDARD
+          - key: cache_capacity
+            from_field: capacity
+      basis: an unset sku_name deploys STANDARD (the spec's documented production default) -- 730 hours at the Standard rate for the declared capacity
+  exclusions:
+    - applies_when:
+        - field_path: redis_configuration.rdb_backup_enabled
+          op: equals
+          value: "true"
+      text: RDB snapshot storage and transactions bill on the persistence storage account's own component
+    - applies_when:
+        - field_path: redis_configuration.aof_backup_enabled
+          op: equals
+          value: "true"
+      text: AOF write-log storage and transactions bill on the persistence storage accounts' own components
+    - applies_when:
+        - field_path: zones
+          op: is_set
+      text: data transfer between availability zones for the cache's replication traffic follows write volume
+    - text: network egress follows client placement

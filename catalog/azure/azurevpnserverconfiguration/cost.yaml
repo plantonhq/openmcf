@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurevpnserverconfiguration
+spec:
+  billing_model: free
+  free_tier: A VPN server configuration is the "who may connect and how" policy document for point-to-site VPN -- authentication methods, trusted and revoked certificates, tunnel protocols, policy groups. It deploys no gateway and Virtual WAN's meters never touch it; authoring one, holding one, and sharing one across many gateways never bills.
+  notes: "No field of this spec buys anything: authentication types, certificate lists, the IPsec proposal, RADIUS wiring, and policy groups are policy metadata the gateways read for free. The real spend lives in the POINT-TO-SITE GATEWAYS born pointing at this configuration -- per Virtual WAN pricing each bills scale-unit hours plus a connection-unit hour for every connected user, and the hub it lives in bills its own deployment hours; all separate catalog kinds. An externally-hosted RADIUS server, if the Radius path is enabled, is infrastructure you run and pay for outside this object entirely."

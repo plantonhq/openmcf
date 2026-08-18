@@ -1,0 +1,17 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremanagedredisaccesspolicyassignment
+spec:
+  azure:
+    groups:
+      - purpose: ManageAccessPolicyAssignment
+        actions:
+          - Microsoft.Cache/redisEnterprise/databases/*
+        provenance: derived
+        notes: Covers azurerm_managed_redis_access_policy_assignment -- create, read/refresh, and destroy on the default database's accessPolicyAssignments child endpoint (every field is ForceNew, so updates are replacements); the module parses managed_redis_id client-side and performs no secondary reads. The wildcard is deliberate and wider than the three operations the provider actually calls (accessPolicyAssignments read/write/delete under the database) -- ARM evaluates those exact child action strings at request time, but its published provider-operations inventory does not yet define ANY accessPolicyAssignments operations under redisEnterprise (only under classic redis), so the databases-scope wildcard is the narrowest grant that both provably exists in ARM's own inventory and genuinely authorizes the child operations ARM checks. When ARM's inventory publishes the granular operations, this grant tightens to exactly accessPolicyAssignments read, write, and delete.

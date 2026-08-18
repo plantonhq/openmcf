@@ -1,0 +1,84 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsapprunnerservice
+spec:
+  presets:
+    - preset: 01-basic-public-image
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: AWS App Runner
+          sku_meter: provisioned instance memory
+          pricing_unit: GB-hours
+          pricing_quantity: "1460"
+          quantity_basis: one provisioned instance (the account-default auto-scaling minimum of 1, stated because no auto scaling configuration is referenced) x the configured memory in MB (provider default 2048) x 1/1024 to GB x 730 hours
+          list_unit_price: "0.007"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSAppRunner/20240126165719/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "10.2200"
+      total_list_cost: "10.2200"
+      exclusions:
+        - active instance vCPU and memory usage follows request traffic and concurrency -- from zero (the provisioned instance idle) up to the default auto-scaling maximum of 25 running around the clock
+        - data transfer out to the internet
+      notes: Provisioned (warm) instances bill memory only; vCPU starts billing the moment an instance actively serves requests -- which is why the committed line carries GB-hours and no vCPU-hours. Custom domains and the managed TLS certificates App Runner issues for them are free.
+    - preset: 03-github-code-source
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: AWS App Runner
+          sku_meter: provisioned instance memory
+          pricing_unit: GB-hours
+          pricing_quantity: "1460"
+          quantity_basis: one provisioned instance (the account-default auto-scaling minimum of 1, stated because no auto scaling configuration is referenced) x the configured memory in MB (provider default 2048) x 1/1024 to GB x 730 hours
+          list_unit_price: "0.007"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSAppRunner/20240126165719/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "10.2200"
+        - service_name: AWS App Runner
+          sku_meter: automatic deployment fee
+          pricing_unit: months
+          pricing_quantity: "1"
+          quantity_basis: one fixed automatic-deployment fee per service per month while auto_deployments_enabled is true, independent of how many deployments run
+          list_unit_price: "1"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSAppRunner/20240126165719/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "1.0000"
+      total_list_cost: "11.2200"
+      exclusions:
+        - active instance vCPU and memory usage follows request traffic and concurrency -- from zero (the provisioned instance idle) up to the default auto-scaling maximum of 25 running around the clock
+        - data transfer out to the internet
+        - build minutes bill per minute for every build App Runner runs from the connected repository and follow deployment frequency
+      notes: Provisioned (warm) instances bill memory only; vCPU starts billing the moment an instance actively serves requests -- which is why the committed line carries GB-hours and no vCPU-hours. Custom domains and the managed TLS certificates App Runner issues for them are free.
+    - preset: 04-private-vpc-ingress
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: AWS App Runner
+          sku_meter: provisioned instance memory
+          pricing_unit: GB-hours
+          pricing_quantity: "1460"
+          quantity_basis: one provisioned instance (the account-default auto-scaling minimum of 1, stated because no auto scaling configuration is referenced) x the configured memory in MB (provider default 2048) x 1/1024 to GB x 730 hours
+          list_unit_price: "0.007"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSAppRunner/20240126165719/us-west-2/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "10.2200"
+      total_list_cost: "10.2200"
+      exclusions:
+        - active instance vCPU and memory usage follows request traffic and concurrency -- from zero (the provisioned instance idle) up to the default auto-scaling maximum of 25 running around the clock
+        - the interface VPC endpoint carrying the VPC Ingress Connection bills hourly and per GB on its own AwsVpcEndpoint component
+        - data transfer within and out of the VPC
+      notes: Provisioned (warm) instances bill memory only; vCPU starts billing the moment an instance actively serves requests -- which is why the committed line carries GB-hours and no vCPU-hours. Custom domains and the managed TLS certificates App Runner issues for them are free. The private service (is_publicly_accessible false) is reachable only through the VPC Ingress Connection; App Runner itself adds no charge for the connection -- the endpoint carrying it bills as its own component.

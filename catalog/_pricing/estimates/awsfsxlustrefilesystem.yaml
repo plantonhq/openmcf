@@ -1,0 +1,98 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsfsxlustrefilesystem
+spec:
+  presets:
+    - preset: 01-scratch-development
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon FSx
+          sku_meter: provisioned Lustre storage
+          pricing_unit: GB-months
+          pricing_quantity: "1200"
+          quantity_basis: every provisioned GiB of SCRATCH_2 storage bills monthly at the same flat scratch rate as SCRATCH_1 (the burst-throughput upgrade is free); assumed us-east-1 since the presets pin region as a placeholder
+          list_unit_price: "0.14"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "168.0000"
+      total_list_cost: "168.0000"
+      exclusions:
+        - the final backup taken on deletion outlives the file system and keeps billing per GB-month until deleted separately
+        - data transfer across Availability Zones or out of the region is traffic-dependent
+      notes: SCRATCH_2 costs exactly what SCRATCH_1 costs -- the burst-throughput upgrade is free, which is why the spec recommends it over the legacy type.
+    - preset: 02-persistent-high-throughput
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon FSx
+          sku_meter: provisioned Lustre storage
+          pricing_unit: GB-months
+          pricing_quantity: "2400"
+          quantity_basis: every provisioned GiB of PERSISTENT_2 SSD storage bills monthly at the rate of its throughput tier (125, 250, 500, or 1000 MB/s/TiB -- assumed the 125 floor when the manifest does not state it), at the us-east-1 rate since the presets pin region as a placeholder
+          list_unit_price: "0.6"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "1440.0000"
+      total_list_cost: "1440.0000"
+      exclusions:
+        - backup storage bills per GB-month of incremental backup data actually retained -- churn across the retention window drives it
+        - the final backup taken on deletion outlives the file system and keeps billing per GB-month until deleted separately
+        - data transfer across Availability Zones or out of the region is traffic-dependent
+      notes: LZ4 compression shrinks consumed bytes but never the provisioned-capacity bill; on Intelligent-Tiering it directly reduces the usage-billed tier storage.
+    - preset: 03-persistent-capacity-datalake
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon FSx
+          sku_meter: provisioned Lustre storage
+          pricing_unit: GB-months
+          pricing_quantity: "6000"
+          quantity_basis: every provisioned GiB of PERSISTENT_1 HDD storage bills monthly at the rate of its throughput tier (12 or 40 MB/s/TiB -- assumed the 12 floor when the manifest does not state it); drive_cache_type READ selects the higher rate that folds in the SSD read cache sized to 20% of capacity; assumed us-east-1 since the presets pin region as a placeholder
+          list_unit_price: "0.041"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "246.0000"
+      total_list_cost: "246.0000"
+      exclusions:
+        - backup storage bills per GB-month of incremental backup data actually retained -- churn across the retention window drives it
+        - the final backup taken on deletion outlives the file system and keeps billing per GB-month until deleted separately
+        - data transfer across Availability Zones or out of the region is traffic-dependent
+      notes: LZ4 compression shrinks consumed bytes but never the provisioned-capacity bill; on Intelligent-Tiering it directly reduces the usage-billed tier storage. The HDD read-cache rate already includes the SSD cache sized to 20% of storage capacity -- there is no separate cache line.
+    - preset: 04-intelligent-tiering-elastic
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon FSx
+          sku_meter: Intelligent-Tiering provisioned throughput
+          pricing_unit: MiBps-months
+          pricing_quantity: "4000"
+          quantity_basis: INTELLIGENT_TIERING provisions no storage capacity -- its committed baseline is throughput_capacity, billed per MBps-month from creation regardless of traffic, at the us-east-1 rate since the presets pin region as a placeholder
+          list_unit_price: "0.52"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonFSx/20260805125901/us-east-1/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "2080.0000"
+      total_list_cost: "2080.0000"
+      exclusions:
+        - Intelligent-Tiering tier storage bills per GB-month of data actually stored in the Frequent, Infrequent, and Archive Instant Access tiers, plus a monitoring-and-automation meter on all tiered bytes -- entirely data-dependent
+        - read and write requests to Intelligent-Tiering storage bill per operation -- entirely traffic-dependent
+        - the SSD read cache bills per GB-month, but under proportional sizing AWS derives the cache size from the provisioned throughput -- the manifest does not state the billed quantity
+        - backup storage bills per GB-month of incremental backup data actually retained -- churn across the retention window drives it
+        - the final backup taken on deletion outlives the file system and keeps billing per GB-month until deleted separately
+        - data transfer across Availability Zones or out of the region is traffic-dependent
+      notes: LZ4 compression shrinks consumed bytes but never the provisioned-capacity bill; on Intelligent-Tiering it directly reduces the usage-billed tier storage.

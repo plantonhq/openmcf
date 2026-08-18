@@ -1,0 +1,100 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpalloydbcluster
+spec:
+  presets:
+    - preset: 01-dev-basic
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: AlloyDB
+          sku_meter: instance memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "11680"
+          quantity_basis: cpu_count-only manifests get the N2 highmem shape of 8 GiB per vCPU (Google's documented mapping, e.g. 2 vCPUs carry 16 GB) -- one node's memory billed hourly
+          list_unit_price: "0.0112"
+          price_source: https://cloudbilling.googleapis.com/v1/services/C49F-B7F2-7416/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "130.8160"
+        - service_name: AlloyDB
+          sku_meter: instance vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "1460"
+          quantity_basis: a ZONAL primary runs one node -- cpu_count vCPUs billed every hour of the month at the N2 rate
+          list_unit_price: "0.06608"
+          price_source: https://cloudbilling.googleapis.com/v1/services/C49F-B7F2-7416/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "96.4768"
+      total_list_cost: "227.2928"
+      exclusions:
+        - cluster database storage bills per GiB-hour of data actually stored in the shared regional storage layer -- it grows with the database, which no manifest can know
+        - backup storage and continuous-backup (PITR) log storage grow with database size and write churn; both are on by default with 14-day retention
+        - network egress follows client placement; cross-region backup networking bills per GiB when backups land in another region
+    - preset: 02-ha-production
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: AlloyDB
+          sku_meter: instance memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "46720"
+          quantity_basis: the N2 highmem shape of 8 GiB per vCPU on both nodes of a REGIONAL primary (active plus standby), billed hourly
+          list_unit_price: "0.0112"
+          price_source: https://cloudbilling.googleapis.com/v1/services/C49F-B7F2-7416/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "523.2640"
+        - service_name: AlloyDB
+          sku_meter: instance vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "5840"
+          quantity_basis: a REGIONAL primary (GCP's default when availability_type is unset) runs two nodes -- the active primary and its in-region standby -- so cpu_count vCPUs bill twice every hour
+          list_unit_price: "0.06608"
+          price_source: https://cloudbilling.googleapis.com/v1/services/C49F-B7F2-7416/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "385.9072"
+      total_list_cost: "909.1712"
+      exclusions:
+        - cluster database storage bills per GiB-hour of data actually stored in the shared regional storage layer -- it grows with the database, which no manifest can know
+        - backup storage and continuous-backup (PITR) log storage grow with database size and write churn; both are on by default with 14-day retention
+        - network egress follows client placement; cross-region backup networking bills per GiB when backups land in another region
+    - preset: 03-enterprise-encrypted
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: AlloyDB
+          sku_meter: instance memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "93440"
+          quantity_basis: the N2 highmem shape of 8 GiB per vCPU on both nodes of a REGIONAL primary (active plus standby), billed hourly
+          list_unit_price: "0.0112"
+          price_source: https://cloudbilling.googleapis.com/v1/services/C49F-B7F2-7416/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "1046.5280"
+        - service_name: AlloyDB
+          sku_meter: instance vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "11680"
+          quantity_basis: a REGIONAL primary (GCP's default when availability_type is unset) runs two nodes -- the active primary and its in-region standby -- so cpu_count vCPUs bill twice every hour
+          list_unit_price: "0.06608"
+          price_source: https://cloudbilling.googleapis.com/v1/services/C49F-B7F2-7416/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "771.8144"
+      total_list_cost: "1818.3424"
+      exclusions:
+        - cluster database storage bills per GiB-hour of data actually stored in the shared regional storage layer -- it grows with the database, which no manifest can know
+        - backup storage and continuous-backup (PITR) log storage grow with database size and write churn; both are on by default with 14-day retention
+        - network egress follows client placement; cross-region backup networking bills per GiB when backups land in another region

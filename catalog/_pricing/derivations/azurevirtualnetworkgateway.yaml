@@ -1,0 +1,60 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureVirtualNetworkGateway manifest's spec values into metered
+# quantities and price choices -- one hourly gateway-compute meter,
+# selected by the manifest's SKU through a value-keyed lookup. Only the
+# SKUs the price book pins price; every other tier (including the
+# entire ExpressRoute ladder, which bills under a different service) is
+# an explicit refusal. Excess site-to-site tunnels and point-to-site
+# connections are gateway-aggregate meters no single manifest can
+# count, so they ride as exclusions. The estimate generator replays the
+# catalog presets through these rules; a server-side estimator
+# evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azurevirtualnetworkgateway
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  refusals:
+    - when:
+        - field_path: sku
+          op: not_equals
+          value: VPN_GW_1_AZ
+        - field_path: sku
+          op: not_equals
+          value: VPN_GW_2_AZ
+      reason: only the VpnGw1AZ and VpnGw2AZ hourly rates are pinned in the price book -- the other VPN tiers (BASIC, VpnGw3AZ-5AZ) and the entire ExpressRoute ladder (which bills under the ExpressRoute service at its own rates, with ER_GW_SCALE billing per autoscaled unit) would be guessed rates
+  lines:
+    - sku_meter: gateway compute
+      quantity:
+        - hours_in_month: true
+      price_lookup:
+        service_name: VPN Gateway
+        pricing_unit: hours
+        attributes:
+          - key: gateway_sku
+            from_field: sku
+      basis: one gateway x 730 hours at the SKU's own hourly rate -- the tier alone fixes the price (the generation knob changes throughput ceilings, not the rate, and an active-active pair bills the same single SKU rate as active-standby)
+  exclusions:
+    - text: site-to-site tunnels beyond the included 10 bill per tunnel-hour, counted across ALL the gateway's connections -- an aggregate invisible in this manifest
+    - applies_when:
+        - field_path: vpn_client_configuration
+          op: is_set
+      text: point-to-site connections beyond the included 128 bill per connection-hour and follow client behavior
+    - text: egress data transfer bills at standard rates and follows traffic (same-region VNet-to-VNet traffic through the gateway is free in both directions)
+    - text: the referenced public IPs and the GatewaySubnet's virtual network are first-class components billing on their own lines
+  notes:
+    - applies_when:
+        - field_path: active_active
+          op: equals
+          value: "true"
+      text: Active-active adds no gateway spend -- Microsoft bills one SKU rate however many instances are live; only the second public IP adds a line, on its own component.
+    - applies_when:
+        - field_path: nat_rules
+          op: is_set
+      text: NAT rules are free configuration -- the VPN Gateway price list carries no NAT meter, so translating overlapping address spaces adds nothing to the bill.

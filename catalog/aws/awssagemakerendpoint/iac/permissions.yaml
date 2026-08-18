@@ -1,0 +1,45 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awssagemakerendpoint
+spec:
+  aws:
+    statements:
+      - sid: ManageEndpointConfigurations
+        actions:
+          - sagemaker:CreateEndpointConfig
+          - sagemaker:DescribeEndpointConfig
+          - sagemaker:DeleteEndpointConfig
+          - sagemaker:AddTags
+          - sagemaker:DeleteTags
+          - sagemaker:ListTags
+        resources:
+          - arn:aws:sagemaker:*:*:endpoint-config/*
+        provenance: derived
+        notes: Covers aws_sagemaker_endpoint_configuration -- the module rolls suffixed configurations (name_prefix + create_before_destroy) on every capacity change, so create and delete both fire on routine updates, not just at endpoint creation and teardown. All three actions authorize on the endpoint-config ARN format per the service reference; the wildcard name segment is required because configuration names carry provider-generated suffixes.
+      - sid: ManageEndpoint
+        actions:
+          - sagemaker:CreateEndpoint
+          - sagemaker:DescribeEndpoint
+          - sagemaker:UpdateEndpoint
+          - sagemaker:DeleteEndpoint
+          - sagemaker:AddTags
+          - sagemaker:DeleteTags
+          - sagemaker:ListTags
+        resources:
+          - arn:aws:sagemaker:*:*:endpoint/*
+          - arn:aws:sagemaker:*:*:endpoint-config/*
+        provenance: derived
+        notes: Covers aws_sagemaker_endpoint across create, the repoint edge of every configuration roll (UpdateEndpoint, optionally shaped by deployment_config), tagging, and teardown. CreateEndpoint and UpdateEndpoint authorize against BOTH the endpoint and endpoint-config ARN formats per the service reference -- scoping this statement to only the endpoint format denies provisioning.
+      - sid: PassExecutionRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: Required only when spec.execution_role_arn is set (inference-component endpoints, where variants omit model) -- CreateEndpointConfig passes the role to SageMaker. Variants with models pass no role from this module; the models' own components pass theirs. Add an iam:PassedToService=sagemaker.amazonaws.com condition and narrow to the actual role ARN in a hardened deployment.

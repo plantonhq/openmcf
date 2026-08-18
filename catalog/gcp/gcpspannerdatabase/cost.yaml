@@ -1,0 +1,34 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpspannerdatabase
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: instance
+      sku_meter: database storage
+      pricing_unit: GiB-months
+      impact: The parent instance's configuration sets the rate for every byte this database stores -- regional SSD is $0.000410959/GiB-hour in us-central1 (the price includes all three replicas), HDD is $0.000082192, and dual-region or multi-region configurations carry higher rates plus replication charges per write. The instance's node/processing-unit compute bills on that component, not here.
+    - field_path: version_retention_period
+      sku_meter: database storage
+      pricing_unit: GiB-months
+      impact: Point-in-time recovery is free as a feature, but every version of overwritten or deleted data is retained (and billed as database storage) for the window -- Google's own guidance is that raising it from the default 1 hour toward 7 days grows storage in proportion to the write/overwrite rate.
+    - field_path: ddl
+      sku_meter: database storage
+      pricing_unit: GiB-months
+      impact: Spanner bills the average amount of data in the database including tables, secondary indexes, and metadata -- every index the DDL creates stores its own copy of the indexed columns, and on replicated configurations index maintenance also counts toward replication charges.
+    - field_path: encryption_config
+      sku_meter: Cloud KMS key usage
+      impact: CMEK itself adds no Spanner charge; the key's (or per-region keys') version storage and per-operation charges bill on the referenced GcpKmsKey components.
+    - field_path: deletion_policy
+      sku_meter: database storage
+      impact: ABANDON removes the database from management while it keeps serving -- and keeps billing for its storage in GCP until someone deletes it by hand.
+  estimate_exclusions:
+    - an empty database stores almost nothing -- storage accrues per GiB-month at the parent instance configuration's rate as applications write, replicas included in the price
+    - compute capacity (nodes or processing units, hourly) bills on the GcpSpannerInstance, idle or busy
+    - backups bill their own storage meter on the GcpSpannerBackupSchedule that creates them
+    - replication charges per written GiB and network egress apply on dual-region and multi-region instance configurations, following write and read traffic
+  notes: "A database is schema plus data on someone else's compute: creation is free, the parent instance carries the always-on node bill, and this resource's own meter is database storage -- Spanner charges the average amount of data in your databases, including tables, secondary indexes, and metadata (Spanner pricing page). The PITR window is the one field that quietly multiplies storage on write-heavy databases."

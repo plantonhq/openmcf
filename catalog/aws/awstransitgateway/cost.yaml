@@ -1,0 +1,29 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awstransitgateway
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: auto_accept_shared_attachments
+      sku_meter: Transit Gateway attachment hours
+      pricing_unit: attachment-hours
+      impact: Enabling auto-accept lets any account the RAM share reaches attach a VPC to this hub without a human gate -- and each accepted attachment starts an hourly meter the moment it lands (billed to the attaching VPC's owner account). The default (explicit acceptance) keeps a review step between a share and a running meter.
+    - field_path: multicast_support
+      sku_meter: Transit Gateway data processing
+      pricing_unit: GB
+      impact: Multicast multiplies the data-processing meter by fan-out -- every gigabyte received by every multicast receiver instance bills data processing, so one sent stream bills once per receiver. Create-time immutable, so the choice is fixed at birth.
+    - field_path: transit_gateway_cidr_blocks
+      sku_meter: Transit Gateway attachment hours
+      pricing_unit: attachment-hours
+      impact: This field exists solely for TGW Connect (GRE/SD-WAN appliance integration), and each Connect attachment bills hourly to the GATEWAY owner -- unlike VPC attachments, which bill the spoke account. The CIDR blocks themselves carry no meter.
+  free_tier: No free allotment exists for Transit Gateway. The hub's own existence is free -- no meter runs until the first attachment starts its hourly charge and the first gigabyte is processed.
+  estimate_exclusions:
+    - attachment-hours bill on the attachment components (AwsTransitGatewayVpcAttachment and its VPN, Direct Connect, Connect, and peering siblings), not on this hub manifest
+    - data processing bills per GB sent INTO the gateway from a VPC, Direct Connect, VPN, or Network Firewall attachment, charged to the sender's owner; data arriving over a peering attachment is exempt
+    - standard AWS data transfer charges (inter-AZ, inter-region over peering) apply on top of Transit Gateway charges
+    - Site-to-Site VPN connection pricing applies in addition to VPN attachment-hours
+  notes: "A Transit Gateway with zero attachments bills nothing -- every hourly meter in this pricing model is an ATTACHMENT meter, so the spend lives on the spoke components that plug in. The cross-account nuance is the one worth knowing: for a hub shared through AWS RAM, each VPC attachment's hourly fee is charged to the VPC owner's account, not the hub owner's -- the hub owner pays only for VPN and Connect attachments, and for its half of any peering attachment. Data processing follows the sender: each GB a spoke pushes into the gateway bills that spoke's owner. The routing dials (default_route_table_association/propagation, dns_support, vpn_ecmp_support) shape reachability, not the bill."

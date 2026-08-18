@@ -1,0 +1,18 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awstransitgatewayvpcattachment
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon Virtual Private Cloud
+      sku_meter: Transit Gateway attachment hours
+      pricing_unit: hours
+      description: Every VPC attachment bills a flat hourly fee from creation for as long as it stays attached, whether or not any traffic flows -- the fee is per attachment, not per subnet or Availability Zone.
+  cost_drivers: []
+  estimate_exclusions:
+    - data processing bills per GB on every byte the gateway sends to or receives from this attachment (TransitGateway-Bytes) -- the dominant real-world cost on busy spokes, entirely traffic-dependent
+  notes: No spec field moves the rate -- the hourly fee is flat, and adding or removing subnets (Availability Zones) does not change it. The attachment ENIs AWS provisions in the chosen subnets bill nothing themselves. The Transit Gateway hub carries no hourly fee of its own; attachments like this one are where the gateway's committed cost lives.

@@ -1,0 +1,38 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurenetworkinterface
+spec:
+  azure:
+    groups:
+      - purpose: ManageNetworkInterface
+        actions:
+          - Microsoft.Network/networkInterfaces/read
+          - Microsoft.Network/networkInterfaces/write
+          - Microsoft.Network/networkInterfaces/delete
+        provenance: derived
+        notes: Covers azurerm_network_interface and all five association resources -- every association (NSG, ASG, load-balancer pool, NAT rule, Application Gateway pool) is realized as an update to the NIC, so create/read/write/delete on the NIC carries the whole module. Held via Network Contributor, Contributor, or Owner, matching the module README's prose.
+      - purpose: JoinSubnetAndPublicIp
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/join/action
+          - Microsoft.Network/publicIPAddresses/join/action
+        provenance: derived
+        notes: ARM demands join on every network primitive a NIC references -- subnets/join for each ip_configuration's subnet_id (always exercised, at least one configuration is required), publicIPAddresses/join only when a configuration sets public_ip_address_id.
+      - purpose: AttachSecurityGroups
+        actions:
+          - Microsoft.Network/networkSecurityGroups/join/action
+          - Microsoft.Network/applicationSecurityGroups/joinIpConfiguration/action
+        provenance: derived
+        notes: Covers azurerm_network_interface_security_group_association (NSG join, only when network_security_group_id is set) and azurerm_network_interface_application_security_group_association (joining ip configurations to each entry of application_security_group_ids).
+      - purpose: JoinLoadBalancingPools
+        actions:
+          - Microsoft.Network/loadBalancers/backendAddressPools/join/action
+          - Microsoft.Network/loadBalancers/inboundNatRules/join/action
+          - Microsoft.Network/applicationGateways/backendAddressPools/join/action
+        provenance: derived
+        notes: Covers the three pool/rule membership association resources -- exercised only when an ip_configuration declares load_balancer_backend_address_pool_ids, load_balancer_inbound_nat_rule_ids, or application_gateway_backend_address_pool_ids. A gateway_load_balancer_frontend_ip_configuration_id reference is written on the NIC itself and needs no extra action beyond the NIC write.

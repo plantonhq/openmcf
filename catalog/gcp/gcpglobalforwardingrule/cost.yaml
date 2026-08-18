@@ -1,0 +1,33 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpglobalforwardingrule
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Networking
+      sku_meter: forwarding rule hours
+      pricing_unit: hours
+      description: "The VIP's hourly service charge, accruing from creation whether or not any traffic arrives. Global rules are billed per project in a band: the first five rules share one $0.025/hour minimum charge (one rule costs the same as five), and each rule beyond five adds $0.01/hour."
+  cost_drivers:
+    - field_path: load_balancing_scheme
+      sku_meter: PSC endpoint hours
+      pricing_unit: hours
+      impact: "The scheme decides which meter the rule bills. External schemes bill the shared forwarding-rule band; NONE makes the rule a Private Service Connect endpoint billing its own flat hourly fee per endpoint; INTERNAL_MANAGED bills the cross-region internal ALB's envoy proxy-instance hours instead (a minimum of three instances per rule, scaling with traffic); INTERNAL_SELF_MANAGED hands the data plane to the service mesh."
+    - field_path: target
+      sku_meter: data processing
+      pricing_unit: GiB
+      impact: "Traffic through an external frontend bills inbound and outbound data processing per GiB at the rate of the region where it is processed. A PSC rule targeting the all-apis or vpc-sc bundle carries no data charge at all; a PSC rule targeting a published service attachment bills consumer data processing per GiB."
+    - field_path: ip_address
+      sku_meter: static IP hours
+      pricing_unit: hours
+      impact: A reserved static address bills nothing while attached to this rule -- GCP charges only unattached reservations -- and the referenced GcpGlobalAddress is its own component either way. An omitted address gets a free ephemeral IP that changes if the rule is recreated.
+  free_tier: ""
+  estimate_exclusions:
+    - inbound and outbound data processing follows traffic, billed per GiB by the region where it is processed
+    - internet data transfer out to clients follows traffic and destination
+    - everything behind the VIP -- target proxies, URL maps, backend services, Cloud Armor policies, Cloud CDN, SSL certificates -- is separate wiring with its own charges
+  notes: "The forwarding-rule band is project-wide and invisible from any single manifest: a project's first global rule pays the full $0.025/hour minimum, rules two through five ride the same charge for free, and the classic port-80-redirect-plus-port-443 pair costs no more than either rule alone. The hourly fee is committed; the per-GiB data processing is why the model is hybrid."

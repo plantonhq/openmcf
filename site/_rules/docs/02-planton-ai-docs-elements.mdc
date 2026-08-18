@@ -1,0 +1,132 @@
+---
+description: Site-specific rendering capabilities and syntax for planton.ai documentation — Mermaid version, supported code languages, screenshot placeholders, and HTML elements. For visual strategy and diagram taxonomy, use @update-planton-ai-docs from the planton monorepo.
+alwaysApply: false
+---
+
+# Docs Rendering Elements
+
+This rule documents the rendering capabilities of the planton.ai docs site — what the Markdown renderer supports, Mermaid diagram syntax, and element formats. It does NOT cover visual strategy decisions (when to use which diagram type, Napkin.ai workflows, asciinema workflows, density targets); those live in `@15-planton-ai-docs-visual-strategy` loaded via `@update-planton-ai-docs`.
+
+## Mermaid Diagrams
+
+**Version**: Mermaid v11.10.1
+**Renderer**: `src/components/common/MermaidDiagram.tsx` (client-side, dark theme)
+**Detection**: `src/components/common/CodeBlock.tsx` auto-detects `language-mermaid` fenced blocks
+
+### Basic Syntax
+
+````markdown
+```mermaid
+flowchart LR
+  A[User] --> B[Planton] --> C[Cloud]
+```
+````
+
+### Animated Edges (v11 feature)
+
+Animated dashed lines for showing data flow, sync patterns, and request routing:
+
+````markdown
+```mermaid
+flowchart LR
+  CLI["planton CLI"]
+  Platform["Planton"]
+  Runner["Runner"]
+  Cloud["Cloud API"]
+
+  CLI -- request --> Platform
+  Platform tunnel@-- secure tunnel --> Runner
+  Runner -- execute --> Cloud
+
+  tunnel@{animate: true}
+```
+````
+
+Edge naming: `tunnel@`, `sync@`, `deploy@` — descriptive, not `a@`, `b@`.
+Maximum 2-3 animated edges per diagram.
+
+### Supported Diagram Types
+
+| Type | Syntax | Best For |
+|------|--------|----------|
+| Flowchart | `flowchart LR/TB` | Decision logic, workflow steps |
+| Sequence diagram | `sequenceDiagram` | Multi-service request flows |
+| State diagram | `stateDiagram-v2` | Lifecycle transitions |
+| ER diagram | `erDiagram` | Data model relationships |
+
+### Mermaid Rules
+
+- Do NOT use inline `style` attributes — the dark theme handles styling
+- Keep node count under 12 (wider diagrams break mobile)
+- Use subgraphs for bounded contexts: `subgraph runner [Customer Infrastructure]`
+- Label edges descriptively: `-- creates -->` not `-->`
+
+## Screenshot Placeholders
+
+Hidden HTML comments — invisible to users, scannable for future screenshot collection:
+
+```html
+<!-- SCREENSHOT: {context}
+  Page: {web console path}
+  Action: {what state the UI should be in}
+  Focus: {what to highlight or crop to}
+  Alt: {accessibility text for the future image}
+-->
+```
+
+All four fields required. Place immediately before or after the referencing paragraph.
+
+## Images
+
+All images use the Cloudflare R2 CDN. See `@03-planton-ai-docs-media` for URL format and conventions.
+
+```markdown
+![Alt text](https://assets.planton.ai/site/images/docs/{section}/{page}/{filename}.png)
+```
+
+### Figures with Captions
+
+```html
+<figure>
+  <img src="https://assets.planton.ai/site/images/docs/..." alt="Descriptive text" />
+  <figcaption>Optional caption.</figcaption>
+</figure>
+```
+
+## Callouts
+
+```markdown
+> **Note:** This feature requires organization-level permissions.
+
+> **Tip:** Use `planton --help` to discover available subcommands.
+
+> **Warning:** Rotating credentials will interrupt currently running jobs.
+```
+
+## Code Blocks
+
+Supported language tags for syntax highlighting: `bash`, `yaml`, `json`, `ts`, `tsx`, `js`, `go`, `java`, `proto`, `hcl`, `dockerfile`, `sql`, `diff`, `text`, `mermaid`
+
+Placeholders use angle brackets: `<org-id>`, `<env-name>`.
+
+## Collapsible Sections
+
+```html
+<details>
+  <summary>Show detailed architecture</summary>
+
+  [Detailed content here]
+
+</details>
+```
+
+## Don'ts
+
+- No MDX components (`<Tabs/>`, `<Card/>`, `<Callout/>`) — not supported by the current renderer
+- No local image paths or GitHub URLs — use Cloudflare R2
+- No secrets, tokens, or PII in code, screenshots, or logs
+- No `style` attributes in Mermaid diagrams
+
+## Where Visual Strategy Lives
+
+The documentation visual strategy (diagram taxonomy, when to animate, Napkin.ai prompt workflows, asciinema recording workflows, visual density targets, asset review protocol) lives in the planton monorepo at `@15-planton-ai-docs-visual-strategy`, loaded via `@update-planton-ai-docs`.

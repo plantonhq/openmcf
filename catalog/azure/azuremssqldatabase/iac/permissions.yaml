@@ -1,0 +1,45 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremssqldatabase
+spec:
+  azure:
+    groups:
+      - purpose: ManageDatabase
+        actions:
+          - Microsoft.Sql/servers/read
+          - Microsoft.Sql/servers/databases/read
+          - Microsoft.Sql/servers/databases/write
+          - Microsoft.Sql/servers/databases/delete
+        provenance: derived
+        notes: Covers azurerm_mssql_database (the module's only resource) -- create, read/refresh, in-place updates, and destroy. servers/read is required because the provider resolves the parent server's properties from server_id during create and refresh before it can address the database.
+      - purpose: ManageBackupPolicies
+        actions:
+          - Microsoft.Sql/servers/databases/backupShortTermRetentionPolicies/read
+          - Microsoft.Sql/servers/databases/backupShortTermRetentionPolicies/write
+          - Microsoft.Sql/servers/databases/backupLongTermRetentionPolicies/read
+          - Microsoft.Sql/servers/databases/backupLongTermRetentionPolicies/write
+        provenance: derived
+        notes: The provider orchestrates the retention ARM sub-APIs behind the resource's short_term_retention_policy and long_term_retention_policy blocks; it reads both policies on every refresh even when the blocks are unset, so the read actions are unconditional.
+      - purpose: ManageTransparentDataEncryption
+        actions:
+          - Microsoft.Sql/servers/databases/transparentDataEncryption/read
+          - Microsoft.Sql/servers/databases/transparentDataEncryption/write
+        provenance: derived
+        notes: transparent_data_encryption_enabled and the database-scoped CMK fields ride the TDE ARM sub-API, which the provider reads on refresh and writes whenever the flags or the Key Vault key change.
+      - purpose: ManageThreatDetectionPolicy
+        actions:
+          - Microsoft.Sql/servers/databases/securityAlertPolicies/read
+          - Microsoft.Sql/servers/databases/securityAlertPolicies/write
+        provenance: derived
+        notes: Required only when threat_detection_policy is set -- the provider manages the database-scoped Defender security-alert policy through this sub-API.
+      - purpose: AssignUserManagedIdentities
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: Required only when user_assigned_identity_ids carries the database-scoped CMK identities -- ARM checks assign/action on every identity referenced in the database payload (service-side; the module only passes the resolved identity IDs). The identity itself needs key unwrap/wrap access on the Key Vault, which is the identity's grant, not the runner's.

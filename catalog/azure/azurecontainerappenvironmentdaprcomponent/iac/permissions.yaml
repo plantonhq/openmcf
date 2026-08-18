@@ -1,0 +1,20 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurecontainerappenvironmentdaprcomponent
+spec:
+  azure:
+    groups:
+      - purpose: ManageDaprComponent
+        actions:
+          - Microsoft.App/managedenvironments/daprcomponents/read
+          - Microsoft.App/managedenvironments/daprcomponents/write
+          - Microsoft.App/managedenvironments/daprcomponents/delete
+          - Microsoft.App/managedenvironments/daprcomponents/listsecrets/action
+        provenance: derived
+        notes: Covers azurerm_container_app_environment_dapr_component -- create/update via write, read/refresh, and destroy. The listSecrets action is the secondary call the provider's refresh makes -- ARM's plain read omits the secrets list's values, so the provider lists them to populate state; without it every refresh of a component that declares secrets fails. The parent environment is addressed by the ARM ID resolved from container_app_environment_id; the module performs no environment read. Verified against Microsoft.App's published operations; held via Contributor on the environment's resource group.

@@ -1,0 +1,75 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpalloydbuser
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A user stores no database data -- it is access-control configuration held by the AlloyDB control plane. At-rest encryption of cluster data (Google-managed or CMEK) is the parent cluster's posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data store here means no key decision (see enc-at-rest); the cluster's encryption settings own that choice.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A user terminates no connections -- TLS enforcement on client connections is the parent cluster and instance posture. The coupling runs the other way for IAM users, whose token-based login rides the instance's encrypted connection paths.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A user is not addressable -- it has no endpoint, only a management API governed by IAM. Network exposure belongs to the instance's private-service-access or PSC connectivity.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Where connections come FROM is the instance's network posture; this identity governs what an authenticated client may do once connected (see rbac).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A database identity speaking the PostgreSQL protocol has no Layer-7 entry point for a WAF to front.
+    - control_id: rbac
+      status: configurable
+      field_path: database_roles
+      evidence:
+        type: spec_default
+        reference: Empty grants no roles at creation; listing PostgreSQL roles (e.g. alloydbiamuser, alloydbsuperuser) scopes what the user may do from the moment it exists. The 02-iam-user preset grants exactly alloydbiamuser -- the minimum an IAM-authenticated login needs.
+      notes: Roles granted here are creation-time grants; finer in-database GRANTs on tables and schemas are managed inside PostgreSQL, outside this spec.
+    - control_id: workload-identity
+      status: configurable
+      field_path: user_type
+      evidence:
+        type: spec_default
+        reference: ALLOYDB_BUILT_IN (the default) authenticates with a stored password; ALLOYDB_IAM_USER authenticates through IAM with short-lived tokens and no stored credential. A CEL rule makes the combination unrepresentable -- an IAM user carrying a password is rejected before deploy.
+      notes: The 02-iam-user preset is the keyless shape (a service-account email with the alloydbiamuser role); 01-application-user is the credentialed alternative with in-place password rotation.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: user_type
+      evidence:
+        type: spec_default
+        reference: The stored-password path is the weaker one, and it is what ALLOYDB_IAM_USER retires -- an IAM user has no password at all (CEL-enforced), so no password-guessing surface exists for that identity.
+      notes: AlloyDB has no anonymous or shared-secret user mode; BUILT_IN password auth is current-generation, just weaker than keyless IAM.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the identity (who created it, rotated its password, or changed its roles) land in Cloud Audit Logs as project-level posture; connection and statement logging (pgAudit) belong to the parent cluster's flags.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: AlloyDB publishes Cloud Monitoring metrics on cluster and instance dimensions; a user has no metric dimension and no export knob.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A user holds no data to back up -- it is declarative configuration re-creatable from the manifest (the password comes from the manifest or its secret store; GCP never returns it).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at the user level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A user is a regional control-plane object with no zonal footprint -- zone redundancy is the parent cluster's primary/standby topology.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Unset follows GCP's default (the user is dropped on destroy); PREVENT makes any destroying plan fail -- protection for a credential applications still authenticate with; ABANDON removes it from management while it keeps existing (and authenticating) on the cluster.
+      notes: Neither preset sets it. Objects the user owns inside PostgreSQL keep their ownership rows on drop, so reassign ownership before a deliberate DELETE.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A user is configuration on a fully managed service -- there is no software of its own to patch; engine patching belongs to the parent cluster.

@@ -1,0 +1,61 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureeventgriddomaintopic
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A domain topic stores nothing -- it is a name under the domain; events in flight rest briefly inside the Event Grid service, which encrypts its storage as the DOMAIN's posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Publishers send to the DOMAIN's HTTPS endpoint (a domain topic has no endpoint of its own), and delivery transport is each event subscription's concern -- both separate kinds.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Network exposure (public network access, IP filtering, private endpoints) is the parent domain's posture; the topic adds no reachable surface.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound restriction lives on the domain's network configuration; publishers are authorized at the domain endpoint, not per topic.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No traffic terminates at a domain topic; there is no request-filtering attachment point.
+    - control_id: rbac
+      status: not_applicable
+      notes: The topic declares no access rules, but its ARM ID is a grant scope -- "EventGrid EventSubscription Contributor" on exactly this topic lets one tenant's team manage only its own subscriptions. The granting is AzureRoleAssignment's posture; publish authorization (keys/SAS/Entra) happens at the domain.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The topic runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own; the key-versus-Entra publishing switch (local_auth_enabled) is the domain's posture.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Topic creation and deletion land in the Azure Activity Log as subscription-level posture; publish/delivery failure logging is the domain's diagnostic-settings territory.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Event Grid publishes metrics at the domain and event-subscription level; the topic itself emits none.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless declarative configuration -- pure addressing recreated from the manifest; events are transient delivery traffic, not stored state to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery); undeliverable-event retention and dead-lettering are each event subscription's configuration.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A domain topic is metadata inside Event Grid's regional service, which Microsoft operates zone-redundantly as the domain's inherited posture; the topic has no zonal knob.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a domain topic (Azure resource locks are subscription-side governance outside the manifest). Deleting a topic drops its subscriptions -- the blast radius is that topic only; the domain and sibling topics are untouched.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed PaaS -- Microsoft operates and patches the Event Grid service the topic lives in; no customer-visible patch surface exists.

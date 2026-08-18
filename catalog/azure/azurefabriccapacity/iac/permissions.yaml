@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurefabriccapacity
+spec:
+  azure:
+    groups:
+      - purpose: ManageCapacity
+        actions:
+          - Microsoft.Fabric/capacities/read
+          - Microsoft.Fabric/capacities/write
+          - Microsoft.Fabric/capacities/delete
+        provenance: derived
+        notes: Covers azurerm_fabric_capacity (Terraform) and fabric.Capacity (Pulumi), the modules' single resource -- create, read/refresh, in-place updates (SKU scaling, administrators, tags), and destroy. Action spellings are the official Microsoft.Fabric operations (the namespace is not yet in the shared action inventory). The suspend/resume actions (Microsoft.Fabric/capacities/suspend/action, .../resume/action) are deliberately NOT granted -- neither module pauses a capacity; pausing is an operational action outside provisioning.

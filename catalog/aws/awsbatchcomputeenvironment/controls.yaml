@@ -1,0 +1,78 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbatchcomputeenvironment
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The compute environment stores no data -- it is scaling configuration. Data at rest lives on the launched instances' volumes, whose encryption is decided by the referenced launch template and AMI (their own components), and on whatever storage the jobs themselves write to.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With no data store of its own there is no key to choose here -- customer-managed keys for instance volumes are launch-template territory on the referenced components.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The environment is raw compute orchestration -- what the jobs encrypt in transit is decided inside their containers and the workloads they talk to, not by any field of this manifest. Management-plane calls to the Batch API ride TLS regardless.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The environment itself carries no endpoint -- its network presence is the ENIs of launched instances and Fargate tasks, placed into the referenced subnet_ids. Whether that compute is internet-reachable is decided on those subnet and security-group components (private subnets keep batch compute unreachable, the common posture).
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: compute_resources.security_group_ids
+      evidence:
+        type: spec_default
+        reference: The referenced security groups attach to every instance and Fargate task ENI the environment launches -- inbound is whatever those groups admit, and batch workloads normally need none. Required for the Fargate types; EC2 environments may omit them only when the launch template supplies its own.
+      notes: The rules themselves live on the referenced AwsSecurityGroup components; this field decides which of them govern the launched compute.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No WAF attachment point exists for batch compute -- nothing routes external requests to these instances by design; they pull work from queues.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane operation -- create, update, delete, and the job-submission APIs on the composing queues -- is authorized by IAM unconditionally against Batch's per-resource ARNs (compute-environment, job-queue, job).
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every identity in the chain is a platform role, never a stored credential -- Batch manages infrastructure through its service-linked role (or the referenced service_role), EC2 instances authenticate through the required instance_role profile, Spot Fleet under BEST_FIT assumes spot_iam_fleet_role, and job containers get their own roles from the job definitions.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The only authentication path is SigV4-signed IAM requests -- Batch has no legacy or weaker alternative to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane call -- who created or resized the environment, who toggled its state -- lands in CloudTrail unconditionally. What the jobs themselves log is job-definition territory on those components.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Batch emits EventBridge events for job state transitions automatically, and the launched EC2 instances and Fargate tasks publish standard CloudWatch compute metrics with no configuration in this manifest.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The environment is declarative configuration recreated from this manifest -- compute is ephemeral by design and jobs re-run from their queues. There is no data here to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup facility means no retention to configure here.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: compute_resources.subnet_ids
+      evidence:
+        type: spec_default
+        reference: Subnets spanning multiple availability zones let Batch launch capacity in whichever zones have it -- zone diversity is capacity resilience (and for SPOT, fewer interruptions from deeper pool choice). A single-subnet environment is pinned to one zone.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Batch API nor this spec carries a deletion-protection flag. The safe removal path is operational -- set state to DISABLED to drain running jobs, then delete; the environment is recreated from the manifest.
+    - control_id: managed-patching
+      status: configurable
+      field_path: compute_resources.ec2_configurations
+      evidence:
+        type: spec_default
+        reference: Omitted, Batch launches AWS's own ECS-optimized AMI family and picks up its updates as instances cycle; pinning image_id_override freezes a specific AMI and moves patch responsibility to whoever maintains it. Fargate environments have no patch surface at all -- AWS manages the infrastructure entirely.
+      notes: Instance turnover is what applies a newer AMI -- long-lived warm capacity (a non-zero min_vcpus floor) ages until an infrastructure update or scale-in cycles it.

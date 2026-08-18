@@ -1,0 +1,68 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremongoclusteruser
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A user grant is authorization metadata inside the Mongo vCore cluster; the documents whose access it governs -- and their at-rest encryption -- belong to the AzureMongoCluster kind's posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to key (see enc-at-rest); encryption keys are the cluster kind's surface.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The grant carries no traffic of its own; client connections to the cluster are TLS-enforced as that kind's posture.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A grant record has no network endpoint; the cluster's network exposure (public access, firewall rules, private endpoints) is the AzureMongoCluster kind's posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: The resource IS a role grant in MongoDB's own authorization system -- it cannot be deployed without expressing one. mongo_cluster_id (where), object_id (who), principal_type, and at least one roles entry (what, scoped to a database) are all required. Azure's role vocabulary currently accepts only "root", so today every grant is database-scoped full access -- Azure owns the vocabulary and will widen it over time.
+      notes: ARM RBAC and MongoDB roles are separate systems -- an ARM Owner on the cluster still reads no documents; Entra-principal data access flows exclusively through these grants.
+    - control_id: workload-identity
+      status: configurable
+      field_path: object_id
+      evidence:
+        type: spec_default
+        reference: The grant admits an Entra principal that authenticates to MongoDB with its directory token instead of a stored password -- granting a managed identity's service principal (principal_type "servicePrincipal", object_id referencing an AzureUserAssignedIdentity's principal id output) is the keyless workload path. Passing a human user's object id opts into interactive rather than workload access.
+      notes: This kind is the enabling half of the keyless Mongo vCore posture -- the password path (administrator_username/administrator_password) lives on the cluster spec, and these grants are what let workloads skip it.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The switch deciding which authentication methods the cluster accepts (authentication_methods -- native password versus MicrosoftEntraID) lives on the AzureMongoCluster kind's spec, not here -- though these grants are what makes an Entra-only cluster practical, since the target cluster must already allow MicrosoftEntraID for the grant to deploy.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Creation and deletion of user grants land in the Azure Activity Log as subscription-level posture; database-level access auditing is the cluster's diagnostic surface, outside this spec.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A grant record emits no metrics or runtime signals.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless authorization configuration -- nothing to back up; the manifest recreates the grant declaratively (every field is create-only, so recreation is a harmless drop-and-re-add of the binding). Database backups belong to the cluster kind.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A grant has no runtime footprint with a zonal failure mode; it lives in the cluster's Microsoft-operated metadata store and follows the cluster's own availability posture.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a user grant (Azure resource locks are subscription-side governance outside the manifest); deleting one revokes the principal's database access and is recreated declaratively.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The authentication and authorization machinery evaluating these grants is part of the Microsoft-operated Mongo vCore service; no customer-visible patch surface exists.

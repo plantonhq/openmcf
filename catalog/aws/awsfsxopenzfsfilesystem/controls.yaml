@@ -1,0 +1,91 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsfsxopenzfsfilesystem
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every FSx for OpenZFS file system is encrypted at rest -- AWS applies AES-256 encryption to all data, metadata, and backups with no opt-out at any configuration level.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset means the AWS-managed FSx service key encrypts the file system; setting kms_key_id upgrades to a customer-managed KMS key. ForceNew -- the key cannot be changed after creation.
+      notes: The 02-single-az-production and 03-multi-az-high-availability presets pin a customer-managed key. Because the field is ForceNew, choosing the key is a create-time decision.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: FSx for OpenZFS automatically encrypts data in transit between the file system and supported (Nitro-based) EC2 clients; there is no spec switch to enable or disable it.
+      notes: The protection depends on client instance capability, not configuration -- connections from instance types without the in-transit encryption capability fall back to plain NFS. No field of this spec can enforce encryption on such clients.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The file system's endpoints are network interfaces in the VPC subnets named by subnet_ids (plus floating IPs from endpoint_ip_address_range for MULTI_AZ_1) -- FSx exposes no public endpoint for NFS traffic at any configuration.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_default
+        reference: When security_group_ids is empty, AWS attaches the VPC's default security group; attaching explicit groups restricts inbound traffic to the declared NFS ports (TCP 111, 2049, 20001-20003) and sources. ForceNew.
+      notes: Every catalog preset attaches an explicit security group. Because the field is ForceNew, tightening groups later means replacing the file system -- attach the right groups at creation.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: An NFS file system carries no HTTP request surface -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: not_applicable
+      notes: Data-plane authorization is POSIX permissions plus NFS export options (root_volume_configuration.nfs_exports controls client CIDRs and options like root_squash), not role-based access; management access is AWS-account IAM posture, not a component choice.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The file system runs no workloads and holds no cloud credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The file system serves the NFS protocol family (v3 through v4.2) with no spec switch to disable older versions; there is no separate legacy authentication path to turn off.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: FSx for OpenZFS exposes no file-access audit logging feature -- there is nothing in the spec or the service to enable. API-level administrative actions land in CloudTrail as account-level posture, not a component choice.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: FSx reports file-system metrics (throughput, IOPS, storage consumption) to CloudWatch automatically for every file system -- there is no opt-in and no way to disable it.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: automatic_backup_retention_days
+      evidence:
+        type: spec_default
+        reference: Defaults to 0 -- automatic backups are OFF unless the spec opts in; any value 1-90 enables daily automatic backups, and backup_id restores a new file system from one.
+      notes: The 02-single-az-production (7 days), 03-multi-az-high-availability (14), and 04-multi-az-intelligent-tiering (7) presets enable backups; the 01-single-az-development preset leaves them off. skip_final_backup defaults to true, so deletion takes no last-resort backup unless the spec says otherwise.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: automatic_backup_retention_days
+      evidence:
+        type: spec_validation
+        reference: The field is bounded 0-90 days by the spec's validation -- retention length is a direct spec choice within AWS's supported range.
+      notes: Retention beyond 90 days requires an external backup plan (AWS Backup), outside this component.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: deployment_type
+      evidence:
+        type: spec_validation
+        reference: MULTI_AZ_1 places an active/standby pair across two Availability Zones, and the spec's subnet_count_matches_deployment rule enforces exactly two subnets for it (preferred_subnet_id pins the active server); single-AZ types take exactly one subnet.
+      notes: The 03-multi-az-high-availability and 04-multi-az-intelligent-tiering presets deploy MULTI_AZ_1. The SINGLE_AZ_HA_1/SINGLE_AZ_HA_2 variants are active/standby WITHIN one zone -- failover without zone-level survival. ForceNew -- the tier is a create-time decision.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the module exposes a deletion-protection flag for FSx file systems. Two adjacent safeguards exist -- deletion fails while child volumes or snapshots exist unless delete_options opts into the cascade, and skip_final_backup=false keeps a last-resort restore point -- but neither refuses deletion of the file system itself.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS patches the file servers and the OpenZFS stack during the weekly maintenance window; no customer-visible patch surface exists.
+      notes: weekly_maintenance_start_time pins the window (d:HH:MM UTC); when unset, AWS chooses one.

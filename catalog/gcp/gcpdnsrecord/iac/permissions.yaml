@@ -1,0 +1,33 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpdnsrecord
+spec:
+  gcp:
+    groups:
+      - purpose: EnableDnsApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling dns.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageRecordSet
+        permissions:
+          - dns.resourceRecordSets.create
+          - dns.resourceRecordSets.update
+          - dns.resourceRecordSets.delete
+          - dns.resourceRecordSets.list
+          - dns.changes.create
+          - dns.changes.get
+        provenance: derived
+        notes: Covers google_dns_record_set. Cloud DNS has no direct record-set write API -- every mutation is submitted as a change (dns.changes.create) that Cloud DNS additionally authorizes against the per-record permission matching the mutation (create, update, or delete), and the provider polls the change to done under dns.changes.get. Reads and the provider's create-time pre-check for existing record sets go through resourceRecordSets.list.
+      - purpose: ReadZoneForApexRecords
+        permissions:
+          - dns.managedZones.get
+        provenance: derived
+        notes: Required only when the record's type is NS or SOA -- on destroy the provider reads the managed zone to detect the zone apex, because the apex NS/SOA record sets cannot be deleted, only reverted. Records of any other type never touch the zone API.

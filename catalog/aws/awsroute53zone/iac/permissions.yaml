@@ -59,6 +59,7 @@ spec:
           - route53:DeleteQueryLoggingConfig
           - route53:GetQueryLoggingConfig
         resources:
-          - "*"
+          - arn:aws:route53:::hostedzone/*
+          - arn:aws:route53:::queryloggingconfig/*
         provenance: derived
-        notes: Covers aws_route53_query_log -- created only when spec.query_logging is set. The destination log group's account-level CloudWatch Logs resource policy for route53.amazonaws.com is a documented prerequisite, deliberately not created per zone.
+        notes: Covers aws_route53_query_log -- created only when spec.query_logging is set. Every action here scopes -- CreateQueryLoggingConfig authorizes on the hosted zone and Get/Delete on the queryloggingconfig ARN (whose id exists only after create, hence the pattern) -- so the statement carries both resource types instead of a wildcard. The destination log group's account-level CloudWatch Logs resource policy for route53.amazonaws.com is a documented prerequisite, deliberately not created per zone.

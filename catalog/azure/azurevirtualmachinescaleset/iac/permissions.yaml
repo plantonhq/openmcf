@@ -1,0 +1,35 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurevirtualmachinescaleset
+spec:
+  azure:
+    groups:
+      - purpose: ManageVirtualMachineScaleSet
+        actions:
+          - Microsoft.Compute/virtualMachineScaleSets/read
+          - Microsoft.Compute/virtualMachineScaleSets/write
+          - Microsoft.Compute/virtualMachineScaleSets/delete
+        provenance: derived
+        notes: Covers all three engine resources -- azurerm_linux_virtual_machine_scale_set / azurerm_windows_virtual_machine_scale_set (UNIFORM) and azurerm_orchestrated_virtual_machine_scale_set (FLEXIBLE); exactly one deploys, chosen by orchestration mode and OS. Create, refresh, in-place updates (scale, image, upgrade policy), and destroy. Instance disks are created and deleted through the scale-set API itself, so no separate Microsoft.Compute/disks grant is needed.
+      - purpose: JoinSubnets
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/join/action
+        provenance: derived
+        notes: Every NIC template's ip_configuration references a subnet (network_interfaces[].ip_configurations[].subnet_id); ARM authorizes placing instances into each referenced subnet with join/action on the subnet's scope at create -- a service-side check the modules never call directly.
+      - purpose: JoinLoadBalancingPools
+        actions:
+          - Microsoft.Network/loadBalancers/backendAddressPools/join/action
+          - Microsoft.Network/applicationGateways/backendAddressPools/join/action
+        provenance: derived
+        notes: Required only when ip_configurations reference load-balancer or application-gateway backend pools (load_balancer_backend_address_pool_ids / application_gateway_backend_address_pool_ids in both engines' NIC templates) -- ARM checks join/action on each referenced pool's scope, service-side.
+      - purpose: AssignUserManagedIdentities
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: Required only when identity carries USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED identities -- ARM checks assign/action on every identity referenced in the scale-set payload, service-side.

@@ -30,4 +30,4 @@ The generated `variables.tf` mirrors the proto contract:
 
 ## Required Permissions
 
-The deploying principal needs `Microsoft.EventGrid/domains/topics/*` (EventGrid Contributor covers it).
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege actions the deploying principal needs.

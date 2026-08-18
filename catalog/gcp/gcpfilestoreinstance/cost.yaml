@@ -1,0 +1,44 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpfilestoreinstance
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Cloud Filestore
+      sku_meter: provisioned capacity
+      pricing_unit: GiB-months
+      description: The full provisioned file-share capacity bills monthly at the tier's per-GiB rate from creation, whether or not any file is written -- Filestore charges for allocated capacity, not stored data.
+  cost_drivers:
+    - field_path: tier
+      sku_meter: provisioned capacity
+      pricing_unit: GiB-months
+      impact: The tier keys the per-GiB rate -- BASIC_HDD storage costs a fraction of ENTERPRISE, and REGIONAL/ENTERPRISE buy multi-zone replication with the premium.
+    - field_path: file_share.capacity_gb
+      sku_meter: provisioned capacity
+      pricing_unit: GiB-months
+      impact: Capacity multiplies the bill directly, floor-bounded by tier minimums (1024 GiB for most tiers, 2560 GiB for BASIC_SSD) -- and capacity grows in place but never shrinks, so the bill ratchets.
+    - field_path: performance_config
+      sku_meter: custom performance IOPS
+      pricing_unit: IOPS-months
+      impact: Custom performance (ZONAL, REGIONAL, ENTERPRISE tiers) switches the pricing model -- capacity drops to a discounted per-GiB rate, and provisioned IOPS (fixed_iops.max_iops, or capacity x iops_per_tb.max_iops_per_tb) plus a flat monthly per-instance fee bill on top.
+    - field_path: performance_config
+      sku_meter: custom performance instance fee
+      pricing_unit: months
+      impact: Any custom-performance instance carries a flat monthly instance fee on top of capacity and IOPS.
+    - field_path: initial_replication
+      sku_meter: provisioned capacity
+      pricing_unit: GiB-months
+      impact: A cross-instance replication pair is two fully billed instances -- the peer bills its own capacity in its own location, plus inter-region replication traffic.
+    - field_path: location
+      sku_meter: provisioned capacity
+      pricing_unit: GiB-months
+      impact: Rates are regional; a zone value prices at its parent region.
+  free_tier: ""
+  estimate_exclusions:
+    - Filestore backups bill per GiB-month of backup data actually held, which follows the share's contents and backup cadence
+    - network egress follows client placement; cross-region replication traffic bills per GiB of replicated changes
+  notes: "Two pricing models, chosen by performance_config: without it the tier's per-GiB capacity rate is the whole bill; with it (custom performance) three meters run -- discounted per-GiB capacity, provisioned IOPS, and a flat monthly instance fee. Capacity is billed as provisioned, never as used, and can only grow."

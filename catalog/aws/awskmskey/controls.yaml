@@ -1,0 +1,80 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awskmskey
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The only data this component stores is key material, and protecting it is the service's entire function -- material is generated and held inside AWS KMS's hardware security modules and is never exportable in plaintext. No switch exists to weaken this.
+      notes: With custom_key_store_id the material lives in your CloudHSM cluster or external key manager instead -- still never plaintext-exportable through KMS.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: This component IS the customer-managed key -- it is what other components reference to satisfy their own enc-at-rest-cmk control. There is no layer beneath it to re-key.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All access to the key is through the AWS KMS API over TLS-only HTTPS endpoints with SigV4-signed requests; the key exposes no other transport.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The key has no network surface of its own -- reachability is the regional KMS API endpoint, and every request is authorized against the key policy, grants, and IAM. Exposure is an authorization posture (see rbac), not a network one.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network ingress exists to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request-filtering attachment point exists on a KMS key; requests are authorized API calls, not web traffic.
+    - control_id: rbac
+      status: configurable
+      field_path: policy
+      evidence:
+        type: spec_default
+        reference: The key policy is the root of access control on the key (IAM policies only work when it delegates to them). Empty keeps the AWS default policy -- account root has full access with IAM-policy delegation enabled; a custom policy restricts administration or grants cross-account access.
+      notes: grants add scoped, revocable per-principal permissions without editing the policy -- the mechanism for wiring workload roles to specific operations. bypass_policy_lockout_safety_check guards against authoring a policy that locks every administrator out; leaving it false keeps AWS's lockout check on.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The key runs no workloads and holds no credentials of its own; principals named in the policy and grants are IAM identities with their own posture.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The KMS API accepts only SigV4-signed requests over TLS; no legacy or weaker authentication path exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every KMS API operation against the key -- administrative and cryptographic alike -- is a CloudTrail management event, recorded in the account's CloudTrail event history by default.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: KMS emits key lifecycle events (rotation, scheduled deletion, imported-material expiry) to EventBridge automatically, and every API call surfaces through CloudTrail -- no component switch exists.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Key material is deliberately non-exportable, so no customer backup surface exists; AWS stores it redundantly within the region. The recovery story against accidental deletion is the mandatory waiting period (see deletion-protection) -- ciphertext under a destroyed key is unrecoverable by design.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AWS KMS is a Regional service that stores and serves key material redundantly across the region's Availability Zones; single-zone operation is unrepresentable.
+      notes: multi_region extends availability across regions -- replica keys share the primary's material so ciphertext decrypts in other regions.
+    - control_id: deletion-protection
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A KMS key can never be destroyed immediately -- deletion is only ever scheduled, with a mandatory waiting period (deletion_window_days, 7-30, spec-recommended 30) during which the key remains recoverable via CancelKeyDeletion.
+      notes: disabled is the gentler pause switch -- every cryptographic operation fails until re-enabled, with nothing destroyed. The spec warns that ciphertext under a destroyed key is unrecoverable, which is why the window exists.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the KMS fleet and its HSMs; no customer-visible patch surface exists.

@@ -1,0 +1,67 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpcomputemig
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Compute Engine
+      sku_meter: fleet instance vCPU
+      pricing_unit: vCPU-hours
+      description: Every running instance in the group bills the template machine type's vCPUs hourly -- the fleet size (target_size, or the autoscaler's minimum) multiplies the rate around the clock.
+    - service_name: Compute Engine
+      sku_meter: fleet instance memory
+      pricing_unit: GiB-hours
+      description: Each running instance bills the template machine type's memory hourly alongside its vCPUs.
+    - service_name: Compute Engine
+      sku_meter: per-instance disk storage
+      pricing_unit: GiB-months
+      description: Every instance carries its own copy of each template disk -- boot and data alike -- billing per provisioned GiB from creation, and continuing while an instance is stopped.
+  cost_drivers:
+    - field_path: template.machine_type
+      sku_meter: fleet instance vCPU
+      pricing_unit: vCPU-hours
+      impact: The per-instance rate everything multiplies -- the machine type fixes each instance's vCPU count and memory, and its family picks the per-vCPU and per-GiB prices. Shared-core E2 types bill their documented fractional vCPU (e2-small 0.5, e2-medium 1).
+    - field_path: target_size
+      sku_meter: fleet instance vCPU
+      impact: A fixed-size group bills exactly this many instances around the clock -- the direct fleet multiplier.
+    - field_path: autoscaler.min_replicas
+      sku_meter: fleet instance vCPU
+      pricing_unit: vCPU-hours
+      impact: The autoscaler never scales below this floor, so it is the committed always-on fleet; for regional groups the floor counts instances across the whole group, not per zone.
+    - field_path: autoscaler.max_replicas
+      sku_meter: fleet instance vCPU
+      impact: The worst-case spend ceiling -- under sustained load every instance up to this cap bills the full per-instance rate while it runs.
+    - field_path: template.scheduling.provisioning_model
+      sku_meter: Spot instance hours
+      impact: SPOT swaps the fleet's committed on-demand rates for a fluctuating market rate well below list -- and any instance can be reclaimed at any time. FLEX_START and RESERVATION_BOUND bill through Dynamic Workload Scheduler and pre-purchased reservations instead.
+    - field_path: template.disks
+      sku_meter: per-instance disk storage
+      pricing_unit: GiB-months
+      impact: Each disk entry is stamped onto EVERY instance -- a 100 GB data disk on a 3-instance group is 300 GiB billing monthly. stateful_disks keeps those copies (and their bills) alive across instance recreation.
+    - field_path: template.guest_accelerators
+      sku_meter: GPU hours
+      pricing_unit: GPU-hours
+      impact: Each accelerator card attaches to every instance in the group, billing hourly per instance at per-GPU-model rates.
+    - field_path: target_suspended_size
+      sku_meter: suspended memory storage
+      impact: Suspended standby instances stop their vCPU and memory meters but bill their persisted memory image as storage, plus their disks.
+    - field_path: target_stopped_size
+      sku_meter: per-instance disk storage
+      impact: Stopped standby instances bill only their disks -- cheaper than suspended standbys, slower to start.
+    - field_path: template.network_interfaces.access_configs
+      sku_meter: external IPv4 usage
+      pricing_unit: IP-hours
+      impact: An access config on a template interface gives EVERY instance its own external IPv4, each billing hourly while its instance runs.
+    - field_path: template.total_egress_bandwidth_tier
+      sku_meter: Tier_1 networking premium
+      impact: TIER_1 egress bandwidth bills its premium on every instance in the group.
+  estimate_exclusions:
+    - per-instance disk storage -- template.disks entries carry per-element sizes and types a manifest-level estimate cannot resolve; every instance multiplies them
+    - Spot market rates -- a SPOT template bills fluctuating rates under the on-demand ceiling, never a committed list price
+    - autoscaling above the floor -- each additional instance up to max_replicas bills the full per-instance rate while it runs
+    - external IPv4 hours per instance, network egress, OS license premiums for premium images, and Dynamic Workload Scheduler resize requests
+  notes: "The bill is one instance's rate times the fleet: target_size for fixed groups, the autoscaler floor for elastic ones. A group with neither starts at zero instances and bills nothing until sized. Templates are free -- only the instances they stamp out cost money."

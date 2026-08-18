@@ -1,0 +1,24 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurestoragelocaluser
+spec:
+  azure:
+    groups:
+      - purpose: ManageLocalUser
+        actions:
+          - Microsoft.Storage/storageAccounts/localusers/read
+          - Microsoft.Storage/storageAccounts/localusers/write
+          - Microsoft.Storage/storageAccounts/localUsers/delete
+        provenance: derived
+        notes: Covers azurerm_storage_account_local_user -- create, read/refresh, in-place updates (keys, scopes, home directory), and destroy on the account's localUsers child endpoint; the module parses storage_account_id client-side and performs no account read. The refresh never lists credentials -- SSH public keys are write-only in Azure's API, so the provider keeps them from its own state. ARM's inventory spells these with inconsistent casing (lowercase localusers for read/write, camel-case localUsers for delete) -- mirrored here exactly.
+      - purpose: RetrieveGeneratedPassword
+        actions:
+          - Microsoft.Storage/storageAccounts/localusers/regeneratePassword/action
+        provenance: derived
+        notes: Required only when ssh_password_enabled is true -- Azure mints the password server-side and returns it exactly once, and the provider obtains it through the regeneratePassword action to populate the sensitive password output. Key-only users never need it.

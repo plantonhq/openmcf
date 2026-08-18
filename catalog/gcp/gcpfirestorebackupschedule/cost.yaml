@@ -1,0 +1,31 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpfirestorebackupschedule
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: daily
+      sku_meter: backup data
+      pricing_unit: GiB-months
+      impact: A daily cadence with N days of retention settles at roughly N database-sized backups billing at once -- each backup's storage size equals the database's size when it was taken, per Google's own backup pricing rule.
+    - field_path: weekly_recurrence
+      sku_meter: backup data
+      pricing_unit: GiB-months
+      impact: The weekly cadence divides the standing copy count by seven for the same retention -- the archive pattern pairs it with long retention, and a second daily schedule on the same database composes beside it.
+    - field_path: retention
+      sku_meter: backup data
+      pricing_unit: GiB-months
+      impact: Each backup bills for the proportion of the month it is retained, at $0.000041096/GiB-hour in us-central1 -- retention up to 14 weeks multiplies the standing count, it is the schedule's only mutable field, and changes apply to backups created afterward.
+    - field_path: database
+      sku_meter: backup data
+      pricing_unit: GiB-months
+      impact: The referenced database's size is the multiplicand for every backup, and its location prices the meter. Backup data has no free quota -- even a database living inside Firestore's free tier pays for its backups.
+  estimate_exclusions:
+    - the schedule object itself is free -- backup storage accrues per GiB-month as backups of a data-bearing database are taken, and a backup of an empty database stores almost nothing
+    - the database's own operations and storage bill on GcpFirestoreDatabase
+    - a restore operation bills $0.20 per GiB of the backup's size when run, and the restored database then bills on its own
+  notes: "A backup schedule is a cadence with a rate card: nothing bills until a backup of real data is taken, then each backup -- sized exactly as the database was at that moment -- bills for the days it is retained. Backups outlive both the schedule and the database, aging out per their retention. This is the protection layer beyond PITR: point-in-time recovery covers 7 days of versions on the database; these backups extend to 14 weeks and survive database deletion. Prices echoed from the Firestore pricing page (us-central1)."

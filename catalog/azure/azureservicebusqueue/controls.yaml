@@ -1,0 +1,64 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureservicebusqueue
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Service Bus encrypts all message data at rest with Microsoft-managed keys unconditionally -- the queue stores its messages on the namespace's encrypted storage with no opt-out and no queue-level knob.
+      notes: Upgrading to customer-managed keys is a PREMIUM namespace-level configuration on the AzureServiceBusNamespace kind, not a queue choice.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys are a NAMESPACE-level configuration on PREMIUM -- the parent AzureServiceBusNamespace applies BYOK encryption to every entity in it; the queue spec has no key surface of its own.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Clients connect to the NAMESPACE endpoint ({namespace}.servicebus.windows.net), where TLS is enforced and the minimum TLS version is configured -- the queue exposes no transport surface of its own.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Network exposure is the parent namespace's posture (public network access, private endpoints, IP rules); the queue has no endpoint of its own to expose or hide.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound restriction lives on the namespace's network rule sets and private endpoints -- namespace-level posture, not a queue field.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Service Bus is an AMQP/HTTPS messaging endpoint fronted by Azure's service fabric; no WAF attachment point exists on a queue.
+    - control_id: rbac
+      status: not_applicable
+      notes: The queue declares no access rules of its own, but its ARM ID is a data-plane RBAC grant scope -- grant "Azure Service Bus Data Sender/Receiver" on exactly this queue via AzureRoleAssignment, or mint queue-scoped SAS credentials with AzureServiceBusAuthorizationRule (queue_id). Both are separate kinds carrying their own posture.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The queue holds no credentials and runs no workloads; application access goes keyless by granting Entra identities data-plane roles at this queue's scope via AzureRoleAssignment instead of SAS rules.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The SAS-versus-Entra decision is the namespace's local_auth_enabled switch -- disabling it kills SAS keys namespace-wide. The queue has no authentication toggle of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Runtime and operational audit logs (diagnostic settings) are configured on the NAMESPACE as separate resources; control-plane changes to the queue land in the Azure Activity Log as subscription-level posture.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Service Bus metrics (incoming/outgoing messages, active and dead-lettered message counts, throttled requests) are published at the namespace level with per-entity dimensions; diagnostic-setting export is namespace-scoped configuration outside this spec.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Messages live in the queue only until consumed or expired -- Azure offers no service-side backup or restore for queue contents, and the namespace's geo-DR pairing (AzureServiceBusDisasterRecoveryConfig) replicates the queue's DEFINITION but never its messages. dead_lettering_on_message_expiration preserves expired messages for inspection, which is delivery-failure handling, not backup.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery); default_message_ttl bounds how long undelivered messages live, not backup retention.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Zone redundancy is the parent namespace's posture -- a Service Bus namespace in an availability-zone region replicates across zones, and every queue inherits that placement; the queue has no zonal knob.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a queue (Azure resource locks are subscription-side governance outside the manifest). The status field gates traffic (DISABLED, SEND_DISABLED, RECEIVE_DISABLED) but not deletion -- and deleting or renaming the queue drops any messages in it.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed PaaS -- Microsoft operates and patches the Service Bus brokers and storage; no customer-visible patch surface exists.

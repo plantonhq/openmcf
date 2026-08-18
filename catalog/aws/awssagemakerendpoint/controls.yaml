@@ -1,0 +1,86 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awssagemakerendpoint
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: SageMaker encrypts the ML storage volumes attached to the endpoint's instances at rest by default with AWS-managed keys; nitro-local-storage instance families (ml.g5/g6/p4d/p5 and similar) encrypt their local storage by default as well, per the spec's own kms_key_arn guidance.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Unset leaves the ML storage volumes on AWS-managed keys; setting kms_key_arn encrypts them with a customer-managed KMS key. NOT usable with nitro-local-storage instance families or serverless-only endpoints -- AWS rejects a custom key there (the spec states both limits).
+      notes: data_capture.kms_key_arn, async_inference.kms_key_arn, and core_dump.kms_key_arn extend customer-key coverage to captured payloads, async outputs, and core dumps landing in S3.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Invocations travel through the regional SageMaker Runtime API over TLS, and management calls ride the SageMaker API over TLS -- neither exposes a plaintext path.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The endpoint exposes no network listener of its own -- the only invocation path is the SageMaker Runtime API, which requires SigV4-signed IAM credentials; there is no anonymous or directly routable surface.
+      notes: Keeping invocation traffic off the public internet entirely (VPC interface endpoints for the SageMaker Runtime) is caller-side account wiring outside this component.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The spec carries no security-group or subnet surface -- ingress is the IAM-authorized Runtime API, and network-level source restriction happens on the callers' side, not on the endpoint.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Not a web-facing surface -- the endpoint terminates no HTTP traffic of its own and no web ACL can attach to it; request filtering belongs on whatever fronts it (an API gateway or load balancer component).
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every call is IAM-authorized against the endpoint's ARN -- sagemaker:InvokeEndpoint on the data plane, the endpoint and endpoint-config actions on the management plane; no non-IAM access path exists.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Model containers receive AWS credentials exclusively through IAM execution roles -- each variant's model brings its own role, and execution_role_arn covers inference-component endpoints (spec-validated as required when any variant omits model). No static credentials are provisioned.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The single access path is SigV4-signed HTTPS through the SageMaker Runtime API -- no weaker or legacy authentication path exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management API call (CreateEndpoint, UpdateEndpoint, configuration rolls, deletion) is recorded by CloudTrail by default; InvokeEndpoint is a data event that can additionally be enabled account-side.
+      notes: data_capture is payload sampling for Model Monitor, not an audit trail -- it records request/response bodies, not who called.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: SageMaker publishes invocation metrics (invocations, latency, 4xx/5xx errors) and per-variant instance metrics (CPU, memory, disk) to CloudWatch automatically, and model containers stream logs to CloudWatch Logs -- no opt-in exists.
+      notes: deployment.auto_rollback_alarm_names turns those metrics into deployment gates -- any named alarm firing rolls the endpoint back.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The endpoint serves models and stores no durable data of its own -- model artifacts live in S3 on the referenced AwsSagemakerModel components, and the endpoint is re-creatable from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: production_variants.initial_instance_count
+      evidence:
+        type: spec_default
+        reference: A single-instance variant runs in one Availability Zone; at two or more instances SageMaker automatically spreads them across zones -- instance count is the lever, there is no separate AZ setting.
+      notes: The 02-production-canary-endpoint preset runs its stable variant at 2 instances. Serverless variants are zone-redundant by construction.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: SageMaker endpoints expose no deletion-protection flag -- DeleteEndpoint succeeds whenever IAM allows it. The modules' create-before-destroy configuration roll protects against dangling references, not against deletion.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AWS operates and patches the hosting fleet and its AMIs; inference_ami_version optionally pins the GPU/Neuron driver line. The model container image is the customer's own artifact and is patched by rebuilding it, outside this component.

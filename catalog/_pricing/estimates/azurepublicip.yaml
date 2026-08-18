@@ -1,0 +1,59 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azurepublicip
+spec:
+  presets:
+    - preset: 01-standard-static
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Virtual Network
+          sku_meter: standard static public IPv4
+          pricing_unit: IP-hours
+          pricing_quantity: "730"
+          quantity_basis: one Standard static IPv4 address x 730 hours -- the meter runs from creation (Azure starts the clock the second hour, a one-hour assignment grace) to deletion, attached or idle, and bills in Azure's Global region at a rate that does not vary by deployment region
+          list_unit_price: "0.005"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Network' and armRegionName eq 'Global' and meterName eq 'Standard IPv4 Static Public IP' and productName eq 'IP Addresses' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "3.6500"
+      total_list_cost: "3.6500"
+      exclusions:
+        - data transfer to and from the address bills per GB as bandwidth and follows traffic; a "RoutingPreference":"Internet" ip_tag moves egress to internet-transit bandwidth rates
+    - preset: 02-dns-labeled-endpoint
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Virtual Network
+          sku_meter: standard static public IPv4
+          pricing_unit: IP-hours
+          pricing_quantity: "730"
+          quantity_basis: one Standard static IPv4 address x 730 hours -- the meter runs from creation (Azure starts the clock the second hour, a one-hour assignment grace) to deletion, attached or idle, and bills in Azure's Global region at a rate that does not vary by deployment region
+          list_unit_price: "0.005"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Network' and armRegionName eq 'Global' and meterName eq 'Standard IPv4 Static Public IP' and productName eq 'IP Addresses' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "3.6500"
+      total_list_cost: "3.6500"
+      exclusions:
+        - data transfer to and from the address bills per GB as bandwidth and follows traffic; a "RoutingPreference":"Internet" ip_tag moves egress to internet-transit bandwidth rates
+      notes: The Azure-managed DNS name (label.region.cloudapp.azure.com) is free -- no meter attaches to DNS labels or their reuse scopes.
+    - preset: 03-allowlisted-from-prefix
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the address is drawn from a reserved prefix that already bills every address in its block per IP-hour from the moment the prefix exists -- that spend lives on the referenced AzurePublicIpPrefix component, and Microsoft publishes no separate meter for the act of drawing an address from it
+        - data transfer to and from the address bills per GB as bandwidth and follows traffic; a "RoutingPreference":"Internet" ip_tag moves egress to internet-transit bandwidth rates

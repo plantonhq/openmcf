@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsroute53dnsrecord
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A DNS record holds public routing data by design -- names and addresses meant to be handed to any resolver that asks. There is nothing confidential at rest for encryption to protect.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No stored secret means no key choice. The KMS key that DOES appear in Route 53's world signs DNSSEC responses, and it belongs to the hosted zone's configuration, not to individual records.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: How queries travel (plain DNS, DoT, DoH) is the resolver's transport choice -- no field of a record influences it. Response INTEGRITY is DNSSEC's job, enabled zone-side on the AwsRoute53Zone.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Whether this record answers the public internet or only VPCs is decided by the ZONE it lives in -- records in a public hosted zone are world-resolvable by design, records in a private zone answer only associated VPCs. The record inherits its zone's exposure and carries no lever of its own.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: An authoritative DNS answer has no ingress to restrict -- Route 53's resolvers answer whoever asks the zone. Network-scoped resolution is the private-hosted-zone model, configured on the zone.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request surface, no WAF attachment point. Route 53's authoritative fleet absorbs DNS-layer abuse as part of the managed service.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every mutation of the record authorizes through IAM -- route53:ChangeResourceRecordSets on the owning zone's ARN, narrowable to specific record names and types with Route 53's ChangeResourceRecordSets condition keys. Resolution itself is unauthenticated by DNS's nature.
+      notes: allow_overwrite widens nothing security-wise -- it changes create-collision behavior for records already visible to the same authorized principal.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A record neither holds credentials nor authenticates as anything; it is data served by Route 53's fleet.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: There is no authentication path to the record at all -- weak or otherwise. DNS queries are anonymous by protocol design.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every change to the record -- who changed which name to point where -- lands in AWS CloudTrail as a ChangeResourceRecordSets management event, unconditionally. Query-level logging is a zone-side opt-in (authoritative query logs to CloudWatch).
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: health_check_id
+      evidence:
+        type: spec_default
+        reference: Unset, the record answers unconditionally and emits nothing. Referencing an AwsRoute53HealthCheck both gates answers on endpoint health and publishes that health as CloudWatch metrics -- the record's one hook into alerting, and the mechanism failover routing depends on.
+      notes: alias_target.evaluate_target_health adds unbilled target-health awareness for supported alias targets without a standalone check.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The manifest is the source of truth -- the record re-creates exactly from it on the next apply. There is no state in the record beyond what the spec declares.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Nothing is backed up, so nothing has retention.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Route 53 serves every record from a globally distributed anycast fleet of authoritative name servers -- resilience of the ANSWERING infrastructure is the managed service's own property, with no single-location mode to fall into.
+      notes: Resilience of what the record POINTS AT is composed here -- failover routing plus a health check, or an alias with evaluate_target_health, keeps answers away from a dead endpoint.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Route 53 offers no deletion-protection flag for record sets -- an authorized ChangeResourceRecordSets delete succeeds immediately. The adjacent hazard the spec does address is accidental OVERWRITE at create time, which fails by default unless allow_overwrite deliberately opts in.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The authoritative DNS fleet is AWS-operated infrastructure; there is no customer runtime to patch anywhere in this component.

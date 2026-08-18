@@ -1,0 +1,69 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsPlantonRunner manifest's spec values into metered quantities and
+# price choices. The spec hides the compute substrate; the official
+# modules provision one always-on ECS Fargate task (desired count fixed
+# at one -- the registration's work queue serializes operations), a
+# Secrets Manager secret for the credentials document, and a CloudWatch
+# log group. The spec's cpu/memory are Fargate serverless units (1024
+# CPU units = 1 vCPU; memory in MiB), while Fargate rates are quoted per
+# vCPU-hour and per GB-hour, so each quantity carries the exact
+# unit-conversion factor 0.0009765625 (precisely 1/1024, a terminating
+# decimal) -- a conversion constant, not an assumption. The estimate
+# generator replays the catalog presets through these rules to emit
+# ../estimates/awsplantonrunner.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsplantonrunner
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  lines:
+    - sku_meter: Fargate vCPU hours
+      quantity:
+        - field_value:
+            field_path: cpu
+            default_when_unset: "512"
+        - constant: "0.0009765625"
+        - hours_in_month: true
+      price_slug: fargate-vcpu-hours-us-east-1
+      basis: one always-on task x cpu CPU units (the spec default 512 when unset) x 1/1024 vCPU per CPU unit (0.0009765625 exactly) x 730 hours, at Linux/x86_64 Fargate rates -- the modules set no runtime platform, so the AWS default architecture applies; every catalog preset leaves region a placeholder, so this prices the us-east-1 rate
+    - sku_meter: Fargate memory hours
+      quantity:
+        - field_value:
+            field_path: memory
+            default_when_unset: "1024"
+        - constant: "0.0009765625"
+        - hours_in_month: true
+      price_slug: fargate-memory-gb-hours-us-east-1
+      basis: one always-on task x memory MiB (the spec default 1024 when unset) x 1/1024 GB per MiB (0.0009765625 exactly) x 730 hours at the us-east-1 Fargate memory rate
+    - sku_meter: credentials secret
+      quantity:
+        - constant: "1"
+      price_slug: secretsmanager-secret-us-east-1
+      basis: the modules store the credentials document as exactly one Secrets Manager secret, billed the flat per-secret monthly fee for the runner's lifetime -- priced at the us-east-1 rate under the same stated region assumption as the compute lines (the per-secret fee is region-uniform on AWS's published sheet)
+    - sku_meter: public IPv4 address usage
+      applies_when:
+        - field_path: assign_public_ip
+          op: equals
+          value: "true"
+      quantity:
+        - hours_in_month: true
+      price_slug: public-ipv4-in-use-us-east-1
+      basis: assign_public_ip holds one public IPv4 address on the single task's network interface every hour of the month
+  exclusions:
+    - text: CloudWatch Logs ingestion and storage bill per GB and follow how many operations the runner executes; log_retention_days caps how long stored bytes keep billing
+    - text: data transfer -- image pulls and control-plane traffic follow standard AWS data transfer rates
+    - applies_when:
+        - field_path: assign_public_ip
+          op: not_equals
+          value: "true"
+      text: in the recommended private-subnet posture the runner's outbound path rides a NAT gateway, whose hours and per-GB processing bill on that component, not here
+  notes:
+    - text: The modules fix the task count at one -- scaling execution capacity means more runners (more registrations), never more copies of this one -- so the estimate never multiplies by a replica count.
+    - text: The task's 20 GB of Fargate ephemeral storage is included at no charge (the modules request no more), and the ECS cluster, task definition, security group, and IAM roles are free resources.
+    - text: The credentials secret is created with a zero-day recovery window, so destroying the runner stops the secret's meter immediately.

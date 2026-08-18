@@ -1,0 +1,96 @@
+---
+description: Site-specific formatting conventions for planton.ai documentation pages. For documentation strategy, source verification, and writing philosophy, use @update-planton-ai-docs from the planton monorepo.
+alwaysApply: false
+---
+
+# Docs Site Formatting
+
+This rule covers the site-specific mechanics of planton.ai/docs — frontmatter schema, link format, icon names, order conventions, and Markdown syntax. It does NOT cover writing strategy, source verification, or quality standards; those live in the planton monorepo's documentation rules and are loaded via `@update-planton-ai-docs`.
+
+## Frontmatter Schema
+
+Every page under `site/public/docs/` requires YAML frontmatter:
+
+```yaml
+---
+title: "Page Title"
+description: "One-line description for SEO and sidebar hover. Max 160 chars."
+icon: icon-name
+order: 10
+tags:
+  - Tag1
+---
+```
+
+**Required**: `title`, `description`, `icon`, `order`
+**Optional**: `tags` (string array), `badge` (short label like "Beta", "New", "Deprecated")
+
+## Order Conventions
+
+- Section directories use base order increments: 10, 20, 30, 40, ...
+- Section `index.md` inherits the directory's order
+- Getting-started pages: order 15
+- Content pages within a section: 20, 25, 30, 35, ... (increments of 5 or 10)
+- Reference pages: 80-90
+
+Current section order: Platform (10), Connections (20), Infrastructure (30), CI/CD (40), Secrets (45), Variables (47), Operations (50), Runner (60), Security (70), Teams and Access (80), CLI (90).
+
+## Icon Reference
+
+Icons are resolved by `src/app/(root)/docs/utils/fileSystem.ts`. Use the string name in frontmatter; the renderer maps it to an emoji.
+
+Commonly used in docs:
+
+| Name | Emoji | Typical Use |
+|------|-------|-------------|
+| `platform` | 🏢 | Platform section |
+| `concepts` | 🧩 | Core concepts |
+| `tour` | 🧭 | Platform tour |
+| `hierarchy` | 🌳 | Resource hierarchy |
+| `cloud` | ☁️ | Cloud resources, infrastructure |
+| `service` | 🛎️ | Services |
+| `pipeline` | 🔗 | Pipelines, integrations |
+| `deployment` | 🚀 | Deployment, getting started |
+| `security` | 🔒 | Security, encryption |
+| `key` | 🔑 | Connections, credentials |
+| `billing` | 💰 | Billing |
+| `welcome` | 👋 | Welcome, index pages |
+| `gear` | ⚙️ | Configuration, settings |
+| `code` | 💻 | CLI, code |
+| `book` | 📚 | Documentation |
+| `guide` | 🗺️ | Guides |
+| `users` | 👥 | Teams, community |
+| `wrench` | 🔧 | Operations, tools |
+| `unlock` | 🔓 | Open source |
+
+Full list: 200+ entries in `fileSystem.ts` `iconMap`. If an icon name is not found, the renderer falls back to pattern matching on the filename.
+
+## Markdown Conventions
+
+- Fenced code blocks with language tags: `bash`, `yaml`, `json`, `ts`, `tsx`, `js`, `go`, `java`, `proto`, `hcl`, `dockerfile`, `sql`, `diff`, `text`, `mermaid`
+- Inline code with backticks for commands, file names, identifiers, and config keys
+- Internal links: absolute paths from docs root, no `.md` extension — `/docs/infrastructure/cloud-resources`
+- Anchor links: auto-generated from headings — `/docs/cli#install-on-windows`
+- No custom anchor syntax `{#custom-id}` — renders literally, does not work
+- Callouts: blockquotes with a bold lead — `> **Note:**`, `> **Tip:**`, `> **Warning:**`
+- Collapsible sections: `<details><summary>Title</summary>...</details>`
+
+## Sidebar Generation
+
+Driven by `src/app/(root)/docs/utils/fileSystem.ts`:
+
+- Auto-generated from the filesystem under `site/public/docs/`
+- Files/directories starting with `_` or `.` are excluded
+- `index.md` becomes the directory title page (not shown as separate sidebar entry)
+- Sorted by: `order` field, then type (directories first), then alphabetical
+- Only `.md` files are processed — other extensions (`.napkin-prompt`, `.asciinema-script`) are invisible
+
+## What This Rule Does NOT Cover
+
+- Writing voice, tone, and philosophy — see `@01-assume-planton-ai-docs-writer-persona`
+- Source verification discipline — see `@01-assume-planton-ai-docs-writer-persona`
+- Visual strategy (Mermaid, Napkin.ai, asciinema) — see `@15-planton-ai-docs-visual-strategy`
+- Page content template and structure — see `@20-write-planton-ai-docs-page`
+- Quality review criteria — see `@30-review-planton-ai-docs-quality`
+
+All of the above are loaded automatically when you invoke `@update-planton-ai-docs`.

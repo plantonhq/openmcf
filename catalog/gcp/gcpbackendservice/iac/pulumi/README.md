@@ -15,7 +15,7 @@ A backend service is the hub of the L7 load balancing family: it owns the backen
    ```bash
    gcloud auth application-default login
    ```
-5. **IAM permissions**: any role carrying `compute.backendServices.*` on the target project
+5. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Directory Structure
 

@@ -1,0 +1,34 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurebastionhost
+spec:
+  azure:
+    groups:
+      - purpose: ManageBastionHost
+        actions:
+          - Microsoft.Network/bastionHosts/read
+          - Microsoft.Network/bastionHosts/write
+          - Microsoft.Network/bastionHosts/delete
+        provenance: derived
+        notes: Covers azurerm_bastion_host / compute.NewBastionHost -- create (~10 minutes), refresh, in-place updates (SKU upgrades, scale units, feature toggles), and destroy. Network Contributor on the resource group carries these along with the join permissions below.
+      - purpose: JoinBastionSubnet
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/join/action
+        provenance: derived
+        notes: The modules never mutate the subnet -- they pass the resolved subnet_id in the host payload -- but ARM authorizes placing dedicated-infrastructure hosts (BASIC/STANDARD/PREMIUM) into the "AzureBastionSubnet" with join/action on the subnet's scope at create (service-side).
+      - purpose: JoinPublicAddress
+        actions:
+          - Microsoft.Network/publicIPAddresses/join/action
+        provenance: derived
+        notes: The host binds its referenced Standard public IP exclusively; ARM authorizes the binding with join/action on the IP's scope at create (service-side). Not exercised by a private-only PREMIUM host or a DEVELOPER host, which reference no public IP.
+      - purpose: ReadVirtualNetwork
+        actions:
+          - Microsoft.Network/virtualNetworks/read
+        provenance: derived
+        notes: Required only for the DEVELOPER SKU, whose shared-infrastructure host attaches to a virtual network by ARM id instead of a subnet -- read on the referenced network's scope backs the reference resolution; Microsoft defines no join action for a whole virtual network.

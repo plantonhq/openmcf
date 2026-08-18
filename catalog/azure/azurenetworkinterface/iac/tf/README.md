@@ -99,7 +99,4 @@ module "network_interface" {
 
 ## Required Permissions
 
-The deploying credential needs `Microsoft.Network/networkInterfaces/write`
-on the resource group, plus join rights on the referenced subnet, public
-IP, network security group, and application security groups -- held via
-Network Contributor, Contributor, or Owner.
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege actions the deploying principal needs.

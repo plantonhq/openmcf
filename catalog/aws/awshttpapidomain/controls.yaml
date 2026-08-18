@@ -1,0 +1,62 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awshttpapidomain
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The domain stores no data. The certificate private key it serves with is held and protected by ACM (the AwsCertManagerCert component's at-rest posture), and the mTLS truststore is an S3 object whose at-rest encryption belongs to its bucket.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest exists at this level (see enc-at-rest), so no key choice arises here.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: A custom domain IS the TLS termination point for every request through it, and the modules pin security_policy to TLS_1_2 -- the only policy API Gateway v2 domains accept -- so every connection negotiates TLS 1.2 or newer and no plaintext HTTP is served on the hostname.
+      notes: The optional mutual_tls block upgrades termination to mutually-authenticated TLS -- clients must present a certificate anchored in the S3 truststore. When enabling it, disable the mapped APIs' default execute-api endpoints (a field on the API components) so callers cannot bypass the mTLS front door.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Publishing APIs at a public hostname is this component's purpose -- API Gateway v2 custom domains are regional public endpoints, and no private variant exists on this surface (private custom domains are a REST API v1 feature). Keeping backends private is the AwsHttpApiVpcLink component's job.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The domain has no network-source filtering surface -- HTTP APIs support neither resource policies nor WAF, so IP allow-listing must happen upstream (e.g. CloudFront in front of the domain) or inside the APIs' authorizers.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: AWS WAF cannot attach to HTTP APIs or their v2 custom domains -- there is no web ACL surface here. Accounts needing WAF in front of an HTTP API put CloudFront ahead of the domain and attach the web ACL there.
+    - control_id: rbac
+      status: not_applicable
+      notes: The domain performs no authorization -- authenticating and authorizing callers is the mapped APIs' job (their authorizers and route settings). Mutual TLS gates clients on certificate possession, but mapping identities to permissions still happens on the APIs.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The domain runs no workloads and holds no cloud credentials -- it references an ACM certificate by ARN and serves with it.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No legacy authentication path exists to disable -- the only TLS policy v2 domains accept is TLS_1_2, and the domain itself authenticates nothing beyond optional mTLS (see enc-in-transit).
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The domain emits no logs of its own; access logging is a stage-level setting on the mapped API components. Control-plane changes to the domain, mappings, and routing rules land in CloudTrail as account-level posture.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: API Gateway publishes metrics per API and stage; a custom domain has no metric dimension of its own -- its traffic appears under the mapped APIs' metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The domain, its mappings, and its routing rules are declarative configuration fully re-creatable from the manifest; no data lives here.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at this level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Availability is the API Gateway service's own managed posture -- the domain adds a hostname on the service's regional endpoint fleet and has no zonal configuration to choose.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists for custom domains. Deleting one removes the hostname binding and its mappings; the mapped APIs keep running on their default endpoints (if enabled).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Fully managed service surface with no customer-visible software to patch.

@@ -1,0 +1,84 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsplantonrunner
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The appliance's stored state is the credentials document in Secrets Manager and the operation logs in CloudWatch Logs -- both services encrypt at rest with AWS-managed keys unconditionally; the Fargate task's ephemeral storage is likewise encrypted by the platform.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Neither the spec nor the modules expose a customer-managed key seam -- the credentials secret and the log group are created without a KMS key argument, so the AWS-managed keys are the only option this component offers.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every connection is outbound and TLS -- the ECS agent's AWS API calls (pulling the image, fetching the credentials secret, delivering logs) ride AWS's TLS-only endpoints, and the runner's own channels to the control plane (queue polling, the outbound-initiated CloudOps tunnel) are TLS-carried by the platform. The runner's listening ports exist only on the task's private network interface behind a no-inbound security group.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The modules create the runner's security group with a permissive egress rule and NO ingress rules at all -- the runner only ever dials out, and nothing can initiate a connection to it. The spec's own design states the posture -- zero inbound exposure.
+      notes: assign_public_ip attaches a public address for egress in public subnets, but the no-inbound security group still refuses every inbound connection. Extra security_groups are meant for source-group trust by private targets; attaching a group that allows ingress would weaken this posture, so review referenced groups.
+    - control_id: restricted-ingress
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The module-created security group admits no inbound sources whatsoever -- the strictest possible ingress restriction, stronger than any declared allow-list.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request surface exists to filter -- the runner accepts no connections (see no-public-access), so a web application firewall has nothing to sit in front of.
+    - control_id: rbac
+      status: not_applicable
+      notes: The appliance exposes no management or data plane of its own inside AWS -- work arrives through the Planton control plane, where runner registration and operation dispatch are governed by the platform's own access control, outside this manifest's choices.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The runner always holds an IAM task role -- the referenced task_role when supplied, else a permissionless role the modules create so the identity seam always exists. Cloud operations authenticate through the role's short-lived credentials from the ECS credentials endpoint; no static AWS keys are injected anywhere in the task definition.
+      notes: task_role composes the actual grants -- reference an AwsIamRole carrying exactly what keyless operations need; permissions can be granted later without replacing the runner.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No legacy authentication path exists to disable -- the runner introduces itself to the control plane with the credentials document (delivered through Secrets Manager, never in launch configuration), and its AWS access is SigV4 role-based.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The modules always create the CloudWatch log group and wire the container's awslogs driver to it -- the runner logs every operation it executes, and the task cannot start without its log destination (an explicit dependency in the module). There is no off switch.
+      notes: log_retention_days (default 30, never CloudWatch's never-expire default) decides how long the audit trail is kept -- the spec recommends retaining it meaningfully, and the 03-high-capacity preset keeps 90 days.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: ECS publishes Fargate task and service metrics (CPU and memory utilization) to CloudWatch automatically for every service -- no opt-in exists on the modules' resources.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The appliance is stateless by design -- the credentials document is re-mintable material (the modules deliberately set the secret's recovery window to zero), and everything else is declarative and re-creatable from the manifest. Operation logs are the audit trail, governed by retention, not backup.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: subnets
+      evidence:
+        type: spec_default
+        reference: Each referenced subnet places the runner's network interfaces in one Availability Zone -- the spec's own guidance is at least two subnets in different zones, which lets the single Fargate task reschedule across an AZ event. One subnet pins it to one zone.
+      notes: This is rescheduling, not replication -- the modules fix the task count at one (the registration's work queue serializes operations), so an AZ event means a restart in the surviving zone, not a failover to a live replica. All catalog presets reference two subnets.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists on the spec or the modules' resources -- deliberate, because orderly teardown is part of the appliance's contract (the runner is destroyed last, after the workloads and clusters it deploys).
+    - control_id: managed-patching
+      status: configurable
+      field_path: runner_version
+      evidence:
+        type: spec_default
+        reference: Defaults to "latest" -- new tasks pull the newest runner release on every (re)start, so the appliance tracks the patched build by default; pinning a version tag takes the patch cadence into your own hands for change control.
+      notes: The compute layer beneath the task is Fargate -- AWS patches the hosts and container runtime with no customer surface. The 03-high-capacity preset pins v0.4.0 deliberately; a pinned runner is patched by bumping the tag.

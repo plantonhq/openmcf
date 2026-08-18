@@ -1,0 +1,30 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpfirestoreindex
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: fields
+      sku_meter: stored data
+      pricing_unit: GiB-months
+      impact: Every document in the collection grows one index entry carrying the collection ID, the indexed field values, and the document name -- Google's storage pricing counts composite-index entries as billed stored data, so each extra field widens every entry. Queries then pay for entries read (one read per batch of up to 1,000 index entries; kNN vector queries bill per batch of only 100 vector entries), and on ENTERPRISE databases the amplification also hits writes, whose write units are sized by the index entries written.
+    - field_path: query_scope
+      sku_meter: stored data
+      pricing_unit: GiB-months
+      impact: COLLECTION indexes one collection at the path; COLLECTION_GROUP indexes every collection with this ID anywhere in the database -- the same definition can index a handful of documents or millions, and storage follows.
+    - field_path: density
+      sku_meter: stored data
+      pricing_unit: GiB-months
+      impact: DENSE also writes entries for documents missing the indexed fields -- required for some Datastore Mode query shapes, and strictly more entries than the SPARSE_ALL default.
+    - field_path: database
+      sku_meter: document reads
+      pricing_unit: operations
+      impact: The database's edition prices everything the index touches -- STANDARD bills per-operation ($0.03 per 100,000 reads in us-central1), ENTERPRISE bills data-sized read units -- and its location sets the rates.
+  estimate_exclusions:
+    - the index definition is free -- index entries accrue as billed stored data on the database as documents are written to the collection, and the one-time background build is not charged as operations
+    - queries using the index bill reads (documents plus index-entry batches) on the database's meters, following application traffic
+  notes: "An index is a standing trade: it spends storage (an entry per document, billed as ordinary stored data on the GcpFirestoreDatabase) to make multi-field queries possible and cheap. Definitions cost nothing -- the meters live on the database, and this resource decides how many entries feed them. Index economics echoed from the Firestore pricing page (index entries in storage overhead, per-1,000-entry read batches, per-100-entry kNN vector batches)."

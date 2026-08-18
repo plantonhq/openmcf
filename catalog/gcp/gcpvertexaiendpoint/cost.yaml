@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpvertexaiendpoint
+spec:
+  billing_model: free
+  free_tier: A Vertex AI endpoint with no model deployed to it costs nothing -- Google's pricing defines the online-prediction meter as node-hours, and a node-hour is the time a virtual machine spends serving or waiting in an active state for "an endpoint with one or more models deployed". The endpoint object itself -- the durable URL, the networking mode, the traffic-split table -- carries no meter at any of its connectivity arms, dedicated DNS included.
+  notes: "The real spend arrives the moment a MODEL IS DEPLOYED onto this endpoint -- an operational step outside this resource. Each deployed model bills node-hours for its machine type (plus any GPU) around the clock, even at zero traffic; Google's pricing is explicit that you pay for every deployed model until you undeploy it, with at least one node always running per deployment. traffic_split only routes requests among those already-billing deployments -- shifting percentages moves load, not meters. Two spec fields open conditional charges elsewhere. request_response_logging_config samples predictions into BigQuery, which bills its own storage and streaming-insert meters (sampling_rate is the throttle); and private_service_connect_config.psc_automation_configs has Vertex provision a Private Service Connect endpoint (forwarding rule and IP) in each listed consumer project, billed to those projects as PSC consumer resources. Beware the ABANDON deletion_policy: the endpoint leaves management but its deployed models keep serving -- and keep billing node-hours."

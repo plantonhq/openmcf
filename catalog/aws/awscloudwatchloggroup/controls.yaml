@@ -1,0 +1,77 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awscloudwatchloggroup
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: CloudWatch Logs encrypts every log group's data at rest with its own server-side encryption (SSE-CWL) unconditionally -- an unset kms_key_id means the service default, never plaintext.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset means service-managed SSE-CWL; referencing a KMS key encrypts the group's log data with a key you own and can revoke. Association is an in-place update on both engines, and the key's policy must allow the regional CloudWatch Logs service principal (logs.<region>.amazonaws.com) to use it.
+      notes: The key must live in the log group's own region.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A log group is reached exclusively through CloudWatch Logs HTTPS API endpoints -- ingestion (PutLogEvents), queries, and subscription delivery all travel TLS as service behavior with no per-group dial.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The log group is a regional AWS API resource, not a network-placed endpoint -- there is no network exposure to close. Every read and write is IAM-authorized (see rbac); the only cross-boundary paths are subscription destinations the manifest names explicitly.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network ingress surface of its own (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A log group receives no HTTP requests from end users -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation against the group -- writing events, reading streams, running Insights queries, changing retention -- is authorized by IAM unconditionally. Data-plane granularity goes deep enough that unmasking data-protection-masked values is its own permission (logs:Unmask).
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The log group runs no workloads and holds no credentials. The one principal in the spec -- subscription_filters.role_arn -- is a role CloudWatch Logs ITSELF assumes (short-lived STS, trusting logs.amazonaws.com) to put records into Kinesis or Firehose destinations; Lambda destinations use a resource-based permission instead of any role.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The group exposes no authentication path beyond SigV4-signed AWS API calls -- there is no weaker protocol to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit dial for the group itself -- management calls land in AWS CloudTrail as account-level posture. The nearest in-spec feature is the data_protection_policy's Audit statement, which reports where sensitive data appears in the stream; that audits the DATA, not access to the group.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: metric_filters
+      evidence:
+        type: spec_default
+        reference: A bare group stores logs without emitting signals; metric filters turn matching log events into first-class CloudWatch metrics (the raw material for alarms on error counts and parsed latencies), and subscription_filters stream matching events to analytics or SIEM pipelines in real time.
+      notes: Both filter kinds are STANDARD-class features -- the spec rejects them on INFREQUENT_ACCESS groups because AWS would.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Log data durability inside the service is AWS's own concern, and neither the Logs API nor this spec offers a backup facility for a log group. Long-term copies are composed the streaming way -- a subscription filter into Firehose/S3 -- not through a backup tool.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery). retention_in_days governs the LIVE data's lifecycle -- how long ingested events survive before deletion -- which is data retention, not backup retention.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A regional managed service with no zonal placement dial -- where CloudWatch Logs physically stores and replicates log data is internal to the service, outside both this spec and the modules.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_protection_enabled
+      evidence:
+        type: spec_default
+        reference: Unset leaves AWS's default (unprotected) on new groups and preserves the current state on existing ones; true makes every delete -- console, API, and IaC destroy alike -- fail until the flag is explicitly cleared. The field is deliberately tri-state, because only an explicit false turns protection back off.
+      notes: Applied through the provider's separate PutLogGroupDeletionProtection call.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A fully managed service resource with no software surface the owner patches.

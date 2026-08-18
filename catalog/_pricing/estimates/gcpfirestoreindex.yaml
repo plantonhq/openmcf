@@ -1,0 +1,31 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpfirestoreindex
+spec:
+  presets:
+    - preset: 01-composite-filter-sort
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the index definition is free -- one entry per orders document (customerId + createdAt + document name) accrues as billed stored data on the referenced GcpFirestoreDatabase as orders are written
+        - queries using the index bill document reads and per-1,000-entry index-entry batches on the database's meters, following application traffic
+      notes: Zero committed at creation -- an index over an empty collection stores nothing; the meters live on the database this resource references.
+    - preset: 02-vector-neighbors
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - each products document adds an index entry carrying its category and a 768-dimension embedding vector -- vector entries are the widest index entries Firestore stores, billed as stored data on the referenced GcpFirestoreDatabase
+        - nearest-neighbor queries bill one read per batch of only 100 kNN vector index entries (versus 1,000 for ordinary entries) plus a read per returned document -- the densest read meter Firestore has
+      notes: Zero committed at creation -- vector search economics start with the first embedded document, and both the storage and the 10x-denser read meter live on the database.

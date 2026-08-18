@@ -1,0 +1,49 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsconfigrecorder
+spec:
+  aws:
+    statements:
+      - sid: ManageConfigurationRecorder
+        actions:
+          - config:PutConfigurationRecorder
+          - config:DeleteConfigurationRecorder
+          - config:DescribeConfigurationRecorders
+          - config:DescribeConfigurationRecorderStatus
+          - config:StartConfigurationRecorder
+          - config:StopConfigurationRecorder
+        resources:
+          - arn:aws:config:*:*:configuration-recorder/default/*
+        provenance: derived
+        notes: Covers aws_config_configuration_recorder AND aws_config_configuration_recorder_status -- the status resource is the folded start/stop toggle whose create, update, and delete all map to Start/StopConfigurationRecorder. The region allows exactly one recorder, conventionally named "default" (the module hardcodes it), so the grant pins the name and wildcards only the AWS-assigned recorder id in the ARN. All six actions take resource-level scoping on the ConfigurationRecorder ARN per the service reference. Destroy stops the recorder before the channel deletes -- AWS refuses channel deletion under a running recorder.
+      - sid: ManageDeliveryChannel
+        actions:
+          - config:PutDeliveryChannel
+          - config:DeleteDeliveryChannel
+          - config:DescribeDeliveryChannels
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_config_delivery_channel (the regional singleton, also named "default"). The service reference lists NO resource types for any delivery-channel action -- IAM evaluates them against Resource "*", so an ARN-scoped grant would deny at runtime and the wildcard is the narrowest possible scope. AWS validates the delivery bucket's config.amazonaws.com policy at PutDeliveryChannel ("insufficient delivery policy"); that policy is the referenced AwsS3Bucket's contract, so no s3 grants appear here.
+      - sid: ManageRetentionConfiguration
+        actions:
+          - config:PutRetentionConfiguration
+          - config:DeleteRetentionConfiguration
+          - config:DescribeRetentionConfigurations
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_config_retention_configuration, managed only when retention_period_in_days is set. The service reference lists no resource types for the retention actions (the retention object is an API-named singleton), so the wildcard is the narrowest possible scope.
+      - sid: PassConfigServiceRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: PutConfigurationRecorder passes the referenced service role (role_arn, required) to AWS Config, which assumes it to read resource configurations and write deliveries. The role must trust config.amazonaws.com (AWS_ConfigRole is the canonical managed policy) -- that trust and the bucket-write grant live on the referenced AwsIamRole. Add an iam:PassedToService=config.amazonaws.com condition and narrow to the actual role ARN in a hardened deployment.

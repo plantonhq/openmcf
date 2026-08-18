@@ -10,7 +10,7 @@ One table plus one GC-policy object per column family that declares one (the API
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **A Bigtable instance** — referenced via `instance` (a `GcpBigtableInstance` resource or a literal instance name)
-- **IAM permissions** — `bigtable.tables.create` (e.g. `roles/bigtable.admin`)
+- **IAM permissions** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Quick Start
 

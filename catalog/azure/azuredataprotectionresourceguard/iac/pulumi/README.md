@@ -22,4 +22,4 @@ Creates a Data Protection Resource Guard -- the approval gate behind Multi-User 
 
 ## Required Permissions
 
-The deploying principal needs `Microsoft.DataProtection/resourceGuards/*` on the resource group (Contributor covers it).
+Least-privilege runner permissions for this component are declared in [`../permissions.yaml`](../permissions.yaml).

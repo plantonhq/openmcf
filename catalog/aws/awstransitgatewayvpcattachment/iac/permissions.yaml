@@ -1,0 +1,53 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awstransitgatewayvpcattachment
+spec:
+  aws:
+    statements:
+      - sid: ManageAttachment
+        actions:
+          - ec2:CreateTransitGatewayVpcAttachment
+          - ec2:ModifyTransitGatewayVpcAttachment
+          - ec2:DeleteTransitGatewayVpcAttachment
+        resources:
+          - arn:aws:ec2:*:*:transit-gateway-attachment/*
+          - arn:aws:ec2:*:*:transit-gateway/*
+          - arn:aws:ec2:*:*:vpc/*
+          - arn:aws:ec2:*:*:subnet/*
+        provenance: derived
+        notes: Covers aws_ec2_transit_gateway_vpc_attachment -- creation, in-place subnet and option updates, and teardown. CreateTransitGatewayVpcAttachment authorizes against ALL FOUR resource types per the service reference (the attachment, the gateway, the VPC, and every subnet); Modify additionally authorizes on subnets when AZs are added or removed; Delete authorizes on the attachment alone.
+      - sid: TagAttachment
+        actions:
+          - ec2:CreateTags
+          - ec2:DeleteTags
+        resources:
+          - arn:aws:ec2:*:*:transit-gateway-attachment/*
+        provenance: derived
+        notes: Tag-on-create rides the attachment's tag specification; later tag updates call CreateTags/DeleteTags directly. Scoped to the transit-gateway-attachment ARN -- the only resource type the module tags.
+      - sid: ManageDefaultRouteTableMembership
+        actions:
+          - ec2:AssociateTransitGatewayRouteTable
+          - ec2:DisassociateTransitGatewayRouteTable
+          - ec2:EnableTransitGatewayRouteTablePropagation
+          - ec2:DisableTransitGatewayRouteTablePropagation
+        resources:
+          - arn:aws:ec2:*:*:transit-gateway-attachment/*
+          - arn:aws:ec2:*:*:transit-gateway-route-table/*
+        provenance: derived
+        notes: Exercised only when spec.default_route_table_association or spec.default_route_table_propagation is pinned -- the provider looks up the gateway's default route table and associates/propagates the attachment against it to match the pinned value. Each action authorizes against both the attachment and the route table per the service reference.
+      - sid: DescribeAttachments
+        actions:
+          - ec2:DescribeTransitGatewayVpcAttachments
+          - ec2:DescribeTransitGateways
+          - ec2:GetTransitGatewayRouteTableAssociations
+          - ec2:GetTransitGatewayRouteTablePropagations
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side during plan/refresh -- the attachment itself, the gateway (whose Options carry the default route table ids the provider needs to resolve pinned membership), and the default table's association/propagation state. EC2 Describe/Get APIs here support no resource-level scoping, so the wildcard is the narrowest possible scope.

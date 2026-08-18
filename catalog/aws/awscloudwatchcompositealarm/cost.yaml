@@ -1,0 +1,27 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awscloudwatchcompositealarm
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: AmazonCloudWatch
+      sku_meter: composite alarms
+      pricing_unit: alarm-months
+      description: Every composite alarm bills one flat monthly fee from creation (the offer's CW:CompositeAlarmMonitorUsage usage type). The fee does not depend on how many alarms the rule references or how often the composite fires.
+  cost_drivers:
+    - field_path: alarm_rule
+      sku_meter: alarm metrics (referenced alarms)
+      pricing_unit: alarm-metric-months
+      impact: The rule itself never changes this alarm's flat fee, but every alarm it names is a separately billed AwsCloudwatchAlarm -- a composite over five symptoms carries five underlying alarm fees on their own components.
+    - field_path: actions_suppressor
+      sku_meter: alarm metrics (referenced alarms)
+      pricing_unit: alarm-metric-months
+      impact: The suppressor is one more referenced alarm, billed on its own AwsCloudwatchAlarm component.
+  estimate_exclusions:
+    - the alarms referenced by alarm_rule and actions_suppressor bill on their own AwsCloudwatchAlarm components
+    - alarm, OK, and insufficient-data actions bill on their targets -- SNS topics referenced by the action fields carry their own AwsSnsTopic cost
+  notes: "The composite fee is the whole bill and it is committed at creation: one flat monthly charge, regardless of rule complexity, evaluation frequency, or state changes. Everything variable lives on the referenced alarms and action targets."

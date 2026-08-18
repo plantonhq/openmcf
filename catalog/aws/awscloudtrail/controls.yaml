@@ -1,0 +1,80 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awscloudtrail
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every log file CloudTrail delivers is server-side encrypted -- with kms_key_id unset the files use S3-managed keys (SSE-S3); an unencrypted delivery is not representable on a trail.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset means SSE-S3; referencing a KMS key switches delivery to SSE-KMS under a key you own and can revoke. The key policy must grant cloudtrail.amazonaws.com encrypt use -- AWS rejects the trail without it.
+      notes: Readers of the delivered files then also need kms:Decrypt on the key -- revoking the grant makes the archive unreadable, which is the point of holding the key.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The CloudTrail management API is HTTPS-only, and delivery to S3, CloudWatch Logs, and SNS rides AWS's TLS service channels; no plaintext path to or from a trail exists.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A trail exposes no endpoint -- it is control-plane configuration that writes into referenced destinations. Whether the delivered audit archive is internet-reachable is the referenced AwsS3Bucket's posture (public-access block, bucket policy), decided on that component.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens on a trail; there is no inbound network surface to restrict. Access to the delivered files is IAM- and bucket-policy territory on the destination components.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: With no request-serving surface there is no WAF attachment point; edge filtering has no meaning for an audit-delivery pipeline.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every trail operation -- create, update, stop logging, delete, selector changes -- is IAM-authorized on the trail ARN. On an organization trail AWS additionally locks modification to the management account (or delegated administrator); member accounts can see the trail but cannot change or delete it.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A trail runs no user workload. CloudTrail's own writes ride the cloudtrail.amazonaws.com service principal, and the CloudWatch mirror assumes the referenced delivery role (cloudwatch_logs.role_arn) with short-lived credentials -- service plumbing fixed by AWS's design, not a workload-identity choice this manifest carries.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: CloudTrail has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: This component IS the account's audit log -- and operations on the trail itself (who stopped logging, who changed selectors, who deleted it) are captured in CloudTrail's own event history unconditionally, so tampering with the recorder is itself recorded.
+      notes: enable_log_file_validation adds an hourly SHA-256 digest chain over delivered files so after-the-fact tampering in the bucket is detectable -- audit-grade trails (the 01 preset) turn it on.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: cloudwatch_logs
+      evidence:
+        type: spec_default
+        reference: Unset means S3-only delivery -- searchable after the fact, silent in real time. Presence mirrors events to the referenced log group, unlocking metric filters and alarms on security-relevant API activity; AWS requires the group and delivery role together, and the spec wires both.
+      notes: insight_types adds CloudTrail's own anomaly engines (call-rate and error-rate spikes) as Insights events on the trail; sns_topic_name notifies on every file delivery.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The trail stores nothing itself -- delivered files live in the referenced bucket, whose durability and replication posture is that component's. Recreating the trail from the manifest restores future capture; history was never the trail's to lose.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: The trail has no retention field by design -- delivered files persist until the referenced bucket's lifecycle rules say otherwise, and the CloudWatch mirror's retention is the log group's. Retention policy lives on those components.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: CloudTrail is a regional managed service AWS operates across availability zones -- capture and delivery have no zonal footprint the manifest could configure, and delivered files inherit S3's multi-AZ durability.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Trails carry no deletion-protection flag -- a contrast with CloudTrail Lake event data stores, which have termination protection on their own component. Deleting the trail stops future capture; already-delivered files stay in the bucket.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the capture and delivery pipeline; the trail exposes no runtime, version, or maintenance surface.

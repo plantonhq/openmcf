@@ -1,0 +1,26 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awswafipset
+spec:
+  aws:
+    statements:
+      - sid: ManageIpSet
+        actions:
+          - wafv2:CreateIPSet
+          - wafv2:UpdateIPSet
+          - wafv2:DeleteIPSet
+          - wafv2:GetIPSet
+          - wafv2:TagResource
+          - wafv2:UntagResource
+          - wafv2:ListTagsForResource
+        resources:
+          - arn:aws:wafv2:*:*:regional/ipset/*/*
+          - arn:aws:wafv2:*:*:global/ipset/*/*
+        provenance: derived
+        notes: Covers aws_wafv2_ip_set -- creation with tags, in-place address-list updates (UpdateIPSet), reads during plan/refresh (GetIPSet and ListTagsForResource -- WAFv2 Get and tag-read actions ARE resource-scoped to the ipset ARN format, unlike most services' Describe APIs), tagging, and deletion. Both scope segments are included because the spec supports REGIONAL sets (any region) and CLOUDFRONT sets (the global scope segment, created in us-east-1); the service reference's ipset ARN format parameterizes that first path segment as the scope.

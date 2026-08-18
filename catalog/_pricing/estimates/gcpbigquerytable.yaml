@@ -1,0 +1,41 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpbigquerytable
+spec:
+  presets:
+    - preset: 01-partitioned-analytics
+      region_assumption: US
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - an empty table bills nothing -- event rows accrue storage per GiB-month at the containing dataset's rates as pipelines write, the 365-day partition expiration drops old days automatically, and partitions unmodified past 90 days fall to the long-term rate one by one
+        - queries bill to the querying project per TiB scanned (or editions slots); day partitioning, clustering, and the mandatory partition filter exist precisely to shrink that meter
+        - streaming inserts and Storage Write API traffic follow the ingest pipeline
+      notes: Creation is free; the estimate is zero because the manifest commits no bytes -- the preset's partitioning and filter guard are scan-cost controls, not charges.
+    - preset: 02-authorized-view
+      region_assumption: US
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - a logical view stores nothing -- it is a saved query evaluated at read time, so no storage meter ever starts on this resource
+        - each query through the view bills the querying project for the bytes scanned of the underlying tables ($6.25/TiB on-demand after the free monthly 1 TiB)
+      notes: The zero here is structural, not just commitment-absence -- a logical view is the one table arm with no storage of its own; its entire cost lives in the queries readers run through it.
+    - preset: 03-external-gcs-table
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the parquet files bill on their Cloud Storage bucket (a separate component), not as BigQuery storage -- and the long-term storage discount never applies to external data
+        - queries bill the querying project per byte scanned of the external files; hive-partition pruning on the GCS path layout is the scan-cost lever
+      notes: Zero committed -- the external table is a query surface over data whose storage meter already runs elsewhere; upgrading it to BigLake (connectionId) changes security and caching, not this zero.

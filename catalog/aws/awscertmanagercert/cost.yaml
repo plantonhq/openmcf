@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awscertmanagercert
+spec:
+  billing_model: free
+  free_tier: Amazon-issued public certificates in their default non-exportable form are free -- the ACM pricing page and price list (offer AWSCertificateManager) show no charge for requesting, issuing, automatically renewing, or using them with integrated services like load balancers, CloudFront, and API Gateway. Importing an existing certificate (the imported block) stores and serves it at no charge either.
+  notes: "Two spec fields conditionally buy things. Setting options.export to ENABLED makes the public certificate exportable -- and exportable public certificates bill a fee per fully-qualified domain name (wildcard names at a higher rate) at issuance AND at every renewal, on this account; the default DISABLED stays free. Setting certificate_authority_arn switches to private-mode issuance from an ACM Private CA -- the CA bills a monthly charge plus per-certificate issuance fees on the account that owns the CA, so private-mode spend lives on the referenced CA, not here. Everything else is free: DNS validation records created via route53_hosted_zone_id ride the hosted zone's standard query billing, and automatic renewals of default-form certificates never bill."

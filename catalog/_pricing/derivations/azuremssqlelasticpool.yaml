@@ -1,0 +1,164 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureMssqlElasticPool manifest's spec values into metered quantities
+# and price choices -- per-eDTU-day bundled pricing for the Standard DTU
+# pool, per-vCore compute plus the pay-as-you-go SQL license meter for
+# the General Purpose and Business Critical vCore pools, and the
+# provisioned pool storage cap per GB-month. The estimate generator
+# replays the catalog presets through these rules; a server-side
+# estimator evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azuremssqlelasticpool
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  refusals:
+    - when:
+        - field_path: sku_name
+          op: not_equals
+          value: StandardPool
+        - field_path: sku_name
+          op: not_equals
+          value: GP_Gen5
+        - field_path: sku_name
+          op: not_equals
+          value: BC_Gen5
+      reason: only the StandardPool, GP_Gen5, and BC_Gen5 pool skus are pinned in the price book -- pricing any other sku would guess its rate
+    - when:
+        - field_path: max_size_bytes
+          op: is_set
+      reason: a byte-denominated storage cap is not modeled -- set max_size_gb to price pool storage
+    - when:
+        - field_path: sku_name
+          op: equals
+          value: GP_Gen5
+        - field_path: zone_redundant
+          op: equals
+          value: "true"
+      reason: zone-redundant General Purpose bills Azure's distinct uplifted Zone Redundancy compute meter, which is not yet in the price book -- pricing the single-zone rate would understate the bill
+    - when:
+        - field_path: sku_name
+          op: equals
+          value: GP_Gen5
+        - field_path: max_size_gb
+          op: is_unset
+      reason: with max_size_gb unset Azure applies the SKU's default pool storage cap, which still bills per GB-month -- the default is capacity-specific and not modeled, so set max_size_gb to price storage honestly
+    - when:
+        - field_path: sku_name
+          op: equals
+          value: BC_Gen5
+        - field_path: max_size_gb
+          op: is_unset
+      reason: with max_size_gb unset Azure applies the SKU's default pool storage cap, which still bills per GB-month -- the default is capacity-specific and not modeled, so set max_size_gb to price storage honestly
+    - when:
+        - field_path: sku_name
+          op: equals
+          value: StandardPool
+        - field_path: max_size_gb
+          op: is_set
+      reason: an explicit cap on a Standard pool can exceed the capacity's included storage allowance, and the extra-storage meter is not in the price book -- leave the cap unset to ride the included allowance
+  lines:
+    - sku_meter: pool eDTUs
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: StandardPool
+      quantity:
+        - field_value:
+            field_path: capacity
+        - constant: "30.4167"
+      price_slug: mssql-standard-pool-edtu-eastus
+      basis: the pool's provisioned eDTU capacity bills per eDTU per day; 30.4167 days is the 730-hour month convention divided by 24 (the same convention every hourly line uses, rounded at the fourth decimal)
+    - sku_meter: pool compute
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: GP_Gen5
+      quantity:
+        - field_value:
+            field_path: capacity
+        - hours_in_month: true
+      price_slug: mssql-gp-compute-vcore-eastus
+      basis: a General Purpose pool bills its provisioned capacity in vCores x 730 hours at the Gen5 per-vCore rate
+    - sku_meter: SQL Server license
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: GP_Gen5
+        - field_path: license_type
+          op: not_equals
+          value: BASE_PRICE
+      quantity:
+        - field_value:
+            field_path: capacity
+        - hours_in_month: true
+      price_slug: mssql-gp-sql-license-vcore
+      basis: pay-as-you-go SQL licensing bills per provisioned vCore-hour -- Azure's default when license_type is unset; BASE_PRICE (Azure Hybrid Benefit) removes this line
+    - sku_meter: pool storage
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: GP_Gen5
+      quantity:
+        - field_value:
+            field_path: max_size_gb
+      price_slug: mssql-gp-storage-eastus
+      basis: the provisioned pool storage cap (max_size_gb) bills per GB-month at the General Purpose rate whether used or empty
+    - sku_meter: pool compute
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: BC_Gen5
+      quantity:
+        - field_value:
+            field_path: capacity
+        - hours_in_month: true
+      price_slug: mssql-bc-compute-vcore-eastus
+      basis: a Business Critical pool bills its provisioned capacity in vCores x 730 hours at the Gen5 per-vCore rate, local SSD and the built-in replicas included
+    - sku_meter: SQL Server license
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: BC_Gen5
+        - field_path: license_type
+          op: not_equals
+          value: BASE_PRICE
+      quantity:
+        - field_value:
+            field_path: capacity
+        - hours_in_month: true
+      price_slug: mssql-bc-sql-license-vcore
+      basis: pay-as-you-go SQL licensing bills per provisioned vCore-hour at the Business Critical license rate -- Azure's default when license_type is unset; BASE_PRICE removes this line
+    - sku_meter: pool storage
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: BC_Gen5
+      quantity:
+        - field_value:
+            field_path: max_size_gb
+      price_slug: mssql-bc-storage-eastus
+      basis: the provisioned pool storage cap (max_size_gb) bills per GB-month at the Business Critical local-SSD rate whether used or empty
+  exclusions:
+    - text: point-in-time-restore backup storage beyond the free allowance follows the member databases' churn and retention settings
+    - text: network egress follows client placement
+  notes:
+    - applies_when:
+        - field_path: sku_name
+          op: equals
+          value: StandardPool
+      text: The eDTU rate includes the capacity's storage allowance (a 100-eDTU Standard pool includes 100 GB of pool storage per Microsoft's elastic-pool pricing page); no separate storage line applies while the cap rides the included amount.
+    - applies_when:
+        - field_path: sku_name
+          op: equals
+          value: BC_Gen5
+        - field_path: zone_redundant
+          op: equals
+          value: "true"
+      text: Business Critical zone redundancy places the pool's existing replicas across availability zones at no extra cost per Microsoft's high-availability documentation -- no additional meter applies.
+    - text: Member databases (sku_name ElasticPool on the database component) bill nothing themselves -- this pool's lines are the whole bill for every database it holds.

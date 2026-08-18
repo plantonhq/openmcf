@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsapigatewayaccountsettings
+spec:
+  billing_model: free
+  free_tier: The account settings object is a per-region singleton row in API Gateway's control plane -- the AWS price list for API Gateway (offer AmazonApiGateway) meters API calls, caching, and WebSocket usage, and none of those meters count the account object. Setting or clearing the region's CloudWatch logging role and reading the account throttle limits never bills.
+  notes: "Neither field of this spec buys anything: region selects where the singleton lives, and cloudwatch_role_arn stores a role ARN pointer. The real spend sits on either side of it -- the region's REST and HTTP APIs bill per request on their own components, and once this role is set and API stages actually enable execution or access logging, the delivered log events bill as CloudWatch Logs ingestion and storage on the log groups (that spend attaches to CloudWatch and is driven entirely by the stages' logging settings and traffic, never by this object). The IAM role itself is free."

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurevirtualnetworkgatewayconnection
+spec:
+  billing_model: free
+  free_tier: A classic gateway connection is an unmetered object -- Azure's VPN Gateway price sheet bills gateway hours, excess tunnels, excess point-to-site connections, and data transfer, and none of those meters is a line item on the connection resource itself. The owning gateway's hourly SKU rate includes its first 10 site-to-site tunnels, so a connection within that allotment adds exactly nothing to the bill.
+  notes: "The real spend lives on the gateway and on traffic. The owning AzureVirtualNetworkGateway bills its SKU's hourly rate whether it carries zero connections or thirty; creating the 11th-and-beyond site-to-site tunnel tips the GATEWAY's aggregate count past its included 10 and starts a per-tunnel hourly meter -- counted across all the gateway's connections, never attributed to any one of them. VNet-to-VNet connections bill through both gateways' hourly meters, with same-region traffic between the VNets free in both directions and cross-region traffic billing inter-VNet egress by source region. ExpressRoute-type connections join a circuit whose port, peering, and (on metered SKUs) outbound data bill on the circuit's own components -- the connection object again adds nothing. Every field of this spec -- IPsec proposals, BGP, NAT rule opt-ins, traffic selectors, FastPath flags -- is free configuration on meters that live elsewhere."

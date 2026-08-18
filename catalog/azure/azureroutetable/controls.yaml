@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureroutetable
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A route table is routing configuration on the software-defined network fabric; it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Routes steer traffic; they do not encrypt it. Transport encryption belongs to the workloads and to the parent network's encryption posture.
+    - control_id: no-public-access
+      status: configurable
+      field_path: routes
+      evidence:
+        type: spec_default
+        reference: An empty table leaves Azure's default system routing in place, which sends internet-bound traffic directly out. The routes field is the forced-tunneling lever -- a 0.0.0.0/0 route with next_hop_type VIRTUAL_APPLIANCE (with next_hop_in_ip_address) forces all egress through a firewall for inspection, VIRTUAL_NETWORK_GATEWAY sends it on-premises, and NONE black-holes unwanted prefixes entirely -- removing the direct public path for every subnet attached to the table.
+      notes: The table itself has no reachability -- this stance is about the internet exposure of the subnets that attach it. bgp_route_propagation_enabled (Azure default true) is the companion hardening -- disabling it keeps on-premises-learned routes from bypassing the user-defined ones in forced-tunneling designs.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Routes govern where outbound and transit traffic is sent, not what inbound traffic is admitted -- ingress restriction lives on network security groups and their subnet attachments, separate catalog kinds.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A route table can steer traffic TO an inspection appliance, but request-level filtering itself belongs to firewalls, application gateways, and Front Door -- separate kinds with their own postures.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the table exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The table runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane changes to the table land in the Azure Activity Log as subscription-level posture; traffic-level audit belongs to Network Watcher resources on the attached subnets, outside this spec.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The table publishes no metrics of its own; effective-route diagnostics are Network Watcher tooling, separate from this spec.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless routing configuration -- nothing to back up; the manifest recreates the table and its routes declaratively.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A route table is a regional software-defined construct applied uniformly across every availability zone its attached subnets span; it has no single-zone failure mode of its own.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a route table (Azure resource locks are subscription-side governance outside the manifest); deleting one reverts attached subnets to Azure's default system routing, and the manifest recreates it declaratively.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed software-defined networking -- Microsoft operates and patches the routing fabric that evaluates user-defined routes; no customer-visible patch surface exists.

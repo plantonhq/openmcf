@@ -1,0 +1,73 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azureloadbalancer
+spec:
+  presets:
+    - preset: 01-public
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Load Balancer
+          sku_meter: included LB rule hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: the preset declares 2 load-balancing rules (http, https) and no outbound rules -- 2 of the 5 rules the flat meter includes, so the whole month bills the included meter alone, once per hour regardless of rule count (2 rules and 5 rules price identically); the meter bills in Azure's Global region, so the eastus assumption moves nothing
+          list_unit_price: "0.025"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Load Balancer' and armRegionName eq 'Global' and meterName eq 'Standard Included LB Rules and Outbound Rules' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "18.2500"
+      total_list_cost: "18.2500"
+      exclusions:
+        - data processed bills per GB through the rules and follows traffic entirely
+        - the referenced Standard public IP bills hourly on its own AzurePublicIp component
+        - backend pool members bill their own compute on their own components
+      notes: Rules past the combined fifth (load-balancing plus outbound) would each add a per-rule hourly overage meter -- this preset sits at 2 and has headroom for 3 more before the bill changes shape.
+    - preset: 02-internal
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Load Balancer
+          sku_meter: included LB rule hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: the preset declares 1 load-balancing rule (app) and no outbound rules -- 1 of the included 5, so the flat hourly meter is the whole committed bill; internal frontends change exposure, not price (the rule meters read the same for private traffic)
+          list_unit_price: "0.025"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Load Balancer' and armRegionName eq 'Global' and meterName eq 'Standard Included LB Rules and Outbound Rules' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "18.2500"
+      total_list_cost: "18.2500"
+      exclusions:
+        - data processed bills per GB through the rule and follows east-west traffic entirely
+        - the referenced subnet and its virtual network are their own components; the frontend's private address is free
+        - backend pool members bill their own compute on their own components
+      notes: The zone-redundant frontend posture (zones ["1","2","3"]) is free -- Azure prices Standard Load Balancer identically with or without zone redundancy.
+    - preset: 03-outbound-and-nat
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Load Balancer
+          sku_meter: included LB rule hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: the preset declares 1 load-balancing rule (http) plus 1 outbound rule (egress) -- outbound rules count against the same included five, putting this preset at 2 of 5; the two inbound NAT rules (ssh-admin, per-instance-ssh) are free and count toward nothing
+          list_unit_price: "0.025"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Load Balancer' and armRegionName eq 'Global' and meterName eq 'Standard Included LB Rules and Outbound Rules' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "18.2500"
+      total_list_cost: "18.2500"
+      exclusions:
+        - data processed bills per GB through the load-balancing rule and follows traffic; traffic forwarded by the inbound NAT rules is not metered
+        - the referenced Standard public IP bills hourly on its own AzurePublicIp component
+        - backend pool members bill their own compute on their own components
+      notes: Explicit SNAT (the outbound rule) re-uses the rule meters -- it moves a rule-count slot, not a new meter; the SNAT port budget (allocated_outbound_ports) is a behavior lever with no price of its own.

@@ -24,7 +24,7 @@ Use GcpBigQueryDataset when you need:
 ## Prerequisites
 
 - A GCP project (the module enables the BigQuery API on it automatically)
-- Appropriate IAM permissions (`roles/bigquery.dataOwner` or `roles/bigquery.admin`)
+- IAM permissions — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 - For CMEK: an existing KMS key (see [GcpKmsKey](../gcpkmskey/)) with the
   BigQuery service agent granted `roles/cloudkms.cryptoKeyEncrypterDecrypter`
 

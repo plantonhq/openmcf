@@ -1,0 +1,26 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurefrontdoorruleset
+spec:
+  azure:
+    groups:
+      - purpose: ManageRuleSet
+        actions:
+          - Microsoft.Cdn/profiles/rulesets/read
+          - Microsoft.Cdn/profiles/rulesets/write
+          - Microsoft.Cdn/profiles/rulesets/delete
+        provenance: derived
+        notes: Covers azurerm_cdn_frontdoor_rule_set -- the named container routes attach; create, read/refresh, and destroy (the set itself carries no updatable properties). The parent profile is addressed by its ARM ID parsed from the profile_id reference.
+      - purpose: ManageRules
+        actions:
+          - Microsoft.Cdn/profiles/rulesets/rules/read
+          - Microsoft.Cdn/profiles/rulesets/rules/write
+          - Microsoft.Cdn/profiles/rulesets/rules/delete
+        provenance: derived
+        notes: Covers azurerm_cdn_frontdoor_rule -- one ARM child resource per rule in the set, keyed by name; conditions, actions, and order update in place. Both groups are held via CDN Profile Contributor, Contributor, or narrower custom roles.

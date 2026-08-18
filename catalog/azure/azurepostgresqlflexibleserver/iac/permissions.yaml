@@ -36,10 +36,6 @@ spec:
         actions:
           - Microsoft.Network/virtualNetworks/subnets/join/action
           - Microsoft.Network/privateDnsZones/read
+          - Microsoft.Network/privateDnsZones/join/action
         provenance: derived
-        notes: Required only for VNet-injected servers (delegated_subnet_id + private_dns_zone_id) -- injecting the server demands join on the delegated subnet, and the provider reads the private DNS zone it links.
-      - purpose: ReadResourceGroup
-        actions:
-          - Microsoft.Resources/subscriptions/resourceGroups/read
-        provenance: derived
-        notes: The provider resolves the target resource group before creating the server in it.
+        notes: Required only for VNet-injected servers (delegated_subnet_id + private_dns_zone_id) -- injecting the server demands join on the delegated subnet. The provider itself never calls the private DNS zone API (it only validates the ID's format client-side and carries it in the server payload); the zone permissions are a SERVICE-side need -- the flexible-server service validates the referenced zone and links it to the network during provisioning, which requires the deploying principal to hold read plus join on the zone in the ZONE's scope (the join action is what Azure checks when another resource references a private DNS zone).

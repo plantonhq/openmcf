@@ -9,6 +9,9 @@ exports_files([".bazelrc"])
 # gazelle:proto disable
 # gazelle:prefix github.com/plantonhq/planton
 # gazelle:exclude generated
+# The public website: no Go, and its node_modules tree is enormous. Excluded
+# from the walk for the same reason buf.yaml excludes it from the proto module.
+# gazelle:exclude site
 
 gazelle(
     name = "gazelle",

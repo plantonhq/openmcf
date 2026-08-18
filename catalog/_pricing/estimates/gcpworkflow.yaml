@@ -1,0 +1,33 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpworkflow
+spec:
+  presets:
+    - preset: 01-http-orchestrator
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - a deployed workflow bills nothing at rest -- steps accrue per execution, and this source's two HTTP calls target custom internal.example.com domains, which Google's pricing classifies as EXTERNAL steps ($0.025 per 1,000 past the first 2,000 free each month); the assign/return steps are internal ($0.01 per 1,000 past 5,000 free)
+        - the source's 3-attempt retry block multiplies billed steps on failures -- each retry attempt counts as a step
+        - the validator and processor services the steps call bill their own compute
+      notes: Zero committed at creation -- the cost of this orchestrator is executed steps, and the custom-domain URLs make its calls the 2.5x external rate, a URL-shape subtlety worth knowing before high volume arrives.
+    - preset: 02-event-handler
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - steps accrue per delivered event -- the decode/assign step is internal ($0.01 per 1,000 past 5,000 free monthly) and the handler call to a custom domain is external ($0.025 per 1,000 past 2,000 free)
+        - the Eventarc trigger delivering events and the handler service consuming them bill on their own components
+        - EXECUTION_HISTORY_DETAILED keeps step inputs/outputs for debugging; Google publishes no separate price for history detail on the Workflows pricing page
+      notes: Zero committed at creation -- an event-driven workflow's spend tracks event volume exactly, with the monthly free step allotments absorbing low-traffic months entirely.

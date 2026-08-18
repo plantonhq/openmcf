@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurestoragelocaluser
+spec:
+  billing_model: free
+  free_tier: A local user is a credential record on the storage account -- SSH keys or a generated password, a home directory, and per-container permission scopes. Blob Storage's meter list carries no per-user charge; creating and holding any number of local users bills nothing.
+  notes: "No field of this spec buys anything: the auth flags, authorized keys, home_directory, and permission_scopes are all credential data stored by the account. The real spend sits one level up and around the login. The SFTP ENDPOINT the user connects to bills HOURLY on the AzureStorageAccount while its sftp_enabled switch is on -- that meter runs whether zero or fifty users exist, so the marginal user is free but the first one usually motivates the paid switch. Every session's reads, writes, and lists then tick the account's standard transaction meters, and downloads leaving Azure ride its egress meters -- all located on the account's own profile."

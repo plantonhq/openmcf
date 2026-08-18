@@ -1,0 +1,41 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awss3objectset
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: objects
+      sku_meter: PUT requests
+      pricing_unit: requests
+      impact: Every content-sourced object uploads with a PUT (billed per thousand on the bucket's request meters) at create and again on every content change; the objects then accrue storage on the referenced bucket, per GB-month at each object's class rate. DELETE requests are free, so destroys cost nothing in requests.
+    - field_path: objects.copy_from
+      sku_meter: COPY requests
+      pricing_unit: requests
+      impact: A copy-sourced object bills one COPY (priced like a PUT) plus a GET against the source; the bytes move inside S3 and never transit the deploy host. A cross-region source adds inter-region data transfer out of the source's region, and request_payer acknowledges that a Requester Pays source bills ITS request and transfer charges to the deploying account.
+    - field_path: objects.storage_class
+      sku_meter: object storage
+      pricing_unit: GB-months
+      impact: Picks each object's rung on the storage ladder -- and the trap for declaratively managed objects is the minimum-duration charge. STANDARD_IA and ONEZONE_IA bill a 30-day minimum (and a 128 KB minimum object size), GLACIER_IR and GLACIER 90 days, DEEP_ARCHIVE 180 days; an object this set overwrites or deletes early still bills the remainder. Objects that redeploy often belong in STANDARD.
+    - field_path: objects.server_side_encryption
+      sku_meter: KMS requests
+      pricing_unit: requests
+      impact: The aws:kms override routes this object's writes and reads through KMS at per-request rates where the bucket's default (SSE-S3) encrypts for free. A per-object override that every object carries is bucket-default posture in the wrong place.
+    - field_path: objects.bucket_key_enabled
+      sku_meter: KMS requests
+      pricing_unit: requests
+      impact: Bucket keys batch SSE-KMS data-key calls, collapsing per-request KMS charges; an explicit false opts this object out of the saving even when the bucket enables them.
+    - field_path: objects.object_lock_mode
+      sku_meter: object storage
+      pricing_unit: GB-months
+      impact: Retention is a storage-cost floor -- the locked version cannot be deleted until object_lock_retain_until_date passes (absolutely, under COMPLIANCE), so its GB-months are committed through that date no matter what the manifest does.
+  free_tier: The set itself starts no meter -- applying it bills only the handful of PUT/COPY requests the deploy makes, and every recurring charge lands on the referenced bucket's meters.
+  estimate_exclusions:
+    - storage for the uploaded objects bills on the referenced AwsS3Bucket per GB-month by storage class
+    - reads of the objects (GET requests, IA/Glacier-Instant retrieval fees, data transfer out) follow consumer traffic entirely
+    - minimum-duration charges from redeploying IA/Glacier-class objects depend on how often content changes
+    - KMS request charges apply only to objects carrying the aws:kms override, and the key bills on its AwsKmsKey component
+  notes: "This component manages CONTENT, not infrastructure with meters of its own: the objects it uploads bill storage, requests, and transfer on the referenced bucket -- the AwsS3Bucket profile is where that spend lives. What the set itself controls is how expensively its objects sit there. The sharp edge is storage_class on objects a pipeline redeploys: S3's cold classes carry minimum-duration charges (30/90/180 days), and every overwrite of an IA- or Glacier-class object bills the unserved remainder of the window, so a frequently-updated config file in DEEP_ARCHIVE costs more than the same file in STANDARD. Server-side copies keep transfer costs at zero within a region -- the promote-between-buckets pattern this component exists for."

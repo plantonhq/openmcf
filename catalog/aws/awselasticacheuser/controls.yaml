@@ -1,0 +1,70 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awselasticacheuser
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A user stores no cache data -- it is access-control configuration held by the ElastiCache control plane (password material is accepted write-only and never readable back). At-rest encryption of actual cache data is the attached cache's posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data store here means no key decision (see enc-at-rest); the cache's at_rest_encryption/kms settings own that choice.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A user terminates no connections -- TLS is the attached cache's transit-encryption setting. One coupling worth knowing works the other way -- AWS requires transit encryption ON the cache before a user with 'iam' authentication can be used against it.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A user is not addressable -- it has no endpoint, only a management API governed by IAM. Network exposure belongs to the cache's subnet and security-group posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Network-level ingress to a cache is its security groups' job; this identity restricts what an authenticated client may DO, not where connections come from (see rbac).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: AWS WAF attaches to Layer-7 HTTP entry points; a cache identity speaking the Redis/Valkey protocol has no edge surface.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: Being an RBAC identity IS this component -- and the contract refuses an unscoped one. access_string is required, so every user carries an explicit Redis ACL scope (on/off switch, key patterns like ~app1:*, command categories like +@read -@dangerous) from the moment it exists; there is no way to create a user without stating exactly which commands and keys it may touch.
+      notes: Scope is declared per user; how tight it is remains the author's call ("on ~* +@all" is a legal admin scope). The identity governs a cache only after it joins an AwsElasticacheUserGroup that attaches to the cache -- the group is WHERE, this user is WHO and WHAT.
+    - control_id: workload-identity
+      status: configurable
+      field_path: authentication_mode
+      evidence:
+        type: spec_default
+        reference: Setting the mode's type to 'iam' makes clients authenticate by signing short-lived tokens with their AWS IAM identity -- no long-lived secret exists anywhere. The spec enforces the mode's shape by CEL -- 'iam' must carry zero passwords -- and AWS additionally requires user_name to equal the user id and TLS on the attached cache.
+      notes: The 'password' type is the credentialed alternative, with two simultaneous passwords supported so rotation is zero-downtime (add new, roll clients, remove old).
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: authentication_mode
+      evidence:
+        type: spec_default
+        reference: RBAC users exist to replace the legacy model -- one shared AUTH token for every client of the cache, unrotatable without touching all of them, unscopable per application. Within RBAC the mode's type picks the credential path -- 'password' or 'iam' for real users, while 'no-password-required' is the deliberate no-credential mode the spec reserves for the mandatory "default" user when its access string switches it "off" (so anonymous connections are rejected outright) or for migration windows, never for a production user that is "on".
+      notes: CEL validation keeps the modes honest -- 'no-password-required' and 'iam' cannot carry password material, and 'password' must carry at least one.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the identity (who altered an access string or credential mode) land in CloudTrail as account-level posture; connection and command logging belong to the attached cache's log-delivery configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: ElastiCache publishes CloudWatch metrics per cache and node -- authentication failures included -- on the attached cache's dimensions; a user has no metric dimension and no export knob.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A user holds no data to back up -- it is declarative configuration re-creatable from the manifest (passwords come from the manifest or secret store, never from AWS, which cannot return them).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at the user level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A user is a regional control-plane object with no zonal footprint -- availability of the identity system is AWS's side of the shared-responsibility line; zone redundancy is the attached cache's replica placement.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for ElastiCache users.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A user is configuration on a fully managed service -- there is no software of its own to patch; engine patching belongs to the attached cache.

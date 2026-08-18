@@ -1,0 +1,84 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpbigtabletable
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Bigtable encrypts all data at rest with Google-managed keys by default; encryption cannot be disabled for any table.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: CMEK for Bigtable is a per-cluster choice made on the parent GcpBigtableInstance (each cluster names its Cloud KMS key at creation); the table inherits whatever its instance's clusters use and exposes no KMS surface of its own.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All client access to table data and administration goes through Google's Bigtable API endpoints over TLS-encrypted gRPC/HTTPS; no plaintext listener exists.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The table has no network endpoint to expose -- reads and writes arrive through Google's IAM-gated Bigtable API. Whether that API is reached over public or private paths (Private Google Access, VPC Service Controls) is project- and network-level configuration, not a table field.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network ingress surface exists on a table; access control is entirely IAM (see rbac). Network-source restriction of the Bigtable API is a VPC Service Controls perimeter decision at the project level.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The table serves no HTTP application traffic; there is no request surface for a web application firewall to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management call (Bigtable Admin API) and every data-plane call (reads, writes, row mutations) authorizes against IAM bigtable.* permissions on the project, instance, or table; no non-IAM access path exists.
+      notes: Table-scoped IAM bindings are deliberately not modeled on this component -- additive project-level grants compose instead (see the README's recorded modeling decisions).
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The table runs no workloads and holds no credentials; callers authenticate to the Bigtable APIs with their own IAM identities.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The only access path is the IAM-authenticated Bigtable API; no legacy or weaker authentication path exists on the resource to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Table create, update, and delete through the Bigtable Admin API land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+      notes: Data Access audit logs for reads and writes are opt-in project-level Cloud Audit Logs configuration, not a table field.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Bigtable publishes usage metrics to Cloud Monitoring for every instance without configuration, including per-table breakdowns and change-stream storage utilization.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: automated_backup_policy
+      evidence:
+        type: spec_default
+        reference: Omitted (the default) means no automated backups; setting retention_period and frequency enables Bigtable's built-in automated table backups, restorable to a new table.
+      notes: Preset 02 enables daily backups retained 3 days. On-demand backups and cross-instance restores remain available operationally regardless of this field.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: automated_backup_policy.retention_period
+      evidence:
+        type: spec_validation
+        reference: retention_period is a required duration string inside the policy -- retention length is always an explicit, reviewable choice whenever automated backups are enabled.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Replication topology is the parent GcpBigtableInstance's choice -- its clusters and their zones decide the failure domains, and the table is automatically replicated to every cluster. The only placement field here, automated_backup_policy.locations, constrains where backups may be created (ENTERPRISE_PLUS instances), not where the table serves.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_protection
+      evidence:
+        type: spec_default
+        reference: The spec defaults to PROTECTED -- the API-side guard makes deletion by ANY client fail until the field is explicitly set UNPROTECTED, and both IaC engines send it explicitly so destroy behavior never depends on the engine.
+      notes: deletion_policy adds an engine-side second wall (PREVENT fails the destroy; ABANDON unmanages the table while keeping it). The protective posture is the default, which is the right shape for a data-bearing resource.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Bigtable is a fully managed service -- Google operates and patches the storage and serving fleet; no version, channel, or maintenance surface exists on the table.

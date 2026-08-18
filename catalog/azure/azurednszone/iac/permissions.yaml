@@ -12,13 +12,10 @@ spec:
     groups:
       - purpose: ManageZone
         actions:
-          - Microsoft.Network/dnsZones/read
-          - Microsoft.Network/dnsZones/write
-          - Microsoft.Network/dnsZones/delete
+          - Microsoft.Network/dnszones/read
+          - Microsoft.Network/dnszones/write
+          - Microsoft.Network/dnszones/delete
+          - Microsoft.Network/dnszones/SOA/read
+          - Microsoft.Network/dnszones/SOA/write
         provenance: derived
-        notes: Covers azurerm_dns_zone -- create, read/refresh, SOA updates, and destroy. Held via DNS Zone Contributor, Network Contributor, or narrower custom roles.
-      - purpose: ReadResourceGroup
-        actions:
-          - Microsoft.Resources/subscriptions/resourceGroups/read
-        provenance: derived
-        notes: The provider resolves the target resource group before creating the zone in it.
+        notes: Covers azurerm_dns_zone -- create, read/refresh, and destroy. The soa_record block is NOT written through the zone PUT -- the provider manages it as the zone's "@" SOA record set through the record-sets API, so SOA/write is exercised whenever soa_record is set (create and update), and SOA/read is exercised unconditionally on every read/refresh because the provider always Gets the SOA record set to populate state. Azure spells record-type operations with lowercase "dnszones" (verified against the live Microsoft.Network operation inventory). Held via DNS Zone Contributor, Network Contributor, or narrower custom roles.

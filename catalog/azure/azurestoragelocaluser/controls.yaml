@@ -1,0 +1,68 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurestoragelocaluser
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A local user is a credential record; the data its sessions touch rests in the storage account under the account's encryption posture. Azure stores only the public half of SSH keys (write-only in the API) and never re-returns the generated password.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to key (see enc-at-rest); customer-managed keys are the account's posture.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The only endpoint a local user can authenticate to is the account's SFTP endpoint -- SSH File Transfer Protocol, where every session runs inside an encrypted SSH channel on port 22. No plaintext-FTP variant exists on Azure Blob Storage, so an unencrypted session is not expressible.
+      notes: Clients connect as {account-name}.{user-name} (the sftp_username output); the transport is encrypted before authentication even begins.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The user record has no endpoint of its own -- whether the account's SFTP endpoint is internet-reachable is the AzureStorageAccount's network posture (public access, network rules, private endpoints).
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface of its own to restrict (see no-public-access); the account's firewall rules govern who can reach port 22.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: SFTP is not an HTTP surface; no request-filtering layer applies to the user record.
+    - control_id: rbac
+      status: not_applicable
+      notes: A local user's data-plane rights deliberately bypass Azure RBAC -- they come from its own permission_scopes ACL (read/write/delete/list/create per named container or share), which is what isolates one exchange partner from another on a shared account. Managing the users themselves is ARM RBAC on the account as platform posture.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The opposite pattern by design -- a local user IS a static credential (SSH key or password) for partners and legacy pipelines that cannot present Entra identities. Workloads that can should use Entra-authorized data access on the account instead of a local user.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: ssh_password_enabled
+      evidence:
+        type: spec_default
+        reference: Deploying a local user deliberately opens a non-Entra authentication path into blob storage -- that is the resource's purpose, and it is visible in review as this manifest's existence (the account-side switches, sftp_enabled and local_user_enabled, gate whether such logins work at all). Within that choice the spec exposes the strength dial -- ssh_key_enabled authenticates with SSH public keys (no shared secret to distribute; the preferred posture), while ssh_password_enabled turns on an Azure-generated shared password; a CEL requires at least one and pairs ssh_authorized_keys with the key flag.
+      notes: Honest framing -- this control cannot be "enforced" by a resource whose job is the local-credential lane. The reviewable posture is key-auth-only users, scoped by permission_scopes to exactly one partner's container, on an account whose local_user_enabled stays false until a user like this one needs it.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: SFTP session and object operations are captured by the ACCOUNT's storage diagnostics (an AzureMonitorDiagnosticSetting on the blob service); user create/update/delete lands in the Azure Activity Log automatically. No logging toggle exists on the user record.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The user record emits no metrics of its own; SFTP traffic surfaces in the account's transaction metrics and resource logs.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative credential record -- the manifest recreates the user, with one credential caveat worth knowing (recorded on the modules) -- recreation regenerates the Azure-minted password and renaming replaces the user, so partners receive fresh credentials; SSH public keys re-apply from the manifest unchanged.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The user record has no runtime footprint with a zonal failure mode; endpoint availability follows the account's redundancy posture.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a local user; deleting one revokes the partner's login immediately -- which doubles as the offboarding lever this kind exists to provide.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The SFTP endpoint that authenticates local users and the credential store behind them are Microsoft-operated Azure Storage infrastructure; no customer-visible patch surface exists.

@@ -1,0 +1,61 @@
+# Cost derivation: the machine-executable rules turning any
+# GcpCloudArmorPolicy manifest's spec values into metered quantities and
+# price choices, under Cloud Armor Standard -- the pay-as-you-go tier
+# every project not enrolled in Cloud Armor Enterprise bills (tier is a
+# project property no manifest can see; the notes say so). Committed
+# cost is the flat policy fee plus one rule fee per authored rule
+# (count_of counts the repeated rules field). Per-request inspection is
+# usage the exclusions name. The CLOUD_ARMOR_EDGE and
+# CLOUD_ARMOR_INTERNAL_SERVICE variants refuse -- the Standard price
+# sheet publishes no rates for them. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/gcpcloudarmorpolicy.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: gcpcloudarmorpolicy
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    assumption: us-central1
+  refusals:
+    - when:
+        - field_path: type
+          op: equals
+          value: CLOUD_ARMOR_EDGE
+      reason: the Cloud Armor Standard price sheet publishes policy, rule, and request rates for backend (CLOUD_ARMOR) security policies; no proven rate for edge security policies is pinned in the price book, so a committed number would be a guess.
+    - when:
+        - field_path: type
+          op: equals
+          value: CLOUD_ARMOR_INTERNAL_SERVICE
+      reason: the Cloud Armor Standard price sheet publishes policy, rule, and request rates for backend (CLOUD_ARMOR) security policies; no proven rate for internal-service policies is pinned in the price book, so a committed number would be a guess.
+  lines:
+    - sku_meter: security policy months
+      quantity:
+        - constant: "1"
+      price_slug: cloud-armor-policy-month
+      basis: one security policy, billed the flat Cloud Armor Standard monthly policy fee from creation, attached or not
+    - sku_meter: security policy rule months
+      quantity:
+        - count_of: rules
+      price_slug: cloud-armor-rule-month
+      basis: one flat Cloud Armor Standard monthly rule fee per authored rule, including the mandatory priority-2147483647 default rule the API requires a non-empty set to carry
+  exclusions:
+    - text: request inspections -- every request the policy evaluates bills per million (globally scoped rate) and follows traffic no manifest can know
+    - applies_when:
+        - field_path: recaptcha_options_config
+          op: is_set
+      text: reCAPTCHA evaluations behind the policy's redirect and token rules bill under the separate reCAPTCHA pricing model
+  notes:
+    - text: "Priced at Cloud Armor Standard, the tier every project without a Cloud Armor Enterprise enrollment bills. Enterprise enrollment -- a project-level subscription invisible to this manifest -- zeroes the policy, rule, and request meters and bills a subscription plus per-GiB data processing instead."
+    - applies_when:
+        - field_path: rules
+          op: is_unset
+      text: "The manifest authors no rules, so the API adds its automatic default allow-all rule; the committed number covers the policy fee only -- the price sheet does not state whether the auto-added default bills as a rule."
+    - applies_when:
+        - field_path: adaptive_protection_config.rule_visibility
+          op: equals
+          value: PREMIUM
+      text: PREMIUM rule visibility requires Cloud Armor Enterprise enrollment, whose subscription and data-processing fees bill the project outside this manifest.

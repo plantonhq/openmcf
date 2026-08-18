@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremongoclusteruser
+spec:
+  billing_model: free
+  free_tier: A Mongo cluster user is an access grant -- the binding of a Microsoft Entra principal to database roles on a Cosmos DB for MongoDB vCore cluster. It is authorization metadata inside the cluster; Azure has no meter for users, and creating, holding, or replacing grants costs nothing.
+  notes: "No field of this spec buys anything: mongo_cluster_id, object_id, principal_type, and the roles list are all grant metadata. The real spend lives entirely in the AzureMongoCluster the grant unlocks -- the vCore service bills per-node compute (the cluster tier's vCores and memory), provisioned disk storage per node, and the optional high-availability replicas, all as that separate catalog kind, regardless of how many principals hold access or whether they authenticate with Entra tokens or the cluster's native credentials."

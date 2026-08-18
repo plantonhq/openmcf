@@ -1,0 +1,116 @@
+---
+description: Guidelines for writing and maintaining Planton.ai documentation
+alwaysApply: true
+---
+
+# Planton.ai Documentation Guidelines
+
+## Core Principle: Truth Over Speculation
+
+**Never write documentation based on assumptions or speculation.** Every statement must be grounded in:
+- Actual implementation
+- Verified behavior
+- Real examples from the codebase
+
+When uncertain, **ask questions** rather than guessing. Inaccurate documentation is worse than no documentation.
+
+## Heading Anchors
+
+All headings (h1-h6) automatically generate anchor links:
+- Headings become IDs: `## Install on Windows` → `#install-on-windows`
+- A link icon appears on hover (left of heading)
+- Clicking copies the full URL to clipboard (shows green checkmark)
+
+**When referencing sections:**
+- Use auto-generated anchors: `/docs/cli#install-on-windows`
+- Do NOT use custom anchor syntax `{#custom-id}` — it renders literally
+
+## Content Structure
+
+### Frontmatter (Required)
+
+```yaml
+---
+title: "Page Title"
+description: "One-line description for SEO and previews"
+icon: terminal
+order: 2
+tags:
+  - Tag1
+  - Tag2
+---
+```
+
+### Section Order
+
+1. **What it is** (1-2 sentences)
+2. **Why it matters** (the problem)
+3. **How to use it** (the solution)
+4. **Details** (technical specifics)
+
+## Writing Style
+
+- **Direct and technical** — respect the reader's intelligence
+- **Imperative mood** for instructions: "Run the command" not "You should run"
+- **Present tense** for descriptions: "The CLI validates" not "The CLI will validate"
+- **No marketing fluff** — skip "revolutionary", "game-changing", "seamless"
+
+## Code Examples
+
+Always use real, working commands:
+
+```bash
+# Good: Actual command with real version
+curl -Lo planton https://downloads.planton.ai/cli/v0.0.3/planton-v0.0.3-linux-amd64
+
+# Bad: Placeholder that won't work
+curl -Lo planton https://example.com/cli/<version>/planton
+```
+
+Specify the language for syntax highlighting:
+
+````markdown
+```bash
+planton auth login
+```
+````
+
+## Platform-Specific Instructions
+
+When documenting for multiple platforms, order by popularity:
+1. macOS
+2. Windows
+3. Linux
+
+For each platform, provide:
+- Architecture detection tip (`uname -m`, `$env:PROCESSOR_ARCHITECTURE`)
+- Copy-paste commands that work immediately
+- Checksum verification (optional section)
+
+## What NOT to Document
+
+- Features that don't exist yet
+- Behavior you haven't verified
+- Private repository links (users can't access them)
+- Speculation about "might" or "could"
+
+## File Organization
+
+Files/folders starting with `_` are excluded from the docs sidebar:
+- `_rules/` — cursor rules (this file)
+- `_drafts/` — work in progress
+
+## Comprehensive Documentation Workflow
+
+For full documentation work — source verification, visual strategy, changelog scanning, quality review — invoke `@update-planton-ai-docs` from the planton monorepo. That orchestrator loads the complete documentation writer persona, source truth model, and quality standards.
+
+This always-applied rule provides baseline guardrails; the monorepo rules provide the full strategy.
+
+## Quick Checklist
+
+Before publishing:
+- [ ] All statements are factually accurate
+- [ ] Code examples are tested and working
+- [ ] No private/internal links
+- [ ] Headings generate clean anchor IDs
+- [ ] Platform instructions are in correct order

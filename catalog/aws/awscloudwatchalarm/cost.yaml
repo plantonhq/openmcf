@@ -1,0 +1,31 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awscloudwatchalarm
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: AmazonCloudWatch
+      sku_meter: alarm metrics
+      pricing_unit: alarm-metric-months
+      description: Every alarm bills a flat monthly fee per metric it watches, from creation, whether or not it ever fires. A simple-metric alarm watches exactly one metric, so its committed bill is one alarm-metric month.
+  cost_drivers:
+    - field_path: period
+      sku_meter: high-resolution alarm metrics
+      pricing_unit: alarm-metric-months
+      impact: A sub-minute period (10, 20, or 30 seconds) makes this a high-resolution alarm, billed at the offer's higher high-resolution rate; any multiple of 60 stays at the standard rate.
+    - field_path: metric_queries
+      sku_meter: alarm metrics
+      pricing_unit: alarm-metric-months
+      impact: Metric-math alarms bill per metric analyzed -- each query that retrieves a metric adds an alarm-metric fee, so the monthly charge scales with the queries' metric count rather than staying at one.
+    - field_path: evaluation_criteria
+      sku_meter: PromQL alarms
+      pricing_unit: alarm-months
+      impact: PromQL alarms bill under their own rate class (the offer's CW:PromQLAlarmMonitorUsage usage type), separate from the standard and high-resolution alarm-metric rates.
+  estimate_exclusions:
+    - alarm, OK, and insufficient-data actions bill on their targets -- SNS topics referenced by the action fields carry their own AwsSnsTopic cost
+    - metric-math alarms bill per metric analyzed; the billed metric count lives inside the repeated metric_queries, so a manifest-level estimate cannot state it as money (the derivation refuses instead of guessing)
+  notes: "The alarm fee is committed the moment the alarm exists: it evaluates around the clock at a flat monthly rate per metric watched. Nothing in this component's bill follows traffic -- the variable costs live on the action targets."

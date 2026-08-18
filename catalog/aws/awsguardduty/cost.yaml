@@ -1,0 +1,47 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsguardduty
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: enable
+      sku_meter: foundational log analysis
+      pricing_unit: events
+      impact: An enabled detector immediately analyzes the foundational sources AWS never lets you unbundle -- CloudTrail management events bill per million analyzed, and VPC Flow Logs plus DNS query logs bill per GB with volume discounts. In any active account those sources always flow, so enabling the detector starts the meter the same day; false suspends analysis (and all billing) without losing the detector, its findings, or its configuration.
+    - field_path: features
+      sku_meter: protection plan analysis
+      pricing_unit: events
+      impact: Each listed plan starts its own meter -- S3_DATA_EVENTS bills per million CloudTrail S3 data events (volume-tiered), EKS_AUDIT_LOGS per million audit logs, RUNTIME_MONITORING and EKS_RUNTIME_MONITORING per vCPU-month of monitored workloads, EBS_MALWARE_PROTECTION per GB of volume replica scanned, RDS_LOGIN_EVENTS per protected-instance vCPU-month (ACU-months on Aurora Serverless v2), and LAMBDA_NETWORK_LOGS and AI_PROTECTION per GB of logs analyzed. AI_ANALYST carries no published meter -- it is in preview at no charge with usage quotas, and AWS has not announced its price. Remember the patch semantics -- delisting a feature reverts nothing, so its meter keeps running until the plan is explicitly disabled.
+    - field_path: features.additional_configuration
+      sku_meter: runtime monitoring vCPU analysis
+      pricing_unit: vCPU-months
+      impact: Automatic agent management (EKS_ADDON_MANAGEMENT, ECS_FARGATE_AGENT_MANAGEMENT, EC2_AGENT_MANAGEMENT) deploys the security agent fleet-wide, widening the monitored-vCPU count that runtime monitoring meters. The VPC endpoints it creates for agent telemetry are explicitly not charged, and agent-covered instances stop billing for foundational VPC Flow Log analysis -- AWS's own anti-double-charge rule.
+    - field_path: organization.auto_enable_organization_members
+      sku_meter: member-account analysis
+      pricing_unit: accounts
+      impact: NEW or ALL turns GuardDuty on across the organization -- every member account runs its own detector whose analysis meters bill in that member's account, so this one field multiplies the whole profile by fleet size invisible to this manifest.
+    - field_path: organization.features
+      sku_meter: protection plan analysis
+      pricing_unit: accounts
+      impact: Org-wide feature auto-enablement turns a plan's meter on in every NEW or ALL member account -- the plan-level multiplier on top of the account-level one.
+    - field_path: members.features
+      sku_meter: protection plan analysis
+      pricing_unit: events
+      impact: Per-member overrides start (or stop) individual plans' meters on individual member accounts -- the exception dial when org-wide auto-enablement is too coarse.
+    - field_path: publishing_destination
+      sku_meter: findings export delivery
+      pricing_unit: requests
+      impact: GuardDuty adds no meter for findings export, but every exported finding is an encrypted S3 write -- PUT requests and storage bill on the referenced AwsS3Bucket, and the mandatory encryption bills KMS requests on the referenced AwsKmsKey.
+  free_tier: A 30-day free trial -- a trial, not a permanent allotment -- covers each new account per region, and each not-yet-enabled protection plan earns its own fresh 30-day trial. The exceptions AWS names are Malware Protection's -- on-demand malware scanning and Malware Protection for AWS Backup have no trial, and S3 malware protection instead carries a permanent monthly free tier (1,000 objects and 1 GB scanned) that lives on the AwsGuardDutyMalwareProtectionPlan component, not this detector.
+  estimate_exclusions:
+    - every meter is volume-driven (log GB, event millions, monitored vCPUs) -- the same manifest bills near zero in a quiet account and real money in a busy one
+    - member accounts' analysis bills in their own accounts, rolled up only by consolidated billing
+    - EBS malware scans create snapshots billed separately on EBS for the scan's duration
+    - findings export S3 requests/storage and KMS requests bill on the referenced components
+    - S3 malware protection meters (per GB scanned, per objects evaluated) live on AwsGuardDutyMalwareProtectionPlan
+    - rates vary by region and most meters carry volume-tier discounts
+  notes: "GuardDuty has no existence fee -- but it has no idle state either. The foundational sources (CloudTrail management events, VPC Flow Logs, DNS query logs) are analyzed on every enabled detector and cannot be individually disabled, so in any account doing real work the bill starts the moment the detector enables; enable false is the only pause switch, and it is total. The widespread misconceptions run in both directions: GuardDuty does not charge a flat fee (everything meters on analyzed volume), and the noise controls do not save money -- filters archive findings and trusted IP lists suppress them AFTER the logs are analyzed, so the analysis meters never shrink; the real cost dials are which protection plans are on and how much log volume the workloads emit. Runtime monitoring is the one plan that REDUCES another meter: instances with an active agent stop billing for VPC Flow Log analysis because the agent's telemetry supersedes it. AI_ANALYST is currently free-in-preview with no announced price -- budget for that to change at GA."

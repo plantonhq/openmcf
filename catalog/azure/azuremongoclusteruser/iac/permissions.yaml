@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremongoclusteruser
+spec:
+  azure:
+    groups:
+      - purpose: ManageMongoClusterUser
+        actions:
+          - Microsoft.DocumentDB/mongoClusters/users/read
+          - Microsoft.DocumentDB/mongoClusters/users/write
+          - Microsoft.DocumentDB/mongoClusters/users/delete
+        provenance: derived
+        notes: Covers azurerm_mongo_cluster_user -- create (polled to completion), read/refresh, and destroy, addressed as a child of the cluster parsed from mongo_cluster_id (the cluster itself is never read). Every spec field is create-only, so any change is a delete-and-recreate exercising the same three actions; no secondary calls exist.

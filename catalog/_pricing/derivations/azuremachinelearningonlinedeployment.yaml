@@ -1,0 +1,56 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureMachineLearningOnlineDeployment manifest's spec values into
+# metered quantities and price choices. A managed deployment is a fleet
+# of Azure-managed VMs that never scales to zero: instance_count (ARM's
+# SKU capacity, default 1) times the instance_type's hourly VM rate is
+# the whole committed bill -- the endpoint it serves is free routing,
+# and the service's inferencing surcharge meters for general-purpose
+# compute are published at zero. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/azuremachinelearningonlinedeployment.yaml; a server-side
+# estimator evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azuremachinelearningonlinedeployment
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  lines:
+    - sku_meter: deployment instance VM hours
+      quantity:
+        - field_value:
+            field_path: instance_count
+            default_when_unset: "1"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Virtual Machines
+        pricing_unit: hours
+        attributes:
+          - key: vm_size
+            from_field: instance_type
+      basis: instance_count instances (the service default 1 when unspecified -- ARM carries the count as the deployment's SKU capacity) x 730 hours at the instance_type's Linux pay-as-you-go rate; managed deployments do not scale to zero
+  exclusions:
+    - applies_when:
+        - field_path: data_collector
+          op: is_set
+      text: captured scoring inputs and outputs land in the workspace's blob storage -- spend follows scoring traffic and each collection's sampling_rate, billed on the storage account
+    - applies_when:
+        - field_path: app_insights_enabled
+          op: equals
+          value: "true"
+      text: Application Insights ingestion for scoring-traffic telemetry follows request volume, billed on the workspace's Application Insights component
+    - applies_when:
+        - field_path: egress_public_network_access_enabled
+          op: is_set
+        - field_path: egress_public_network_access_enabled
+          op: equals
+          value: "false"
+      text: secure egress rides the workspace's managed network, whose private endpoints carry Private Link charges outside this component
+    - text: network egress follows client placement
+  notes:
+    - text: The endpoint address this deployment serves is free routing -- managed online endpoints carry no meter of their own, so the deployment's instances are where the spend lives. A blue/green pair bills both deployments' fleets for as long as both exist.

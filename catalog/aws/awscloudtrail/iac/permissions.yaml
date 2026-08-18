@@ -1,0 +1,53 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awscloudtrail
+spec:
+  aws:
+    statements:
+      - sid: ManageTrail
+        actions:
+          - cloudtrail:CreateTrail
+          - cloudtrail:UpdateTrail
+          - cloudtrail:DeleteTrail
+          - cloudtrail:GetTrail
+          - cloudtrail:GetTrailStatus
+          - cloudtrail:StartLogging
+          - cloudtrail:StopLogging
+        resources:
+          - arn:aws:cloudtrail:*:*:trail/*
+        provenance: derived
+        notes: Covers aws_cloudtrail / cloudtrail.Trail. GetTrail and GetTrailStatus serve every plan/refresh (status carries the logging switch); StartLogging/StopLogging reconcile enable_logging (the provider starts a new trail's delivery unless the spec says otherwise). All seven actions take resource-level scoping on the trail ARN per the service reference. An organization trail (is_organization_trail) additionally requires Organizations trusted access for cloudtrail.amazonaws.com already enabled account-side (the AWSServiceRoleForCloudTrail service-linked role exists once it is) -- an account-global prerequisite, not a module call. AWS also validates the delivery bucket's cloudtrail.amazonaws.com policy at create; that policy is the referenced AwsS3Bucket's contract, so the runner needs no s3 grants here.
+      - sid: TagTrail
+        actions:
+          - cloudtrail:AddTags
+          - cloudtrail:RemoveTags
+          - cloudtrail:ListTags
+        resources:
+          - arn:aws:cloudtrail:*:*:trail/*
+        provenance: derived
+        notes: Tag-on-create plus later tag reconciliation and the tag read on every refresh. The service reference scopes all three tagging actions to the trail ARN format (they also accept channel, dashboard, and eventdatastore ARNs, none of which this component touches).
+      - sid: ManageEventScope
+        actions:
+          - cloudtrail:PutEventSelectors
+          - cloudtrail:GetEventSelectors
+          - cloudtrail:PutInsightSelectors
+          - cloudtrail:GetInsightSelectors
+        resources:
+          - arn:aws:cloudtrail:*:*:trail/*
+        provenance: derived
+        notes: Classic AND advanced selectors both flow through PutEventSelectors (advanced selectors are a parameter of the same API, and the spec's CEL guarantees only one style renders); insight_types flows through PutInsightSelectors. The Get twins run on every refresh even when the manifest sets no selectors, so they are not optional. All four scope to the trail ARN.
+      - sid: ManageOrganizationDelegatedAdmin
+        actions:
+          - cloudtrail:RegisterOrganizationDelegatedAdmin
+          - cloudtrail:DeregisterOrganizationDelegatedAdmin
+          - organizations:ListDelegatedAdministrators
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_cloudtrail_organization_delegated_admin_account / cloudtrail.OrganizationDelegatedAdminAccount -- created only when organization_delegated_admin_account_id is set. The registration state has no CloudTrail read API, so the provider reads it back through Organizations' delegated-administrator listing. None of the three actions takes resource-level scoping (the service reference lists no resource types for them), so the wildcard is the narrowest possible scope. The call only succeeds from the organization's management account with CloudTrail trusted access enabled; CloudTrail performs the Organizations-side delegation itself, so organization policies denying delegated-administrator changes still block it.

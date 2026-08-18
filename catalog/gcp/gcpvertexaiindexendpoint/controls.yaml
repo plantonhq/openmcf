@@ -1,0 +1,88 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpvertexaiindexendpoint
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Vertex AI encrypts index-endpoint data and metadata at rest with Google-managed keys on every endpoint without configuration.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_name
+      evidence:
+        type: spec_default
+        reference: Unset means Google-managed encryption; naming a Cloud KMS key at creation encrypts data on the endpoint's serving replicas under the customer-managed key. The key must live in the endpoint's region, and the choice is immutable for the endpoint's life.
+      notes: No preset sets it. The Vertex AI service agent needs encrypt/decrypt on the key as a prerequisite.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Query traffic reaches deployed indexes over Google's TLS-fronted API surfaces on the public arm, and over Google's default-encrypted network fabric on the peered and PSC arms -- no cleartext query protocol is offered on any connectivity choice.
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_endpoint_enabled
+      evidence:
+        type: spec_default
+        reference: False (the default) publishes no public domain name; true makes deployed indexes queryable through the public endpoint behind IAM. The private alternatives -- a peered network or the private_service_connect_config block -- are mutually exclusive with it by CEL validation.
+      notes: The 01-public preset opts into the public arm; 02-vpc-peered and 03-psc are the private arms. Every connectivity choice is immutable (ForceNew).
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: private_service_connect_config.project_allowlist
+      evidence:
+        type: spec_default
+        reference: On a PSC endpoint, the allowlist names the only projects that may create forwarding rules targeting the endpoint's service attachment. Immutable.
+      notes: The 03-psc preset allowlists two named consumer projects. On the public arm, ingress restriction is IAM-only; on the peered arm it is the VPC's own topology.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A vector-query API endpoint is fronted by Google's API infrastructure and protected by TLS and IAM; no WAF or request-filter attachment point exists for Vertex AI index endpoints.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Managing the endpoint and querying deployed indexes are both governed by Vertex AI IAM permissions (the aiplatform.indexEndpoints.* family, queryVectors included) on every endpoint -- no anonymous data plane exists.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The query data plane authenticates callers with short-lived IAM credentials -- no static endpoint key, connection string, or shared secret exists anywhere on this resource for a workload to hold.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No legacy or weaker authentication path exists to disable -- queries are IAM-authenticated calls on every connectivity arm (see workload-identity).
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management operations on the index endpoint (create, update, deploy, undeploy, delete) land in Cloud Audit Logs' always-on Admin Activity log unconditionally.
+      notes: Query calls are Data Access log entries, an opt-in at the project level.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Vertex AI publishes Vector Search serving metrics -- query volume, latencies, and per-deployment replica signals -- to Cloud Monitoring without configuration.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: An index endpoint holds no source data to back up -- indexes are built from embeddings whose source of truth lives outside this resource, and the endpoint itself is declarative configuration re-creatable from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at the endpoint level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Serving redundancy is a property of each DEPLOYED INDEX's replica configuration on GcpVertexAiDeployedIndex; the endpoint object itself is a regional serving surface with no replica count of its own.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Unset means DELETE -- destroy deletes the endpoint and every index deployed onto it stops serving; PREVENT makes any destroying plan fail -- a guard for the surface all of this endpoint's deployments depend on; ABANDON removes it from management while it keeps serving (and its deployments keep billing).
+      notes: No preset sets it.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The endpoint is a fully managed serving surface with no software of its own to patch; the infrastructure under deployed indexes is Google-managed.

@@ -1,0 +1,57 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsfsxwindowsfilesystem
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon FSx
+      sku_meter: provisioned storage
+      pricing_unit: GB-months
+      description: Every provisioned GiB bills per GB-month from creation, full or empty; the rate follows storage_type (SSD vs HDD) and deployment_type (Multi-AZ carries the standby copy inside a higher rate).
+    - service_name: Amazon FSx
+      sku_meter: provisioned throughput capacity
+      pricing_unit: MiBps-months
+      description: throughput_capacity bills per MBps-month from creation regardless of traffic -- often the dominant term, since Windows throughput rates are the steepest in the FSx family.
+  cost_drivers:
+    - field_path: throughput_capacity
+      sku_meter: provisioned throughput capacity
+      pricing_unit: MiBps-months
+      impact: The per-MBps rate makes this the largest lever at most sizes. Throughput scales up and down in place, so right-sizing after observing real load costs nothing.
+    - field_path: storage_capacity_gib
+      sku_meter: provisioned storage
+      pricing_unit: GB-months
+      impact: Every provisioned GiB bills monthly whether data fills it or not. Capacity can grow in place but never shrink -- oversizing is a one-way ratchet.
+    - field_path: deployment_type
+      sku_meter: provisioned throughput capacity
+      pricing_unit: MiBps-months
+      impact: MULTI_AZ_1 roughly doubles both the storage and throughput rates -- the price of a synchronous cross-AZ standby with automatic failover. The two single-AZ generations share one rate.
+    - field_path: storage_type
+      sku_meter: provisioned storage
+      pricing_unit: GB-months
+      impact: HDD storage costs an order of magnitude less per GiB than SSD but demands a 2000 GiB minimum -- below that floor, cheap-per-GiB HDD buys more capacity than the workload needs.
+    - field_path: disk_iops_configuration
+      sku_meter: provisioned SSD IOPS
+      pricing_unit: IOPS-months
+      impact: AUTOMATIC mode includes 3 IOPS per GiB of SSD storage at no extra charge; USER_PROVISIONED bills every IOPS above that included allowance per IOPS-month, at double the rate for MULTI_AZ_1.
+    - field_path: automatic_backup_retention_days
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: Backups are ON by default (7-day retention) -- incremental backup storage bills per GB-month from day one and grows with data churn; setting 0 is the explicit opt-out.
+    - field_path: skip_final_backup
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: The default (true) deletes cleanly. Setting false takes a final backup that outlives the file system and bills per GB-month until someone deletes it.
+    - field_path: audit_log_configuration
+      sku_meter: CloudWatch Logs ingestion
+      pricing_unit: GB
+      impact: Enabling file or share access auditing streams events to CloudWatch Logs, which bills its own ingestion and storage per GB -- volume scales with file activity, not with this file system's meters.
+  estimate_exclusions:
+    - backup storage bills per GB-month and grows with churn across the retention window (retention defaults to 7 days -- on unless explicitly zeroed)
+    - user-provisioned SSD IOPS bill per IOPS-month only for the IOPS above the included 3 per GiB of storage
+    - audit-log events ingest into CloudWatch Logs at its own per-GB rates
+    - data transfer to clients in other Availability Zones or out of AWS bills per GB outside FSx's meters
+  notes: "Every Windows file system must join an Active Directory, and the directory bills on its own: an AWS Managed Microsoft AD referenced by active_directory_id is a separately billed directory, and a self-managed domain runs on whatever infrastructure hosts it. DNS aliases, the AD join itself, and Windows features (shadow copies, DFS, dedup) add nothing to the FSx bill."

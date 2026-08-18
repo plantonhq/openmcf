@@ -1,0 +1,34 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsfsxontapvolume
+spec:
+  aws:
+    statements:
+      - sid: ManageVolume
+        actions:
+          - fsx:CreateVolume
+          - fsx:UpdateVolume
+          - fsx:DeleteVolume
+          - fsx:TagResource
+          - fsx:UntagResource
+          - fsx:ListTagsForResource
+        resources:
+          - arn:aws:fsx:*:*:volume/*/*
+          - arn:aws:fsx:*:*:storage-virtual-machine/*/*
+          - arn:aws:fsx:*:*:snapshot/*/*
+          - arn:aws:fsx:*:*:backup/*
+        provenance: derived
+        notes: Covers aws_fsx_ontap_volume -- creation under the parent SVM (size, junction path, tiering, SnapLock, and FlexGroup aggregate arms), in-place updates (resize, junction path, snapshot policy, storage efficiency, tiering, mutable SnapLock settings), tagging, and deletion. The service reference authorizes CreateVolume on the volume, storage-virtual-machine, AND snapshot ARN formats (an under-scoped create denies provisioning), and DeleteVolume additionally on the backup format -- the final backup taken when skip_final_backup is false (the spec default), including its final_backup_tags.
+      - sid: DescribeVolumes
+        actions:
+          - fsx:DescribeVolumes
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side of aws_fsx_ontap_volume during plan/refresh. FSx Describe APIs support no resource-level scoping (empty Resources lists in the service reference), so the wildcard is the narrowest possible scope.

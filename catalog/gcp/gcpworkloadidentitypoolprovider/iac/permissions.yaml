@@ -1,0 +1,20 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpworkloadidentitypoolprovider
+spec:
+  gcp:
+    groups:
+      - purpose: ManageWorkloadIdentityPoolProvider
+        permissions:
+          - iam.workloadIdentityPoolProviders.create
+          - iam.workloadIdentityPoolProviders.delete
+          - iam.workloadIdentityPoolProviders.get
+          - iam.workloadIdentityPoolProviders.update
+        provenance: derived
+        notes: Covers google_iam_workload_identity_pool_provider (Pulumi iam.WorkloadIdentityPoolProvider) -- create, read/refresh, in-place updates (issuer-arm contents, attribute_mapping, attribute_condition, display_name, description, disabled; cross-type issuer changes are rejected by the API and force a replace), and destroy (the soft-delete). deletion_policy PREVENT and ABANDON are client-side stances that never call the API, and the modules never call undelete. The provider polls the long-running operations create and delete return under the same provider-scoped authorization. These four are carried by roles/iam.workloadIdentityPoolAdmin, the coarse role that holds them on the target project -- the parent pool must already exist, and the modules never read or mutate it.

@@ -1,0 +1,93 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremongocluster
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The cluster encrypts data and backups at rest with service-managed keys on every shard; encryption cannot be disabled.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: customer_managed_key
+      evidence:
+        type: spec_default
+        reference: Unset means service-managed encryption; configuring the block encrypts the cluster with a Key Vault key unwrapped through the named user-assigned identity (which must also appear in user_assigned_identity_ids and hold wrap/unwrap on the vault before create). The block cannot be added, removed, or changed after create.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The cluster's mongocluster.cosmos.azure.com endpoint only accepts TLS connections; the MongoDB wire protocol is always encrypted in transit and no field can relax it.
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_network_access_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to true (Azure's default, sent explicitly by the modules) with the firewall allowlist as the gate; setting it false restricts the cluster to private endpoints only.
+      notes: Both presets stay public behind tight firewall allowlists by design.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: firewall_rules
+      evidence:
+        type: spec_default
+        reference: While public network access is enabled, the named IPv4 ranges are the complete client allowlist; an empty list admits no direct client, and 0.0.0.0-255.255.255.255 deliberately opens everything including other Azure services.
+      notes: The 01-production-cluster preset allowlists an office/VPN range; the free sandbox allowlists a single developer address.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A managed database endpoint is protected by TLS, authentication, and network scoping rather than a WAF; no request-filtering attachment point exists.
+    - control_id: rbac
+      status: configurable
+      field_path: authentication_methods
+      evidence:
+        type: spec_default
+        reference: Unset defaults to native MongoDB username/password only; including MicrosoftEntraID lets Entra principals authenticate with directory-issued tokens, with AzureMongoClusterUser grants naming the admitted principals. Management-plane access is always Azure RBAC.
+      notes: The 01-production-cluster preset enables both NativeAuth and MicrosoftEntraID.
+    - control_id: workload-identity
+      status: configurable
+      field_path: authentication_methods
+      evidence:
+        type: spec_default
+        reference: With MicrosoftEntraID enabled, workloads holding managed identities connect with short-lived directory tokens instead of static connection-string credentials -- the identity path exists only when the method is listed.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The cluster is created with a native administrator username and password that this spec always carries for Default-mode clusters; static credentials cannot be retired from the manifest, so the mitigation is a secret-managed password plus Entra authentication layered on top.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management actions on the cluster land in the Azure Activity Log unconditionally; data-plane diagnostic logs flow to Azure Monitor per the cluster's diagnostic settings outside this spec.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The cluster publishes CPU, memory, storage, and connection metrics per shard to Azure Monitor without configuration.
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Automated backups are always on with no separate charge for up to 35 days; create_mode PointInTimeRestore with the restore block (source cluster plus UTC moment) is the recovery path.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: The service manages backup retention itself (up to 35 days, not configurable); neither the ARM API nor this spec exposes a retention dial.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: high_availability_mode
+      evidence:
+        type: spec_default
+        reference: Disabled runs a single replica per shard; ZoneRedundantPreferred runs a synchronously replicated standby shard per primary, placed in another availability zone where the region supports it, with automatic zero-data-loss failover. Not available on the Free and M25 tiers (spec-validated).
+      notes: The 01-production-cluster preset is ZoneRedundantPreferred; the free sandbox is Disabled by the tier's own walls.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the ARM mongoCluster API nor this spec offers a deletion-protection flag (Azure resource locks are subscription-side governance outside the manifest); point-in-time restore inside the service's retention window is the recovery path after an accidental deletion is noticed.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Microsoft patches the cluster's engine and hosts through managed maintenance, and even major MongoDB version upgrades (the version field) are performed rolling and in place.

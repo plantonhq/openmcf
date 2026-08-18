@@ -1,0 +1,68 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcppubsubschema
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A schema stores no customer data -- its definition text is Pub/Sub control-plane metadata held inside Google's own service infrastructure; the messages validated against it rest on topics and subscriptions, whose encryption is those kinds' posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key on the schema itself; CMEK for message payloads is configured on the topic, not here.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A schema terminates no connections of its own. Management calls and publish-time validation happen on Google API endpoints, which serve exclusively over TLS as provider behavior, not per-schema configuration.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A schema has no network endpoint to expose; it is a control-plane object reachable only through the IAM-governed Pub/Sub API.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; a schema is a configuration object with no addresses or ports.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A schema receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Creating, committing revisions to, and deleting schemas is governed by Pub/Sub IAM (the pubsub.schemas.* permission family) on the owning project; schemas are additionally first-class IAM resources with their own get/setIamPolicy surface for per-schema grants. No anonymous or non-IAM path exists.
+      notes: The spec exposes no per-schema IAM fields -- resource-level grants, when wanted, are wired outside this kind.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A schema holds no credentials and calls no cloud APIs as itself; validation runs inside Pub/Sub's own service identity.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The only authentication path involving the schema is IAM-authenticated Pub/Sub API access; no weaker alternative exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every create, revision commit, and delete on a schema is recorded in Cloud Audit Logs' Admin Activity log, which is always on and cannot be disabled.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A schema emits no runtime telemetry of its own; validation outcomes surface as publish successes and failures on the attached topics' metrics, which belong to the topic kind.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A schema holds no data to back up -- it is declarative configuration re-creatable from the manifest. Pub/Sub's own revision history (up to 20 revisions) preserves prior definitions, but that is contract-evolution machinery, not a backup facility.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery); the 20-revision cap is a fixed API limit, not a configurable retention policy.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Schemas live in Pub/Sub's globally replicated control plane with no zonal placement to configure; availability is Google's service posture, not per-schema configuration.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE (the provider default); PREVENT makes any destroying plan fail until the value is lifted, and ABANDON removes the schema from management while attached topics keep validating against it in GCP.
+      notes: This is an IaC-engine guard, not an API-side flag -- and it matters here because deleting a schema while topics still reference it leaves them validating against the "_deleted-schema_" sentinel and their publishes start failing.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A schema is a pure configuration object with no software to patch; the validation engine is Google-operated.

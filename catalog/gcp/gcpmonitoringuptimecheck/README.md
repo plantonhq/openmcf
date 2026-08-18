@@ -20,7 +20,6 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** where the check is created (directly or via a GcpProject reference).
-- **IAM**: the deploying identity needs `roles/monitoring.editor` or broader.
 - **For synthetic monitors**: a 2nd-gen Cloud Function carrying the probe logic (reference a GcpCloudFunction resource).
 
 ## Deploy

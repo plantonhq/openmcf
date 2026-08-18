@@ -33,9 +33,9 @@ spec:
           - es:RevokeVpcEndpointAccess
           - es:ListVpcEndpointAccess
         resources:
-          - arn:aws:es:*:*:domain/*
+          - "*"
         provenance: derived
-        notes: One aws_opensearch_authorize_vpc_endpoint_access per spec.authorized_vpc_endpoint_access_accounts entry -- the grantor side of cross-account managed VPC endpoints.
+        notes: One aws_opensearch_authorize_vpc_endpoint_access per spec.authorized_vpc_endpoint_access_accounts entry -- the grantor side of cross-account managed VPC endpoints. The service reference lists NO resource types for any of the three actions (unlike the domain lifecycle actions, which scope to the domain ARN), so IAM evaluates them against Resource "*" -- an ARN-scoped grant never matches and would deny the grants at runtime. The wildcard is the narrowest possible scope.
       - sid: ManageServiceLinkedRole
         actions:
           - iam:CreateServiceLinkedRole

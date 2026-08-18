@@ -1,0 +1,29 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awssnssubscription
+spec:
+  aws:
+    statements:
+      - sid: ManageSubscription
+        actions:
+          - sns:Subscribe
+          - sns:Unsubscribe
+          - sns:GetSubscriptionAttributes
+          - sns:SetSubscriptionAttributes
+        resources:
+          - arn:aws:sns:*:*:*
+        provenance: derived
+        notes: Covers aws_sns_topic_subscription (and its Pulumi twin) -- create, refresh, in-place attribute updates (filter policy, raw delivery, redrive, delivery/replay policies), and destroy. SNS's only IAM resource type is the topic, and subscription ARNs extend the topic ARN with a subscription id, so the single sns:*:*:* pattern scopes every call; narrow the final segment to the actual topic names in a hardened deployment. The service reference offers sns:Endpoint and sns:Protocol condition keys on Subscribe for pinning what may be subscribed. Note the subscription cannot deliver to SQS or Lambda until THOSE components' resource policies admit sns.amazonaws.com -- an endpoint-side grant the runner does not make here.
+      - sid: PassFirehoseDeliveryRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: Required only when protocol is "firehose" -- subscribing passes subscription_role_arn (required by spec validation for that protocol) to SNS, which assumes it to write into the delivery stream. Add an iam:PassedToService=sns.amazonaws.com condition and narrow to the actual role ARN in a hardened deployment.

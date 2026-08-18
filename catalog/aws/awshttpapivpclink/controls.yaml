@@ -1,0 +1,70 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awshttpapivpclink
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A VPC link stores no data -- it is a managed network path (ENIs in your subnets) between API Gateway and private targets.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest exists (see enc-at-rest), so no key choice arises.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The link forwards whatever protocol the API's integration negotiates with the target -- whether the hop to the backend speaks TLS is the HTTP API integration's tls_config, on the API component, not a property of the link.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A VPC link IS the private-reachability lever -- it lets HTTP APIs reach backends that never get public addresses, through ENIs that live inside your subnets. The link itself has no public endpoint at any configuration.
+      notes: The public exposure decision moves to the front -- the APIs and custom domains that route through the link -- while the ALB/NLB/Cloud Map targets behind it stay internal.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_default
+        reference: An empty list applies no link-side filtering -- reachability is governed solely by the targets' own security groups. Setting groups gives the link's ENIs a declared network identity, and target security groups can then admit ingress from exactly those groups, restricting who reaches the private backends to this link alone.
+      notes: Both subnet_ids and security_group_ids are immutable after creation -- changing either replaces the link. The security-group-to-security-group handshake (targets admitting the link's groups) is the precise mechanism, tighter than CIDR rules.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The link carries no HTTP request surface of its own -- request filtering happens (if at all) upstream of the APIs that use it, and HTTP APIs do not support WAF attachment.
+    - control_id: rbac
+      status: not_applicable
+      notes: The link has no principal-facing surface; which APIs may route through it is governed by IAM on the apigateway API -- account-level posture, not a spec field.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The link runs no workloads and holds no credentials of any kind.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The link authenticates nothing -- there is no auth path here, legacy or otherwise.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane operations on the link land in CloudTrail as account-level posture; the link produces no data-plane logs of its own -- request logging is the APIs' stage-level access logging.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The link has no CloudWatch metric dimension; traffic through it appears in the routed APIs' metrics (including their IntegrationLatency).
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration fully re-creatable from the manifest; no data lives here.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at this level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: subnet_ids
+      evidence:
+        type: spec_default
+        reference: The link can only reach targets in Availability Zones where it has an ENI -- one subnet means one zone of reach, and that zone's failure severs every API integration through the link. Spreading subnet_ids across at least two AZs is the availability lever, and the field is immutable, so the choice is permanent for the link's lifetime.
+      notes: The spec documents the two-AZ guidance directly on the field; fixing a single-AZ link means creating a replacement.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists for VPC links. Separately, AWS reclaims links left INACTIVE (no traffic) for 60 days -- an idle-resource cleanup, not a deletion control.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The link's ENIs and forwarding fabric are fully AWS-managed with no customer-visible software to patch.

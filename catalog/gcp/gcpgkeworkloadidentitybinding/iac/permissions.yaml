@@ -1,0 +1,18 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpgkeworkloadidentitybinding
+spec:
+  gcp:
+    groups:
+      - purpose: ManageServiceAccountIamGrant
+        permissions:
+          - iam.serviceAccounts.getIamPolicy
+          - iam.serviceAccounts.setIamPolicy
+        provenance: derived
+        notes: "Covers google_service_account_iam_member (Pulumi serviceaccount.IAMMember) -- the provider implements the additive roles/iam.workloadIdentityUser grant as a read-modify-write of the service account's IAM policy: getIamPolicy on create, every refresh, and destroy; setIamPolicy on create and destroy. Both authorize on the target GSA itself -- the modules address it as projects/-/serviceAccounts/<email>, the IAM API's '-' wildcard resolving the GSA's own project from the email, so grant these on the GSA (or its project) wherever it lives, including cross-project setups. The READMEs previously recommended roles/iam.serviceAccountAdmin or 'the narrower iam.serviceAccounts.setIamPolicy'; the complete narrow set is this PAIR, because the provider must read the policy to merge and subtract additively. State the privilege honestly: setIamPolicy on a service account is impersonation-granting power -- a runner holding it can hand roles/iam.serviceAccountTokenCreator or actAs on that GSA to any principal, including itself. The client-config lookup both modules use to resolve a default pool project (data.google_client_config / Pulumi GetClientConfig) reads local provider configuration and makes no authorized API call."

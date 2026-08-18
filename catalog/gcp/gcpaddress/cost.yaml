@@ -1,0 +1,29 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpaddress
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Compute Engine
+      sku_meter: reserved external IPv4
+      pricing_unit: IP-hours
+      description: A static EXTERNAL IPv4 reservation bills hourly from the moment it exists. The rate depends on what holds it -- highest while reserved but unattached ($0.01/hr), roughly half while in use on a standard VM, and FREE while assigned to a forwarding rule.
+  cost_drivers:
+    - field_path: address_type
+      sku_meter: reserved external IPv4
+      pricing_unit: IP-hours
+      impact: The whole bill switch -- EXTERNAL (the default) reserves a public IPv4 that bills hourly; INTERNAL reserves a private address from your subnetwork for free, whatever its purpose.
+    - field_path: ip_version
+      sku_meter: reserved external IPv4
+      impact: External IPv6 addresses are free -- only external IPv4 carries the hourly charge, a scarcity price on the exhausted IPv4 pool.
+    - field_path: network_tier
+      sku_meter: network egress
+      impact: No effect on the reservation itself -- the tier prices the egress of whatever resource later holds this IP (PREMIUM rides Google's backbone at premium egress rates, STANDARD the public internet for less), billed on that resource.
+  estimate_exclusions:
+    - the in-use rate split -- attached to a standard VM the IP bills ~$0.005/hr, on a Spot VM ~$0.0025/hr, and on a forwarding rule nothing; attachment state lives outside this manifest
+    - network egress through the address follows the traffic of the resource holding it
+  notes: "The pricing is an idleness tax: reserved-but-unattached is the most expensive state ($0.01/hr, ~$7.30/mo), attachment to a VM halves it, and doing load-balancer duty makes it free. INTERNAL reservations and external IPv6 never bill. Releasing the reservation is the only off switch for an idle external IPv4 -- and the number returns to Google's pool."

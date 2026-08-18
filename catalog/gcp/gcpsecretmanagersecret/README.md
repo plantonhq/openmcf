@@ -22,7 +22,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** where the secret is created (directly or via a GcpProject reference).
-- **IAM**: the deploying identity needs `roles/secretmanager.admin` (creation plus IAM grants).
+- **Deployer permissions**: the least-privilege permission set the IaC runner's principal needs lives in [`iac/permissions.yaml`](iac/permissions.yaml).
 - **For CMEK**: a KMS key (reference a GcpKmsKey resource) with the Secret Manager service agent granted `roles/cloudkms.cryptoKeyEncrypterDecrypter`.
 
 ## Deploy

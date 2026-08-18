@@ -11,7 +11,7 @@ A single global target HTTP proxy in the chosen project. Global forwarding rules
 - **GCP credentials** configured via environment variables or Planton provider config
 - **An existing GCP project** — referenced via `projectId` (or the provider's default project)
 - **A URL map** — a `GcpUrlMap` (or its self-link) for the proxy to route through
-- **IAM permissions** — any role carrying `compute.targetHttpProxies.*` on the target project
+- **IAM permissions** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Quick Start
 

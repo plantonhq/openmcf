@@ -1,0 +1,44 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awscognitouserpool
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: user_pool_tier
+      sku_meter: monthly active users
+      pricing_unit: MAUs
+      impact: The tier selects the per-MAU rate table -- LITE bills the lowest tiered rates, ESSENTIALS (AWS's default when omitted) a flat higher rate, and PLUS the highest rate with NO free allotment at all. A user bills only in a calendar month where an identity operation touches them (sign-up, sign-in, token refresh, attribute update); dormant accounts sit free, so directory size is not the bill -- monthly activity is.
+    - field_path: user_pool_add_ons.advanced_security_mode
+      sku_meter: monthly active users
+      pricing_unit: MAUs
+      impact: Threat protection is the expensive dial -- beyond audit-only it requires the PLUS tier, whose per-MAU rate starts at the first user with no free tier. On legacy pools the same capability bills as the separate advanced-security-features per-MAU add-on (AUDIT mode included), which AWS prices at multiples of the base MAU rate.
+    - field_path: sms_configuration
+      sku_meter: outbound SMS messages
+      pricing_unit: messages
+      impact: Every SMS the pool sends -- MFA codes, phone verification, invitations, SMS_OTP sign-in codes -- publishes through Amazon SNS at per-message SMS rates that vary by destination country and bill on the account, not this component. At scale the SMS spend routinely exceeds the MAU charge.
+    - field_path: email_configuration.email_sending_account
+      sku_meter: outbound email messages
+      pricing_unit: messages
+      impact: DEVELOPER mode routes verification, invitation, and MFA email through your SES identity at SES per-message rates on the referenced identity; COGNITO_DEFAULT uses the built-in sender, free but hard-capped at a daily volume fit only for development.
+    - field_path: lambda_config
+      sku_meter: Lambda invocations
+      pricing_unit: requests
+      impact: Every configured trigger invokes its Lambda function per lifecycle event -- pre/post sign-up, pre/post authentication, token generation -- so sign-in volume multiplies invocation and duration charges on the referenced functions.
+    - field_path: log_configurations
+      sku_meter: log ingestion
+      pricing_unit: GB
+      impact: Delivered event logs bill ingestion and storage on the referenced destinations (CloudWatch log group, Firehose stream, or S3 bucket); the userAuthEvents source additionally requires threat protection, tying it to the PLUS tier's MAU rate.
+  free_tier: Pools on the LITE or ESSENTIALS tier share 10,000 free MAUs each month per account or AWS organization, and SAML/OIDC-federated sign-ins get 50 free MAUs regardless of tier -- both permanent allotments for new and existing customers (not offered in GovCloud). The PLUS tier, the legacy advanced-security add-on, and machine-to-machine token requests have no free tier. Accounts with pools predating 2024-11-22 are grandfathered at 50,000 free MAUs for those pools.
+  estimate_exclusions:
+    - MAU volume is end-user-driven -- a pool with no active users in a month bills nothing on any tier
+    - SMS delivery bills per message through SNS at destination-country rates, on the account
+    - SES email delivery bills on the referenced SES identity
+    - Lambda trigger invocations bill on the referenced function components
+    - delivered logs bill on the referenced CloudWatch, Firehose, or S3 components
+    - machine-to-machine token requests bill per successful token response on the pool's client-credentials app clients (AwsCognitoUserPoolClient components)
+    - account-level add-ons -- multi-Region replication per MAU and purchased API rate-limit increases per RPS-month -- sit outside this manifest
+  notes: "A user pool's existence is free -- the meter is monthly ACTIVE users, where active means any identity operation in the calendar month and everyone else is free, so a million stored accounts with ten thousand active users bills only the ten thousand. The tier decides the rate and the free math: LITE and ESSENTIALS share the 10,000-MAU monthly free allotment (the pre-2024 50,000-MAU allotment survives only on grandfathered pools), while PLUS -- which the two hardened presets pin for ENFORCED threat protection -- bills every MAU from the first. When a user is active under more than one tier in a month, AWS attributes them to the highest-priced tier that was enabled during their activity. The classic bill surprise is not the MAU charge at all but SMS: every code the pool texts rides SNS's per-message rates on the account."

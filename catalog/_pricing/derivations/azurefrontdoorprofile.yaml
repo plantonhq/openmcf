@@ -1,0 +1,45 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureFrontDoorProfile manifest's spec values into metered quantities
+# and price choices -- the flat monthly base fee, keyed by the sku. The
+# usage half of every Front Door bill (per-request and per-GB meters
+# priced by the CLIENT'S geography) follows traffic and rides the
+# exclusions. Front Door is a global service -- the spec carries no
+# region field and the base-fee meter prints one identical rate across
+# all eight commercial pricing zones. The estimate generator replays
+# the catalog presets through these rules to emit
+# ../estimates/azurefrontdoorprofile.yaml; a server-side estimator
+# evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azurefrontdoorprofile
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    assumption: global
+  lines:
+    - sku_meter: profile base fee
+      quantity:
+        - constant: "1"
+      price_lookup:
+        service_name: Azure Front Door Service
+        pricing_unit: profile-months
+        attributes:
+          - key: sku
+            from_field: sku
+            assumption_when_unset: STANDARD
+      basis: one profile x the tier's flat monthly base fee -- the same rate worldwide (Azure prints identical figures across all eight commercial pricing zones, so the zone convention never changes the committed bill); an unspecified sku deploys STANDARD, the spec's documented default
+  exclusions:
+    - text: client requests bill per 10,000 by the client's pricing zone and follow traffic -- PREMIUM's request rate is higher than STANDARD's
+    - text: data transfer out from edge to client bills per GB by the client's pricing zone; edge-to-origin transfer bills a separate per-GB meter; inbound transfer is free
+    - text: endpoints, origin groups, origins, routes, custom domains, and security policies are separate kinds carrying no meters of their own -- their requests and bytes land on this profile's usage meters
+    - text: custom domains beyond the first 100 bill per domain-month; the first 100 are free
+  notes:
+    - text: WAF enforcement adds no meter on these tiers -- custom rules are free on both and Microsoft's managed rule sets are free on PREMIUM; they are part of what the tenfold base-fee difference buys. The separately-metered per-policy and per-rule WAF charges belong to Front Door (classic), a different product this spec does not admit.
+    - applies_when:
+        - field_path: sku
+          op: equals
+          value: PREMIUM
+      text: PREMIUM is one-way -- Azure refuses a downgrade back to STANDARD, so the committed base fee cannot be reduced without replacing the profile and everything nested under it.

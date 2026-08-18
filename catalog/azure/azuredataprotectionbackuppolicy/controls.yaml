@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuredataprotectionbackuppolicy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The policy is schedule-and-retention configuration; it stores no customer data. Encryption of the recovery points it produces is the vault's posture (AzureDataProtectionBackupVault).
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own; customer-managed-key encryption of backup data is configured on the vault.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The policy moves no data; backup transfer transport belongs to the Azure Backup service and the backup-instance bindings.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The policy has no reachable endpoint; it is configuration addressed through the vault's ARM surface.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound surface of its own.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request path of its own to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is ARM RBAC on the vault's backupPolicies operations (subscription/resource-group posture); the policy exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The policy runs no workloads and holds no credentials; datasource access is the vault identity's job.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Policy writes land in the Azure Activity Log as subscription-level posture; backup-job audit belongs to the vault's diagnostic surface.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The policy publishes no metrics of its own; backup alerting for Data Protection vaults is configured through Azure Monitor resources outside the manifest.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The policy DEFINES the backup automation (ISO-8601 schedule intervals plus retention) for one datasource type, but protects nothing by itself -- backup happens when an AzureDataProtectionBackupInstance binds a datasource to this policy; that binding carries the restore capability and the meters.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: disk.default_retention_duration
+      evidence:
+        type: spec_validation
+        reference: Every variant REQUIRES its retention grammar -- disk and data_lake_storage a default_retention_duration (ISO-8601, CEL-validated), kubernetes_cluster and both flexible servers a default_retention_rule with at least one life cycle, blob_storage at least one of the operational/vault tier durations -- and every variant layers named retention_rules that keep tagged backups (FirstOfDay/FirstOfWeek/calendar selectors) longer.
+      notes: This component IS the retention policy for modern Azure Backup; the cited field is the disk variant's -- each variant carries the equivalent under its own block. All three presets carry retention -- 01-daily-disk-backup keeps 7 days with first-of-week held 90 days, 02-aks-cluster-backup keeps 14 days with first-of-day held 8 weeks, 03-blob-dual-tier keeps 30 operational / 90 vaulted days with first-of-month held a year. The policy is immutable after create (the provider ships no update path) -- changing retention replaces it.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A configuration object with no data plane of its own; where recovery points replicate is the vault's redundancy choice, fixed on AzureDataProtectionBackupVault.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither ARM nor this spec offers a deletion-protection flag on policies; guarding backup DATA against deletion is the vault's immutability/soft-delete surface.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Pure configuration inside the Microsoft-operated Azure Backup service -- no software surface of its own to patch.

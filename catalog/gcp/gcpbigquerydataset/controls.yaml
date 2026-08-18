@@ -1,0 +1,95 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpbigquerydataset
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: BigQuery encrypts all stored table data at rest with Google-managed keys by default; encryption cannot be disabled.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_name
+      evidence:
+        type: spec_default
+        reference: Unset means Google-managed encryption; naming a Cloud KMS key makes it the default encryption key for every NEW table in the dataset (tables may still name their own key).
+      notes: Preset 02 enables CMEK. The BigQuery service agent needs roles/cloudkms.cryptoKeyEncrypterDecrypter on the key before the first table is written -- a prerequisite outside this component.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All access to dataset metadata and table data goes through Google's BigQuery API endpoints over TLS; no plaintext access path exists.
+    - control_id: no-public-access
+      status: configurable
+      field_path: access
+      evidence:
+        type: spec_default
+        reference: Omitted (the default) applies BigQuery's project-scoped defaults (project owners = OWNER, editors = WRITER, viewers = READER) -- never public. Exposure requires explicitly listing allUsers (iam_member) or allAuthenticatedUsers (special_group) in the authoritative ACL, an explicit and reviewable act.
+      notes: No preset grants public access. The authoritative-list semantics cut both ways -- an omitted entry is REMOVED, so an accidental public grant made in the console is reverted on the next apply.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: A dataset has no network ingress surface -- access arrives through the IAM-gated BigQuery API. Restricting which networks may reach that API is a VPC Service Controls perimeter decision at the project level, not a dataset field.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The dataset serves no HTTP application traffic; there is no request surface for a web application firewall to filter.
+    - control_id: rbac
+      status: configurable
+      field_path: access
+      evidence:
+        type: spec_validation
+        reference: Each access entry is either a principal grant (role + exactly one identity, enforced by the access_exactly_one_identity and access_role_coherence CEL rules) or a resource authorization (view/routine/dataset with implicit read and no role) -- the list is authoritative, becoming the dataset's complete ACL.
+      notes: Preset 03 shows the full pattern -- explicit defaults, group grants, a time-bounded contractor grant via IAM condition, and an authorized view. Project-level BigQuery IAM roles compose on top of the dataset ACL.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The dataset runs no workloads and holds no credentials; callers authenticate to the BigQuery API with their own IAM identities.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The only access path is the IAM-authenticated BigQuery API. The basic dataset roles (OWNER/WRITER/READER) are stored interchangeably with their predefined IAM equivalents -- a naming convention, not a weaker authentication path.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Dataset create, update, and delete land in Cloud Audit Logs (Admin Activity) unconditionally, and BigQuery is one of the services whose Data Access audit logs are written by default -- queries and table reads against the dataset are logged without configuration.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: BigQuery publishes storage and query metrics to Cloud Monitoring for every project without configuration, and INFORMATION_SCHEMA views expose per-dataset storage and job detail queryably.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: max_time_travel_hours
+      evidence:
+        type: spec_default
+        reference: Time travel gives point-in-time recovery of every table in the dataset -- unset applies GCP's default 168 hours (7 days), and data remains recoverable via fail-safe for a further 7 days after the window closes.
+      notes: Time travel is BigQuery's built-in continuous recovery; scheduled exports or table snapshots for longer horizons are separate resources.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: max_time_travel_hours
+      evidence:
+        type: spec_validation
+        reference: The window length is an explicit, validated choice -- 48 to 168 hours (the valid_time_travel_hours rule), trading recovery reach against time-travel storage cost under PHYSICAL billing.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: BigQuery automatically maintains replicas of stored data across multiple availability zones within the dataset's location; no customer action or field enables it.
+      notes: Multi-region locations (US, EU -- presets 01 and 03) additionally spread data across data centers in the geography; cross-region disaster replication is a separate BigQuery feature not modeled on this component.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: delete_contents_on_destroy
+      evidence:
+        type: spec_default
+        reference: False (the default) makes destroy fail while the dataset contains tables -- the guard against deleting data with its container; true must be chosen deliberately for disposable data.
+      notes: deletion_policy adds an engine-side second wall (PREVENT fails the destroy outright; ABANDON unmanages the dataset while it keeps serving queries).
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: BigQuery is a fully managed, serverless service -- Google operates and patches the storage and query fleet; no version, channel, or maintenance surface exists on the dataset.

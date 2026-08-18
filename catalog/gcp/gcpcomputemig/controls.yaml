@@ -1,0 +1,98 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpcomputemig
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Compute Engine encrypts every persistent disk the template stamps onto each instance at rest with Google-managed keys, without configuration.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: template.disks.disk_encryption
+      evidence:
+        type: spec_default
+        reference: Unset means Google-managed encryption; naming a Cloud KMS key on a template disk encrypts every instance's copy of that disk with the customer-managed key.
+      notes: No preset enables CMEK. The Compute Engine service agent needs roles/cloudkms.cryptoKeyEncrypterDecrypter on the key before instances can be created.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Google encrypts VM traffic at the network layer whenever it crosses a physical boundary outside Google's control, on every instance in the group without configuration.
+      notes: Application-level TLS for the workload's own listeners is the guest's responsibility -- the platform cannot see or configure it.
+    - control_id: no-public-access
+      status: configurable
+      field_path: template.network_interfaces.access_configs
+      evidence:
+        type: spec_default
+        reference: An empty access_configs list on the template interface means NO instance in the group gets an external IPv4 -- the whole fleet is unreachable from the internet (pair with Cloud NAT for egress). Adding an access config publishes every instance the template stamps out.
+      notes: All three presets omit access configs -- MIG fleets conventionally sit behind a load balancer or stay internal.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound scoping lives on VPC firewall rules -- separate resources that select the fleet by the template's network tags (the tags field is the selector, not an allowlist). The group spec carries no ingress rule surface of its own.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The group has no WAF attachment point; Cloud Armor policies attach to the load balancer whose backend service targets this group, both separate resources.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management-plane access (create, resize, roll a new template, delete) is governed by Compute Engine IAM roles on the group and its template; enabling OS Login in template metadata moves SSH to the instances under those same IAM identities.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every instance in the group authenticates to Google APIs as the template's attached service account through short-lived metadata-server tokens -- no static credentials are ever provisioned by the platform.
+      notes: template.service_account.email pins a dedicated least-privilege identity; when omitted, instances run as the Compute Engine default service account -- functional, but broader than production deserves.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: template.metadata
+      evidence:
+        type: spec_default
+        reference: The legacy path is static SSH keys managed through instance metadata; setting the enable-oslogin metadata key to TRUE in the template retires metadata-managed keys in favor of IAM-governed OS Login on every instance.
+      notes: No preset enables OS Login -- the presets are fleet-behind-LB shapes where interactive SSH is not the norm.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every administrative action on the group, its template, and its autoscaler (create, resize, rolling update, delete) lands in Cloud Audit Logs' Admin Activity stream unconditionally.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Compute Engine publishes per-instance metrics (CPU, network, disk I/O) and group-level size/autoscaler metrics to Cloud Monitoring without an agent -- the autoscaler itself consumes them.
+      notes: Guest-level metrics (memory, processes) need the Ops Agent inside the image -- outside this spec's surface.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: template.disks.resource_policies
+      evidence:
+        type: spec_default
+        reference: Unset means no automated snapshots; attaching a snapshot-schedule resource policy to a template disk backs up every instance's copy on a calendar. stateful_disks preserves disk contents across instance recreation -- durability, not backup.
+      notes: No preset attaches a snapshot schedule. MIG instances are conventionally disposable; snapshot schedules matter for the stateful-disk shapes.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Snapshot retention is a property of the referenced snapshot-schedule resource policy, configured on that separate resource -- this spec only attaches the policy and carries no retention field.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: region
+      evidence:
+        type: spec_default
+        reference: Setting region (instead of zone) creates a regional group that spreads instances across the region's zones -- distribution_policy tunes which zones and how evenly. A zonal group concentrates the whole fleet in one zone.
+      notes: The 01-autoscaled-web-tier and 02-regional-ha-group presets are regional; auto_healing recreates failed instances in both shapes, but only a regional group survives a zone outage.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Default ("" = DELETE) tears down the group and its instances on destroy; PREVENT fails the IaC destroy while the group still exists. ABANDON removes the group from management but leaves the instances running.
+      notes: No preset sets it. The guard protects the group object -- per-instance data protection lives on stateful_disks and each disk's auto_delete flag.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Guest OS patching is customer-owned -- the managed path is rolling out a re-baked image via a new template version (update_policy controls the roll), which is an operation, not a spec field. Only host-level maintenance is Google-managed.

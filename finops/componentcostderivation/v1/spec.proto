@@ -174,9 +174,15 @@ message Condition {
     // The field's effective value renders different from value.
     not_equals = 2;
     // The field carries an explicit value (message present, repeated
-    // non-empty, scalar with explicit presence set).
+    // non-empty, scalar with explicit presence set). A value-or-reference
+    // wrapper is set when EITHER arm is populated -- a real literal or a
+    // reference to another resource's output: wiring the field by
+    // reference IS configuring it, even though the referenced value
+    // stays unknowable to comparisons, quantities, and price lookups.
+    // A placeholder literal ("<ipam-pool-id>") reads unset.
     is_set = 3;
-    // The field carries no explicit value.
+    // The field carries no explicit value (the mirror of is_set,
+    // including the wrapper and placeholder rules above).
     is_unset = 4;
   }
 }

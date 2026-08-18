@@ -1,0 +1,35 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremachinelearningonlinedeployment
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Virtual Machines
+      sku_meter: deployment instance VM hours
+      pricing_unit: hours
+      description: Every instance serving the deployment bills its instance_type's compute rate for every hour the deployment exists -- managed deployments do not scale to zero, so the fleet runs (and bills) whether or not scoring requests arrive.
+  cost_drivers:
+    - field_path: instance_type
+      sku_meter: deployment instance VM hours
+      pricing_unit: hours
+      impact: Fixes the per-instance hourly rate (unset applies the service default, Standard_F4s_v2); fixed at creation. For general-purpose sizes the committed bill is the plain VM rate -- the service's inferencing surcharge meters are published at zero.
+    - field_path: instance_count
+      sku_meter: deployment instance VM hours
+      pricing_unit: hours
+      impact: The linear multiplier and the one in-place scale dial (ARM carries it as the SKU capacity) -- unspecified applies 1, and there is no scale-to-zero.
+    - field_path: data_collector
+      sku_meter: blob storage
+      pricing_unit: GB-months
+      impact: Captured scoring inputs and outputs land in the workspace's blob storage -- spend follows scoring traffic and each collection's sampling_rate, billed on the storage account, not here.
+    - field_path: app_insights_enabled
+      sku_meter: Application Insights ingestion
+      pricing_unit: GB
+      impact: True streams scoring-traffic telemetry to the workspace's Application Insights, billed per ingested GB on that component.
+  estimate_exclusions:
+    - data-collector storage and Application Insights ingestion follow scoring traffic and bill on the workspace's companion components
+    - network egress follows client placement
+  notes: "The spend lives here, not on the address: the online endpoint this deployment serves is free routing (its own profile says so), while each deployment behind it provisions real VMs. Blue/green rollouts therefore double the VM bill for as long as both deployments exist -- the endpoint's traffic map decides who serves, not who bills. The instance fleet is Azure-managed (no VM components to compose); only instance_count updates without rolling the containers."

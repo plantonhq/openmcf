@@ -1,0 +1,73 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsconfigrule
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A rule is control-plane configuration -- its definition and evaluation results live in AWS Config's managed store, encrypted under AWS's own keys with no storage surface this manifest could configure.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-managed-key surface exists on a rule; the spec carries no key field because the Config rule API offers none.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Config API is HTTPS-only, and evaluations run inside AWS's service fabric; a custom-lambda rule's invocation rides the Lambda service channel. No plaintext path exists.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A rule is a regional API resource, not a network-placed endpoint -- there is no exposure to close. Its compliance results are readable only by IAM-authorized principals.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens on a rule; there is no inbound network surface to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: With no request-serving surface there is no WAF attachment point.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every rule operation -- create, update, delete, remediation changes -- is IAM-authorized. Organization rules are additionally locked to the management account or Config delegated administrator; member accounts receive them and cannot modify them.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The rule itself runs no workload with credentials. A custom-lambda rule's evaluation code executes under the referenced function's execution role -- workload identity governed on the AwsLambda component -- and Guard custom-policy rules run entirely inside AWS Config's engine.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: AWS Config has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Changes to the rule -- who created it, who softened its scope, who deleted it, who altered remediation -- are management events captured in CloudTrail unconditionally, so weakening a compliance check is itself on the record.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every evaluation result lands in the AWS Config compliance dashboard and timeline without configuration -- the rule IS a monitoring integration for resource compliance, and its results feed Config aggregators and compliance-change notifications account-side.
+      notes: remediation turns the signal into action -- an SSM document runs against non-compliant resources, automatically when remediation.automatic is set.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A rule holds no data to back up -- it is recreated verbatim from the manifest, and evaluation history ages out with AWS Config's retention on the recorder component.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no stored data there is no retention surface here; evaluation-history retention is the recorder's retention_period_in_days.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AWS Config is a regional managed service AWS operates across availability zones; a rule has no zonal footprint the manifest could configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: The Config rule API offers no deletion-protection flag; a deleted rule (and its remediation configuration) is recreated from the manifest, losing nothing but coverage in the gap.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AWS operates and patches the evaluation engine, and for managed-source rules AWS maintains the evaluation LOGIC itself -- the zero-code path stays current without redeployment.
+      notes: A custom-lambda rule's logic is patched on your own function component; Guard custom-policy rules pin policy_runtime (only guard-2.x.x exists today) with the engine AWS-operated.

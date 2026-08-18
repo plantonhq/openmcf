@@ -1,0 +1,37 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsroute53dnsrecord
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: routing_policy
+      sku_meter: DNS queries
+      pricing_unit: queries
+      impact: Picks which rung of the query-rate ladder this record's answers bill on -- weighted, failover, and multivalue answer bill as standard queries; latency routing bills a higher per-million rate; geolocation and geoproximity higher still; CIDR (IP-based) routing the highest. The meter itself lives on the hosted zone.
+    - field_path: alias_target
+      sku_meter: DNS queries
+      pricing_unit: queries
+      impact: The free path -- alias A/AAAA queries answer at no charge when the target is one of Route 53's listed AWS integrations (ELB, CloudFront, API Gateway, VPC endpoints, S3 website endpoints, Global Accelerator, and peers), including through chains of alias records that end at one. An alias whose target is a non-alias record in the same zone bills at the standard rate.
+    - field_path: alias_target.evaluate_target_health
+      sku_meter: health checks
+      pricing_unit: health-checks
+      impact: Failover awareness without the meter -- target-health evaluation of ELB and S3-website aliases rides health checking AWS provisions automatically at no charge, so an alias pair plus this flag is the zero-cost alternative to a billed standalone health check.
+    - field_path: ttl
+      sku_meter: DNS queries
+      pricing_unit: queries
+      impact: The resolver-cache dial on billed query volume -- a 60-second TTL sends resolvers back minutes apart, and an explicit 0 makes every single lookup a billed query against the zone. Long TTLs on stable records are the cheapest optimization DNS has.
+    - field_path: health_check_id
+      sku_meter: health checks
+      pricing_unit: health-checks
+      impact: Gating answers on a referenced AwsRoute53HealthCheck attaches that component's monthly meter -- rates differ for AWS versus non-AWS endpoints, each optional feature (HTTPS, string matching, fast interval, latency measurement) bills its own monthly add-on, and the first 50 checks against AWS endpoints in the account are free.
+  free_tier: Records themselves are free within a hosted zone's included 10,000; each record beyond that bills a small monthly per-record charge on the zone. Queries against private hosted zones are free at any volume, and alias A/AAAA queries to Route 53's listed AWS targets are free regardless of volume.
+  estimate_exclusions:
+    - query volume follows resolver traffic entirely and bills on the hosted zone's meters (the referenced AwsRoute53Zone), at the rate this record's routing policy selects
+    - the hosted zone's own monthly charge bills on its AwsRoute53Zone component
+    - a referenced health check bills monthly on its AwsRoute53HealthCheck component
+    - queries that MISS also bill -- lookups for a name that matches but a type that does not (an AAAA query against an A-only name), and lookups for names that do not exist, bill at the standard rate
+  notes: "A DNS record is configuration, not infrastructure: creating one starts no meter, and the spend it shapes lands on other components -- query charges on the hosted zone, health-check charges on the referenced health check. What this manifest decides is the RATE and the VOLUME: the routing policy picks the per-million price tier, the TTL decides how often resolvers come back, and the alias arm can zero the query charge entirely when the target is an AWS integration -- the reason apex records for load balancers and CDNs should always be aliases rather than paid-per-query CNAMEs. The one per-record charge Route 53 has starts at the zone's 10,001st record, a scale signal rather than a cost concern for typical zones."

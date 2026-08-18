@@ -22,7 +22,7 @@ A disk is a first-class node with its own lifecycle: create it once, attach it t
 
 ## Prerequisites
 
-- GCP credentials with `roles/compute.storageAdmin` on the target project (the Compute Engine API is enabled automatically)
+- GCP credentials for the deploying principal — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set (the Compute Engine API is enabled automatically)
 - For CMEK: a `GcpKmsKey` whose key the Compute Engine service agent (`service-<project-number>@compute-system.iam.gserviceaccount.com`) can use (`roles/cloudkms.cryptoKeyEncrypterDecrypter`)
 
 ## Quick Start

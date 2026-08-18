@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpdnsrecord
+spec:
+  billing_model: free
+  free_tier: A record set carries no meter -- Cloud DNS bills the managed ZONE (a flat monthly fee per zone) and the QUERIES answered against it, never the records inside it. A zone holding one record and a zone holding ten thousand pay the same zone fee; records cost nothing to create, hold, or delete.
+  notes: "No field of this spec bills directly, but three fields steer meters that bill on the zone's account. A routing_policy upgrades every query this record answers from the regular rate ($0.40 per million) to the routing-policy rate ($0.70 per million, both halving past a billion queries per month) -- weighted, geo, and failover answers all pay the premium. Health-checked routing targets ride health checks that bill on their own: external endpoints require the routing policy's health_check (a GcpHealthCheck priced hourly as its own kind), while internal load balancer targets reuse the balancer's implicit health signal at no extra charge outside Cloud DNS's internal health-check fees. And ttl_seconds trades cache lifetime for query volume -- a 60-second TTL on a hot name multiplies billed queries relative to 300 or 3600. The zone fee and all query charges live on GcpDnsZone's cost profile; this record only decides how hard those meters run."

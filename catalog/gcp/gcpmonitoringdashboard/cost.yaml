@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpmonitoringdashboard
+spec:
+  billing_model: free
+  free_tier: "A dashboard carries no meter -- Google Cloud Observability prices by data volume (metric bytes and samples ingested, logs stored, traces ingested), and its pricing page states that beyond those data-volume costs, usage of all additional product features is free. Dashboards are such a feature: creating any number of them, with any number of widgets, bills nothing, and viewing them in the GCP console rides the console's free read path (read API calls issued through the console are explicitly not charged)."
+  notes: "No field of this spec buys anything: dashboard_json is one control-plane configuration document, and rendering its charts queries metrics that already exist. The real spend lives in what the charts are drawn FROM -- the ingestion of the metrics the widgets query bills on Cloud Monitoring's meters where chargeable ($0.2580/MiB first tier for byte-charged custom, agent, and workload metrics beyond the 150 MiB monthly allotment; GCP system metrics are non-chargeable), and that ingestion happens whether or not any dashboard displays it. Programmatic reads of the same metrics outside the console (Grafana, scripts) bill the Monitoring read API at $0.50 per million time series returned beyond the first million per month -- a meter attached to the caller, not to this dashboard."

@@ -1,0 +1,32 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsfsxontapvolume
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: tiering_policy
+      sku_meter: capacity pool storage
+      pricing_unit: GB-months
+      impact: The tiering policy decides how much of the volume's data leaves the file system's already-paid provisioned SSD for the capacity pool, which bills per GB-month actually stored plus per-request charges. ALL tiers everything (cheapest at rest, highest first-access latency), AUTO tiers cold data after the cooling period, SNAPSHOT_ONLY (the default) tiers only snapshot blocks, NONE keeps everything on SSD.
+    - field_path: snapshot_policy
+      sku_meter: capacity pool storage
+      pricing_unit: GB-months
+      impact: Snapshots consume capacity for every block the active file system has since overwritten -- the default policy (6 hourly + 2 daily + 2 weekly) grows consumption with churn, and "none" removes that growth at the cost of point-in-time recovery.
+    - field_path: skip_final_backup
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: The default (false) takes a final backup when the volume is deleted -- it outlives the volume and bills per GB-month until someone deletes it. Setting true deletes cleanly.
+    - field_path: storage_efficiency_enabled
+      sku_meter: capacity pool storage
+      pricing_unit: GB-months
+      impact: Deduplication, compression, and compaction shrink the physical blocks the volume consumes -- less of the file system's provisioned SSD used and fewer capacity-pool GB billed. Disable only for data that is already compressed or encrypted.
+  free_tier: Creating a volume is free -- a volume is a thin-provisioned logical container, and its declared size (size_in_megabytes / size_in_bytes) reserves nothing and bills nothing.
+  estimate_exclusions:
+    - capacity pool storage bills per GB-month actually stored (plus per-request charges) and follows the data the tiering policy moves, not any spec value
+    - backup storage bills per GB-month for volume backups and grows with churn across the parent file system's retention window
+    - the volume's SSD consumption bills through the parent file system's provisioned-capacity meters, not here
+  notes: "No committed charge exists at manifest time: the real spend lives in the parent AwsFsxOntapFileSystem, whose provisioned SSD capacity, throughput, and IOPS bill from creation whether volumes exist or not. This spec shapes how that capacity is consumed -- tiering moves data to the pay-per-use capacity pool, snapshots and storage efficiency change physical consumption -- and controls the one charge a volume can leave behind, the final backup on deletion. A SnapLock COMPLIANCE volume adds a cost-shaped trap: unexpired WORM files make the volume undeletable, so the capacity they consume cannot be reclaimed until retention lapses."

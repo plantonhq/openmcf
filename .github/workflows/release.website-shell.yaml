@@ -1,0 +1,85 @@
+# =============================================================================
+# @planton/website-shell npm Publish
+# =============================================================================
+# Publishes the shared website shell package (site/packages/website-shell) to
+# npm. Its consumer is the Planton Platform web console, which imports the
+# published package - the website itself consumes it as a yarn workspace and
+# never waits on a publish.
+#
+# Authentication is npm Trusted Publishing (OIDC): no npm token exists
+# anywhere in this repository. npm accepts the publish because this exact
+# workflow in this exact repository is registered as the package's trusted
+# publisher on npmjs.com; each run authenticates with a short-lived,
+# package-scoped credential minted from the job's OIDC identity
+# (id-token: write), and the publish carries a provenance attestation.
+# Node 24 (per site/.nvmrc) is REQUIRED, not merely nice: its bundled npm
+# does the OIDC detection natively, whereas npm 11 hand-installed onto an
+# older Node skips the OIDC exchange and dies with ENEEDAUTH -- a widely
+# reported failure mode. The package.json repository field must also match
+# this repository, or provenance validation rejects the publish.
+#
+# Triggered by website-shell-v* tags (the package's own release cadence,
+# independent of the repo's semver product releases) or manually with
+# dry_run=true to prove the lane without publishing.
+# =============================================================================
+
+name: release.website-shell
+
+on:
+  push:
+    tags:
+      - "website-shell-v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (skip publish, just build)"
+        required: false
+        default: "false"
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: site/.nvmrc
+
+      - name: Install dependencies
+        working-directory: site
+        run: |
+          corepack enable
+          yarn install
+
+      - name: Build package
+        working-directory: site/packages/website-shell
+        run: yarn build
+
+      - name: Typecheck package
+        working-directory: site/packages/website-shell
+        run: yarn typecheck
+
+      # The publish deliberately bypasses the workspace Yarn toolchain: plain
+      # npm on Node 24 carries the OIDC-aware CLI that mints the credential.
+      # --loglevel http keeps the OIDC token exchange visible in the run log:
+      # a mismatch between this workflow's identity and the trusted-publisher
+      # registration otherwise fails SILENTLY and surfaces as a misleading
+      # ENEEDAUTH.
+      - name: Publish to npm (trusted publishing)
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        working-directory: site/packages/website-shell
+        run: npm publish --loglevel http
+
+      - name: Dry run (pack only)
+        if: ${{ github.event.inputs.dry_run == 'true' }}
+        working-directory: site/packages/website-shell
+        run: npm pack --dry-run

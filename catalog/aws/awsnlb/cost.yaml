@@ -1,0 +1,37 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsnlb
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Elastic Load Balancing
+      sku_meter: Network Load Balancer hours
+      pricing_unit: hours
+      description: Hourly charge for the load balancer's existence, accruing from creation regardless of traffic.
+  cost_drivers:
+    - field_path: minimum_load_balancer_capacity_units
+      sku_meter: reserved Load Balancer Capacity Units
+      pricing_unit: LCU-hours
+      impact: Reserved NLCUs bill for the full reservation every hour while set, on top of usage-driven NLCUs. Set it for the surge window, then remove it.
+    - field_path: subnet_mappings
+      sku_meter: public IPv4 address usage
+      pricing_unit: IP-hours
+      impact: Internet-facing nodes each hold a billed public IPv4 address -- one per subnet mapping, whether AWS-assigned or a pinned Elastic IP (allocation_id). Every mapping added is another address billed every hour.
+    - field_path: internal
+      sku_meter: public IPv4 address usage
+      pricing_unit: IP-hours
+      impact: An internal load balancer holds no public IPv4 addresses, removing that charge entirely.
+    - field_path: cross_zone_load_balancing_enabled
+      sku_meter: inter-AZ data transfer
+      pricing_unit: GB
+      impact: NLB bills inter-AZ data transfer when cross-zone distribution is on (unlike ALB, where it is free) -- the reason AWS defaults it off. Enable it only when target distribution across AZs is uneven, and budget for the per-GB charge.
+  estimate_exclusions:
+    - NLCU usage (billed per used Network load balancer capacity unit-hour) is traffic-dependent
+    - data transfer out to the internet
+    - inter-AZ data transfer applies per GB when cross-zone load balancing is enabled
+    - Elastic IPs pinned via allocation_id start billing as unattached addresses the moment the load balancer is deleted
+  notes: Access logs capture only TLS-listener traffic (an AWS limitation) and are free at the load balancer; stored log bytes bill to the destination S3 bucket's own cost. The hourly baseline is the only certainty at manifest time -- everything else scales with traffic.

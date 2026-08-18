@@ -1,0 +1,65 @@
+# Cost derivation: the machine-executable rules turning any AwsElasticIp
+# manifest's spec values into metered quantities and price choices. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/awselasticip.yaml; a server-side estimator evaluates
+# the same rules against live manifests. In-use and idle bill at the same
+# hourly rate but on different meters, so attachment picks the price slug,
+# never the amount. Prices live in the provider's price book
+# (../pricebook/). Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awselasticip
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  refusals:
+    - when:
+        - field_path: ipam_pool_id
+          op: is_set
+      reason: An IPAM-pool address's committed charge depends on what the pool holds, which this manifest cannot see -- BYOIP space bills nothing, while an Amazon-provided contiguous block bills per address on the block itself from provisioning, not on this EIP
+  lines:
+    - sku_meter: public IPv4 address usage
+      applies_when:
+        - field_path: public_ipv4_pool
+          op: is_unset
+        - field_path: instance
+          op: is_set
+      quantity:
+        - hours_in_month: true
+      price_slug: public-ipv4-in-use-us-east-1
+      basis: one address associated with an instance, metered in-use every hour of the month; every catalog preset leaves region a placeholder, so this prices the us-east-1 rate
+    - sku_meter: public IPv4 address usage
+      applies_when:
+        - field_path: public_ipv4_pool
+          op: is_unset
+        - field_path: network_interface
+          op: is_set
+      quantity:
+        - hours_in_month: true
+      price_slug: public-ipv4-in-use-us-east-1
+      basis: one address associated with a network interface, metered in-use every hour of the month; the spec forbids setting both association targets, so this never double-counts with the instance rule
+    - sku_meter: public IPv4 address usage
+      applies_when:
+        - field_path: public_ipv4_pool
+          op: is_unset
+        - field_path: instance
+          op: is_unset
+        - field_path: network_interface
+          op: is_unset
+      quantity:
+        - hours_in_month: true
+      price_slug: public-ipv4-idle-us-east-1
+      basis: one address with no association target in this manifest, metered idle every hour of the month; the idle rate equals the in-use rate, so a consumer attaching the address elsewhere (an NLB subnet mapping, a NAT gateway) changes the meter name, not the number
+  exclusions:
+    - text: Elastic IP remaps beyond AWS's free monthly allowance bill per remap -- a usage charge driven by how often automation re-associates the address, invisible to this manifest.
+    - text: The associated resource (instance, network interface, NAT gateway, load balancer) and all data transfer through the address bill on their own meters, outside this component.
+  notes:
+    - text: The address-hours are the committed bill, and releasing the address is the only way to stop the meter.
+    - applies_when:
+        - field_path: public_ipv4_pool
+          op: is_set
+      text: A BYOIP address is not charged the public IPv4 rate -- AWS bills only addresses from its own space -- so this manifest's committed monthly cost is honestly zero.

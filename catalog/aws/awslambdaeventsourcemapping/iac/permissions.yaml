@@ -12,11 +12,9 @@ spec:
     statements:
       - sid: ManageEventSourceMapping
         actions:
-          - lambda:CreateEventSourceMapping
           - lambda:GetEventSourceMapping
           - lambda:UpdateEventSourceMapping
           - lambda:DeleteEventSourceMapping
-          - lambda:ListEventSourceMappings
           - lambda:TagResource
           - lambda:UntagResource
           - lambda:ListTags
@@ -24,7 +22,15 @@ spec:
           - arn:aws:lambda:*:*:event-source-mapping:*
           - arn:aws:lambda:*:*:function:*
         provenance: derived
-        notes: The module is a single aws_lambda_event_source_mapping resource. CreateEventSourceMapping authorizes against the function ARN (the mapping's UUID does not exist yet), while get/update/delete/tag act on the mapping ARN -- both scopes are required.
+        notes: The module is a single aws_lambda_event_source_mapping resource. Get/update/delete/tag act on the mapping ARN; the function ARN rides the same statement because updates authorize against it as well. Create and List cannot be resource-scoped and live in their own statement.
+      - sid: CreateAndListEventSourceMappings
+        actions:
+          - lambda:CreateEventSourceMapping
+          - lambda:ListEventSourceMappings
+        resources:
+          - "*"
+        provenance: derived
+        notes: The service reference lists NO resource types for CreateEventSourceMapping (the mapping UUID does not exist until the call returns) or ListEventSourceMappings, so IAM evaluates both against Resource "*" -- ARN-scoped grants never match and would deny provisioning and plan/refresh at runtime. The wildcard is the narrowest possible scope.
       - sid: UseCustomerManagedKey
         actions:
           - kms:DescribeKey

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awswafregexpatternset
+spec:
+  billing_model: free
+  free_tier: A regex pattern set is a named list of regular expressions, and AWS WAF has no meter for it -- WAF bills each web ACL monthly, each rule in a web ACL monthly, and the requests the web ACL inspects, with no per-set fee. The set itself, referenced or not, costs exactly nothing.
+  notes: "No field of this spec buys anything: the expressions and scope are configuration stored by the WAF control plane. The real spend lives on the web ACLs that reference this set -- each bills its monthly ACL fee, a monthly fee per rule (including the rule holding the regex_pattern_set_reference statement), and a per-million-requests rate. The capacity nuance matters more here than for most match material: a regex pattern set reference statement carries a 25-WCU base cost in the referencing web ACL (versus 1 for an IP set match), more with text transformations or JSON-body inspection -- and a web ACL's base request price includes only 1,500 WCUs, beyond which the per-request rate tiers upward. A handful of regex-set rules is the fastest ordinary way to push an ACL into the higher request tier, so the set is free but referencing it is among the priciest capacity decisions its web ACLs make."

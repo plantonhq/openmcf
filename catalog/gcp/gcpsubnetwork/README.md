@@ -13,7 +13,7 @@ When you deploy a GcpSubnetwork resource, Planton provisions:
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **An existing custom-mode VPC** — referenced via `vpcSelfLink` (a GcpVpcNetwork resource or a literal self-link)
-- **IAM permissions** — `roles/compute.networkAdmin` on the target project
+- **IAM permissions** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Quick Start
 

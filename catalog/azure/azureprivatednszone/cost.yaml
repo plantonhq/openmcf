@@ -1,0 +1,28 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureprivatednszone
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Azure DNS
+      sku_meter: hosted private zone
+      pricing_unit: zone-months
+      description: Every private zone bills a flat monthly fee from creation, prorated daily by the fraction of the month it exists. The rate is tiered by SUBSCRIPTION-wide private-zone count -- the first 25 private zones each bill the full rate, and every zone from the 26th bills at a fifth of it.
+  cost_drivers:
+    - field_path: name
+      sku_meter: hosted private zone
+      pricing_unit: zone-months
+      impact: One zone, one fee -- the sizing decision is how many zones the architecture creates, and Private Link is the usual multiplier (every privatelink.* service zone is its own monthly fee). The per-zone rate DROPS from the subscription's 26th private zone, so large estates get cheaper at the margin.
+    - field_path: soa_record.minimum_ttl
+      sku_meter: private zone queries
+      pricing_unit: queries
+      impact: The negative-caching TTL is the one spec field that touches the usage arm -- raising it lets resolvers cache "name does not exist" answers longer, trimming repeat billed queries at the cost of slower visibility for newly created records.
+  estimate_exclusions:
+    - query volume bills per million queries answered, aggregated across the subscription for billing, and is entirely traffic-dependent
+    - record sets beyond the first 25,000 in the zone bill a small monthly fee each -- the records themselves ride their own record components
+    - virtual network links (AzurePrivateDnsZoneVirtualNetworkLink) carry no meter -- Azure's retail price family publishes no charge for linking networks to the zone
+  notes: "The zone fee is the certainty; queries are the variable. A private zone is a global resource with no region -- its meter bills under Azure's 'Zone 1' billing geography regardless of where the linked networks live. The tier is subscription-scoped and invisible to any single manifest: the subscription's first 25 private zones bill the full monthly rate and later zones bill less, so a fleet of privatelink zones (the Private Link DNS pattern creates one per service type) compounds sub-linearly. Nothing else in the spec moves money -- SOA tuning changes resolver behavior, and tags change nothing."

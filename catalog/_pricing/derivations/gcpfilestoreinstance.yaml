@@ -1,0 +1,117 @@
+# Cost derivation: the machine-executable rules turning any
+# GcpFilestoreInstance manifest's spec values into metered quantities
+# and price choices. Filestore has two pricing models, chosen by
+# performance_config: without it the tier's per-GiB-month capacity rate
+# is the whole bill; with it (custom performance, on ZONAL/REGIONAL/
+# ENTERPRISE tiers) three meters run -- a discounted per-GiB capacity
+# rate, provisioned IOPS per month, and a flat monthly instance fee.
+# The capacity lookups key on tier plus a performance discriminator the
+# rule's own condition fixes ("default" vs "custom"), so a tier/model
+# combination the book does not carry refuses deterministically instead
+# of pricing the wrong model. IOPS quantity has two arms mirroring the
+# spec's oneof: fixed_iops reads max_iops directly; iops_per_tb
+# multiplies capacity by max_iops_per_tb over 1024. Schema:
+# finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: gcpfilestoreinstance
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: location
+    assumption: us-central1
+    zone_to_region: true
+  lines:
+    - sku_meter: provisioned capacity
+      applies_when:
+        - field_path: performance_config
+          op: is_unset
+      quantity:
+        - field_value:
+            field_path: file_share.capacity_gb
+      price_lookup:
+        service_name: Cloud Filestore
+        pricing_unit: GiB-months
+        attributes:
+          - key: tier
+            from_field: tier
+          - key: performance
+            constant: default
+      basis: without custom performance the bill is capacity-only -- the provisioned GiB at the tier's monthly rate, billed as allocated regardless of use; tiers the book does not carry at this region refuse via the deterministic-or-dead lookup
+    - sku_meter: provisioned capacity
+      applies_when:
+        - field_path: performance_config
+          op: is_set
+      quantity:
+        - field_value:
+            field_path: file_share.capacity_gb
+      price_lookup:
+        service_name: Cloud Filestore
+        pricing_unit: GiB-months
+        attributes:
+          - key: tier
+            from_field: tier
+          - key: performance
+            constant: custom
+      basis: custom performance switches capacity to the discounted per-GiB monthly rate for the tier
+    - sku_meter: custom performance instance fee
+      applies_when:
+        - field_path: performance_config
+          op: is_set
+      quantity:
+        - constant: "1"
+      price_lookup:
+        service_name: Cloud Filestore
+        pricing_unit: months
+        attributes:
+          - key: tier
+            from_field: tier
+          - key: performance
+            constant: custom
+      basis: a flat monthly per-instance fee rides every custom-performance instance; GCP's smaller under-1-TiB fee tier is unreachable because the spec floors capacity at 1024 GiB
+    - sku_meter: custom performance IOPS
+      applies_when:
+        - field_path: performance_config.fixed_iops
+          op: is_set
+      quantity:
+        - field_value:
+            field_path: performance_config.fixed_iops.max_iops
+      price_lookup:
+        service_name: Cloud Filestore
+        pricing_unit: IOPS-months
+        attributes:
+          - key: tier
+            from_field: tier
+          - key: performance
+            constant: custom
+      basis: fixed provisioning bills exactly max_iops per month, constant across capacity changes
+    - sku_meter: custom performance IOPS
+      applies_when:
+        - field_path: performance_config.iops_per_tb
+          op: is_set
+      quantity:
+        - field_value:
+            field_path: file_share.capacity_gb
+        - field_value:
+            field_path: performance_config.iops_per_tb.max_iops_per_tb
+        - constant: "0.0009765625"
+      price_lookup:
+        service_name: Cloud Filestore
+        pricing_unit: IOPS-months
+        attributes:
+          - key: tier
+            from_field: tier
+          - key: performance
+            constant: custom
+      basis: scaled provisioning bills capacity_tb x max_iops_per_tb IOPS -- capacity_gb over 1024 (the 0.0009765625 factor); GCP rounds effective IOPS to the nearest 1000, which this product does not model, so quantities land within half a thousand IOPS of the billed figure (exact whenever capacity x rate divides evenly, as in the presets)
+  exclusions:
+    - text: Filestore backups bill per GiB-month of backup data actually held, following the share's contents and backup cadence
+    - applies_when:
+        - field_path: initial_replication
+          op: is_set
+      text: the replication peer is its own fully billed instance in its own location, and inter-region replication traffic bills per GiB of replicated changes
+    - text: network egress follows client placement
+  notes:
+    - text: Capacity bills as provisioned from creation and can grow but never shrink, so the estimate is the floor of a ratcheting bill.

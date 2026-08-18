@@ -34,7 +34,3 @@ The module is executed by the Planton platform with a tfvars file converted from
 - **The identity-argument rename**: the provider calls the same argument `service_data_auth_identity` on the blob resource and `service_data_identity` on the other two -- ONE spec field (`service_data_identity`) feeds both, recorded in the parity manifest.
 - **Write-only credentials**: `account_key`, `shared_access_signature`, and `client_secret` are never returned by ARM -- the provider echoes them from configuration (write-normalized in the import catalog).
 - **ForceNew breadth**: name, storage target, description, and TAGS are all ForceNew on the provider -- only credentials and the identity mode update in place.
-
-## Required Permissions
-
-The deploying principal needs `Microsoft.MachineLearningServices/workspaces/datastores/*` on the workspace's resource group (AzureML Data Scientist covers writes; Contributor covers all).

@@ -15,7 +15,7 @@ A subnetwork is the regional address space workloads live in: primary IPv4 range
    ```bash
    gcloud auth application-default login
    ```
-5. **IAM permissions**: `roles/compute.networkAdmin` on the target project
+5. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Directory Structure
 

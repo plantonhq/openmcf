@@ -106,8 +106,4 @@ module "container_registry" {
 
 ## Required Permissions
 
-The deploying credential needs
-`Microsoft.ContainerRegistry/registries/write` on the resource group --
-held via Contributor or Owner. For CMK encryption, the referenced
-user-assigned identity (not the deployer) must hold get/wrapKey/unwrapKey
-on the Key Vault key's vault before the registry is created.
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege action set the deploying principal needs. For CMK encryption, the referenced user-assigned identity (not the deployer) must additionally hold get/wrapKey/unwrapKey on the Key Vault key's vault before the registry is created.

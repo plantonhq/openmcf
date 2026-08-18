@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurebackuppolicyfileshare
+spec:
+  billing_model: free
+  free_tier: The policy is a free configuration object -- a schedule plus retention rules stored as an ARM child of its vault. Azure meters neither policies nor how many file shares bind to one.
+  notes: "No field of this spec buys anything directly, but the policy SHAPES downstream spend: each share bound to it (AzureBackupProtectedFileShare carries the per-protected-instance fee and the backup-storage meters) accumulates snapshots or vaulted copies exactly as the retention ladder dictates, and backup_tier decides WHERE that storage bills -- snapshot keeps share snapshots on the storage account's meters, vault-standard additionally consumes vault backup storage. Those meters bill on the protected shares, the storage account, and the vault, never on the policy."

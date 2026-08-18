@@ -1,0 +1,38 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsconfigconformancepack
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: template_body
+      sku_meter: conformance pack evaluations
+      pricing_unit: evaluations
+      impact: The template's rule count is the bill's multiplier -- every resource each packed rule examines is one evaluation on the pack's tiered per-evaluation meter, so a 20-rule pack meters the in-scope fleet twenty times per evaluation cycle.
+    - field_path: template_s3_uri
+      sku_meter: conformance pack evaluations
+      pricing_unit: evaluations
+      impact: The same multiplier in its other form -- the S3-hosted template's rules bill identically; where the template lives changes nothing about what it meters.
+    - field_path: input_parameters
+      sku_meter: conformance pack evaluations
+      pricing_unit: evaluations
+      impact: Parameter values tune what the packed rules match -- a parameter that narrows a rule's applicable resources trims that rule's slice of the evaluation volume.
+    - field_path: organization_scope
+      sku_meter: conformance pack evaluations
+      pricing_unit: evaluations
+      impact: An organization pack deploys into EVERY member account, and each account's evaluations bill there -- the pack's rule count times every member fleet, invisible from this manifest.
+    - field_path: excluded_accounts
+      sku_meter: conformance pack evaluations
+      pricing_unit: evaluations
+      impact: The organization multiplier's trim list -- each excluded account subtracts its whole fleet from the pack's evaluation volume.
+  free_tier: AWS Config publishes no free tier -- every conformance pack evaluation bills from the first one, on a tiered per-evaluation schedule that cheapens past 100,000 and again past 500,000 evaluations a month.
+  estimate_exclusions:
+    - evaluation volume follows the template's rule count times fleet size and change rate -- the template is opaque to an estimator and AWS never even reports it back after deploy
+    - the configuration items that FEED evaluations bill on the region's AwsConfigRecorder component (a pack refuses to deploy without a running recorder)
+    - custom rules in the template invoke Lambda functions that bill on their own components
+    - compliance-result artifacts delivered to delivery_s3_bucket bill S3 storage on that referenced bucket
+    - an organization pack multiplies evaluations by member-account fleets
+  notes: "The pack object is free -- the bill is its rules evaluating, and those evaluations land on the CONFORMANCE PACK meter, tiered identically to standalone rule evaluations but counted separately (the two meters accumulate tier progress independently). The pack is best understood as a multiplier: rules-in-template times in-scope resources times evaluation cadence. Its rules are created BY the pack (prefixed with the pack name, managed by AWS Config's service-linked role) and are not standalone AwsConfigRule components -- deleting the pack deletes them all, and their spend leaves with them."

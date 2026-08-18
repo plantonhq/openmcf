@@ -1,0 +1,79 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurebastionhost
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A session proxy -- RDP/SSH traffic flows through it without landing at rest. The one data artifact the service can produce, PREMIUM session recordings, is retained service-side under Microsoft-managed encryption.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-keyed data at rest (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every session enters over TLS on 443 -- browser sessions are HTML5 over HTTPS, and native-client tunneling wraps the same TLS-fronted endpoint -- with the RDP/SSH protocol encryption riding inside; no plaintext listener exists to enable or disable.
+    - control_id: no-public-access
+      status: configurable
+      field_path: ip_configuration.public_ip_address_id
+      evidence:
+        type: spec_default
+        reference: BASIC and STANDARD hosts require the referenced Standard public IP (spec-validated, matching ARM's contract) -- the hardened public entry point that lets every VM behind it drop its own. A PREMIUM host omitting the public IP deploys PRIVATE-ONLY, reachable solely from connected networks (the private_only_enabled output); a DEVELOPER host has no public IP at all.
+      notes: The point of the component is moving public exposure OFF the fleet and onto one audited, Microsoft-operated front door -- the target VMs need neither public IPs nor inbound NSG rules.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: "Network-level source restriction on the host's entry point is NSG territory on the AzureBastionSubnet -- a separate component (Microsoft publishes the required rule set for it). The host's own gate is identity, not source address: every session requires an authenticated Entra user with Azure RBAC on the host and target VM."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A TLS session gateway for RDP/SSH, not an HTTP application surface -- there is no request stream for a WAF to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Opening a session is authorized by Azure RBAC unconditionally -- the caller needs read access on the Bastion host, the target VM, and its NIC; there is no anonymous or password path into the service itself.
+      notes: shareable_link_enabled (STANDARD+) is the deliberate exception -- see no-legacy-auth.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The host runs no customer workloads and holds no credentials of its own; guest credentials for the target VMs are supplied per session by the user.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: shareable_link_enabled
+      evidence:
+        type: spec_default
+        reference: Off by default -- every session then requires Entra sign-in plus RBAC. Enabling shareable links (STANDARD+) mints time-boxed URLs that open a session to one pinned VM WITHOUT the holder needing Azure RBAC on the host -- a deliberate, weaker access path to leave disabled unless the workflow demands it.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Management-plane changes land in the Azure Activity Log automatically. Session audit logs (who connected, to which VM, when) are emitted through a diagnostic setting on the host -- a separate kind; PREMIUM's session_recording_enabled goes further and records session content for compliance review.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure publishes Bastion metrics -- session counts, memory and CPU utilization per instance -- to Azure Monitor automatically for every host; scale-unit sizing decisions read straight off them.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless session brokering -- nothing to back up; the manifest recreates the host (~10-minute creates).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: zones
+      evidence:
+        type: spec_default
+        reference: Listing zones pins the host's instances across availability zones where the region supports it; empty deploys regionally. Fixed at creation -- changing zones replaces the host.
+      notes: None of the presets pin zones; scale_units is the in-place capacity lever, zones the create-time resilience one.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Network API nor this spec offers a deletion-protection flag for a Bastion host; Azure resource locks are subscription-side governance outside the manifest. Deletion severs remote access but touches no VM.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Microsoft operates and patches the Bastion instances; no customer-visible patch surface exists (that absence is the component's selling point over a self-managed jump box).

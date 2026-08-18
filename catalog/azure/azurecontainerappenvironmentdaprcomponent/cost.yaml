@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurecontainerappenvironmentdaprcomponent
+spec:
+  billing_model: free
+  free_tier: A Dapr component is configuration registered on the Container App Environment -- the type, metadata, secrets, and scopes that tell Dapr's sidecar which backend a building block talks to. Microsoft.App Dapr components carry no meter, and the managed Dapr runtime itself is a Container Apps feature with no separate charge.
+  notes: "No field of this spec buys anything: component_type, metadata, secrets, and scopes are wiring the sidecar reads at startup. The real spend lives in two places, both separate kinds: the BACKEND the component points at -- the Service Bus namespace, Redis cache, storage account, or Key Vault behind the state store / pub-sub / secret-store type -- bills as its own resource, and the ENVIRONMENT's plan bills the apps whose sidecars consume the component (consumption vCPU/memory/requests or dedicated workload profiles)."

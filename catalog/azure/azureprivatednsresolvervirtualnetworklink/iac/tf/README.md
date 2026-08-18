@@ -33,4 +33,4 @@ The module is executed by the Planton platform with a tfvars file converted from
 
 ## Required Permissions
 
-The deploying principal needs `Microsoft.Network/dnsForwardingRulesets/virtualNetworkLinks/*` plus join permissions on the linked network (Network Contributor on both resource groups covers it; cross-subscription links need it in each).
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege control-plane actions the deploying principal needs.

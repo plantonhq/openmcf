@@ -1,0 +1,92 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureservicebusnamespace
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Service Bus encrypts all stored message data at rest with Microsoft-managed keys on every tier -- Microsoft's security baseline lists platform-key encryption at rest as enabled by default with Microsoft holding configuration responsibility; it cannot be disabled.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: customer_managed_key
+      evidence:
+        type: spec_default
+        reference: Absent means Microsoft-managed keys; declaring the block encrypts messaging data with a Key Vault key you own and can revoke, unwrapped by a user-assigned identity attached via the identity block. PREMIUM only (a spec CEL mirrors Azure's rejection of BYOK on multi-tenant namespaces), and once set CMK cannot be removed -- dropping the block replaces the namespace (Azure's own contract).
+      notes: The 02-premium-isolated preset carries the full CMK arrangement; the unwrapping identity must hold wrap/unwrap on the key's vault (Key Vault Crypto Service Encryption User).
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every data-plane path to the namespace -- AMQP and HTTPS at {name}.servicebus.windows.net -- requires TLS, and Microsoft's security baseline lists in-transit encryption as enabled by default; Service Bus offers no plaintext listener.
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_network_access_enabled
+      evidence:
+        type: spec_default
+        reference: Azure's default is true (a public endpoint at {name}.servicebus.windows.net); setting it false removes public reachability -- clients then connect only through private endpoints (AzurePrivateEndpoint, subresource "namespace") or admitted VNet service endpoints, and the network_rule_set block's own public-access dial must agree (Azure validates the pair server-side).
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: network_rule_set
+      evidence:
+        type: spec_default
+        reference: Absent means no namespace firewall; declaring the block with default_action DENY admits only the listed ip_rules and subnet network_rules (service endpoints), with trusted_services_allowed deciding whether Microsoft platform services bypass it. PREMIUM only (a spec CEL mirrors Azure's rejection on multi-tenant tiers), and DENY with no admitted sources is rejected up front (Azure refuses that configuration).
+      notes: The 02-premium-isolated preset denies by default and admits one delegated subnet with trusted services allowed.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The namespace's endpoints speak AMQP and HTTPS messaging protocols protected by TLS, authentication, and network scoping; no WAF or request-filtering attachment point exists for a message-broker data plane.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management operations are authorized by Azure RBAC unconditionally, and the data plane honors Entra role assignments (Azure Service Bus Data Owner / Data Sender / Data Receiver) on every namespace -- no spec field has to enable role-based access.
+      notes: SAS credentials coexist with RBAC until local_auth_enabled retires them (see no-legacy-auth).
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Any workload holding a managed identity can authenticate to the data plane with short-lived Entra tokens on every namespace -- the identity path is always on. Setting local_auth_enabled false makes it the ONLY path.
+      notes: The spec's own identity block is the NAMESPACE's outbound identity (CMK key unwrapping), not the client path.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: local_auth_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to true -- SAS (shared-access-signature) keys work, including the root RootManageSharedAccessKey whose keys and connection strings surface in this kind's sensitive outputs. Setting it false retires every SAS rule's keys as usable credentials; clients must authenticate with Entra identities holding data-plane roles.
+      notes: The 03-keyless-entra preset does exactly that.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: ARM writes every management operation on the namespace to the Azure Activity Log unconditionally -- who changed the tier, who rewrote the firewall, who deleted. Runtime and data-plane audit categories flow to Azure Monitor through the namespace's diagnostic-settings surface.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The namespace publishes request, message-count, throttling, and connection metrics to Azure Monitor for every namespace without configuration -- the namespaces resource type carries its own Azure Monitor metric definitions.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Service Bus is a message broker, not a backed-up store -- messages are consumed, dead-lettered, or expire by entity-level TTL, and no backup/restore facility exists. The service keeps three synchronized copies of every messaging store for resilience, and the geo-DR alias (AzureServiceBusDisasterRecoveryConfig) replicates namespace METADATA only -- neither is a restorable backup of message data.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain. Message TTL and dead-letter behavior are per-entity settings on the AzureServiceBusQueue / AzureServiceBusTopic kinds -- delivery windows, not backup policies.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: In regions with availability zones, zone redundancy is enabled automatically on every tier at no extra cost -- configuration, metadata, and message data replicate synchronously across zones with automatic failover, and no spec field controls it. Azure's legacy zoneRedundant property is deprecated and may read false on namespaces that are in fact zone-redundant.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Service Bus API nor this spec offers a deletion-protection flag (Azure resource locks are subscription-side governance outside the manifest); deleting the namespace deletes every queue, topic, and subscription in it.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The namespace is fully managed PaaS -- Microsoft patches and upgrades the brokers behind it; the spec exposes no version or maintenance surface because none exists.

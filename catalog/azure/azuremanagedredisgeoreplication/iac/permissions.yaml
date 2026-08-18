@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremanagedredisgeoreplication
+spec:
+  azure:
+    groups:
+      - purpose: ManageGeoReplicationGroup
+        actions:
+          - Microsoft.Cache/redisEnterprise/databases/read
+          - Microsoft.Cache/redisEnterprise/databases/write
+          - Microsoft.Cache/redisEnterprise/databases/forceUnlink/action
+        provenance: derived
+        notes: Covers azurerm_managed_redis_geo_replication -- the group has no ARM object of its own, so every operation lands on the member clusters' default databases. Linking writes the geo-replication membership through the databases endpoint (the members must already declare the same geo_replication_group_name), refresh reads the replication state back through the managing database, and removing a member or destroying the group calls the forceUnlink action to evacuate it. Because linking mutates the replication state of EVERY member, hold these on every cluster named in managed_redis_id and linked_managed_redis_ids, not just the managing one.

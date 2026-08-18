@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcploggingsink
+spec:
+  billing_model: free
+  free_tier: "A sink carries no meter -- Cloud Logging's pricing page lists the Log Router as 'No additional charge' and is explicit that routing logs is free: forwarding any volume of entries through any number of sinks, at any scope, bills nothing on the sink itself. The same page is equally explicit that destination charges might apply to routed logs -- the sink is a free valve in front of destinations that bill."
+  notes: "The bill lives entirely at the DESTINATION the spec names, and each arm routes to a different meter: destination.gcs_bucket lands hourly JSON batches in a Cloud Storage bucket that bills GCS storage and operations as GcpGcsBucket; destination.bigquery_dataset streams entries into tables that bill BigQuery storage and query analysis as GcpBigQueryDataset; destination.pubsub_topic publishes every exported entry into a topic whose throughput bills at Pub/Sub's $40/TiB as GcpPubSubTopic; and a raw_uri pointing at a Cloud Logging bucket pays Logging's own storage meter -- $0.50/GiB ingested into user-defined buckets beyond the first 50 GiB per project per month, plus $0.01/GiB-month retention beyond 30 days. Destination charges land on the project OWNING the destination, so a cross-project sink moves spend across billing lines. What throttles all of it is filter and exclusions: an empty filter exports EVERYTHING in scope (deliberate for audit archives, expensive for anything else), include_children multiplies volume by every child project of a folder or organization sink, and each exclusion (sample() included) subtracts volume before the destination meter ever sees it."

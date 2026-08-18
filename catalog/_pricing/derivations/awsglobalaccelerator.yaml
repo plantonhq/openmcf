@@ -1,0 +1,55 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsGlobalAccelerator manifest's spec values into metered quantities and
+# price choices. The estimate generator replays the catalog presets through
+# these rules to emit ../estimates/awsglobalaccelerator.yaml; a server-side
+# estimator evaluates the same rules against live manifests. Prices live in
+# the provider's price book (../pricebook/). The accelerator's fixed fee is
+# globally uniform (the offer prices it for location "Any"); the two
+# AWS-allocated static IPv4 addresses bill as in-use public IPv4 addresses
+# at the uniform standard rate. Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsglobalaccelerator
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  lines:
+    - sku_meter: accelerator hours
+      quantity:
+        - hours_in_month: true
+      price_slug: global-accelerator-fixed-fee
+      basis: one accelerator, billed the fixed hourly fee every hour of the month -- enabled or disabled, the fee runs until deletion; the rate is global (the offer prices it for location "Any")
+    - sku_meter: public IPv4 address usage
+      applies_when:
+        - field_path: ip_addresses
+          op: is_unset
+      quantity:
+        - constant: "2"
+        - hours_in_month: true
+      price_slug: public-ipv4-in-use-us-east-1
+      basis: two AWS-allocated static anycast IPv4 addresses, each billed as an in-use public IPv4 address every hour of the month; the standard rate is uniform across regions and priced here from the us-east-1 entry
+  exclusions:
+    - text: Data Transfer-Premium bills per GB in the dominant traffic direction, at a rate varying by source region and destination edge -- entirely traffic-dependent
+    - text: standard data transfer out at the endpoint resources (ALB, NLB, EC2) bills on those components, in addition to DT-Premium
+    - applies_when:
+        - field_path: flow_logs.enabled
+          op: equals
+          value: "true"
+      text: flow-log storage and request charges bill to the destination S3 bucket, not the accelerator
+    - applies_when:
+        - field_path: ip_addresses
+          op: is_set
+      text: BYOIP addresses are not charged as public IPv4 addresses; an accelerator bringing only ONE address still receives one Amazon-assigned address whose in-use IPv4 charge is not modeled here, since the billed-address count is not derivable from this manifest
+  notes:
+    - text: Listeners and endpoint groups carry no committed fee of their own -- the offer's only fixed-fee meter is the per-accelerator hourly charge; their counts only shape which DT-Premium rate rows traffic bills at.
+    - applies_when:
+        - field_path: enabled
+          op: is_set
+        - field_path: enabled
+          op: equals
+          value: "false"
+      text: Disabling stops traffic (and DT-Premium) but not the fixed fee or the address charges -- both accrue until the accelerator is deleted, and deletion forfeits the static addresses.

@@ -13,7 +13,7 @@ This directory contains the Pulumi implementation for deploying a workforce OAut
    ```bash
    gcloud auth application-default login
    ```
-5. **IAM permissions**: `roles/iam.workforcePoolAdmin` (or broader) on the target project
+5. **IAM permissions**: the deploying principal's permissions are listed in [`../permissions.yaml`](../permissions.yaml)
 
 ## Directory Structure
 

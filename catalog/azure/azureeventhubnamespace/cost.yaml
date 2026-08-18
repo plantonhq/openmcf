@@ -1,0 +1,45 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureeventhubnamespace
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Event Hubs
+      sku_meter: throughput units
+      pricing_unit: hours
+      description: On BASIC and STANDARD the namespace bills its provisioned throughput units by the hour from creation (Azure's default is 1 TU when capacity is unset), whether or not events flow.
+    - service_name: Event Hubs
+      sku_meter: processing units
+      pricing_unit: hours
+      description: On PREMIUM the namespace bills its reserved processing units by the hour -- reserved compute, so the meter runs around the clock regardless of traffic.
+  cost_drivers:
+    - field_path: sku
+      sku_meter: throughput units
+      pricing_unit: hours
+      impact: The tier picks the meter and its rate -- STANDARD's TU-hour is double BASIC's, and PREMIUM's PU-hour is roughly 34x a STANDARD TU because a PU is reserved single-tenant-grade compute, not a shared throughput slice. Unspecified deploys STANDARD.
+    - field_path: capacity
+      sku_meter: throughput units
+      pricing_unit: hours
+      impact: The linear multiplier on the hourly meter -- TUs (1-40) on BASIC/STANDARD, PUs (1, 2, 4, 8, or 16) on PREMIUM; Azure's default is 1 when unset. Scaling updates in place.
+    - field_path: auto_inflate_enabled
+      sku_meter: throughput units
+      pricing_unit: hours
+      impact: STANDARD's elastic scaling grows TUs under load and the bill follows -- auto-inflate only scales UP, so a traffic spike raises the hourly meter until someone manually trims capacity back down.
+    - field_path: maximum_throughput_units
+      sku_meter: throughput units
+      pricing_unit: hours
+      impact: The auto-inflate ceiling (0-40) is the spending cap -- the highest TU count the namespace can grow itself to.
+    - field_path: dedicated_cluster_id
+      sku_meter: dedicated capacity units
+      pricing_unit: hours
+      impact: Placement on a dedicated cluster moves throughput spend to the cluster's CU-hours (billed on its own AzureEventHubCluster component) -- the price list publishes no per-namespace throughput meter for the Dedicated tier.
+  estimate_exclusions:
+    - ingress events bill per million on the tier's ingress meter (Basic Ingress Events / Standard Ingress Events) and follow producer volume; the price list publishes no Premium ingress meter -- ingress is included in the PU rate
+    - capture is a per-hub block on AzureEventHub -- on STANDARD it bills the hourly Standard Capture meter per TU; the price list publishes no Premium capture meter
+    - PREMIUM event data retained beyond the included window bills per GB-month on the Premium Extended Retention meter
+    - network egress follows consumer placement
+  notes: "The namespace is the billing boundary for the whole Event Hubs family: hubs, consumer groups, SAS rules, and schema groups are free objects inside it -- the tier's hourly meter times capacity is the committed bill, and ingress volume rides on top. The honest cost decision is the sku: BASIC buys cheap single-consumer telemetry, STANDARD buys the Kafka endpoint and elasticity at double the TU rate, PREMIUM buys reserved isolation at a different order of magnitude."

@@ -1,0 +1,68 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpcloudcomposeruserworkloadsconfigmap
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The ConfigMap's entries live in the Composer environment's managed GKE control-plane storage, which Google encrypts at rest by default -- there is no unencrypted storage tier for the data to land on.
+      notes: This object is meant for NON-secret configuration -- credentials belong in GcpCloudComposerUserWorkloadsSecret, whose data is additionally sensitive-handled end to end.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-managed-key choice exists on a user-workloads ConfigMap; the CMEK decision covering the environment's data is made on the GcpCloudComposerEnvironment itself.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A ConfigMap terminates no connections -- it is inert configuration delivered through the TLS-only Composer API and consumed inside the environment's cluster; no client-facing transport setting exists here.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A ConfigMap is not network-addressable -- it has no endpoint, only the Composer management API governed by IAM. Network exposure belongs to the parent environment.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound network path exists to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A Kubernetes configuration object has no Layer-7 entry point for a WAF to front.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Reading and mutating the ConfigMap goes through the Composer API, which IAM governs with a dedicated permission family (composer.userworkloadsconfigmaps.*) -- there is no unauthenticated path to the object, and inside the cluster Composer scopes it to the user-workloads namespace.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A ConfigMap authenticates nothing -- it carries non-secret configuration; keyless identity is the posture of the environment's service account and the workloads consuming this object.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path of its own exists to retire -- access is IAM-authenticated Composer API access, full stop.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Creating, updating, or deleting the ConfigMap lands in Cloud Audit Logs as project-level posture; DAG-level activity logging belongs to the parent environment's Airflow logs.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Composer publishes metrics on environment and Airflow dimensions; a ConfigMap has no metric dimension and no export knob.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The ConfigMap holds no data beyond what the manifest declares -- it is declarative configuration re-creatable from the manifest at any time.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at the ConfigMap level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A ConfigMap is stored in the environment's managed control plane with no zonal footprint of its own -- resilience is the parent environment's sizing and resilience mode.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Unset means DELETE -- destroy removes the Kubernetes ConfigMap from the environment and DAGs consuming it start failing; PREVENT makes any destroying plan fail -- protection for configuration live pipelines depend on; ABANDON removes it from management while it stays in the cluster.
+      notes: Neither preset sets it.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A ConfigMap is pure configuration on a fully managed service -- there is no software of its own to patch.

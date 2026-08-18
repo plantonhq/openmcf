@@ -59,6 +59,10 @@ yourself.
 - **[`cmd/planton`](cmd/planton)** — the open-source CLI and IaC engine that
   validates manifests and executes the Pulumi and OpenTofu/Terraform modules
   that ship with every component.
+- **[`site/`](site)** — the source of [planton.ai](https://planton.ai):
+  website, docs, and blog (Next.js static export, deployed to GitHub Pages on
+  every `site/` change). Run it locally with `make run-site`, or build and
+  preview the static export with `make preview-site`.
 ## The CLI
 
 The desktop app is the product; the CLI is its companion — the same deploys,

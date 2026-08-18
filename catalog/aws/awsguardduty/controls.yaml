@@ -1,0 +1,79 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsguardduty
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All GuardDuty customer data is encrypted at rest -- findings and analyzed data are encrypted with AWS KMS under AWS-owned keys, unconditionally and with no toggle to weaken it.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: publishing_destination.kms_key_arn
+      evidence:
+        type: spec_default
+        reference: The service-side findings store stays on AWS-owned keys with no CMK option; the EXPORTED copy is different -- AWS requires a KMS key for findings export, and the spec makes it a required reference, so the archive in your bucket is always under a key you own and can revoke.
+      notes: The key policy must grant guardduty.amazonaws.com kms:GenerateDataKey before the destination is created -- the referenced AwsKmsKey's contract.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The GuardDuty management API is HTTPS-only, and the service encrypts the log data it pulls from its sources in transit (HTTPS and KMS), discarding the logs once analyzed; no plaintext path to or from the detector exists.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A detector exposes no endpoint -- it is a control-plane analysis surface that reads AWS's own telemetry streams. Nothing about it is reachable from any network, public or private.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens on a detector; there is no inbound network surface to restrict. The trusted/threat IP lists (ip_sets, threat_intel_sets) tune finding GENERATION about other resources' traffic -- they filter no traffic themselves.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: With no request-serving surface there is no WAF attachment point; GuardDuty is itself a detection layer that watches other components' traffic, not a component with traffic to protect.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every detector operation -- create, feature changes, filter and list management, member administration, delete -- is IAM-authorized, with update/delete/get authorized on the detector ARN. Organization-wide configuration is additionally locked to the delegated administrator account, and the delegation act itself only succeeds from the organization's management account.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A detector runs no user workload. GuardDuty's own reads of CloudTrail events, VPC Flow Logs, and DNS logs ride its service-linked role -- AWS-managed plumbing with no static credentials, fixed by the service's design rather than chosen in this manifest.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: GuardDuty has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation on the detector is a CloudTrail management event recorded unconditionally -- who suspended monitoring, who disabled a protection plan, who archived findings with a filter, who deleted the detector. Tampering with the threat-detection layer is itself audit-logged.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Findings publish to EventBridge automatically -- new findings within minutes, with no configuration -- so alerting and response automation attach without any field of this spec. finding_publishing_frequency shapes only how often UPDATED findings re-export (default SIX_HOURS).
+      notes: publishing_destination adds a durable S3 archive of every finding on top of the EventBridge stream -- the long-term copy, not the real-time hook.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The detector stores only findings, service-side and non-restorable -- there is no backup facility, and destroy is a REAL delete that removes all findings. The manifest recreates the detector's configuration; history is preserved only by exporting it (publishing_destination) while it exists.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: GuardDuty's findings window (90 days, per the spec contract) is fixed by AWS with no retention field; longer retention is composed by exporting findings to the referenced bucket, where lifecycle policy is the AwsS3Bucket component's territory.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: GuardDuty is a regional managed service AWS operates across availability zones -- detection and analysis have no zonal footprint the manifest could configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Detectors carry no deletion-protection flag -- destroy deletes the detector, removes all findings, and disassociates members in one act. The counterweight is the region-singleton design -- exactly one detector per account per region, so the blast surface is always explicit.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and updates the detection engines, machine-learning models, and threat intelligence feeds; the detector exposes no runtime, version, or maintenance surface.
+      notes: The one patchable artifact is the runtime-monitoring security agent on your workloads -- automatic agent management (features.additional_configuration) hands its deployment and upgrades to AWS too.

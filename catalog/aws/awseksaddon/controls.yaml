@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awseksaddon
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The add-on object stores no customer data -- it is an install record in the EKS control plane. Whatever data the installed software touches encrypts where it lives (EBS volumes the CSI driver provisions carry their own encryption posture on those volumes; cluster secrets encryption belongs to AwsEksCluster).
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest here to key (see enc-at-rest); EKS exposes no KMS surface on add-on objects.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The add-on object terminates no connections. The installed software's in-cluster traffic rides the cluster's network posture, and the EKS management calls that manage the add-on ride AWS's TLS-only API endpoints -- provider behavior, not per-add-on settings.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The add-on object has no network endpoint to expose. The software it installs runs as in-cluster workloads whose exposure is decided by the cluster's services and ingress, outside this spec.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter on the add-on object; security groups and network policies belong to the cluster and its workloads.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The add-on object receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may install, update, or remove add-ons is governed by IAM permissions on the EKS API -- account-level posture. The in-cluster RBAC the installed software runs with (its service accounts, roles, and bindings) ships as part of each add-on's own manifests, defined by AWS or the vendor rather than by this spec.
+    - control_id: workload-identity
+      status: configurable
+      field_path: pod_identity_associations
+      evidence:
+        type: spec_default
+        reference: When the add-on's pods need AWS permissions beyond the node role, this spec binds their service account(s) to a dedicated IAM role -- pod_identity_associations wires EKS Pod Identity (roles trusting pods.eks.amazonaws.com; needs the eks-pod-identity-agent add-on), and service_account_role_arn is the IRSA alternative (needs the cluster's OIDC provider). Both deliver short-lived, add-on-scoped credentials. With neither set, the pods fall back to the NODE role's permissions -- a broader-than-necessary grant shared with everything on the node.
+      notes: Pod Identity is the preferred path on new clusters (no per-cluster OIDC provider to maintain). This component only references the role; creating it with the add-on's documented policy (e.g. the EBS CSI driver policy) is the AwsIamRole's side.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The add-on object exposes no authentication path of its own -- there is no protocol, credential, or client negotiation to harden on an install record.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Add-on management calls are recorded by AWS CloudTrail as account-level posture, and the installed software's in-cluster actions land in the Kubernetes audit log per the cluster's control-plane logging -- both outside this spec.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The add-on object emits no signals of its own. Monitoring wiring is a catalog CHOICE rather than a field -- installing amazon-cloudwatch-observability as an add-on is how a cluster exports telemetry to CloudWatch -- and each add-on's health surfaces through the cluster's workloads and the add-on's own status, reported on this resource's outputs.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The add-on object holds no data to back up -- it is declarative configuration fully re-creatable from the manifest. Note the preserve flag changes DELETE semantics, not backups -- when true, deleting this resource leaves the software running on the cluster as self-managed instead of removing it.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery). The snapshot-controller add-on manages volume snapshots for workloads, but those snapshots belong to the volumes' resources, not to this object.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The add-on object has no zonal placement; the installed pods spread per the add-on's own topology defaults across whatever nodes the cluster provides. configuration_values can tune add-on-specific resilience knobs (e.g. coredns replicaCount), but the schema is each add-on's own, not a surface this spec defines.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for add-ons. preserve is a soft-landing switch, not protection -- deletion with preserve true removes the management record but leaves the software running; with the default false, deleting core add-ons like vpc-cni or coredns removes software the cluster needs to function, an operational caution rather than a guard.
+    - control_id: managed-patching
+      status: configurable
+      field_path: addon_version
+      evidence:
+        type: spec_default
+        reference: Managed lifecycle is this component's purpose -- AWS builds, validates, and distributes the add-on versions, and an upgrade is one in-place field change that EKS rolls through the add-on's own pods, replacing hand-operated Helm upgrades. Empty addon_version adopts the AWS default version for the cluster's Kubernetes version at install time; pinning a version gives byte-identical clusters and controlled rollouts.
+      notes: EKS does not auto-upgrade an installed add-on -- new versions (and cluster version upgrades) take effect when this field changes, so patch cadence remains an operator responsibility even on the default version. resolve_conflicts_on_update decides whether managed values overwrite out-of-band kubectl edits (OVERWRITE restores the managed state; the default NONE fails loudly on drift).

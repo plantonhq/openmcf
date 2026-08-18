@@ -68,7 +68,4 @@ module "user_assigned_identity" {
 
 ## Required Permissions
 
-The deploying credential needs
-`Microsoft.ManagedIdentity/userAssignedIdentities/write` in the target
-resource group -- held via Managed Identity Contributor, Contributor, or
-Owner.
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege action set the deploying principal needs.

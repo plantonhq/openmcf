@@ -1,0 +1,83 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpcloudrunjob
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Everything the job stores -- the deployed container image copy, the job definition, and execution records -- is encrypted at rest with Google-managed keys without configuration, per Google Cloud's default encryption at rest.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: template.encryption_key
+      evidence:
+        type: spec_default
+        reference: Unset (the default) leaves the deployed container image under Google-managed keys; naming a Cloud KMS key (or referencing a GcpKmsKey resource) encrypts it with the customer-managed key instead. The key must live in the same region as the job.
+      notes: CMEK covers the image copy Cloud Run deploys; data the task code writes elsewhere is keyed by those components.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A job serves no inbound traffic -- there is no endpoint or listener to encrypt. Whether the task code encrypts its outbound calls is the workload's affair, and the control-plane API calls that manage the job ride Google's TLS unconditionally.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Jobs have no serving surface to expose -- no URL, no ingress setting, no invoker toggle. The only way to start work is an IAM-authorized execution trigger; there is nothing for the public internet to reach.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress exists to restrict -- see no-public-access. The vpc_access block governs OUTBOUND traffic only.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The job receives no requests for a WAF to filter; protecting whatever endpoints the task code calls is those components' concern.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every job operation authorizes against Cloud Run IAM unconditionally -- run.jobs.create/update/delete to manage the definition and run.jobs.run to trigger executions -- so both the management plane and the "data plane" (running the job) are role-governed with no anonymous path.
+    - control_id: workload-identity
+      status: configurable
+      field_path: template.service_account
+      evidence:
+        type: spec_default
+        reference: Tasks authenticate to Google APIs as the template's service account through short-lived credentials from the metadata server -- no static key is ever provisioned. Unset defaults to the project's Compute Engine default service account; naming a dedicated GcpServiceAccount is the least-privilege posture.
+      notes: The 02-parallel-vpc-cleanup preset shows the intended pattern of scoping secrets and APIs to a purpose-built identity; the default compute account is broader than any single job needs.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The job exposes no authentication paths of its own to weaken -- executions are triggered only through IAM-authorized API calls, and task credentials are exclusively the metadata server's short-lived tokens. No legacy path exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Job create, update, and delete land in Cloud Audit Logs (Admin Activity) unconditionally, and execution triggers (RunJob) are captured the same way; Admin Activity logging cannot be disabled.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloud Run exports job and execution metrics (completed executions, billable instance time, task attempt counts) to Cloud Monitoring and streams task stdout/stderr to Cloud Logging for every job without configuration.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The job is declarative configuration fully re-creatable from the manifest; it holds no data of its own. Whatever state the task code produces lives in the systems it writes to, backed up there.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain -- see backup-recovery.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: gpu_zonal_redundancy_disabled
+      evidence:
+        type: spec_default
+        reference: False (the default) keeps GPU tasks zonally redundant; true opts a GPU job into single-zone capacity, trading zonal-failure tolerance for cheaper GPUs. Non-GPU tasks run on Cloud Run's regional infrastructure with no placement choice exposed.
+      notes: The 03-gpu-batch-inference preset disables zonal redundancy deliberately -- a stated pre-production trade-off, acceptable for restartable batch work.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_protection
+      evidence:
+        type: spec_default
+        reference: Defaults to true (matching GCP's posture) -- a destroy fails until deletion_protection is explicitly set to false, so removing a job is always a two-step, deliberate act.
+      notes: deletion_policy adds an engine-side second layer -- PREVENT fails any destroying plan outright, ABANDON unmanages the job while it keeps existing in GCP.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The two software surfaces here have no managed channel on this resource -- the execution sandbox (GEN1/GEN2) is Google's infrastructure, patched invisibly as part of the platform, and the container image is the customer's build artifact, patched by rebuilding and redeploying through the pipeline that owns it.

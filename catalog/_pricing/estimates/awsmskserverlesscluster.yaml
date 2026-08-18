@@ -1,0 +1,79 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsmskserverlesscluster
+spec:
+  presets:
+    - preset: 01-basic-iam
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Managed Streaming for Apache Kafka
+          sku_meter: serverless cluster hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one serverless cluster billed every hour of the month from creation to deletion, idle or busy; the lookup resolves the manifest's region to its cluster-hour rate
+          list_unit_price: "0.75"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMSK/20260729211408/us-west-2/index.json
+          retrieved_on: "2026-08-18"
+          list_cost: "547.5000"
+      total_list_cost: "547.5000"
+      exclusions:
+        - partition-hours bill hourly for every partition workloads create, carrying traffic or not, and Kafka never shrinks a topic's partition count -- the meter only ratchets up until topics are deleted
+        - data throughput bills per GB written by producers and per GB read by consumers
+        - storage bills per GB-month of retained data; retention is set per topic through the Kafka admin API, outside this manifest
+        - data transfer to another region or out to the public internet bills at standard AWS rates; in-region client traffic to the cluster carries no transfer charge
+      notes: The cluster-hours line is the entire committed bill however many VPC placements the manifest declares -- multi-VPC access is built into serverless, so additional vpc_configs entries add client ENIs but no meter. The floor is the certain spend; on busy clusters the excluded workload meters (partition-hours and per-GB throughput) routinely exceed it.
+    - preset: 02-composed-references
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Managed Streaming for Apache Kafka
+          sku_meter: serverless cluster hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one serverless cluster billed every hour of the month from creation to deletion, idle or busy; the lookup resolves the manifest's region to its cluster-hour rate
+          list_unit_price: "0.75"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMSK/20260729211408/us-west-2/index.json
+          retrieved_on: "2026-08-18"
+          list_cost: "547.5000"
+      total_list_cost: "547.5000"
+      exclusions:
+        - partition-hours bill hourly for every partition workloads create, carrying traffic or not, and Kafka never shrinks a topic's partition count -- the meter only ratchets up until topics are deleted
+        - data throughput bills per GB written by producers and per GB read by consumers
+        - storage bills per GB-month of retained data; retention is set per topic through the Kafka admin API, outside this manifest
+        - data transfer to another region or out to the public internet bills at standard AWS rates; in-region client traffic to the cluster carries no transfer charge
+      notes: The cluster-hours line is the entire committed bill however many VPC placements the manifest declares -- multi-VPC access is built into serverless, so additional vpc_configs entries add client ENIs but no meter. The floor is the certain spend; on busy clusters the excluded workload meters (partition-hours and per-GB throughput) routinely exceed it.
+    - preset: 03-multi-vpc-access
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Managed Streaming for Apache Kafka
+          sku_meter: serverless cluster hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one serverless cluster billed every hour of the month from creation to deletion, idle or busy; the lookup resolves the manifest's region to its cluster-hour rate
+          list_unit_price: "0.75"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMSK/20260729211408/us-west-2/index.json
+          retrieved_on: "2026-08-18"
+          list_cost: "547.5000"
+      total_list_cost: "547.5000"
+      exclusions:
+        - partition-hours bill hourly for every partition workloads create, carrying traffic or not, and Kafka never shrinks a topic's partition count -- the meter only ratchets up until topics are deleted
+        - data throughput bills per GB written by producers and per GB read by consumers
+        - storage bills per GB-month of retained data; retention is set per topic through the Kafka admin API, outside this manifest
+        - data transfer to another region or out to the public internet bills at standard AWS rates; in-region client traffic to the cluster carries no transfer charge
+      notes: The cluster-hours line is the entire committed bill however many VPC placements the manifest declares -- multi-VPC access is built into serverless, so additional vpc_configs entries add client ENIs but no meter. The floor is the certain spend; on busy clusters the excluded workload meters (partition-hours and per-GB throughput) routinely exceed it.

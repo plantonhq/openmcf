@@ -44,3 +44,7 @@ The `spec` object includes: `secret_id` (empty defaults to `metadata.name`), `re
 | `secret_name` | Full resource name (global or regional form) |
 | `secret_id` | The short secret ID |
 | `latest_version_name` | `…/versions/1` when `initial_version` was configured; empty otherwise |
+
+## Required Permissions
+
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs.

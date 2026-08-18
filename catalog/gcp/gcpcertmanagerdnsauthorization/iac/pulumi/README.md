@@ -69,5 +69,5 @@ mirroring the Terraform module's index access on the computed record list.
 
 ## Required Permissions
 
-The identity running the module needs `roles/certificatemanager.editor`
-plus `roles/serviceusage.serviceUsageAdmin` (for the API enablement).
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege
+permission set the deploying principal needs.

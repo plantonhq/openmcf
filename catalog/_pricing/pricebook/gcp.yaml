@@ -223,3 +223,711 @@ spec:
       gcp_selector:
         service_id: E505-1604-58F8
         sku_id: AAF7-1D17-BFC4
+    - name: e2-instance-core-us-central1
+      service_name: Compute Engine
+      pricing_unit: vCPU-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.02181159"
+      price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: 6F81-5844-456A
+        sku_id: CF4E-A0C7-E3BF
+    - name: e2-instance-ram-us-central1
+      service_name: Compute Engine
+      pricing_unit: GiB-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.00292353"
+      price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: 6F81-5844-456A
+        sku_id: F449-33EC-A5EF
+    - name: ssd-pd-capacity-us-central1
+      service_name: Compute Engine
+      pricing_unit: GiB-months
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.17"
+      price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: 6F81-5844-456A
+        sku_id: B188-61DD-52E4
+    - name: hyperdisk-balanced-capacity-us-central1
+      service_name: Compute Engine
+      pricing_unit: GiB-months
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.08"
+      price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: 6F81-5844-456A
+        sku_id: 83FF-9C17-D184
+    - name: hyperdisk-balanced-iops-us-central1
+      service_name: Compute Engine
+      pricing_unit: IOPS-months
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.005"
+      price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: 6F81-5844-456A
+        sku_id: 3EEB-E1E6-C521
+    - name: hyperdisk-balanced-throughput-us-central1
+      service_name: Compute Engine
+      pricing_unit: MBps-months
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.04"
+      price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: 6F81-5844-456A
+        sku_id: 9F5F-0236-9C17
+    - name: static-ip-idle-us-central1
+      service_name: Compute Engine
+      pricing_unit: IP-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.01"
+      price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: 6F81-5844-456A
+        sku_id: 66A2-68EA-56BE
+        start_usage_amount: "1"
+    - name: alloydb-instance-vcpu-us-central1
+      service_name: AlloyDB
+      pricing_unit: vCPU-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.06608"
+      price_source: https://cloudbilling.googleapis.com/v1/services/C49F-B7F2-7416/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: C49F-B7F2-7416
+        sku_id: 6F5E-021F-DC56
+    - name: alloydb-instance-ram-us-central1
+      service_name: AlloyDB
+      pricing_unit: GiB-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.0112"
+      price_source: https://cloudbilling.googleapis.com/v1/services/C49F-B7F2-7416/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: C49F-B7F2-7416
+        sku_id: F8AA-184E-4DBC
+    - name: bigtable-node
+      service_name: Cloud Bigtable
+      pricing_unit: node-hours
+      region: global
+      currency: USD
+      list_unit_price: "0.65"
+      price_source: https://cloudbilling.googleapis.com/v1/services/C3BE-24A5-0975/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: C3BE-24A5-0975
+        sku_id: 04F7-CAFF-B2CA
+    - name: spanner-enterprise-rw-replica-us-central1
+      service_name: Cloud Spanner
+      pricing_unit: replica-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.41"
+      price_source: https://cloudbilling.googleapis.com/v1/services/CC63-0873-48FD/skus
+      retrieved_on: "2026-08-16"
+      attributes:
+        config: regional-us-central1
+        edition: ENTERPRISE
+      gcp_selector:
+        service_id: CC63-0873-48FD
+        sku_id: 1D9F-E99D-5CBD
+    - name: memorystore-valkey-shared-core-nano-us-central1
+      service_name: Cloud Memorystore
+      pricing_unit: node-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.0318"
+      price_source: https://cloudbilling.googleapis.com/v1/services/A2B5-E0F1-B0F3/skus
+      retrieved_on: "2026-08-16"
+      attributes:
+        node_type: SHARED_CORE_NANO
+      gcp_selector:
+        service_id: A2B5-E0F1-B0F3
+        sku_id: 1E97-7EC7-226D
+    - name: memorystore-valkey-highmem-medium-us-central1
+      service_name: Cloud Memorystore
+      pricing_unit: node-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.1923"
+      price_source: https://cloudbilling.googleapis.com/v1/services/A2B5-E0F1-B0F3/skus
+      retrieved_on: "2026-08-16"
+      attributes:
+        node_type: HIGHMEM_MEDIUM
+      gcp_selector:
+        service_id: A2B5-E0F1-B0F3
+        sku_id: 37DF-F99E-DB1B
+    - name: memorystore-valkey-highmem-xlarge-us-central1
+      service_name: Cloud Memorystore
+      pricing_unit: node-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.8581"
+      price_source: https://cloudbilling.googleapis.com/v1/services/A2B5-E0F1-B0F3/skus
+      retrieved_on: "2026-08-16"
+      attributes:
+        node_type: HIGHMEM_XLARGE
+      gcp_selector:
+        service_id: A2B5-E0F1-B0F3
+        sku_id: 8233-BBA1-A9BF
+    - name: filestore-basic-ssd-capacity-us-central1
+      service_name: Cloud Filestore
+      pricing_unit: GiB-months
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.3"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D97E-AB26-5D95/skus
+      retrieved_on: "2026-08-16"
+      attributes:
+        performance: default
+        tier: BASIC_SSD
+      gcp_selector:
+        service_id: D97E-AB26-5D95
+        sku_id: A511-3202-0505
+    - name: filestore-enterprise-capacity-us-central1
+      service_name: Cloud Filestore
+      pricing_unit: GiB-months
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.45"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D97E-AB26-5D95/skus
+      retrieved_on: "2026-08-16"
+      attributes:
+        performance: default
+        tier: ENTERPRISE
+      gcp_selector:
+        service_id: D97E-AB26-5D95
+        sku_id: 0413-DF42-2B69
+    - name: filestore-zonal-custom-capacity-us-west1
+      service_name: Cloud Filestore
+      pricing_unit: GiB-months
+      region: us-west1
+      currency: USD
+      list_unit_price: "0.12"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D97E-AB26-5D95/skus
+      retrieved_on: "2026-08-16"
+      attributes:
+        performance: custom
+        tier: ZONAL
+      gcp_selector:
+        service_id: D97E-AB26-5D95
+        sku_id: D095-8ECC-78BC
+    - name: filestore-zonal-custom-iops-us-west1
+      service_name: Cloud Filestore
+      pricing_unit: IOPS-months
+      region: us-west1
+      currency: USD
+      list_unit_price: "0.0145"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D97E-AB26-5D95/skus
+      retrieved_on: "2026-08-16"
+      attributes:
+        performance: custom
+        tier: ZONAL
+      gcp_selector:
+        service_id: D97E-AB26-5D95
+        sku_id: EB40-649D-F6F3
+    - name: filestore-zonal-custom-instance-fee-us-west1
+      service_name: Cloud Filestore
+      pricing_unit: months
+      region: us-west1
+      currency: USD
+      list_unit_price: "20"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D97E-AB26-5D95/skus
+      retrieved_on: "2026-08-16"
+      attributes:
+        performance: custom
+        tier: ZONAL
+      gcp_selector:
+        service_id: D97E-AB26-5D95
+        sku_id: 9133-492A-9409
+    - name: dataproc-vcpu-fee
+      service_name: Compute Engine
+      pricing_unit: vCPU-hours
+      region: global
+      currency: USD
+      list_unit_price: "0.01"
+      price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: 6F81-5844-456A
+        sku_id: DC33-D3C7-25CA
+    - name: standard-pd-capacity-us-central1
+      service_name: Compute Engine
+      pricing_unit: GiB-months
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.04"
+      price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: 6F81-5844-456A
+        sku_id: D973-5D65-BAB2
+        start_usage_amount: "30"
+    - name: local-ssd-capacity-us-central1
+      service_name: Compute Engine
+      pricing_unit: GiB-months
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.08"
+      price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: 6F81-5844-456A
+        sku_id: 62AF-A39E-269B
+    - name: composer-env-fee-small-us-central1
+      service_name: Cloud Composer
+      pricing_unit: hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.35"
+      price_source: https://cloudbilling.googleapis.com/v1/services/1992-3666-B975/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: 1992-3666-B975
+        sku_id: 6EA4-3652-173E
+    - name: composer-env-fee-medium-resilient-us-central1
+      service_name: Cloud Composer
+      pricing_unit: hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.77"
+      price_source: https://cloudbilling.googleapis.com/v1/services/1992-3666-B975/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: 1992-3666-B975
+        sku_id: 0C22-8BDA-2876
+    - name: composer-env-fee-large-resilient-us-central1
+      service_name: Cloud Composer
+      pricing_unit: hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "1.19"
+      price_source: https://cloudbilling.googleapis.com/v1/services/1992-3666-B975/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: 1992-3666-B975
+        sku_id: 93DF-F47E-F983
+    - name: composer-compute-mcpu-us-central1
+      service_name: Cloud Composer
+      pricing_unit: mCPU-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.000045"
+      price_source: https://cloudbilling.googleapis.com/v1/services/1992-3666-B975/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: 1992-3666-B975
+        sku_id: B701-3D6E-BFF1
+    - name: composer-compute-memory-us-central1
+      service_name: Cloud Composer
+      pricing_unit: GiB-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.005"
+      price_source: https://cloudbilling.googleapis.com/v1/services/1992-3666-B975/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: 1992-3666-B975
+        sku_id: D7FD-FC38-57D9
+    - name: composer-compute-storage-us-central1
+      service_name: Cloud Composer
+      pricing_unit: GiB-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.0002"
+      price_source: https://cloudbilling.googleapis.com/v1/services/1992-3666-B975/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: 1992-3666-B975
+        sku_id: 154C-7366-C5C3
+    - name: cloudscheduler-job-day
+      service_name: Cloud Scheduler
+      pricing_unit: job-days
+      region: global
+      currency: USD
+      list_unit_price: "0.003225806"
+      price_source: https://cloudbilling.googleapis.com/v1/services/1F14-4801-0E16/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: 1F14-4801-0E16
+        sku_id: A5D6-43A2-28A7
+        start_usage_amount: "93"
+    - name: monitoring-uptime-check-execution
+      service_name: Cloud Monitoring
+      pricing_unit: executions
+      region: global
+      currency: USD
+      list_unit_price: "0.0003"
+      price_source: https://cloudbilling.googleapis.com/v1/services/58CD-E7C3-72CA/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: 58CD-E7C3-72CA
+        sku_id: CA14-D3DE-E67F
+        start_usage_amount: "1000000"
+    - name: gclb-forwarding-rule-minimum-global
+      service_name: Networking
+      pricing_unit: hours
+      region: global
+      currency: USD
+      list_unit_price: "0.025"
+      price_source: https://cloudbilling.googleapis.com/v1/services/E505-1604-58F8/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: E505-1604-58F8
+        sku_id: DEE3-C42E-3E4D
+    - name: psc-consumer-endpoint-hour
+      service_name: Networking
+      pricing_unit: hours
+      region: global
+      currency: USD
+      list_unit_price: "0.01"
+      price_source: https://cloudbilling.googleapis.com/v1/services/E505-1604-58F8/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: E505-1604-58F8
+        sku_id: 9E4E-F9A7-5EAE
+    - name: kms-software-symmetric-key-version-month
+      service_name: Cloud Key Management Service (KMS)
+      pricing_unit: version-months
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.06"
+      price_source: https://cloudbilling.googleapis.com/v1/services/EE2F-D110-890C/skus
+      retrieved_on: "2026-08-16"
+      attributes:
+        protection_level: SOFTWARE
+        purpose: ENCRYPT_DECRYPT
+      gcp_selector:
+        service_id: EE2F-D110-890C
+        sku_id: E09C-32B3-9AC7
+    - name: kms-hsm-symmetric-key-version-month
+      service_name: Cloud Key Management Service (KMS)
+      pricing_unit: version-months
+      region: us-central1
+      currency: USD
+      list_unit_price: "1"
+      price_source: https://cloudbilling.googleapis.com/v1/services/EE2F-D110-890C/skus
+      retrieved_on: "2026-08-16"
+      attributes:
+        protection_level: HSM
+        purpose: ENCRYPT_DECRYPT
+      gcp_selector:
+        service_id: EE2F-D110-890C
+        sku_id: 46B1-C76A-0B7D
+    - name: kms-software-asymmetric-sign-key-version-month
+      service_name: Cloud Key Management Service (KMS)
+      pricing_unit: version-months
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.06"
+      price_source: https://cloudbilling.googleapis.com/v1/services/EE2F-D110-890C/skus
+      retrieved_on: "2026-08-16"
+      attributes:
+        protection_level: SOFTWARE
+        purpose: ASYMMETRIC_SIGN
+      gcp_selector:
+        service_id: EE2F-D110-890C
+        sku_id: 7907-37BC-DD97
+    - name: secret-manager-active-version-location-month
+      service_name: Secret Manager
+      pricing_unit: version-location-months
+      region: global
+      currency: USD
+      list_unit_price: "0.06"
+      price_source: https://cloudbilling.googleapis.com/v1/services/EE82-7A5E-871C/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: EE82-7A5E-871C
+        sku_id: 7756-ADEF-84F4
+        start_usage_amount: "6"
+    - name: cloud-armor-policy-month
+      service_name: Networking
+      pricing_unit: policy-months
+      region: global
+      currency: USD
+      list_unit_price: "5"
+      price_source: https://cloudbilling.googleapis.com/v1/services/E505-1604-58F8/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: E505-1604-58F8
+        sku_id: 4B13-E64F-4A2B
+    - name: cloud-armor-rule-month
+      service_name: Networking
+      pricing_unit: rule-months
+      region: global
+      currency: USD
+      list_unit_price: "1"
+      price_source: https://cloudbilling.googleapis.com/v1/services/E505-1604-58F8/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: E505-1604-58F8
+        sku_id: A321-89BD-F5BC
+    - name: vertex-vector-search-e2-standard-16-us-central1
+      service_name: Vertex AI
+      pricing_unit: hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.7504672"
+      price_source: https://cloudbilling.googleapis.com/v1/services/C7E2-9256-1C43/skus
+      retrieved_on: "2026-08-16"
+      attributes:
+        machine_type: e2-standard-16
+        workload: vector-search-serving
+      gcp_selector:
+        service_id: C7E2-9256-1C43
+        sku_id: DE9A-5E48-F861
+    - name: workbench-e2-core-usage-us-central1
+      service_name: Notebooks
+      pricing_unit: vCPU-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.026173908"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: D73B-5EEA-8215
+        sku_id: ABD6-6591-238F
+    - name: workbench-e2-core-mgmt-us-central1
+      service_name: Notebooks
+      pricing_unit: vCPU-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.004362318"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: D73B-5EEA-8215
+        sku_id: D6C8-C854-30CF
+    - name: workbench-e2-ram-usage-us-central1
+      service_name: Notebooks
+      pricing_unit: GiB-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.003508236"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: D73B-5EEA-8215
+        sku_id: 7999-7F8D-B747
+    - name: workbench-e2-ram-mgmt-us-central1
+      service_name: Notebooks
+      pricing_unit: GiB-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.000584706"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: D73B-5EEA-8215
+        sku_id: 7044-E315-1583
+    - name: workbench-n1-core-usage-us-central1
+      service_name: Notebooks
+      pricing_unit: vCPU-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.0379332"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: D73B-5EEA-8215
+        sku_id: 9027-15FF-8BFE
+    - name: workbench-n1-core-mgmt-us-central1
+      service_name: Notebooks
+      pricing_unit: vCPU-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.0063222"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: D73B-5EEA-8215
+        sku_id: 6196-1C27-5E30
+    - name: workbench-n1-ram-usage-us-central1
+      service_name: Notebooks
+      pricing_unit: GiB-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.0050844"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: D73B-5EEA-8215
+        sku_id: 3604-5C40-D94E
+    - name: workbench-n1-ram-mgmt-us-central1
+      service_name: Notebooks
+      pricing_unit: GiB-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.0008474"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: D73B-5EEA-8215
+        sku_id: BD10-AFE8-C0D9
+    - name: workbench-n2d-core-usage-us-central1
+      service_name: Notebooks
+      pricing_unit: vCPU-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.0330024"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: D73B-5EEA-8215
+        sku_id: 85A6-96F1-7137
+    - name: workbench-n2d-core-mgmt-us-central1
+      service_name: Notebooks
+      pricing_unit: vCPU-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.0055004"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: D73B-5EEA-8215
+        sku_id: A23A-D55A-5987
+    - name: workbench-n2d-ram-usage-us-central1
+      service_name: Notebooks
+      pricing_unit: GiB-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.0044232"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: D73B-5EEA-8215
+        sku_id: 2792-9B68-7A2F
+    - name: workbench-n2d-ram-mgmt-us-central1
+      service_name: Notebooks
+      pricing_unit: GiB-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.0007372"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: D73B-5EEA-8215
+        sku_id: 09CF-70A5-CFF7
+    - name: workbench-t4-gpu-usage-us-central1
+      service_name: Notebooks
+      pricing_unit: hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.42"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: D73B-5EEA-8215
+        sku_id: 048E-B583-98F0
+    - name: workbench-t4-gpu-mgmt-us-central1
+      service_name: Notebooks
+      pricing_unit: hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.07"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+      retrieved_on: "2026-08-16"
+      gcp_selector:
+        service_id: D73B-5EEA-8215
+        sku_id: 4C69-C1D4-0CF6
+    - name: workbench-ssd-pd-usage-us-central1
+      service_name: Notebooks
+      pricing_unit: GiB-months
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.204"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+      retrieved_on: "2026-08-16"
+      attributes:
+        disk_type: PD_SSD
+        fee_class: usage
+      gcp_selector:
+        service_id: D73B-5EEA-8215
+        sku_id: 871E-23B0-7A12
+    - name: workbench-ssd-pd-mgmt-us-central1
+      service_name: Notebooks
+      pricing_unit: GiB-months
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.034"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+      retrieved_on: "2026-08-16"
+      attributes:
+        disk_type: PD_SSD
+        fee_class: management-fee
+      gcp_selector:
+        service_id: D73B-5EEA-8215
+        sku_id: 6A6B-C43B-A93C
+    - name: workbench-balanced-pd-usage-us-central1
+      service_name: Notebooks
+      pricing_unit: GiB-months
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.12"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+      retrieved_on: "2026-08-16"
+      attributes:
+        disk_type: PD_BALANCED
+        fee_class: usage
+      gcp_selector:
+        service_id: D73B-5EEA-8215
+        sku_id: 47F7-F871-93E3
+    - name: workbench-balanced-pd-mgmt-us-central1
+      service_name: Notebooks
+      pricing_unit: GiB-months
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.02"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+      retrieved_on: "2026-08-16"
+      attributes:
+        disk_type: PD_BALANCED
+        fee_class: management-fee
+      gcp_selector:
+        service_id: D73B-5EEA-8215
+        sku_id: 32E9-BF55-41FD
+    - name: workbench-standard-pd-usage-us-central1
+      service_name: Notebooks
+      pricing_unit: GiB-months
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.048"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+      retrieved_on: "2026-08-16"
+      attributes:
+        disk_type: PD_STANDARD
+        fee_class: usage
+      gcp_selector:
+        service_id: D73B-5EEA-8215
+        sku_id: 84A1-FAD7-2298
+    - name: workbench-standard-pd-mgmt-us-central1
+      service_name: Notebooks
+      pricing_unit: GiB-months
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.008"
+      price_source: https://cloudbilling.googleapis.com/v1/services/D73B-5EEA-8215/skus
+      retrieved_on: "2026-08-16"
+      attributes:
+        disk_type: PD_STANDARD
+        fee_class: management-fee
+      gcp_selector:
+        service_id: D73B-5EEA-8215
+        sku_id: 8722-D45E-5E7C

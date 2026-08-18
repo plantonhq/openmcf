@@ -69,9 +69,3 @@ module "branch_london" {
   FQDN) -- ARM's create-time rule, front-loaded.
 - The site is free and provisions in seconds; deleting it requires the
   connections pointing at it to be gone first.
-
-## Required Permissions
-
-The deploying credential needs `Microsoft.Network/vpnSites/write` --
-held via Network Contributor, Contributor, or Owner on the resource
-group.

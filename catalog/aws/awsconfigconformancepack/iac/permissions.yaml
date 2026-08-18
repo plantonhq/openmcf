@@ -1,0 +1,53 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsconfigconformancepack
+spec:
+  aws:
+    statements:
+      - sid: ManageConformancePack
+        actions:
+          - config:PutConformancePack
+          - config:DeleteConformancePack
+        resources:
+          - arn:aws:config:*:*:conformance-pack/*
+        provenance: derived
+        notes: Covers the account-scoped aws_config_conformance_pack. Both actions take resource-level scoping on the ConformancePack ARN. Deployment REQUIRES a running Config recorder in the region (AWS rejects it otherwise) -- the recorder is the AwsConfigRecorder component's contract. The pack's rules are created by AWS Config's service-linked role (AWSServiceRoleForConfigConforms), not by the runner, so no config-rule grants appear here; the optional delivery bucket's policy for that role is the referenced AwsS3Bucket's contract.
+      - sid: ManageOrganizationConformancePack
+        actions:
+          - config:PutOrganizationConformancePack
+          - config:DeleteOrganizationConformancePack
+          - config:GetOrganizationConformancePackDetailedStatus
+        resources:
+          - arn:aws:config:*:*:organization-conformance-pack/*
+        provenance: derived
+        notes: Covers aws_config_organization_conformance_pack, rendered when organization_scope is true. The provider polls member-account rollout after Put and during Delete (organization packs unwind from every member account, taking minutes), which is what GetOrganizationConformancePackDetailedStatus serves. Deployment only succeeds from the organization's management account or Config delegated administrator with Config trusted access enabled; templates with auto-remediation additionally require the automation role pre-created in every member account -- consumer prerequisites, not runner grants. All three actions scope to the OrganizationConformancePack ARN.
+      - sid: ReadPackState
+        actions:
+          - config:DescribeConformancePacks
+          - config:DescribeConformancePackStatus
+          - config:DescribeOrganizationConformancePacks
+          - config:DescribeOrganizationConformancePackStatuses
+        resources:
+          - "*"
+        provenance: derived
+        notes: Plan/refresh reads plus the create/delete wait loops -- both scopes' providers poll pack status until the deployment lands or the teardown drains. The service reference lists NO resource types for these Describe APIs, so the wildcard is the narrowest possible scope.
+      - sid: ReadTemplateFromS3
+        actions:
+          - s3:GetObject
+        resources:
+          - arn:aws:s3:::*/*
+        provenance: derived
+        notes: Required only when the manifest uses template_s3_uri -- AWS reads the template object with the DEPLOYING principal's credentials at Put time (the spec's contract states the deploying principal must be able to read it). Narrow this to the actual template bucket and key in a hardened deployment; inline template_body needs no s3 grant.
+      - sid: ReadDeliveryBucketAcl
+        actions:
+          - s3:GetBucketAcl
+        resources:
+          - arn:aws:s3:::awsconfigconforms*
+        provenance: derived
+        notes: Cross-account and organization delivery buckets must start with "awsconfigconforms" (the scope of this grant), and AWS's bucket-policy contract for them names the PutConformancePack caller as a principal that verifies the bucket ACL at deploy time. Same-account buckets without that verification path need no runner-side s3 access -- delivery itself is always the service-linked role's, never the runner's.

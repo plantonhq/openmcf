@@ -400,6 +400,10 @@ spec:
 | `spec.jobTemplate.container.app.volumeMounts[].pvc` | `PvcVolumeSource` |  |  |  |
 | `spec.jobTemplate.container.app.volumeMounts[].pvc.claimName` | `string` | yes |  |  |
 | `spec.jobTemplate.container.app.volumeMounts[].pvc.readOnly` | `bool` |  |  |  |
+| `spec.jobTemplate.container.app.volumeMounts[].serviceAccountToken` | `ServiceAccountTokenVolumeSource` |  |  |  |
+| `spec.jobTemplate.container.app.volumeMounts[].serviceAccountToken.audience` | `string` | yes |  |  |
+| `spec.jobTemplate.container.app.volumeMounts[].serviceAccountToken.expirationSeconds` | `int64` |  |  |  |
+| `spec.jobTemplate.container.app.volumeMounts[].serviceAccountToken.path` | `string` |  |  |  |
 | `spec.jobTemplate.container.app.lifecycle` | `WorkloadContainerLifecycle` |  |  |  |
 | `spec.jobTemplate.container.app.lifecycle.postStart` | `WorkloadLifecycleHandler` |  |  |  |
 | `spec.jobTemplate.container.app.lifecycle.postStart.exec` | `ExecAction` |  |  |  |
@@ -611,6 +615,10 @@ spec:
 | `spec.jobTemplate.container.sidecars[].volumeMounts[].pvc` | `PvcVolumeSource` |  |  |  |
 | `spec.jobTemplate.container.sidecars[].volumeMounts[].pvc.claimName` | `string` | yes |  |  |
 | `spec.jobTemplate.container.sidecars[].volumeMounts[].pvc.readOnly` | `bool` |  |  |  |
+| `spec.jobTemplate.container.sidecars[].volumeMounts[].serviceAccountToken` | `ServiceAccountTokenVolumeSource` |  |  |  |
+| `spec.jobTemplate.container.sidecars[].volumeMounts[].serviceAccountToken.audience` | `string` | yes |  |  |
+| `spec.jobTemplate.container.sidecars[].volumeMounts[].serviceAccountToken.expirationSeconds` | `int64` |  |  |  |
+| `spec.jobTemplate.container.sidecars[].volumeMounts[].serviceAccountToken.path` | `string` |  |  |  |
 | `spec.jobTemplate.container.sidecars[].lifecycle` | `WorkloadContainerLifecycle` |  |  |  |
 | `spec.jobTemplate.container.sidecars[].lifecycle.postStart` | `WorkloadLifecycleHandler` |  |  |  |
 | `spec.jobTemplate.container.sidecars[].lifecycle.postStart.exec` | `ExecAction` |  |  |  |
@@ -826,6 +834,10 @@ spec:
 | `spec.jobTemplate.pod.initContainers[].volumeMounts[].pvc` | `PvcVolumeSource` |  |  |  |
 | `spec.jobTemplate.pod.initContainers[].volumeMounts[].pvc.claimName` | `string` | yes |  |  |
 | `spec.jobTemplate.pod.initContainers[].volumeMounts[].pvc.readOnly` | `bool` |  |  |  |
+| `spec.jobTemplate.pod.initContainers[].volumeMounts[].serviceAccountToken` | `ServiceAccountTokenVolumeSource` |  |  |  |
+| `spec.jobTemplate.pod.initContainers[].volumeMounts[].serviceAccountToken.audience` | `string` | yes |  |  |
+| `spec.jobTemplate.pod.initContainers[].volumeMounts[].serviceAccountToken.expirationSeconds` | `int64` |  |  |  |
+| `spec.jobTemplate.pod.initContainers[].volumeMounts[].serviceAccountToken.path` | `string` |  |  |  |
 | `spec.jobTemplate.pod.initContainers[].lifecycle` | `WorkloadContainerLifecycle` |  |  |  |
 | `spec.jobTemplate.pod.initContainers[].lifecycle.postStart` | `WorkloadLifecycleHandler` |  |  |  |
 | `spec.jobTemplate.pod.initContainers[].lifecycle.postStart.exec` | `ExecAction` |  |  |  |
@@ -3571,6 +3583,43 @@ For StatefulSets, this can be the name of a volumeClaimTemplate.
 
 Whether the PVC should be mounted read-only.
 Default is false.
+
+### spec.jobTemplate.container.app.volumeMounts[].serviceAccountToken
+
+`ServiceAccountTokenVolumeSource`
+
+Projected ServiceAccount token volume source.
+Use this to mount a short-lived, audience-bound identity token that the
+kubelet issues for the pod's ServiceAccount and rotates automatically.
+
+### spec.jobTemplate.container.app.volumeMounts[].serviceAccountToken.audience
+
+`string` · required
+
+Intended audience of the token. The receiving service must identify
+itself with this audience when verifying the token; a token minted for a
+different audience is rejected. Required: an audience-less token would be
+replayable against any service in the cluster.
+
+- rule: {"required":true}
+
+### spec.jobTemplate.container.app.volumeMounts[].serviceAccountToken.expirationSeconds
+
+`int64`
+
+Requested lifetime of the token in seconds. The kubelet starts rotating
+the token when it passes 80% of its lifetime or 24 hours, whichever is
+shorter. Defaults to 3600 (1 hour). The Kubernetes API enforces a
+minimum of 600 (10 minutes).
+
+- rule: Expiration must be at least 600 seconds (the Kubernetes API minimum)
+
+### spec.jobTemplate.container.app.volumeMounts[].serviceAccountToken.path
+
+`string`
+
+Filename for the token relative to the mount path.
+Defaults to "token".
 
 ### spec.jobTemplate.container.app.lifecycle
 
@@ -6382,6 +6431,43 @@ For StatefulSets, this can be the name of a volumeClaimTemplate.
 
 Whether the PVC should be mounted read-only.
 Default is false.
+
+### spec.jobTemplate.container.sidecars[].volumeMounts[].serviceAccountToken
+
+`ServiceAccountTokenVolumeSource`
+
+Projected ServiceAccount token volume source.
+Use this to mount a short-lived, audience-bound identity token that the
+kubelet issues for the pod's ServiceAccount and rotates automatically.
+
+### spec.jobTemplate.container.sidecars[].volumeMounts[].serviceAccountToken.audience
+
+`string` · required
+
+Intended audience of the token. The receiving service must identify
+itself with this audience when verifying the token; a token minted for a
+different audience is rejected. Required: an audience-less token would be
+replayable against any service in the cluster.
+
+- rule: {"required":true}
+
+### spec.jobTemplate.container.sidecars[].volumeMounts[].serviceAccountToken.expirationSeconds
+
+`int64`
+
+Requested lifetime of the token in seconds. The kubelet starts rotating
+the token when it passes 80% of its lifetime or 24 hours, whichever is
+shorter. Defaults to 3600 (1 hour). The Kubernetes API enforces a
+minimum of 600 (10 minutes).
+
+- rule: Expiration must be at least 600 seconds (the Kubernetes API minimum)
+
+### spec.jobTemplate.container.sidecars[].volumeMounts[].serviceAccountToken.path
+
+`string`
+
+Filename for the token relative to the mount path.
+Defaults to "token".
 
 ### spec.jobTemplate.container.sidecars[].lifecycle
 
@@ -9229,6 +9315,43 @@ For StatefulSets, this can be the name of a volumeClaimTemplate.
 
 Whether the PVC should be mounted read-only.
 Default is false.
+
+### spec.jobTemplate.pod.initContainers[].volumeMounts[].serviceAccountToken
+
+`ServiceAccountTokenVolumeSource`
+
+Projected ServiceAccount token volume source.
+Use this to mount a short-lived, audience-bound identity token that the
+kubelet issues for the pod's ServiceAccount and rotates automatically.
+
+### spec.jobTemplate.pod.initContainers[].volumeMounts[].serviceAccountToken.audience
+
+`string` · required
+
+Intended audience of the token. The receiving service must identify
+itself with this audience when verifying the token; a token minted for a
+different audience is rejected. Required: an audience-less token would be
+replayable against any service in the cluster.
+
+- rule: {"required":true}
+
+### spec.jobTemplate.pod.initContainers[].volumeMounts[].serviceAccountToken.expirationSeconds
+
+`int64`
+
+Requested lifetime of the token in seconds. The kubelet starts rotating
+the token when it passes 80% of its lifetime or 24 hours, whichever is
+shorter. Defaults to 3600 (1 hour). The Kubernetes API enforces a
+minimum of 600 (10 minutes).
+
+- rule: Expiration must be at least 600 seconds (the Kubernetes API minimum)
+
+### spec.jobTemplate.pod.initContainers[].volumeMounts[].serviceAccountToken.path
+
+`string`
+
+Filename for the token relative to the mount path.
+Defaults to "token".
 
 ### spec.jobTemplate.pod.initContainers[].lifecycle
 

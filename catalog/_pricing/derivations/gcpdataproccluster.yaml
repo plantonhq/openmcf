@@ -1,0 +1,485 @@
+# Cost derivation: the machine-executable rules turning any
+# GcpDataprocCluster manifest's spec values into metered quantities and
+# price choices. The committed cost of a GCE-arm cluster is its node
+# VMs (per-vCPU and per-GiB Compute Engine rates), their boot disks and
+# local SSDs, and the flat per-vCPU Dataproc fee -- all always-on until
+# deletion. GCP publishes no per-machine-type SKU (the Billing Catalog
+# prices cores and RAM separately), so covered machine types are priced
+# as sibling rules whose vCPU/GiB constants are the published shape of
+# the type, and uncovered machine types refuse rather than underestimate.
+# Spot secondaries, autoscaling policies, GPUs, premium tiers, and the
+# Dataproc-on-GKE arm are refusals: each re-prices or relocates the
+# compute in ways no list price in this book commits to. The estimate
+# generator replays the catalog presets through these rules to emit
+# ../estimates/gcpdataproccluster.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: gcpdataproccluster
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-central1
+    zone_to_region: true
+  refusals:
+    - when:
+        - field_path: virtual_cluster_config
+          op: is_set
+      reason: the Dataproc-on-GKE arm creates no VMs of its own -- Spark pods consume the referenced GKE cluster's node capacity, so the compute cost lives on the GcpGkeCluster and GcpGkeNodePool resources and is invisible in this manifest
+    - when:
+        - field_path: cluster_config.autoscaling_policy_uri
+          op: is_set
+      reason: worker counts are governed by the referenced GcpDataprocAutoscalingPolicy, whose bounds are invisible in this manifest -- the manifest's own instance counts are not the committed shape
+    - when:
+        - field_path: cluster_config.secondary_worker_config.num_instances
+          op: not_equals
+          value: "0"
+      reason: secondary workers default to preemptible/Spot capacity billed at floating market rates no list price commits to, and a flexibility policy can mix machine types and provisioning models -- the committed rate is indeterminate
+    - when:
+        - field_path: virtual_cluster_config
+          op: is_unset
+        - field_path: cluster_config.master_config.machine_type
+          op: not_equals
+          value: e2-standard-4
+        - field_path: cluster_config.master_config.machine_type
+          op: not_equals
+          value: n2-standard-4
+        - field_path: cluster_config.master_config.machine_type
+          op: not_equals
+          value: n2-standard-8
+      reason: "the master machine type (or the provider-chosen default when unset, or a ranked flexibility policy) is not carried by the price book: only e2-standard-4, n2-standard-4, and n2-standard-8 are priced"
+    - when:
+        - field_path: virtual_cluster_config
+          op: is_unset
+        - field_path: cluster_config.worker_config.machine_type
+          op: not_equals
+          value: e2-standard-4
+        - field_path: cluster_config.worker_config.machine_type
+          op: not_equals
+          value: n2-standard-4
+        - field_path: cluster_config.worker_config.machine_type
+          op: not_equals
+          value: n2-standard-8
+      reason: "the primary-worker machine type (or the provider-chosen default when unset, or a ranked flexibility policy) is not carried by the price book: only e2-standard-4, n2-standard-4, and n2-standard-8 are priced"
+    - when:
+        - field_path: cluster_config.master_config.accelerators
+          op: is_set
+      reason: GPU accelerators on master nodes bill per-GPU hourly rates the price book does not carry
+    - when:
+        - field_path: cluster_config.worker_config.accelerators
+          op: is_set
+      reason: GPU accelerators on worker nodes bill per-GPU hourly rates the price book does not carry
+    - when:
+        - field_path: cluster_config.auxiliary_node_groups
+          op: is_set
+      reason: dedicated driver node groups add VMs whose machine shapes this derivation does not price
+    - when:
+        - field_path: cluster_config.cluster_tier
+          op: equals
+          value: CLUSTER_TIER_PREMIUM
+      reason: the premium cluster tier bills a higher per-vCPU Dataproc rate the price book does not carry
+    - when:
+        - field_path: cluster_config.engine
+          op: equals
+          value: LIGHTNING
+      reason: the Lightning Engine adds a per-vCPU licensing surcharge on top of the standard Dataproc fee, and that surcharge is not in the price book
+    - when:
+        - field_path: cluster_config.cluster_type
+          op: is_set
+        - field_path: cluster_config.cluster_type
+          op: not_equals
+          value: STANDARD
+      reason: SINGLE_NODE and ZERO_SCALE topologies change which node groups exist and when they run -- the standard master/worker arithmetic does not describe them
+    - when:
+        - field_path: cluster_config.master_config.disk_config.boot_disk_type
+          op: equals
+          value: hyperdisk-balanced
+      reason: hyperdisk-balanced bills capacity plus provisioned IOPS and throughput dials the price book does not carry
+    - when:
+        - field_path: cluster_config.worker_config.disk_config.boot_disk_type
+          op: equals
+          value: hyperdisk-balanced
+      reason: hyperdisk-balanced bills capacity plus provisioned IOPS and throughput dials the price book does not carry
+  lines:
+    # --- master compute: sibling rules per covered machine type ---
+    - sku_meter: node vCPU
+      applies_when:
+        - field_path: cluster_config.master_config.machine_type
+          op: equals
+          value: e2-standard-4
+      quantity:
+        - field_value:
+            field_path: cluster_config.master_config.num_instances
+            default_when_unset: "1"
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: e2-instance-core-us-central1
+      basis: master count (provider default 1 when unset) x 4 vCPUs -- the published e2-standard-4 shape -- x 730 hours at the E2 per-core rate
+    - sku_meter: node memory
+      applies_when:
+        - field_path: cluster_config.master_config.machine_type
+          op: equals
+          value: e2-standard-4
+      quantity:
+        - field_value:
+            field_path: cluster_config.master_config.num_instances
+            default_when_unset: "1"
+        - constant: "16"
+        - hours_in_month: true
+      price_slug: e2-instance-ram-us-central1
+      basis: master count x 16 GiB -- the published e2-standard-4 shape -- x 730 hours at the E2 per-GiB rate
+    - sku_meter: node vCPU
+      applies_when:
+        - field_path: cluster_config.master_config.machine_type
+          op: equals
+          value: n2-standard-4
+      quantity:
+        - field_value:
+            field_path: cluster_config.master_config.num_instances
+            default_when_unset: "1"
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: n2-instance-core-us-central1
+      basis: master count (provider default 1 when unset) x 4 vCPUs -- the published n2-standard-4 shape -- x 730 hours at the N2 per-core rate
+    - sku_meter: node memory
+      applies_when:
+        - field_path: cluster_config.master_config.machine_type
+          op: equals
+          value: n2-standard-4
+      quantity:
+        - field_value:
+            field_path: cluster_config.master_config.num_instances
+            default_when_unset: "1"
+        - constant: "16"
+        - hours_in_month: true
+      price_slug: n2-instance-ram-us-central1
+      basis: master count x 16 GiB -- the published n2-standard-4 shape -- x 730 hours at the N2 per-GiB rate
+    - sku_meter: node vCPU
+      applies_when:
+        - field_path: cluster_config.master_config.machine_type
+          op: equals
+          value: n2-standard-8
+      quantity:
+        - field_value:
+            field_path: cluster_config.master_config.num_instances
+            default_when_unset: "1"
+        - constant: "8"
+        - hours_in_month: true
+      price_slug: n2-instance-core-us-central1
+      basis: master count (provider default 1 when unset) x 8 vCPUs -- the published n2-standard-8 shape -- x 730 hours at the N2 per-core rate
+    - sku_meter: node memory
+      applies_when:
+        - field_path: cluster_config.master_config.machine_type
+          op: equals
+          value: n2-standard-8
+      quantity:
+        - field_value:
+            field_path: cluster_config.master_config.num_instances
+            default_when_unset: "1"
+        - constant: "32"
+        - hours_in_month: true
+      price_slug: n2-instance-ram-us-central1
+      basis: master count x 32 GiB -- the published n2-standard-8 shape -- x 730 hours at the N2 per-GiB rate
+    # --- primary worker compute: sibling rules per covered machine type ---
+    - sku_meter: node vCPU
+      applies_when:
+        - field_path: cluster_config.worker_config.machine_type
+          op: equals
+          value: e2-standard-4
+      quantity:
+        - field_value:
+            field_path: cluster_config.worker_config.num_instances
+            default_when_unset: "2"
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: e2-instance-core-us-central1
+      basis: primary worker count (provider default 2 when unset) x 4 vCPUs -- the published e2-standard-4 shape -- x 730 hours at the E2 per-core rate
+    - sku_meter: node memory
+      applies_when:
+        - field_path: cluster_config.worker_config.machine_type
+          op: equals
+          value: e2-standard-4
+      quantity:
+        - field_value:
+            field_path: cluster_config.worker_config.num_instances
+            default_when_unset: "2"
+        - constant: "16"
+        - hours_in_month: true
+      price_slug: e2-instance-ram-us-central1
+      basis: primary worker count x 16 GiB -- the published e2-standard-4 shape -- x 730 hours at the E2 per-GiB rate
+    - sku_meter: node vCPU
+      applies_when:
+        - field_path: cluster_config.worker_config.machine_type
+          op: equals
+          value: n2-standard-4
+      quantity:
+        - field_value:
+            field_path: cluster_config.worker_config.num_instances
+            default_when_unset: "2"
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: n2-instance-core-us-central1
+      basis: primary worker count (provider default 2 when unset) x 4 vCPUs -- the published n2-standard-4 shape -- x 730 hours at the N2 per-core rate
+    - sku_meter: node memory
+      applies_when:
+        - field_path: cluster_config.worker_config.machine_type
+          op: equals
+          value: n2-standard-4
+      quantity:
+        - field_value:
+            field_path: cluster_config.worker_config.num_instances
+            default_when_unset: "2"
+        - constant: "16"
+        - hours_in_month: true
+      price_slug: n2-instance-ram-us-central1
+      basis: primary worker count x 16 GiB -- the published n2-standard-4 shape -- x 730 hours at the N2 per-GiB rate
+    - sku_meter: node vCPU
+      applies_when:
+        - field_path: cluster_config.worker_config.machine_type
+          op: equals
+          value: n2-standard-8
+      quantity:
+        - field_value:
+            field_path: cluster_config.worker_config.num_instances
+            default_when_unset: "2"
+        - constant: "8"
+        - hours_in_month: true
+      price_slug: n2-instance-core-us-central1
+      basis: primary worker count (provider default 2 when unset) x 8 vCPUs -- the published n2-standard-8 shape -- x 730 hours at the N2 per-core rate
+    - sku_meter: node memory
+      applies_when:
+        - field_path: cluster_config.worker_config.machine_type
+          op: equals
+          value: n2-standard-8
+      quantity:
+        - field_value:
+            field_path: cluster_config.worker_config.num_instances
+            default_when_unset: "2"
+        - constant: "32"
+        - hours_in_month: true
+      price_slug: n2-instance-ram-us-central1
+      basis: primary worker count x 32 GiB -- the published n2-standard-8 shape -- x 730 hours at the N2 per-GiB rate
+    # --- Dataproc per-vCPU fee: master and worker rules merge by summing ---
+    - sku_meter: Dataproc vCPU fee
+      applies_when:
+        - field_path: cluster_config.master_config.machine_type
+          op: equals
+          value: e2-standard-4
+      quantity:
+        - field_value:
+            field_path: cluster_config.master_config.num_instances
+            default_when_unset: "1"
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: dataproc-vcpu-fee
+      basis: the flat Dataproc licensing fee on every master vCPU -- master count x 4 vCPUs x 730 hours
+    - sku_meter: Dataproc vCPU fee
+      applies_when:
+        - field_path: cluster_config.master_config.machine_type
+          op: equals
+          value: n2-standard-4
+      quantity:
+        - field_value:
+            field_path: cluster_config.master_config.num_instances
+            default_when_unset: "1"
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: dataproc-vcpu-fee
+      basis: the flat Dataproc licensing fee on every master vCPU -- master count x 4 vCPUs x 730 hours
+    - sku_meter: Dataproc vCPU fee
+      applies_when:
+        - field_path: cluster_config.master_config.machine_type
+          op: equals
+          value: n2-standard-8
+      quantity:
+        - field_value:
+            field_path: cluster_config.master_config.num_instances
+            default_when_unset: "1"
+        - constant: "8"
+        - hours_in_month: true
+      price_slug: dataproc-vcpu-fee
+      basis: the flat Dataproc licensing fee on every master vCPU -- master count x 8 vCPUs x 730 hours
+    - sku_meter: Dataproc vCPU fee
+      applies_when:
+        - field_path: cluster_config.worker_config.machine_type
+          op: equals
+          value: e2-standard-4
+      quantity:
+        - field_value:
+            field_path: cluster_config.worker_config.num_instances
+            default_when_unset: "2"
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: dataproc-vcpu-fee
+      basis: the flat Dataproc licensing fee on every primary-worker vCPU -- worker count x 4 vCPUs x 730 hours
+    - sku_meter: Dataproc vCPU fee
+      applies_when:
+        - field_path: cluster_config.worker_config.machine_type
+          op: equals
+          value: n2-standard-4
+      quantity:
+        - field_value:
+            field_path: cluster_config.worker_config.num_instances
+            default_when_unset: "2"
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: dataproc-vcpu-fee
+      basis: the flat Dataproc licensing fee on every primary-worker vCPU -- worker count x 4 vCPUs x 730 hours
+    - sku_meter: Dataproc vCPU fee
+      applies_when:
+        - field_path: cluster_config.worker_config.machine_type
+          op: equals
+          value: n2-standard-8
+      quantity:
+        - field_value:
+            field_path: cluster_config.worker_config.num_instances
+            default_when_unset: "2"
+        - constant: "8"
+        - hours_in_month: true
+      price_slug: dataproc-vcpu-fee
+      basis: the flat Dataproc licensing fee on every primary-worker vCPU -- worker count x 8 vCPUs x 730 hours
+    # --- boot disks: price class picked by boot_disk_type ---
+    - sku_meter: node boot disk storage
+      applies_when:
+        - field_path: cluster_config.master_config.disk_config.boot_disk_type
+          op: not_equals
+          value: pd-ssd
+        - field_path: cluster_config.master_config.disk_config.boot_disk_type
+          op: not_equals
+          value: pd-balanced
+        - field_path: cluster_config.master_config.disk_config.boot_disk_type
+          op: not_equals
+          value: hyperdisk-balanced
+      quantity:
+        - field_value:
+            field_path: cluster_config.master_config.num_instances
+            default_when_unset: "1"
+        - field_value:
+            field_path: cluster_config.master_config.disk_config.boot_disk_size_gb
+            default_when_unset: "500"
+      price_slug: standard-pd-capacity-us-central1
+      basis: master count x boot disk GiB (provider default 500 GB when unset) billed per GiB-month at the pd-standard rate -- the GCP default disk class when boot_disk_type is unset
+    - sku_meter: node boot disk storage
+      applies_when:
+        - field_path: cluster_config.master_config.disk_config.boot_disk_type
+          op: equals
+          value: pd-ssd
+      quantity:
+        - field_value:
+            field_path: cluster_config.master_config.num_instances
+            default_when_unset: "1"
+        - field_value:
+            field_path: cluster_config.master_config.disk_config.boot_disk_size_gb
+            default_when_unset: "500"
+      price_slug: ssd-pd-capacity-us-central1
+      basis: master count x boot disk GiB (provider default 500 GB when unset) billed per GiB-month at the pd-ssd rate
+    - sku_meter: node boot disk storage
+      applies_when:
+        - field_path: cluster_config.master_config.disk_config.boot_disk_type
+          op: equals
+          value: pd-balanced
+      quantity:
+        - field_value:
+            field_path: cluster_config.master_config.num_instances
+            default_when_unset: "1"
+        - field_value:
+            field_path: cluster_config.master_config.disk_config.boot_disk_size_gb
+            default_when_unset: "500"
+      price_slug: balanced-pd-capacity-us-central1
+      basis: master count x boot disk GiB (provider default 500 GB when unset) billed per GiB-month at the pd-balanced rate
+    - sku_meter: node boot disk storage
+      applies_when:
+        - field_path: cluster_config.worker_config.disk_config.boot_disk_type
+          op: not_equals
+          value: pd-ssd
+        - field_path: cluster_config.worker_config.disk_config.boot_disk_type
+          op: not_equals
+          value: pd-balanced
+        - field_path: cluster_config.worker_config.disk_config.boot_disk_type
+          op: not_equals
+          value: hyperdisk-balanced
+      quantity:
+        - field_value:
+            field_path: cluster_config.worker_config.num_instances
+            default_when_unset: "2"
+        - field_value:
+            field_path: cluster_config.worker_config.disk_config.boot_disk_size_gb
+            default_when_unset: "500"
+      price_slug: standard-pd-capacity-us-central1
+      basis: primary worker count x boot disk GiB (provider default 500 GB when unset) billed per GiB-month at the pd-standard rate -- the GCP default disk class when boot_disk_type is unset
+    - sku_meter: node boot disk storage
+      applies_when:
+        - field_path: cluster_config.worker_config.disk_config.boot_disk_type
+          op: equals
+          value: pd-ssd
+      quantity:
+        - field_value:
+            field_path: cluster_config.worker_config.num_instances
+            default_when_unset: "2"
+        - field_value:
+            field_path: cluster_config.worker_config.disk_config.boot_disk_size_gb
+            default_when_unset: "500"
+      price_slug: ssd-pd-capacity-us-central1
+      basis: primary worker count x boot disk GiB (provider default 500 GB when unset) billed per GiB-month at the pd-ssd rate
+    - sku_meter: node boot disk storage
+      applies_when:
+        - field_path: cluster_config.worker_config.disk_config.boot_disk_type
+          op: equals
+          value: pd-balanced
+      quantity:
+        - field_value:
+            field_path: cluster_config.worker_config.num_instances
+            default_when_unset: "2"
+        - field_value:
+            field_path: cluster_config.worker_config.disk_config.boot_disk_size_gb
+            default_when_unset: "500"
+      price_slug: balanced-pd-capacity-us-central1
+      basis: primary worker count x boot disk GiB (provider default 500 GB when unset) billed per GiB-month at the pd-balanced rate
+    # --- local SSDs: each device is a fixed 375 GB ---
+    - sku_meter: local SSD storage
+      quantity:
+        - field_value:
+            field_path: cluster_config.master_config.num_instances
+            default_when_unset: "1"
+        - field_value:
+            field_path: cluster_config.master_config.disk_config.num_local_ssds
+        - constant: "375"
+      price_slug: local-ssd-capacity-us-central1
+      basis: master count x local SSD count x 375 GB per device (the fixed GCP device size) billed per GiB-month; zero devices emits nothing
+    - sku_meter: local SSD storage
+      quantity:
+        - field_value:
+            field_path: cluster_config.worker_config.num_instances
+            default_when_unset: "2"
+        - field_value:
+            field_path: cluster_config.worker_config.disk_config.num_local_ssds
+        - constant: "375"
+      price_slug: local-ssd-capacity-us-central1
+      basis: primary worker count x local SSD count x 375 GB per device (the fixed GCP device size) billed per GiB-month; zero devices emits nothing
+  exclusions:
+    - text: network egress and Cloud Logging/Monitoring ingestion follow what the jobs do
+    - applies_when:
+        - field_path: cluster_config.gce_config.internal_ip_only
+          op: equals
+          value: "true"
+      text: internal-only nodes need Cloud NAT for internet egress -- a separate component with its own hourly and per-GB charges
+    - applies_when:
+        - field_path: cluster_config.staging_bucket
+          op: is_unset
+      text: the auto-created staging and temp buckets bill Cloud Storage rates by actual usage
+    - applies_when:
+        - field_path: cluster_config.staging_bucket
+          op: is_set
+      text: the referenced staging bucket is its own component billing Cloud Storage rates by actual usage
+  notes:
+    - applies_when:
+        - field_path: cluster_config.lifecycle_config.idle_delete_ttl
+          op: is_set
+      text: The estimate assumes the cluster exists all 730 hours of the month; the idle-delete TTL deletes it once jobs stop, so the real bill for an ephemeral cluster can be far lower than this always-on figure.
+    - applies_when:
+        - field_path: cluster_config.lifecycle_config.idle_stop_ttl
+          op: is_set
+      text: The idle-stop TTL shuts the VMs down when idle -- stopped clusters stop billing compute and the Dataproc fee but keep billing their persistent disks.

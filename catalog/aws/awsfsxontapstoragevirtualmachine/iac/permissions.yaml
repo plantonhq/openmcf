@@ -1,0 +1,32 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsfsxontapstoragevirtualmachine
+spec:
+  aws:
+    statements:
+      - sid: ManageStorageVirtualMachine
+        actions:
+          - fsx:CreateStorageVirtualMachine
+          - fsx:UpdateStorageVirtualMachine
+          - fsx:DeleteStorageVirtualMachine
+          - fsx:TagResource
+          - fsx:UntagResource
+          - fsx:ListTagsForResource
+        resources:
+          - arn:aws:fsx:*:*:storage-virtual-machine/*/*
+          - arn:aws:fsx:*:*:file-system/*
+        provenance: derived
+        notes: Covers aws_fsx_ontap_storage_virtual_machine -- creation under the parent file system (name, root volume security style, vsadmin password, Active Directory join), in-place updates (password and the entire AD block), tagging, and deletion. The service reference authorizes CreateStorageVirtualMachine on BOTH the storage-virtual-machine and file-system ARN formats (an under-scoped create denies provisioning).
+      - sid: DescribeStorageVirtualMachines
+        actions:
+          - fsx:DescribeStorageVirtualMachines
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side of aws_fsx_ontap_storage_virtual_machine during plan/refresh. FSx Describe APIs support no resource-level scoping (empty Resources lists in the service reference), so the wildcard is the narrowest possible scope.

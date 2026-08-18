@@ -1,0 +1,59 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbackupreportplan
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The report plan stores nothing itself -- the report files it produces live in the referenced S3 bucket (delivery_channel.s3_bucket_name), and encryption at rest for them is that AwsS3Bucket component's posture, deliberately outside this manifest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest lives here to key (see enc-at-rest); key choice for the delivered files is bucket-side.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A report plan terminates no connections of its own. Management calls and the service-side delivery to S3 both travel AWS API paths serving exclusively over TLS as provider behavior, not per-plan configuration.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The report plan has no network endpoint to expose. Whether the delivered report files are publicly reachable is the referenced bucket's exposure posture -- the sharpest control here is keeping that bucket private, on its own component.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; a report schedule carries no addresses, ports, or security groups.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A report plan receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: not_applicable
+      notes: The spec carries no principal or access surface of its own -- who may create, edit, or delete the report plan is governed by IAM permissions on the Backup API, and who may read the delivered reports is the bucket's access policy. Both are posture outside this spec and the modules.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The report plan runs no workloads and holds no credentials. Delivery is authorized the other way around -- the BUCKET's policy must allow the AWS Backup report service principal (reports.backup.amazonaws.com) to write, a grant that lives on the bucket component, with no role field anywhere in this spec.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The report plan exposes no authentication path at all -- there is no protocol, credential, or client negotiation to harden.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Every management call against the report plan is recorded by AWS CloudTrail as account-level posture. The reports themselves are compliance EVIDENCE about backup activity -- the component's function, not a logging control on the component.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The spec carries no monitoring dial; report generation is an AWS-managed daily cadence with its delivery success visible through the Backup console and the files' arrival in the bucket.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The report plan holds no data to back up -- it is declarative configuration fully re-creatable from the manifest, and its output files are regenerated daily by design.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist here to retain (see backup-recovery); how long delivered report files persist is the referenced bucket's lifecycle policy.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A regional control-plane object with no zonal placement of its own; report generation availability is AWS Backup's service concern, and the delivered files inherit S3's own durability model on the bucket.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for report plans; deleting one stops future reports and touches nothing already delivered.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A report plan is a pure configuration object with no software to patch; the report templates it selects from are maintained service-side by AWS.

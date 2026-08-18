@@ -12,7 +12,7 @@ This directory contains the Pulumi implementation for deploying a Cloud Logging 
    ```bash
    gcloud auth application-default login
    ```
-4. **IAM permissions**: `roles/logging.configWriter` on the scope (project/folder/org/billing account). Folder/org/billing sinks require the caller to hold the role AT that scope.
+4. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs. Folder/org/billing sinks require the caller to hold the permissions AT that scope.
 
 ## Directory Structure
 

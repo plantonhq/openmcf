@@ -1,0 +1,95 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureServiceBusNamespace manifest's spec values into metered quantities
+# and price choices -- one arm per pricing tier, because the sku picks
+# the shape: STANDARD carries a flat monthly base charge (billed once
+# per Azure subscription -- the basis states the attribution
+# assumption), PREMIUM bills dedicated messaging units by the hour with
+# the partition count as a multiplier (Microsoft's own price-list rule),
+# and BASIC carries no committed meter at all -- its arm prices to zero
+# with the spend located honestly in the per-operation meter. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/azureservicebusnamespace.yaml; a server-side
+# estimator evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azureservicebusnamespace
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  lines:
+    - sku_meter: Standard base charge
+      applies_when:
+        - field_path: sku
+          op: not_equals
+          value: BASIC
+        - field_path: sku
+          op: not_equals
+          value: PREMIUM
+      quantity:
+        - constant: "1"
+      price_slug: servicebus-standard-base-unit-monthly-eastus
+      basis: one flat monthly base charge (includes the first 13M operations and first 1,000 brokered connections) -- this arm covers sku STANDARD and an unspecified sku, which deploys STANDARD. Azure bills the base charge once per Azure subscription across ALL Standard namespaces, so this attribution is exact when this is the subscription's only (or first) Standard namespace and an overstatement otherwise -- the honest ceiling
+    - sku_meter: messaging units
+      applies_when:
+        - field_path: sku
+          op: equals
+          value: PREMIUM
+      quantity:
+        - field_value:
+            field_path: capacity
+            default_when_unset: "1"
+        - field_value:
+            field_path: premium_messaging_partitions
+            default_when_unset: "1"
+        - hours_in_month: true
+      price_slug: servicebus-premium-messaging-unit-eastus
+      basis: capacity messaging units (the spec requires 1, 2, 4, 8, or 16 on PREMIUM) x premium_messaging_partitions (Microsoft's price list multiplies the billed MUs by the partition count; 1 = not partitioned) x 730 hours at the Premium Messaging Unit rate -- dedicated capacity billing around the clock, with every operation included
+  exclusions:
+    - applies_when:
+        - field_path: sku
+          op: equals
+          value: BASIC
+      text: messaging operations bill per million -- every API call against the namespace's queues (send, receive, lock renewal, management), counted per 64 KB of message data -- and follow traffic
+    - applies_when:
+        - field_path: sku
+          op: not_equals
+          value: BASIC
+        - field_path: sku
+          op: not_equals
+          value: PREMIUM
+      text: operations above the 13M/month included in the base charge bill tiered per-million rates that decline with volume, and brokered connections above the included 1,000/month bill per prorated peak concurrent connection -- both follow traffic
+    - applies_when:
+        - field_path: sku
+          op: equals
+          value: PREMIUM
+      text: Geo-Replication, when configured, bills per GB replicated by geography zone, and the replica is a second Premium namespace billing its own messaging units on its own component
+    - applies_when:
+        - field_path: customer_managed_key
+          op: is_set
+      text: customer-managed-key encryption drives Key Vault key operations billed on the referenced vault's own components
+    - text: network egress follows consumer placement
+  notes:
+    - applies_when:
+        - field_path: sku
+          op: equals
+          value: BASIC
+      text: A Basic namespace carries no base charge and no hourly meter -- this estimate totals zero not because the namespace is free but because its entire spend is the per-million operations meter, which follows traffic no manifest can know.
+    - applies_when:
+        - field_path: sku
+          op: equals
+          value: PREMIUM
+      text: Azure bills Premium as a flat daily rate at each day's MAXIMUM messaging-unit count, so scaling down mid-day does not trim that day's bill; the monthly figure here assumes a steady MU count.
+    - applies_when:
+        - field_path: sku
+          op: not_equals
+          value: BASIC
+        - field_path: sku
+          op: not_equals
+          value: PREMIUM
+      text: The base charge is subscription-wide -- a second Standard namespace in the same Azure subscription adds no base charge of its own.
+    - text: Queues, topics, subscriptions, and SAS rules are free objects inside the namespace -- their kinds add no meters of their own.

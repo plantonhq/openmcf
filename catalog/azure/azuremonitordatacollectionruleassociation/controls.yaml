@@ -1,0 +1,64 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremonitordatacollectionruleassociation
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An association is an attachment record held by Azure Monitor; it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The association carries no traffic of its own; the agent's configuration download and telemetry upload run over its TLS channels as platform posture (the endpoint binding exists precisely to route that configuration access through a private-link DCE when required).
+    - control_id: no-public-access
+      status: not_applicable
+      notes: An attachment record has no network endpoint -- nothing exists to reach from the internet.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: The association is monitoring topology, not an access grant; creating one is governed by ARM RBAC at the target machine's scope (plus read on the linked rule -- ARM's linked authorization), which is platform posture rather than a lever on this spec.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The association authenticates nobody; the agent on the target presents the machine's managed identity to download configuration and upload telemetry, which is the target's posture.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The association exposes no authentication path of its own to strengthen or disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Whether audit-bearing sources (Windows Security channel, syslog auth facilities) are collected from the target is decided entirely by the linked rule's data_sources -- the association carries no selection of its own. Its creation and deletion land in the Azure Activity Log automatically.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: The resource IS how a machine enters monitoring -- its entire content is one binding (a CEL enforces exactly one of data_collection_rule_id and data_collection_endpoint_id) attached to target_resource_id. Creating it puts the machine under the rule's collection; the agent discovers the association, downloads the rule, and starts collecting. Deleting it detaches the machine without touching the rule.
+      notes: One rule serves any number of machines and one machine carries many associations, so monitoring coverage composes machine-by-machine through this kind.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless attachment record -- nothing to back up; the manifest recreates the association declaratively and collection resumes.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: An association has no runtime footprint with a zonal failure mode; it is configuration state held by Microsoft-operated Azure Monitor infrastructure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for an association; deleting one silently stops the machine's collection under that rule -- a monitoring-coverage risk worth guarding in review, since nothing breaks loudly when it happens.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The association store and the configuration-delivery path are Microsoft-operated Azure Monitor infrastructure; no customer-visible patch surface exists (the agent's own patching is the target machine's posture).

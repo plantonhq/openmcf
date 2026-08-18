@@ -1,0 +1,25 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurepublicipprefix
+spec:
+  azure:
+    groups:
+      - purpose: ManagePublicIpPrefix
+        actions:
+          - Microsoft.Network/publicIPPrefixes/read
+          - Microsoft.Network/publicIPPrefixes/write
+          - Microsoft.Network/publicIPPrefixes/delete
+        provenance: derived
+        notes: Covers azurerm_public_ip_prefix / network.NewPublicIPPrefix -- create, read/refresh, tag updates (the only in-place change; everything else replaces), and destroy. Typically held via Network Contributor, Contributor, or Owner. Destroy fails while any of the prefix's addresses are in use -- an ARM dependency constraint, not a permission problem.
+      - purpose: CarveFromCustomIpPrefix
+        actions:
+          - Microsoft.Network/customIpPrefixes/read
+          - Microsoft.Network/customIpPrefixes/join/action
+        provenance: derived
+        notes: Required only when custom_ip_prefix_id carves the prefix out of a bring-your-own IP range -- the modules pass the resolved custom-prefix ID in the create payload, and ARM authorizes the derivation service-side with join/action on the CUSTOM prefix's scope (read backs reference resolution on refresh).

@@ -1,0 +1,82 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpbackendbucket
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The backend bucket stores no customer data -- objects live in the GCS bucket (its own catalog kind with its own encryption posture), and Cloud CDN's edge caches are transient copies on Google-managed encrypted infrastructure with no customer switch.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to key (see enc-at-rest); CMEK for the objects is the GCS bucket's surface.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: TLS termination for client traffic happens at the target HTTPS proxy and forwarding rule in front of this backend -- separate catalog kinds. The load balancer's fetch from the Cloud Storage origin rides Google's own network; the backend bucket neither terminates nor configures encryption.
+    - control_id: no-public-access
+      status: configurable
+      field_path: load_balancing_scheme
+      evidence:
+        type: spec_default
+        reference: Unset (the default) serves global EXTERNAL HTTP(S) load balancers -- internet-facing by design, the normal case for static content. INTERNAL_MANAGED serves cross-region internal Application Load Balancers instead, reachable only inside the VPC (and is spec-enforced incompatible with Cloud CDN).
+      notes: For private content on an external frontend, signed_url_keys are the lever -- objects stay non-public in GCS and are served only through expiring, tamper-proof signed URLs or cookies, with signed_url_cache_max_age_sec bounding edge freshness. Preset 03 is exactly that pattern.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The backend bucket accepts traffic only from the load balancer fabric that references it via URL maps; which clients reach the frontend is governed by the forwarding rule and Cloud Armor policies, separate components. Source-level filtering at the edge is assessed under edge-protection.
+    - control_id: edge-protection
+      status: configurable
+      field_path: edge_security_policy
+      evidence:
+        type: spec_default
+        reference: Unset (the default) applies no edge filter. Referencing a GcpCloudArmorPolicy of type CLOUD_ARMOR_EDGE filters requests -- rate limiting and geo/IP blocking -- before they reach the CDN cache or the origin; standard backend security policies are not valid on backend buckets.
+      notes: Edge policies run in front of the cache, so blocked traffic never consumes cache egress or origin operations -- protection and cost control in one attachment. No preset attaches one.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management access is governed by Compute Engine IAM on every project -- creating, updating, and deleting backend buckets and their signed-URL keys authorizes against the compute.backendBuckets permission family; there is no separate data plane to govern (the serving path is the load balancer's).
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Nothing authenticates to cloud APIs through a backend bucket -- the load balancer does not authenticate to the origin (objects are public or signed-URL-served), and the resource holds no principal.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The backend bucket has no authentication paths to disable. Signed-URL keys are capability tokens for content access -- expiring, HMAC-signed links -- not an authentication protocol with a legacy mode.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Backend-bucket create, update, delete, signed-URL-key add/delete, and edge-policy attachment land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+      notes: Admin Activity covers changes TO the backend bucket; per-request visibility of traffic THROUGH it is the load balancer's logging surface (see monitoring-integration).
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Traffic served through the backend bucket is recorded automatically in Cloud Monitoring's load-balancer and Cloud CDN metric families (request counts, cache hit ratio, egress) keyed by backend, with no configuration on this resource.
+      notes: custom_response_headers adds per-response observability -- preset 01 exports "X-Cache-Status:{cdn_cache_status}" so clients and probes can see cache behavior directly. Per-request log entries are configured on the load balancer components.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The backend bucket is declarative configuration fully re-creatable from source control; the content it serves is the GCS bucket's data, backed up (or not) under that kind's posture.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A backend bucket is a global resource served through Google's edge and global load-balancing fabric -- no single zone, region, or appliance embodies it, and no configuration can reduce it to one.
+      notes: Availability of the content itself follows the origin GCS bucket's location choice, assessed on that kind.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE (GCP refuses the delete while a URL map still references the backend bucket, so a live route cannot be silently broken); PREVENT makes destroy fail outright -- a guard for a CDN origin URL maps may still route to; ABANDON unmanages the backend bucket and its signed-URL keys while they keep serving.
+      notes: One switch governs both objects this kind manages -- the backend bucket and its signed-URL keys. The origin GCS bucket is untouched either way; it belongs to its own kind.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software surface here to patch; Cloud CDN's edge and the load-balancing data plane are Google-managed infrastructure maintained invisibly, with no version or channel exposed on this resource.

@@ -1,0 +1,100 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpserverlessvpcconnector
+spec:
+  presets:
+    - preset: 01-private-egress-basic
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Compute Engine
+          sku_meter: connector instance vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "365"
+          quantity_basis: min_instances forwarding instances (GCP defaults to 2 when unset) x e2-micro's documented 0.25 fractional vCPU x 730 hours at the E2 per-vCPU rate
+          list_unit_price: "0.02181159"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "7.96123035"
+        - service_name: Compute Engine
+          sku_meter: connector instance memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "1460"
+          quantity_basis: min_instances forwarding instances x e2-micro's 1 GB of memory x 730 hours at the E2 per-GiB rate
+          list_unit_price: "0.00292353"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "4.2683538"
+      total_list_cost: "12.22958415"
+      exclusions:
+        - scaling above the floor -- each instance beyond min_instances bills the full rate while it exists, and the connector NEVER scales in on its own, so after a burst the fleet stays at its high-water mark (up to max_instances, GCP default 10) until manually reduced, which replaces the connector
+        - network egress through the connector follows the workload's traffic, at standard Compute Engine egress rates
+      notes: The estimate is the committed floor -- min_instances forwarding VMs around the clock, traffic or none. The realistic bill trends toward the high-water mark because the fleet ratchets up and never back down; the ceiling is max_instances divided by min_instances times this estimate. The connector object and its /28 range are free -- the Compute Engine instances are the entire bill, priced here at ordinary E2 on-demand rates (e2-micro bills its documented 0.25 fractional vCPU).
+    - preset: 02-high-throughput
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Compute Engine
+          sku_meter: connector instance vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "8760"
+          quantity_basis: min_instances forwarding instances x e2-standard-4's 4 vCPUs x 730 hours at the E2 per-vCPU rate
+          list_unit_price: "0.02181159"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "191.0695284"
+        - service_name: Compute Engine
+          sku_meter: connector instance memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "35040"
+          quantity_basis: min_instances forwarding instances x e2-standard-4's 16 GB of memory x 730 hours at the E2 per-GiB rate
+          list_unit_price: "0.00292353"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "102.4404912"
+      total_list_cost: "293.5100196"
+      exclusions:
+        - scaling above the floor -- each instance beyond min_instances bills the full rate while it exists, and the connector NEVER scales in on its own, so after a burst the fleet stays at its high-water mark (up to max_instances, GCP default 10) until manually reduced, which replaces the connector
+        - network egress through the connector follows the workload's traffic, at standard Compute Engine egress rates
+      notes: The estimate is the committed floor -- min_instances forwarding VMs around the clock, traffic or none. The realistic bill trends toward the high-water mark because the fleet ratchets up and never back down; the ceiling is max_instances divided by min_instances times this estimate. The connector object and its /28 range are free -- the Compute Engine instances are the entire bill, priced here at ordinary E2 on-demand rates (e2-micro bills its documented 0.25 fractional vCPU).
+    - preset: 03-shared-vpc-subnet
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Compute Engine
+          sku_meter: connector instance vCPU
+          pricing_unit: vCPU-hours
+          pricing_quantity: "365"
+          quantity_basis: min_instances forwarding instances (GCP defaults to 2 when unset) x e2-micro's documented 0.25 fractional vCPU x 730 hours at the E2 per-vCPU rate
+          list_unit_price: "0.02181159"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "7.96123035"
+        - service_name: Compute Engine
+          sku_meter: connector instance memory
+          pricing_unit: GiB-hours
+          pricing_quantity: "1460"
+          quantity_basis: min_instances forwarding instances x e2-micro's 1 GB of memory x 730 hours at the E2 per-GiB rate
+          list_unit_price: "0.00292353"
+          price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+          retrieved_on: "2026-08-16"
+          list_cost: "4.2683538"
+      total_list_cost: "12.22958415"
+      exclusions:
+        - scaling above the floor -- each instance beyond min_instances bills the full rate while it exists, and the connector NEVER scales in on its own, so after a burst the fleet stays at its high-water mark (up to max_instances, GCP default 10) until manually reduced, which replaces the connector
+        - network egress through the connector follows the workload's traffic, at standard Compute Engine egress rates
+      notes: The estimate is the committed floor -- min_instances forwarding VMs around the clock, traffic or none. The realistic bill trends toward the high-water mark because the fleet ratchets up and never back down; the ceiling is max_instances divided by min_instances times this estimate. The connector object and its /28 range are free -- the Compute Engine instances are the entire bill, priced here at ordinary E2 on-demand rates (e2-micro bills its documented 0.25 fractional vCPU).

@@ -1,0 +1,26 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpdataprocautoscalingpolicy
+spec:
+  gcp:
+    groups:
+      - purpose: EnableDataprocApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling dataproc.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageAutoscalingPolicy
+        permissions:
+          - dataproc.autoscalingPolicies.create
+          - dataproc.autoscalingPolicies.get
+          - dataproc.autoscalingPolicies.update
+          - dataproc.autoscalingPolicies.delete
+        provenance: derived
+        notes: Covers google_dataproc_autoscaling_policy -- create, read/refresh, in-place updates (bounds, weights, algorithm knobs), and destroy. All four verified present in IAM's testable-permissions inventory. The separate dataproc.autoscalingPolicies.use permission is NOT needed here -- it authorizes ATTACHING the policy to a cluster and belongs to the cluster deployer's permission set, not this module, which never touches a cluster.

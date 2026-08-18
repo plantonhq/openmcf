@@ -31,7 +31,3 @@ The generated `variables.tf` mirrors the proto contract:
 - **`metric_namespace` and `look_ahead_time` are sent only when set** -- the provider rejects empty strings on both.
 - **Everything except name, resource group, region, and the target updates in place.**
 - **Billing**: the autoscale setting object itself is free; you pay for the instances it creates.
-
-## Required Permissions
-
-The deploying principal needs `Microsoft.Insights/autoscaleSettings/*` (Monitoring Contributor covers it) plus read on the target resource.

@@ -112,10 +112,7 @@ spec:
 
 ## Required Permissions
 
-The deploying credential needs `Microsoft.Authorization/roleAssignments/write`
-at the target scope -- typically via Owner, User Access Administrator, or Role
-Based Access Control Administrator. Contributor alone is NOT sufficient (it
-manages resources, not authorization).
+See [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege action set the deploying principal needs.
 
 ---
 

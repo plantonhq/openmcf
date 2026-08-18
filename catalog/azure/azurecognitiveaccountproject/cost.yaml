@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurecognitiveaccountproject
+spec:
+  billing_model: free
+  free_tier: An AI Foundry project is a workspace boundary on an Azure AI services account -- the ARM child that isolates one team's agents, evaluations, and files from sibling projects. Microsoft prices AI Foundry by what you consume, not by how you organize it; the project object carries no meter, and creating and holding any number of projects on an account never bills.
+  notes: "No field of this spec buys anything: the parent account reference, name, region, managed identity, description, display name, and tags are workspace metadata. The real spend lives in what happens INSIDE the project -- model deployments and inference tokens, agent runtime, evaluations, and any connected Azure resources (storage, search) bill through the parent account and their own services at their own rates. Organizing that work into one project or twenty changes nothing on the invoice."

@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awslblistenerrule
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A rule stores no data -- it is a condition-action routing entry held by the Elastic Load Balancing control plane.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No stored data means no key decision here (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Transport encryption is decided by the listener the rule attaches to -- its protocol, certificate, and SSL policy. The rule routes whatever the listener already terminated and carries no TLS surface of its own; a redirect action can bounce matched paths to HTTPS, but the encrypted endpoint it points at is another listener's posture.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Reachability is the parent load balancer's scheme and subnets; a rule only decides what happens to requests that already arrived at its listener.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: conditions
+      evidence:
+        type: spec_default
+        reference: A source_ip condition gates the rule on client CIDR blocks -- "forward /internal/* only when the caller is in 10.0.0.0/8, let everything else fall to the listener's default 404" is a per-route ingress restriction expressed in this spec, evaluated on the address that connected to the ALB.
+      notes: This is routing-level restriction inside traffic the load balancer already accepted -- it narrows who reaches a route, not who reaches the load balancer, so it complements rather than replaces the load balancer's security groups. Requests matching no restrictive rule take the listener's default action, so the restriction is only as strong as that default.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: WAF web ACLs associate with the load balancer as a whole (the AwsAlb spec's web_acl_arn), never with an individual rule -- there is no per-rule attachment point in WAFv2 or in this module.
+    - control_id: rbac
+      status: configurable
+      field_path: actions
+      evidence:
+        type: spec_default
+        reference: Without an authentication action, the rule forwards every matching request. Chaining an authenticate-cognito, authenticate-oidc, or jwt-validation action ahead of the terminal forward makes the ALB authenticate just this route -- "require OIDC login on /admin/* while the rest of the site stays public" -- and jwt-validation's additional_claims restrict access by claim values (audience, scope) before any target sees the request.
+      notes: Per-route identity gating is the rule's distinctive access-control power; the listener-level equivalent applies to everything the listener serves. HTTPS listeners only -- AWS rejects authentication actions on plaintext listeners. Management-plane access to the rule itself is IAM, account-level posture outside this spec.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A rule runs no workloads and holds no cloud credentials. The one secret it can carry -- the OIDC client_secret of an authenticate-oidc action -- is an IdP credential the spec marks sensitive end to end, not an AWS API credential.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The TLS protocol and cipher floor is the listener's ssl_policy; a rule has no handshake surface and exposes no authentication floor of its own to tighten.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Request-level access logging is a load-balancer attribute -- matched requests appear in the parent ALB's access logs (which record the matched rule's ARN) when the parent enables them. Administrative actions on the rule land in CloudTrail as account-level posture.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Elastic Load Balancing publishes CloudWatch metrics with load-balancer, target-group, and availability-zone dimensions -- there is no per-rule metric dimension and no export knob on this spec; the rule's traffic is visible in the parent's and the destination target groups' metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A rule holds no data to back up -- it is declarative routing configuration re-creatable from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at the rule level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Availability is inherited from the parent load balancer's subnet layout; the rule is evaluated in every zone the load balancer occupies and has no footprint of its own.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the module exposes a deletion-protection flag for listener rules -- a rule can always be deleted, and the parent load balancer's deletion protection does not block per-rule changes.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A rule is configuration on a fully managed service -- Elastic Load Balancing patches its own fleet and the rule carries no software of its own to patch.
