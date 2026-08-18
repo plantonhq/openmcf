@@ -39,7 +39,11 @@ type AzureMachineLearningComputeInstanceStackOutputs struct {
 	// populated only when the ssh block is configured.
 	SshUsername string `protobuf:"bytes,4,opt,name=ssh_username,json=sshUsername,proto3" json:"ssh_username,omitempty"`
 	// The port the instance answers SSH on, assigned by the service --
-	// populated only when the ssh block is configured.
+	// populated only when the ssh block is configured. When the block is
+	// absent both engines must still emit a numeric zero (not a nil /
+	// empty string): a raw nil Pulumi export fails the harness int32
+	// parse. Use Elem() on the optional SSH fields; Terraform already
+	// falls back with try(..., 0).
 	SshPort       int32 `protobuf:"varint,5,opt,name=ssh_port,json=sshPort,proto3" json:"ssh_port,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
