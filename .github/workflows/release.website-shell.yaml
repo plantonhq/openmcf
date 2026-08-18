@@ -1,0 +1,80 @@
+# =============================================================================
+# @planton/website-shell npm Publish
+# =============================================================================
+# Publishes the shared website shell package (site/packages/website-shell) to
+# npm. Its consumer is the Planton Platform web console, which imports the
+# published package - the website itself consumes it as a yarn workspace and
+# never waits on a publish.
+#
+# Authentication is npm Trusted Publishing (OIDC): no npm token exists
+# anywhere in this repository. npm accepts the publish because this exact
+# workflow in this exact repository is registered as the package's trusted
+# publisher on npmjs.com; each run authenticates with a short-lived,
+# package-scoped credential minted from the job's OIDC identity
+# (id-token: write), and the publish carries a provenance attestation.
+# Trusted publishing requires npm CLI >= 11.5.1; Node 22 bundles npm 10.x,
+# hence the explicit npm upgrade before publishing.
+#
+# Triggered by website-shell-v* tags (the package's own release cadence,
+# independent of the repo's semver product releases) or manually with
+# dry_run=true to prove the lane without publishing.
+# =============================================================================
+
+name: release.website-shell
+
+on:
+  push:
+    tags:
+      - "website-shell-v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (skip publish, just build)"
+        required: false
+        default: "false"
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        working-directory: site
+        run: |
+          corepack enable
+          yarn install
+
+      - name: Build package
+        working-directory: site/packages/website-shell
+        run: yarn build
+
+      - name: Typecheck package
+        working-directory: site/packages/website-shell
+        run: yarn typecheck
+
+      # Trusted publishing needs npm >= 11.5.1 (OIDC detection lives in the
+      # CLI); the publish deliberately bypasses the workspace Yarn toolchain.
+      - name: Publish to npm (trusted publishing)
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        working-directory: site/packages/website-shell
+        run: |
+          npm install -g npm@11
+          npm publish
+
+      - name: Dry run (pack only)
+        if: ${{ github.event.inputs.dry_run == 'true' }}
+        working-directory: site/packages/website-shell
+        run: npm pack --dry-run

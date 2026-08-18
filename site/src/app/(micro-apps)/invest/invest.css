@@ -1,0 +1,8 @@
+/* Keyboard shortcut styling for invest pages */
+kbd {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  font-family: monospace;
+  font-size: 0.875rem;
+}

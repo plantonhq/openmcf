@@ -1,0 +1,64 @@
+---
+description: Cloudflare R2 media hosting conventions for planton.ai documentation and content pages.
+alwaysApply: false
+---
+
+# Docs Media Hosting
+
+All images and screenshots in planton.ai documentation use the Cloudflare R2 CDN. Never use local paths, GitHub URLs, or other hosting.
+
+## CDN Base URL
+
+```
+https://assets.planton.ai/site/images/
+```
+
+## URL Structure for Docs
+
+Documentation images follow the path pattern `docs/{section}/{page}/{filename}`:
+
+```markdown
+![Alt text](https://assets.planton.ai/site/images/docs/{section}/{page}/{filename}.png)
+```
+
+### Examples
+
+```markdown
+![Deployment environments](https://assets.planton.ai/site/images/docs/ci-cd/deployment-environments/service-showing-deployment-environments.png)
+
+![Stack job overview](https://assets.planton.ai/site/images/docs/infrastructure/stack-jobs/stack-job-running-state.png)
+```
+
+### Other Content Areas
+
+| Content Area | Path Pattern |
+|---|---|
+| Docs | `docs/{section}/{page}/{filename}` |
+| Blog | `blog/{post-slug}/{filename}` |
+| Landing page | `landing/{filename}` |
+
+## Image Upload Workflow
+
+1. Place images in `site/content/assets/images/` following the same directory structure
+2. Run `make sync-media` to compress and upload to Cloudflare R2
+3. Reference using the full CDN URL in Markdown
+
+For the detailed image processing pipeline, see `site/content/assets/_rules/process-planton-ai-images.mdc`.
+
+## Naming Conventions
+
+- Lowercase letters, hyphens for separators
+- Descriptive, context-rich filenames
+- Include relevant identifiers when helpful
+
+Good: `kubernetes-dashboard-overview.png`, `stack-job-running-state.png`, `service-showing-deployment-environments.png`
+
+Bad: `Screenshot_2026_03_05.png`, `IMG_1234.png`, `MyDashboard.png`, `dashboard pic.png`
+
+## Requirements
+
+- Always use the full `https://assets.planton.ai/site/images/...` URL
+- Always include descriptive alt text
+- No local paths (`/images/...`)
+- No GitHub raw URLs
+- No protocol-relative URLs — use `https://` explicitly

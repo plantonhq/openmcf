@@ -512,6 +512,18 @@ release:  ## auto-bump version, tag & push (bump=major|minor|patch, default: pat
 .PHONY: test-and-release
 test-and-release: test release
 
+# ── Website (site/) ───────────────────────────────────────────────────────────
+# The planton.ai website lives in site/ with its own Makefile; these targets
+# just delegate. run-site starts the Next.js dev server; preview-site builds
+# the full static export (what GitHub Pages serves) and serves it locally.
+.PHONY: run-site
+run-site:
+	$(MAKE) -C site run
+
+.PHONY: preview-site
+preview-site:
+	$(MAKE) -C site preview-site
+
 # ── E2E Tests ─────────────────────────────────────────────────────────────────
 # Every provider test package sets up its harness in TestMain BEFORE Go applies
 # the -run filter, so sweeping ./e2e/... pays every provider's harness setup --
