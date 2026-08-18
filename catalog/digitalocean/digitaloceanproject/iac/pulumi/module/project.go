@@ -1,0 +1,79 @@
+package module
+
+import (
+	"strconv"
+
+	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi-digitalocean/sdk/v4/go/digitalocean"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+// project provisions the DigitalOcean project and exports its outputs.
+func project(
+	ctx *pulumi.Context,
+	locals *Locals,
+	digitalOceanProvider *digitalocean.Provider,
+) (*digitalocean.Project, error) {
+	spec := locals.DigitalOceanProject.Spec
+
+	projectArgs := &digitalocean.ProjectArgs{
+		Name: pulumi.String(spec.ProjectName),
+
+		// Sent unconditionally, matching the Terraform module: false is
+		// the provider default.
+		IsDefault: pulumi.Bool(spec.IsDefault),
+	}
+
+	if spec.Description != "" {
+		projectArgs.Description = pulumi.StringPtr(spec.Description)
+	}
+
+	// Unset defers to the provider's default purpose ("Web Application").
+	// DigitalOcean stores non-standard purposes as "Other: <text>" and
+	// strips the prefix on read, so free text round-trips cleanly; values
+	// starting with "Other:" are unrepresentable (spec validation).
+	if spec.Purpose != "" {
+		projectArgs.Purpose = pulumi.StringPtr(spec.Purpose)
+	}
+
+	// Lowercase canonical (spec validation); DigitalOcean accepts it
+	// case-insensitively and reports it back capitalized, which the
+	// provider diff-suppresses.
+	if spec.Environment != "" {
+		projectArgs.Environment = pulumi.StringPtr(spec.Environment)
+	}
+
+	// Membership is managed only when declared: an empty list stays unset
+	// so out-of-band assignments (and the resources' own project
+	// selections) are left untouched -- the attribute is Optional+Computed
+	// upstream, so omitting it adopts whatever the API reports without
+	// drift.
+	if len(spec.Resources) > 0 {
+		// References are resolved to literal URNs before the module runs.
+		var urns pulumi.StringArray
+		for _, ref := range spec.Resources {
+			urns = append(urns, pulumi.String(ref.GetValue()))
+		}
+		projectArgs.Resources = urns
+	}
+
+	createdProject, err := digitalocean.NewProject(
+		ctx,
+		"project",
+		projectArgs,
+		pulumi.Provider(digitalOceanProvider),
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create digitalocean project")
+	}
+
+	ctx.Export(OpProjectId, createdProject.ID())
+	ctx.Export(OpOwnerUuid, createdProject.OwnerUuid)
+	// The SDK surfaces the owner id as an integer; the outputs contract is
+	// a string on both provisioners.
+	ctx.Export(OpOwnerId, createdProject.OwnerId.ApplyT(func(id int) string {
+		return strconv.Itoa(id)
+	}).(pulumi.StringOutput))
+
+	return createdProject, nil
+}

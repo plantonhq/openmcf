@@ -243,3 +243,45 @@ spec:
       id_format: "{app_id}"
       # A provider-local pagination knob, never sent to the API.
       config_only_attributes: [deployment_per_page]
+
+    # --- Projects & account ------------------------------------------------------
+    - terraform_type: digitalocean_project
+      pulumi_type: digitalocean:index/project:Project
+      id_format: "{project_id}"
+      # The API returns the environment capitalized ("Production"); authored
+      # manifests declare it lowercase and the provider only diff-suppresses,
+      # so a blind import reads back the capitalized form.
+      write_normalized_attributes: [environment]
+    - terraform_type: digitalocean_project_resources
+      pulumi_type: digitalocean:index/projectResources:ProjectResources
+      # Membership rows composed into digitalocean_project's own resources
+      # argument by the DigitalOceanProject kind; the standalone resource is
+      # never created by Planton modules and has NO upstream importer (the
+      # provider ships none) -- present here so the resource type is
+      # accounted, excluded from live round-trips by construction.
+      id_format: "{project_id}"
+    - terraform_type: digitalocean_ssh_key
+      pulumi_type: digitalocean:index/sshKey:SshKey
+      # The numeric key id ONLY -- the provider's read requires the integer,
+      # so a fingerprint does not import even though droplets accept
+      # fingerprints as key references.
+      id_format: "{ssh_key_id}"
+
+    # --- Monitoring --------------------------------------------------------------
+    - terraform_type: digitalocean_monitor_alert
+      pulumi_type: digitalocean:index/monitorAlert:MonitorAlert
+      id_format: "{alert_id}"
+      # The uuid attribute is declared Computed upstream but never written
+      # to state at the pin; the resource id carries the policy UUID. For
+      # tag-targeted policies the API may populate entities on read-back --
+      # a first-live-run watch item, not a recorded tolerance.
+    - terraform_type: digitalocean_uptime_check
+      pulumi_type: digitalocean:index/uptimeCheck:UptimeCheck
+      id_format: "{check_id}"
+    - terraform_type: digitalocean_uptime_alert
+      pulumi_type: digitalocean:index/uptimeAlert:UptimeAlert
+      id_format: "{check_id},{alert_id}"
+      # down/down_global alerts carry no threshold in config, but create
+      # sends the zero and the read writes it back -- an authored null
+      # imports as 0.
+      write_normalized_attributes: [threshold]

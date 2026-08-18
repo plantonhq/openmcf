@@ -124,9 +124,6 @@ resources:
   - resource: digitalocean_gradientai_openai_api_key
     disposition: deferred
     reason: "credential row for a deferred family -- the GradientAI family is deferred wholesale on documented provider immaturity"
-  - resource: digitalocean_monitor_alert
-    disposition: model-planned
-    reason: "judged as a planned DigitalOceanMonitorAlert kind (standalone alert policy over infrastructure metrics with its own lifecycle and notification config; FK droplets or tag-based targeting)"
   - resource: digitalocean_nfs
     disposition: model-planned
     reason: "anchor of a planned DigitalOceanNfs kind (the share is the parent object with size, performance tier, and primary VPC; FK vpc)"
@@ -142,12 +139,9 @@ resources:
   - resource: digitalocean_partner_attachment
     disposition: model-planned
     reason: "judged as a planned DigitalOceanPartnerAttachment kind (GA but specialist private connectivity via Megaport-class providers with BGP config; first-class because nothing else could honestly absorb it; FK VPCs)"
-  - resource: digitalocean_project
-    disposition: model-planned
-    reason: "judged as a planned DigitalOceanProject kind (the account's organizational container; nearly every other resource can carry a project reference, so this kind unlocks FK fields across the catalog)"
   - resource: digitalocean_project_resources
     disposition: composed
-    reason: "membership assignment rows (URN lists) with no meaning outside the project; the planned DigitalOceanProject kind carries the membership list, and Planton-managed resources prefer declaring their own project FK"
+    reason: "membership assignment rows (URN lists) with no meaning outside the project; the DigitalOceanProject kind carries the full membership list on the project resource itself (its resources argument), and this non-authoritative partial-ownership variant conflicts with that whole-list read-back by design -- deliberately not created by the modules"
   - resource: digitalocean_reserved_ip
     disposition: model-planned
     reason: "anchor of a planned DigitalOceanReservedIp kind carrying an IP version field and an optional droplet attachment (the v4/v6 and create/assign splits are provider-API artifacts, not distinct product concepts; FK droplet, project)"
@@ -166,18 +160,9 @@ resources:
   - resource: digitalocean_spaces_key
     disposition: model-planned
     reason: "judged as a planned DigitalOceanSpacesKey kind (access keys have independent create/rotate lifecycles and are the credential workloads actually reference; FK buckets via per-bucket grants)"
-  - resource: digitalocean_ssh_key
-    disposition: model-planned
-    reason: "judged as a planned DigitalOceanSshKey kind (independent lifecycle, referenced by droplets and autoscale pools; a hard prerequisite for droplet-centric workflows)"
   - resource: digitalocean_tag
     disposition: deferred
     reason: "DigitalOcean creates tags implicitly when any resource declares them; a standalone name-reservation kind is marginal -- revisit if tag-targeted references (firewalls, load balancers, monitor alerts) prove to need a first-class handle"
-  - resource: digitalocean_uptime_alert
-    disposition: composed
-    reason: "alerts are many-per-check rows that cannot exist without the check and are always managed alongside it; the planned DigitalOceanUptimeCheck kind carries an alerts list"
-  - resource: digitalocean_uptime_check
-    disposition: model-planned
-    reason: "judged as a planned DigitalOceanUptimeCheck kind (a check on an external endpoint is the parent object, referenced by its alerts)"
   - resource: digitalocean_vector_database
     disposition: model-planned
     reason: "judged as a planned DigitalOceanVectorDatabase kind (Weaviate-powered managed cluster, managed independently from standard database clusters; FK project, vpc)"

@@ -1701,6 +1701,10 @@ Allowed values (use exactly as shown):
 - `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
 - `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
 - `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
+- `DigitalOceanProject` -- The account-level organizational container; membership is carried on the project itself as resource URNs.
+- `DigitalOceanSshKey` -- An SSH public key registered on the account, referenced by droplets and droplet autoscale pools at create time.
+- `DigitalOceanMonitorAlert` -- An alert policy on DigitalOcean's built-in metrics for droplets, load balancers, and managed database clusters. All entity targeting is optional, so there is no registry prerequisite.
+- `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`
@@ -2579,6 +2583,10 @@ Allowed values (use exactly as shown):
 - `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
 - `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
 - `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
+- `DigitalOceanProject` -- The account-level organizational container; membership is carried on the project itself as resource URNs.
+- `DigitalOceanSshKey` -- An SSH public key registered on the account, referenced by droplets and droplet autoscale pools at create time.
+- `DigitalOceanMonitorAlert` -- An alert policy on DigitalOcean's built-in metrics for droplets, load balancers, and managed database clusters. All entity targeting is optional, so there is no registry prerequisite.
+- `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`
@@ -4605,6 +4613,10 @@ Allowed values (use exactly as shown):
 - `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
 - `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
 - `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
+- `DigitalOceanProject` -- The account-level organizational container; membership is carried on the project itself as resource URNs.
+- `DigitalOceanSshKey` -- An SSH public key registered on the account, referenced by droplets and droplet autoscale pools at create time.
+- `DigitalOceanMonitorAlert` -- An alert policy on DigitalOcean's built-in metrics for droplets, load balancers, and managed database clusters. All entity targeting is optional, so there is no registry prerequisite.
+- `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`
@@ -5483,6 +5495,10 @@ Allowed values (use exactly as shown):
 - `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
 - `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
 - `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
+- `DigitalOceanProject` -- The account-level organizational container; membership is carried on the project itself as resource URNs.
+- `DigitalOceanSshKey` -- An SSH public key registered on the account, referenced by droplets and droplet autoscale pools at create time.
+- `DigitalOceanMonitorAlert` -- An alert policy on DigitalOcean's built-in metrics for droplets, load balancers, and managed database clusters. All entity targeting is optional, so there is no registry prerequisite.
+- `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`
@@ -7552,6 +7568,10 @@ Allowed values (use exactly as shown):
 - `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
 - `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
 - `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
+- `DigitalOceanProject` -- The account-level organizational container; membership is carried on the project itself as resource URNs.
+- `DigitalOceanSshKey` -- An SSH public key registered on the account, referenced by droplets and droplet autoscale pools at create time.
+- `DigitalOceanMonitorAlert` -- An alert policy on DigitalOcean's built-in metrics for droplets, load balancers, and managed database clusters. All entity targeting is optional, so there is no registry prerequisite.
+- `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`
@@ -8430,6 +8450,10 @@ Allowed values (use exactly as shown):
 - `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
 - `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
 - `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
+- `DigitalOceanProject` -- The account-level organizational container; membership is carried on the project itself as resource URNs.
+- `DigitalOceanSshKey` -- An SSH public key registered on the account, referenced by droplets and droplet autoscale pools at create time.
+- `DigitalOceanMonitorAlert` -- An alert policy on DigitalOcean's built-in metrics for droplets, load balancers, and managed database clusters. All entity targeting is optional, so there is no registry prerequisite.
+- `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`

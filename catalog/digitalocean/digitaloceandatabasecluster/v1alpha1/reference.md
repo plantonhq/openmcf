@@ -369,6 +369,7 @@ Fields on other kinds that can point at this resource:
 | DigitalOceanDatabaseFirewall | `spec.cluster` | `status.outputs.cluster_id` |
 | DigitalOceanDatabaseReplica | `spec.cluster` | `status.outputs.cluster_id` |
 | DigitalOceanDatabaseUser | `spec.cluster` | `status.outputs.cluster_id` |
+| DigitalOceanMonitorAlert | `spec.databaseClusterIds` | `status.outputs.cluster_id` |
 
 ## See Also
 

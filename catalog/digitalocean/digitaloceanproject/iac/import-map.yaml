@@ -1,0 +1,16 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: digitaloceanproject
+spec:
+  # The project imports by its bare UUID -- lossless: every argument is
+  # read back (purpose is read back with the API's "Other: " prefix already
+  # stripped, and environment comes back capitalized, which the provider
+  # normalizes).
+  values:
+    - name: project_id
+      derivations:
+        - from_stack_output: project_id
+      where_to_find: >-
+        DigitalOcean control panel -> the project -> Settings (the UUID in
+        the page URL), or `doctl projects list` (the ID column).

@@ -1,0 +1,39 @@
+# Alerted DigitalOceanUptimeCheck: the composed-alert-rows arm -- a down
+# alert and a latency alert on one check, email delivery. Proves the
+# one-alert-resource-per-row fan-out both provisioners implement and the
+# alerts' destroy-with-the-check semantics.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanUptimeCheck
+metadata:
+  name: planton-oss-e2e-digitaloceanuptimecheck-alerted
+  id: planton-oss-e2e-digitaloceanuptimecheck-alerted
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanuptimecheck
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  checkName: pltn-e2e-douptc-alerted-${E2E_RUN_ID}
+  target: https://www.digitalocean.com
+  type: https
+  regions:
+    - us_east
+  alerts:
+    - alertName: e2e-down
+      type: down
+      period: 2m
+      notifications:
+        emails:
+          - e2e@planton.cloud
+    - alertName: e2e-slow
+      type: latency
+      threshold: 1000
+      comparison: greater_than
+      period: 5m
+      notifications:
+        emails:
+          - e2e@planton.cloud

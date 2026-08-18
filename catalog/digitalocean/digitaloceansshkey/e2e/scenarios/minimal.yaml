@@ -1,0 +1,25 @@
+# Minimal DigitalOceanSshKey -- also the kind's TOTAL surface (two
+# arguments). Registers a throwaway ed25519 public key generated for this
+# scenario (the certificate kind's embedded-throwaway-material precedent;
+# a public key is not a secret and unlocks nothing). Proves the full
+# lifecycle and the numeric-id/fingerprint outputs the verifier addresses
+# the key with. Key names are account-scoped; the run id keeps concurrent
+# runs apart. In-place rename is a proof-lane watch item -- the runner has
+# no update phase.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanSshKey
+metadata:
+  name: planton-oss-e2e-digitaloceansshkey-min
+  id: planton-oss-e2e-digitaloceansshkey-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceansshkey
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  keyName: pltn-e2e-dosshk-min-${E2E_RUN_ID}
+  publicKey: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB5K1XlWQxr9nMytXvvFyzYZaFVNSTAmTUYbSGXPqIQd planton-e2e@example.com

@@ -1,0 +1,21 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: digitaloceanuptimecheck
+spec:
+  # The module manages two resource types: the check (imports by UUID,
+  # exported as check_id) and the composed alert rows (each imports as
+  # "{check_id},{alert_id}"). The check part derives from the same output;
+  # the alert UUIDs are per-row and not exported (a check manages many), so
+  # they must be looked up.
+  values:
+    - name: check_id
+      derivations:
+        - from_stack_output: check_id
+      where_to_find: >-
+        `doctl monitoring uptime list` (the ID column), or the check's page
+        URL in the control panel's Monitoring -> Uptime section.
+    - name: alert_id
+      where_to_find: >-
+        The UUID of each alert row: `doctl monitoring uptime alert list
+        <check-id>` (the ID column). One import per managed alert row.

@@ -350,6 +350,7 @@ Fields on other kinds that can point at this resource:
 | DigitalOceanFirewall | `spec.outboundRules[].destinationDropletIds` | `status.outputs.droplet_id` |
 | DigitalOceanFirewall | `spec.dropletIds` | `status.outputs.droplet_id` |
 | DigitalOceanLoadBalancer | `spec.dropletIds` | `status.outputs.droplet_id` |
+| DigitalOceanMonitorAlert | `spec.dropletIds` | `status.outputs.droplet_id` |
 
 ## See Also
 

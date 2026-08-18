@@ -4701,6 +4701,40 @@ enum CloudResourceKind {
     prerequisites: [DigitalOceanDatabaseCluster]
   }];
 
+  // The account-level organizational container; membership is carried on
+  // the project itself as resource URNs.
+  DigitalOceanProject = 5030 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "doprj"
+  }];
+
+  // An SSH public key registered on the account, referenced by droplets
+  // and droplet autoscale pools at create time.
+  DigitalOceanSshKey = 5031 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dosshk"
+  }];
+
+  // An alert policy on DigitalOcean's built-in metrics for droplets, load
+  // balancers, and managed database clusters. All entity targeting is
+  // optional, so there is no registry prerequisite.
+  DigitalOceanMonitorAlert = 5040 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "domal"
+  }];
+
+  // An availability/latency probe on an external endpoint with composed
+  // alert rules; the target is outside the account, so there is no
+  // registry prerequisite.
+  DigitalOceanUptimeCheck = 5041 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "douptc"
+  }];
+
   // 6000–6999: Civo resources
   CivoBucket = 6000 [(kind_meta) = {
     provider: civo

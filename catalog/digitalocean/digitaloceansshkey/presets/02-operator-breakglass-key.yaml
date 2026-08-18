@@ -1,0 +1,7 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanSshKey
+metadata:
+  name: ops-breakglass-key
+spec:
+  keyName: ops-breakglass-key
+  publicKey: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJl3dCiK2bJDcqLmM2n1f6QYJvJ2mF8kQxWZ8p1uNQrX ops@example.com

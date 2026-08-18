@@ -1,0 +1,10 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceansshkey
+spec:
+  billing_model: free
+  notes: SSH keys registered on the account are free metadata -- DigitalOcean charges nothing to store them, and injecting one into any number of droplets adds nothing to those droplets' price.

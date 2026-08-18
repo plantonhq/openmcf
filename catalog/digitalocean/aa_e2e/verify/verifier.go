@@ -69,6 +69,10 @@ var verifiers = map[string]Verifier{
 	"digitaloceankubernetescluster":  &kubernetesClusterVerifier{},
 	"digitaloceankubernetesnodepool": &kubernetesNodePoolVerifier{},
 	"digitaloceanloadbalancer":       &loadBalancerVerifier{},
+	"digitaloceanmonitoralert":       &monitorAlertVerifier{},
+	"digitaloceanproject":            &projectVerifier{},
+	"digitaloceansshkey":             &sshKeyVerifier{},
+	"digitaloceanuptimecheck":        &uptimeCheckVerifier{},
 	"digitaloceanvolume":             &volumeVerifier{},
 	"digitaloceanvpc":                &vpcVerifier{},
 }

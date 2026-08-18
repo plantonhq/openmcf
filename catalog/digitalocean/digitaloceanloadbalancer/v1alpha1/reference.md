@@ -706,6 +706,7 @@ Fields on other kinds that can point at this resource:
 | DigitalOceanFirewall | `spec.inboundRules[].sourceLoadBalancerUids` | `status.outputs.load_balancer_id` |
 | DigitalOceanFirewall | `spec.outboundRules[].destinationLoadBalancerUids` | `status.outputs.load_balancer_id` |
 | DigitalOceanLoadBalancer | `spec.targetLoadBalancerIds` | `status.outputs.load_balancer_id` |
+| DigitalOceanMonitorAlert | `spec.loadBalancerIds` | `status.outputs.load_balancer_id` |
 
 ## See Also
 

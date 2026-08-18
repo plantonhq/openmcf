@@ -1,0 +1,18 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanUptimeCheck
+metadata:
+  name: homepage-availability
+spec:
+  checkName: homepage
+  target: https://www.example.com
+  regions:
+    - us_east
+    - us_west
+    - eu_west
+    - se_asia
+  alerts:
+    - alertName: homepage-down
+      type: down_global
+      notifications:
+        emails:
+          - ops@example.com

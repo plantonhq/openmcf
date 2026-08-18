@@ -405,6 +405,10 @@ import (
 	digitaloceankubernetesclusterv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceankubernetescluster/v1alpha1"
 	digitaloceankubernetesnodepoolv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceankubernetesnodepool/v1alpha1"
 	digitaloceanloadbalancerv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanloadbalancer/v1alpha1"
+	digitaloceanmonitoralertv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanmonitoralert/v1alpha1"
+	digitaloceanprojectv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanproject/v1alpha1"
+	digitaloceansshkeyv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceansshkey/v1alpha1"
+	digitaloceanuptimecheckv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanuptimecheck/v1alpha1"
 	digitaloceanvolumev1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanvolume/v1alpha1"
 	digitaloceanvpcv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanvpc/v1alpha1"
 	gcpaddressv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpaddress/v1alpha1"
@@ -1159,6 +1163,10 @@ var ProviderDigitalOceanMap = map[cloudresourcekind.CloudResourceKind]proto.Mess
 	cloudresourcekind.CloudResourceKind_DigitalOceanKubernetesCluster:      &digitaloceankubernetesclusterv1alpha1.DigitalOceanKubernetesCluster{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanKubernetesNodePool:     &digitaloceankubernetesnodepoolv1alpha1.DigitalOceanKubernetesNodePool{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanLoadBalancer:           &digitaloceanloadbalancerv1alpha1.DigitalOceanLoadBalancer{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanMonitorAlert:           &digitaloceanmonitoralertv1alpha1.DigitalOceanMonitorAlert{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanProject:                &digitaloceanprojectv1alpha1.DigitalOceanProject{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanSshKey:                 &digitaloceansshkeyv1alpha1.DigitalOceanSshKey{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanUptimeCheck:            &digitaloceanuptimecheckv1alpha1.DigitalOceanUptimeCheck{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanVolume:                 &digitaloceanvolumev1alpha1.DigitalOceanVolume{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanVpc:                    &digitaloceanvpcv1alpha1.DigitalOceanVpc{},
 }

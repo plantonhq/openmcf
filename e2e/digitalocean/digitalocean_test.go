@@ -251,6 +251,42 @@ func TestDigitalOceanFunction_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "digitaloceanfunction", "terraform")
 }
 
+// --- DigitalOcean Project ---
+
+func TestDigitalOceanProject_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceanproject", "pulumi")
+}
+func TestDigitalOceanProject_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceanproject", "terraform")
+}
+
+// --- DigitalOcean SSH Key ---
+
+func TestDigitalOceanSshKey_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceansshkey", "pulumi")
+}
+func TestDigitalOceanSshKey_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceansshkey", "terraform")
+}
+
+// --- DigitalOcean Monitor Alert ---
+
+func TestDigitalOceanMonitorAlert_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceanmonitoralert", "pulumi")
+}
+func TestDigitalOceanMonitorAlert_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceanmonitoralert", "terraform")
+}
+
+// --- DigitalOcean Uptime Check (composes its alert rules) ---
+
+func TestDigitalOceanUptimeCheck_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceanuptimecheck", "pulumi")
+}
+func TestDigitalOceanUptimeCheck_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceanuptimecheck", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a
 // DigitalOcean component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
