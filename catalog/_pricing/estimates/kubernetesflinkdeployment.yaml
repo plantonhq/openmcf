@@ -1,0 +1,36 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its capacity derivation
+# (../capacity/, the machine-executable value-to-capacity rules): each
+# preset states the CPU/memory requests and limits and the persistent
+# volume storage it reserves from its target cluster, with a basis sentence
+# tracing every total back to the manifest's values. Cluster-capacity
+# components carry no priced lines -- the dollar value of the reservation
+# is the target cluster's node and storage-class economics, which this
+# catalog cannot know. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesflinkdeployment
+spec:
+  presets:
+    - preset: 01-application-stateless
+      capacity_footprint:
+        cpu_requests: "4"
+        memory_requests: 8Gi
+        cpu_limits: "8"
+        memory_limits: 16Gi
+        basis: 4 TaskManagers x (1 CPU / 2Gi memory requests, 2 CPU / 4Gi limits)
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+      notes: the TaskManager count is stated from the job's parallelism at one slot per TaskManager (the Flink default) -- a taskmanager.numberOfTaskSlots entry in flink_configuration packs N slots per worker and divides the actual worker count, so the stated worker reservation is the one-slot ceiling with job_manager.resources omitted the modules deploy the CR default of 1 CPU / 2Gi for the JobManager -- a reservation this footprint cannot see
+    - preset: 02-stateful-ha-s3
+      capacity_footprint:
+        cpu_requests: "4"
+        memory_requests: 8Gi
+        cpu_limits: "8"
+        memory_limits: 16Gi
+        basis: 4 TaskManagers x (1 CPU / 2Gi memory requests, 2 CPU / 4Gi limits)
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - object storage for checkpoints, savepoints, and HA metadata grows with the job's state size and checkpoint cadence; on a composed KubernetesSeaweedFs that capacity rides the SeaweedFS component's own footprint
+      notes: the TaskManager count is stated from the job's parallelism at one slot per TaskManager (the Flink default) -- a taskmanager.numberOfTaskSlots entry in flink_configuration packs N slots per worker and divides the actual worker count, so the stated worker reservation is the one-slot ceiling with job_manager.resources omitted the modules deploy the CR default of 1 CPU / 2Gi for the JobManager -- a reservation this footprint cannot see

@@ -1,0 +1,33 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesKafkaMirrorMaker2 manifest's spec values into the capacity
+# footprint it reserves from its target cluster. The estimate generator
+# replays the catalog presets through these rules to emit
+# ../estimates/kuberneteskafkamirrormaker2.yaml; a server-side estimator
+# can evaluate the same rules against live manifests. Every replica is a
+# full MirrorMaker 2 worker pod carrying the declared resources -- the
+# workers are stateless (engine state and mirrored data live on the
+# target Kafka cluster), so no persistent volumes are bound. Mirror
+# connectors run INSIDE the declared workers: more mirrors add load,
+# not pods.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kuberneteskafkamirrormaker2
+spec:
+  workloads:
+    - label: worker
+      resources_path: resources
+      instances:
+        field_value:
+          field_path: replicas
+          default_when_unset: "1"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node economics
+    - text: "the engine's internal storage topics (configs, offsets, status) live on the TARGET Kafka cluster and grow there"
+    - text: mirrored topic data lands on the target Kafka cluster and grows with source traffic across the mirroring window
+  notes:
+    - applies_when:
+        - field_path: resources
+          op: is_unset
+      text: "the manifest declares no resource requests or limits -- the workers schedule unbounded and the cluster reserves nothing for them"

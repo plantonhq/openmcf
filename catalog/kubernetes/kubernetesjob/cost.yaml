@@ -1,0 +1,27 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesjob
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: container.app.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The app container's CPU and memory requests are what the scheduler reserves per pod WHILE THE JOB RUNS -- the reservation is released when the Job completes. Limits set the burst ceiling, not the reservation.
+    - field_path: parallelism
+      sku_meter: cluster CPU and memory reservations
+      impact: The maximum pods running at once -- each concurrent pod carries the full declared resources, so parallelism 3 triples the peak reservation while the Job executes. Defaults to 1.
+    - field_path: completions
+      sku_meter: cluster CPU and memory reservations
+      impact: Total successful completions required -- more completions than parallelism extends how LONG the peak reservation is held, not how large it is. Defaults to 1.
+    - field_path: container.sidecars
+      sku_meter: cluster CPU and memory reservations
+      impact: Each declared sidecar runs in every Job pod and adds its own requests and limits on top of the app container's.
+  estimate_exclusions:
+    - capacity is reserved only while the Job's pods execute -- a run-to-completion workload releases its reservation when it finishes, so wall-clock share depends on the run's duration
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - declared sidecar containers add their own reservations on top of the app container's
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster its pods reserve while they run, realized on the cluster's bill. An honest manifest-time statement is the peak footprint: parallelism x the app container's requests, claimed only while the Job executes."

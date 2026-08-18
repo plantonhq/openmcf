@@ -1,0 +1,85 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesgrafana
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.grafana -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - serviceaccounts
+          - configmaps
+          - secrets
+          - persistentvolumeclaims
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Chart-rendered objects applied by helm_release.grafana -- the Service (ClusterIP), ServiceAccount, configuration and provisioning ConfigMaps, the chart-generated admin Secret, and the state PVC when spec.storage is declared.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's Grafana Deployment (which runs the dashboard-discovery sidecar container alongside the server when dashboard_sidecar_enabled, the default).
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: "The dashboard sidecar watches ConfigMaps labeled grafana_dashboard cluster-wide (the modules render sidecar searchNamespace: ALL when dashboard_sidecar_enabled, the default) -- the chart creates a ClusterRole and ClusterRoleBinding granting the sidecar that read access."
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Namespaced RBAC objects the chart renders for its ServiceAccount.

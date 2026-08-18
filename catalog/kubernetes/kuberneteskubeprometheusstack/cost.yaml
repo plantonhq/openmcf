@@ -1,0 +1,43 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kuberneteskubeprometheusstack
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: prometheus.replicas
+      sku_meter: cluster CPU, memory, and storage reservations
+      impact: Each Prometheus replica scrapes and stores the FULL target set independently (HA duplication, not sharding) -- doubling replicas doubles the CPU, memory, AND disk footprint.
+    - field_path: prometheus.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The Prometheus container's requests are reserved per replica; memory scales with active series count, and undersized limits are the most common cause of a crash-looping Prometheus on busy clusters. Empty means no requests or limits (the chart default).
+    - field_path: prometheus.disk_size
+      sku_meter: cluster persistent volume storage
+      impact: The TSDB volume is provisioned PER replica (component default 50Gi -- this component overrides the chart's vanish-on-restart emptyDir with a PVC). Kubernetes cannot shrink PVCs; plan for growth.
+    - field_path: prometheus.retention
+      sku_meter: cluster persistent volume storage
+      impact: Longer retention holds more samples on the TSDB volume (default 10d); retention_size caps the on-disk size -- size it BELOW disk_size or Prometheus crash-loops when the volume fills.
+    - field_path: prometheus.remote_write
+      sku_meter: managed metrics backend ingestion
+      impact: Every declared destination receives the sample stream as scraped -- Amazon Managed Prometheus, Grafana Cloud, Azure Monitor bill ingestion and storage on THEIR accounts, typically the largest bill this component can generate.
+    - field_path: alertmanager.replicas
+      sku_meter: cluster CPU, memory, and storage reservations
+      impact: Alertmanager replicas gossip into one notification cluster (3 is the quorum-safe count); each carries alertmanager.resources and its own state volume (alertmanager.disk_size, default 2Gi).
+    - field_path: grafana.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The bundled Grafana runs one pod (enabled by default); grafana.storage adds a PVC only when declared -- ephemeral otherwise.
+    - field_path: operator.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The Prometheus Operator runs one controller pod reconciling the Prometheus and Alertmanager custom resources.
+    - field_path: exporters.node_exporter_resources
+      sku_meter: cluster CPU and memory reservations
+      impact: node-exporter is a DaemonSet -- one pod on EVERY node (enabled by default), so whatever is declared here is reserved once per node and grows with the cluster itself. kube-state-metrics (exporters.kube_state_metrics_resources) is a single Deployment by contrast.
+  estimate_exclusions:
+    - the node-exporter reservation is PER NODE -- the cluster-wide total is exporters.node_exporter_resources times the number of nodes, which only the target cluster knows
+    - the price of reserved CPU, memory, and persistent volumes is the target cluster's node and storage economics, which this catalog cannot know
+    - remote-write destinations bill ingestion and storage on their own accounts (Amazon Managed Prometheus, Grafana Cloud, Azure Monitor) -- outside this footprint entirely
+    - the helm_values overlay merges LAST over the typed rendering and can override modeled values, including resources, replicas, and storage -- this profile describes the spec's declaration
+  notes: "This component creates no cloud SKU of its own -- its footprint is the monitoring bundle: the Prometheus server(s) with their TSDB volumes, Alertmanager(s) with state volumes, the bundled Grafana, the operator, kube-state-metrics, and the per-node node-exporter. The ServiceMonitors and rules it discovers cluster-wide belong to the components that declare them; scraping more targets grows Prometheus' OWN memory and disk, never new pods."

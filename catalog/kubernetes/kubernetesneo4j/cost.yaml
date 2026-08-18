@@ -1,0 +1,24 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesneo4j
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The CPU and memory requests are what the scheduler reserves on the cluster's nodes for the single server pod (one release = one server, the chart's grain) -- the capacity is claimed whether the database is busy or idle. The chart enforces a floor of 500m CPU / 2Gi memory and rejects installs below it.
+    - field_path: data_volume.size
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: The server's data PVC, provisioned through the cluster's storage class -- 10Gi when unset (the chart default).
+    - field_path: cluster_name
+      sku_meter: cluster CPU and memory reservations
+      impact: Enterprise clustering is built by installing MULTIPLE KubernetesNeo4j resources sharing this name -- each member is its own resource carrying its own full reservation, so a 3-member cluster costs three of these footprints.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - the helm_values overlay merges last over the typed rendering and can override modeled values, including resources
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: one server x (requests + data volume). The memory block tunes how the JVM and page cache divide the container's memory; the reservation itself is the resources block."

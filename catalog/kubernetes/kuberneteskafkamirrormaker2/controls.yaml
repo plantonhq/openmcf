@@ -1,0 +1,82 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kuberneteskafkamirrormaker2
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: MirrorMaker 2 workers are stateless -- the engine's configurations, offsets, and status persist in internal topics on the TARGET Kafka cluster, and mirrored records land there too, so encryption at rest is that cluster's storage posture, not this component's.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: The component stores no data of its own (see enc-at-rest); customer-managed keys apply to the target Kafka cluster's storage, which this spec has no seam for.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: target.tls
+      evidence:
+        type: spec_default
+        reference: Unset means the workers connect to the target Kafka cluster in plaintext; target.tls.trusted_certificates trusts its CA so the connection is served over TLS. Each mirror's source connection carries its own tls block with the same contract.
+      notes: The 01-migrate-from-msk preset trusts the MSK CA bundle on the source; 03-active-passive-dr trusts both clusters' CAs. The engine's Connect REST API service is plain HTTP but in-cluster only.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The modules render no external exposure -- the operator creates only a ClusterIP REST API service (<name>-mirrormaker2-api) for read-only inspection, and the workers dial OUT to the source and target clusters.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The spec models no ingress or exposure seam -- the only inbound surface is the in-cluster ClusterIP inspection service the operator creates. Restricting the network path to it is a Kubernetes NetworkPolicy concern (separate resources).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A replication engine serves no HTTP edge traffic to users -- web application firewalls do not apply.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The mirror connectors are declared IN the KafkaMirrorMaker2 resource and reconciled by the Strimzi operator -- all management flows through the Kubernetes API governed by the target cluster's RBAC, and the operator reverts changes made through the engine's REST API that it does not own.
+      notes: Data-plane access to the source and target clusters is governed by each cluster's listener authentication and ACLs against the declared principals.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The workers authenticate to the source and target Kafka clusters with the declared mechanisms (mutual TLS or SASL credentials read from Kubernetes Secrets) -- there is no cloud API access in this component and no seam for platform-issued cloud identities.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: target.authentication
+      evidence:
+        type: spec_default
+        reference: Unset connects unauthenticated (only possible against unauthenticated listeners); the authentication arms on the target and on each mirror's source are modern mechanisms -- mutual TLS, SCRAM-SHA-512/256, plain over TLS, or a custom SASL mechanism -- matched to each listener.
+      notes: "The 01-migrate-from-msk preset authenticates to MSK with scram-sha-512; 02-migrate-from-confluent-cloud uses SASL PLAIN with an API key, Confluent Cloud's client contract; 03-active-passive-dr uses scram-sha-512 on both ends. Credentials always ride Kubernetes Secrets, never the manifest."
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Worker activity logs stream to stdout for the cluster's log collector; a provider-style audit trail is not modeled. Changes to the engine and its mirrors are Kubernetes API operations, captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: metrics.enabled
+      evidence:
+        type: spec_default
+        reference: Unset serves no metrics; enabled renders the canonical Strimzi JMX Prometheus Exporter rules ConfigMap and wires it as the deployment's metricsConfig -- mirroring lag rides the standard Connect/MirrorMaker metric families on port 9404.
+      notes: All three presets enable metrics -- replication lag visibility is what tells you a migration or DR mirror is keeping up.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The workers hold no state to back up -- the engine's configurations, offsets, and status live in topics on the target Kafka cluster, whose durability comes from topic replication and that cluster's own resilience posture. The engine itself IS a replication mechanism; its 03-active-passive-dr preset is the DR posture.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery); the internal topics' retention is governed by the target Kafka cluster.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replicas
+      evidence:
+        type: spec_default
+        reference: replicas defaults to 1 (a single worker, no failover); multiple workers share and re-balance mirroring tasks through the Connect group protocol, so a lost worker's tasks move to survivors. Zone spreading is the scheduler's default topology behavior -- the spec models no anti-affinity seam.
+      notes: The 01-migrate-from-msk and 02-migrate-from-confluent-cloud presets run 3 workers; 03-active-passive-dr runs 2. Per-mirror auto_restart adds connector-level recovery on top of worker-level failover.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor Strimzi offers a deletion-protection flag on the KafkaMirrorMaker2 resource; protection is operational (namespace RBAC, change review). Deleting the CR stops mirroring but leaves the mirrored data and internal topics on the target cluster.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: version empty runs the operator's default Kafka version (the newest the pinned Strimzi release supports), so patch releases arrive with operator upgrades and the cluster operator rolls the workers automatically; pinning version makes changes deliberate.

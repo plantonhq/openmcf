@@ -1,0 +1,32 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetestemporal
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: services
+      sku_meter: cluster CPU and memory reservations
+      impact: The four server services each reserve replicas x resources -- history is the heavy-lifter (workflow state caches, typically the largest requests and the most replicas), frontend and matching moderate, worker light. All four scale horizontally.
+    - field_path: web_ui
+      sku_meter: cluster CPU and memory reservations
+      impact: The Web UI (on by default) adds replicas x resources of stateless capacity -- chart-default sizing unless declared.
+    - field_path: database
+      sku_meter: external database load and storage
+      impact: Every workflow's state and search index live in the database you bring -- its storage grows with workflow volume and retention, and connection pressure is the PRODUCT of four services x replicas x max_conns (default 20 per pool). That cost rides the database's own component.
+    - field_path: archival
+      sku_meter: external object storage
+      impact: Archival copies closed workflow histories and visibility records to S3/GCS -- storage grows with workflow volume and never shrinks unless you apply bucket lifecycle rules.
+    - field_path: temporal_namespaces
+      sku_meter: external database storage
+      impact: Each namespace's retention (default 3d) sets how long CLOSED workflow histories stay in the database before deletion -- longer retention means proportionally more database storage.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - the admin-tools pod (on by default) and the schema-setup and namespace-creation Jobs carry only chart-default sizing -- the spec models no resources for them, and the Jobs are ephemeral (install/upgrade time)
+    - the helm_values overlay merges last and can override any modeled value
+    - the database is a separate component (nothing is bundled) -- its capacity, storage growth, and backup posture ride its own footprint
+    - archival object-storage growth is workload-driven and lives outside the cluster
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. Temporal provisions no volumes: all durable state lives in the database you declare, so the honest manifest-time statement is pure compute across the four server services plus the Web UI. num_history_shards is DATA partitioning inside the history service -- it changes per-shard overhead and throughput ceilings, never the pod count."

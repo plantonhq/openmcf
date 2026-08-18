@@ -1,0 +1,36 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesraycluster
+spec:
+  presets:
+    - preset: 01-lab
+      capacity_footprint:
+        cpu_requests: "1"
+        memory_requests: 4Gi
+        cpu_limits: "2"
+        memory_limits: 8Gi
+        persistent_storage: "0"
+        basis: 1 head pod x (1 CPU / 4Gi memory requests, 2 CPU / 8Gi limits); no worker groups (tasks run on the head -- the lab posture) and no persistent volumes (Ray's control state lives in head-pod memory)
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+    - preset: 02-production-autoscaling
+      capacity_footprint:
+        cpu_requests: "6"
+        memory_requests: 24Gi
+        cpu_limits: "12"
+        memory_limits: 48Gi
+        persistent_storage: "0"
+        basis: 1 head pod x (2 CPU / 8Gi memory requests, 4 CPU / 16Gi limits) + cpu group at its declared initial size 2 x (2 CPU / 8Gi requests, 4 CPU / 16Gi limits) + gpu group at its declared initial size 0; no persistent volumes (control state rides the composed external store)
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and accelerator-node economics
+        - "GPUs are invisible to this footprint: each gpu-group worker reserves nvidia.com/gpu: 1 through extra_resource_limits -- at the group's autoscaling ceiling of 4 that is 4 GPUs, priced by the cluster's accelerator-node economics"
+        - the footprint states the declared initial sizes; the Ray autoscaler owns replica counts afterwards -- the cpu group scales 0-10 and the gpu group 0-4 with task demand
+        - the autoscaler sidecar rides the head pod with operator-default resources (undeclared), and the GCS state store is the composed KubernetesValkey with its own footprint

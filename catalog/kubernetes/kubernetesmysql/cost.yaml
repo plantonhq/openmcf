@@ -1,0 +1,34 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesmysql
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: instances
+      sku_meter: cluster CPU and memory reservations
+      impact: Every database node is a full Galera copy of the dataset with the declared resource requests and its own persistent volume -- three nodes (the quorum default) reserve three times the capacity.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The CPU and memory requests are what the scheduler reserves on the cluster's nodes per database node -- the capacity is claimed whether the database is busy or idle. Limits set the burst ceiling, not the reservation.
+    - field_path: storage.size
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: Every database node provisions its own data volume of this size through the cluster's storage class; the size can only grow.
+    - field_path: proxy
+      sku_meter: cluster CPU and memory reservations
+      impact: The query-routing layer runs its own pods -- HAProxy (3 replicas by default, even when proxy is omitted) or ProxySQL, each replica with its declared requests. ProxySQL additionally provisions a configuration-database volume per replica.
+    - field_path: log_collector
+      sku_meter: cluster CPU and memory reservations
+      impact: The fluent-bit log-collector sidecar (enabled by the operator's default) runs inside every database node pod and adds its declared requests on top of the node's.
+    - field_path: backup
+      sku_meter: object storage for backups
+      pricing_unit: GB-months
+      impact: Scheduled XtraBackup base backups and continuously uploaded PITR binlogs accumulate in the configured S3/S3-compatible/Azure stores; per-schedule keep counts bound how many backups are retained. A PVC backup storage reserves an additional volume on the cluster instead.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - object-store bytes for base backups and PITR binlog uploads grow with database churn and retention
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: instances x (requests + data volume) plus the proxy replicas. The reconciling Percona operator's own controller capacity rides the KubernetesPerconaMysqlOperator component, not this one."

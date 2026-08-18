@@ -1,0 +1,35 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesGhaRunnerScaleSetController manifest's spec values into the
+# capacity footprint it reserves from its target cluster. The estimate
+# generator replays the catalog presets through these rules to emit
+# ../estimates/kubernetesgharunnerscalesetcontroller.yaml; a server-side
+# estimator can evaluate the same rules against live manifests. The
+# footprint is the controller-manager Deployment only -- extra replicas
+# are leader-elected hot standbys, each reserving the declared resources.
+# The listener and runner pods the controller CREATES ride the
+# KubernetesGhaRunnerScaleSet resources that declare the fleets.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetesgharunnerscalesetcontroller
+spec:
+  workloads:
+    - label: controller replica
+      resources_path: resources
+      instances:
+        field_value:
+          field_path: replicas
+          default_when_unset: "1"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node and storage-class economics
+    - text: the listener pods (one per declared runner scale set) and the ephemeral runner pods that scale with CI demand are created by this controller but are not its footprint -- that capacity rides the KubernetesGhaRunnerScaleSet resources
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: the helm_values overlay merges last over the typed rendering and can change replica counts and resources beyond what this footprint states
+  notes:
+    - applies_when:
+        - field_path: resources
+          op: is_unset
+      text: no resources are declared -- the chart applies no requests or limits of its own, so the controller pods schedule unbounded and this footprint states zero reservation

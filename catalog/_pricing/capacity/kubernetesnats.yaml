@@ -1,0 +1,47 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesNats manifest's spec values into the capacity footprint it
+# reserves from its target cluster. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/kubernetesnats.yaml; a server-side estimator can evaluate
+# the same rules against live manifests. Every server in the cluster (a
+# single server when cluster is empty) carries the declared resources,
+# and JetStream -- on by default for this kind -- provisions one
+# file-store volume per server. Schema:
+# finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetesnats
+spec:
+  workloads:
+    - label: server
+      resources_path: resources
+      instances:
+        field_value:
+          field_path: cluster.replicas
+          default_when_unset: "1"
+      volumes:
+        - label: JetStream file store
+          size_path: jet_stream.disk_size
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node and storage-class economics
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: the helm_values overlay merges last over the typed rendering and can override modeled values, including resources and replica counts
+    - applies_when:
+        - field_path: metrics
+          op: is_set
+      text: the prometheus-nats-exporter sidecar consumes CPU and memory this manifest declares no reservation for
+  notes:
+    - text: the config-reloader sidecar in every server pod and the nats-box utility pod (deployed unless nats_box_enabled is false) carry chart-default reservations this manifest does not declare
+    - applies_when:
+        - field_path: jet_stream.disk_size
+          op: is_unset
+      text: unless JetStream is explicitly disabled, every server still provisions the chart-default 10Gi file-store volume even without a declared disk_size -- a reservation this footprint cannot count
+    - applies_when:
+        - field_path: cluster
+          op: is_set
+        - field_path: cluster.replicas
+          op: is_unset
+      text: the chart defaults to 3 servers when clustering is enabled without a declared replica count; this footprint counts only the declared count

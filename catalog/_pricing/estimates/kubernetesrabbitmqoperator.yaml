@@ -1,0 +1,43 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesrabbitmqoperator
+spec:
+  presets:
+    - preset: 01-standard
+      capacity_footprint:
+        cpu_requests: 200m
+        memory_requests: 500Mi
+        cpu_limits: 200m
+        memory_limits: 500Mi
+        basis: 1 operator pod x (200m CPU / 500Mi memory, requests and limits alike) from the release manifest's defaults (applied whenever the manifest omits resources) -- no persistent volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - the RabbitMQ clusters this operator reconciles reserve their own capacity -- each rides its KubernetesRabbitMq resource
+    - preset: 02-namespace-fenced
+      capacity_footprint:
+        cpu_requests: 200m
+        memory_requests: 500Mi
+        cpu_limits: 200m
+        memory_limits: 500Mi
+        basis: 1 operator pod x (200m CPU / 500Mi memory, requests and limits alike) from the release manifest's defaults -- the watch fence changes which namespaces the operator reconciles, not its footprint
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - the RabbitMQ clusters this operator reconciles reserve their own capacity -- each rides its KubernetesRabbitMq resource
+    - preset: 03-air-gapped-mirror
+      capacity_footprint:
+        cpu_requests: 200m
+        memory_requests: 500Mi
+        cpu_limits: 200m
+        memory_limits: 500Mi
+        basis: 1 operator pod x (200m CPU / 500Mi memory, requests and limits alike) from the release manifest's defaults -- mirrored images change where pulls come from, not the reservation
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - the RabbitMQ clusters this operator reconciles reserve their own capacity -- each rides its KubernetesRabbitMq resource

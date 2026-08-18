@@ -1,0 +1,124 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesargoworkflows
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.argo_workflows -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - serviceaccounts
+          - configmaps
+          - services
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Chart-rendered objects applied by helm_release.argo_workflows -- the controller and server ServiceAccounts, the RUNNER ServiceAccount (spec.workflow_service_account, planted into the install namespace AND every controller.workflow_namespaces entry), the workflow-controller ConfigMap the typed fields render into (artifact repository, archive, retention, parallelism), and the server's ClusterIP Service. Artifact-store and archive credentials are NEVER rendered -- the chart's secret selectors resolve them at runtime from existing Secrets.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's two workloads -- the workflow-controller and (unless spec.server.enabled is false) the Argo server Deployments.
+      - api_groups:
+          - batch
+        resources:
+          - jobs
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The full-schema CRD hook Job (spec.crds.full_schema true, the default) -- a Helm hook that downloads the full-schema CRDs from the chart's GitHub release (or spec.crds.base_url) and applies them, because they exceed inline-template limits. Both modules' wait budgets name it.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart's controller and server cluster-scoped RBAC -- the controller WATCHES Workflow CRs cluster-wide regardless of workflow_namespaces (that list places runner RBAC, it does not scope the watch), so its access is cluster-scoped by upstream design.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Namespaced RBAC the chart renders -- the RUNNER Role/RoleBinding planted into the install namespace and each controller.workflow_namespaces entry (workflow pods run with the runner's permissions, never the controller's), plus per-component housekeeping RBAC and the CRD hook Job's own identity.
+      - api_groups:
+          - apiextensions.k8s.io
+        resources:
+          - customresourcedefinitions
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: With spec.crds.full_schema false the chart TEMPLATES minified CRDs, applied by the runner; on the default full-schema arm the hook Job applies them under its own chart-rendered identity, and the runner still needs get/list for release bookkeeping. With spec.crds.keep true (the default) the CRDs survive destroy -- the delete verb is exercised only when keep is deliberately disabled on throwaway clusters (removing them deletes every Workflow in the cluster).
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Rendered only when spec.service_monitor_enabled is true -- the controller's /metrics ServiceMonitor (requires the Prometheus Operator CRDs on the cluster). Chart features enabled only through spec.helm_values (SSO config, executor tuning, per-component extras) stay within the covered kinds above.

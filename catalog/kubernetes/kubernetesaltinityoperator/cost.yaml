@@ -1,0 +1,24 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesaltinityoperator
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The operator runs as a single controller Deployment; these requests are what the scheduler reserves for it on the cluster's nodes. The chart ships no default requests or limits -- empty means the operator schedules unbounded.
+    - field_path: metrics.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The metrics-exporter sidecar (enabled by default) rides the operator pod and adds its own reservation when sized here; its memory grows with the number and size of managed ClickHouse clusters.
+    - field_path: crd_hook
+      sku_meter: cluster CPU and memory reservations
+      impact: The pre-install/pre-upgrade hook job that server-side-applies the four CRDs runs only during install and upgrade -- a transient pod, never a standing reservation.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - "the ClickHouse clusters this operator reconciles reserve their own capacity -- each rides its KubernetesClickHouse resource, never this footprint"
+    - the helm_values overlay merges last and can override the modeled values, including resources
+  notes: "This component installs the ENGINE, not the databases: its footprint is the controller pod (operator container plus the metrics-exporter sidecar). Everything the operator manages -- ClickHouseInstallation and ClickHouseKeeperInstallation clusters, their StatefulSets and volumes -- is declared through KubernetesClickHouse resources, which carry their own capacity footprints."

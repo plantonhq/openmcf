@@ -1,0 +1,25 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesexternaldns
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The controller container's requests are what the scheduler reserves for the single ExternalDNS pod; empty means the chart's default of no explicit resources.
+    - field_path: webhook.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The webhook provider arm runs the provider's implementation as a SIDECAR container next to the controller -- its requests add to the same pod's reservation.
+    - field_path: interval
+      sku_meter: DNS provider API calls
+      impact: Every reconciliation loop calls the DNS provider's API; shortening the interval (or enabling trigger_loop_on_event) multiplies those calls -- relevant where the provider meters or rate-limits its API.
+  estimate_exclusions:
+    - no committed preset declares resources for the controller or the webhook sidecar -- the presets schedule the pod with no requests or limits, so they reserve nothing and no capacity derivation is shipped
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - the DNS zones and records this controller manages bill on the DNS provider's account (hosted-zone and query pricing), never on the cluster
+    - the helm_values overlay merges LAST over the typed rendering and can override modeled values, including resources -- this profile describes the spec's declaration
+  notes: "This component creates no cloud SKU of its own -- its footprint is one controller pod (plus the webhook sidecar on the webhook arm). The zones it writes into are the DNS provider's resources with their own billing; clusters publishing to several providers run multiple instances of this component, each its own pod."

@@ -1,0 +1,63 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesSolr manifest's spec values into the capacity footprint it
+# reserves from its target cluster. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/kubernetessolr.yaml; a server-side estimator can
+# evaluate the same rules against live manifests. Two workload
+# classes: the Solr nodes and the bundled ZooKeeper ensemble members
+# (a real second pod class -- the zookeeper-operator provisions it
+# unless zookeeper.external replaces it). The operand only -- the
+# Apache Solr Operator is a separate component (KubernetesSolrOperator)
+# with its own footprint. Schema:
+# finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetessolr
+spec:
+  workloads:
+    - label: node
+      resources_path: resources
+      instances:
+        field_value:
+          field_path: replicas
+          default_when_unset: "3"
+      volumes:
+        - label: data
+          size_path: storage.persistent.size
+    - label: zookeeper member
+      resources_path: zookeeper.provided.resources
+      instances:
+        field_value:
+          field_path: zookeeper.provided.replicas
+          default_when_unset: "3"
+      volumes:
+        - label: data
+          size_path: zookeeper.provided.persistence.size
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node and storage-class economics
+    - applies_when:
+        - field_path: zookeeper.external
+          op: is_unset
+        - field_path: zookeeper.provided.resources
+          op: is_unset
+      text: the bundled ZooKeeper ensemble members run with the zookeeper-operator's default container resources when the manifest declares none -- a real reservation this footprint cannot count
+    - applies_when:
+        - field_path: backup_repositories
+          op: is_set
+      text: backup data written to registered repositories lands in external object storage or a shared volume, outside this cluster's capacity
+  notes:
+    - applies_when:
+        - field_path: storage.persistent
+          op: is_unset
+      text: without declared persistent storage the Solr nodes run on ephemeral emptyDir (the operator default) -- no volume is reserved, and indices are lost when a pod leaves its node
+    - applies_when:
+        - field_path: zookeeper.external
+          op: is_unset
+        - field_path: zookeeper.provided.persistence.size
+          op: is_unset
+      text: each bundled ZooKeeper member provisions a 20Gi volume by default (the zookeeper-operator default) when no size is declared -- a reservation this footprint cannot count
+    - applies_when:
+        - field_path: zookeeper.external
+          op: is_set
+      text: the external ZooKeeper ensemble runs outside this deployment -- no ensemble capacity is reserved here, and the zookeeper member class contributes nothing

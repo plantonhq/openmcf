@@ -1,0 +1,80 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kuberneteskarapace
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The registry stores nothing locally -- schemas live in a compacted Kafka topic on the connected cluster (no PVCs, no database), so encryption at rest is that cluster's storage posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: The component stores no data of its own (see enc-at-rest); there is no key seam.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: server_tls
+      evidence:
+        type: spec_default
+        reference: Unset serves the registry API over plain HTTP (fine inside the cluster; TLS composes at an Ingress/Gateway); server_tls serves HTTPS from a certificate Secret -- the cert-manager seam. The Kafka-side connection encrypts through kafka.security_protocol SSL / SASL_SSL with the CA trusted from a Secret.
+      notes: "The 02-production-ha preset connects to Kafka over SASL_SSL trusting the Strimzi cluster CA; 03-with-rest-proxy-and-tls serves the registry API over HTTPS. server_tls pairs with replicas: 1 -- followers forward writes to the leader at its pod IP, which DNS-name certificates do not cover. The REST proxy always serves plain HTTP."
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The modules render only ClusterIP Services for the registry and the REST proxy -- nothing is exposed outside the cluster network; external exposure composes from first-class kinds (KubernetesIngress / Gateway API).
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The spec models no ingress seam -- exposure composes from first-class Ingress/Gateway kinds where source restrictions live, and Kubernetes NetworkPolicies (separate resources) restrict the in-cluster network path.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A web application firewall rides the composed edge (Ingress, Gateway, or an external proxy), not this component -- the module renders no edge layer.
+    - control_id: rbac
+      status: configurable
+      field_path: http_authentication.basic
+      evidence:
+        type: spec_default
+        reference: The basic arm mounts a Karapace authfile -- a JSON users/PERMISSIONS document governing which operations each user may perform on the registry API, hot-reloaded on change. Without http_authentication no authorization exists (see no-legacy-auth).
+      notes: The 03-with-rest-proxy-and-tls preset mounts an authfile from a Secret. Management of the Kubernetes objects themselves is governed by the target cluster's RBAC.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The registry authenticates to Kafka with the declared mechanism (mutual TLS or SASL credentials read from Kubernetes Secrets) -- there is no cloud API access in this component and no seam for platform-issued cloud identities.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: http_authentication
+      evidence:
+        type: spec_default
+        reference: Omitted means the registry API is open to anyone who can reach the Service; the arms are authfile-backed HTTP Basic or OIDC bearer tokens validated against an HTTPS JWKS endpoint (plain-HTTP JWKS is spec-refused -- it would let an in-path attacker forge tokens).
+      notes: "The 03-with-rest-proxy-and-tls preset gates the API with an authfile. /_health stays unauthenticated by upstream contract so probes keep working."
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Registry activity logs stream to stdout for the cluster's log collector (log_level defaults to INFO); a provider-style audit trail is not modeled. Changes to the deployment are Kubernetes API operations, captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The spec models no metrics seam and the modules render no scrape wiring -- the pods expose only the /_health endpoint the probes use. Operational visibility today is logs and probe status.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The registry's entire state is the compacted schemas topic on the connected Kafka cluster -- durability comes from registry.replication_factor at topic creation (the 02-production-ha preset sets 3; the upstream default of 1 is a data-loss risk) and from the Kafka cluster's own resilience and backup posture.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery); the schemas topic is compacted, retaining the latest schema versions by design.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replicas
+      evidence:
+        type: spec_default
+        reference: replicas defaults to 1; replicas elect a leader through the registry's consumer group and followers forward writes, so 2 is the production availability norm. Zone spreading is the scheduler's default topology behavior -- the spec models no anti-affinity seam.
+      notes: "The 02-production-ha preset runs 2 replicas. server_tls pairs with replicas: 1 (pod-IP forwarding, see enc-in-transit) -- multi-replica TLS terminates at an Ingress/Gateway instead."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the module offers a deletion-protection flag; protection is operational (namespace RBAC, change review). Deleting the deployment leaves the schemas topic intact on the Kafka cluster -- a redeploy wired to the same topic recovers the registry.
+    - control_id: managed-patching
+      status: configurable
+      field_path: image
+      evidence:
+        type: spec_default
+        reference: Empty runs the pinned upstream release image (ghcr.io/aiven-open/karapace at the module's pinned tag), so upgrades arrive with module updates and roll through the Deployment; setting image pins a version or an air-gapped mirror deliberately.

@@ -1,0 +1,48 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its capacity derivation
+# (../capacity/, the machine-executable value-to-capacity rules): each
+# preset states the CPU/memory requests and limits and the persistent
+# volume storage it reserves from its target cluster, with a basis sentence
+# tracing every total back to the manifest's values. Cluster-capacity
+# components carry no priced lines -- the dollar value of the reservation
+# is the target cluster's node and storage-class economics, which this
+# catalog cannot know. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesaltinityoperator
+spec:
+  presets:
+    - preset: 01-standard
+      capacity_footprint:
+        cpu_requests: 100m
+        memory_requests: 128Mi
+        cpu_limits: 500m
+        memory_limits: 512Mi
+        basis: 1 operator x (100m CPU / 128Mi memory requests, 500m CPU / 512Mi limits)
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - the ClickHouse clusters this operator reconciles reserve their own capacity -- each rides its KubernetesClickHouse resource
+      notes: the metrics-exporter sidecar (enabled by default) runs with the chart defaults -- no requests or limits -- and its memory grows with the number and size of managed clusters the CRD hook job (enabled by default) runs only during install and upgrade -- a transient pod, never a standing reservation
+    - preset: 02-namespace-scoped
+      capacity_footprint:
+        cpu_requests: 100m
+        memory_requests: 128Mi
+        cpu_limits: 500m
+        memory_limits: 512Mi
+        basis: 1 operator x (100m CPU / 128Mi memory requests, 500m CPU / 512Mi limits)
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - the ClickHouse clusters this operator reconciles reserve their own capacity -- each rides its KubernetesClickHouse resource
+      notes: the metrics-exporter sidecar (enabled by default) runs with the chart defaults -- no requests or limits -- and its memory grows with the number and size of managed clusters the CRD hook job (enabled by default) runs only during install and upgrade -- a transient pod, never a standing reservation
+    - preset: 03-private-mirror
+      capacity_footprint:
+        cpu_requests: 100m
+        memory_requests: 128Mi
+        cpu_limits: 500m
+        memory_limits: 512Mi
+        basis: 1 operator x (100m CPU / 128Mi memory requests, 500m CPU / 512Mi limits)
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - the ClickHouse clusters this operator reconciles reserve their own capacity -- each rides its KubernetesClickHouse resource
+      notes: the metrics-exporter sidecar (enabled by default) runs with the chart defaults -- no requests or limits -- and its memory grows with the number and size of managed clusters the CRD hook job (enabled by default) runs only during install and upgrade -- a transient pod, never a standing reservation

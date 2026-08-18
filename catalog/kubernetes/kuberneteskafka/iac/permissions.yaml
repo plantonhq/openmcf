@@ -1,0 +1,52 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kuberneteskafka
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.namespace -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - configmaps
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_config_map_v1.kafka_metrics -- the JMX exporter rules ConfigMap `<name>-kafka-metrics`, rendered only when spec.metrics.enabled is true and referenced by the Kafka CR's metricsConfig.
+      - api_groups:
+          - kafka.strimzi.io
+        resources:
+          - kafkas
+          - kafkanodepools
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubectl_manifest.kafka and kubectl_manifest.node_pools -- the Kafka CR and one KafkaNodePool CR per spec.node_pools entry (kafka.strimzi.io/v1), applied via server-side apply. The broker/controller pods, Services, certificates, Secrets, PVCs, and entity operator are created by the Strimzi cluster operator reconciling these CRs, under the operator's own RBAC -- the runner touches only the CRs.

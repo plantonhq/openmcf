@@ -1,0 +1,51 @@
+# Estimate model: hand-computed capacity footprints for this
+# cluster-capacity component's presets. A derivation cannot state this
+# kind honestly: the chart SHIPS default operator resources (200m CPU /
+# 384Mi requests, 1000m CPU / 384Mi limits), applied whenever a manifest
+# omits resources, and the derivation grammar reads only explicit
+# manifest values -- a derivation would show a zero footprint for the
+# omitting preset while the operator pod actually reserves the chart
+# defaults. Each preset's totals are therefore computed by hand:
+# replicas x (declared resources, or the chart defaults when omitted).
+# The operator binds no persistent volumes; the Kafka clusters it
+# reconciles reserve their own capacity on their KubernetesKafka
+# resources. Cluster-capacity components carry no priced lines -- the
+# dollar value of the reservation is the target cluster's node
+# economics, which this catalog cannot know.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: kubernetesstrimzikafkaoperator
+spec:
+  presets:
+    - preset: 01-default
+      capacity_footprint:
+        cpu_requests: 200m
+        memory_requests: 384Mi
+        cpu_limits: 1000m
+        memory_limits: 384Mi
+        basis: 1 operator replica x (200m CPU / 384Mi memory requests, 1000m CPU / 384Mi limits) from the chart defaults (applied by the chart when the manifest omits resources) -- no persistent volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - "the Kafka clusters this operator reconciles reserve their own capacity -- each rides its KubernetesKafka resource"
+    - preset: 02-cluster-wide
+      capacity_footprint:
+        cpu_requests: 200m
+        memory_requests: 512Mi
+        cpu_limits: "1"
+        memory_limits: 1Gi
+        basis: 1 operator replica x (200m CPU / 512Mi memory requests, 1 CPU / 1Gi limits) -- no persistent volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - "the Kafka clusters this operator reconciles reserve their own capacity -- each rides its KubernetesKafka resource"
+    - preset: 03-fenced-teams
+      capacity_footprint:
+        cpu_requests: 200m
+        memory_requests: 512Mi
+        cpu_limits: "1"
+        memory_limits: 1Gi
+        basis: 1 operator replica x (200m CPU / 512Mi memory requests, 1 CPU / 1Gi limits) -- no persistent volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - "the Kafka clusters this operator reconciles reserve their own capacity -- each rides its KubernetesKafka resource"

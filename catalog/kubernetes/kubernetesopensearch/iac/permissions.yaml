@@ -1,0 +1,38 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesopensearch
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.namespace -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - opensearch.opster.io
+        resources:
+          - opensearchclusters
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubectl_manifest.opensearch_cluster -- the OpenSearchCluster (opensearch.opster.io/v1) applied via server-side apply, the module's ONLY custom resource. The node StatefulSets, Services, TLS Secrets, security-plugin bootstrap, and optional Dashboards deployment are all created by the OpenSearch operator reconciling this CR, under the operator's own RBAC -- the runner touches only the CR.

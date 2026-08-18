@@ -1,0 +1,102 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesgharunnerscalesetcontroller
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.gha_runner_scale_set_controller -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - apiextensions.k8s.io
+        resources:
+          - customresourcedefinitions
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart ships the actions.github.com CRDs (AutoscalingRunnerSet, AutoscalingListener, EphemeralRunnerSet, EphemeralRunner) in its crds/ directory -- Helm installs them on first install through helm_release.gha_runner_scale_set_controller and never removes them on uninstall.
+      - api_groups:
+          - ""
+        resources:
+          - serviceaccounts
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the controller's ServiceAccount rendered by the release. Its name derives from the release fullname -- the modules re-pin fullnameOverride LAST so the exported service_account_name (the scale-set discovery handle) can never be moved by a helm_values override.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the controller-manager Deployment (helm_release.gha_runner_scale_set_controller; the modules wait for it to become Ready so a manager that never starts fails the apply, not the first fleet install).
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: "Covers the chart's cluster-scoped RBAC for the controller ServiceAccount -- by default the manager watches ALL namespaces and creates listener pods, mirror secrets, and runner resources wherever fleets are declared, so its ClusterRoles carry cluster-wide authority over pods, secrets, and the actions.github.com resources. Kubernetes escalation prevention means the runner must already hold every permission those ClusterRoles grant, or carry the escalate verb."
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's namespaced RBAC -- leader-election roles in the install namespace (rendered with the manager), and the single-namespace watch variant when flags.watch_single_namespace fences the controller. The same escalation-prevention caveat as the cluster-scoped rule applies. The helm_values overlay (spec.helm_values, merged last) can extend the chart's object surface beyond these rules generally; grants for such extensions ride the operator's review of the overlay, not this manifest.

@@ -1,0 +1,27 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesdaemonset
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: container.app.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The agent container's CPU and memory requests are reserved ON EVERY MATCHING NODE -- there is no replica count, node membership is the multiplier. A modest per-node request becomes a large cluster-wide reservation on a big fleet.
+    - field_path: container.sidecars
+      sku_meter: cluster CPU and memory reservations
+      impact: Each declared sidecar runs alongside the agent on every matching node and adds its own requests and limits per node.
+    - field_path: pod.scheduling
+      sku_meter: cluster CPU and memory reservations
+      impact: node_selector and node_affinity narrow which nodes run the agent; tolerations widen the set onto tainted nodes (e.g. control-plane). The scheduling rules ARE the reservation multiplier.
+    - field_path: update_strategy.max_surge
+      sku_meter: cluster CPU and memory reservations
+      impact: Surging rolling updates run the old and new pod side by side on updating nodes -- per-node resource usage doubles for the duration of the rollout.
+  estimate_exclusions:
+    - the reservation multiplies by the number of nodes matching the pod's scheduling rules -- node membership IS the replica count, and only the target cluster knows it; every footprint stated for this component is PER NODE
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - declared sidecar containers add their own per-node reservations on top of the agent container's
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. Because exactly one pod runs per matching node, the honest manifest-time statement is the PER-NODE footprint; the cluster-wide total is that footprint times the matching node count."

@@ -1,0 +1,31 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesmlflow
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: server
+      sku_meter: cluster CPU and memory reservations
+      impact: Each tracking-server replica reserves the declared resource requests -- tracking servers are mostly memory-bound on large experiment queries. More than one replica requires the postgres backend and an object artifact store (enforced by the spec contract).
+    - field_path: backend_store
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: The default sqlite arm provisions a dedicated PVC (5Gi unless sized) holding experiments, runs, metrics, and the model registry; the postgres/mysql arms move this state to a separate database component with its own footprint.
+    - field_path: artifact_store
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: The default PVC arm provisions a local artifact volume (10Gi unless sized) -- models are big, so size it deliberately; the object-store arms move artifact bytes to S3-compatible, AWS S3, GCS, or Azure Blob storage that grows with every logged model and dataset.
+    - field_path: gc
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: Off by default -- soft-deleted runs accumulate in the backend store forever until the gc CronJob is enabled; its pod reserves capacity only while a scheduled run executes.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - backend and artifact volume sizes left undeclared fall back to their 5Gi and 10Gi defaults, which a manifest that omits them does not state
+    - object-store bytes on the s3_compatible, aws_s3, gcs, and azure_blob artifact arms grow with every logged model and dataset
+    - the postgres/mysql backend store and a composed SeaweedFS artifact store are separate components whose capacity rides their own footprints
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: replicas x server requests, plus the backend and artifact volumes when the PVC arms are in play."

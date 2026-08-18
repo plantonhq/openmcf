@@ -1,0 +1,47 @@
+# Least-privilege permissions for the official kubernetessuperset modules
+# (iac/tf and iac/pulumi -- behaviorally equivalent). Derived from the
+# resources the modules create directly plus everything the pinned Superset
+# chart renders inside the Helm release. Schema: catalog/componentpermissions/v1.
+apiVersion: catalog.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetessuperset
+spec:
+  kubernetes:
+    rules:
+      - api_groups: [""]
+        resources: ["namespaces"]
+        verbs: ["get", "create", "update", "patch", "delete"]
+        cluster_scoped: true
+        provenance: derived
+        notes: kubernetes_namespace_v1.superset -- rendered only when the resolved namespace context asks the module to create it; otherwise the module only needs get on the existing namespace.
+      - api_groups: [""]
+        resources: ["secrets"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: The module writes three Secrets -- kubernetes_secret_v1.secret_key (generated SECRET_KEY), kubernetes_secret_v1.admin_auth (generated bootstrap admin password), kubernetes_secret_v1.env (connection facts for web/worker/init) -- and the chart renders its own superset-config Secret carrying superset_config.py. Referenced credential Secrets (metadata_database.credentials_secret, cache password, extra_env_from_secret) are wired as env secretKeyRef and never read or copied by the module, so no read on foreign Secrets is required.
+      - api_groups: [""]
+        resources: ["services", "configmaps", "serviceaccounts"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: Chart-rendered inside helm_release.superset -- the web Service (the exported connection endpoint, type from spec.service.type), the websocket and flower Services when those pods are enabled, the chart's init/bootstrap ConfigMaps, and the release ServiceAccount.
+      - api_groups: [""]
+        resources: ["pods", "pods/log", "events"]
+        verbs: ["get", "list", "watch"]
+        provenance: derived
+        notes: Read-only -- the Helm provider's wait/atomic rollout (helm_release.superset sets wait, atomic, cleanup_on_fail) tracks pod readiness and surfaces failure events; the modules never create bare pods.
+      - api_groups: ["apps"]
+        resources: ["deployments"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: All Superset workloads are chart-rendered Deployments -- web (supersetNode), Celery worker and beat (rendered when spec.cache turns the async fleet on), flower, websocket, and MCP (each only when its spec flag enables it).
+      - api_groups: ["batch"]
+        resources: ["jobs"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: The chart's init Job (Helm hook) runs the metadata-database schema migration and bootstrap-admin creation on every install and upgrade, inside the release's atomic budget.
+      - api_groups: ["autoscaling"]
+        resources: ["horizontalpodautoscalers"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: Rendered only when spec.web.hpa or spec.worker.hpa is set -- the chart emits an HPA per enabled tier with the declared min/max/target-CPU bounds. The helm_values overlay can widen the chart's object surface beyond this profile (e.g. NetworkPolicies, PodDisruptionBudgets); overlay users own the extra permissions.

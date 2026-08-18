@@ -1,0 +1,46 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its capacity derivation
+# (../capacity/, the machine-executable value-to-capacity rules): each
+# preset states the CPU/memory requests and limits and the persistent
+# volume storage it reserves from its target cluster, with a basis sentence
+# tracing every total back to the manifest's values. Cluster-capacity
+# components carry no priced lines -- the dollar value of the reservation
+# is the target cluster's node and storage-class economics, which this
+# catalog cannot know. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesneo4j
+spec:
+  presets:
+    - preset: 01-dev-single-instance
+      capacity_footprint:
+        cpu_requests: 500m
+        memory_requests: 2Gi
+        cpu_limits: "1"
+        memory_limits: 2Gi
+        persistent_storage: 10Gi
+        basis: 1 server x (500m CPU / 2Gi memory requests, 1 CPU / 2Gi limits) + 1 x 10Gi data volume
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+    - preset: 02-production
+      capacity_footprint:
+        cpu_requests: "2"
+        memory_requests: 8Gi
+        cpu_limits: "4"
+        memory_limits: 8Gi
+        persistent_storage: 100Gi
+        basis: 1 server x (2 CPU / 8Gi memory requests, 4 CPU / 8Gi limits) + 1 x 100Gi data volume
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+    - preset: 03-graphrag-apoc
+      capacity_footprint:
+        cpu_requests: "1"
+        memory_requests: 4Gi
+        cpu_limits: "2"
+        memory_limits: 4Gi
+        persistent_storage: 50Gi
+        basis: 1 server x (1 CPU / 4Gi memory requests, 2 CPU / 4Gi limits) + 1 x 50Gi data volume
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - the helm_values overlay merges last over the typed rendering and can override modeled values, including resources

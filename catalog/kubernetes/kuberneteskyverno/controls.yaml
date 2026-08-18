@@ -1,0 +1,83 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kuberneteskyverno
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Kyverno stores its state -- policies, policy reports, webhook certificates -- in Kubernetes objects and Secrets in etcd; encryption at rest is the cluster control plane's property, not this component's.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys apply to the cluster's etcd encryption (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The webhook servers (admission and cleanup) serve the API server over TLS -- Kyverno generates and rotates its own CA and serving certificates at runtime with zero prerequisites; certificates.cert_manager delegates issuance to cert-manager instead.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart renders no external exposure -- the webhook and metrics Services are ClusterIP only, reachable solely inside the cluster network.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The only inbound traffic is the Kubernetes API server calling the webhook servers over the cluster network; there is no user-facing ingress surface to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Kyverno serves no HTTP edge traffic -- web application firewalls do not apply.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart creates a dedicated ServiceAccount per controller, each bound to chart-rendered roles scoped to its function -- the admission controller's breadth (reading and mutating what policies match) is the engine's nature, confined to its own identity.
+      notes: Which principals the ENGINE polices is itself governed -- config.exclude_groups defaults to ["system:nodes"] and config.exclude_usernames can exempt trusted appliers; declaring exclude_groups REPLACES the default.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The spec carries no cloud credential seam -- Kyverno talks only to the Kubernetes API (and image registries for verifyImages policies, authenticated by imagePullSecrets or ambient node identity).
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Kyverno exposes no authentication surface of its own -- every interaction is a Kubernetes API operation authenticated by the cluster. There is no weaker path to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: features.policy_reports, admission_reports, and aggregate_reports all default true -- every admission decision lands in wgpolicyk8s.io PolicyReports, the engine's standing audit trail of violations -- and PolicyViolation/PolicyError events are emitted (the default omit_event_types drops only the noisy PolicyApplied/PolicySkipped to protect etcd).
+      notes: Administrative changes to Kyverno itself are Kubernetes API operations, captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: metrics.service_monitor
+      evidence:
+        type: spec_default
+        reference: Every controller serves Prometheus metrics; unset means no scrape discovery, and service_monitor creates a ServiceMonitor for EVERY enabled controller -- requiring the Prometheus operator CRDs on the cluster.
+      notes: The 02-production-ha preset enables it.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Kyverno holds no data to back up -- policies are declarative Kubernetes resources in etcd, protected by the cluster's own state backup, and policy reports are recomputed by admission and background scans.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface exists (see backup-recovery), so retention does not apply.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: admission_controller.replicas
+      evidence:
+        type: spec_default
+        reference: The admission controller defaults to 1 replica; run 3 in production -- it sits on the cluster's write path, and policies default to failurePolicy=Fail, so an engine outage blocks matched admissions. admission_controller.autoscaling alternatively hands the count to an HPA.
+      notes: The 02-production-ha and 03-airgapped-mirror presets run 3 admission replicas. features.force_failure_policy_ignore is the cluster-wide fail-open valve -- admission never blocks on an outage, at the price of enforcement gaps during one.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: crds.keep_on_uninstall
+      evidence:
+        type: spec_default
+        reference: Default false -- the policy CRDs are release-owned, so destroy deletes them and CASCADE-DELETES every ClusterPolicy, Policy, PolicyException, and policy report on the cluster. true adds the helm.sh/resource-policy=keep annotation so policies survive an engine reinstall (a later install must then set crds.install false).
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: chart_version pins the installed release (default 3.8.2 = Kyverno v1.18.2; the chart's appVersion pins every controller image); changing it re-runs the Helm release deliberately, and the crds.migration_enabled post-upgrade hook (default on) migrates stored resources to the new schema.

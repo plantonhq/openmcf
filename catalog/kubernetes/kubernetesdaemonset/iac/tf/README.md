@@ -9,7 +9,7 @@ This Terraform module deploys a Kubernetes DaemonSet with comprehensive configur
 - **Secret Management**: Both direct string values and Kubernetes Secret references
 - **Volume Mounts**: HostPath, ConfigMap, Secret, EmptyDir, and PVC support
 - **Security Context**: Privileged mode, capabilities, run-as settings
-- **RBAC**: ClusterRole and Role with bindings
+- **Permissions**: the Kubernetes permissions the IaC runner needs are declared in `../permissions.yaml`; the module creates no RBAC objects or ServiceAccounts -- identity and API permissions compose through KubernetesServiceAccount and KubernetesRbac resources
 - **Tolerations**: Schedule on tainted nodes (master, control-plane, etc.)
 - **Node Selectors**: Target specific node types
 - **Update Strategies**: RollingUpdate and OnDelete

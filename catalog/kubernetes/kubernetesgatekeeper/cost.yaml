@@ -1,0 +1,28 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesgatekeeper
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: The webhook controller-manager defaults to THREE replicas -- it sits on the cluster's admission write path and the chart ships it HA by default; each replica carries the declared resources.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The controller-manager container's requests are reserved per replica. Empty means the CHART's own defaults apply (100m CPU request, 512Mi memory limit per pod) -- a real reservation the manifest does not state.
+    - field_path: audit.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The audit controller runs as its own single-replica Deployment re-evaluating existing cluster resources; its memory consumption grows with the audited object count. Empty means the chart's defaults apply here too.
+    - field_path: audit.constraint_violations_limit
+      sku_meter: cluster etcd storage
+      impact: Violations are recorded on each constraint's status -- raising the per-constraint limit grows the constraint objects stored in etcd.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - when resources or audit.resources are left empty the chart applies its own defaults (100m CPU request, 512Mi memory limit per pod) -- a reservation the manifest-value footprint cannot state
+    - the chart's lifecycle hook Jobs (namespace labeling, webhook probe, CRD upgrade) are ephemeral -- they consume capacity only while running
+    - the helm_values overlay merges LAST over the typed rendering and can override modeled values, including resources and replicas -- this profile describes the spec's declaration
+  notes: "This component creates no cloud SKU of its own -- its footprint is the policy engine: the webhook controller-manager replicas plus the single audit controller pod. The ConstraintTemplates and Constraints it enforces are separate resources; evaluating more policies costs the engine's own CPU and memory, never new pods."

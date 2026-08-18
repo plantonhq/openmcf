@@ -1,0 +1,52 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its capacity derivation
+# (../capacity/, the machine-executable value-to-capacity rules): each
+# preset states the CPU/memory requests and limits and the persistent
+# volume storage it reserves from its target cluster, with a basis sentence
+# tracing every total back to the manifest's values. Cluster-capacity
+# components carry no priced lines -- the dollar value of the reservation
+# is the target cluster's node and storage-class economics, which this
+# catalog cannot know. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesdeployment
+spec:
+  presets:
+    - preset: 01-web-service
+      capacity_footprint:
+        cpu_requests: 50m
+        memory_requests: 100Mi
+        cpu_limits: "1"
+        memory_limits: 1Gi
+        basis: 1 replica x (50m CPU / 100Mi memory requests, 1000m CPU / 1Gi limits)
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+    - preset: 02-web-service-with-hpa
+      capacity_footprint:
+        cpu_requests: 200m
+        memory_requests: 512Mi
+        cpu_limits: "2"
+        memory_limits: 2Gi
+        basis: 2 replicas x (100m CPU / 256Mi memory requests, 1000m CPU / 1Gi limits)
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - the footprint states the declared replica floor; horizontal pod autoscaling changes the replica count at runtime up to max_replicas
+    - preset: 03-worker
+      capacity_footprint:
+        cpu_requests: 50m
+        memory_requests: 100Mi
+        cpu_limits: "1"
+        memory_limits: 1Gi
+        basis: 1 replica x (50m CPU / 100Mi memory requests, 1000m CPU / 1Gi limits)
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+    - preset: 04-hardened-production
+      capacity_footprint:
+        cpu_requests: 300m
+        memory_requests: 768Mi
+        cpu_limits: "3"
+        memory_limits: 3Gi
+        basis: 3 replicas x (100m CPU / 256Mi memory requests, 1000m CPU / 1Gi limits)
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics

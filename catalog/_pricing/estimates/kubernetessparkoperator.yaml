@@ -1,0 +1,33 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetessparkoperator
+spec:
+  presets:
+    - preset: 01-default
+      capacity_footprint:
+        cpu_requests: "1"
+        memory_requests: 2Gi
+        cpu_limits: "1"
+        memory_limits: 2Gi
+        basis: 1 operator pod x (1 CPU / 2Gi, requests = limits -- the chart's default sizing; the preset declares no resources)
+      exclusions:
+        - Spark driver and executor pods are created per SparkApplication/SparkCluster CR at runtime with sizing declared on those CRs -- their capacity never appears in this footprint
+        - the dollar value of this capacity is the target cluster's node economics
+    - preset: 02-fenced-team-namespaces
+      capacity_footprint:
+        cpu_requests: "2"
+        memory_requests: 4Gi
+        cpu_limits: "2"
+        memory_limits: 4Gi
+        basis: 2 operator pods (leader election -- one active reconciler, one warm standby) x (1 CPU / 2Gi, requests = limits -- the chart's default sizing; the preset declares no resources)
+      exclusions:
+        - Spark driver and executor pods are created per SparkApplication/SparkCluster CR at runtime with sizing declared on those CRs -- their capacity never appears in this footprint
+        - the dollar value of this capacity is the target cluster's node economics

@@ -1,0 +1,48 @@
+# Least-privilege permissions for the official kubernetestemporal modules
+# (iac/tf and iac/pulumi -- behaviorally equivalent). Derived from the
+# resources the modules create directly plus everything the pinned temporal
+# chart (go.temporal.io/helm-charts, default 1.6.0) renders inside the Helm
+# release. Schema: catalog/componentpermissions/v1.
+apiVersion: catalog.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetestemporal
+spec:
+  kubernetes:
+    rules:
+      - api_groups: [""]
+        resources: ["namespaces"]
+        verbs: ["get", "create", "update", "patch", "delete"]
+        cluster_scoped: true
+        provenance: derived
+        notes: kubernetes_namespace_v1.temporal -- rendered only when spec.create_namespace is true; otherwise the module only needs get on the existing namespace.
+      - api_groups: [""]
+        resources: ["secrets"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: The module creates NO credential Secrets -- database passwords ride the chart's existingSecret contract (a secretKeyRef the server and schema-Job pods resolve at runtime), and because existingSecret is always set the chart's own inline-password Secret never renders. Write access remains required for Helm's release-state Secrets (sh.helm.release.v1.*) in the namespace.
+      - api_groups: [""]
+        resources: ["services", "configmaps", "serviceaccounts"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: Chart-rendered inside helm_release.temporal -- per-service Services (<name>-frontend on gRPC 7233, history, matching, worker, plus headless variants and <name>-web on 8080), the server config and dynamic-config ConfigMaps, and the release ServiceAccounts.
+      - api_groups: [""]
+        resources: ["pods", "pods/log", "events"]
+        verbs: ["get", "list", "watch"]
+        provenance: derived
+        notes: Read-only -- the Helm provider's wait/atomic rollout (helm_release.temporal sets wait, atomic, cleanup_on_fail, 900s timeout) tracks server readiness and surfaces failure events, including the pre-install schema Jobs that run inside the same budget; the modules never create bare pods.
+      - api_groups: ["apps"]
+        resources: ["deployments"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: Chart-rendered Deployments -- the four server services (frontend, history, matching, worker), the internal-frontend when spec.internal_frontend_enabled is true, the Web UI (web_ui.enabled, default true), and the admin-tools pod (admin_tools_enabled, default true).
+      - api_groups: ["batch"]
+        resources: ["jobs"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: The schema-setup Jobs (Helm hooks preparing the default and visibility stores before the server starts -- skipped when spec.database.skip_schema_setup is true) and the namespace-creation Job rendered when spec.temporal_namespaces is declared; all run the admin-tools image.
+      - api_groups: ["monitoring.coreos.com"]
+        resources: ["servicemonitors"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+        provenance: derived
+        notes: Rendered only when spec.service_monitor_enabled is true -- one ServiceMonitor per server service; requires the Prometheus Operator CRDs. The helm_values overlay can widen the chart's object surface beyond this profile (mTLS certificate volumes, PDBs); overlay users own the extra permissions.

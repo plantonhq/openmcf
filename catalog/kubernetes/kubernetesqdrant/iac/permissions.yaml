@@ -1,0 +1,87 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesqdrant
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.qdrant (Pulumi kubernetescorev1.NewNamespace) -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The modules create no Secret of their own, but the CHART generates the <name>-apikey Secret when api_key/read_only_api_key use the generate arm (and copies existing-Secret keys into it), and the Helm release stores its state in namespace-scoped release Secrets -- both applied through the release the runner owns.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - configmaps
+          - serviceaccounts
+          - pods
+          - persistentvolumeclaims
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers helm_release.qdrant (Pulumi helmv3.NewRelease) -- the official Qdrant chart renders the client and headless Services, its config ConfigMap, a ServiceAccount, and per-pod PVCs through the StatefulSet's volumeClaimTemplates (data volume, plus the snapshots volume when spec.snapshots is declared). The release installs with wait, so the runner also reads pods to confirm readiness. The chart's full object surface is the chart's to evolve; these are the families the pinned chart (1.18.2) manages.
+      - api_groups:
+          - apps
+        resources:
+          - statefulsets
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's workload -- one StatefulSet whose replica count is spec.replicas (pod 0 bootstraps Raft; further replicas join over the p2p port).
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's ServiceMonitor -- rendered only when spec.service_monitor_enabled is true (requires the Prometheus Operator CRDs on the cluster).

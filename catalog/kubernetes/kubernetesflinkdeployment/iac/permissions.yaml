@@ -1,0 +1,38 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesflinkdeployment
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.namespace -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - flink.apache.org
+        resources:
+          - flinkdeployments
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubectl_manifest.flinkdeployment (Terraform, server-side apply) and the Pulumi twin's untyped CustomResource in flinkdeployment_cr.go -- the single flink.apache.org/v1beta1 FlinkDeployment CR. The JobManager, TaskManagers, and Services are created by the OPERATOR under its own identity, not by the runner. Deletion cascades in the Background so the operator's finalizer owns the teardown.

@@ -1,0 +1,180 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesingressnginx
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.ingress_nginx -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - networking.k8s.io
+        resources:
+          - ingressclasses
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers the IngressClass the chart renders through helm_release.ingress_nginx -- name from spec.ingress_class.name (default "nginx"), controller identifier derived per instance. IngressClasses are cluster-scoped and immutable; a name change replaces the object.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - configmaps
+          - serviceaccounts
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: "Covers the chart's namespaced core objects: the controller Service (the entry point; a SECOND internal Service when service.internal.enabled; a metrics Service when metrics.enabled; the admission-webhook Service; the default-backend Service when default_backend.enabled), the controller ConfigMap carrying nginx_config plus the tcp_services/udp_services maps, and the controller/webhook/default-backend ServiceAccounts. The modules also READ the controller Service after install (data.kubernetes_service_v1.controller) to export the LB address."
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+          - daemonsets
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the controller workload -- a Deployment by default, a DaemonSet when spec.controller_kind is daemon_set -- and the default-backend Deployment when default_backend.enabled.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: "Covers the chart's cluster-scoped RBAC for the controller ServiceAccount -- cluster-wide watch of Ingresses, Services, Endpoints, Secrets (TLS), and IngressClasses. Kubernetes escalation prevention requires the runner to already hold the permissions those ClusterRoles grant, or the escalate verb."
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's namespaced RBAC -- the controller's election/lease Role and the admission-webhook certgen Job's Role. The same escalation-prevention caveat as the cluster-scoped rule applies.
+      - api_groups:
+          - admissionregistration.k8s.io
+        resources:
+          - validatingwebhookconfigurations
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers the Ingress validation webhook (spec.admission_webhooks.enabled, chart default true) -- the cluster-scoped configuration rejecting broken NGINX config at kubectl-apply time.
+      - api_groups:
+          - batch
+        resources:
+          - jobs
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the admission-webhook certgen hook Jobs (kube-webhook-certgen) that bootstrap the webhook certificate -- the modules set wait_for_jobs so these must complete for the apply to succeed. The certificate Secret itself is created in-cluster by the Job's own ServiceAccount, not by the runner.
+      - api_groups:
+          - policy
+        resources:
+          - poddisruptionbudgets
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart automatically guards the controller with a PodDisruptionBudget (minAvailable 1) when replicas exceeds 1 or autoscaling.min_replicas exceeds 1 -- there is no separate toggle.
+      - api_groups:
+          - autoscaling
+        resources:
+          - horizontalpodautoscalers
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Rendered only when spec.autoscaling.enabled is true -- the chart-managed HPA that owns the controller replica count between min_replicas and max_replicas.
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Rendered only when spec.metrics.service_monitor is true; requires the Prometheus operator CRDs on the cluster (the release fails to install without them). The helm_values overlay (spec.helm_values, merged last) can extend the chart's object surface beyond these rules generally; grants for such extensions ride the operator's review of the overlay, not this manifest.

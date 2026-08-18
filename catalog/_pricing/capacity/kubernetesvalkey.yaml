@@ -1,0 +1,58 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesValkey manifest's spec values into the capacity footprint it
+# reserves from its target cluster. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/kubernetesvalkey.yaml; a server-side estimator can
+# evaluate the same rules against live manifests. Standalone mode runs
+# one instance with an optional data volume; replication mode runs one
+# primary plus the declared replicas, every pod carrying the shared
+# resources block and its own volume from replication.persistence
+# (top-level persistence and the replication block are mutually
+# exclusive by the spec's own validation, so exactly one volume path
+# resolves per manifest). Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetesvalkey
+spec:
+  workloads:
+    - label: primary
+      resources_path: resources
+      instances:
+        constant: "1"
+      volumes:
+        - label: data
+          size_path: persistence.size
+        - label: replicated data
+          size_path: replication.persistence.size
+    - label: replica
+      resources_path: resources
+      instances:
+        field_value:
+          field_path: replication.replicas
+      volumes:
+        - label: data
+          size_path: replication.persistence.size
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node and storage-class economics
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: the helm_values overlay merges last over the typed rendering and can override modeled values, including resources and replica counts
+    - applies_when:
+        - field_path: metrics
+          op: is_set
+      text: the redis_exporter metrics sidecar consumes CPU and memory this manifest declares no reservation for
+  notes:
+    - applies_when:
+        - field_path: replication
+          op: is_set
+        - field_path: replication.replicas
+          op: is_unset
+      text: the chart defaults to 2 replicas when replication.replicas is unset; this footprint counts only the declared replica count
+    - applies_when:
+        - field_path: replication
+          op: is_unset
+        - field_path: persistence
+          op: is_unset
+      text: without persistence the standalone instance is a pure in-memory cache -- no volume is reserved and the dataset starts empty after every pod restart

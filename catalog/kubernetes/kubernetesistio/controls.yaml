@@ -1,0 +1,82 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesistio
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: istiod stores no data of its own -- mesh configuration lives as Kubernetes objects in the cluster's etcd, and the self-generated CA signing material rides a Kubernetes Secret. Encryption at rest for both is the target cluster's etcd/KMS posture, not this component's.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for etcd and Secret encryption are configured on the target cluster (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The control plane's own connections are TLS by construction -- istiod issues workload certificates from the mesh CA and serves xDS and its admission webhooks over TLS, with identities anchored at mesh_config.trust_domain. In ambient mode ztunnel carries workload traffic over mTLS automatically.
+      notes: Workload-to-workload mTLS in sidecar mode defaults to PERMISSIVE (plaintext still accepted); the STRICT posture composes from KubernetesPeerAuthentication, not this spec.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The modules render no external exposure -- istiod serves ClusterIP-only inside the cluster, and this component deliberately installs NO gateways. North-south exposure exists only when a KubernetesGateway resource asks istiod to provision one.
+      notes: gateway_defaults.service_type shapes what auto-provisioned gateways expose (LoadBalancer by upstream default) -- but the exposure decision rides the KubernetesGateway that creates them.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The control plane accepts only in-cluster xDS and webhook connections from the data plane it programs -- there is no ingress-source seam on istiod itself. Workload-level ingress restriction composes from KubernetesAuthorizationPolicy and the mesh's policy kinds.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: istiod serves no edge traffic. Request filtering for mesh ingress rides the composed gateways (KubernetesGateway and the route kinds), where WAF-style policy attaches.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The charts render dedicated ServiceAccounts for istiod, the cni agent, and ztunnel, each bound to purpose-scoped (Cluster)Roles -- no component runs as a shared or default identity. Management of the mesh itself (the Istio CRDs and the control-plane releases) is governed by the target cluster's Kubernetes RBAC.
+      notes: Mesh-level request authorization (who may call whom) composes from KubernetesAuthorizationPolicy.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The control plane calls no cloud APIs, so there is no cloud-credential seam. Notably, istiod is itself the ISSUER of in-mesh workload identities -- SPIFFE certificates anchored at mesh_config.trust_domain -- rotated automatically and short-lived by design.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The control plane exposes no legacy authentication path. The mesh-wide weaker path -- PERMISSIVE mTLS accepting plaintext from non-mesh clients -- is disabled per namespace or mesh-wide through KubernetesPeerAuthentication (STRICT), a separate composed kind.
+    - control_id: audit-logging
+      status: configurable
+      field_path: mesh_config.access_log_file
+      evidence:
+        type: spec_default
+        reference: Empty (the upstream default) disables file access logging; "/dev/stdout" turns on mesh-wide request access logs from every proxy for the cluster's log collector.
+      notes: The 03-production-sidecar preset enables it. Changes to mesh configuration are Kubernetes API operations, captured by the target cluster's audit policy. Per-workload log shaping composes from KubernetesTelemetry.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: istiod and every proxy serve Prometheus metrics endpoints out of the box, and mesh_config.enable_prometheus_merge (default true) merges workload Prometheus annotations with the proxy's metrics so one scrape endpoint serves both.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: istiod is stateless -- everything it serves is derived from Kubernetes objects (mesh configuration, workload state) that live in the cluster's etcd and back up with the cluster. The self-generated mesh CA Secret is the one recovery-relevant artifact; its protection rides the cluster's Secret backup posture.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: istiod.autoscale.min_replicas
+      evidence:
+        type: spec_default
+        reference: The chart default is min 1 -- a single istiod replica. Raising min_replicas to 2 or more keeps the control plane serving through a node or zone loss; istiod.pod_disruption_budget (default true) additionally guards it during drains.
+      notes: The 03-production-sidecar preset runs min 2 / max 5 with the PDB and priority class system-cluster-critical. The data plane keeps serving on its last-known configuration even if istiod is briefly down -- new pods and config changes wait.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Helm nor the charts offer a deletion-protection flag. Destroying this component removes the module-owned Istio CRDs with everything else, which CASCADES every mesh-configuration object in the cluster -- protection is operational (cluster RBAC, change review).
+    - control_id: managed-patching
+      status: configurable
+      field_path: version
+      evidence:
+        type: spec_default
+        reference: The chart version is pinned (default "1.30.3") and drives all four releases in lockstep -- upgrades are deliberate version-pin changes, never silent. Istio supports sequential single-minor upgrades only; skipping minors in place is unsupported.
+      notes: All three presets ride the pinned default.

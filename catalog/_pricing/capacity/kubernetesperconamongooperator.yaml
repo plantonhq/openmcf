@@ -1,0 +1,35 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesPerconaMongoOperator manifest's spec values into the capacity
+# footprint it reserves from its target cluster. The estimate generator
+# replays the catalog presets through these rules to emit
+# ../estimates/kubernetesperconamongooperator.yaml; a server-side
+# estimator can evaluate the same rules against live manifests. The
+# footprint is the operator replicas alone. The MongoDB clusters the
+# operator reconciles reserve their own capacity on their
+# KubernetesMongodb resources -- never here.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetesperconamongooperator
+spec:
+  workloads:
+    - label: operator replica
+      resources_path: resources
+      instances:
+        field_value:
+          field_path: replicas
+          default_when_unset: "1"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node economics
+    - text: "the MongoDB clusters this operator reconciles reserve their own capacity -- each rides its KubernetesMongodb resource"
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: the helm_values overlay merges last and can override the modeled values, including resources
+  notes:
+    - applies_when:
+        - field_path: resources
+          op: is_unset
+      text: the operator container declares no requests or limits (the chart ships no defaults), so it schedules unbounded and reserves nothing
+    - text: extra operator replicas are leader-elected warm standbys shortening operator failover -- they add standby capacity, not reconciliation throughput

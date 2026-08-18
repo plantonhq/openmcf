@@ -1,0 +1,45 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its capacity derivation
+# (../capacity/, the machine-executable value-to-capacity rules): each
+# preset states the CPU/memory requests and limits and the persistent
+# volume storage it reserves from its target cluster, with a basis sentence
+# tracing every total back to the manifest's values. Cluster-capacity
+# components carry no priced lines -- the dollar value of the reservation
+# is the target cluster's node and storage-class economics, which this
+# catalog cannot know. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kuberneteskubeprometheusstack
+spec:
+  presets:
+    - preset: 01-dev-single-cluster
+      capacity_footprint:
+        persistent_storage: 12Gi
+        basis: "1 Prometheus replica: 1 x 10Gi TSDB volume; 1 Alertmanager replica: 1 x 2Gi state volume"
+      exclusions:
+        - node-exporter (on by default) runs one pod on EVERY node -- its reservation is per-node, multiplied by a node count only the target cluster knows; no term for it appears in this footprint
+        - the dollar value of this capacity is the target cluster's node and storage economics
+        - the chart's hook Jobs (webhook certgen, optional CRD upgrade) are ephemeral -- capacity only while running
+      notes: "Prometheus declares no resources (the chart default: none) -- its pods schedule unbounded, and memory grows with active series count; the TSDB volume is still reserved"
+    - preset: 02-managed-cloud
+      capacity_footprint:
+        persistent_storage: 60Gi
+        basis: "1 Prometheus replica: 1 x 50Gi TSDB volume; 1 Alertmanager replica: 1 x 5Gi state volume; 1 Grafana pod: 1 x 5Gi dashboards volume"
+      exclusions:
+        - node-exporter (on by default) runs one pod on EVERY node -- its reservation is per-node, multiplied by a node count only the target cluster knows; no term for it appears in this footprint
+        - the dollar value of this capacity is the target cluster's node and storage economics
+        - the chart's hook Jobs (webhook certgen, optional CRD upgrade) are ephemeral -- capacity only while running
+      notes: "Prometheus declares no resources (the chart default: none) -- its pods schedule unbounded, and memory grows with active series count; the TSDB volume is still reserved"
+    - preset: 03-production-sized
+      capacity_footprint:
+        cpu_requests: 1300m
+        memory_requests: 4736Mi
+        cpu_limits: "7"
+        memory_limits: 10752Mi
+        persistent_storage: 230Gi
+        basis: 2 Prometheus replicas x (500m CPU / 2Gi memory requests, 2 CPU / 4Gi limits) + 2 x 100Gi TSDB volumes; 2 Alertmanager replicas x (50m CPU / 128Mi memory requests, 500m CPU / 512Mi limits) + 2 x 10Gi state volumes; 1 Grafana pod x (100m CPU / 256Mi memory requests, 1 CPU / 1Gi limits) + 1 x 10Gi dashboards volume; 1 operator pod x (100m CPU / 128Mi memory requests, 1 CPU / 512Mi limits)
+      exclusions:
+        - node-exporter (on by default) runs one pod on EVERY node -- its reservation is per-node, multiplied by a node count only the target cluster knows; no term for it appears in this footprint
+        - the dollar value of this capacity is the target cluster's node and storage economics
+        - the chart's hook Jobs (webhook certgen, optional CRD upgrade) are ephemeral -- capacity only while running

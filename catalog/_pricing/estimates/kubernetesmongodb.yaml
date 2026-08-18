@@ -1,0 +1,33 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesmongodb
+spec:
+  presets:
+    - preset: 01-single-instance
+      capacity_footprint:
+        cpu_requests: 100m
+        memory_requests: 256Mi
+        cpu_limits: 500m
+        memory_limits: 512Mi
+        persistent_storage: 5Gi
+        basis: 1 member (replica set rs0) x (100m CPU / 256Mi memory requests, 500m CPU / 512Mi limits) + 1 x 5Gi data volume; no sharding, no arbiter, no log collector
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+    - preset: 02-replica-set
+      capacity_footprint:
+        cpu_requests: "3"
+        memory_requests: 6Gi
+        cpu_limits: "6"
+        memory_limits: 12Gi
+        persistent_storage: 300Gi
+        basis: 3 members (replica set rs0) x (1 CPU / 2Gi memory requests, 2 CPU / 4Gi limits) + 3 x 100Gi data volumes; no sharding, no arbiter, no log collector
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics

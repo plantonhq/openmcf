@@ -1,0 +1,24 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kuberneteskafkaconnect
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Each replica is a full Connect worker pod carrying the declared resource requests -- three workers reserve three times the capacity. Workers share connector tasks through the Connect group protocol, so replicas scale task throughput.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The CPU and memory requests are what the scheduler reserves on the cluster's nodes per worker -- the capacity is claimed whether connectors are moving data or idle. Limits set the burst ceiling, and the JVM heap default derives from the memory limit.
+    - field_path: build
+      sku_meter: cluster CPU and memory reservations
+      impact: When configured, the operator runs a transient Kaniko/Buildah build pod to bake the connector plugins into an image -- capacity is claimed only while the build runs, and the pod's sizing is the operator's, not this spec's.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - "the operator-driven image build (spec.build) runs a transient build pod whose sizing the operator owns -- its capacity is not declared in this spec"
+    - "Connect's three internal storage topics (configs, offsets, status) live on the target Kafka cluster and grow there -- that storage rides the Kafka cluster's footprint, not this one"
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster its worker pods reserve, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: replicas x requests. The Strimzi cluster operator that reconciles this resource carries its own footprint on KubernetesStrimziKafkaOperator, and connectors declared as KubernetesKafkaConnector resources run their tasks INSIDE these workers -- they add load, not pods."

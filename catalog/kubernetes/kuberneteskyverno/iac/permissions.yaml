@@ -1,0 +1,151 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kuberneteskyverno
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.kyverno -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - serviceaccounts
+          - configmaps
+          - secrets
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The module's own webhook-GC sentinel ConfigMap (kubernetes_config_map_v1.webhook_gc -- the destroy-ordered anchor for the post-release webhook cleanup) plus chart-rendered objects applied by helm_release.kyverno -- the engine's runtime ConfigMap (resource filters, webhook selectors), per-controller ServiceAccounts, and the webhook/metrics ClusterIP Services. Secrets cover Helm's own release-state Secret; the webhook serving-certificate Secrets are generated and rotated at RUNTIME by Kyverno itself unless certificates.cert_manager delegates them.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's four controller Deployments -- admission (always installed) and the background/cleanup/reports controllers, each rendered while its enabled flag holds (all chart defaults true).
+      - api_groups:
+          - batch
+        resources:
+          - jobs
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's hook Jobs -- the pre-delete webhook cleanup (spec.webhooks_cleanup_enabled, default on) and the post-upgrade CRD migration kyverno-cli Job (crds.migration_enabled, default on; its image pulls from reg.kyverno.io unless image_registry reroutes it).
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart's per-controller ClusterRoles and bindings -- the admission and background controllers' breadth (reading, mutating, and generating what policies match, cluster-wide) is the engine's nature; the chart also ships aggregation roles that fold user-defined policy permissions in. The runner must be able to grant everything these roles contain.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Namespaced RBAC the chart renders in the installation namespace (leader-election leases, certificate-secret management).
+      - api_groups:
+          - admissionregistration.k8s.io
+        resources:
+          - validatingwebhookconfigurations
+          - mutatingwebhookconfigurations
+        verbs:
+          - get
+          - list
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: "The chart templates NO webhook configurations -- the admission controller REGISTERS them at runtime under its own RBAC. The runner needs delete anyway: the module's destroy-time webhook GC (the webhook_gc ConfigMap's provisioner) deletes kyverno-* configurations by the webhook.kyverno.io/managed-by=kyverno label after the release is gone, because the pinned chart's own delete-webhooks helper deletes the wrong API and validating configs would otherwise strand fail-closed."
+      - api_groups:
+          - apiextensions.k8s.io
+        resources:
+          - customresourcedefinitions
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The ~23 policy CRDs (kyverno.io, policies.kyverno.io, reports.kyverno.io, wgpolicyk8s.io) templated by the chart's crds subchart -- release-owned, installed while crds.install is true (the default) and DELETED with the release unless crds.keep_on_uninstall adds the keep annotation.
+      - api_groups:
+          - autoscaling
+        resources:
+          - horizontalpodautoscalers
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The admission controller's HPA -- rendered only when spec.admission_controller.autoscaling is declared (the HPA then owns the replica count).
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Rendered only when spec.metrics.service_monitor is true -- one ServiceMonitor per enabled controller; requires the Prometheus operator CRDs on the cluster.

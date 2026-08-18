@@ -1,0 +1,90 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesdeployment
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace.this (Terraform) and namespace.go (Pulumi) -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_deployment_v1.this (Terraform) and deployment.go (Pulumi) -- the apps/v1 Deployment itself, created unconditionally.
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_secret_v1.env_secrets (rendered only when containers declare literal secret env values, materialized into one Opaque Secret) and kubernetes_secret_v1.image_pull (rendered only when the platform injects a dockerconfigjson at deploy time); secret.go and image_pull_secret.go in the Pulumi module.
+      - api_groups:
+          - ""
+        resources:
+          - services
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_service_v1.this (Terraform) and service.go (Pulumi) -- the ClusterIP Service fronting the pods, rendered only when the app container declares ports (workers and consumers get none).
+      - api_groups:
+          - autoscaling
+        resources:
+          - horizontalpodautoscalers
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_horizontal_pod_autoscaler_v2.this (Terraform) and hpa.go (Pulumi) -- the autoscaling/v2 HPA, rendered only when spec.availability.horizontal_pod_autoscaling.enabled is true.
+      - api_groups:
+          - policy
+        resources:
+          - poddisruptionbudgets
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_pod_disruption_budget_v1.this (Terraform) and pdb.go (Pulumi) -- rendered only when spec.availability.pod_disruption_budget.enabled is true.

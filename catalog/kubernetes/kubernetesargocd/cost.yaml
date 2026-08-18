@@ -1,0 +1,40 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesargocd
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: controller.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The reconciliation engine's reservation -- the component to size first, since it holds every Application's state in memory. controller.replicas multiplies it, but replicas are SHARDS across target clusters, not load-balanced copies.
+    - field_path: repo_server.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The repo server clones repositories and renders manifests -- the component to scale first when sync latency grows with many apps; repo_server.replicas or its HPA multiplies the reservation.
+    - field_path: server.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The API/UI server's reservation, multiplied by server.replicas or its HPA between the declared bounds.
+    - field_path: application_set.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The ApplicationSet controller (always installed by the chart), multiplied by application_set.replicas.
+    - field_path: redis
+      sku_meter: cluster CPU and memory reservations
+      impact: "The cache arm decides the Redis footprint: empty/bundled is one pod sized by redis.bundled.resources; the ha arm is a 3+-replica Sentinel cluster plus HAProxy pods at chart-default sizing (needing 3+ schedulable worker nodes); the external arm runs no pod here."
+    - field_path: notifications
+      sku_meter: cluster CPU and memory reservations
+      impact: The notifications controller runs by chart default; disable it (enabled=false) to drop the pod, or size it with notifications.resources.
+    - field_path: dex
+      sku_meter: cluster CPU and memory reservations
+      impact: Dex (the bundled SSO broker) runs by chart default; installs using direct OIDC or admin-only access can disable it to drop the pod.
+    - field_path: commit_server
+      sku_meter: cluster CPU and memory reservations
+      impact: The commit server (manifest hydration) is disabled by chart default -- enabling it adds one pod sized by commit_server.resources.
+  estimate_exclusions:
+    - every component left unsized carries the chart's defaults, and the chart ships NO default requests or limits -- unsized components schedule unbounded and the cluster reserves nothing for them; the 01 and 02 presets declare no resources at all and therefore state zero reservation
+    - the Applications this control plane deploys are the real capacity story -- their workloads run wherever their manifests say, never in this footprint
+    - "helm_values merges LAST over the typed rendering and can override modeled values, including per-component resources and replicas -- this profile describes the spec's declaration"
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster its control-plane pods reserve (application controller, server, repo server, ApplicationSet controller, notifications, Dex, optional commit server, and the Redis cache arm), realized on the cluster's bill. Argo CD's Redis is a disposable cache -- losing it costs a re-sync, not state -- so the cache arm is an availability choice, not a durability one."

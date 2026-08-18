@@ -1,0 +1,118 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesmlflow
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.mlflow -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the module-owned Secrets -- kubernetes_secret_v1.admin_auth (the generated admin password, unless a BYO Secret is referenced), backend_uri (the composed connection URI on the postgres/mysql arms), and auth_config (the basic-auth ini plus the Flask CSRF signing key, rendered while auth is enabled) -- plus read access for the referenced credentials (data.kubernetes_secret_v1.db_password on external backends, byo_admin_password when auth uses an existing Secret).
+      - api_groups:
+          - ""
+        resources:
+          - configmaps
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_config_map_v1.read_anchor -- the module's marker ConfigMap deferring credential data-source reads to apply time; rendered only on external backend arms or BYO admin Secrets.
+      - api_groups:
+          - ""
+        resources:
+          - persistentvolumeclaims
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_persistent_volume_claim_v1.data (the sqlite backend PVC, rendered when the backend store is absent or on the sqlite_pvc arm) and kubernetes_persistent_volume_claim_v1.artifacts (the local artifact PVC, rendered when the artifact store is absent or on the pvc arm). Both ReadWriteOnce.
+      - api_groups:
+          - ""
+        resources:
+          - services
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_service_v1.mlflow -- the front-door Service, ClusterIP unless spec.service.type opts into LoadBalancer/NodePort.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_deployment_v1.mlflow -- the tracking-server Deployment (Recreate strategy whenever an RWO PVC binds; rollout waiting stays on, so read access supports the wait).
+      - api_groups:
+          - batch
+        resources:
+          - cronjobs
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_cron_job_v1.gc -- the mlflow gc CronJob, rendered only when spec.gc.enabled is true.
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubectl_manifest.service_monitor -- the ServiceMonitor rendered only when spec.metrics.service_monitor_enabled is true (requires the Prometheus operator CRDs on the cluster; deploying without them fails loudly by design).

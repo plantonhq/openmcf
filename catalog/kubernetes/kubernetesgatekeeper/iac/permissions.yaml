@@ -1,0 +1,139 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesgatekeeper
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.gatekeeper -- created and owned only when spec.create_namespace is true (declared with the Gatekeeper exemption label so day-2 applies never strip what the chart's labeling hook stamped); get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - serviceaccounts
+          - secrets
+          - resourcequotas
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Chart-rendered objects applied by helm_release.gatekeeper -- the webhook ClusterIP Service, the gatekeeper ServiceAccounts (including the hook Jobs' service accounts), the gatekeeper-webhook-server-cert Secret shell (populated and rotated at runtime by the embedded cert-controller unless external_cert takes over), the ResourceQuota the chart renders so its system-cluster-critical pods may schedule in the namespace, and Helm's own release-state Secret.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's two Deployments -- the webhook controller-manager (spec.replicas, chart default 3) and the single-replica audit controller.
+      - api_groups:
+          - batch
+        resources:
+          - jobs
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's lifecycle hook Jobs -- namespace labeling (hooks.label_namespace, default on), the webhook readiness probe (hooks.probe_webhook, default on), the pre-install/pre-upgrade CRD apply (hooks.upgrade_crds, default on), and the pre-delete webhook-configuration cleanup (hooks.delete_webhook_configurations_on_uninstall, default off).
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart's manager ClusterRole and binding -- broad by the audit function's nature (reading audited kinds cluster-wide, managing Gatekeeper's own resource groups and webhook configurations) -- plus the hook Jobs' cluster RBAC. The runner must be able to grant everything these roles contain.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Namespaced RBAC the chart renders in the installation namespace (manager and hook-job Roles and bindings).
+      - api_groups:
+          - admissionregistration.k8s.io
+        resources:
+          - validatingwebhookconfigurations
+          - mutatingwebhookconfigurations
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart OWNS both webhook configurations as release objects (rendered while validating_webhook.enabled / mutating_webhook.enabled, both chart defaults true) -- uninstall removes them with everything else, unlike engines that register webhooks at runtime.
+      - api_groups:
+          - apiextensions.k8s.io
+        resources:
+          - customresourcedefinitions
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The engine CRDs (constrainttemplates, configs, expansiontemplates, mutators, ...) ship in the chart's crds/ directory -- Helm installs them but never upgrades or deletes them; the hooks.upgrade_crds Job applies them at the chart's version on upgrades under its own hook RBAC. The per-template constraint CRDs are created at RUNTIME by Gatekeeper itself, never by the runner.
+      - api_groups:
+          - policy
+        resources:
+          - poddisruptionbudgets
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart renders a PodDisruptionBudget for the controller-manager by default; the typed spec does not touch it -- tuned or disabled only through helm_values, per the spec's escape-hatch doc.

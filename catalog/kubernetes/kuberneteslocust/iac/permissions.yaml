@@ -1,0 +1,126 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kuberneteslocust
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.locust (Pulumi kubernetescorev1.NewNamespace) -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - configmaps
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the MODULE-OWNED script ConfigMaps -- kubernetes_config_map_v1.locustfile and kubernetes_config_map_v1.lib, rendered only on the inline-scripts arm (the existing-ConfigMaps arm references the user's own) -- and kubernetes_config_map_v1.web_auth_code, the login backend delivered when web_ui_auth is enabled (the default). The Helm release additionally manages the chart's own config ConfigMap, rendered unconditionally.
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_secret_v1.auth -- the module-owned `<name>-auth` login credential (username, generated password, Flask session key), created while web_ui_auth is enabled (the default) -- plus the Helm release's own state Secrets. The chart's values-rendered Secret path (environment_secret) is nulled by the modules and never renders; test-credential Secrets are EXISTING references the pods read at runtime, not the runner.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - serviceaccounts
+          - pods
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers helm_release.locust (Pulumi helmv3.NewRelease) -- the pinned chart (0.35.0, OCI-served) renders the master Service (web UI 8089 + worker-connect ports) and a ServiceAccount each for the master and the workers. The release installs with wait, so the runner also reads pods to confirm the rollouts.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's two workloads -- the master Deployment (one replica, the chart's fixed shape) and the worker Deployment (spec.workers.replicas, or the autoscaling floor on the KEDA arm).
+      - api_groups:
+          - policy
+        resources:
+          - poddisruptionbudgets
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's master and worker PodDisruptionBudgets -- rendered only when spec.master.pdb_enabled or spec.workers.pdb_enabled is true.
+      - api_groups:
+          - autoscaling
+        resources:
+          - horizontalpodautoscalers
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the worker HPA -- rendered only on the spec.workers.hpa autoscaling arm.
+      - api_groups:
+          - keda.sh
+        resources:
+          - scaledobjects
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the worker ScaledObject -- rendered only on the spec.workers.keda autoscaling arm (requires the KEDA operator's CRDs on the cluster; a KubernetesKeda composes naturally).

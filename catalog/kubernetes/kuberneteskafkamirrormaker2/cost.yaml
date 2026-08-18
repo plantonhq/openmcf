@@ -1,0 +1,24 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kuberneteskafkamirrormaker2
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Each replica is a full MirrorMaker 2 worker pod carrying the declared resource requests. Mirroring tasks spread across workers -- scale with the source clusters' partition counts.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The CPU and memory requests are what the scheduler reserves on the cluster's nodes per worker -- the capacity is claimed whether records are flowing or not. Limits set the burst ceiling, and the JVM heap default derives from the memory limit.
+    - field_path: mirrors
+      sku_meter: cluster CPU and memory reservations
+      impact: Each mirror runs a MirrorSourceConnector and a MirrorCheckpointConnector INSIDE the declared workers -- more sources (and higher tasks_max) mean more load on the same pods, not more pods. Size resources and replicas for the total mirroring volume.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - "the engine's internal storage topics (configs, offsets, status) live on the TARGET Kafka cluster and grow there -- that storage rides the Kafka cluster's footprint, not this one"
+    - mirrored topic data lands on the target Kafka cluster and grows with source traffic across the mirroring window
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster its worker pods reserve, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: replicas x requests. The Strimzi cluster operator that reconciles this resource carries its own footprint on KubernetesStrimziKafkaOperator; the source and target Kafka clusters carry theirs on their own resources."

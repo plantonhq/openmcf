@@ -1,0 +1,35 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its capacity derivation
+# (../capacity/, the machine-executable value-to-capacity rules): each
+# preset states the CPU/memory requests and limits and the persistent
+# volume storage it reserves from its target cluster, with a basis sentence
+# tracing every total back to the manifest's values. Cluster-capacity
+# components carry no priced lines -- the dollar value of the reservation
+# is the target cluster's node and storage-class economics, which this
+# catalog cannot know. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesvalkey
+spec:
+  presets:
+    - preset: 01-single-instance
+      capacity_footprint:
+        cpu_requests: 50m
+        memory_requests: 128Mi
+        cpu_limits: "1"
+        memory_limits: 512Mi
+        persistent_storage: 1Gi
+        basis: 1 primary x (50m CPU / 128Mi memory requests, 1000m CPU / 512Mi limits) + 1 x 1Gi data volume
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+    - preset: 02-persistent-with-replicas
+      capacity_footprint:
+        cpu_requests: 300m
+        memory_requests: 768Mi
+        cpu_limits: "3"
+        memory_limits: 6Gi
+        persistent_storage: 15Gi
+        basis: 1 primary x (100m CPU / 256Mi memory requests, 1000m CPU / 2Gi limits) + 1 x 5Gi replicated data volume; 2 replicas x (100m CPU / 256Mi memory requests, 1000m CPU / 2Gi limits) + 2 x 5Gi data volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics

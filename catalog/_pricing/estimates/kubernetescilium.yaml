@@ -1,0 +1,54 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetescilium
+spec:
+  presets:
+    - preset: 01-kind-dev-cluster
+      capacity_footprint:
+        cpu_requests: "0"
+        memory_requests: "0"
+        cpu_limits: "0"
+        memory_limits: "0"
+        basis: 1 operator replica and the per-node agent both run with no declared CPU or memory resources (the chart default) -- the manifest reserves nothing; consumption is real but unreserved
+      exclusions:
+        - the agent runs one pod on every node with no declared resources -- real per-node consumption, no reservation
+        - the dollar value of this capacity is the target cluster's node economics
+    - preset: 02-eks-chaining
+      capacity_footprint:
+        cpu_requests: "0"
+        memory_requests: "0"
+        cpu_limits: "0"
+        memory_limits: "0"
+        basis: 2 operator replicas (the spec default) and the per-node agent all run with no declared CPU or memory resources (the chart default) -- the manifest reserves nothing; consumption is real but unreserved
+      exclusions:
+        - the agent runs one pod on every node with no declared resources -- real per-node consumption, no reservation
+        - the dollar value of this capacity is the target cluster's node economics
+    - preset: 03-self-managed-primary-kpr
+      capacity_footprint:
+        cpu_requests: "0"
+        memory_requests: "0"
+        cpu_limits: "0"
+        memory_limits: "0"
+        basis: 2 operator replicas (the spec default) and the per-node agent all run with no declared CPU or memory resources (the chart default) -- the manifest reserves nothing; consumption is real but unreserved
+      exclusions:
+        - the agent runs one pod on every node with no declared resources -- real per-node consumption, no reservation
+        - the dollar value of this capacity is the target cluster's node economics
+    - preset: 04-production-observability
+      capacity_footprint:
+        cpu_requests: 200m
+        memory_requests: 256Mi
+        cpu_limits: "0"
+        memory_limits: 512Mi
+        basis: "operator 2 replicas x (100m CPU / 128Mi memory requests, 256Mi memory limit, no CPU limit); the agent DaemonSet additionally reserves PER NODE: 200m CPU / 512Mi memory requests and a 1Gi memory limit, excluded from these totals because only the target cluster knows its node count"
+      exclusions:
+        - the agent reservation is PER NODE -- add 200m CPU / 512Mi memory requests and a 1Gi memory limit for EVERY node in the cluster; that multiplication is the cluster's, not the manifest's
+        - the hubble-relay and hubble-ui pods this preset enables run without declared resources (no typed surface) -- real consumption, no reservation
+        - the dollar value of this capacity is the target cluster's node economics

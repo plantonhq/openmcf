@@ -1,0 +1,27 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesopenfga
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: Each server replica reserves the declared requests. The chart ships NO defaults at all; when the manifest omits resources, the module applies the spec's declared defaults (100m CPU / 128Mi memory requests, 1000m CPU / 512Mi limits) -- modest laboratory sizing; size real installs to check volume.
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: OpenFGA is stateless (all state lives in the datastore), so replicas scale reads and checks linearly -- each carries the full per-replica reservation. Defaults to 3; forced to 1 on the memory datastore; ignored when hpa is enabled.
+    - field_path: hpa
+      sku_meter: cluster CPU and memory reservations
+      impact: When enabled, the autoscaler owns the replica count between min_replicas and max_replicas -- actual reservation follows load, so budget for max_replicas.
+    - field_path: datastore
+      sku_meter: composed database
+      impact: Every byte of authorization data lives in the external PostgreSQL or MySQL datastore -- a separately composed resource (typically KubernetesPostgres or KubernetesMysql) carrying its own capacity and cost. The memory arm is zero-dependency but loses everything on restart.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - the datastore is a separately composed resource -- its capacity, storage, and cost are declared on its own manifest, not here
+    - when hpa is enabled the reservation follows load between the declared bounds
+  notes: "This component installs the OpenFGA Helm chart -- a stateless authorization engine whose cost is the share of the cluster its server replicas reserve, realized on the cluster's bill. No volumes are provisioned; durability is entirely the composed datastore's."

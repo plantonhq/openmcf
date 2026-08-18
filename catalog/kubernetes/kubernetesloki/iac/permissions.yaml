@@ -1,0 +1,129 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesloki
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.loki (Pulumi kubernetescorev1.NewNamespace) -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The modules create no Secret of their own -- object-store credentials are read from EXISTING Secrets the manifest references -- but the Helm release stores its state in namespace-scoped release Secrets the runner must manage, and the pinned chart (18.5.4) renders the gateway's htpasswd Secret when spec.multi_tenancy declares tenants (with existing_htpasswd_secret the chart references the named Secret instead of creating one).
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - configmaps
+          - serviceaccounts
+          - pods
+          - persistentvolumeclaims
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers helm_release.loki (Pulumi helmv3.NewRelease) -- the chart renders per-workload and headless Services plus the memberlist Service, the Loki config and runtime ConfigMaps and the gateway's nginx ConfigMap, ServiceAccounts, and per-replica PVCs through the StatefulSets' volumeClaimTemplates (monolithic replicas, or the write and backend tiers in simple_scalable mode). The release installs with wait, so the runner also reads pods to confirm readiness.
+      - api_groups:
+          - apps
+        resources:
+          - statefulsets
+          - deployments
+          - daemonsets
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's workloads -- exactly one mode renders (the modules zero the other mode's replica counts) as the monolithic StatefulSet or the write/backend StatefulSets plus the read Deployment; alongside them the gateway Deployment (spec.gateway, on by default), the chunks-cache and results-cache memcached StatefulSets (spec.caching, both on by default), and the canary DaemonSet (spec.canary_enabled, on by default).
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The pinned chart renders a ClusterRole and ClusterRoleBinding UNCONDITIONALLY in this component's rendering (the chart's rbac.namespaced default is false and the modules never change it) -- the ClusterRole grants get/watch/list on ConfigMaps and Secrets to the rules sidecar (the chart's sidecar.rules default), so the runner's principal must be able to create that grant (hold the granted permissions or the escalate verb, per Kubernetes RBAC escalation rules).
+      - api_groups:
+          - policy
+        resources:
+          - poddisruptionbudgets
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart renders a PodDisruptionBudget for each workload class whose replica count exceeds one -- the write/read/backend tiers in simple_scalable mode (the 02-production-scalable and 03-multitenant presets run 3/3/3), scaled monolithic replicas, and a scaled gateway.
+      - api_groups:
+          - batch
+        resources:
+          - jobs
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart renders a pre-upgrade hook Job that recreates a StatefulSet whose volumeClaimTemplate size changed -- it runs only on upgrades that grow disk_size, but the runner must be able to manage it when they do.
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers the chart's ServiceMonitor objects -- rendered only when spec.service_monitor_enabled is true (requires the Prometheus Operator CRDs on the cluster). The chart's wider optional surface (HPA/KEDA autoscaling, Ingress, NetworkPolicies) renders only through the helm_values escape hatch and needs its own permissions when enabled that way.

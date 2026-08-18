@@ -1,0 +1,25 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesopensearch
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: node_pools
+      sku_meter: cluster CPU and memory reservations
+      impact: Every pool contributes replicas x its declared resources -- managers and data nodes each reserve their requests on the cluster's nodes whether queries run or not. Each node also provisions its pool's data volume (disk_size, operator default 30Gi), and the size can only grow.
+    - field_path: dashboards
+      sku_meter: cluster CPU and memory reservations
+      impact: When enabled, Dashboards runs its own stateless deployment -- replicas x its resources add to the reservation with no storage of their own.
+    - field_path: snapshot_repositories
+      sku_meter: object storage for snapshots
+      pricing_unit: GB-months
+      impact: Registered repositories receive snapshot bytes on the configured object store (S3, GCS, Azure, ...) -- storage grows with index churn and however many snapshots are kept, billed on that store's account.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - the operator runs a temporary bootstrap node during initial cluster formation -- capacity reserved only until the quorum forms, then the pod is deleted
+    - snapshot bytes on registered repositories grow with index churn and snapshot count, billed on the object store's account
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint summed over node pools -- for each pool, replicas x (requests + data volume) -- plus the Dashboards deployment when enabled. The OpenSearch operator that reconciles this cluster is its own component (kubernetesopensearchoperator) and carries its own footprint."

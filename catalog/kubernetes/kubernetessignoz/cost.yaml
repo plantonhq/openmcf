@@ -1,0 +1,36 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetessignoz
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: server.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The SigNoz server runs exactly one replica (single-writer SQLite state -- the community edition's posture) carrying these requests and limits. Empty means the chart's own defaults apply (100m CPU / 100Mi memory requests) -- a reservation the manifest never states.
+    - field_path: server.disk_size
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: The server's state volume -- users, dashboards, alert rules -- 1Gi when unset (plenty; telemetry data lives in ClickHouse, not here).
+    - field_path: otel_collector.replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Each collector replica is a stateless ingestion gateway carrying the declared resources -- scale this (or enable autoscaling) as OTLP ingest volume grows.
+    - field_path: otel_collector.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: What the scheduler reserves per collector replica. Empty means the chart's own defaults apply (100m CPU / 200Mi memory requests); the collector's memory limiter derives from the limit, so production installs should set limits.
+    - field_path: otel_collector.autoscaling
+      sku_meter: cluster CPU and memory reservations
+      impact: When enabled, the HPA owns the collector's replica count between min_replicas and max_replicas -- the runtime reservation floats with ingest load, from min to max times the per-replica resources.
+    - field_path: clickhouse
+      sku_meter: composed component capacity
+      impact: Every trace, metric and log is stored in the COMPOSED KubernetesClickHouse this connection points at -- the telemetry store's capacity (and its growth with telemetry volume and retention) rides that component's own footprint, never this one's.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - telemetry storage capacity rides the composed KubernetesClickHouse component's own footprint -- this component installs nothing ClickHouse-related
+    - the chart applies its own default requests when resources are left empty (server 100m CPU / 100Mi memory, collector 100m CPU / 200Mi memory) -- reservations a manifest-time footprint of declared values cannot count
+    - the schema migrator runs as Jobs whose capacity is reserved only while their pods run; their sizing is the chart's, with no typed seam
+    - the helm_values overlay merges last over the typed rendering and can override modeled values, including resources and replica counts
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: one server x (requests + state volume) plus collector replicas x requests. The heavy capacity lives in the composed KubernetesClickHouse -- size and price the telemetry store there."

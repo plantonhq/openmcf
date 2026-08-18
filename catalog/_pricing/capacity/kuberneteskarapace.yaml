@@ -1,0 +1,43 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesKarapace manifest's spec values into the capacity footprint
+# it reserves from its target cluster. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/kuberneteskarapace.yaml; a server-side estimator can
+# evaluate the same rules against live manifests. Two pod classes: the
+# registry replicas, and the optional REST-proxy Deployment with its own
+# independent sizing. Schema storage is Kafka-native (a compacted topic
+# on the connected cluster) -- no persistent volumes are bound.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kuberneteskarapace
+spec:
+  workloads:
+    - label: registry replica
+      resources_path: resources
+      instances:
+        field_value:
+          field_path: replicas
+          default_when_unset: "1"
+    - label: proxy replica
+      resources_path: rest_proxy.resources
+      instances:
+        field_value:
+          field_path: rest_proxy.replicas
+          default_when_unset: "1"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node economics
+    - text: "schema storage is Kafka-native -- the compacted schemas topic lives on the connected Kafka cluster and its bytes ride that cluster's footprint"
+  notes:
+    - applies_when:
+        - field_path: resources
+          op: is_unset
+      text: "the manifest declares no registry resource requests or limits -- the registry pods schedule unbounded and the cluster reserves nothing for them"
+    - applies_when:
+        - field_path: rest_proxy.enabled
+          op: equals
+          value: "false"
+        - field_path: rest_proxy.resources
+          op: is_set
+      text: "rest_proxy declares resources but enabled is false -- no proxy pods deploy, so the proxy line overstates the running reservation"
