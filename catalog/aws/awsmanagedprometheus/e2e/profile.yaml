@@ -1,0 +1,28 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsmanagedprometheus
+spec:
+  # One full-surface lane: workspace + all seven folded satellite arms
+  # (configuration, workspace logging, alert manager, rule namespace,
+  # query logging, resource policy, anomaly detector). Idle workspaces
+  # bill nothing (~$0). The verifier asserts the configuration's
+  # NO-OP-delete contract is irrelevant post-destroy (the workspace
+  # itself is gone).
+  #
+  # Deliberately not exercised live:
+  #   - kms_key_arn -- a create-time encryption pin (replaces the
+  #     workspace); the default AWS-owned encryption proves the
+  #     lifecycle. Unblock: an AwsKmsKey fixture via scenario
+  #     annotations.
+  #   - alias-unset (the once-set-never-unset replace contract) -- a
+  #     deliberate replace is destroy evidence the normal teardown
+  #     already provides. The contract is taught on the spec field and
+  #     both modules.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q44
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 30

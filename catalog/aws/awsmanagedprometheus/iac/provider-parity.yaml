@@ -1,0 +1,120 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_prometheus_workspace:
+    mappings:
+      # The provider's one-member wrapper flattens onto the spec's
+      # logging message.
+      - arg: logging_configuration
+        spec: spec.logging
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+  aws_prometheus_workspace_configuration:
+    specRoot: spec.configuration
+    mappings:
+      - arg: region
+        spec: spec.region
+      # The provider's one-member limits wrapper flattens onto the
+      # entry's max_series.
+      - arg: limits_per_label_set.limits.max_series
+        spec: spec.configuration.limits_per_label_set.max_series
+    exclusions:
+      # The fold's parent linkage: the configuration always targets
+      # this instance's workspace.
+      - arg: workspace_id
+        reason: module-wired parent linkage (the folded configuration always targets this instance's workspace)
+  aws_prometheus_alert_manager_definition:
+    mappings:
+      - arg: region
+        spec: spec.region
+      # The one definition document rides the spec directly (strictly
+      # one per workspace).
+      - arg: definition
+        spec: spec.alert_manager_definition
+    exclusions:
+      - arg: workspace_id
+        reason: module-wired parent linkage (the folded definition always targets this instance's workspace)
+  aws_prometheus_rule_group_namespace:
+    specRoot: spec.rule_group_namespaces
+    mappings:
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: workspace_id
+        reason: module-wired parent linkage (the folded namespace always targets this instance's workspace)
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+  aws_prometheus_query_logging_configuration:
+    specRoot: spec.query_logging
+    mappings:
+      - arg: region
+        spec: spec.region
+      # The provider's destination blocks carry the spec's destinations
+      # list; the cloudwatch_logs and filters wrappers flatten onto
+      # each entry.
+      - arg: destination
+        spec: spec.query_logging.destinations
+      - arg: destination.cloudwatch_logs.log_group_arn
+        spec: spec.query_logging.destinations.log_group_arn
+      - arg: destination.filters.qsp_threshold
+        spec: spec.query_logging.destinations.qsp_threshold
+    exclusions:
+      - arg: workspace_id
+        reason: module-wired parent linkage (the folded configuration always targets this instance's workspace)
+  aws_prometheus_resource_policy:
+    mappings:
+      - arg: region
+        spec: spec.region
+      # The workspace policy document rides the spec directly.
+      - arg: policy_document
+        spec: spec.resource_policy
+    exclusions:
+      - arg: workspace_id
+        reason: module-wired parent linkage (the folded policy always targets this instance's workspace)
+      # AWS's optimistic-concurrency token: the provider tracks it in
+      # state and sends it on updates; a spec value would drift every
+      # apply.
+      - arg: revision_id
+        reason: state-managed optimistic-concurrency token (apply-behavior surface, meaningless as declarative configuration)
+  aws_prometheus_anomaly_detector:
+    specRoot: spec.anomaly_detectors
+    mappings:
+      - arg: region
+        spec: spec.region
+      # Random Cut Forest is AWS's only detection algorithm today; the
+      # spec flattens its knobs onto the detector entry.
+      - arg: configuration.random_cut_forest.query
+        spec: spec.anomaly_detectors.query
+      - arg: configuration.random_cut_forest.sample_size
+        spec: spec.anomaly_detectors.sample_size
+      - arg: configuration.random_cut_forest.shingle_size
+        spec: spec.anomaly_detectors.shingle_size
+      - arg: configuration.random_cut_forest.ignore_near_expected_from_above
+        spec: spec.anomaly_detectors.ignore_near_expected_from_above
+      - arg: configuration.random_cut_forest.ignore_near_expected_from_below
+        spec: spec.anomaly_detectors.ignore_near_expected_from_below
+      # The provider models the missing-data action as an exactly-one
+      # pair of must-be-true bools; the spec models it honestly as the
+      # missing_data_action enum (MARK_AS_ANOMALY | SKIP) both bools
+      # render from.
+      - arg: missing_data_action.mark_as_anomaly
+        spec: spec.anomaly_detectors.missing_data_action
+      - arg: missing_data_action.skip
+        spec: spec.anomaly_detectors.missing_data_action
+    exclusions:
+      - arg: workspace_id
+        reason: module-wired parent linkage (the folded detector always targets this instance's workspace)
+      # Plugin Framework resource: tags_all is computed-only at the pin.
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface

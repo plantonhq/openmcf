@@ -1,0 +1,101 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_cloudwatch_log_delivery_source:
+    specRoot: spec.vended.source
+    mappings:
+      - arg: region
+        spec: spec.region
+    exclusions:
+      # Plugin Framework resource: tags_all is computed-only at the pin.
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+  aws_cloudwatch_log_delivery_destination:
+    specRoot: spec.vended.destinations
+    mappings:
+      - arg: region
+        spec: spec.region
+      # The provider's one-member configuration wrapper flattens onto
+      # the destination entry.
+      - arg: delivery_destination_configuration.destination_resource_arn
+        spec: spec.vended.destinations.destination_resource_arn
+    exclusions:
+      # Plugin Framework resource: tags_all is computed-only at the pin.
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+  aws_cloudwatch_log_delivery_destination_policy:
+    specRoot: spec.vended.destinations
+    mappings:
+      - arg: region
+        spec: spec.region
+      # The destination entry's policy Struct renders as the policy
+      # resource's document.
+      - arg: delivery_destination_policy
+        spec: spec.vended.destinations.policy
+    exclusions:
+      # The fold's parent linkage: the module wires the policy to the
+      # destination entry it rides.
+      - arg: delivery_destination_name
+        reason: module-wired parent linkage (the folded policy always attaches to its own destination entry)
+  aws_cloudwatch_log_delivery:
+    specRoot: spec.vended.deliveries
+    mappings:
+      - arg: region
+        spec: spec.region
+      # The external-destination arm (owned destinations resolve
+      # through destination_name - see specExclusions).
+      - arg: delivery_destination_arn
+        spec: spec.vended.deliveries.destination_arn
+      # The provider's object-typed attribute censuses as ONE leaf (its
+      # members are not separate arguments at the pin); the spec models
+      # the two members honestly - suffix_path carries the mapping and
+      # enable_hive_compatible_path is its second home (see
+      # specExclusions - the one-arg-two-homes class).
+      - arg: s3_delivery_configuration
+        spec: spec.vended.deliveries.s3_configuration.suffix_path
+    exclusions:
+      # The fold's parent linkage: deliveries always ride this
+      # instance's source.
+      - arg: delivery_source_name
+        reason: module-wired parent linkage (the folded delivery always rides this instance's source)
+      # Plugin Framework resource: tags_all is computed-only at the pin.
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+  aws_cloudwatch_log_destination:
+    specRoot: spec.cross_account_destination
+    mappings:
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+  aws_cloudwatch_log_destination_policy:
+    specRoot: spec.cross_account_destination
+    mappings:
+      - arg: region
+        spec: spec.region
+    exclusions:
+      # The fold's parent linkage: the module wires the policy to the
+      # arm's own destination.
+      - arg: destination_name
+        reason: module-wired parent linkage (the folded policy always attaches to this arm's destination)
+specExclusions:
+  # The fold key for the deliveries map and the owned-destination
+  # reference (the second home of delivery_destination_arn - owned
+  # names resolve to their created destination's ARN).
+  - field: spec.vended.deliveries.name
+    reason: the fold key - Planton-side identity for the for_each entry and the delivery_ids/delivery_arns output maps, never an AWS argument
+  - field: spec.vended.deliveries.destination_name
+    reason: second home of delivery_destination_arn -- an owned destination referenced by name resolves to its created ARN in the modules
+  # The other member of the s3_delivery_configuration object attribute
+  # (censused as one leaf; suffix_path carries the mapping).
+  - field: spec.vended.deliveries.s3_configuration.enable_hive_compatible_path
+    reason: second home of s3_delivery_configuration -- the provider's object-typed attribute censuses as one leaf and both members render from it

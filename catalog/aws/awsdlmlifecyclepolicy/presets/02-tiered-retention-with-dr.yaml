@@ -1,0 +1,35 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsDlmLifecyclePolicy
+metadata:
+  name: tiered-db-backups
+spec:
+  region: us-east-1
+  description: hourly plus weekly db snapshots with dr copies
+  executionRoleArn:
+    value: arn:aws:iam::123456789012:role/AWSDataLifecycleManagerDefaultRole
+  customPolicy:
+    resourceTypes:
+      - VOLUME
+    targetTags:
+      backup: db-tiered
+    schedules:
+      - name: hourly
+        copyTags: true
+        createRule:
+          intervalHours: 1
+        retainRule:
+          count: 24
+      - name: weekly
+        copyTags: true
+        createRule:
+          cronExpression: cron(0 4 ? * SUN *)
+        retainRule:
+          interval: 90
+          intervalUnit: DAYS
+        crossRegionCopyRules:
+          - targetRegion: us-west-2
+            encrypted: true
+            copyTags: true
+            retainRule:
+              interval: 30
+              intervalUnit: DAYS

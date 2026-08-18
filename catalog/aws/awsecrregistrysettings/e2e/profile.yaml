@@ -1,0 +1,39 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsecrregistrysettings
+spec:
+  # One scenario: scanning + a pull-through cache rule + its creation
+  # template + the AWS_NATIVE scanner setting + one pull-time
+  # exclusion. Free at AWS (no images are pushed or pulled). Watch:
+  # the SETTINGS-SINGLETON destroy semantics - the verifier asserts
+  # the RESET posture (policy gone, replication emptied, collections
+  # empty), never object deletion; the persisting account setting is
+  # deliberately pinned to AWS's own default so the lane leaves the
+  # account unchanged; and the singleton class means the lane must
+  # never run concurrently with another registry-settings lane in
+  # this region.
+  #
+  # Deliberately not exercised live:
+  #   - the registry_policy arm -- the policy JSON needs the account
+  #     id inline (no token seam in scenario manifests today).
+  #     Unblock: an ${E2E_ENV:...} account-id token or a same-account
+  #     literal maintained per account.
+  #   - the replication_rules arm -- cross-region replication would
+  #     write registry state in a second region the sweep does not
+  #     cover. Unblock: a dedicated two-region proof session.
+  #   - BLOB_MOUNTING / REGISTRY_POLICY_SCOPE settings -- they PERSIST
+  #     after destroy and would change the shared account's behavior;
+  #     the AWS_NATIVE scanner pin proves the account-settings arm
+  #     without moving anything off defaults.
+  #   - credentialed cache upstreams (Docker Hub) -- need a real
+  #     upstream credential in Secrets Manager under the
+  #     ecr-pullthroughcache/ prefix. Unblock: an owner-provisioned
+  #     credential, the e2e-required-env pattern.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q48
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

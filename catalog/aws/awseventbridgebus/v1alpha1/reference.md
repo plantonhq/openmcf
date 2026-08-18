@@ -305,6 +305,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsAppSyncApi | `spec.datasources[].eventbridge.eventBusArn` | `status.outputs.bus_arn` |
 | AwsEventBridgeRule | `spec.eventBusName` | `status.outputs.bus_name` |
 | AwsSesConfigurationSet | `spec.eventDestinations[].eventBus` | `status.outputs.bus_arn` |
 

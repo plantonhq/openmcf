@@ -1,0 +1,16 @@
+# Canonical AwsOrganizationalUnit example (hack/dev manifest and
+# refgen Example source): a first-level OU under the organization
+# root. A literal root ID stands in for the composed AwsOrganization
+# reference so the offline `tofu plan` renders.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsOrganizationalUnit
+metadata:
+  name: workloads-ou
+  id: workloads-ou
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  ouName: Workloads
+  parentId:
+    value: r-e2e1

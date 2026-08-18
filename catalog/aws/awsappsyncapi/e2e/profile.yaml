@@ -1,0 +1,52 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsappsyncapi
+spec:
+  # Two fixture-free scenarios, one per arm. graphql-core: API_KEY +
+  # AWS_IAM multi-auth, schema, HTTP + NONE data sources, a pipeline
+  # function, two APPSYNC_JS resolvers, one managed type, one API key.
+  # events-core: per-phase auth modes, one channel namespace with
+  # inline code handlers, one API key on the Events pivot. Cost ~$0 -
+  # AppSync bills per request/event and the lanes never invoke.
+  # Watch: the async StartSchemaCreation settling before resolvers
+  # attach (both engines order resolvers after the API - the provider
+  # waits out schema creation internally); the managed type's name
+  # matching its SDL-declared name (a mismatch is a perpetual diff);
+  # the resolver mutations serializing behind the provider's per-API
+  # mutex (bulk changes apply one at a time - slow, not stuck); the
+  # {api_id}:{format}:{name} type composite and the
+  # {merged_api_id},{association_id} class first live.
+  #
+  # Deliberately not exercised live (recorded deferrals, unblocks in
+  # parentheses):
+  #   - the cache singleton - a Redis-backed instance billed per hour
+  #     with 60-minute create/delete waiters (unblock: a dedicated
+  #     lane budgeting the waiter, SMALL type, cents/hour);
+  #   - the custom domain - needs a us-east-1 ACM certificate and DNS
+  #     (unblock: compose the REST-domain lane's certificate seam);
+  #   - MERGED APIs and source associations - the self-kind
+  #     prerequisite class (unblock: a two-instance scenario once the
+  #     harness supports self-kind chains);
+  #   - Cognito/OIDC/Lambda auth arms - need pools/issuers/functions
+  #     (unblock: compose the Cognito and Lambda fixtures; API_KEY +
+  #     AWS_IAM prove the auth machinery);
+  #   - datasource backends beyond HTTP/NONE - need table/function/
+  #     bus/domain/cluster fixtures (unblock: compose the respective
+  #     fixtures; the EventBridge arm additionally carries the
+  #     upstream update-drops-config defect recorded in _inbox -
+  #     replace-to-change taught in both modules);
+  #   - the WAF association arm (unblock: compose an AwsWafWebAcl
+  #     fixture - the association is one apply on top of it);
+  #   - request/response logging - needs a CloudWatch role (unblock:
+  #     the consumer-scoped one-role fixture pattern);
+  #   - VTL mapping templates and sync_config - the JS runtime and
+  #     unversioned data sources prove the machinery (unblock: a
+  #     versioned-DynamoDB scenario).
+  #
+  # pending_proof: forged this session to the full offline bar -- Q49
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 30

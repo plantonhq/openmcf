@@ -1,0 +1,38 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchSynthetics
+metadata:
+  name: checkout-heartbeat
+spec:
+  region: us-east-1
+  canary:
+    artifactBucket:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: my-canary-artifacts
+        fieldPath: status.outputs.bucket_id
+    artifactPrefix: canary/checkout
+    executionRoleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: canary-exec-role
+        fieldPath: status.outputs.role_arn
+    handler: heartbeat.handler
+    runtimeVersion: syn-nodejs-puppeteer-9.1
+    code:
+      s3Bucket:
+        valueFrom:
+          kind: AwsS3Bucket
+          name: my-canary-artifacts
+          fieldPath: status.outputs.bucket_id
+      s3Key: canaries/heartbeat.zip
+    schedule:
+      expression: rate(5 minutes)
+      maxRetries: 1
+    runConfig:
+      memoryInMb: 960
+      timeoutInSeconds: 60
+      environmentVariables:
+        TARGET_URL: https://checkout.example.com/health
+    successRetentionPeriod: 7
+    startCanary: true
+    deleteLambda: true

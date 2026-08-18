@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsiamaccountsettings.v1alpha1;
+
+// AwsIamAccountSettingsStackOutputs captures the observable state of
+// the IAM account settings after apply.
+message AwsIamAccountSettingsStackOutputs {
+  // The account these settings belong to (the singleton's identity;
+  // also the STS preference's resource ID at the provider).
+  string account_id = 1;
+
+  // The applied sign-in alias (empty when the arm is unset). The
+  // console sign-in URL is
+  // https://<alias>.signin.aws.amazon.com/console.
+  string account_alias = 2;
+
+  // Whether the applied password policy expires passwords (AWS
+  // derives it from max_password_age; empty when the arm is unset).
+  string expire_passwords = 3;
+}

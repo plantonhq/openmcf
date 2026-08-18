@@ -1,0 +1,17 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchLogResourcePolicy
+metadata:
+  name: route53-query-logging
+spec:
+  region: us-east-1
+  policyName: route53-query-logging
+  policyDocument:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: route53.amazonaws.com
+        Action:
+          - logs:CreateLogStream
+          - logs:PutLogEvents
+        Resource: arn:aws:logs:us-east-1:123456789012:log-group:/aws/route53/*

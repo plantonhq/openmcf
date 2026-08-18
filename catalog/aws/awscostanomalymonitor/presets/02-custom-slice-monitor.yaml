@@ -1,0 +1,36 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCostAnomalyMonitor
+metadata:
+  name: team-platform-monitor
+spec:
+  region: us-east-1
+  monitorName: Team Platform Spend Monitor
+  monitorType: CUSTOM
+  monitorSpecification:
+    Tags:
+      Key: team
+      Values:
+        - platform
+      MatchOptions:
+        - EQUALS
+  subscriptions:
+    - name: platform-alerts
+      frequency: IMMEDIATE
+      subscribers:
+        - address:
+            value: <arn:aws:sns:us-east-1:123456789012:platform-cost-alerts>
+          type: SNS
+      thresholdExpression:
+        and:
+          - dimension:
+              key: ANOMALY_TOTAL_IMPACT_ABSOLUTE
+              matchOptions:
+                - GREATER_THAN_OR_EQUAL
+              values:
+                - "50"
+          - dimension:
+              key: ANOMALY_TOTAL_IMPACT_PERCENTAGE
+              matchOptions:
+                - GREATER_THAN_OR_EQUAL
+              values:
+                - "10"

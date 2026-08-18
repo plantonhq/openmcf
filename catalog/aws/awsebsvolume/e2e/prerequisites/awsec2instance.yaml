@@ -1,0 +1,38 @@
+# The volume scenario's attachment target - an extra instance beyond
+# the chain's install profiles (the harness's manifest-path
+# prerequisites seam). Lives in the shared subnet fixture's
+# us-west-2a subnet so the volume (pinned to us-west-2a) and the
+# instance are guaranteed the same availability zone - EBS refuses
+# cross-AZ attachments. The AMI is the same pinned Amazon Linux 2023
+# x86_64 image the EC2 fixtures use (us-west-2); a deregistered AMI
+# only ever requires bumping the pin.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEc2Instance
+metadata:
+  name: planton-oss-e2e-awsebsvol-target
+  id: planton-oss-e2e-awsebsvol-target
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsec2instance
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  ami: ami-0b0b27dd5c039480f
+  instanceType: t3.micro
+  subnetId:
+    valueFrom:
+      kind: AwsSubnet
+      name: planton-oss-e2e-awssubnet-prereq-a
+      fieldPath: status.outputs.subnet_id
+  metadataOptions:
+    httpTokens: required
+    httpPutResponseHopLimit: 2
+  rootBlockDevice:
+    volumeSizeGb: 8
+    volumeType: gp3
+    encrypted: true

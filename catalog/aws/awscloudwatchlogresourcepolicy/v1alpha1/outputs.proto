@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package dev.planton.aws.awscloudwatchlogresourcepolicy.v1alpha1;
+
+// AwsCloudwatchLogResourcePolicyStackOutputs captures the observable
+// state of the resource policy after apply.
+message AwsCloudwatchLogResourcePolicyStackOutputs {
+  // The policy's identity: the policy name (account scope) or the
+  // target resource ARN (resource scope) - also the provider's import
+  // ID (an ARN-shaped import ID selects the resource scope).
+  string policy_id = 1;
+
+  // The scope AWS recorded: ACCOUNT or RESOURCE.
+  string policy_scope = 2;
+
+  // AWS's revision ID after the last apply - the optimistic-concurrency
+  // token guarding the next update.
+  string revision_id = 3;
+}

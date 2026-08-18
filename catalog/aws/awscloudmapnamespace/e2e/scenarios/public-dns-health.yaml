@@ -1,0 +1,36 @@
+# Public DNS namespace exercising the arms that ONLY exist there:
+# Route 53 health checks (health_check_config) and WEIGHTED routing.
+# Creating the namespace requires no domain ownership (the zone is not
+# delegated); Route 53 zones deleted within 12 hours are not billed.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudMapNamespace
+metadata:
+  name: planton-oss-e2e-cmns-pub.example.com
+  id: planton-oss-e2e-awscmns-pub
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscloudmapnamespace
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  type: PUBLIC_DNS
+  description: Planton E2E public service discovery namespace
+  services:
+    - name: edge
+      dnsConfig:
+        records:
+          - type: A
+            ttl: 60
+        routingPolicy: WEIGHTED
+      healthCheckConfig:
+        type: HTTPS
+        resourcePath: /health
+        failureThreshold: 2
+      instances:
+        - instanceId: edge-1
+          ip: 192.0.2.10

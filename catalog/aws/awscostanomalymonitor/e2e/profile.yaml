@@ -1,0 +1,26 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awscostanomalymonitor
+spec:
+  # A Cost Explorer anomaly monitor under live E2E: one lane proves the
+  # recommended DIMENSIONAL/SERVICE shape with a folded daily email
+  # subscription above an absolute impact threshold. Anomaly detection
+  # is free (~$0); a fresh monitor trains silently, so no alert ever
+  # fires within the lane.
+  #
+  # Deliberately not exercised live:
+  #   - the CUSTOM monitor shape (monitor_specification) -- one monitor
+  #     carries exactly one shape; DIMENSIONAL is the canonical form
+  #     and the Struct-to-JSON render is proven offline. Unblock: a
+  #     second scenario when the proof queue wants the datapoint.
+  #   - IMMEDIATE/SNS delivery -- needs an AwsSnsTopic fixture with a
+  #     costalerts.amazonaws.com publish policy. Unblock: the fixture
+  #     via scenario annotations.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q43
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

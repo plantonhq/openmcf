@@ -162,7 +162,12 @@ message AwsBedrockKnowledgeBaseEmbeddingModelConfig {
   // embeddings; the model and the vector store must both support it).
   string embedding_data_type = 2 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["FLOAT32", "BINARY"]}
+    (buf.validate.field).string = {
+      in: [
+        "FLOAT32",
+        "BINARY"
+      ]
+    }
   ];
 
   // Segment ingested AUDIO into fixed-length chunks of this many seconds
@@ -378,7 +383,12 @@ message AwsBedrockKnowledgeBaseQueryTable {
   // INCLUDE or EXCLUDE this table from generation. Omitted = included.
   string inclusion = 3 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["INCLUDE", "EXCLUDE"]}
+    (buf.validate.field).string = {
+      in: [
+        "INCLUDE",
+        "EXCLUDE"
+      ]
+    }
   ];
 
   // Column-level guidance within this table.
@@ -396,7 +406,12 @@ message AwsBedrockKnowledgeBaseQueryColumn {
   // INCLUDE or EXCLUDE this column. Omitted = included.
   string inclusion = 3 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["INCLUDE", "EXCLUDE"]}
+    (buf.validate.field).string = {
+      in: [
+        "INCLUDE",
+        "EXCLUDE"
+      ]
+    }
   ];
 }
 
@@ -687,7 +702,12 @@ message AwsBedrockKnowledgeBaseDataSource {
   // AWS default (DELETE).
   string data_deletion_policy = 3 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["RETAIN", "DELETE"]}
+    (buf.validate.field).string = {
+      in: [
+        "RETAIN",
+        "DELETE"
+      ]
+    }
   ];
 
   // Customer-managed KMS key for encrypting transient ingestion data.
@@ -778,7 +798,12 @@ message AwsBedrockKnowledgeBaseWebDataSource {
   // default (host plus deeper paths of the seed).
   string scope = 2 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["HOST_ONLY", "SUBDOMAINS"]}
+    (buf.validate.field).string = {
+      in: [
+        "HOST_ONLY",
+        "SUBDOMAINS"
+      ]
+    }
   ];
 
   // Only crawl URLs matching these regex patterns (at most 25, each up to

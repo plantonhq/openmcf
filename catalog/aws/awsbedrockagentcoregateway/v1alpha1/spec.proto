@@ -142,14 +142,18 @@ message AwsBedrockAgentCoreGatewayAllowedWorkloads {
   repeated string workload_identities = 1 [(buf.validate.field).repeated = {
     min_items: 1
     max_items: 10
-    items: {string: {min_len: 1}}
+    items: {
+      string: {min_len: 1}
+    }
   }];
 
   // Hosting environment ARNs allowed to call (1-10).
   repeated string hosting_environment_arns = 2 [(buf.validate.field).repeated = {
     min_items: 1
     max_items: 10
-    items: {string: {min_len: 1}}
+    items: {
+      string: {min_len: 1}
+    }
   }];
 }
 
@@ -904,7 +908,9 @@ message AwsBedrockAgentCoreGatewayOauthCredentials {
   // OAuth scopes to request (at least one).
   repeated string scopes = 2 [(buf.validate.field).repeated = {
     min_items: 1
-    items: {string: {min_len: 1}}
+    items: {
+      string: {min_len: 1}
+    }
   }];
 
   // The grant flow: CLIENT_CREDENTIALS (machine-to-machine, the common
@@ -942,18 +948,24 @@ message AwsBedrockAgentCoreGatewayTargetMetadata {
   // URL query parameters propagated from the caller to the backend.
   repeated string allowed_query_parameters = 1 [(buf.validate.field).repeated = {
     max_items: 10
-    items: {string: {min_len: 1}}
+    items: {
+      string: {min_len: 1}
+    }
   }];
 
   // HTTP headers propagated from the caller to the backend.
   repeated string allowed_request_headers = 2 [(buf.validate.field).repeated = {
     max_items: 10
-    items: {string: {min_len: 1}}
+    items: {
+      string: {min_len: 1}
+    }
   }];
 
   // HTTP headers propagated from the backend response to the caller.
   repeated string allowed_response_headers = 3 [(buf.validate.field).repeated = {
     max_items: 10
-    items: {string: {min_len: 1}}
+    items: {
+      string: {min_len: 1}
+    }
   }];
 }

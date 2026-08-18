@@ -1,0 +1,3 @@
+name: awss3vectorbucket
+runtime: go
+description: Pulumi module to manage an AWS S3 vector bucket with its vector indexes

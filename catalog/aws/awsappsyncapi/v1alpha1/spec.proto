@@ -1,0 +1,1295 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsappsyncapi.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsAppSyncApiSpec defines one AWS AppSync API - AWS's managed API
+// service - with everything that belongs to the API managed in-line:
+// data sources, resolvers, functions, schema types, caching, API keys,
+// channel namespaces, and a custom domain.
+//
+// AppSync ships two API models, and this spec pivots on exactly one:
+//
+// GRAPHQL (the graphql arm): a GraphQL API over your data sources -
+// you provide an SDL schema and resolvers that map fields to data
+// source operations. Also covers MERGED APIs (a federation surface
+// that merges other GraphQL APIs' schemas).
+//
+// EVENTS (the events arm): serverless real-time pub/sub over
+// WebSockets - clients publish and subscribe on channels grouped into
+// namespaces; no schema and no resolvers.
+//
+// Data sources, API keys, and the custom domain sit at the top level
+// because AWS attaches them to either API model. Resolvers, functions,
+// types, and caching are GraphQL concepts and live inside the graphql
+// arm; channel namespaces are the Events concept and live inside the
+// events arm.
+message AwsAppSyncApiSpec {
+  // The API is exactly one of the two AppSync models, for life.
+  option (buf.validate.message).cel = {
+    id: "spec.exactly_one_api_arm"
+    message: "set exactly one of graphql and events - an AppSync API is either a GraphQL API or an Events API"
+    expression: "has(this.graphql) != has(this.events)"
+  };
+  // Data source names key the for_each on both engines and the output
+  // maps.
+  option (buf.validate.message).cel = {
+    id: "spec.datasource_names_unique"
+    message: "data source names must be unique within the API"
+    expression: "this.datasources.map(d, d.name).unique()"
+  };
+  // API key names key the for_each on both engines and the
+  // api_key_ids output map.
+  option (buf.validate.message).cel = {
+    id: "spec.api_key_names_unique"
+    message: "api key names must be unique within the API"
+    expression: "this.api_keys.map(k, k.name).unique()"
+  };
+
+  // The AWS region the API lives in. Example: "us-west-2".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The GraphQL API model: an SDL schema, resolvers over data
+  // sources, optional caching, and the MERGED federation variant.
+  AwsAppSyncGraphqlApi graphql = 2;
+
+  // The Events API model: real-time pub/sub over channel namespaces
+  // with per-phase (connect/publish/subscribe) authorization.
+  AwsAppSyncEventsApi events = 3;
+
+  // The API's data sources, keyed by name - what resolvers (GraphQL)
+  // and channel-namespace handlers (Events) call into. A data source
+  // belongs to exactly one API for life.
+  repeated AwsAppSyncDatasource datasources = 4;
+
+  // API keys for the API_KEY authorization mode, keyed by a spec-side
+  // name (AWS assigns the real key id). Only useful when the chosen
+  // arm actually enables API_KEY auth - a key on an API without that
+  // mode authenticates nothing.
+  repeated AwsAppSyncApiKey api_keys = 5;
+
+  // A custom domain fronting the API instead of the AWS-generated
+  // endpoint. AppSync custom domains require an ACM certificate in
+  // us-east-1 regardless of the API's own region (the CloudFront
+  // class).
+  AwsAppSyncCustomDomain custom_domain = 6;
+}
+
+// ---------------------------------------------------------------------------
+// The GraphQL arm
+// ---------------------------------------------------------------------------
+
+// AwsAppSyncGraphqlApi is the GraphQL API model: authorization, an
+// SDL schema, resolvers and functions over the API's data sources,
+// optional server-side caching, and the MERGED federation variant.
+message AwsAppSyncGraphqlApi {
+  // The primary auth provider's config block must match its type
+  // (AWS rejects mismatches server-side; front-loaded here).
+  option (buf.validate.message).cel = {
+    id: "graphql.auth_config_matches_type"
+    message: "the auth provider's config must match its type - user_pool with AMAZON_COGNITO_USER_POOLS, openid_connect with OPENID_CONNECT, lambda with AWS_LAMBDA, and none of the three with API_KEY or AWS_IAM"
+    expression: "(this.auth.type == 'AMAZON_COGNITO_USER_POOLS' ? has(this.auth.user_pool) : !has(this.auth.user_pool)) && (this.auth.type == 'OPENID_CONNECT' ? has(this.auth.openid_connect) : !has(this.auth.openid_connect)) && (this.auth.type == 'AWS_LAMBDA' ? has(this.auth.lambda) : !has(this.auth.lambda))"
+  };
+  // The primary Cognito provider decides what happens to requests
+  // that match no other provider - AWS requires the decision.
+  option (buf.validate.message).cel = {
+    id: "graphql.primary_cognito_requires_default_action"
+    message: "the primary auth provider's user_pool requires default_action (ALLOW or DENY)"
+    expression: "!has(this.auth.user_pool) || this.auth.user_pool.default_action != ''"
+  };
+  // Additional providers follow the same type-config pairing...
+  option (buf.validate.message).cel = {
+    id: "graphql.additional_auth_config_matches_type"
+    message: "each additional auth provider's config must match its type - user_pool with AMAZON_COGNITO_USER_POOLS, openid_connect with OPENID_CONNECT, lambda with AWS_LAMBDA, and none of the three with API_KEY or AWS_IAM"
+    expression: "this.additional_auth_providers.all(p, (p.type == 'AMAZON_COGNITO_USER_POOLS' ? has(p.user_pool) : !has(p.user_pool)) && (p.type == 'OPENID_CONNECT' ? has(p.openid_connect) : !has(p.openid_connect)) && (p.type == 'AWS_LAMBDA' ? has(p.lambda) : !has(p.lambda)))"
+  };
+  // ...but default_action belongs to the primary provider only (AWS's
+  // additionalAuthenticationProviders carry no defaultAction).
+  option (buf.validate.message).cel = {
+    id: "graphql.additional_cognito_no_default_action"
+    message: "default_action applies only to the primary auth provider - remove it from additional providers' user_pool blocks"
+    expression: "this.additional_auth_providers.all(p, !has(p.user_pool) || p.user_pool.default_action == '')"
+  };
+  // Each auth mode can appear once across primary + additionals (AWS
+  // rejects duplicates at create).
+  option (buf.validate.message).cel = {
+    id: "graphql.auth_types_unique"
+    message: "each authorization type may appear at most once across the primary and additional auth providers"
+    expression: "(this.additional_auth_providers.map(p, p.type) + [this.auth.type]).unique()"
+  };
+  // A MERGED API's schema and resolvers come from its source APIs -
+  // AWS forbids defining them on the merged API itself.
+  option (buf.validate.message).cel = {
+    id: "graphql.merged_owns_no_schema_or_resolvers"
+    message: "a MERGED API merges its source APIs' schemas - remove schema, types, functions, resolvers, and cache (they belong on the source APIs)"
+    expression: "!has(this.merged) || (this.schema == '' && this.types.size() == 0 && this.functions.size() == 0 && this.resolvers.size() == 0 && !has(this.cache))"
+  };
+  // Function names key the for_each, the function_ids output map, and
+  // resolver pipeline references.
+  option (buf.validate.message).cel = {
+    id: "graphql.function_names_unique"
+    message: "function names must be unique within the API"
+    expression: "this.functions.map(f, f.name).unique()"
+  };
+  // A resolver's identity is its type.field position in the schema.
+  option (buf.validate.message).cel = {
+    id: "graphql.resolver_positions_unique"
+    message: "resolvers must be unique per type.field position"
+    expression: "this.resolvers.map(r, r.type + '.' + r.field).unique()"
+  };
+  // Type entries key the for_each by their declared name.
+  option (buf.validate.message).cel = {
+    id: "graphql.type_names_unique"
+    message: "type names must be unique within the API"
+    expression: "this.types.map(t, t.name).unique()"
+  };
+
+  // The API's name in AWS - an explicit field rather than
+  // metadata.name because GraphQL API names allow only letters,
+  // digits, and underscores (NO hyphens), starting with a letter or
+  // underscore.
+  string api_name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^[A-Za-z_][0-9A-Za-z_]*$"
+  }];
+
+  // The primary authorization provider - every GraphQL API has
+  // exactly one, plus optional additionals for multi-auth schemas
+  // (fields pick providers with @aws_auth-style directives).
+  AwsAppSyncGraphqlAuthProvider auth = 2 [(buf.validate.field).required = true];
+
+  // Additional authorization providers for multi-auth APIs.
+  repeated AwsAppSyncGraphqlAuthProvider additional_auth_providers = 3;
+
+  // The GraphQL schema in SDL. Applied via AppSync's async schema
+  // creation; AWS reports schema errors at apply, not at plan. NOTE:
+  // the provider performs no drift detection on the schema -
+  // out-of-band schema edits are invisible until the next in-band
+  // change (recorded in the import catalog as config-only).
+  string schema = 4;
+
+  // Who can call the API. GLOBAL (AWS default when unset) serves the
+  // public AppSync endpoint; PRIVATE serves only through VPC
+  // endpoints. Fixed for life - changing it replaces the API.
+  string visibility = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "GLOBAL",
+        "PRIVATE"
+      ]
+    }
+  ];
+
+  // Turn OFF schema introspection (__schema queries). AWS's default
+  // is enabled; disable it to keep the schema shape private on
+  // public-facing APIs.
+  bool disable_introspection = 6;
+
+  // The maximum nesting depth a query may reach, 1-75. Unset (0)
+  // means AWS's default: unlimited depth.
+  int64 query_depth_limit = 7 [(buf.validate.field).cel = {
+    id: "graphql.query_depth_limit_range"
+    message: "query_depth_limit must be between 1 and 75 (0 = unlimited)"
+    expression: "this == 0 || (this >= 1 && this <= 75)"
+  }];
+
+  // The maximum resolvers one query may invoke, 1-10000. Unset (0)
+  // means AWS's default: 10000.
+  int64 resolver_count_limit = 8 [(buf.validate.field).cel = {
+    id: "graphql.resolver_count_limit_range"
+    message: "resolver_count_limit must be between 1 and 10000 (0 = AWS default)"
+    expression: "this == 0 || (this >= 1 && this <= 10000)"
+  }];
+
+  // Trace requests with AWS X-Ray.
+  bool xray_enabled = 9;
+
+  // Where AppSync writes request logs. Unset means no logging.
+  AwsAppSyncGraphqlLogConfig log_config = 10;
+
+  // Per-data-source, per-operation, and per-resolver CloudWatch
+  // metrics granularity. Unset means AWS's defaults.
+  AwsAppSyncGraphqlEnhancedMetrics enhanced_metrics = 11;
+
+  // The REGIONAL-scope WAFv2 web ACL protecting this GraphQL API, by
+  // ARN - the modules create the web-ACL association alongside the
+  // API (the AwsAlb.spec.web_acl_arn pattern). A GraphQL API has at
+  // most one web ACL; the web ACL must live in the API's region.
+  // (AWS's WAF association supports GraphQL APIs, not Events APIs.)
+  // Can reference an AwsWafWebAcl resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef web_acl_arn = 12 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsWafWebAcl,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.web_acl_arn"
+  ];
+
+  // Server-side response caching - one cache per API (AWS's own
+  // model: the cache's identity IS the API).
+  AwsAppSyncGraphqlCache cache = 13;
+
+  // Schema types managed individually (outside the schema document),
+  // keyed by their declared name.
+  repeated AwsAppSyncGraphqlType types = 14;
+
+  // Pipeline functions, keyed by name - reusable units of resolver
+  // logic bound to a data source. Resolvers reference them by name in
+  // pipeline_functions (the modules join names to AWS function ids).
+  repeated AwsAppSyncGraphqlFunction functions = 15;
+
+  // Resolvers mapping schema fields to data source operations, keyed
+  // by their type.field position.
+  repeated AwsAppSyncGraphqlResolver resolvers = 16;
+
+  // Makes this a MERGED API - a federation surface serving the merged
+  // schemas of its source APIs. Set at create, for life (changing the
+  // API type replaces the API).
+  AwsAppSyncGraphqlMerged merged = 17;
+}
+
+// AwsAppSyncGraphqlAuthProvider is one authorization provider - the
+// primary or an additional. The type decides which config block (if
+// any) accompanies it.
+message AwsAppSyncGraphqlAuthProvider {
+  // How callers authenticate: API_KEY (keys from api_keys), AWS_IAM
+  // (SigV4), AMAZON_COGNITO_USER_POOLS (user_pool), OPENID_CONNECT
+  // (openid_connect), or AWS_LAMBDA (lambda authorizer).
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "API_KEY",
+      "AWS_IAM",
+      "AMAZON_COGNITO_USER_POOLS",
+      "OPENID_CONNECT",
+      "AWS_LAMBDA"
+    ]
+  }];
+
+  // Cognito user pool authorization (type AMAZON_COGNITO_USER_POOLS).
+  AwsAppSyncCognitoUserPoolAuth user_pool = 2;
+
+  // OpenID Connect authorization (type OPENID_CONNECT).
+  AwsAppSyncOpenidConnectAuth openid_connect = 3;
+
+  // Lambda authorizer (type AWS_LAMBDA).
+  AwsAppSyncLambdaAuth lambda = 4;
+}
+
+// AwsAppSyncCognitoUserPoolAuth authorizes callers against a Cognito
+// user pool.
+message AwsAppSyncCognitoUserPoolAuth {
+  // The user pool. Can reference an AwsCognitoUserPool resource or
+  // pass a literal pool id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef user_pool_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCognitoUserPool,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.user_pool_id"
+  ];
+
+  // A regex the caller's app client id must match. Unset means any
+  // client in the pool.
+  string app_id_client_regex = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // The user pool's region when it differs from the API's region.
+  // Unset means the API's own region.
+  string aws_region = 3 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // What happens to requests that match no OTHER auth provider: ALLOW
+  // passes them to this pool, DENY rejects them. REQUIRED on the
+  // primary auth provider; forbidden on additionals (AWS's
+  // asymmetry, enforced by CEL on the arm).
+  string default_action = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "ALLOW",
+        "DENY"
+      ]
+    }
+  ];
+}
+
+// AwsAppSyncOpenidConnectAuth authorizes callers by OIDC tokens.
+message AwsAppSyncOpenidConnectAuth {
+  // The OIDC issuer URL the tokens must come from (matches the
+  // token's iss claim).
+  string issuer = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The client id the token's aud claim must match. Unset means any.
+  string client_id = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Milliseconds a token stays valid after its iat claim. Unset (0)
+  // defers to the token's own exp.
+  int64 iat_ttl = 3;
+
+  // Milliseconds a token stays valid after authentication. Unset (0)
+  // defers to the token's own exp.
+  int64 auth_ttl = 4;
+}
+
+// AwsAppSyncLambdaAuth authorizes callers through a Lambda function
+// you own.
+message AwsAppSyncLambdaAuth {
+  // The authorizer function. AppSync must be allowed to invoke it
+  // (lambda:InvokeFunction from appsync.amazonaws.com). Can reference
+  // an AwsLambda resource or pass a literal function/alias ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef authorizer_uri = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // Seconds AppSync caches an authorizer response, 0-3600. Unset (0)
+  // means no caching... except AWS's schema default is 300 when the
+  // field is omitted entirely; the modules send the value only when
+  // set, so 0 keeps AWS's default. Set 1-3600 to tune.
+  int64 authorizer_result_ttl_in_seconds = 2 [(buf.validate.field).cel = {
+    id: "lambda_auth.ttl_range"
+    message: "authorizer_result_ttl_in_seconds must be between 0 and 3600"
+    expression: "this >= 0 && this <= 3600"
+  }];
+
+  // A regex the token must match before AppSync bothers invoking the
+  // authorizer (a cheap pre-filter).
+  string identity_validation_expression = 3 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+}
+
+// AwsAppSyncGraphqlLogConfig turns on CloudWatch request logging.
+message AwsAppSyncGraphqlLogConfig {
+  // The role AppSync assumes to write logs. Can reference an
+  // AwsIamRole resource or pass a literal role ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cloudwatch_logs_role_arn = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // How much of each request to log: NONE, ERROR, ALL, INFO, or
+  // DEBUG.
+  string field_log_level = 2 [(buf.validate.field).string = {
+    in: [
+      "NONE",
+      "ERROR",
+      "ALL",
+      "INFO",
+      "DEBUG"
+    ]
+  }];
+
+  // Drop request/response bodies and headers from the logs (log
+  // metadata only).
+  bool exclude_verbose_content = 3;
+}
+
+// AwsAppSyncGraphqlEnhancedMetrics tunes CloudWatch metrics
+// granularity. All three dials are required together (AWS's
+// contract).
+message AwsAppSyncGraphqlEnhancedMetrics {
+  // Per-data-source metrics: FULL_REQUEST_DATA_SOURCE_METRICS (all
+  // data sources) or PER_DATA_SOURCE_METRICS (only data sources whose
+  // metrics_enabled is set - the provider exposes no per-data-source
+  // flag at this pin, so FULL is the useful value).
+  string data_source_level_metrics_behavior = 1 [(buf.validate.field).string = {
+    in: [
+      "FULL_REQUEST_DATA_SOURCE_METRICS",
+      "PER_DATA_SOURCE_METRICS"
+    ]
+  }];
+
+  // Operation-level metrics: ENABLED or DISABLED.
+  string operation_level_metrics_config = 2 [(buf.validate.field).string = {
+    in: [
+      "ENABLED",
+      "DISABLED"
+    ]
+  }];
+
+  // Per-resolver metrics: FULL_REQUEST_RESOLVER_METRICS (all
+  // resolvers) or PER_RESOLVER_METRICS.
+  string resolver_level_metrics_behavior = 3 [(buf.validate.field).string = {
+    in: [
+      "FULL_REQUEST_RESOLVER_METRICS",
+      "PER_RESOLVER_METRICS"
+    ]
+  }];
+}
+
+// AwsAppSyncGraphqlCache is the API's server-side response cache -
+// a managed Redis-backed instance billed per hour while it exists.
+message AwsAppSyncGraphqlCache {
+  // What gets cached: FULL_REQUEST_CACHING (everything),
+  // PER_RESOLVER_CACHING (only resolvers whose caching_config opts
+  // in), or OPERATION_LEVEL_CACHING.
+  string api_caching_behavior = 1 [(buf.validate.field).string = {
+    in: [
+      "FULL_REQUEST_CACHING",
+      "PER_RESOLVER_CACHING",
+      "OPERATION_LEVEL_CACHING"
+    ]
+  }];
+
+  // Seconds cached entries live, 1-3600.
+  int64 ttl = 2 [(buf.validate.field).cel = {
+    id: "cache.ttl_range"
+    message: "cache ttl must be between 1 and 3600 seconds"
+    expression: "this >= 1 && this <= 3600"
+  }];
+
+  // The cache instance size. SMALL through LARGE_12X are the current
+  // generation; T2_/R4_ names are the legacy generation AWS still
+  // accepts.
+  string type = 3 [(buf.validate.field).string = {
+    in: [
+      "SMALL",
+      "MEDIUM",
+      "LARGE",
+      "XLARGE",
+      "LARGE_2X",
+      "LARGE_4X",
+      "LARGE_8X",
+      "LARGE_12X",
+      "T2_SMALL",
+      "T2_MEDIUM",
+      "R4_LARGE",
+      "R4_XLARGE",
+      "R4_2XLARGE",
+      "R4_4XLARGE",
+      "R4_8XLARGE"
+    ]
+  }];
+
+  // Encrypt cached responses at rest. Decided at cache creation -
+  // changing it REPLACES the cache (a cold cache, not an outage).
+  bool at_rest_encryption_enabled = 4;
+
+  // Encrypt cache traffic in transit. Also replace-on-change.
+  bool transit_encryption_enabled = 5;
+}
+
+// AwsAppSyncGraphqlType is one schema type managed individually.
+message AwsAppSyncGraphqlType {
+  // The type's name as declared inside definition - the for_each key
+  // on both engines and part of the import ID. AWS derives the real
+  // name from the definition; keep this field in sync with it (a
+  // mismatch surfaces as a perpetual diff).
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^[A-Za-z_][0-9A-Za-z_]*$"
+  }];
+
+  // The type definition - SDL (format SDL) or introspection JSON
+  // (format JSON).
+  string definition = 2 [(buf.validate.field).string.min_len = 1];
+
+  // The definition's format. Fixed for life at AWS: the provider
+  // ignores format changes on update (a perpetual-diff trap) -
+  // replace the type entry instead.
+  string format = 3 [(buf.validate.field).string = {
+    in: [
+      "SDL",
+      "JSON"
+    ]
+  }];
+}
+
+// AwsAppSyncGraphqlFunction is one pipeline function - a reusable
+// unit of resolver logic bound to a data source.
+message AwsAppSyncGraphqlFunction {
+  // A function is JavaScript (code) or VTL (mapping templates), never
+  // both.
+  option (buf.validate.message).cel = {
+    id: "function.code_or_templates"
+    message: "a function uses code (JavaScript) or request/response mapping templates (VTL), not both"
+    expression: "this.code == '' || (this.request_mapping_template == '' && this.response_mapping_template == '')"
+  };
+
+  // The function's name - the for_each key, the function_ids output
+  // key, and what resolvers reference in pipeline_functions. AWS
+  // allows only letters, digits, and underscores.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^[A-Za-z_][0-9A-Za-z_]*$"
+  }];
+
+  // The data source this function operates on, by spec datasource
+  // name (or the name of a data source created outside this
+  // manifest).
+  string data_source_name = 2 [(buf.validate.field).string.min_len = 1];
+
+  // What this function does.
+  string description = 3 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // The function body as APPSYNC_JS JavaScript (the modern form).
+  // When set, the modules pin the runtime to APPSYNC_JS at
+  // runtime_version. 1-32768 characters.
+  string code = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 32768
+  ];
+
+  // The APPSYNC_JS runtime version when code is set. Unset means
+  // "1.0.0" (the only version AWS ships today).
+  string runtime_version = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+  ];
+
+  // The VTL request mapping template (the legacy form; prefer code).
+  // When templates are used, the modules pin AWS's required
+  // functionVersion 2018-05-29.
+  string request_mapping_template = 6 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // The VTL response mapping template.
+  string response_mapping_template = 7 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Maximum batch size for batched Lambda operations, 1-2000. Unset
+  // (0) means no batching.
+  int64 max_batch_size = 8 [(buf.validate.field).cel = {
+    id: "function.max_batch_size_range"
+    message: "max_batch_size must be between 1 and 2000 (0 = no batching)"
+    expression: "this == 0 || (this >= 1 && this <= 2000)"
+  }];
+
+  // Versioned-data-source conflict detection and resolution.
+  AwsAppSyncSyncConfig sync_config = 9;
+}
+
+// AwsAppSyncGraphqlResolver maps one schema field to data source
+// operations.
+message AwsAppSyncGraphqlResolver {
+  // A resolver is UNIT (one data source) or PIPELINE (a function
+  // chain), never both.
+  option (buf.validate.message).cel = {
+    id: "resolver.unit_xor_pipeline"
+    message: "set exactly one of data_source_name (a UNIT resolver) and pipeline_functions (a PIPELINE resolver)"
+    expression: "(this.data_source_name != '') != (this.pipeline_functions.size() > 0)"
+  };
+  // Same code-vs-templates wall as functions.
+  option (buf.validate.message).cel = {
+    id: "resolver.code_or_templates"
+    message: "a resolver uses code (JavaScript) or request/response mapping templates (VTL), not both"
+    expression: "this.code == '' || (this.request_template == '' && this.response_template == '')"
+  };
+
+  // The schema type the resolved field lives on (e.g. "Query",
+  // "Mutation", or an object type). Fixed for life - the type.field
+  // position IS the resolver's identity.
+  string type = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^[A-Za-z_][0-9A-Za-z_]*$"
+  }];
+
+  // The field this resolver resolves. Fixed for life.
+  string field = 2 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^[A-Za-z_][0-9A-Za-z_]*$"
+  }];
+
+  // UNIT form: the data source this resolver calls, by spec
+  // datasource name (or an externally created data source's name).
+  string data_source_name = 3 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // PIPELINE form: the functions to run in order, by spec function
+  // name - the modules join names to AWS function ids.
+  repeated string pipeline_functions = 4;
+
+  // The resolver body as APPSYNC_JS JavaScript. Same runtime pinning
+  // as functions. 1-32768 characters.
+  string code = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 32768
+  ];
+
+  // The APPSYNC_JS runtime version when code is set. Unset means
+  // "1.0.0".
+  string runtime_version = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+  ];
+
+  // The VTL request mapping template (legacy form).
+  string request_template = 7 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // The VTL response mapping template.
+  string response_template = 8 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Maximum batch size for batched Lambda operations, 1-2000.
+  int64 max_batch_size = 9 [(buf.validate.field).cel = {
+    id: "resolver.max_batch_size_range"
+    message: "max_batch_size must be between 1 and 2000 (0 = no batching)"
+    expression: "this == 0 || (this >= 1 && this <= 2000)"
+  }];
+
+  // Per-resolver caching (the cache's PER_RESOLVER_CACHING mode).
+  AwsAppSyncResolverCaching caching = 10;
+
+  // Versioned-data-source conflict detection and resolution.
+  AwsAppSyncSyncConfig sync_config = 11;
+}
+
+// AwsAppSyncResolverCaching opts one resolver into the API cache.
+message AwsAppSyncResolverCaching {
+  // The request values that compose the cache key (e.g.
+  // "$context.arguments.id", "$context.identity.sub"). Empty caches
+  // per full request.
+  repeated string caching_keys = 1;
+
+  // Seconds this resolver's entries live, 1-3600.
+  int64 ttl = 2 [(buf.validate.field).cel = {
+    id: "resolver_caching.ttl_range"
+    message: "caching ttl must be between 1 and 3600 seconds"
+    expression: "this == 0 || (this >= 1 && this <= 3600)"
+  }];
+}
+
+// AwsAppSyncSyncConfig configures conflict handling against versioned
+// data sources (AppSync's offline-sync feature).
+message AwsAppSyncSyncConfig {
+  // A LAMBDA handler needs its function; other handlers must not
+  // carry one.
+  option (buf.validate.message).cel = {
+    id: "sync.lambda_handler_requires_arn"
+    message: "conflict_handler LAMBDA requires lambda_conflict_handler_arn; other handlers must not set it"
+    expression: "this.conflict_handler == 'LAMBDA' ? has(this.lambda_conflict_handler_arn) : !has(this.lambda_conflict_handler_arn)"
+  };
+
+  // How conflicts are detected: VERSION (compare item versions) or
+  // NONE.
+  string conflict_detection = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "VERSION",
+        "NONE"
+      ]
+    }
+  ];
+
+  // How detected conflicts resolve: OPTIMISTIC_CONCURRENCY (reject
+  // stale writes), AUTOMERGE, LAMBDA (your function decides), or
+  // NONE.
+  string conflict_handler = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "OPTIMISTIC_CONCURRENCY",
+        "LAMBDA",
+        "AUTOMERGE",
+        "NONE"
+      ]
+    }
+  ];
+
+  // The conflict-resolution function (handler LAMBDA). Can reference
+  // an AwsLambda resource or pass a literal function ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef lambda_conflict_handler_arn = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+}
+
+// AwsAppSyncGraphqlMerged makes the API a MERGED (federation) API.
+message AwsAppSyncGraphqlMerged {
+  // Source API entries key the for_each and the
+  // source_api_association_ids output map.
+  option (buf.validate.message).cel = {
+    id: "merged.source_api_names_unique"
+    message: "source API entry names must be unique"
+    expression: "this.source_apis.map(s, s.name).unique()"
+  };
+
+  // The role AppSync assumes to read source APIs during merges. Can
+  // reference an AwsIamRole resource or pass a literal role ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef execution_role_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // The GraphQL APIs whose schemas merge into this one, keyed by a
+  // spec-side name.
+  repeated AwsAppSyncSourceApi source_apis = 2;
+}
+
+// AwsAppSyncSourceApi associates one source GraphQL API into the
+// merged API.
+message AwsAppSyncSourceApi {
+  // The entry's key in the for_each and the
+  // source_api_association_ids output map.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^[A-Za-z_][0-9A-Za-z_]*$"
+  }];
+
+  // The source GraphQL API. Can reference another AwsAppSyncApi
+  // resource or pass a literal API id. Fixed for life.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_api_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsAppSyncApi,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.api_id"
+  ];
+
+  // How source schema changes reach the merged API: AUTO_MERGE
+  // (propagate automatically) or MANUAL_MERGE (AWS's default when
+  // unset - you trigger merges).
+  string merge_type = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "AUTO_MERGE",
+        "MANUAL_MERGE"
+      ]
+    }
+  ];
+
+  // What this source contributes.
+  string description = 4 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+}
+
+// ---------------------------------------------------------------------------
+// The Events arm
+// ---------------------------------------------------------------------------
+
+// AwsAppSyncEventsApi is the Events API model: real-time pub/sub over
+// WebSockets. Authorization is declared per lifecycle phase - who may
+// connect, who may publish, who may subscribe - against a shared list
+// of auth providers.
+message AwsAppSyncEventsApi {
+  // Every auth mode used in a phase must name a declared provider
+  // (AWS rejects undeclared modes server-side; front-loaded here).
+  option (buf.validate.message).cel = {
+    id: "events.connection_modes_declared"
+    message: "every connection_auth_modes entry must match a declared auth provider's type"
+    expression: "this.connection_auth_modes.all(m, this.auth_providers.exists(p, p.type == m))"
+  };
+  option (buf.validate.message).cel = {
+    id: "events.publish_modes_declared"
+    message: "every default_publish_auth_modes entry must match a declared auth provider's type"
+    expression: "this.default_publish_auth_modes.all(m, this.auth_providers.exists(p, p.type == m))"
+  };
+  option (buf.validate.message).cel = {
+    id: "events.subscribe_modes_declared"
+    message: "every default_subscribe_auth_modes entry must match a declared auth provider's type"
+    expression: "this.default_subscribe_auth_modes.all(m, this.auth_providers.exists(p, p.type == m))"
+  };
+  // The same type-config pairing as the GraphQL arm, with the Events
+  // twist: cognito here REQUIRES aws_region (AWS's own asymmetry).
+  option (buf.validate.message).cel = {
+    id: "events.auth_config_matches_type"
+    message: "each auth provider's config must match its type - cognito with AMAZON_COGNITO_USER_POOLS, openid_connect with OPENID_CONNECT, lambda with AWS_LAMBDA, and none of the three with API_KEY or AWS_IAM"
+    expression: "this.auth_providers.all(p, (p.type == 'AMAZON_COGNITO_USER_POOLS' ? has(p.cognito) : !has(p.cognito)) && (p.type == 'OPENID_CONNECT' ? has(p.openid_connect) : !has(p.openid_connect)) && (p.type == 'AWS_LAMBDA' ? has(p.lambda) : !has(p.lambda)))"
+  };
+  option (buf.validate.message).cel = {
+    id: "events.auth_types_unique"
+    message: "each authorization type may appear at most once in auth_providers"
+    expression: "this.auth_providers.map(p, p.type).unique()"
+  };
+  // Channel namespace names key the for_each and the
+  // channel_namespace_arns output map.
+  option (buf.validate.message).cel = {
+    id: "events.channel_namespace_names_unique"
+    message: "channel namespace names must be unique within the API"
+    expression: "this.channel_namespaces.map(n, n.name).unique()"
+  };
+
+  // A contact for the API's owner (surfaces in the AWS console).
+  string owner_contact = 1 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // The auth providers clients may use, by phase (below). At least
+  // one.
+  repeated AwsAppSyncEventsAuthProvider auth_providers = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // Who may open a WebSocket connection - one or more declared
+  // provider types.
+  repeated string connection_auth_modes = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {
+        in: [
+          "API_KEY",
+          "AWS_IAM",
+          "AMAZON_COGNITO_USER_POOLS",
+          "OPENID_CONNECT",
+          "AWS_LAMBDA"
+        ]
+      }
+    }
+  }];
+
+  // The default publish authorization for namespaces that do not
+  // override it.
+  repeated string default_publish_auth_modes = 4 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {
+        in: [
+          "API_KEY",
+          "AWS_IAM",
+          "AMAZON_COGNITO_USER_POOLS",
+          "OPENID_CONNECT",
+          "AWS_LAMBDA"
+        ]
+      }
+    }
+  }];
+
+  // The default subscribe authorization for namespaces that do not
+  // override it.
+  repeated string default_subscribe_auth_modes = 5 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {
+        in: [
+          "API_KEY",
+          "AWS_IAM",
+          "AMAZON_COGNITO_USER_POOLS",
+          "OPENID_CONNECT",
+          "AWS_LAMBDA"
+        ]
+      }
+    }
+  }];
+
+  // Where AppSync writes event logs. Unset means no logging.
+  AwsAppSyncEventsLogConfig log_config = 6;
+
+  // The channel namespaces clients publish and subscribe in, keyed by
+  // name.
+  repeated AwsAppSyncChannelNamespace channel_namespaces = 7;
+}
+
+// AwsAppSyncEventsAuthProvider is one auth provider on an Events API.
+message AwsAppSyncEventsAuthProvider {
+  // The authorization type this provider serves.
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "API_KEY",
+      "AWS_IAM",
+      "AMAZON_COGNITO_USER_POOLS",
+      "OPENID_CONNECT",
+      "AWS_LAMBDA"
+    ]
+  }];
+
+  // Cognito user pool authorization (type AMAZON_COGNITO_USER_POOLS).
+  AwsAppSyncEventsCognitoAuth cognito = 2;
+
+  // OpenID Connect authorization (type OPENID_CONNECT).
+  AwsAppSyncOpenidConnectAuth openid_connect = 3;
+
+  // Lambda authorizer (type AWS_LAMBDA).
+  AwsAppSyncLambdaAuth lambda = 4;
+}
+
+// AwsAppSyncEventsCognitoAuth authorizes Events API callers against a
+// Cognito user pool. Unlike the GraphQL arm, AWS REQUIRES the pool's
+// region here and takes no default_action (per-phase modes replace
+// it).
+message AwsAppSyncEventsCognitoAuth {
+  // The user pool. Can reference an AwsCognitoUserPool resource or
+  // pass a literal pool id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef user_pool_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCognitoUserPool,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.user_pool_id"
+  ];
+
+  // The user pool's region. Required by AWS on Events APIs.
+  string aws_region = 2 [(buf.validate.field).string.min_len = 1];
+
+  // A regex the caller's app client id must match. Unset means any
+  // client in the pool.
+  string app_id_client_regex = 3 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+}
+
+// AwsAppSyncEventsLogConfig turns on CloudWatch event logging.
+message AwsAppSyncEventsLogConfig {
+  // The role AppSync assumes to write logs. Can reference an
+  // AwsIamRole resource or pass a literal role ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cloudwatch_logs_role_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // How much to log: NONE, ERROR, ALL, INFO, or DEBUG.
+  string log_level = 2 [(buf.validate.field).string = {
+    in: [
+      "NONE",
+      "ERROR",
+      "ALL",
+      "INFO",
+      "DEBUG"
+    ]
+  }];
+}
+
+// AwsAppSyncChannelNamespace is one channel namespace - a named
+// grouping of channels (e.g. namespace "chat" serves channels
+// "chat/room1", "chat/room2") with optional event handlers and
+// per-namespace auth overrides.
+message AwsAppSyncChannelNamespace {
+  // The namespace's name - the for_each key and half its import ID.
+  // Letters, digits, and single interior hyphens; 1-50 characters.
+  // Fixed for life.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 50
+    pattern: "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,48}[A-Za-z0-9])?$"
+  }];
+
+  // Event handler code (APPSYNC_JS) running on publish/subscribe for
+  // this namespace's channels - the inline alternative to DIRECT
+  // data-source handlers. 1-32768 characters.
+  string code_handlers = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 32768
+  ];
+
+  // Publish auth modes overriding the API's
+  // default_publish_auth_modes for this namespace.
+  repeated string publish_auth_modes = 3 [(buf.validate.field).repeated.items = {
+    string: {
+      in: [
+        "API_KEY",
+        "AWS_IAM",
+        "AMAZON_COGNITO_USER_POOLS",
+        "OPENID_CONNECT",
+        "AWS_LAMBDA"
+      ]
+    }
+  }];
+
+  // Subscribe auth modes overriding the API's
+  // default_subscribe_auth_modes for this namespace.
+  repeated string subscribe_auth_modes = 4 [(buf.validate.field).repeated.items = {
+    string: {
+      in: [
+        "API_KEY",
+        "AWS_IAM",
+        "AMAZON_COGNITO_USER_POOLS",
+        "OPENID_CONNECT",
+        "AWS_LAMBDA"
+      ]
+    }
+  }];
+
+  // Integration handlers routing publish/subscribe events to data
+  // sources.
+  AwsAppSyncChannelHandlerConfigs handler_configs = 5;
+}
+
+// AwsAppSyncChannelHandlerConfigs pairs the namespace's publish and
+// subscribe handlers.
+message AwsAppSyncChannelHandlerConfigs {
+  // The handler for publish events.
+  AwsAppSyncChannelHandler on_publish = 1;
+
+  // The handler for subscribe events.
+  AwsAppSyncChannelHandler on_subscribe = 2;
+}
+
+// AwsAppSyncChannelHandler routes one event phase to a data source.
+message AwsAppSyncChannelHandler {
+  // How the handler runs: CODE (the namespace's code_handlers
+  // JavaScript decides) or DIRECT (events go straight to the
+  // integration's data source).
+  string behavior = 1 [(buf.validate.field).string = {
+    in: [
+      "CODE",
+      "DIRECT"
+    ]
+  }];
+
+  // The data source receiving the events, by spec datasource name
+  // (or an externally created data source's name).
+  string data_source_name = 2 [(buf.validate.field).string.min_len = 1];
+
+  // For Lambda data sources: REQUEST_RESPONSE (synchronous - the
+  // function's return feeds the event flow) or EVENT (asynchronous
+  // fire-and-forget). Unset means AWS's default (REQUEST_RESPONSE).
+  string lambda_invoke_type = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "REQUEST_RESPONSE",
+        "EVENT"
+      ]
+    }
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// Shared satellites
+// ---------------------------------------------------------------------------
+
+// AwsAppSyncDatasource is one data source - the connection resolvers
+// and channel handlers call into. The type decides which config block
+// accompanies it.
+message AwsAppSyncDatasource {
+  // The config block must match the declared type; NONE and
+  // AMAZON_BEDROCK_RUNTIME take no block. (The provider's own
+  // ConflictsWith walls are asymmetric and let a few illegal combos
+  // through to the API - this closes them all.)
+  option (buf.validate.message).cel = {
+    id: "datasource.config_matches_type"
+    message: "the data source's config block must match its type - dynamodb, lambda, http, opensearch, elasticsearch, eventbridge, or relational_database; NONE and AMAZON_BEDROCK_RUNTIME take no config block"
+    expression: "(this.type == 'AMAZON_DYNAMODB' ? has(this.dynamodb) : !has(this.dynamodb)) && (this.type == 'AWS_LAMBDA' ? has(this.lambda) : !has(this.lambda)) && (this.type == 'HTTP' ? has(this.http) : !has(this.http)) && (this.type == 'AMAZON_OPENSEARCH_SERVICE' ? has(this.opensearch) : !has(this.opensearch)) && (this.type == 'AMAZON_ELASTICSEARCH' ? has(this.elasticsearch) : !has(this.elasticsearch)) && (this.type == 'AMAZON_EVENTBRIDGE' ? has(this.eventbridge) : !has(this.eventbridge)) && (this.type == 'RELATIONAL_DATABASE' ? has(this.relational_database) : !has(this.relational_database))"
+  };
+
+  // The data source's name - the for_each key, what resolvers,
+  // functions, and channel handlers reference, and half its import
+  // ID. AWS allows only letters, digits, and underscores.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^[A-Za-z_][0-9A-Za-z_]*$"
+  }];
+
+  // What this data source connects to.
+  string description = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // What kind of backend this is. NONE runs resolver logic with no
+  // backend (local pub/sub, transformations);
+  // AMAZON_BEDROCK_RUNTIME invokes Bedrock models directly.
+  // AMAZON_ELASTICSEARCH is the legacy Elasticsearch type - prefer
+  // AMAZON_OPENSEARCH_SERVICE for new work.
+  string type = 3 [(buf.validate.field).string = {
+    in: [
+      "AWS_LAMBDA",
+      "AMAZON_DYNAMODB",
+      "HTTP",
+      "AMAZON_OPENSEARCH_SERVICE",
+      "AMAZON_ELASTICSEARCH",
+      "AMAZON_EVENTBRIDGE",
+      "RELATIONAL_DATABASE",
+      "AMAZON_BEDROCK_RUNTIME",
+      "NONE"
+    ]
+  }];
+
+  // The role AppSync assumes to reach the backend. Required by AWS
+  // for every type except NONE and HTTP-without-signing. Can
+  // reference an AwsIamRole resource or pass a literal role ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_role_arn = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // DynamoDB backend (type AMAZON_DYNAMODB).
+  AwsAppSyncDatasourceDynamodb dynamodb = 5;
+
+  // Lambda backend (type AWS_LAMBDA).
+  AwsAppSyncDatasourceLambda lambda = 6;
+
+  // HTTP backend (type HTTP).
+  AwsAppSyncDatasourceHttp http = 7;
+
+  // OpenSearch Service backend (type AMAZON_OPENSEARCH_SERVICE).
+  AwsAppSyncDatasourceOpensearch opensearch = 8;
+
+  // Legacy Elasticsearch backend (type AMAZON_ELASTICSEARCH).
+  AwsAppSyncDatasourceElasticsearch elasticsearch = 9;
+
+  // EventBridge backend (type AMAZON_EVENTBRIDGE). NOTE: the
+  // provider's update path drops this block (an upstream defect at
+  // the pin) - treat EventBridge data sources as replace-to-change:
+  // rename the entry instead of editing it in place.
+  AwsAppSyncDatasourceEventbridge eventbridge = 10;
+
+  // Aurora Serverless Data API backend (type RELATIONAL_DATABASE).
+  AwsAppSyncDatasourceRelationalDatabase relational_database = 11;
+}
+
+// AwsAppSyncDatasourceDynamodb points at a DynamoDB table.
+message AwsAppSyncDatasourceDynamodb {
+  // The table. Can reference an AwsDynamodb resource or pass a
+  // literal table name.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef table_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsDynamodb,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.table_name"
+  ];
+
+  // The table's region when it differs from the API's region.
+  string region = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Use the CALLER's IAM credentials (from an AWS_IAM-authorized
+  // request) instead of the data source's service role.
+  bool use_caller_credentials = 3;
+
+  // Mark the table as versioned for conflict detection (pairs with
+  // resolvers' sync_config).
+  bool versioned = 4;
+
+  // Delta Sync: journal changes into a companion table so offline
+  // clients can catch up incrementally.
+  AwsAppSyncDatasourceDeltaSync delta_sync = 5;
+}
+
+// AwsAppSyncDatasourceDeltaSync configures the Delta Sync journal.
+message AwsAppSyncDatasourceDeltaSync {
+  // The companion table holding the change journal.
+  string delta_sync_table_name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Minutes an item lives in the base table's TTL attribute. Unset
+  // (0) means no base-table TTL.
+  int64 base_table_ttl = 2;
+
+  // Minutes a journal entry lives in the delta table.
+  int64 delta_sync_table_ttl = 3;
+}
+
+// AwsAppSyncDatasourceLambda points at a Lambda function.
+message AwsAppSyncDatasourceLambda {
+  // The function. Can reference an AwsLambda resource or pass a
+  // literal function ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef function_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+}
+
+// AwsAppSyncDatasourceHttp points at an HTTP endpoint.
+message AwsAppSyncDatasourceHttp {
+  // The endpoint URL (e.g. "https://api.example.com").
+  string endpoint = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Sign requests with SigV4 (for calling AWS services directly).
+  // Unset sends unsigned requests. (AWS_IAM is the only
+  // authorization type - the modules pin it when this block is set.)
+  AwsAppSyncDatasourceHttpSigning sigv4 = 2;
+}
+
+// AwsAppSyncDatasourceHttpSigning is the SigV4 signing configuration
+// for an HTTP data source calling AWS services.
+message AwsAppSyncDatasourceHttpSigning {
+  // The region to sign for (the target service's region).
+  string signing_region = 1 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // The service name to sign for (e.g. "states" for Step Functions).
+  string signing_service_name = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+}
+
+// AwsAppSyncDatasourceOpensearch points at an OpenSearch Service
+// domain.
+message AwsAppSyncDatasourceOpensearch {
+  // The domain endpoint (e.g. "https://search-...es.amazonaws.com").
+  // Can reference an AwsOpenSearchDomain resource or pass a literal
+  // endpoint URL.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef endpoint = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsOpenSearchDomain,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.endpoint"
+  ];
+
+  // The domain's region when it differs from the API's region.
+  string region = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+}
+
+// AwsAppSyncDatasourceElasticsearch points at a legacy Elasticsearch
+// domain (superseded by AMAZON_OPENSEARCH_SERVICE - kept for
+// existing domains).
+message AwsAppSyncDatasourceElasticsearch {
+  // The domain endpoint.
+  string endpoint = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The domain's region when it differs from the API's region.
+  string region = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+}
+
+// AwsAppSyncDatasourceEventbridge points at an EventBridge event bus.
+message AwsAppSyncDatasourceEventbridge {
+  // The event bus. Can reference an AwsEventBridgeBus resource or
+  // pass a literal bus ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef event_bus_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsEventBridgeBus,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bus_arn"
+  ];
+}
+
+// AwsAppSyncDatasourceRelationalDatabase points at an Aurora
+// Serverless cluster through the RDS Data API. (RDS_HTTP_ENDPOINT is
+// the only source type - the modules pin it.)
+message AwsAppSyncDatasourceRelationalDatabase {
+  // The Aurora cluster (Data API enabled). Can reference an
+  // AwsRdsCluster resource or pass a literal cluster identifier.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef db_cluster_identifier = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsRdsCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_identifier"
+  ];
+
+  // The Secrets Manager secret holding the database credentials. Can
+  // reference an AwsSecretsManagerSecret resource or pass a literal
+  // secret ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef aws_secret_store_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecretsManagerSecret,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_arn"
+  ];
+
+  // The database to use within the cluster.
+  string database_name = 3 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // The logical schema to use.
+  string schema = 4 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // The cluster's region when it differs from the API's region.
+  string region = 5 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+}
+
+// AwsAppSyncApiKey is one API key for the API_KEY authorization mode.
+// AWS assigns the actual key id and secret; the secret is returned
+// only at creation and is NOT readable back afterwards - fetch it
+// from the AWS console/CLI, not from state.
+message AwsAppSyncApiKey {
+  // The entry's key in the for_each and the api_key_ids output map
+  // (spec-side only - AWS keys have no name).
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^[A-Za-z_][0-9A-Za-z_]*$"
+  }];
+
+  // What this key is for. Unset means AWS's default description.
+  string description = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // When the key expires, RFC 3339 (e.g. "2027-02-01T00:00:00Z").
+  // AWS rounds to the nearest hour; minimum 1 day, maximum 365 days
+  // from creation. Unset means AWS's default (7 days).
+  string expires = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+  ];
+}
+
+// AwsAppSyncCustomDomain fronts the API with your own domain name
+// instead of the AWS-generated endpoint.
+message AwsAppSyncCustomDomain {
+  // The certificate must live in us-east-1 (AWS's AppSync
+  // custom-domain contract, the CloudFront class) - checked here for
+  // literal ARNs; references resolve at deploy.
+  option (buf.validate.message).cel = {
+    id: "custom_domain.certificate_in_us_east_1"
+    message: "AppSync custom domains require an ACM certificate in us-east-1 regardless of the API's region"
+    expression: "!has(this.certificate_arn.value) || this.certificate_arn.value == '' || this.certificate_arn.value.contains(':us-east-1:')"
+  };
+
+  // The domain name (e.g. "api.example.com"). Fixed for life. After
+  // apply, point your DNS at the appsync_domain_name output (a
+  // CNAME, or a Route53 alias using domain_hosted_zone_id).
+  string domain_name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 253
+    pattern: "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$"
+  }];
+
+  // The ACM certificate covering the domain - must be in us-east-1.
+  // Fixed for life. Can reference an AwsCertManagerCert resource or
+  // pass a literal certificate ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef certificate_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCertManagerCert,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cert_arn"
+  ];
+
+  // What this domain serves.
+  string description = 3 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+}

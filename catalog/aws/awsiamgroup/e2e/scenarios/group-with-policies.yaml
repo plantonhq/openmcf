@@ -1,0 +1,39 @@
+# The full group surface live: declarative membership (the AwsIamUser
+# fixture), an AWS-managed policy attachment, and one inline policy.
+# IAM is free and global; group names free immediately on delete, so
+# the name is fixed. A green destroy proves the membership and both
+# policy surfaces unwound with the group (IAM refuses to delete a
+# group that still has members or policies).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamGroup
+metadata:
+  name: planton-oss-e2e-awsiamg
+  id: planton-oss-e2e-awsiamg
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamgroup
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamUser"
+  tags:
+    - planton-e2e
+spec:
+  region: us-east-1
+  path: /planton-e2e/
+  users:
+    - valueFrom:
+        kind: AwsIamUser
+        name: planton-oss-e2e-awsiamuser-smoke
+        fieldPath: status.outputs.user_name
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/ReadOnlyAccess
+  inlinePolicies:
+    e2e-list-buckets:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - s3:ListAllMyBuckets
+          Resource: "*"

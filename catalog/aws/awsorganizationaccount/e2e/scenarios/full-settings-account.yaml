@@ -1,0 +1,47 @@
+# A member account with billing/security alternate contacts and
+# primary contact information, created directly under the root and
+# CLOSED on destroy (close_on_deletion - removal-only would orphan a
+# live account). The email is RUN-SCOPED: AWS requires account emails
+# to be unique across ALL of AWS, forever-ish (closed accounts hold
+# their email through the ~90-day PENDING_CLOSURE window). The opt-in
+# regions arm is deliberately absent - enable/disable are ~60-minute
+# operations that would dominate the lane. ~$0: the account itself is
+# free; it exists for minutes and creates nothing.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsOrganizationAccount
+metadata:
+  name: planton-oss-e2e-awsoacct
+  id: planton-oss-e2e-awsoacct
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsorganizationaccount
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  accountName: Planton E2E Member
+  email: aws-e2e-${E2E_RUN_ID}@example.com
+  closeOnDeletion: true
+  alternateContacts:
+    billing:
+      name: Planton E2E Billing
+      title: Finance Lead
+      emailAddress: billing-e2e@example.com
+      phoneNumber: "+1 555 0100"
+    security:
+      name: Planton E2E Security
+      title: Security Lead
+      emailAddress: security-e2e@example.com
+      phoneNumber: "+1 555 0101"
+  primaryContact:
+    fullName: Planton E2E Operator
+    addressLine1: 1 Test St
+    city: Seattle
+    stateOrRegion: WA
+    postalCode: "98101"
+    countryCode: US
+    phoneNumber: "+1 555 0100"

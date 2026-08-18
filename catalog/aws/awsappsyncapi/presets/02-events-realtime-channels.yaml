@@ -1,0 +1,38 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsAppSyncApi
+metadata:
+  name: live-updates
+spec:
+  region: us-west-2
+  # A real-time Events API: browsers connect and subscribe with an API
+  # key, backend services publish with IAM, and each product surface
+  # gets its own channel namespace. The chat namespace filters
+  # published events through an inline handler.
+  events:
+    authProviders:
+      - type: API_KEY
+      - type: AWS_IAM
+    connectionAuthModes:
+      - API_KEY
+      - AWS_IAM
+    defaultPublishAuthModes:
+      - AWS_IAM
+    defaultSubscribeAuthModes:
+      - API_KEY
+    channelNamespaces:
+      - name: chat
+        codeHandlers: |
+          import { util } from "@aws-appsync/utils";
+          export function onPublish(ctx) {
+            return ctx.events.filter((event) => !!event.payload.message);
+          }
+      - name: notifications
+      - name: presence
+        publishAuthModes:
+          - API_KEY
+        subscribeAuthModes:
+          - API_KEY
+  apiKeys:
+    - name: browser_clients
+      description: The web and mobile clients' key
+      expires: "2027-01-01T00:00:00Z"

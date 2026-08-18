@@ -1,0 +1,33 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsOrganizationPolicy
+metadata:
+  name: region-guardrail-scp
+spec:
+  region: <aws-region>
+  policyName: Region Guardrail
+  type: SERVICE_CONTROL_POLICY
+  description: Denies all activity outside the approved regions (global services exempt).
+  content:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: DenyOutsideApprovedRegions
+        Effect: Deny
+        NotAction:
+          - iam:*
+          - organizations:*
+          - route53:*
+          - cloudfront:*
+          - sts:*
+          - support:*
+        Resource: "*"
+        Condition:
+          StringNotEquals:
+            aws:RequestedRegion:
+              - us-west-2
+              - eu-west-1
+  attachments:
+    - targetId:
+        valueFrom:
+          kind: AwsOrganizationalUnit
+          name: <workloads-ou-resource-name>
+          fieldPath: status.outputs.ou_id

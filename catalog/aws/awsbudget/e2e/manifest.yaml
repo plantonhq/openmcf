@@ -1,0 +1,58 @@
+# Canonical AwsBudget example (hack/dev manifest and refgen Example
+# source): a monthly cost budget with the modern metric +
+# filter-expression generation, a forecast alert, and an automatic
+# IAM-guardrail action. Literal ARNs stand in for composed references
+# so the offline `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBudget
+metadata:
+  name: engineering-monthly
+  id: engineering-monthly
+  org: test-org
+  env: dev
+spec:
+  region: us-east-1
+  budgetName: Engineering Monthly Spend
+  budgetType: COST
+  timeUnit: MONTHLY
+  limit:
+    amount: "5000"
+    unit: USD
+  metric: UnblendedCost
+  filterExpression:
+    and:
+      - dimension:
+          key: LINKED_ACCOUNT
+          values:
+            - "123456789012"
+      - not:
+          tag:
+            key: environment
+            values:
+              - sandbox
+  notifications:
+    - comparisonOperator: GREATER_THAN
+      notificationType: FORECASTED
+      threshold: 80
+      thresholdType: PERCENTAGE
+      subscriberEmailAddresses:
+        - finops@example.com
+  actions:
+    - name: freeze-dev-provisioning
+      actionType: APPLY_IAM_POLICY
+      approvalModel: AUTOMATIC
+      notificationType: ACTUAL
+      executionRoleArn:
+        value: arn:aws:iam::123456789012:role/budget-actions
+      actionThreshold:
+        actionThresholdType: PERCENTAGE
+        actionThresholdValue: 100
+      subscribers:
+        - address:
+            value: finops@example.com
+          subscriptionType: EMAIL
+      iamActionDefinition:
+        policyArn:
+          value: arn:aws:iam::aws:policy/AWSDenyAll
+        groups:
+          - value: developers

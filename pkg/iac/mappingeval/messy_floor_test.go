@@ -148,8 +148,11 @@ func TestBaselineFloorOnMessyAccount(t *testing.T) {
 				finding.FieldPath, finding.Instance)
 		}
 	}
-	if report.Spec.GroundTruthLeaves != 72 || report.Spec.Matched != 21 {
-		t.Fatalf("spec floor drifted: want 21/72 leaves matched, got %d/%d\nmissing: %v",
+	// Floor re-pinned 21/72 -> 21/69 (2026-08-18): three ground-truth leaves
+	// left member kinds' spec surfaces as their schemas evolved; the matched
+	// count held and every missing leaf remains a whole-instance gap.
+	if report.Spec.GroundTruthLeaves != 69 || report.Spec.Matched != 21 {
+		t.Fatalf("spec floor drifted: want 21/69 leaves matched, got %d/%d\nmissing: %v",
 			report.Spec.Matched, report.Spec.GroundTruthLeaves, report.Spec.Missing)
 	}
 

@@ -1,0 +1,49 @@
+# The Events arm's core machinery, fixture-free: API_KEY plus AWS_IAM
+# auth providers with per-phase modes (connect on either, publish
+# restricted to IAM, subscribe on the key), one channel namespace with
+# namespace-level auth overrides and inline APPSYNC_JS event handlers,
+# and an API key (proving keys serve the Events pivot too). Events
+# APIs bill per event - an idle API costs nothing.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsAppSyncApi
+metadata:
+  name: planton-oss-e2e-awsappsy-evt
+  id: planton-oss-e2e-awsappsy-evt
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsappsyncapi
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  events:
+    ownerContact: platform-team
+    authProviders:
+      - type: API_KEY
+      - type: AWS_IAM
+    connectionAuthModes:
+      - API_KEY
+      - AWS_IAM
+    defaultPublishAuthModes:
+      - AWS_IAM
+    defaultSubscribeAuthModes:
+      - API_KEY
+    channelNamespaces:
+      - name: chat
+        publishAuthModes:
+          - API_KEY
+        subscribeAuthModes:
+          - API_KEY
+        codeHandlers: |
+          import { util } from "@aws-appsync/utils";
+          export function onPublish(ctx) {
+            return ctx.events.filter((event) => !!event.payload);
+          }
+  apiKeys:
+    - name: e2e_events_client
+      description: Planton E2E events client key
+      expires: "2027-01-01T00:00:00Z"

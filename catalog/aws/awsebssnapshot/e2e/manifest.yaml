@@ -1,0 +1,17 @@
+# Canonical AwsEbsSnapshot example (hack/dev manifest and refgen
+# Example source): a snapshot of a live volume with fast restore in
+# one zone.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEbsSnapshot
+metadata:
+  name: app-data-backup
+  id: app-data-backup
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  volumeId:
+    value: vol-0123456789abcdef0 # replace with your volume id
+  description: nightly app-data backup
+  fastRestoreAvailabilityZones:
+    - us-west-2a

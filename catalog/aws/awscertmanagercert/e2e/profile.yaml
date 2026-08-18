@@ -31,6 +31,16 @@ spec:
   # Route53 validation + the issuance waiter (needs a real owned domain)
   # and private-CA issuance -- proven by CEL spec tests and the offline
   # gate.
+  #
+  # 2026-08-18: certificate_authority_arn converted from a plain string
+  # to StringValueOrRef with the AwsPrivateCa FK (the recorded
+  # follow-up from the private-CA forge). Spec-only reshaping: the
+  # generated tofu contract is byte-identical (the generator flattens
+  # the reference), the live imported-mode scenario never sets the
+  # field, and both engines re-proved render-stable offline (plan
+  # 1-to-add unchanged). Badge kept; the private-CA arm's deferral
+  # above now has its unblock half-met -- AwsPrivateCa exists
+  # (pending_proof, Q48), a shared test authority is what remains.
   tier: 1
   status: green
   validated_provisioners:

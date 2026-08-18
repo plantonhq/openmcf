@@ -1,0 +1,32 @@
+# Consumer-scoped AwsIamRole install profile for the budget kind's
+# actions arm: the execution role Budgets assumes when an action
+# fires. Its trust policy must allow budgets.amazonaws.com or action
+# creation fails, and AWS's own managed policy for budget actions
+# carries the execute/revert permissions. Scoping the fixture here
+# keeps the budgets-trust shape off the shared fixed-name set (the
+# concurrent-session collision class).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-awsbud-actions
+  id: planton-oss-e2e-awsbud-actions
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-east-1
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: budgets.amazonaws.com
+        Action: sts:AssumeRole
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/AWSBudgetsActionsWithAWSResourceControlAccess

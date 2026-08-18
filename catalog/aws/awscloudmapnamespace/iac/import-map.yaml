@@ -1,0 +1,47 @@
+# Where each placeholder in this component's import-ID formats comes
+# from (the formats themselves live in aa_import/catalog.yaml).
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awscloudmapnamespace
+spec:
+  # The namespace imports by its AWS-generated id (a PRIVATE_DNS
+  # namespace composes it with the VPC id the provider never reads
+  # back). Services derive blind from the service_ids output map;
+  # instances compose their owning service's id (the
+  # instance_service_ids map, keyed like the modules' for_each
+  # entries) with the user-chosen instance id from the address key.
+  values:
+    - name: namespace_id
+      derivations:
+        - from_stack_output: namespace_id
+      where_to_find: >-
+        Cloud Map console -> Namespaces (the ID column), or
+        `aws servicediscovery list-namespaces` (Id, "ns-...").
+    - name: vpc_id
+      derivations:
+        - from_spec_field: vpc_id.value
+      where_to_find: >-
+        The VPC the private namespace's hosted zone is visible in -
+        VPC console (the vpc-... ID column), or
+        `aws servicediscovery get-namespace` does NOT return it; it is
+        the spec's own vpc_id.
+    - name: service_id
+      derivations:
+        - from_stack_output_keyed_by_address: service_ids
+      where_to_find: >-
+        `aws servicediscovery list-services` lists services with Id
+        ("srv-..."); match each to its spec.services entry by Name.
+    - name: instance_service_id
+      derivations:
+        - from_stack_output_keyed_by_address: instance_service_ids
+      where_to_find: >-
+        The owning service's Id ("srv-...") from
+        `aws servicediscovery list-services`; instances key
+        "{service_name}//{instance_id}".
+    - name: instance_id
+      derivations:
+        - from_address_key_segment: 1
+      where_to_find: >-
+        The user-chosen registration id - `aws servicediscovery
+        list-instances --service-id <id>` (Id).

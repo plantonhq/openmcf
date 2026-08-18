@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsauroradsql.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsAuroraDsqlSpec defines one Aurora DSQL cluster - AWS's serverless,
+// PostgreSQL-compatible distributed SQL database with no instances,
+// no capacity dials, and active-active multi-region writes.
+//
+// A single-region cluster needs nothing beyond this spec's defaults:
+// AWS names the cluster with a generated identifier (metadata.name
+// rides in as the Name tag), scales it to zero when idle, and bills
+// per request and per byte stored. Connect with standard PostgreSQL
+// drivers at the derived endpoint
+// "{identifier}.dsql.{region}.on.aws" (the endpoint output) using IAM
+// authentication tokens - DSQL has no native database passwords.
+//
+// Multi-region: two peer clusters in different regions plus a witness
+// region form one logical database with synchronous active-active
+// writes. Peering is a one-shot pairing performed while a cluster is
+// still in PENDING_SETUP - the modules order it correctly, but the
+// PEER clusters must already exist (deploy one instance of this kind
+// per region, each naming the others in multi_region).
+message AwsAuroraDsqlSpec {
+  // The AWS region the cluster lives in. Example: "us-east-1".
+  // (Aurora DSQL is available in a subset of regions - us-east-1,
+  // us-east-2, us-west-2, eu-west-1/2/3, ap-northeast-1/2,
+  // ap-southeast-1/2 as of early 2026.)
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Refuse deletes while true. Flip to false (and apply) before
+  // destroying, or set force_destroy and let the module do it.
+  bool deletion_protection_enabled = 2;
+
+  // Let destroy proceed even when deletion protection is on: the
+  // module disables protection first, then deletes. Keep false in
+  // production - it converts deletion protection from a wall into a
+  // speed bump.
+  bool force_destroy = 3;
+
+  // Encrypt the cluster with your own KMS key instead of the
+  // AWS-owned default key. Reference an AwsKmsKey key_arn output or
+  // pass a literal key ARN. Leave empty for the AWS-owned key (the
+  // provider reports it as the sentinel "AWS_OWNED_KMS_KEY").
+  // Switching keys later re-encrypts in place (no replacement).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_encryption_key = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "a KMS key ARN (or the AWS_OWNED_KMS_KEY sentinel) - a resource reference, not key material"
+  ];
+
+  // Make this cluster one half of a multi-region pair. Omit for a
+  // single-region cluster.
+  AwsAuroraDsqlMultiRegion multi_region = 5;
+}
+
+// AwsAuroraDsqlMultiRegion pairs this cluster with peers in other
+// regions to form one logical, active-active database.
+message AwsAuroraDsqlMultiRegion {
+  // The region that arbitrates between the peers during a region
+  // failure (stores transaction logs, runs no queries). Must differ
+  // from every peer's own region. Changing it REPLACES the cluster.
+  string witness_region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The ARNs of the peer clusters in the OTHER regions. Reference
+  // other AwsAuroraDsql cluster_arn outputs or pass literal ARNs.
+  // Peering completes only while this cluster is still in
+  // PENDING_SETUP (freshly created) - the pairing is one-shot, and
+  // un-pairing at AWS means recreating the cluster.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef peer_cluster_arns = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsAuroraDsql,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_arn"
+  ];
+}

@@ -1,0 +1,203 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsorganization.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+
+// AwsOrganizationSpec defines the desired configuration for THE AWS
+// Organization of the deploying account: creating it makes the caller
+// the organization's MANAGEMENT account. One organization exists per
+// account; deleting this resource deletes the entire organization
+// (AWS requires every member account, OU, and policy to be removed
+// first - the delete fails otherwise, by design).
+//
+// The organization-wide levers fold in here because none of them has
+// a life of its own: trusted service access (the provider's own docs
+// warn that managing it anywhere else fights this resource with a
+// perpetual diff), delegated administrator registrations, the org's
+// single resource-based delegation policy (AWS keeps exactly one per
+// organization - PutResourcePolicy is an upsert), and centralized
+// root-access management (IAM's organization features - a
+// management-account act that requires iam.amazonaws.com trusted
+// access, wired on this very spec).
+//
+// Organizations is a GLOBAL service scoped to the management account;
+// AWS identifies the organization as "o-..." (the import ID).
+message AwsOrganizationSpec {
+  // Trusted service access, policy types, delegated administrators,
+  // and the resource policy all require the organization to have ALL
+  // features enabled - AWS rejects each of them under a
+  // consolidated-billing-only organization (the provider cannot even
+  // read service-access state there).
+  option (buf.validate.message).cel = {
+    id: "spec.service_access_requires_all_features"
+    message: "aws_service_access_principals requires feature_set ALL (consolidated-billing organizations cannot enable trusted service access)"
+    expression: "this.feature_set != 'CONSOLIDATED_BILLING' || this.aws_service_access_principals.size() == 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.policy_types_require_all_features"
+    message: "enabled_policy_types requires feature_set ALL (consolidated-billing organizations cannot enable policy types)"
+    expression: "this.feature_set != 'CONSOLIDATED_BILLING' || this.enabled_policy_types.size() == 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.delegated_admins_require_all_features"
+    message: "delegated_administrators requires feature_set ALL (consolidated-billing organizations cannot delegate administration)"
+    expression: "this.feature_set != 'CONSOLIDATED_BILLING' || this.delegated_administrators.size() == 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.resource_policy_requires_all_features"
+    message: "resource_policy requires feature_set ALL (consolidated-billing organizations cannot carry a resource policy)"
+    expression: "this.feature_set != 'CONSOLIDATED_BILLING' || !has(this.resource_policy)"
+  };
+  // Delegated administrator registrations are for_each entries on both
+  // engines - duplicate (account, service) pairs would silently
+  // collapse.
+  option (buf.validate.message).cel = {
+    id: "spec.delegated_administrators_unique"
+    message: "delegated_administrators entries must have unique (account_id, service_principal) pairs"
+    expression: "this.delegated_administrators.map(d, d.account_id + '/' + d.service_principal).unique()"
+  };
+  // Root-access management is an IAM-Organizations integration: AWS
+  // rejects it unless IAM has trusted access to the organization, and
+  // trusted access itself needs ALL features (already enforced
+  // above).
+  option (buf.validate.message).cel = {
+    id: "spec.root_access_requires_iam_trusted_access"
+    message: "root_access_management requires 'iam.amazonaws.com' in aws_service_access_principals - IAM needs trusted access to manage root credentials across the organization"
+    expression: "!has(this.root_access_management) || 'iam.amazonaws.com' in this.aws_service_access_principals"
+  };
+
+  // The AWS region used by the provider while managing the
+  // organization. Organizations is a global service - the same
+  // organization is visible everywhere - but every AWS API call is
+  // still made against a regional endpoint, so a region is required.
+  // Example: "us-west-2", "eu-west-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The organization's feature level. Unset = ALL (the provider
+  // default, and the level every advanced arm below requires).
+  // CONSOLIDATED_BILLING provides shared billing only. Upgrading
+  // CONSOLIDATED_BILLING -> ALL is an in-place update (AWS's
+  // EnableAllFeatures); downgrading ALL -> CONSOLIDATED_BILLING
+  // REPLACES the resource - that is delete-and-recreate of the ENTIRE
+  // organization, which AWS only permits once every member account,
+  // OU, and policy is gone. Treat the downgrade as an organization
+  // rebuild, never a setting change.
+  string feature_set = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "ALL",
+        "CONSOLIDATED_BILLING"
+      ]
+    }
+  ];
+
+  // AWS service principals granted trusted access to the organization
+  // (e.g. "cloudtrail.amazonaws.com", "config.amazonaws.com",
+  // "account.amazonaws.com"). Trusted access lets the named service
+  // create its own service-linked roles in member accounts. This
+  // field is the ONE home for service access: AWS recommends enabling
+  // it through the owning service where possible, and the provider
+  // warns that managing the same principal elsewhere produces a
+  // perpetual diff. Removing an entry disables that service's access.
+  repeated string aws_service_access_principals = 3 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {pattern: "^([0-9a-z-]+\\.){1,4}(amazonaws\\.com(\\.cn)?|amazon\\.com)$"}
+    }
+  }];
+
+  // Policy types enabled on the organization's root. A type must be
+  // enabled here before AwsOrganizationPolicy resources of that type
+  // can attach anywhere. Enables and disables are applied on update
+  // (disables first); each waits for AWS to confirm the type's state.
+  repeated string enabled_policy_types = 4 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: [
+          "SERVICE_CONTROL_POLICY",
+          "RESOURCE_CONTROL_POLICY",
+          "TAG_POLICY",
+          "BACKUP_POLICY",
+          "AISERVICES_OPT_OUT_POLICY",
+          "CHATBOT_POLICY",
+          "DECLARATIVE_POLICY_EC2",
+          "SECURITYHUB_POLICY",
+          "INSPECTOR_POLICY",
+          "UPGRADE_ROLLOUT_POLICY",
+          "BEDROCK_POLICY",
+          "S3_POLICY",
+          "NETWORK_SECURITY_DIRECTOR_POLICY"
+        ]
+      }
+    }
+  }];
+
+  // Delegated administrator registrations: each entry names a member
+  // account as the administrator for one AWS service across the
+  // organization (e.g. delegating GuardDuty administration to a
+  // security account). Both leaves are immutable - changing either
+  // re-registers (deregister + register). The registration imports as
+  // "{account_id}/{service_principal}".
+  repeated AwsOrganizationDelegatedAdministrator delegated_administrators = 5;
+
+  // The organization's resource-based delegation policy as free-form
+  // JSON (an IAM-style document delegating organization management
+  // actions to member accounts). AWS keeps exactly ONE resource
+  // policy per organization - this arm IS that singleton
+  // (PutResourcePolicy upserts it; removing the arm deletes it). AWS
+  // identifies it as "rp-..." (the import ID).
+  google.protobuf.Struct resource_policy = 6;
+
+  // Centralized root-access management: which IAM organization
+  // features are enabled across member accounts. Requires
+  // "iam.amazonaws.com" in aws_service_access_principals. Destroying
+  // this arm DISABLES every enabled feature (member-account root
+  // credentials become locally manageable again).
+  AwsOrganizationRootAccessManagement root_access_management = 7;
+}
+
+// AwsOrganizationRootAccessManagement enables IAM's centralized
+// root-access features across the organization's member accounts.
+message AwsOrganizationRootAccessManagement {
+  // The enabled features:
+  //   - "RootCredentialsManagement": the management account (or a
+  //     delegated admin) centrally deletes member-account root
+  //     credentials - the lock-down posture that removes long-lived
+  //     root passwords/keys from member accounts.
+  //   - "RootSessions": privileged short-lived root SESSIONS on
+  //     member accounts for the rare tasks that genuinely need root
+  //     (deleting a mis-owned S3 bucket policy, ...).
+  repeated string enabled_features = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    unique: true
+    items: {
+      string: {
+        in: [
+          "RootCredentialsManagement",
+          "RootSessions"
+        ]
+      }
+    }
+  }];
+}
+
+// AwsOrganizationDelegatedAdministrator registers one member account
+// as the delegated administrator for one AWS service.
+message AwsOrganizationDelegatedAdministrator {
+  // The member account receiving delegated administration (12-digit
+  // account ID). The account must already be a member of the
+  // organization. Immutable.
+  string account_id = 1 [(buf.validate.field).string.pattern = "^[0-9]{12}$"];
+
+  // The service principal being delegated (e.g.
+  // "config.amazonaws.com", "guardduty.amazonaws.com"). Immutable.
+  string service_principal = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+    pattern: "^([0-9a-z-]+\\.){1,4}(amazonaws\\.com(\\.cn)?|amazon\\.com)$"
+  }];
+}

@@ -1,0 +1,31 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsManagedPrometheus
+metadata:
+  name: shared-metrics
+spec:
+  region: us-east-1
+  alias: shared-metrics
+  configuration:
+    retentionPeriodInDays: 30
+    outOfOrderTimeWindowInSeconds: 300
+    limitsPerLabelSet:
+      - labelSet:
+          team: ingest
+        maxSeries: 2000000
+      - labelSet:
+          team: experiments
+        maxSeries: 200000
+  queryLogging:
+    destinations:
+      - logGroupArn:
+          valueFrom:
+            kind: AwsCloudwatchLogGroup
+            name: amp-query-logs
+            fieldPath: status.outputs.log_group_arn
+        qspThreshold: 100000
+  anomalyDetectors:
+    - alias: ingest-rate
+      query: sum(rate(prometheus_remote_write_samples_in_total[5m]))
+      missingDataAction: MARK_AS_ANOMALY
+      ignoreNearExpectedFromAbove:
+        ratio: 0.2

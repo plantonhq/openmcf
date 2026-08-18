@@ -1,0 +1,38 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCostCategory
+metadata:
+  name: cost-center-with-split
+spec:
+  region: us-east-1
+  categoryName: Cost Center
+  defaultValue: shared
+  rules:
+    - value: product-a
+      rule:
+        tag:
+          key: product
+          values:
+            - product-a
+    - value: product-b
+      rule:
+        tag:
+          key: product
+          values:
+            - product-b
+    - value: platform
+      rule:
+        or:
+          - tag:
+              key: team
+              values:
+                - platform
+          - dimension:
+              key: SERVICE
+              values:
+                - AWS Support (Business)
+  splitChargeRules:
+    - source: platform
+      targets:
+        - product-a
+        - product-b
+      method: PROPORTIONAL

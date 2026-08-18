@@ -1,0 +1,28 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchLogDelivery
+metadata:
+  name: org-log-sink
+spec:
+  region: us-east-1
+  crossAccountDestination:
+    name: org-log-sink
+    roleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: logs-to-kinesis
+        fieldPath: status.outputs.role_arn
+    targetArn:
+      valueFrom:
+        kind: AwsKinesisStream
+        name: org-logs
+        fieldPath: status.outputs.stream_arn
+    accessPolicy:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Principal:
+            AWS:
+              - arn:aws:iam::111111111111:root
+              - arn:aws:iam::222222222222:root
+          Action: logs:PutSubscriptionFilter
+          Resource: "*"

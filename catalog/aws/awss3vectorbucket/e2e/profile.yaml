@@ -1,0 +1,25 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awss3vectorbucket
+spec:
+  # One scenario: bucket + one Titan-sized index (1024/cosine) with
+  # non-filterable keys. Free at rest (billing is per stored vector
+  # and per query - the lane never puts one); no fixtures; seconds
+  # per lifecycle phase.
+  #
+  # Deliberately not exercised live:
+  #   - the bucket policy -- a valid policy needs the harness account
+  #     id in the principal. Unblock: the PLANTON_E2E_AWS_ACCOUNT_ID
+  #     token in the scenario vocabulary.
+  #   - KMS encryption -- fixed for life of the bucket, so a second
+  #     scenario, not an update path; the pairing CEL is the
+  #     load-bearing guard. Unblock: an AwsKmsKey fixture scenario
+  #     when demand shows.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q46
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

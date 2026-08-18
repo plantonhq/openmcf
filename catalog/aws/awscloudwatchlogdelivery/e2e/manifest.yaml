@@ -1,0 +1,56 @@
+# Canonical AwsCloudwatchLogDelivery example (hack/dev manifest and
+# refgen Example source): a vended pipeline (a Bedrock knowledge base's
+# application logs delivered to an owned S3 destination with a
+# cross-account grant) plus the legacy cross-account Kinesis
+# destination arm. Literal values stand in for composed references so
+# the offline `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchLogDelivery
+metadata:
+  name: kb-log-pipeline
+  id: kb-log-pipeline
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  vended:
+    source:
+      name: kb-application-logs
+      logType: APPLICATION_LOGS
+      resourceArn:
+        value: arn:aws:bedrock:us-west-2:123456789012:knowledge-base/EXAMPLEKB
+    destinations:
+      - name: central-log-archive
+        destinationResourceArn:
+          value: arn:aws:s3:::central-log-archive
+        outputFormat: json
+        policy:
+          Version: "2012-10-17"
+          Statement:
+            - Sid: AllowProducerAccountDeliveries
+              Effect: Allow
+              Principal:
+                AWS: arn:aws:iam::210987654321:root
+              Action: logs:CreateDelivery
+              Resource: "*"
+    deliveries:
+      - name: to-s3
+        destinationName: central-log-archive
+        s3Configuration:
+          enableHiveCompatiblePath: true
+          suffixPath: kb-logs
+  crossAccountDestination:
+    name: org-log-sink
+    roleArn:
+      value: arn:aws:iam::123456789012:role/logs-to-kinesis
+    targetArn:
+      value: arn:aws:kinesis:us-west-2:123456789012:stream/org-logs
+    accessPolicy:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Principal:
+            AWS: arn:aws:iam::210987654321:root
+          Action: logs:PutSubscriptionFilter
+          Resource: "*"
+    forceUpdate: false

@@ -1,0 +1,19 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsAuroraDsql
+metadata:
+  name: orders-dsql-east
+spec:
+  region: us-east-1
+  deletionProtectionEnabled: true
+  kmsEncryptionKey:
+    valueFrom:
+      kind: AwsKmsKey
+      name: orders-data-key-east
+      fieldPath: status.outputs.key_arn
+  multiRegion:
+    witnessRegion: us-east-2
+    peerClusterArns:
+      - valueFrom:
+          kind: AwsAuroraDsql
+          name: orders-dsql-west
+          fieldPath: status.outputs.cluster_arn

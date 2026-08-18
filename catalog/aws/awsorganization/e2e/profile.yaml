@@ -1,0 +1,33 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsorganization
+spec:
+  # THE organization of the deploying account under live E2E: one
+  # all-features lane (service access + policy types), created and
+  # deleted whole - the test account becomes a management account for
+  # the lane's minutes and returns to standalone at destroy (delete is
+  # legal only with zero members/OUs/policies, which the lane
+  # guarantees by construction).
+  #
+  # Deliberately not exercised (beyond the deferral below):
+  # - delegated_administrators and resource_policy -- both need a REAL
+  #   second account ID (AWS validates principals against existing
+  #   accounts). Unblock: a member-account fixture, which is itself
+  #   permanently deferred (see awsorganizationaccount).
+  # - the CONSOLIDATED_BILLING feature set -- the downgrade path is a
+  #   whole-organization replacement; not worth a lane.
+  #
+  # Verification is DescribeOrganization keyed on organization_id
+  # (roots listed for root_id coherence).
+  tier: 1
+  status: deferred
+  deferred_reason: >-
+    Deferred by owner decision (2026-08-16, the standing org-wall
+    class): every Organizations resource requires the account to be an
+    organization's management account, and the shared test account is
+    deliberately standalone/non-org. The kind is offline-proven (green
+    tofu plan + pulumi preview per engine). Unblock: an owner reversal
+    to the transient-organization posture (create org -> prove ->
+    delete org, zero orphans) or a dedicated org-capable test account.
+  timeout_minutes: 20

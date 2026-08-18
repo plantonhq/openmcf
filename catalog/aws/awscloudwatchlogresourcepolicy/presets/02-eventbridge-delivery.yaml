@@ -1,0 +1,19 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchLogResourcePolicy
+metadata:
+  name: eventbridge-log-delivery
+spec:
+  region: us-east-1
+  policyName: eventbridge-log-delivery
+  policyDocument:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service:
+            - events.amazonaws.com
+            - delivery.logs.amazonaws.com
+        Action:
+          - logs:CreateLogStream
+          - logs:PutLogEvents
+        Resource: arn:aws:logs:us-east-1:123456789012:log-group:/aws/events/*

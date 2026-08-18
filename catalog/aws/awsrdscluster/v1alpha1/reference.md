@@ -1331,7 +1331,9 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsAppSyncApi | `spec.datasources[].relationalDatabase.dbClusterIdentifier` | `status.outputs.cluster_identifier` |
 | AwsBedrockKnowledgeBase | `spec.storage.rds.resourceArn` | `status.outputs.arn` |
+| AwsRdsProxy | `spec.target.dbClusterIdentifier` | `status.outputs.cluster_identifier` |
 
 ## See Also
 

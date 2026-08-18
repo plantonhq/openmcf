@@ -1,0 +1,9 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEbsSnapshot
+metadata:
+  name: db-data-backup
+spec:
+  region: us-east-1
+  volumeId:
+    value: vol-0123456789abcdef0
+  description: pre-upgrade db-data checkpoint

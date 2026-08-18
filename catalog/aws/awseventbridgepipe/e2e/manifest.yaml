@@ -1,0 +1,29 @@
+# Canonical AwsEventBridgePipe example (hack/dev manifest and refgen
+# Example source): an SQS-to-SQS pipe with an order filter, batch
+# tuning, and an input template.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEventBridgePipe
+metadata:
+  name: orders-pipe
+  id: orders-pipe
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  description: Move order events from intake to processing
+  source:
+    value: arn:aws:sqs:us-west-2:123456789012:orders-intake
+  sourceParameters:
+    filterCriteria:
+      filters:
+        - pattern: '{"body":{"type":["order"]}}'
+    sqs:
+      batchSize: 10
+      maximumBatchingWindowInSeconds: 5
+  target:
+    value: arn:aws:sqs:us-west-2:123456789012:orders-processing
+  targetParameters:
+    inputTemplate: '{"orderId": <$.body.orderId>, "receivedAt": <aws.pipes.event.ingestion-time>}'
+  roleArn:
+    value: arn:aws:iam::123456789012:role/pipe-exec
+  desiredState: RUNNING

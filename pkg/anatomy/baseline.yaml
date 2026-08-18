@@ -51,6 +51,12 @@ violations:
   - catalog/auth0/auth0role/iac:missing-permissions
   - catalog/auth0/auth0role:missing-control-profile
   - catalog/auth0/auth0role:missing-cost-profile
+  - catalog/aws/awsappsyncapi/iac:missing-permissions
+  - catalog/aws/awsappsyncapi:missing-control-profile
+  - catalog/aws/awsappsyncapi:missing-cost-profile
+  - catalog/aws/awsauroradsql/iac:missing-permissions
+  - catalog/aws/awsauroradsql:missing-control-profile
+  - catalog/aws/awsauroradsql:missing-cost-profile
   - catalog/aws/awsautoscalinggroup/iac/pulumi:missing-iac-readme
   - catalog/aws/awsautoscalinggroup/iac/tf:missing-iac-readme
   - catalog/aws/awsbackupsettings/iac:missing-permissions
@@ -115,6 +121,30 @@ violations:
   - catalog/aws/awsbedrockprompt/iac:missing-permissions
   - catalog/aws/awsbedrockprompt:missing-control-profile
   - catalog/aws/awsbedrockprompt:missing-cost-profile
+  - catalog/aws/awsbudget/iac:missing-permissions
+  - catalog/aws/awsbudget:missing-control-profile
+  - catalog/aws/awsbudget:missing-cost-profile
+  - catalog/aws/awscloudmapnamespace/iac:missing-permissions
+  - catalog/aws/awscloudmapnamespace:missing-control-profile
+  - catalog/aws/awscloudmapnamespace:missing-cost-profile
+  - catalog/aws/awscloudwatchdashboard/iac:missing-permissions
+  - catalog/aws/awscloudwatchdashboard:missing-control-profile
+  - catalog/aws/awscloudwatchdashboard:missing-cost-profile
+  - catalog/aws/awscloudwatchlogaccountpolicy/iac:missing-permissions
+  - catalog/aws/awscloudwatchlogaccountpolicy:missing-control-profile
+  - catalog/aws/awscloudwatchlogaccountpolicy:missing-cost-profile
+  - catalog/aws/awscloudwatchloganomalydetector/iac:missing-permissions
+  - catalog/aws/awscloudwatchloganomalydetector:missing-control-profile
+  - catalog/aws/awscloudwatchloganomalydetector:missing-cost-profile
+  - catalog/aws/awscloudwatchlogdelivery/iac:missing-permissions
+  - catalog/aws/awscloudwatchlogdelivery:missing-control-profile
+  - catalog/aws/awscloudwatchlogdelivery:missing-cost-profile
+  - catalog/aws/awscloudwatchlogresourcepolicy/iac:missing-permissions
+  - catalog/aws/awscloudwatchlogresourcepolicy:missing-control-profile
+  - catalog/aws/awscloudwatchlogresourcepolicy:missing-cost-profile
+  - catalog/aws/awscloudwatchsynthetics/iac:missing-permissions
+  - catalog/aws/awscloudwatchsynthetics:missing-control-profile
+  - catalog/aws/awscloudwatchsynthetics:missing-cost-profile
   - catalog/aws/awscodebuildproject/iac/pulumi:missing-iac-readme
   - catalog/aws/awscodebuildproject/iac/tf:missing-iac-readme
   - catalog/aws/awscodepipeline/iac/pulumi:missing-iac-readme
@@ -124,6 +154,24 @@ violations:
   - catalog/aws/awsconfigaggregator/iac:missing-permissions
   - catalog/aws/awsconfigaggregator:missing-control-profile
   - catalog/aws/awsconfigaggregator:missing-cost-profile
+  - catalog/aws/awscostanomalymonitor/iac:missing-permissions
+  - catalog/aws/awscostanomalymonitor:missing-control-profile
+  - catalog/aws/awscostanomalymonitor:missing-cost-profile
+  - catalog/aws/awscostcategory/iac:missing-permissions
+  - catalog/aws/awscostcategory:missing-control-profile
+  - catalog/aws/awscostcategory:missing-cost-profile
+  - catalog/aws/awsdlmlifecyclepolicy/iac:missing-permissions
+  - catalog/aws/awsdlmlifecyclepolicy:missing-control-profile
+  - catalog/aws/awsdlmlifecyclepolicy:missing-cost-profile
+  - catalog/aws/awsebssnapshot/iac:missing-permissions
+  - catalog/aws/awsebssnapshot:missing-control-profile
+  - catalog/aws/awsebssnapshot:missing-cost-profile
+  - catalog/aws/awsebsvolume/iac:missing-permissions
+  - catalog/aws/awsebsvolume:missing-control-profile
+  - catalog/aws/awsebsvolume:missing-cost-profile
+  - catalog/aws/awsecrregistrysettings/iac:missing-permissions
+  - catalog/aws/awsecrregistrysettings:missing-control-profile
+  - catalog/aws/awsecrregistrysettings:missing-cost-profile
   - catalog/aws/awsecsservice/iac/pulumi:missing-iac-readme
   - catalog/aws/awsecsservice/iac/tf:missing-iac-readme
   - catalog/aws/awsecstaskdefinition/iac/pulumi:missing-iac-readme
@@ -144,11 +192,29 @@ violations:
   - catalog/aws/awseksnodegroup/iac/tf:missing-iac-readme
   - catalog/aws/awselasticfilesystem/iac/pulumi:missing-iac-readme
   - catalog/aws/awselasticfilesystem/iac/tf:missing-iac-readme
+  - catalog/aws/awseventbridgeapidestination/iac:missing-permissions
+  - catalog/aws/awseventbridgeapidestination:missing-control-profile
+  - catalog/aws/awseventbridgeapidestination:missing-cost-profile
+  - catalog/aws/awseventbridgepipe/iac:missing-permissions
+  - catalog/aws/awseventbridgepipe:missing-control-profile
+  - catalog/aws/awseventbridgepipe:missing-cost-profile
+  - catalog/aws/awseventbridgescheduler/iac:missing-permissions
+  - catalog/aws/awseventbridgescheduler:missing-control-profile
+  - catalog/aws/awseventbridgescheduler:missing-cost-profile
   - catalog/aws/awsfsxdatarepositoryassociation/iac/pulumi:missing-iac-readme
   - catalog/aws/awsfsxdatarepositoryassociation/iac/tf:missing-iac-readme
   - catalog/aws/awsfsxlustrefilesystem/iac/tf:missing-iac-readme
   - catalog/aws/awsfsxontapvolume/iac/pulumi:missing-iac-readme
   - catalog/aws/awsfsxontapvolume/iac/tf:missing-iac-readme
+  - catalog/aws/awsiamaccountsettings/iac:missing-permissions
+  - catalog/aws/awsiamaccountsettings:missing-control-profile
+  - catalog/aws/awsiamaccountsettings:missing-cost-profile
+  - catalog/aws/awsiamgroup/iac:missing-permissions
+  - catalog/aws/awsiamgroup:missing-control-profile
+  - catalog/aws/awsiamgroup:missing-cost-profile
+  - catalog/aws/awsiamsamlprovider/iac:missing-permissions
+  - catalog/aws/awsiamsamlprovider:missing-control-profile
+  - catalog/aws/awsiamsamlprovider:missing-cost-profile
   - catalog/aws/awsinternetgateway/iac/pulumi:missing-iac-readme
   - catalog/aws/awsinternetgateway/iac/tf:missing-iac-readme
   - catalog/aws/awskinesisfirehose/iac/pulumi:missing-iac-readme
@@ -158,6 +224,9 @@ violations:
   - catalog/aws/awskinesisstreamconsumer/iac/pulumi:missing-iac-readme
   - catalog/aws/awskinesisstreamconsumer/iac/tf:missing-iac-readme
   - catalog/aws/awslambdaeventsourcemapping/iac/tf:missing-iac-readme
+  - catalog/aws/awslambdalayer/iac:missing-permissions
+  - catalog/aws/awslambdalayer:missing-control-profile
+  - catalog/aws/awslambdalayer:missing-cost-profile
   - catalog/aws/awslaunchtemplate/iac/pulumi:missing-iac-readme
   - catalog/aws/awslaunchtemplate/iac/tf:missing-iac-readme
   - catalog/aws/awslblistener/iac/pulumi:missing-iac-readme
@@ -166,6 +235,15 @@ violations:
   - catalog/aws/awslblistenerrule/iac/tf:missing-iac-readme
   - catalog/aws/awslbtargetgroup/iac/pulumi:missing-iac-readme
   - catalog/aws/awslbtargetgroup/iac/tf:missing-iac-readme
+  - catalog/aws/awsmanagedprefixlist/iac:missing-permissions
+  - catalog/aws/awsmanagedprefixlist:missing-control-profile
+  - catalog/aws/awsmanagedprefixlist:missing-cost-profile
+  - catalog/aws/awsmanagedprometheus/iac:missing-permissions
+  - catalog/aws/awsmanagedprometheus:missing-control-profile
+  - catalog/aws/awsmanagedprometheus:missing-cost-profile
+  - catalog/aws/awsmanagedprometheusscraper/iac:missing-permissions
+  - catalog/aws/awsmanagedprometheusscraper:missing-control-profile
+  - catalog/aws/awsmanagedprometheusscraper:missing-cost-profile
   - catalog/aws/awsmemorydbacl/iac/pulumi:missing-iac-readme
   - catalog/aws/awsmemorydbacl/iac/tf:missing-iac-readme
   - catalog/aws/awsmemorydbcluster/iac/pulumi:missing-iac-readme
@@ -174,7 +252,28 @@ violations:
   - catalog/aws/awsmemorydbuser/iac/tf:missing-iac-readme
   - catalog/aws/awsnatgateway/iac/pulumi:missing-iac-readme
   - catalog/aws/awsnatgateway/iac/tf:missing-iac-readme
+  - catalog/aws/awsnetworkacl/iac:missing-permissions
+  - catalog/aws/awsnetworkacl:missing-control-profile
+  - catalog/aws/awsnetworkacl:missing-cost-profile
   - catalog/aws/awsnlb/iac/pulumi:missing-iac-readme
+  - catalog/aws/awsorganization/iac:missing-permissions
+  - catalog/aws/awsorganization:missing-control-profile
+  - catalog/aws/awsorganization:missing-cost-profile
+  - catalog/aws/awsorganizationaccount/iac:missing-permissions
+  - catalog/aws/awsorganizationaccount:missing-control-profile
+  - catalog/aws/awsorganizationaccount:missing-cost-profile
+  - catalog/aws/awsorganizationalunit/iac:missing-permissions
+  - catalog/aws/awsorganizationalunit:missing-control-profile
+  - catalog/aws/awsorganizationalunit:missing-cost-profile
+  - catalog/aws/awsorganizationpolicy/iac:missing-permissions
+  - catalog/aws/awsorganizationpolicy:missing-control-profile
+  - catalog/aws/awsorganizationpolicy:missing-cost-profile
+  - catalog/aws/awsprivateca/iac:missing-permissions
+  - catalog/aws/awsprivateca:missing-control-profile
+  - catalog/aws/awsprivateca:missing-cost-profile
+  - catalog/aws/awsrdsproxy/iac:missing-permissions
+  - catalog/aws/awsrdsproxy:missing-control-profile
+  - catalog/aws/awsrdsproxy:missing-cost-profile
   - catalog/aws/awsredshiftserverlessnamespace/iac:missing-permissions
   - catalog/aws/awsredshiftserverlessnamespace:missing-control-profile
   - catalog/aws/awsredshiftserverlessnamespace:missing-cost-profile
@@ -182,6 +281,24 @@ violations:
   - catalog/aws/awsredshiftserverlessworkgroup:missing-control-profile
   - catalog/aws/awsredshiftserverlessworkgroup:missing-cost-profile
   - catalog/aws/awsroute53healthcheck/iac/pulumi:missing-iac-readme
+  - catalog/aws/awsroute53resolverendpoint/iac:missing-permissions
+  - catalog/aws/awsroute53resolverendpoint:missing-control-profile
+  - catalog/aws/awsroute53resolverendpoint:missing-cost-profile
+  - catalog/aws/awsroute53resolverfirewall/iac:missing-permissions
+  - catalog/aws/awsroute53resolverfirewall:missing-control-profile
+  - catalog/aws/awsroute53resolverfirewall:missing-cost-profile
+  - catalog/aws/awsroute53resolverquerylog/iac:missing-permissions
+  - catalog/aws/awsroute53resolverquerylog:missing-control-profile
+  - catalog/aws/awsroute53resolverquerylog:missing-cost-profile
+  - catalog/aws/awss3directorybucket/iac:missing-permissions
+  - catalog/aws/awss3directorybucket:missing-control-profile
+  - catalog/aws/awss3directorybucket:missing-cost-profile
+  - catalog/aws/awss3tablebucket/iac:missing-permissions
+  - catalog/aws/awss3tablebucket:missing-control-profile
+  - catalog/aws/awss3tablebucket:missing-cost-profile
+  - catalog/aws/awss3vectorbucket/iac:missing-permissions
+  - catalog/aws/awss3vectorbucket:missing-control-profile
+  - catalog/aws/awss3vectorbucket:missing-cost-profile
   - catalog/aws/awssagemakerdomain/iac:missing-permissions
   - catalog/aws/awssagemakerdomain:missing-control-profile
   - catalog/aws/awssagemakerdomain:missing-cost-profile
@@ -234,6 +351,9 @@ violations:
   - catalog/aws/awsvpc/iac/pulumi:missing-iac-readme
   - catalog/aws/awsvpcendpoint/iac/pulumi:missing-iac-readme
   - catalog/aws/awsvpcendpoint/iac/tf:missing-iac-readme
+  - catalog/aws/awsvpcpeering/iac:missing-permissions
+  - catalog/aws/awsvpcpeering:missing-control-profile
+  - catalog/aws/awsvpcpeering:missing-cost-profile
   - catalog/aws/awswafipset/iac/pulumi:missing-iac-readme
   - catalog/aws/awswafipset/iac/tf:missing-iac-readme
   - catalog/aws/awswafregexpatternset/iac/pulumi:missing-iac-readme

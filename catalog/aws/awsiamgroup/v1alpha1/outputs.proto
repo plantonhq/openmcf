@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsiamgroup.v1alpha1;
+
+// AwsIamGroupStackOutputs captures the observable state of the IAM
+// group after apply.
+message AwsIamGroupStackOutputs {
+  // The group's ARN.
+  string group_arn = 1;
+
+  // The group's name (also the provider's import ID, and the value
+  // policies and budget actions reference the group by).
+  string group_name = 2;
+
+  // The group's AWS-generated stable unique ID (survives renames).
+  string group_id = 3;
+}

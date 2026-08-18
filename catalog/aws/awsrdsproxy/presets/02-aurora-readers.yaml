@@ -1,0 +1,51 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRdsProxy
+metadata:
+  name: analytics-aurora-proxy
+spec:
+  region: us-east-1
+  engineFamily: MYSQL
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: analytics-proxy-secrets-role
+      fieldPath: status.outputs.role_arn
+  vpcSubnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: private-subnet-a
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: private-subnet-b
+        fieldPath: status.outputs.subnet_id
+  auth:
+    - secretArn:
+        valueFrom:
+          kind: AwsSecretsManagerSecret
+          name: analytics-db-credentials
+          fieldPath: status.outputs.secret_arn
+  requireTls: true
+  connectionPool:
+    maxConnectionsPercent: 90
+    maxIdleConnectionsPercent: 20
+    sessionPinningFilters:
+      - EXCLUDE_VARIABLE_SETS
+  endpoints:
+    - name: readers
+      targetRole: READ_ONLY
+      vpcSubnetIds:
+        - valueFrom:
+            kind: AwsSubnet
+            name: private-subnet-a
+            fieldPath: status.outputs.subnet_id
+        - valueFrom:
+            kind: AwsSubnet
+            name: private-subnet-b
+            fieldPath: status.outputs.subnet_id
+  target:
+    dbClusterIdentifier:
+      valueFrom:
+        kind: AwsRdsCluster
+        name: analytics-aurora
+        fieldPath: status.outputs.cluster_identifier

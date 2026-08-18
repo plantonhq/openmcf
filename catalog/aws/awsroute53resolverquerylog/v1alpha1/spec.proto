@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsroute53resolverquerylog.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsRoute53ResolverQueryLogSpec defines one Resolver query logging
+// configuration - the pipeline that records the DNS queries VPCs make
+// through Route 53 Resolver - with its VPC associations managed
+// in-line.
+//
+// This logs RESOLVER queries (everything a VPC asks, including
+// queries the resolver answers from cache or forwards on-prem). It is
+// a different surface from hosted-zone query logging, which records
+// only what Route 53 answers for one public zone and lives on
+// AwsRoute53Zone.
+//
+// Both the destination and the name are fixed for life at the
+// provider - changing either replaces the configuration (existing log
+// data stays in the destination).
+message AwsRoute53ResolverQueryLogSpec {
+  // The AWS region whose resolver queries are logged. Example:
+  // "us-west-2".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Where the logs go: a CloudWatch log group ARN, an S3 bucket ARN
+  // (optionally with a prefix, "arn:...:my-bucket/prefix"), or a
+  // Kinesis Data Firehose delivery stream ARN. Each destination type
+  // needs the documented resource policy or permissions in place -
+  // an association against a destination the resolver cannot write
+  // to fails asynchronously after apply. Reference an
+  // AwsCloudwatchLogGroup log_group_arn output or pass a literal ARN.
+  // Fixed for life.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef destination_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCloudwatchLogGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.log_group_arn"
+  ];
+
+  // The VPCs whose resolver queries are logged to the destination.
+  // Reference AwsVpc vpc_id outputs or pass literal vpc-... ids.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_ids = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
+  ];
+}

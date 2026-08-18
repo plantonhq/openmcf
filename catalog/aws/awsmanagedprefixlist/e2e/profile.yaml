@@ -1,0 +1,19 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsmanagedprefixlist
+spec:
+  # A standalone IPv4 list with three described entries - no fixtures,
+  # free at AWS, seconds per lifecycle phase.
+  #
+  # Deliberately not exercised live:
+  #   - IPv6 lists -- same API shape as IPv4 with a different family
+  #     enum; the spec's family-match CEL is the load-bearing guard.
+  #     Unblock: a second scenario with an IPv6 CIDR set.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q45
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

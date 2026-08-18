@@ -1,0 +1,43 @@
+# Where each placeholder in this component's import-ID formats comes
+# from (the formats themselves live in aa_import/catalog.yaml).
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsprivateca
+spec:
+  # The CA, its installed-certificate record, and the policy all
+  # import by the CA's ARN. aws_acmpca_certificate plays THREE module
+  # roles, so its ARN placeholder is scoped per logical resource name:
+  # the activation roles (root_ca / subordinate_ca) derive from the
+  # activation_certificate_arn output, the issued certificates from
+  # the name-keyed issued_certificate_arns map. The permission ships
+  # no importer upstream (see the catalog row).
+  values:
+    - name: certificate_authority_arn
+      derivations:
+        - from_stack_output: certificate_authority_arn
+      where_to_find: >-
+        ACM PCA console -> Certificate authorities (the ARN column), or
+        `aws acm-pca list-certificate-authorities` (Arn).
+    - name: issued_certificate_arn
+      tofu_resource_name: root_ca
+      derivations:
+        - from_stack_output: activation_certificate_arn
+      where_to_find: >-
+        The root CA's self-signed certificate ARN - the CA's
+        GetCertificateAuthorityCertificate call reports the PEM; the
+        ARN comes from the issue call (this module exports it).
+    - name: issued_certificate_arn
+      tofu_resource_name: subordinate_ca
+      derivations:
+        - from_stack_output: activation_certificate_arn
+      where_to_find: >-
+        The parent-issued subordinate certificate ARN (this module
+        exports it).
+    - name: issued_certificate_arn
+      tofu_resource_name: issued
+      derivations:
+        - from_stack_output_keyed_by_address: issued_certificate_arns
+      where_to_find: >-
+        Each issued certificate's ARN, keyed by the spec entry's name -
+        take it from the issue call's output or the CA's audit report.

@@ -1,0 +1,23 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEcrRegistrySettings
+metadata:
+  name: us-east-1-registry
+spec:
+  region: us-east-1
+  scanning:
+    scanType: ENHANCED
+    rules:
+      - scanFrequency: CONTINUOUS_SCAN
+        filters:
+          - "prod-*"
+      - scanFrequency: SCAN_ON_PUSH
+        filters:
+          - "*"
+  accountSettings:
+    basicScanTypeVersion: AWS_NATIVE
+    registryPolicyScope: V2
+  pullTimeUpdateExclusions:
+    - valueFrom:
+        kind: AwsIamRole
+        name: ci-push-role
+        fieldPath: status.outputs.role_arn

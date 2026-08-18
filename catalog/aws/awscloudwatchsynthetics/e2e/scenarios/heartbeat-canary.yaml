@@ -1,0 +1,61 @@
+# A heartbeat canary with an owned group and its join, live: the code
+# bundle is staged by the consumer-scoped object-set fixture (the
+# Synthetics nodejs/node_modules layout), the execution role by the
+# consumer-scoped role fixture, artifacts land in the shared bucket
+# fixture. startCanary stays FALSE - the canary is created READY but
+# never runs, so the lane is ~$0 (runs, not canaries, are what
+# Synthetics bills). deleteLambda tears the managed Lambda down with
+# the canary (zero orphans).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchSynthetics
+metadata:
+  name: planton-oss-e2e-awssyn-hb
+  id: planton-oss-e2e-awssyn-hb
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscloudwatchsynthetics
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsS3ObjectSet"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  canary:
+    artifactBucket:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: planton-oss-e2e-awss3bucket-prereq
+        fieldPath: status.outputs.bucket_id
+    artifactPrefix: canary-artifacts/awssyn-hb
+    executionRoleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: planton-oss-e2e-awssyn-exec
+        fieldPath: status.outputs.role_arn
+    handler: heartbeat.handler
+    runtimeVersion: syn-nodejs-puppeteer-9.1
+    code:
+      s3Bucket:
+        valueFrom:
+          kind: AwsS3Bucket
+          name: planton-oss-e2e-awss3bucket-prereq
+          fieldPath: status.outputs.bucket_id
+      s3Key: e2e/canary-heartbeat.zip
+    schedule:
+      # rate(0 minute): run only when manually started - never, in this
+      # lane (startCanary false).
+      expression: rate(0 minute)
+    runConfig:
+      memoryInMb: 960
+      timeoutInSeconds: 60
+    failureRetentionPeriod: 1
+    successRetentionPeriod: 1
+    startCanary: false
+    deleteLambda: true
+  groups:
+    - name: planton-oss-e2e-awssyn-group
+  groupNames:
+    - planton-oss-e2e-awssyn-group

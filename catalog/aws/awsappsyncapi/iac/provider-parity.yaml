@@ -1,0 +1,381 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_appsync_graphql_api:
+    mappings:
+      - arg: name
+        spec: spec.graphql.api_name
+      - arg: authentication_type
+        spec: spec.graphql.auth.type
+      - arg: user_pool_config.user_pool_id
+        spec: spec.graphql.auth.user_pool.user_pool_id
+      - arg: user_pool_config.default_action
+        spec: spec.graphql.auth.user_pool.default_action
+      - arg: user_pool_config.app_id_client_regex
+        spec: spec.graphql.auth.user_pool.app_id_client_regex
+      - arg: user_pool_config.aws_region
+        spec: spec.graphql.auth.user_pool.aws_region
+      - arg: openid_connect_config.issuer
+        spec: spec.graphql.auth.openid_connect.issuer
+      - arg: openid_connect_config.client_id
+        spec: spec.graphql.auth.openid_connect.client_id
+      - arg: openid_connect_config.iat_ttl
+        spec: spec.graphql.auth.openid_connect.iat_ttl
+      - arg: openid_connect_config.auth_ttl
+        spec: spec.graphql.auth.openid_connect.auth_ttl
+      - arg: lambda_authorizer_config.authorizer_uri
+        spec: spec.graphql.auth.lambda.authorizer_uri
+      - arg: lambda_authorizer_config.authorizer_result_ttl_in_seconds
+        spec: spec.graphql.auth.lambda.authorizer_result_ttl_in_seconds
+      - arg: lambda_authorizer_config.identity_validation_expression
+        spec: spec.graphql.auth.lambda.identity_validation_expression
+      - arg: additional_authentication_provider.authentication_type
+        spec: spec.graphql.additional_auth_providers.type
+      - arg: additional_authentication_provider.user_pool_config.user_pool_id
+        spec: spec.graphql.additional_auth_providers.user_pool.user_pool_id
+      - arg: additional_authentication_provider.user_pool_config.app_id_client_regex
+        spec: spec.graphql.additional_auth_providers.user_pool.app_id_client_regex
+      - arg: additional_authentication_provider.user_pool_config.aws_region
+        spec: spec.graphql.additional_auth_providers.user_pool.aws_region
+      - arg: additional_authentication_provider.openid_connect_config.issuer
+        spec: spec.graphql.additional_auth_providers.openid_connect.issuer
+      - arg: additional_authentication_provider.openid_connect_config.client_id
+        spec: spec.graphql.additional_auth_providers.openid_connect.client_id
+      - arg: additional_authentication_provider.openid_connect_config.iat_ttl
+        spec: spec.graphql.additional_auth_providers.openid_connect.iat_ttl
+      - arg: additional_authentication_provider.openid_connect_config.auth_ttl
+        spec: spec.graphql.additional_auth_providers.openid_connect.auth_ttl
+      - arg: additional_authentication_provider.lambda_authorizer_config.authorizer_uri
+        spec: spec.graphql.additional_auth_providers.lambda.authorizer_uri
+      - arg: additional_authentication_provider.lambda_authorizer_config.authorizer_result_ttl_in_seconds
+        spec: spec.graphql.additional_auth_providers.lambda.authorizer_result_ttl_in_seconds
+      - arg: additional_authentication_provider.lambda_authorizer_config.identity_validation_expression
+        spec: spec.graphql.additional_auth_providers.lambda.identity_validation_expression
+      - arg: merged_api_execution_role_arn
+        spec: spec.graphql.merged.execution_role_arn
+      - arg: introspection_config
+        spec: spec.graphql.disable_introspection
+      - arg: log_config.cloudwatch_logs_role_arn
+        spec: spec.graphql.log_config.cloudwatch_logs_role_arn
+      - arg: log_config.field_log_level
+        spec: spec.graphql.log_config.field_log_level
+      - arg: log_config.exclude_verbose_content
+        spec: spec.graphql.log_config.exclude_verbose_content
+      - arg: enhanced_metrics_config.data_source_level_metrics_behavior
+        spec: spec.graphql.enhanced_metrics.data_source_level_metrics_behavior
+      - arg: enhanced_metrics_config.operation_level_metrics_config
+        spec: spec.graphql.enhanced_metrics.operation_level_metrics_config
+      - arg: enhanced_metrics_config.resolver_level_metrics_behavior
+        spec: spec.graphql.enhanced_metrics.resolver_level_metrics_behavior
+      - arg: schema
+        spec: spec.graphql.schema
+      - arg: visibility
+        spec: spec.graphql.visibility
+      - arg: xray_enabled
+        spec: spec.graphql.xray_enabled
+      - arg: query_depth_limit
+        spec: spec.graphql.query_depth_limit
+      - arg: resolver_count_limit
+        spec: spec.graphql.resolver_count_limit
+    exclusions:
+      - arg: api_type
+        reason: derived by the modules from the merged block's presence (GRAPHQL/MERGED) -- one declarative home, never a second free-form field
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_appsync_api:
+    mappings:
+      - arg: name
+        spec: spec.graphql.api_name
+      - arg: owner_contact
+        spec: spec.events.owner_contact
+      - arg: event_config.auth_provider.auth_type
+        spec: spec.events.auth_providers.type
+      - arg: event_config.auth_provider.cognito_config.user_pool_id
+        spec: spec.events.auth_providers.cognito.user_pool_id
+      - arg: event_config.auth_provider.cognito_config.aws_region
+        spec: spec.events.auth_providers.cognito.aws_region
+      - arg: event_config.auth_provider.cognito_config.app_id_client_regex
+        spec: spec.events.auth_providers.cognito.app_id_client_regex
+      - arg: event_config.auth_provider.openid_connect_config.issuer
+        spec: spec.events.auth_providers.openid_connect.issuer
+      - arg: event_config.auth_provider.openid_connect_config.client_id
+        spec: spec.events.auth_providers.openid_connect.client_id
+      - arg: event_config.auth_provider.openid_connect_config.iat_ttl
+        spec: spec.events.auth_providers.openid_connect.iat_ttl
+      - arg: event_config.auth_provider.openid_connect_config.auth_ttl
+        spec: spec.events.auth_providers.openid_connect.auth_ttl
+      - arg: event_config.auth_provider.lambda_authorizer_config.authorizer_uri
+        spec: spec.events.auth_providers.lambda.authorizer_uri
+      - arg: event_config.auth_provider.lambda_authorizer_config.authorizer_result_ttl_in_seconds
+        spec: spec.events.auth_providers.lambda.authorizer_result_ttl_in_seconds
+      - arg: event_config.auth_provider.lambda_authorizer_config.identity_validation_expression
+        spec: spec.events.auth_providers.lambda.identity_validation_expression
+      - arg: event_config.connection_auth_mode.auth_type
+        spec: spec.events.connection_auth_modes
+      - arg: event_config.default_publish_auth_mode.auth_type
+        spec: spec.events.default_publish_auth_modes
+      - arg: event_config.default_subscribe_auth_mode.auth_type
+        spec: spec.events.default_subscribe_auth_modes
+      - arg: event_config.log_config.cloudwatch_logs_role_arn
+        spec: spec.events.log_config.cloudwatch_logs_role_arn
+      - arg: event_config.log_config.log_level
+        spec: spec.events.log_config.log_level
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+
+  aws_appsync_datasource:
+    mappings:
+      - arg: name
+        spec: spec.datasources.name
+      - arg: description
+        spec: spec.datasources.description
+      - arg: type
+        spec: spec.datasources.type
+      - arg: service_role_arn
+        spec: spec.datasources.service_role_arn
+      - arg: dynamodb_config.table_name
+        spec: spec.datasources.dynamodb.table_name
+      - arg: dynamodb_config.region
+        spec: spec.datasources.dynamodb.region
+      - arg: dynamodb_config.use_caller_credentials
+        spec: spec.datasources.dynamodb.use_caller_credentials
+      - arg: dynamodb_config.versioned
+        spec: spec.datasources.dynamodb.versioned
+      - arg: dynamodb_config.delta_sync_config.delta_sync_table_name
+        spec: spec.datasources.dynamodb.delta_sync.delta_sync_table_name
+      - arg: dynamodb_config.delta_sync_config.base_table_ttl
+        spec: spec.datasources.dynamodb.delta_sync.base_table_ttl
+      - arg: dynamodb_config.delta_sync_config.delta_sync_table_ttl
+        spec: spec.datasources.dynamodb.delta_sync.delta_sync_table_ttl
+      - arg: lambda_config.function_arn
+        spec: spec.datasources.lambda.function_arn
+      - arg: http_config.endpoint
+        spec: spec.datasources.http.endpoint
+      - arg: http_config.authorization_config.aws_iam_config.signing_region
+        spec: spec.datasources.http.sigv4.signing_region
+      - arg: http_config.authorization_config.aws_iam_config.signing_service_name
+        spec: spec.datasources.http.sigv4.signing_service_name
+      - arg: opensearchservice_config.endpoint
+        spec: spec.datasources.opensearch.endpoint
+      - arg: opensearchservice_config.region
+        spec: spec.datasources.opensearch.region
+      - arg: elasticsearch_config.endpoint
+        spec: spec.datasources.elasticsearch.endpoint
+      - arg: elasticsearch_config.region
+        spec: spec.datasources.elasticsearch.region
+      - arg: event_bridge_config.event_bus_arn
+        spec: spec.datasources.eventbridge.event_bus_arn
+      - arg: relational_database_config.http_endpoint_config.db_cluster_identifier
+        spec: spec.datasources.relational_database.db_cluster_identifier
+      - arg: relational_database_config.http_endpoint_config.aws_secret_store_arn
+        spec: spec.datasources.relational_database.aws_secret_store_arn
+      - arg: relational_database_config.http_endpoint_config.database_name
+        spec: spec.datasources.relational_database.database_name
+      - arg: relational_database_config.http_endpoint_config.schema
+        spec: spec.datasources.relational_database.schema
+      - arg: relational_database_config.http_endpoint_config.region
+        spec: spec.datasources.relational_database.region
+    exclusions:
+      - arg: api_id
+        reason: wired by the module to the folded API's own id -- a data source always belongs to THIS API
+      - arg: http_config.authorization_config.authorization_type
+        reason: one-value vocabulary -- AWS_IAM is the only authorization type AWS supports; the modules pin it when the sigv4 block is present
+      - arg: relational_database_config.source_type
+        reason: one-value vocabulary -- RDS_HTTP_ENDPOINT is the only source type AWS supports; the modules pin it
+
+  aws_appsync_type:
+    mappings:
+      - arg: definition
+        spec: spec.graphql.types.definition
+      - arg: format
+        spec: spec.graphql.types.format
+    exclusions:
+      - arg: api_id
+        reason: wired by the module to the folded API's own id -- a type always belongs to THIS API
+
+  aws_appsync_function:
+    mappings:
+      - arg: name
+        spec: spec.graphql.functions.name
+      - arg: data_source
+        spec: spec.graphql.functions.data_source_name
+      - arg: description
+        spec: spec.graphql.functions.description
+      - arg: code
+        spec: spec.graphql.functions.code
+      - arg: runtime.runtime_version
+        spec: spec.graphql.functions.runtime_version
+      - arg: request_mapping_template
+        spec: spec.graphql.functions.request_mapping_template
+      - arg: response_mapping_template
+        spec: spec.graphql.functions.response_mapping_template
+      - arg: max_batch_size
+        spec: spec.graphql.functions.max_batch_size
+      - arg: sync_config.conflict_detection
+        spec: spec.graphql.functions.sync_config.conflict_detection
+      - arg: sync_config.conflict_handler
+        spec: spec.graphql.functions.sync_config.conflict_handler
+      - arg: sync_config.lambda_conflict_handler_config.lambda_conflict_handler_arn
+        spec: spec.graphql.functions.sync_config.lambda_conflict_handler_arn
+    exclusions:
+      - arg: api_id
+        reason: wired by the module to the folded API's own id -- a function always belongs to THIS API
+      - arg: runtime.name
+        reason: one-value vocabulary -- APPSYNC_JS is the only runtime AWS ships; the modules pin it whenever code is set
+      - arg: function_version
+        reason: one-value vocabulary -- 2018-05-29 is the only template version AWS supports and the provider defaults it for VTL functions; JS functions never take it
+
+  aws_appsync_resolver:
+    mappings:
+      - arg: type
+        spec: spec.graphql.resolvers.type
+      - arg: field
+        spec: spec.graphql.resolvers.field
+      - arg: data_source
+        spec: spec.graphql.resolvers.data_source_name
+      - arg: pipeline_config.functions
+        spec: spec.graphql.resolvers.pipeline_functions
+      - arg: code
+        spec: spec.graphql.resolvers.code
+      - arg: runtime.runtime_version
+        spec: spec.graphql.resolvers.runtime_version
+      - arg: request_template
+        spec: spec.graphql.resolvers.request_template
+      - arg: response_template
+        spec: spec.graphql.resolvers.response_template
+      - arg: max_batch_size
+        spec: spec.graphql.resolvers.max_batch_size
+      - arg: caching_config.caching_keys
+        spec: spec.graphql.resolvers.caching.caching_keys
+      - arg: caching_config.ttl
+        spec: spec.graphql.resolvers.caching.ttl
+      - arg: sync_config.conflict_detection
+        spec: spec.graphql.resolvers.sync_config.conflict_detection
+      - arg: sync_config.conflict_handler
+        spec: spec.graphql.resolvers.sync_config.conflict_handler
+      - arg: sync_config.lambda_conflict_handler_config.lambda_conflict_handler_arn
+        spec: spec.graphql.resolvers.sync_config.lambda_conflict_handler_arn
+    exclusions:
+      - arg: api_id
+        reason: wired by the module to the folded API's own id -- a resolver always belongs to THIS API
+      - arg: kind
+        reason: derived by the modules from which arm the entry carries (pipeline_functions non-empty means PIPELINE, else UNIT) -- one declarative home
+      - arg: runtime.name
+        reason: one-value vocabulary -- APPSYNC_JS is the only runtime AWS ships; the modules pin it whenever code is set
+
+  aws_appsync_api_cache:
+    mappings:
+      - arg: api_caching_behavior
+        spec: spec.graphql.cache.api_caching_behavior
+      - arg: ttl
+        spec: spec.graphql.cache.ttl
+      - arg: type
+        spec: spec.graphql.cache.type
+      - arg: at_rest_encryption_enabled
+        spec: spec.graphql.cache.at_rest_encryption_enabled
+      - arg: transit_encryption_enabled
+        spec: spec.graphql.cache.transit_encryption_enabled
+    exclusions:
+      - arg: api_id
+        reason: wired by the module to the folded API's own id -- the cache is one-per-API (its AWS id IS the API id)
+
+  aws_appsync_api_key:
+    mappings:
+      - arg: description
+        spec: spec.api_keys.description
+      - arg: expires
+        spec: spec.api_keys.expires
+    exclusions:
+      - arg: api_id
+        reason: wired by the module to the folded API's own id -- a key always belongs to THIS API
+
+  aws_appsync_channel_namespace:
+    mappings:
+      - arg: name
+        spec: spec.events.channel_namespaces.name
+      - arg: code_handlers
+        spec: spec.events.channel_namespaces.code_handlers
+      - arg: publish_auth_mode.auth_type
+        spec: spec.events.channel_namespaces.publish_auth_modes
+      - arg: subscribe_auth_mode.auth_type
+        spec: spec.events.channel_namespaces.subscribe_auth_modes
+      - arg: handler_configs.on_publish.behavior
+        spec: spec.events.channel_namespaces.handler_configs.on_publish.behavior
+      - arg: handler_configs.on_publish.integration.data_source_name
+        spec: spec.events.channel_namespaces.handler_configs.on_publish.data_source_name
+      - arg: handler_configs.on_publish.integration.lambda_config.invoke_type
+        spec: spec.events.channel_namespaces.handler_configs.on_publish.lambda_invoke_type
+      - arg: handler_configs.on_subscribe.behavior
+        spec: spec.events.channel_namespaces.handler_configs.on_subscribe.behavior
+      - arg: handler_configs.on_subscribe.integration.data_source_name
+        spec: spec.events.channel_namespaces.handler_configs.on_subscribe.data_source_name
+      - arg: handler_configs.on_subscribe.integration.lambda_config.invoke_type
+        spec: spec.events.channel_namespaces.handler_configs.on_subscribe.lambda_invoke_type
+    exclusions:
+      - arg: api_id
+        reason: wired by the module to the folded API's own id -- a namespace always belongs to THIS Events API
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+
+  aws_appsync_domain_name:
+    mappings:
+      - arg: domain_name
+        spec: spec.custom_domain.domain_name
+      - arg: certificate_arn
+        spec: spec.custom_domain.certificate_arn
+      - arg: description
+        spec: spec.custom_domain.description
+
+  aws_appsync_domain_name_api_association:
+    exclusions:
+      - arg: domain_name
+        reason: wired by the module to the folded domain's own name -- the association always fronts THIS kind's domain
+      - arg: api_id
+        reason: wired by the module to the folded API's own id -- the domain always fronts THIS API
+
+  aws_appsync_source_api_association:
+    mappings:
+      - arg: source_api_id
+        spec: spec.graphql.merged.source_apis.source_api_id
+      - arg: description
+        spec: spec.graphql.merged.source_apis.description
+      - arg: source_api_association_config
+        spec: spec.graphql.merged.source_apis.merge_type
+    exclusions:
+      - arg: merged_api_id
+        reason: wired by the module to the folded API's own id -- the association always merges INTO this MERGED API
+      - arg: merged_api_arn
+        reason: covered alternative -- the module addresses the merged API by id (exactly one of id/arn is legal upstream)
+      - arg: source_api_arn
+        reason: covered alternative -- the spec references source APIs by id, the self-kind output's natural join key (exactly one of id/arn is legal upstream)
+
+  aws_wafv2_web_acl_association:
+    mappings:
+      - arg: web_acl_arn
+        spec: spec.graphql.web_acl_arn
+    exclusions:
+      - arg: resource_arn
+        reason: wired by the module to the folded API's own ARN -- the association always protects THIS GraphQL API (the AwsAlb pattern)
+
+# Spec fields with no single provider argument.
+specExclusions:
+  - field: spec.api_keys.name
+    reason: the for_each key on both engines and the api_key_ids output-map key -- module bookkeeping, no provider argument carries it (AWS keys have no name)
+  - field: spec.graphql.types.name
+    reason: the for_each key on both engines, mirroring the name AWS derives from the definition -- part of the type's import ID, no provider argument carries it
+  - field: spec.graphql.merged.source_apis.name
+    reason: the for_each key on both engines and the source_api_association_ids output-map key -- module bookkeeping, no provider argument carries it
+  - field: spec.datasources.http.sigv4
+    reason: arm-presence toggle -- selects WHETHER the modules render http_config.authorization_config with the pinned AWS_IAM type; its leaves map to the aws_iam_config arguments
+  - field: spec.graphql.additional_auth_providers.user_pool.default_action
+    reason: the shared Cognito message's primary-only field -- AWS's additionalAuthenticationProviders carry no defaultAction, and a CEL forbids it on additionals; the primary's copy maps to user_pool_config.default_action

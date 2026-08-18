@@ -1473,6 +1473,326 @@ func TestAwsSsmPatchBaseline_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsssmpatchbaseline", "terraform")
 }
 
+func TestAwsOrganization_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsorganization", "pulumi")
+}
+
+func TestAwsOrganization_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsorganization", "terraform")
+}
+
+func TestAwsOrganizationalUnit_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsorganizationalunit", "pulumi")
+}
+
+func TestAwsOrganizationalUnit_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsorganizationalunit", "terraform")
+}
+
+func TestAwsOrganizationAccount_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsorganizationaccount", "pulumi")
+}
+
+func TestAwsOrganizationAccount_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsorganizationaccount", "terraform")
+}
+
+func TestAwsOrganizationPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsorganizationpolicy", "pulumi")
+}
+
+func TestAwsOrganizationPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsorganizationpolicy", "terraform")
+}
+
+func TestAwsBudget_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbudget", "pulumi")
+}
+
+func TestAwsBudget_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbudget", "terraform")
+}
+
+func TestAwsCostAnomalyMonitor_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscostanomalymonitor", "pulumi")
+}
+
+func TestAwsCostAnomalyMonitor_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscostanomalymonitor", "terraform")
+}
+
+func TestAwsCostCategory_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscostcategory", "pulumi")
+}
+
+func TestAwsCostCategory_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscostcategory", "terraform")
+}
+
+func TestAwsIamGroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsiamgroup", "pulumi")
+}
+
+func TestAwsIamGroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsiamgroup", "terraform")
+}
+
+func TestAwsIamSamlProvider_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsiamsamlprovider", "pulumi")
+}
+
+func TestAwsIamSamlProvider_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsiamsamlprovider", "terraform")
+}
+
+func TestAwsIamAccountSettings_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsiamaccountsettings", "pulumi")
+}
+
+func TestAwsIamAccountSettings_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsiamaccountsettings", "terraform")
+}
+
+func TestAwsCloudwatchDashboard_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchdashboard", "pulumi")
+}
+
+func TestAwsCloudwatchDashboard_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchdashboard", "terraform")
+}
+
+func TestAwsCloudwatchSynthetics_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchsynthetics", "pulumi")
+}
+
+func TestAwsCloudwatchSynthetics_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchsynthetics", "terraform")
+}
+
+func TestAwsCloudwatchLogDelivery_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchlogdelivery", "pulumi")
+}
+
+func TestAwsCloudwatchLogDelivery_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchlogdelivery", "terraform")
+}
+
+func TestAwsCloudwatchLogAccountPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchlogaccountpolicy", "pulumi")
+}
+
+func TestAwsCloudwatchLogAccountPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchlogaccountpolicy", "terraform")
+}
+
+func TestAwsCloudwatchLogAnomalyDetector_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchloganomalydetector", "pulumi")
+}
+
+func TestAwsCloudwatchLogAnomalyDetector_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchloganomalydetector", "terraform")
+}
+
+func TestAwsCloudwatchLogResourcePolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchlogresourcepolicy", "pulumi")
+}
+
+func TestAwsCloudwatchLogResourcePolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudwatchlogresourcepolicy", "terraform")
+}
+
+func TestAwsManagedPrometheus_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmanagedprometheus", "pulumi")
+}
+
+func TestAwsManagedPrometheus_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmanagedprometheus", "terraform")
+}
+
+func TestAwsManagedPrometheusScraper_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmanagedprometheusscraper", "pulumi")
+}
+
+func TestAwsManagedPrometheusScraper_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmanagedprometheusscraper", "terraform")
+}
+
+func TestAwsEventBridgePipe_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awseventbridgepipe", "pulumi")
+}
+
+func TestAwsEventBridgePipe_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awseventbridgepipe", "terraform")
+}
+
+func TestAwsEventBridgeScheduler_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awseventbridgescheduler", "pulumi")
+}
+
+func TestAwsEventBridgeScheduler_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awseventbridgescheduler", "terraform")
+}
+
+func TestAwsEventBridgeApiDestination_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awseventbridgeapidestination", "pulumi")
+}
+
+func TestAwsEventBridgeApiDestination_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awseventbridgeapidestination", "terraform")
+}
+
+func TestAwsVpcPeering_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsvpcpeering", "pulumi")
+}
+
+func TestAwsVpcPeering_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsvpcpeering", "terraform")
+}
+
+func TestAwsNetworkAcl_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsnetworkacl", "pulumi")
+}
+
+func TestAwsNetworkAcl_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsnetworkacl", "terraform")
+}
+
+func TestAwsManagedPrefixList_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmanagedprefixlist", "pulumi")
+}
+
+func TestAwsManagedPrefixList_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsmanagedprefixlist", "terraform")
+}
+
+func TestAwsEbsVolume_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsebsvolume", "pulumi")
+}
+
+func TestAwsEbsVolume_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsebsvolume", "terraform")
+}
+
+func TestAwsEbsSnapshot_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsebssnapshot", "pulumi")
+}
+
+func TestAwsEbsSnapshot_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsebssnapshot", "terraform")
+}
+
+func TestAwsDlmLifecyclePolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsdlmlifecyclepolicy", "pulumi")
+}
+
+func TestAwsDlmLifecyclePolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsdlmlifecyclepolicy", "terraform")
+}
+
+func TestAwsS3DirectoryBucket_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awss3directorybucket", "pulumi")
+}
+
+func TestAwsS3DirectoryBucket_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awss3directorybucket", "terraform")
+}
+
+func TestAwsS3TableBucket_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awss3tablebucket", "pulumi")
+}
+
+func TestAwsS3TableBucket_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awss3tablebucket", "terraform")
+}
+
+func TestAwsS3VectorBucket_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awss3vectorbucket", "pulumi")
+}
+
+func TestAwsS3VectorBucket_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awss3vectorbucket", "terraform")
+}
+
+func TestAwsRoute53ResolverEndpoint_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53resolverendpoint", "pulumi")
+}
+
+func TestAwsRoute53ResolverEndpoint_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53resolverendpoint", "terraform")
+}
+
+func TestAwsRoute53ResolverFirewall_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53resolverfirewall", "pulumi")
+}
+
+func TestAwsRoute53ResolverFirewall_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53resolverfirewall", "terraform")
+}
+
+func TestAwsRoute53ResolverQueryLog_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53resolverquerylog", "pulumi")
+}
+
+func TestAwsRoute53ResolverQueryLog_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53resolverquerylog", "terraform")
+}
+
+func TestAwsCloudMapNamespace_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudmapnamespace", "pulumi")
+}
+
+func TestAwsCloudMapNamespace_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudmapnamespace", "terraform")
+}
+
+func TestAwsLambdaLayer_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awslambdalayer", "pulumi")
+}
+
+func TestAwsLambdaLayer_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awslambdalayer", "terraform")
+}
+
+func TestAwsRdsProxy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrdsproxy", "pulumi")
+}
+
+func TestAwsRdsProxy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrdsproxy", "terraform")
+}
+
+func TestAwsAppSyncApi_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsappsyncapi", "pulumi")
+}
+
+func TestAwsAppSyncApi_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsappsyncapi", "terraform")
+}
+
+func TestAwsAuroraDsql_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsauroradsql", "pulumi")
+}
+
+func TestAwsAuroraDsql_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsauroradsql", "terraform")
+}
+
+func TestAwsEcrRegistrySettings_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsecrregistrysettings", "pulumi")
+}
+
+func TestAwsEcrRegistrySettings_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsecrregistrysettings", "terraform")
+}
+
+func TestAwsPrivateCa_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsprivateca", "pulumi")
+}
+
+func TestAwsPrivateCa_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsprivateca", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

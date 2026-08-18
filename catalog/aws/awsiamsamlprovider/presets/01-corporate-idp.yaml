@@ -1,0 +1,11 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamSamlProvider
+metadata:
+  name: corporate-idp
+spec:
+  region: us-east-1
+  samlMetadataDocument: |
+    <paste the metadata XML your identity provider publishes at its
+    SAML metadata URL - Okta: the app's "Identity Provider metadata"
+    link; Entra ID: the "Federation Metadata XML" download; Google
+    Workspace: the "Download metadata" button>

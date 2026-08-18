@@ -320,7 +320,10 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | AwsEventBridgeBus | `spec.deadLetterConfig.arn` | `status.outputs.queue_arn` |
+| AwsEventBridgePipe | `spec.sourceParameters.kinesis.deadLetterQueueArn` | `status.outputs.queue_arn` |
+| AwsEventBridgePipe | `spec.sourceParameters.dynamodb.deadLetterQueueArn` | `status.outputs.queue_arn` |
 | AwsEventBridgeRule | `spec.targets[].deadLetterConfig.arn` | `status.outputs.queue_arn` |
+| AwsEventBridgeScheduler | `spec.target.deadLetterQueueArn` | `status.outputs.queue_arn` |
 | AwsLambda | `spec.deadLetterTargetArn` | `status.outputs.queue_arn` |
 | AwsLambda | `spec.asyncInvokeConfig.onSuccessDestinationArn` | `status.outputs.queue_arn` |
 | AwsLambda | `spec.asyncInvokeConfig.onFailureDestinationArn` | `status.outputs.queue_arn` |

@@ -1,0 +1,3 @@
+name: awscloudwatchdashboard
+runtime: go
+description: Pulumi module to manage an AWS CloudWatch dashboard

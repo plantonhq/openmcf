@@ -1,0 +1,3 @@
+name: awsmanagedprefixlist
+runtime: go
+description: Pulumi module to manage an AWS customer-managed prefix list

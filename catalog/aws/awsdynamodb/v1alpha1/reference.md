@@ -1226,6 +1226,14 @@ Fields that can point at another resource's outputs:
 | `spec.replicas[].kmsKeyArn` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.importTable.s3Bucket` | AwsS3Bucket | `status.outputs.bucket_id` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsAppSyncApi | `spec.datasources[].dynamodb.tableName` | `status.outputs.table_name` |
+
 ## See Also
 
 - [Overview](../README.md)

@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/apigateway"
 	"github.com/aws/aws-sdk-go-v2/service/bedrock"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockagentcorecontrol"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/sesv2"
 	sesv2types "github.com/aws/aws-sdk-go-v2/service/sesv2/types"
 	"github.com/pkg/errors"
@@ -26,10 +27,15 @@ import (
 //     the vault STILL EXISTS with the last-applied setting; reverting
 //     is an apply with ServiceManagedKey);
 //   - AwsSesAccountSettings: ASYMMETRIC -- VDM resets to DISABLED,
-//     suppression persists (the recorded settings-retention class).
+//     suppression persists (the recorded settings-retention class);
+//   - AwsIamAccountSettings: PER-ARM -- the alias truly deletes (never
+//     exercised live on the shared account: an alias overwrite changes
+//     its sign-in URL), the password policy RESETS to AWS defaults
+//     (absent = NoSuchEntity), the STS preference is a NO-OP delete
+//     (absent = the applied version persists).
 //
-// There is deliberately no shared "reset" helper: four kinds with
-// three different contracts do not justify a new verifier interface.
+// There is deliberately no shared "reset" helper: the kinds carry
+// different contracts and do not justify a new verifier interface.
 
 // apiGatewayAccountSettingsVerifier verifies AwsApiGatewayAccountSettings
 // via GetAccount, keyed on account_id (the singleton has no per-name
@@ -192,6 +198,76 @@ func (*sesAccountSettingsVerifier) VerifyAbsent(ctx context.Context, cfg aws.Con
 	// is the recorded settings-retention class, never a failure.
 	if out.VdmAttributes != nil && out.VdmAttributes.VdmEnabled == sesv2types.FeatureStatusEnabled {
 		return errors.Errorf("ses account (%s) still has VDM enabled after destroy (expected DISABLED reset)", id)
+	}
+	return nil
+}
+
+// iamAccountSettingsVerifier verifies AwsIamAccountSettings via IAM's
+// account APIs, keyed on account_id (IAM is GLOBAL - the singleton's
+// identity is the account, and the region parameter is ignored). The
+// scenario applies the password-policy and STS arms (never the alias -
+// an alias overwrite would change the shared account's sign-in URL),
+// and each arm's destroy contract is asserted individually:
+//
+//   - password policy: destroy RESETS to AWS defaults, which IAM
+//     reports as NO custom policy (GetAccountPasswordPolicy answers
+//     NoSuchEntity) - absent means the reset happened;
+//   - STS preference: destroy is a NO-OP - absent means the
+//     last-applied v2 token version STILL answers (the
+//     settings-retention class, asserted as persistence, never as
+//     disappearance).
+type iamAccountSettingsVerifier struct{}
+
+func (*iamAccountSettingsVerifier) IDOutputKey() string { return "account_id" }
+
+// stsTokenVersion reads the account's global-endpoint token version
+// from the account summary (the only read API for the preference;
+// 1 = v1Token, 2 = v2Token).
+func stsTokenVersion(ctx context.Context, cfg aws.Config) (int32, error) {
+	out, err := iam.NewFromConfig(cfg).GetAccountSummary(ctx, &iam.GetAccountSummaryInput{})
+	if err != nil {
+		return 0, err
+	}
+	return out.SummaryMap["GlobalEndpointTokenVersion"], nil
+}
+
+func (*iamAccountSettingsVerifier) VerifyExists(ctx context.Context, cfg aws.Config, id, _ string) error {
+	client := iam.NewFromConfig(cfg)
+	policy, err := client.GetAccountPasswordPolicy(ctx, &iam.GetAccountPasswordPolicyInput{})
+	if err != nil {
+		return errors.Wrapf(err, "iam account (%s) has no custom password policy after deploy", id)
+	}
+	// Verify the setting that was written, not mere presence: the
+	// scenario's hardened policy raises the minimum length above AWS's
+	// 6-character default.
+	if policy.PasswordPolicy == nil || aws.ToInt32(policy.PasswordPolicy.MinimumPasswordLength) <= 6 {
+		return errors.Errorf("iam account (%s) password policy does not carry the scenario's hardened minimum length", id)
+	}
+	version, err := stsTokenVersion(ctx, cfg)
+	if err != nil {
+		return errors.Wrap(err, "iam GetAccountSummary")
+	}
+	if version != 2 {
+		return errors.Errorf("iam account (%s) global endpoint token version is %d after deploy (expected 2 = v2Token)", id, version)
+	}
+	return nil
+}
+
+func (*iamAccountSettingsVerifier) VerifyAbsent(ctx context.Context, cfg aws.Config, id, _ string) error {
+	client := iam.NewFromConfig(cfg)
+	if _, err := client.GetAccountPasswordPolicy(ctx, &iam.GetAccountPasswordPolicyInput{}); err == nil {
+		return errors.Errorf("iam account (%s) still has a custom password policy after destroy (expected the AWS-defaults reset)", id)
+	} else if !isIamNoSuchEntity(err) {
+		return errors.Wrap(err, "iam GetAccountPasswordPolicy")
+	}
+	// The STS preference persists by contract (no-op delete): assert
+	// the last-applied v2 version still answers.
+	version, err := stsTokenVersion(ctx, cfg)
+	if err != nil {
+		return errors.Wrap(err, "iam GetAccountSummary")
+	}
+	if version != 2 {
+		return errors.Errorf("iam account (%s) global endpoint token version reverted to %d after destroy (the no-op-delete contract expects the applied v2 to persist)", id, version)
 	}
 	return nil
 }

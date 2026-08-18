@@ -1,0 +1,15 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchLogAnomalyDetector
+metadata:
+  name: api-anomalies
+spec:
+  region: us-east-1
+  detectorName: api-anomalies
+  logGroupArns:
+    - valueFrom:
+        kind: AwsCloudwatchLogGroup
+        name: api-logs
+        fieldPath: status.outputs.log_group_arn
+  enabled: true
+  evaluationFrequency: FIVE_MIN
+  anomalyVisibilityTime: 30

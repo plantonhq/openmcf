@@ -429,6 +429,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsCloudMapNamespace | `spec.services[].instances[].aliasDnsName` | `status.outputs.load_balancer_dns_name` |
 | AwsEcsService | `spec.autoscaling.requestsPerTarget.loadBalancerArnSuffix` | `status.outputs.arn_suffix` |
 | AwsLbListener | `spec.loadBalancerArn` | `status.outputs.load_balancer_arn` |
 | AwsRoute53DnsRecord | `spec.aliasTarget.dnsName` | `status.outputs.load_balancer_dns_name` |

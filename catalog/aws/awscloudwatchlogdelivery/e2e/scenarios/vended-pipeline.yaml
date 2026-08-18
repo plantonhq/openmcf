@@ -1,0 +1,46 @@
+# The vended arm live: the Bedrock knowledge-base fixture's
+# application logs delivered to an owned S3 destination (the shared
+# bucket fixture) - source, destination, and the delivery join in one
+# pipeline, with the Hive-compatible S3 layout. The KB fixture is the
+# provider's own acceptance-test source class and the catalog's proven
+# standing chain (~$0; wall-clock dominated by the KB create).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchLogDelivery
+metadata:
+  name: planton-oss-e2e-awscwld-kb
+  id: planton-oss-e2e-awscwld-kb
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscloudwatchlogdelivery
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsBedrockKnowledgeBase,AwsS3Bucket"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  vended:
+    source:
+      name: planton-oss-e2e-awscwld-kb-src
+      logType: APPLICATION_LOGS
+      resourceArn:
+        valueFrom:
+          kind: AwsBedrockKnowledgeBase
+          name: planton-oss-e2e-bedrock-kb-prereq
+          fieldPath: status.outputs.knowledge_base_arn
+    destinations:
+      - name: planton-oss-e2e-awscwld-kb-dst
+        destinationResourceArn:
+          valueFrom:
+            kind: AwsS3Bucket
+            name: planton-oss-e2e-awss3bucket-prereq
+            fieldPath: status.outputs.bucket_arn
+        outputFormat: json
+    deliveries:
+      - name: to-s3
+        destinationName: planton-oss-e2e-awscwld-kb-dst
+        s3Configuration:
+          enableHiveCompatiblePath: true
+          suffixPath: kb-logs

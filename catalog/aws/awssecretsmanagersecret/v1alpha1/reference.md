@@ -425,6 +425,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsAppSyncApi | `spec.datasources[].relationalDatabase.awsSecretStoreArn` | `status.outputs.secret_arn` |
 | AwsBedrockAgentCoreEvaluation | `spec.harnesses[].model.gemini.apiKeyArn` | `status.outputs.secret_arn` |
 | AwsBedrockAgentCoreEvaluation | `spec.harnesses[].model.openai.apiKeyArn` | `status.outputs.secret_arn` |
 | AwsBedrockAgentCoreTools | `spec.browsers[].certificates[].secretArn` | `status.outputs.secret_arn` |
@@ -438,6 +439,8 @@ Fields on other kinds that can point at this resource:
 | AwsBedrockKnowledgeBase | `spec.dataSources[].confluence.credentialsSecretArn` | `status.outputs.secret_arn` |
 | AwsBedrockKnowledgeBase | `spec.dataSources[].salesforce.credentialsSecretArn` | `status.outputs.secret_arn` |
 | AwsBedrockKnowledgeBase | `spec.dataSources[].sharepoint.credentialsSecretArn` | `status.outputs.secret_arn` |
+| AwsEcrRegistrySettings | `spec.pullThroughCacheRules[].credentialArn` | `status.outputs.secret_arn` |
+| AwsRdsProxy | `spec.auth[].secretArn` | `status.outputs.secret_arn` |
 
 ## See Also
 

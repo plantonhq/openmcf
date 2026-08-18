@@ -1,0 +1,37 @@
+# Minimal inbound endpoint: two ENIs in the two-AZ subnet
+# prerequisites, guarded by the resolver DNS group - the shape on-prem
+# resolvers forward queries TO. No rules (inbound endpoints take none).
+# Endpoint ENIs bill ~$0.125/hour each - minutes cost cents.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRoute53ResolverEndpoint
+metadata:
+  name: planton-oss-e2e-awsr53re-min
+  id: planton-oss-e2e-awsr53re-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsroute53resolverendpoint
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  direction: INBOUND
+  ipAddresses:
+    - subnetId:
+        valueFrom:
+          kind: AwsSubnet
+          name: planton-oss-e2e-awssubnet-prereq-a
+          fieldPath: status.outputs.subnet_id
+    - subnetId:
+        valueFrom:
+          kind: AwsSubnet
+          name: planton-oss-e2e-awssubnet-prereq-b
+          fieldPath: status.outputs.subnet_id
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: planton-oss-e2e-awssg-resolver-dns
+        fieldPath: status.outputs.security_group_id

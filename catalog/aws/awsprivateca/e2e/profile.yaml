@@ -1,0 +1,38 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsprivateca
+spec:
+  # One scenario: a SHORT_LIVED-mode root CA that self-activates (the
+  # composed CSR->issue->install dance's first live run), grants ACM
+  # renewal, and issues one client certificate from a committed CSR.
+  # Cost: ~USD 0.07/hour of CA lifetime (short-lived mode's USD
+  # 50/month prorated) + USD 0.75 for the issued certificate - well
+  # under a dollar per run. Watch: the composed activation ordering
+  # (issue against the CA's own CSR before install); whether
+  # SHORT_LIVED mode accepts the 10-year ROOT CA validity (the 7-day
+  # cap is documented for END-ENTITY certificates - the lane settles
+  # the CA-certificate contract); delete-then-recreate collisions
+  # inside the 7-day restore window (run-scoped names shield the
+  # dual-engine recreate); and the issued certificate's revoke-on-
+  # destroy path against a short-lived CA.
+  #
+  # Deliberately not exercised live:
+  #   - GENERAL_PURPOSE mode -- USD 400/month prorated makes every
+  #     lane-hour ~USD 0.55; short-lived proves the identical machinery.
+  #     Unblock: fold into a proof session when CRL/OCSP go live.
+  #   - the CRL/OCSP revocation arms -- short-lived mode forbids them,
+  #     and a CRL needs the S3 bucket policy pre-work. Unblock: a
+  #     GENERAL_PURPOSE scenario with a policy-carrying bucket fixture.
+  #   - the SUBORDINATE activation arm -- the parent IS this kind (the
+  #     self-kind-prerequisite class). Unblock: a two-instance proof
+  #     session (root fixture + subordinate under test).
+  #   - the resource policy arm -- the policy JSON needs a second
+  #     account's principal to say anything real (the org-wall class).
+  #
+  # pending_proof: forged this session to the full offline bar -- Q48
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 30

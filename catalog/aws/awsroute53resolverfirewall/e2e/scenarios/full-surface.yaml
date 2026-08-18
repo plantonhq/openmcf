@@ -1,0 +1,58 @@
+# Full-surface rule group: an owned domain list, all three rule shapes
+# (BLOCK with an OVERRIDE sinkhole on the owned list, NXDOMAIN block
+# with a q_type restriction, ALERT on DNS-tunneling detection), and the
+# group associated to the chain VPC. mutation_protection stays DISABLED
+# by design - an ENABLED association refuses its own destroy. DNS
+# Firewall bills per domain per month prorated - minutes cost ~$0.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRoute53ResolverFirewall
+metadata:
+  name: planton-oss-e2e-awsr53rfw-full
+  id: planton-oss-e2e-awsr53rfw-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsroute53resolverfirewall
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  domainLists:
+    - name: blocked
+      domains:
+        - e2e-malware.example.
+        - e2e-phishing.example.
+    - name: watched
+      domains:
+        - e2e-watch.example.
+  rules:
+    - name: sinkhole-blocked
+      priority: 100
+      action: BLOCK
+      domainListName: blocked
+      blockResponse: OVERRIDE
+      blockOverrideDomain: sinkhole.example.com
+      blockOverrideTtl: 60
+    - name: nxdomain-watched-txt
+      priority: 200
+      action: BLOCK
+      domainListName: watched
+      blockResponse: NXDOMAIN
+      qType: TXT
+      firewallDomainRedirectionAction: TRUST_REDIRECTION_DOMAIN
+    - name: alert-tunneling
+      priority: 300
+      action: ALERT
+      dnsThreatProtection: DNS_TUNNELING
+      confidenceThreshold: HIGH
+  vpcAssociations:
+    - name: chain-vpc
+      vpcId:
+        valueFrom:
+          kind: AwsVpc
+          name: planton-oss-e2e-awsvpc-prereq
+          fieldPath: status.outputs.vpc_id
+      priority: 200

@@ -1,0 +1,3 @@
+name: awsiamaccountsettings
+runtime: go
+description: Pulumi module to manage IAM account-level settings (sign-in alias, password policy, STS token version)

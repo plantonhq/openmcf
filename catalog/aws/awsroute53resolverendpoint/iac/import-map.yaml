@@ -1,0 +1,32 @@
+# Where each placeholder in this component's import-ID formats comes
+# from (the formats themselves live in aa_import/catalog.yaml).
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsroute53resolverendpoint
+spec:
+  # The endpoint imports by its AWS-generated id. The folded rules and
+  # their VPC associations derive blind from the rule_ids /
+  # rule_association_ids output maps keyed exactly like the modules'
+  # for_each entries.
+  values:
+    - name: endpoint_id
+      derivations:
+        - from_stack_output: endpoint_id
+      where_to_find: >-
+        Route 53 console -> Resolver -> Inbound/Outbound endpoints (the
+        Endpoint ID column), or `aws route53resolver
+        list-resolver-endpoints` (Id).
+    - name: rule_id
+      derivations:
+        - from_stack_output_keyed_by_address: rule_ids
+      where_to_find: >-
+        `aws route53resolver list-resolver-rules` lists rules with Id
+        ("rslvr-rr-..."); match each to its spec.rules entry by Name.
+    - name: rule_association_id
+      derivations:
+        - from_stack_output_keyed_by_address: rule_association_ids
+      where_to_find: >-
+        `aws route53resolver list-resolver-rule-associations` lists
+        associations with Id ("rslvr-rrassoc-..."); match by
+        ResolverRuleId and VPCId.

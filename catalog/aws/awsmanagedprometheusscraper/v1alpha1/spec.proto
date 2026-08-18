@@ -1,0 +1,179 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsmanagedprometheusscraper.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsManagedPrometheusScraperSpec defines one AMP scraper: AWS's
+// agentless Prometheus collector. It scrapes metrics from a SOURCE (an
+// EKS cluster, or a bare VPC placement for non-EKS endpoints) and
+// writes them to a DESTINATION (an AMP workspace or a CloudWatch
+// dataset) - which is why the scraper is its own kind: it needs no AMP
+// workspace to exist.
+//
+// The whole SOURCE replaces on change (AWS re-provisions the
+// collector); alias, destination, role configuration, and the scrape
+// configuration update in place. Creates run long (AWS provisions
+// collector infrastructure - up to 30 minutes) and deletes drain
+// before removal (up to 20).
+message AwsManagedPrometheusScraperSpec {
+  // Exactly one source arm.
+  option (buf.validate.message).cel = {
+    id: "spec.exactly_one_source"
+    message: "configure exactly one of source_eks and source_vpc"
+    expression: "has(this.source_eks) != has(this.source_vpc)"
+  };
+  // Exactly one destination arm.
+  option (buf.validate.message).cel = {
+    id: "spec.exactly_one_destination"
+    message: "configure exactly one of amp_workspace_arn and cloudwatch_dataset_arn"
+    expression: "has(this.amp_workspace_arn) != has(this.cloudwatch_dataset_arn)"
+  };
+  // AWS publishes a default scrape configuration only for EKS
+  // sources; VPC sources must bring their own.
+  option (buf.validate.message).cel = {
+    id: "spec.vpc_source_requires_scrape_configuration"
+    message: "scrape_configuration is required with source_vpc - AWS's default configuration exists only for EKS sources"
+    expression: "!has(this.source_vpc) || this.scrape_configuration != ''"
+  };
+  // The cross-account role pair travels together.
+  option (buf.validate.message).cel = {
+    id: "spec.role_configuration_pair"
+    message: "source_role_arn and target_role_arn must be set together"
+    expression: "!has(this.role_configuration) || (has(this.role_configuration.source_role_arn) == has(this.role_configuration.target_role_arn))"
+  };
+
+  // The AWS region the scraper runs in. Example: "us-east-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The scraper's display alias. Updates in place.
+  string alias = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Scrape from an EKS cluster. Changing anything here replaces the
+  // scraper.
+  AwsManagedPrometheusScraperEksSource source_eks = 3;
+
+  // Scrape from endpoints in a VPC (no EKS cluster). Changing
+  // anything here replaces the scraper.
+  AwsManagedPrometheusScraperVpcSource source_vpc = 4;
+
+  // Deliver scraped metrics to an AMP workspace. Reference an
+  // AwsManagedPrometheus workspace_arn output or pass a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef amp_workspace_arn = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsManagedPrometheus,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.workspace_arn"
+  ];
+
+  // Deliver scraped metrics to a CloudWatch dataset (CloudWatch's
+  // Prometheus-metrics ingestion) by dataset ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cloudwatch_dataset_arn = 6;
+
+  // The Prometheus scrape configuration YAML (scrape_configs,
+  // relabeling, ...). Optional for EKS sources - unset lets the
+  // modules resolve AWS's published default configuration at deploy
+  // time. Required for VPC sources. Updates in place.
+  string scrape_configuration = 7 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Cross-account scraping: the role pair AWS assumes (source_role in
+  // the scraped account, target_role in the destination account).
+  // Both or neither.
+  AwsManagedPrometheusScraperRoleConfiguration role_configuration = 8;
+
+  // Scraper component logging to a CloudWatch log group.
+  AwsManagedPrometheusScraperLogging logging = 9;
+}
+
+// AwsManagedPrometheusScraperEksSource scrapes an EKS cluster.
+message AwsManagedPrometheusScraperEksSource {
+  // The EKS cluster to scrape. Reference an AwsEksCluster cluster_arn
+  // output or pass a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cluster_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsEksCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_arn"
+  ];
+
+  // Subnets the scraper's collectors place into (the cluster's
+  // subnets). Reference AwsSubnet subnet_id outputs or pass literal
+  // IDs.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Security groups on the scraper's network interfaces. Unset lets
+  // AWS pick the cluster's security group.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+}
+
+// AwsManagedPrometheusScraperVpcSource scrapes endpoints in a VPC
+// without an EKS cluster.
+message AwsManagedPrometheusScraperVpcSource {
+  // Subnets the scraper's collectors place into. Reference AwsSubnet
+  // subnet_id outputs or pass literal IDs.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Security groups on the scraper's network interfaces (AWS requires
+  // at least one for VPC sources). Reference AwsSecurityGroup
+  // security_group_id outputs or pass literal IDs.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+}
+
+// AwsManagedPrometheusScraperRoleConfiguration is the cross-account
+// role pair.
+message AwsManagedPrometheusScraperRoleConfiguration {
+  // The role in the SCRAPED account. Reference an AwsIamRole role_arn
+  // output or pass a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_role_arn = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // The role in the DESTINATION account.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target_role_arn = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+}
+
+// AwsManagedPrometheusScraperLogging sends scraper component logs to
+// CloudWatch Logs.
+message AwsManagedPrometheusScraperLogging {
+  // The receiving log group. Reference an AwsCloudwatchLogGroup
+  // log_group_arn output or pass a literal group ARN. AWS requires the
+  // ":*" wildcard suffix on this ARN; the log group resource exports
+  // the bare ARN - both engines append ":*" when absent, so wire the
+  // natural output and never hand-craft the suffix.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef log_group_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCloudwatchLogGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.log_group_arn"
+  ];
+
+  // Which scraper components log. Unset logs AWS's default set.
+  repeated string components = 2 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: [
+          "SERVICE_DISCOVERY",
+          "COLLECTOR",
+          "EXPORTER"
+        ]
+      }
+    }
+  }];
+}

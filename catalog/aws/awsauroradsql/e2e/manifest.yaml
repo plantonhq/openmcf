@@ -1,0 +1,14 @@
+# Canonical AwsAuroraDsql example (hack/dev manifest and refgen
+# Example source): a single-region serverless distributed SQL cluster
+# with deletion protection - the production posture. Multi-region
+# pairing is the multi_region arm (see the reference page).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsAuroraDsql
+metadata:
+  name: orders-dsql
+  id: orders-dsql
+  org: test-org
+  env: dev
+spec:
+  region: us-east-1
+  deletionProtectionEnabled: true

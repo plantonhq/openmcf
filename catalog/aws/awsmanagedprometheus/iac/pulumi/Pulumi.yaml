@@ -1,0 +1,3 @@
+name: awsmanagedprometheus
+runtime: go
+description: Pulumi module to manage an Amazon Managed Prometheus workspace and its satellites

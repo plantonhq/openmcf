@@ -1,0 +1,37 @@
+# A same-account, same-region peering between the chain VPC and a
+# second (extra-instance) VPC: auto-accepted in one deploy, with DNS
+# resolution enabled both ways (both fixture VPCs enable DNS
+# hostnames; the CIDRs are non-overlapping by design). Free at AWS.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsVpcPeering
+metadata:
+  name: planton-oss-e2e-awsvpcpeer-min
+  id: planton-oss-e2e-awsvpcpeer-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsvpcpeering
+  annotations:
+    planton.dev/e2e: "true"
+    # The registry prerequisite (AwsVpc) provides the requester side;
+    # the path entry deploys the peer as an extra instance.
+    planton.dev/e2e-prerequisites: "catalog/aws/awsvpcpeering/e2e/prerequisites/awsvpc-peer.yaml"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  request:
+    vpcId:
+      valueFrom:
+        kind: AwsVpc
+        name: planton-oss-e2e-awsvpc-prereq
+        fieldPath: status.outputs.vpc_id
+    peerVpcId:
+      valueFrom:
+        kind: AwsVpc
+        name: planton-oss-e2e-awsvpcpeer-b
+        fieldPath: status.outputs.vpc_id
+    autoAccept: true
+    requesterAllowRemoteVpcDnsResolution: true
+    accepterAllowRemoteVpcDnsResolution: true

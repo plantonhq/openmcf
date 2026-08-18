@@ -471,7 +471,9 @@ message AwsSagemakerEndpointDeployment {
   repeated string auto_rollback_alarm_names = 3 [(buf.validate.field).repeated = {
     max_items: 10
     unique: true
-    items: {string: {min_len: 1}}
+    items: {
+      string: {min_len: 1}
+    }
   }];
 
   // The provider pairs the two policies exactly-one when deployment is

@@ -1,0 +1,50 @@
+# A VPC-sourced scraper live: collectors placed into the subnet
+# fixture with the security-group fixture, scraping a static in-VPC
+# target (nothing answers - an empty scrape is a healthy scraper), and
+# delivering to the consumer-scoped workspace fixture. The VPC arm
+# proves the scraper lifecycle WITHOUT an EKS cluster (the EKS arm is
+# the recorded deferral - see the profile). Creates run long: AWS
+# provisions collector infrastructure for up to 30 minutes and drains
+# deletes for up to 20.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsManagedPrometheusScraper
+metadata:
+  name: planton-oss-e2e-awsamps-vpc
+  id: planton-oss-e2e-awsamps-vpc
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsmanagedprometheusscraper
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsManagedPrometheus,AwsSecurityGroup"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  alias: planton-oss-e2e-awsamps-vpc
+  sourceVpc:
+    subnetIds:
+      - valueFrom:
+          kind: AwsSubnet
+          name: planton-oss-e2e-awssubnet-prereq-a
+          fieldPath: status.outputs.subnet_id
+    securityGroupIds:
+      - valueFrom:
+          kind: AwsSecurityGroup
+          name: planton-oss-e2e-awssg-prereq
+          fieldPath: status.outputs.security_group_id
+  ampWorkspaceArn:
+    valueFrom:
+      kind: AwsManagedPrometheus
+      name: planton-oss-e2e-awsamps-ws
+      fieldPath: status.outputs.workspace_arn
+  scrapeConfiguration: |
+    global:
+      scrape_interval: 60s
+    scrape_configs:
+      - job_name: planton-e2e-static
+        static_configs:
+          - targets:
+              - 10.0.0.250:9090

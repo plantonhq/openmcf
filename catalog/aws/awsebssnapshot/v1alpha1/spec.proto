@@ -1,0 +1,245 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsebssnapshot.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsEbsSnapshotSpec defines one EBS snapshot as a three-way source
+// union:
+//
+// The VOLUME arm (volume_id set) snapshots a live volume in this
+// region.
+//
+// The COPY arm (copy_from set) copies an existing snapshot - same
+// region or cross-region - optionally re-encrypting under a different
+// key. AWS's import for copied snapshots does not exist at the
+// provider, so a copy is create-only surface.
+//
+// The IMPORT arm (import_from set) builds the snapshot from a disk
+// image (VMDK/VHD/RAW) staged in S3 or served over a signed URL,
+// through the VM Import/Export service role. Also create-only surface
+// at the provider.
+//
+// Shared across all three arms: archive tiering (storage_tier +
+// restore dials), fast snapshot restore per availability zone, and
+// createVolumePermission grants to other accounts - all managed
+// in-line as part of the snapshot.
+message AwsEbsSnapshotSpec {
+  // Exactly one source arm.
+  option (buf.validate.message).cel = {
+    id: "spec.exactly_one_source"
+    message: "configure exactly one of volume_id (snapshot a volume), copy_from (copy a snapshot), or import_from (import a disk image)"
+    expression: "(has(this.volume_id) ? 1 : 0) + (has(this.copy_from) ? 1 : 0) + (has(this.import_from) ? 1 : 0) == 1"
+  };
+  // Restore dials are one-or-the-other.
+  option (buf.validate.message).cel = {
+    id: "spec.temporary_restore_excludes_permanent"
+    message: "temporary_restore_days and permanent_restore are mutually exclusive - a restore is either time-boxed or permanent"
+    expression: "this.temporary_restore_days == 0 || !this.permanent_restore"
+  };
+  // Restore dials only mean something for an archived snapshot.
+  option (buf.validate.message).cel = {
+    id: "spec.restore_dials_require_archive"
+    message: "permanent_restore and temporary_restore_days apply only when storage_tier is archive"
+    expression: "(!this.permanent_restore && this.temporary_restore_days == 0) || this.storage_tier == 'archive'"
+  };
+
+  // The AWS region the snapshot lives in. Example: "us-east-1". For
+  // the copy arm this is the DESTINATION region.
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The VOLUME arm: snapshot this volume. Reference an AwsEbsVolume
+  // volume_id output or pass a literal vol-... id. Fixed for life.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef volume_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsEbsVolume,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.volume_id"
+  ];
+
+  // The COPY arm: copy an existing snapshot into this region.
+  AwsEbsSnapshotCopyFrom copy_from = 3;
+
+  // The IMPORT arm: build the snapshot from a disk image.
+  AwsEbsSnapshotImportFrom import_from = 4;
+
+  // What this snapshot captures. Shown in every snapshot listing;
+  // fixed for life (AWS has no description update for snapshots).
+  string description = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 255
+  ];
+
+  // The storage tier. "standard" is instant-restore online storage;
+  // "archive" is ~75% cheaper cold storage with a 24-90 day minimum
+  // and a temporary/permanent restore step before use.
+  string storage_tier = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "standard",
+        "archive"
+      ]
+    }
+  ];
+
+  // Restore an archived snapshot permanently back to standard access.
+  bool permanent_restore = 7;
+
+  // Restore an archived snapshot temporarily for this many days
+  // (1-180), after which it re-archives itself.
+  int64 temporary_restore_days = 8 [(buf.validate.field).cel = {
+    id: "spec.temporary_restore_days_range"
+    message: "temporary_restore_days must be between 1 and 180"
+    expression: "this == 0 || (this >= 1 && this <= 180)"
+  }];
+
+  // Enable fast snapshot restore in these availability zones: volumes
+  // created from the snapshot in a listed zone deliver full
+  // performance instantly instead of lazy-loading blocks. Billed per
+  // zone-hour while enabled - the priciest dial on this kind; enable
+  // deliberately.
+  repeated string fast_restore_availability_zones = 9 [(buf.validate.field).cel = {
+    id: "spec.fast_restore_zones_unique"
+    message: "fast_restore_availability_zones must be unique"
+    expression: "this.unique()"
+  }];
+
+  // Grant these AWS accounts createVolumePermission - they can create
+  // volumes from this snapshot (sharing without copying). Encrypted
+  // snapshots additionally need the KMS key shared with the same
+  // accounts.
+  repeated string share_with_account_ids = 10 [
+    (buf.validate.field).cel = {
+      id: "spec.share_accounts_unique"
+      message: "share_with_account_ids must be unique"
+      expression: "this.unique()"
+    },
+    (buf.validate.field).repeated.items = {
+      string: {pattern: "^[0-9]{12}$"}
+    }
+  ];
+}
+
+// AwsEbsSnapshotCopyFrom copies an existing snapshot, optionally
+// across regions and optionally re-encrypting. Everything here is
+// fixed for life of the copy.
+message AwsEbsSnapshotCopyFrom {
+  // A KMS key only makes sense on an encrypted copy.
+  option (buf.validate.message).cel = {
+    id: "copy_from.kms_requires_encrypted"
+    message: "kms_key_id requires encrypted=true - an unencrypted copy has no key"
+    expression: "!has(this.kms_key_id) || this.encrypted"
+  };
+
+  // The snapshot to copy. Reference another AwsEbsSnapshot's
+  // snapshot_id output or pass a literal snap-... id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_snapshot_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsEbsSnapshot,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.snapshot_id"
+  ];
+
+  // The region the source snapshot lives in - same-region copies
+  // re-encrypt or duplicate; cross-region copies replicate. Example:
+  // "us-east-1".
+  string source_region = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Encrypt the copy. Copying is the ONLY way to encrypt an
+  // unencrypted snapshot (or rotate its key) - snapshots never
+  // re-encrypt in place.
+  bool encrypted = 3;
+
+  // The KMS key for the copy. Unset with encrypted=true means the
+  // AWS-managed aws/ebs key. Reference an AwsKmsKey key_arn output or
+  // pass a literal key ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Time-box the copy: AWS completes it within this many minutes
+  // (multiples of 15, up to 2880). Only valid for same-region copies;
+  // faster completion bills at a premium.
+  int64 completion_duration_minutes = 5 [(buf.validate.field).cel = {
+    id: "copy_from.completion_duration_valid"
+    message: "completion_duration_minutes must be a multiple of 15, at most 2880"
+    expression: "this == 0 || (this % 15 == 0 && this >= 15 && this <= 2880)"
+  }];
+}
+
+// AwsEbsSnapshotImportFrom builds the snapshot from a disk image via
+// the VM Import/Export service. Everything here is fixed for life.
+message AwsEbsSnapshotImportFrom {
+  // A KMS key only makes sense on an encrypted import.
+  option (buf.validate.message).cel = {
+    id: "import_from.kms_requires_encrypted"
+    message: "kms_key_id requires encrypted=true - an unencrypted import has no key"
+    expression: "!has(this.kms_key_id) || this.encrypted"
+  };
+
+  // Where the disk image lives.
+  AwsEbsSnapshotDiskContainer disk_container = 1 [(buf.validate.field).required = true];
+
+  // The IAM role name the VM Import/Export service assumes to read
+  // the image bucket. Unset means AWS's conventional "vmimport" role
+  // - which must exist with the documented trust and S3 policy
+  // before any import runs.
+  string role_name = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 255
+  ];
+
+  // Encrypt the imported snapshot at rest.
+  bool encrypted = 3;
+
+  // The KMS key for the import. Unset with encrypted=true means the
+  // AWS-managed aws/ebs key. Reference an AwsKmsKey key_arn output or
+  // pass a literal key ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+}
+
+// AwsEbsSnapshotDiskContainer locates one disk image: an S3 object or
+// a signed URL, never both.
+message AwsEbsSnapshotDiskContainer {
+  // Exactly one image source.
+  option (buf.validate.message).cel = {
+    id: "disk_container.exactly_one_source"
+    message: "configure exactly one of url and s3_bucket/s3_key - the image is fetched from one place"
+    expression: "(this.url != '') != (this.s3_bucket != '')"
+  };
+  // An S3 source is a bucket AND a key.
+  option (buf.validate.message).cel = {
+    id: "disk_container.s3_key_pairs_with_bucket"
+    message: "s3_bucket and s3_key are set together"
+    expression: "(this.s3_bucket == '') == (this.s3_key == '')"
+  };
+
+  // The image format.
+  string format = 1 [(buf.validate.field).string = {
+    in: [
+      "VMDK",
+      "VHD",
+      "RAW"
+    ]
+  }];
+
+  // What this image is. Carried onto the import task.
+  string description = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 255
+  ];
+
+  // A URL the image downloads from (S3 signed URLs included). Use
+  // s3_bucket/s3_key for plain S3 objects.
+  string url = 3 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // The S3 bucket holding the image. The import role (vmimport by
+  // default) must be able to read it.
+  string s3_bucket = 4 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // The S3 object key of the image within s3_bucket.
+  string s3_key = 5 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+}

@@ -1,0 +1,13 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsManagedPrefixList
+metadata:
+  name: partner-ranges
+spec:
+  region: us-east-1
+  addressFamily: IPv4
+  maxEntries: 25
+  entries:
+    - cidr: 203.0.113.128/25
+      description: acme corp api callers
+    - cidr: 198.51.100.64/26
+      description: globex webhook sources

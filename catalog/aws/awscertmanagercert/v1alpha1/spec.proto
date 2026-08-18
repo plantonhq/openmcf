@@ -148,15 +148,17 @@ message AwsCertManagerCertSpec {
   // same ARN so consumers are undisturbed).
   AwsCertManagerCertImported imported = 10;
 
-  // The ARN of an AWS Private Certificate Authority (ACM-PCA).
-  // Setting this together with primary_domain_name selects the
-  // private mode: the CA issues the certificate directly, no public
-  // validation happens, and validation_method must stay unset.
-  // Private certificates are for internal TLS (service meshes,
-  // internal ALBs) where clients trust your private root.
-  string certificate_authority_arn = 11 [
-    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {pattern: "^arn:aws[a-zA-Z-]*:acm-pca:[a-z0-9-]+:[0-9]{12}:certificate-authority/.+$"}
+  // The AWS Private Certificate Authority (ACM-PCA) that issues this
+  // certificate. Setting this together with primary_domain_name
+  // selects the private mode: the CA issues the certificate directly,
+  // no public validation happens, and validation_method must stay
+  // unset. Private certificates are for internal TLS (service meshes,
+  // internal ALBs) where clients trust your private root. Can
+  // reference an AwsPrivateCa resource or pass a literal
+  // certificate-authority ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef certificate_authority_arn = 11 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsPrivateCa,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.certificate_authority_arn"
   ];
 
   // How long before expiry ACM starts the managed renewal of this
@@ -187,14 +189,14 @@ message AwsCertManagerCertSpec {
   option (buf.validate.message).cel = {
     id: "imported_excludes_issuance_fields"
     message: "imported certificates derive their domains, algorithm, and options from the certificate material -- remove alternate_domain_names, validation_method, validation_options, key_algorithm, options, certificate_authority_arn, and route53_hosted_zone_id"
-    expression: "!has(this.imported) || (this.alternate_domain_names.size() == 0 && this.validation_method == '' && this.validation_options.size() == 0 && this.key_algorithm == '' && !has(this.options) && this.certificate_authority_arn == '' && !has(this.route53_hosted_zone_id))"
+    expression: "!has(this.imported) || (this.alternate_domain_names.size() == 0 && this.validation_method == '' && this.validation_options.size() == 0 && this.key_algorithm == '' && !has(this.options) && !has(this.certificate_authority_arn) && !has(this.route53_hosted_zone_id))"
   };
 
   // Private-CA issuance performs no public validation at all.
   option (buf.validate.message).cel = {
     id: "private_ca_excludes_validation"
     message: "private (ACM-PCA) certificates are issued without public validation -- remove validation_method, validation_options, and route53_hosted_zone_id when certificate_authority_arn is set"
-    expression: "this.certificate_authority_arn == '' || (this.validation_method == '' && this.validation_options.size() == 0 && !has(this.route53_hosted_zone_id))"
+    expression: "!has(this.certificate_authority_arn) || (this.validation_method == '' && this.validation_options.size() == 0 && !has(this.route53_hosted_zone_id))"
   };
 
   // Automated Route53 validation records only exist for DNS validation.
@@ -210,7 +212,15 @@ message AwsCertManagerCertSpec {
   option (buf.validate.message).cel = {
     id: "early_renewal_requires_private_ca"
     message: "early_renewal_duration drives managed renewal of private (ACM-PCA) certificates -- it requires certificate_authority_arn"
-    expression: "this.early_renewal_duration == '' || this.certificate_authority_arn != ''"
+    expression: "this.early_renewal_duration == '' || has(this.certificate_authority_arn)"
+  };
+
+  // The CA reference must be an ACM-PCA ARN when passed as a literal
+  // (references resolve to the ARN at deploy).
+  option (buf.validate.message).cel = {
+    id: "certificate_authority_arn_format"
+    message: "certificate_authority_arn must be an ACM-PCA certificate-authority ARN (arn:aws:acm-pca:region:account:certificate-authority/...)"
+    expression: "!has(this.certificate_authority_arn.value) || this.certificate_authority_arn.value.matches('^arn:aws[a-zA-Z-]*:acm-pca:[a-z0-9-]+:[0-9]{12}:certificate-authority/.+$')"
   };
 }
 

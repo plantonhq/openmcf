@@ -1,0 +1,36 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEventBridgePipe
+metadata:
+  name: table-changes-pipe
+spec:
+  region: us-east-1
+  description: Fan DynamoDB table changes into the audit function
+  source:
+    valueFrom:
+      kind: AwsDynamodb
+      name: orders-table
+      fieldPath: status.outputs.stream_arn
+  sourceParameters:
+    dynamodb:
+      startingPosition: LATEST
+      batchSize: 100
+      maximumRetryAttempts: 3
+      onPartialBatchItemFailure: AUTOMATIC_BISECT
+      deadLetterQueueArn:
+        valueFrom:
+          kind: AwsSqsQueue
+          name: table-changes-dlq
+          fieldPath: status.outputs.queue_arn
+  target:
+    valueFrom:
+      kind: AwsLambda
+      name: audit-writer
+      fieldPath: status.outputs.function_arn
+  targetParameters:
+    lambda:
+      invocationType: REQUEST_RESPONSE
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: table-changes-pipe-exec
+      fieldPath: status.outputs.role_arn

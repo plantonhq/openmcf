@@ -1,0 +1,3 @@
+name: awss3tablebucket
+runtime: go
+description: Pulumi module to manage an AWS S3 table bucket (S3 Tables) with namespaces, Iceberg tables, policies, and replication

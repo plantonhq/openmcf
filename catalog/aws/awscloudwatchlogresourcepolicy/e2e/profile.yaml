@@ -1,0 +1,21 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awscloudwatchlogresourcepolicy
+spec:
+  # An account-scope service grant on an absent E2E path (free, zero
+  # blast radius). AWS caps resource policies at 10 per account per
+  # region - the run-scoped name keeps concurrent lanes safe.
+  #
+  # Deliberately not exercised live:
+  #   - the resource scope (resource_arn) -- the same document/revision
+  #     lifecycle pinned to one log group ARN; offline-proven. Unblock:
+  #     an AwsCloudwatchLogGroup fixture via scenario annotations when
+  #     the proof queue wants the ARN-shaped-identity datapoint.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q44
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

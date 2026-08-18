@@ -1,0 +1,28 @@
+# Canonical AwsLambdaLayer example (hack/dev manifest and refgen
+# Example source): a shared Python utilities layer published from an
+# S3 archive, shared with one sibling account.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsLambdaLayer
+metadata:
+  name: shared-python-utils
+  id: shared-python-utils
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  code:
+    bucket:
+      value: layer-artifacts
+    key: layers/shared-python-utils.zip
+  sourceCodeHash: 47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=
+  description: Shared Python utilities (logging, tracing, config)
+  compatibleRuntimes:
+    - python3.13
+    - python3.12
+  compatibleArchitectures:
+    - x86_64
+    - arm64
+  licenseInfo: Apache-2.0
+  permissions:
+    - statementId: share-tooling-account
+      principal: "222233334444"

@@ -1,0 +1,38 @@
+# Consumer-scoped AwsIamRole install profile for the cross-account
+# arm: the role CloudWatch Logs assumes to write into the Kinesis
+# stream fixture. The trust is logs.amazonaws.com (first create retries
+# while it propagates); the inline policy grants the stream writes.
+# Scoping the fixture here keeps the logs-trust shape off the shared
+# fixed-name set (the concurrent-session collision class).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-awscwld-sink
+  id: planton-oss-e2e-awscwld-sink
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: logs.amazonaws.com
+        Action: sts:AssumeRole
+  inlinePolicies:
+    kinesis-writes:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - kinesis:PutRecord
+            - kinesis:PutRecords
+          Resource: "*"
