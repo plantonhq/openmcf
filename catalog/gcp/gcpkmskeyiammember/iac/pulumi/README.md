@@ -15,7 +15,7 @@ The grant is ADDITIVE: it merges one (role, member[, condition]) pair into the c
    ```bash
    gcloud auth application-default login
    ```
-5. **IAM permissions**: `roles/cloudkms.admin` on the target key (or its ring/project)
+5. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Directory Structure
 

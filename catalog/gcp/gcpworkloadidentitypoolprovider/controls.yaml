@@ -1,0 +1,76 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpworkloadidentitypoolprovider
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The provider stores no customer data -- issuer URLs, JWKS, SAML metadata, and x509 trust anchors are all public key material, trust configuration Google holds on its own encrypted control plane.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest exists to key (see enc-at-rest); the resource exposes no Cloud KMS surface.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The provider terminates no connections -- token exchanges run against Google's TLS-only STS endpoints, and JWKS discovery fetches the issuer's keys over HTTPS; both are platform properties with no knob here.
+    - control_id: no-public-access
+      status: configurable
+      field_path: attribute_condition
+      evidence:
+        type: spec_default
+        reference: Empty (the default) means ANY identity the issuer vouches for can federate -- for a multi-tenant issuer like GitHub Actions, that is every repository on github.com presenting a valid token. Setting the CEL condition (e.g. assertion.repository_owner == "my-org") gates which otherwise valid credentials are accepted.
+      notes: "This is the provider's exposure dial. The issuer arm already narrows trust (an AWS provider trusts one 12-digit account; SAML and x509 trust one IdP or CA estate), but OIDC providers on shared issuers are wide open without a condition -- the spec says always set one there. Defense in depth on OIDC: empty allowed_audiences forces the audience to equal the provider's own canonical resource name, so tokens minted for anything else are rejected."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network path exists to restrict -- federation admission is issuer- and attribute-based, not source-based (see no-public-access for the admission gate).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The provider receives no inbound requests of its own; there is nothing for a WAF to front.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management is governed by IAM's workload-identity-pool-provider permission family -- every mutation authorizes against iam.workloadIdentityPoolProviders.* on the owning project, with no unauthenticated path.
+      notes: attribute_mapping is the RBAC vocabulary this provider exports -- the google.subject and attribute.<name> values it maps are exactly what IAM bindings can target as principal:// and principalSet:// members, so mapping choices decide how finely downstream grants can be scoped.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: This component IS the issuer half of keyless federation -- it turns a pool into a working keyless-auth path by trusting exactly one external issuer (aws, oidc, saml, or x509, an exclusive oneof both the spec and the API enforce), exchanging that issuer's credentials for short-lived Google credentials with no service-account key anywhere.
+      notes: disabled is the emergency kill switch -- a disabled provider rejects NEW token exchanges, while already-issued Google credentials remain valid until they expire (minutes to an hour), so a compromise response should pair disabling with revoking active sessions on the bound service accounts.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The provider carries no authentication path of its own to disable -- it exists to retire the legacy path (exported service-account keys) for external workloads. Forbidding key creation outright is the org policy iam.disableServiceAccountKeyCreation, outside this resource.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Provider create, update, disable, and delete land in Cloud Audit Logs (Admin Activity) unconditionally -- Google's Cloud Audit Logs overview states Admin Activity logs are always written and cannot be configured, excluded, or disabled.
+      notes: Admin Activity covers changes TO the provider (a widened attribute_condition is an auditable event); per-exchange visibility is Data Access audit logging for the STS/IAM APIs, enabled project-wide rather than on this resource.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The provider exposes no metrics-export knob; federation activity surfaces through the audit-log pipeline (see audit-logging), not a monitoring integration on this resource.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The provider holds no data to back up; it is declarative configuration re-creatable from the manifest. The ~30-day soft-delete window after destroy (see deletion-protection) is a recovery grace period, not a backup.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at the provider level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The provider is a global control-plane object served by Google's replicated infrastructure; no failure-domain choice exists on the resource.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Unset means DELETE -- the provider is soft-deleted, new token exchanges stop, it remains restorable for ~30 days, and its ID stays reserved (with no undelete-on-create) until permanent deletion. PREVENT makes any destroying plan fail -- protection for the keyless-auth path every pipeline federating through this issuer depends on. ABANDON removes it from management while it keeps exchanging tokens.
+      notes: Deletion fails closed for every pipeline authenticating through this issuer -- and because tokens embed the provider's resource name as audience, even a recreate under a new ID means reconfiguring every client. Prefer disabled=true for temporary shutoffs.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software surface here to patch; the token-exchange machinery is Google's own infrastructure, patched as part of the platform.

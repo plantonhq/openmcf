@@ -12,7 +12,7 @@ When you deploy a GcpFirestoreIndex resource, Planton provisions:
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **An existing Firestore database** (deploy via GcpFirestoreDatabase first)
-- **IAM permissions** — Firestore Admin access to create indexes (e.g. `roles/datastore.indexAdmin`)
+- **IAM permissions** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Quick Start
 

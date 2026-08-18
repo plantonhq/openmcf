@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpkmskeyiammember
+spec:
+  billing_model: free
+  free_tier: "Two Google pages together make this free twice over: the IAM billing-questions page states Identity and Access Management is offered at no additional charge for all Google Cloud customers, and the Cloud KMS pricing page lists 'Key operations: Admin -- Free' -- reading and writing a key's IAM policy are exactly such admin operations. This resource is one additive (role, member) entry in a crypto key's IAM policy, so creating, holding, and evaluating it costs nothing at any grant count."
+  notes: "No field on this spec starts a meter, but the grant's whole purpose is to unlock meters on the KEY: the crypto key named by crypto_key_id bills per active key version ($0.06 per month for SOFTWARE protection, more for HSM and EXTERNAL) and $0.03 per 10,000 cryptographic operations (both from the Cloud KMS pricing page) -- and once this grant lands, the member's encrypt/decrypt/sign calls start that operations meter. Route the accounting carefully: Cloud KMS bills ALL of it to the project that OWNS the key, even for CMEK keys protecting resources in other projects -- the key's project pays for the consumer's usage. The grant's removal is free and instant, but see deletion-protection in controls.yaml for what removal does to CMEK-encrypted data availability."

@@ -19,7 +19,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** whose logs feed the metric (directly or via a GcpProject reference).
-- **IAM**: the deploying identity needs `roles/logging.configWriter` or broader.
+- **Deployer permissions**: the least-privilege permission set the IaC runner's principal needs lives in [`iac/permissions.yaml`](iac/permissions.yaml).
 
 ## Deploy
 

@@ -14,7 +14,7 @@ The pool itself holds no issuer configuration. It is the namespace for federated
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **An existing GCP project** — referenced via `projectId`
-- **IAM permissions** — `roles/iam.workloadIdentityPoolAdmin` on the target project
+- **IAM permissions** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Quick Start
 

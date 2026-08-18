@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpiamcustomrole
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The role stores no customer data -- it is a named list of permission strings, authorization metadata Google holds on its own encrypted IAM control plane.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest exists to key (see enc-at-rest); the resource exposes no Cloud KMS surface.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The role terminates no connections -- it is consumed inside IAM's authorization checks, not over a network path the deployer configures. Management API calls ride Google's TLS-only endpoints like every GCP API.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: There is no endpoint to expose. The role is grantable metadata; whether the identities granted it are internet-reachable is those workloads' posture, not the role's.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound network path exists on an IAM role definition -- nothing listens, so there are no sources to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The role serves no requests; there is no inbound traffic for a WAF or request filter to inspect.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every mutation of the role authorizes against the project-scoped iam.roles family (create, get, update, delete, undelete -- the heart of roles/iam.roleAdmin); the resource has no data plane to govern separately.
+      notes: The component is itself an RBAC building block -- a least-privilege permission bundle granted to identities via GcpProjectIamMember. spec.permissions is the role's CONTENT; keeping that list minimal is the least-privilege craft this resource exists for.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Nothing authenticates through a role definition -- it carries no credentials and calls no APIs. It is the permission bundle a workload identity gets GRANTED, not an identity itself.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The role carries no authentication paths to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Role create, update, undelete, and delete land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled and is retained free in the _Required log bucket.
+      notes: Admin Activity covers changes TO the role definition. Which identity exercised a permission the role grants is a Data Access audit-logging question on the target services, outside this resource.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The role emits no operational metrics and the spec has no logging or monitoring surface -- it is evaluated inside IAM's control plane. Grant-level hygiene signals (unused permissions, over-broad roles) come from IAM Recommender at the project level, a service this resource neither enables nor configures.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The role is declarative configuration fully re-creatable from source control; there is no data to back up. GCP's own soft-delete adds a safety net -- a deleted role is undeletable for 7 days, and both modules converge a re-create over a soft-deleted ID via the provider's native undelete-and-patch flow.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery); the soft-delete window is fixed by GCP, not configurable here.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: IAM is a globally replicated control plane; the role is evaluated wherever authorization happens with no failure-domain choice on the resource.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE (the role is soft-deleted and every existing binding to it immediately stops granting access); PREVENT makes destroy fail outright; ABANDON unmanages the role while it and all its grants keep working.
+      notes: Deleting a custom role fails closed -- every grant of it goes dark at once, so PREVENT is the guard for a role that live workloads' bindings depend on. The soft delete softens but does not eliminate the blast radius -- Google schedules permanent deletion 7-14 days after the request (undelete is possible until then), and the role_id stays unusable for new roles for up to 44 days after deletion.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software surface here to patch; the IAM control plane that stores and evaluates the role is Google's own infrastructure. The stage field (GA, DEPRECATED, DISABLED, ...) is a lifecycle label on the role, not a version channel.

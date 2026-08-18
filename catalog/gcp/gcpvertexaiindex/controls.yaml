@@ -1,0 +1,77 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpvertexaiindex
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Vertex AI encrypts the index's vector data at rest with Google-managed keys without any configuration -- encryption_spec on the resource only swaps WHICH key protects it, never whether it is protected.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_name
+      evidence:
+        type: spec_default
+        reference: Unset means Google-managed encryption; setting it (a GcpKmsKey reference or a full key path) re-keys the index data to a customer-managed Cloud KMS key. The key must live in the index's region, and the Vertex AI service agent needs roles/cloudkms.cryptoKeyEncrypterDecrypter on it. Immutable after creation.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every path to the index -- management calls, streaming upserts, and batch loads -- rides the aiplatform.googleapis.com API, which is TLS-only; the resource exposes no plaintext listener.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: An index has no network endpoint of its own -- it is a stored data structure that becomes queryable only when a GcpVertexAiDeployedIndex places it onto a GcpVertexAiIndexEndpoint, and the public-vs-private exposure choice lives on that endpoint.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound network surface exists on the index to restrict (see no-public-access); ingress scoping is the index endpoint's affair.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: There is no request surface here to filter -- queries land on the index endpoint, and no load balancer or WAF attachment point exists on the index itself.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation on the index -- create, update, delete, and datapoint upserts/removals alike -- authorizes against Vertex AI IAM (the aiplatform.indexes permission family); no anonymous or non-IAM path exists.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The index runs no customer workload and holds no credentials. The one API access it triggers -- reading the embedding files at contents_delta_uri during a batch build -- is performed by Google's own Vertex AI service agent, a platform-managed identity granted access outside this manifest.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The only access path is the IAM-authenticated Vertex AI API; no legacy or password-based protocol exists on the resource to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Index create, update, and delete land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+      notes: Data-plane reads and datapoint mutations are Data Access log entries, off by default and enabled per-project outside this manifest.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Streaming indexes export stream-update metrics (request count, datapoint count, latencies -- aiplatform.googleapis.com/matching_engine/stream_update/*) to Cloud Monitoring automatically on the aiplatform.googleapis.com/Index monitored resource; no configuration exists or is needed."
+      notes: Serving-side signals (query request counts, latencies, replica and shard counts) ride the IndexEndpoint monitored resource and belong to the deployment components.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The service exposes no backup facility for an index. The recovery path is structural instead -- the embedding files at contents_delta_uri remain in Cloud Storage as the durable source of truth, and a batch rebuild reconstructs the index from them; streaming-only corpora need the writer to retain its own source data.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The index is a regional managed artifact with no failure-domain knob -- Google stores it durably within the chosen location as part of the service. Serving-time redundancy (replica counts across nodes) is configured on the GcpVertexAiDeployedIndex, not here.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: "Empty means DELETE -- destroy removes the index and every vector in it. PREVENT makes destroy fail outright, a guard for a corpus that took hours of batch builds or months of streaming upserts to load; ABANDON removes it from management but leaves it standing in GCP."
+    - control_id: managed-patching
+      status: not_applicable
+      notes: No software surface is exposed to patch -- the index has no version, image, or channel field, and the Vector Search infrastructure that builds and stores it is Google's own, patched as part of the platform.

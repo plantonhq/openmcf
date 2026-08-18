@@ -1,0 +1,34 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcppubsubtopic
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: message_retention_duration
+      sku_meter: message storage
+      pricing_unit: GiB-months
+      impact: Topic-level retention charges $0.27/GiB-month for every message published, held for the configured window (10 minutes to 31 days) -- and Google's pricing page calls it the LEAST expensive retention mechanism, because messages retained by the topic serve every attached subscription's seek/replay without per-subscription storage fees.
+    - field_path: ingestion_data_source_settings
+      sku_meter: import topic throughput
+      pricing_unit: TiB
+      impact: Configuring an ingestion source turns this into an import topic with its own publish-throughput rate -- $50/TiB for Kinesis Data Streams, $80/TiB for Cloud Storage, Azure Event Hubs, AWS MSK, and Confluent Cloud -- and the first-10-GiB free allotment does NOT apply to import throughput. Source-side charges (AWS egress, Cloud Storage operations) bill additionally on their own side.
+    - field_path: message_transforms
+      sku_meter: single message transform data processing
+      pricing_unit: TiB
+      impact: Each JavaScript UDF transform bills $40/TiB on the LARGER of the input and output message size; an AI inference transform bills $60/TiB plus the model's own charges. The pipeline runs on every published message, so a transform's rate multiplies the topic's entire publish volume.
+    - field_path: message_storage_policy
+      sku_meter: inter-region data transfer
+      pricing_unit: GiB
+      impact: Pinning persistence regions makes Pub/Sub route messages published elsewhere into an allowed region -- and the topic's project is billed inter-region data transfer for every rerouted message. enforce_in_transit rejects out-of-region publishes outright, trading availability for residency without a transfer fee.
+    - field_path: kms_key_name
+      sku_meter: Cloud KMS cryptographic operations
+      impact: CMEK topics call the referenced key to encrypt and decrypt message batches; those operations bill on the GcpKmsKey component, not here. A disabled or revoked key stops publishes entirely -- the cost is availability, not just money.
+  estimate_exclusions:
+    - publish throughput bills as Message Delivery at $40/TiB after the billing account's first 10 GiB each calendar month (Google's stated free allotment) -- an idle topic bills nothing
+    - retained bytes follow traffic multiplied by the retention window; delivery throughput and backlog storage bill on the subscription components
+    - every publish request is assessed a 1 KB minimum, so batching small messages is materially cheaper
+  notes: "A topic is a named channel with no meter of its own: creating and holding it, schema validation settings, labels, and storage policies cost nothing at rest. Spend starts when messages flow -- publish throughput on this project (cross-project billing follows the resource: the topic's project pays the publish side, each subscription's project pays its delivery side), storage only if message_retention_duration is set, and premium rates only if the topic imports from external sources or transforms messages in flight. Deleting or ABANDONing a topic costs nothing; its subscriptions survive, drain, and bill on their own components."

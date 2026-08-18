@@ -1,0 +1,38 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpworkflow
+spec:
+  gcp:
+    groups:
+      - purpose: EnableWorkflowsApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling workflows.googleapis.com on the target project. disable_on_destroy is false in both modules, so the disable permission is never needed.
+      - purpose: ManageWorkflow
+        permissions:
+          - workflows.workflows.create
+          - workflows.workflows.get
+          - workflows.workflows.update
+          - workflows.workflows.delete
+          - workflows.operations.get
+        provenance: derived
+        notes: Covers google_workflows_workflow -- create, read/refresh, in-place updates (source, env vars, service account, log levels; each source-affecting update deploys a new revision), and destroy. Workflow mutations return long-running operations the provider polls, authorized as workflows.operations.get. The workflows service prefix is not yet in the committed action-inventory snapshot; every workflows.* permission here was verified live against Google's Workflows roles-and-permissions documentation (https://cloud.google.com/workflows/docs/access-control). The component's READMEs previously recommended roles/workflows.editor "or broader" -- that role carries all five of these plus execution, callback, and Cloud KMS Autokey permissions the deployer never exercises; this list is the least-privilege equivalent for what the modules actually do.
+      - purpose: BindResourceManagerTags
+        permissions:
+          - workflows.workflows.createTagBinding
+          - workflows.workflows.deleteTagBinding
+        provenance: derived
+        notes: Required only when resource_manager_tags is set -- tags bind at workflow creation (the field is ForceNew, so a tag change replaces the workflow, deleting the old bindings with it). Both permission names are published in the same Workflows roles documentation cited above.
+      - purpose: ActAsWorkflowServiceAccount
+        permissions:
+          - iam.serviceAccounts.actAs
+        provenance: derived
+        notes: Required when service_account names the identity the workflow's executions run as (both presets do) -- the Workflows API demands actAs on that account at deploy time. Migrated from the component READMEs, which stated the deployer needs "iam.serviceAccounts.actAs on the workflow's service account when one is set".

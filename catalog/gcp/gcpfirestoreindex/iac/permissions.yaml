@@ -1,0 +1,26 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpfirestoreindex
+spec:
+  gcp:
+    groups:
+      - purpose: EnableFirestoreApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling firestore.googleapis.com on the target project. disable_on_destroy is false in both modules, so the disable permission is never needed.
+      - purpose: ManageIndex
+        permissions:
+          - datastore.operations.get
+          - datastore.schemas.create
+          - datastore.schemas.delete
+          - datastore.schemas.get
+        provenance: derived
+        notes: Covers google_firestore_index -- Google's Firestore IAM reference maps index create/get/delete to datastore.schemas.create/get/delete (Firestore's index permissions live under the schemas family). Every index property is immutable, so no update permission exists to need; changes replace the index. Index creation is a long-running background build the provider polls via datastore.operations.get unless skip_wait is set. The predefined roles/datastore.indexAdmin carries all of these. The datastore service is not yet in the committed action-inventory snapshot; every permission here was verified against Google's Firestore IAM reference (cloud.google.com/firestore/docs/security/iam) live.

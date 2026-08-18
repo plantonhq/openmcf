@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcplogmetric
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The metric stores no customer data -- it is a filter-and-descriptor configuration Google holds on its own encrypted control plane. The time series it emits live in Cloud Monitoring's store, a different service's affair.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest exists to key (see enc-at-rest); the resource exposes no Cloud KMS surface.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Nothing connects to a log-based metric -- it evaluates entries inside Google's logging pipeline. Managing it rides the TLS-only Logging API like every configuration call.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The metric has no endpoint to expose; reading the time series it produces is governed by Monitoring IAM on the project.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to scope. What FEEDS the metric is the filter expression over the project's (or the named bucket's) log flow -- a data-selection choice, not a network one.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: There is no request surface here to filter with a WAF; the resource is passive configuration inside the logging pipeline.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Managing the metric authorizes against Logging IAM (the logging.logMetrics permission family), and reading the resulting time series requires Monitoring viewer access -- both IAM-gated with no anonymous path.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Nothing authenticates to cloud APIs through a log-based metric; it holds no credentials and calls nothing on a customer's behalf.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The only access path is the IAM-authenticated Logging API; the resource carries no authentication paths to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Metric create, update, and delete land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "This component IS the logs-to-monitoring bridge: every matching entry becomes a Cloud Monitoring time-series point addressable as logging.googleapis.com/user/{metric_name}, chartable and alertable the moment the metric exists. Logging additionally exports the metric's own health signals (logs_based_metrics_error_count, metric_throttled, time_series_count) to Monitoring automatically."
+      notes: disabled=true pauses ingestion -- the safe way to silence a misconfigured extractor -- and a paused metric feeds no charts or alerts until re-enabled.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The metric is declarative configuration fully re-creatable from source control; there is no data here to back up. Historical points live in Cloud Monitoring under its own retention and are not restorable through this resource.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery); how long emitted points live is Cloud Monitoring's fixed retention, not a field here.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The metric is project-wide configuration evaluated by Google's logging fabric wherever entries arrive; no failure-domain choice exists on the resource.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: "Empty means DELETE -- the metric is deleted and its historical points expire with Monitoring retention. PREVENT makes destroy fail outright, the guard for a metric that alerting policies depend on (deleting it silently blinds the alerts); ABANDON unmanages the metric while it keeps ingesting."
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software surface here to patch; the logging pipeline that evaluates the filter is Google's own infrastructure, patched as part of the platform with no version or channel exposed.

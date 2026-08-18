@@ -21,7 +21,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### GCP
 
-- **IAM**: `roles/logging.configWriter` on the scope (folder/org scopes need it at that level).
+- **Deployer permissions**: the least-privilege permission set the IaC runner's principal needs lives in [`iac/permissions.yaml`](iac/permissions.yaml).
 - **CMEK buckets**: grant the Logging service account `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the key FIRST (find the account with `gcloud logging settings describe`), or creation fails.
 
 ## Deploy

@@ -14,7 +14,7 @@ No additional supporting resources are created. The role definition is pure meta
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **An existing GCP project** — referenced via `projectId`
-- **IAM permissions** — `roles/iam.roleAdmin` on the target project
+- **IAM permissions** — the deploying principal's permissions are listed in [`iac/permissions.yaml`](iac/permissions.yaml)
 
 ## Quick Start
 

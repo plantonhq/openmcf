@@ -1,0 +1,84 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpeventarcmessagebus
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Messages at rest in the bus (and each satellite's data) are encrypted with Google-managed keys without configuration -- the crypto_key fields exist to REPLACE that default with customer keys, not to enable encryption.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: crypto_key
+      evidence:
+        type: spec_default
+        reference: Omitted (the default) keeps Google-managed encryption; naming a Cloud KMS crypto key (or referencing a GcpKmsKey resource) encrypts messages at rest in the bus with the customer-managed key. The key must be in the same region as the bus.
+      notes: Google API sources and pipelines carry their own crypto_key fields for their data. The Eventarc service agent must hold roles/cloudkms.cryptoKeyEncrypterDecrypter on each key BEFORE creation, or the create fails.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: The https_only rule on http_endpoint.uri makes an unencrypted HTTP destination unrepresentable -- the Eventarc API itself supports only the HTTPS protocol for endpoint deliveries, and the spec enforces it pre-deploy. Deliveries to Google-service destinations (Pub/Sub topics, Workflows, other buses) ride Google's internal TLS, as does publishing into the bus.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The bus has no public endpoint to expose -- publishing into it is an IAM-authorized API operation, and pipeline deliveries to private HTTP endpoints travel through an explicit VPC network attachment. Nothing here is reachable from the public internet by construction.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Message admission is governed by IAM, not by network sources -- no ingress surface exists to restrict. The network_attachment on HTTP endpoint destinations governs OUTBOUND delivery reachability.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The bus serves no inbound web traffic for a WAF to filter; protecting the endpoints pipelines deliver to is those services' concern.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every Eventarc method authorizes against IAM unconditionally, and the permission model separates planes -- managing the bus family (eventarc.messageBuses/pipelines/enrollments/googleApiSources CRUD) is distinct from publishing into it (eventarc.messageBuses.publish), so producers need no admin rights.
+    - control_id: workload-identity
+      status: configurable
+      field_path: pipelines
+      evidence:
+        type: spec_default
+        reference: Each pipeline's authentication block mints short-lived Google OIDC or OAuth tokens for a named service account on every delivery -- no static credential is stored; omitted, deliveries carry no identity. The Eventarc service agent must hold roles/iam.serviceAccountTokenCreator on the named account.
+      notes: The 02-audit-fan-out preset authenticates its workflow pipeline with google_oidc for a dedicated bus-invoker account -- the intended pattern for destinations that verify identity.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No legacy authentication path exists to disable -- management and publishing are IAM-only, and delivery authentication is exclusively short-lived minted tokens (google_oidc/oauth_token) or nothing.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Create, update, and delete of the bus, its sources, pipelines, and enrollments land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+      notes: Admin Activity covers changes TO the hub; visibility of messages THROUGH it is log_severity's job (see monitoring-integration).
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: log_severity
+      evidence:
+        type: spec_default
+        reference: Empty defers to the API default NONE -- no platform logs; setting a severity records bus activity at or above it to Cloud Logging (INFO is the operational sweet spot while onboarding, per the spec's own guidance).
+      notes: Each Google API source and pipeline carries its own log_severity dial. Standard Cloud Monitoring metrics apply per Google's pricing notes.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The bus family is declarative configuration fully re-creatable from the manifest. In-flight messages are transient -- the API exposes no backup surface for them, and undelivered messages are lost on delete, which is exactly what deletion-protection guards.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain -- see backup-recovery.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The bus runs on Google's managed regional eventing service (available in a subset of regions); replication is not a configuration surface this API exposes, and no zonal placement choice exists on the resource.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE -- the bus, sources, enrollments, and pipelines are deleted and undelivered messages are lost; PREVENT makes destroy fail outright, the guard for a production eventing hub many teams publish into; ABANDON unmanages the family while it keeps routing.
+      notes: The policy applies to the bus AND every satellite -- one setting protects the whole hub.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software surface here to patch -- Eventarc Advanced is a fully managed service whose routing infrastructure Google maintains invisibly, with no version or channel exposed on the resource.

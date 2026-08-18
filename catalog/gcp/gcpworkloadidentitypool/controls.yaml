@@ -1,0 +1,72 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpworkloadidentitypool
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The pool stores no customer data -- it is trust configuration on Google's control plane. Even the trust anchors in inline_trust_config are public CA certificates, not secrets.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest exists to key (see enc-at-rest); the resource exposes no Cloud KMS surface.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The pool terminates no connections -- token exchanges run against Google's TLS-only STS endpoints, a platform property. A TRUST_DOMAIN pool ISSUES the mTLS certificates workloads encrypt with (inline_certificate_issuance_config), but those encrypted connections belong to the workloads, not to this resource.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The pool has no endpoint to expose. Which external identities may federate through it is decided by the providers attached to it -- issuer allowlisting and attribute conditions are assessed on GcpWorkloadIdentityPoolProvider.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network path exists to restrict -- federation admission is identity- and issuer-based, not source-based.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The pool receives no inbound requests; there is nothing for a WAF to front.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management is governed by IAM's workload-identity-pool permission family -- every mutation authorizes against iam.workloadIdentityPools.* on the owning project, with no unauthenticated path. What the pool's principals may DO is granted separately, through IAM bindings referencing principal:// and principalSet:// names built from the pool's resource name.
+      notes: The pool deliberately holds no roles itself -- it is the namespace grants point at, so removing the pool severs every grant built on it at once.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: This component IS the keyless-identity control's foundation -- the trust boundary external identities (CI systems, other clouds, on-prem estates) federate into without any service-account keys. FEDERATION_ONLY pools exchange external tokens for short-lived GCP credentials; TRUST_DOMAIN pools issue managed identities and mTLS certificates to Google Cloud workloads. No static credential exists anywhere in the path.
+      notes: "Two levers tighten the posture: disabled is the emergency kill switch -- a disabled pool rejects all token exchanges and existing tokens stop granting access, reversibly; attestation_rules (TRUST_DOMAIN, max 50) allowlist exactly which Google Cloud workloads may receive a managed identity. GCP applies attestation rules through a second API call after pool create, so a failed apply can leave a pool without its rules -- re-apply converges."
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The pool carries no authentication path to disable -- it exists to make the legacy path (exported service-account keys) unnecessary for external workloads. Forbidding key creation outright is the org policy iam.disableServiceAccountKeyCreation, outside this resource.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Pool create, update, disable, and delete land in Cloud Audit Logs (Admin Activity) unconditionally -- Google's Cloud Audit Logs overview states Admin Activity logs are always written and cannot be configured, excluded, or disabled.
+      notes: Admin Activity covers changes TO the pool; per-exchange visibility (which external identity federated, when) is Data Access audit logging for the STS/IAM APIs, enabled project-wide rather than on this resource.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The pool exposes no metrics-export knob; federation activity surfaces through the audit-log pipeline (see audit-logging), not a monitoring integration on this resource.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The pool holds no data to back up; it is declarative configuration re-creatable from the manifest. The ~30-day soft-delete window after destroy (see deletion-protection) is a recovery grace period, not a backup.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at the pool level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The pool is a global control-plane object (locations/global) served by Google's replicated infrastructure; no failure-domain choice exists on the resource.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Unset means DELETE -- the pool is soft-deleted, token exchanges stop immediately, it is restorable for ~30 days, and its ID stays reserved until permanent deletion. PREVENT makes any destroying plan fail before touching the pool -- protection for the trust boundary every keyless-CI grant in the project references. ABANDON removes it from management while it keeps federating.
+      notes: Deletion here fails closed at fleet scale -- every pipeline and workload authenticating through the pool loses access at once. And unlike custom roles, re-creating a pool with a soft-deleted ID does NOT undelete it -- the create fails outright -- so prefer disabled=true for temporary shutoffs and treat pool IDs as permanent.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software surface here to patch; the federation and certificate-issuance machinery is Google's own infrastructure, patched as part of the platform.

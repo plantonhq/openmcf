@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpbigquerytable
+spec:
+  gcp:
+    groups:
+      - purpose: EnableBigQueryApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling bigquery.googleapis.com on the target project. disable_on_destroy is false in both modules, so the disable permission is never needed.
+      - purpose: ManageTable
+        permissions:
+          - bigquery.tables.create
+          - bigquery.tables.delete
+          - bigquery.tables.get
+          - bigquery.tables.update
+        provenance: derived
+        notes: Covers google_bigquery_table across all four arms -- native tables, logical views, materialized views, and external tables are one API resource. create at provision, get for read/refresh, update for mutable fields (schema columns, expiration, view query, labels), delete on destroy once deletion_protection is false. Google's own reference states creating a view requires the same permissions as creating a table. The bigquery service is not yet in the committed action-inventory snapshot; every permission here was verified against Google's BigQuery access-control reference (cloud.google.com/bigquery/docs/access-control) live.
+      - purpose: ReadViewReferencedTables
+        permissions:
+          - bigquery.tables.getData
+        provenance: derived
+        notes: Required only when the spec sets the view or materialized_view arm -- BigQuery validates the defining query at creation, and per Google's create-views documentation the creator "must also have permissions to query any tables that are referenced by the view's SQL query" (bigquery.tables.getData on each referenced table). Native and external tables never exercise this. Verified against Google's BigQuery documentation live (bigquery service not yet in the inventory snapshot).

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpiamcustomrole
+spec:
+  billing_model: free
+  free_tier: "Google's Identity and Access Management pricing page states it in one sentence: all use of the Identity and Access Management API is free of charge. A custom role is pure IAM API content -- a named permission bundle stored in Google's control plane -- so creating it, holding it, granting it, updating its permission list, and evaluating it on every authorization check costs nothing at any permission count or grant count."
+  notes: "No field on this spec starts a meter. The role is an authorization artifact: the workloads and identities GRANTED the role bill on whatever resources those permissions let them touch, never on the role. Changes to the role (create, update, delete) land in Admin Activity audit logs, which Cloud Logging stores free in the non-deletable _Required bucket; the only nearby meter is opt-in -- enabling Data Access audit logs for IAM at the project level routes reads into the _Default bucket, billing Cloud Logging storage at $0.50/GiB past the 50 GiB monthly project allotment, a project-wide choice this resource neither makes nor exposes. Deleting the role is a soft delete and costs nothing."

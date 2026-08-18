@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpprojectiammember
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The grant stores no customer data -- it is one (role, member) entry in the project's IAM policy, control-plane metadata Google holds on its own encrypted infrastructure.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest exists to key (see enc-at-rest); the resource exposes no Cloud KMS surface.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A policy entry terminates no connections -- it is consulted inside IAM's authorization checks, never on a wire the operator configures.
+    - control_id: no-public-access
+      status: configurable
+      field_path: member
+      evidence:
+        type: spec_validation
+        reference: The modules' member-format validation deliberately admits allUsers and allAuthenticatedUsers as grantable members alongside the identity-scoped formats, so public exposure is always an explicit, reviewable value in the manifest -- never a default or a side effect.
+      notes: "The grant itself has no endpoint, but member is the public-exposure lever for whatever the role unlocks: allUsers grants it to the entire internet and allAuthenticatedUsers to ANY Google-authenticated account (not just your organization) -- the spec says grant with extreme care. A second-order cost of going public: Google's Cloud Audit Logs overview states that resources reachable through allUsers/allAuthenticatedUsers policies generate no Data Access audit logs, so public access is also invisible access."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network path exists to restrict -- IAM authorization is identity-based, not source-based. Network-source restriction for the resources the role unlocks lives in their own network controls (firewall rules, private addressing).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The grant receives no inbound traffic; there is no request path for a WAF to front.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: This component IS role-based access control -- the additive grant assigns exactly one role to one member, and managing the grant itself authorizes against resourcemanager.projects.setIamPolicy and getIamPolicy on the target project; no unauthenticated management path exists.
+      notes: Compose with GcpIamCustomRole for least-privilege role content -- the role reference resolves a custom role's fully-qualified name directly into this grant. Prefer scoped predefined or custom roles over the basic Owner/Editor/Viewer shapes.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Nothing authenticates through a grant -- it consumes identities as grantees and issues no credentials. The principal:// and principalSet:// member formats are how federated keyless workloads RECEIVE project access; the keyless posture itself lives on the workload identity pool and provider resources.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The grant carries no authentication path to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every create and destroy is a SetIamPolicy call on the project, landing in Cloud Audit Logs (Admin Activity) unconditionally -- Google's Cloud Audit Logs overview states Admin Activity logs are always written and cannot be configured, excluded, or disabled.
+      notes: Admin Activity records changes TO the policy (who granted what to whom, with the etag output usable for correlation); what the member then does with the role is logged by the services it touches, under their own audit configurations.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A single policy entry emits no metrics and has no export knob. Project-wide grant hygiene (unused-permission insights) is IAM recommender's job, operating on the whole policy rather than this resource.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The grant is declarative configuration fully re-creatable from source control; there is no data to back up or restore.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The IAM policy is global control-plane metadata Google replicates as part of the platform; no failure-domain choice exists on the resource.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither GCP nor this spec offers a deletion-protection flag for an IAM grant -- every field is immutable and destroy subtracts exactly this (role, member[, condition]) pair. Removal revokes access the moment it lands, so plan removals as deliberately as grants; re-creating from the manifest takes seconds.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software surface here to patch; IAM's evaluation engine is Google's own infrastructure, patched as part of the platform.

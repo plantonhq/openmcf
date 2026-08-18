@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpiamdenypolicy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The policy stores no customer data -- its deny rules are authorization metadata Google holds on its own encrypted IAM control plane.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest exists to key (see enc-at-rest); the resource exposes no Cloud KMS surface.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The policy terminates no connections -- it is evaluated inside IAM's authorization checks on every request under its attach point, not over a network path the deployer configures.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: There is no endpoint to expose. The policy is a guardrail that constrains what authenticated principals may do; internet reachability of the guarded resources is those resources' posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound network path exists on a deny policy -- nothing listens, so there are no sources to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The policy serves no requests; there is no inbound traffic for a WAF or request filter to inspect.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every mutation of the policy authorizes against the iam.denypolicies family, and Google directs the role carrying those permissions (roles/iam.denyAdmin) to be granted at the ORGANIZATION even for project-attached policies -- project-level credentials cannot manage deny policies at all.
+      notes: The component is itself the deny half of GCP's access-control model -- deny always outranks allow, so a permission denied here is unusable even by a project owner. The org-only management scope is the point -- guardrails stay with platform teams, out of reach of the project credentials they constrain.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Nothing authenticates through a deny policy -- it carries no credentials and calls no APIs. The principals named in its rules are subjects being DENIED, not identities the policy provides.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The policy carries no authentication paths to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Policy create, update, and delete land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled and is retained free in the _Required log bucket.
+      notes: Admin Activity covers changes TO the policy. A request the policy BLOCKS is logged by the target service as a permission-denied outcome under that service's own audit-logging configuration, not by this resource.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The policy emits no operational metrics and the spec has no logging or monitoring surface -- enforcement happens inside IAM's control plane. Whether a planned denial would break a workload is answered by IAM's Policy Simulator tooling before rollout, a service this resource neither enables nor configures.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The policy is declarative configuration fully re-creatable from source control; there is no data to back up. Re-applying the manifest restores the exact guardrail.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: IAM is a globally replicated control plane; the deny rules are evaluated wherever authorization happens under the attach point, with no failure-domain choice on the resource.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE (the policy is removed and every permission it denied becomes usable again wherever allow policies grant it); PREVENT makes destroy fail outright; ABANDON unmanages the policy while it keeps denying in GCP.
+      notes: Deleting a deny policy fails OPEN -- the guardrail vanishes with no incident-side symptom until someone exercises a re-opened permission, which is why PREVENT is the right stance for production guardrails. ABANDON is the reverse trade -- the denial persists but drifts out of management.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software surface here to patch; the IAM v2 control plane that stores and enforces the policy is Google's own infrastructure with no version or channel exposed on this resource.

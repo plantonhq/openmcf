@@ -1,0 +1,18 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpserviceaccountiammember
+spec:
+  gcp:
+    groups:
+      - purpose: ManageServiceAccountIamGrant
+        permissions:
+          - iam.serviceAccounts.getIamPolicy
+          - iam.serviceAccounts.setIamPolicy
+        provenance: derived
+        notes: "Covers google_service_account_iam_member (Pulumi serviceaccount.IAMMember) -- the provider implements the additive grant as a read-modify-write of the ACCOUNT's IAM policy: getIamPolicy on create, every refresh, and destroy; setIamPolicy on create (merging the pair in) and destroy (subtracting exactly it). Both permissions are carried by roles/iam.serviceAccountAdmin (verified live), the role the READMEs previously recommended, and both are grantable down to the single service account -- grant at the account grain rather than the project for least privilege. State the privilege honestly: setIamPolicy on a service account is impersonation-granting power over that account -- a runner holding it can authorize any member to act as the account. No project-scoped permission is needed: the target account's project is embedded in its fully-qualified resource name, and the modules make no client-config or other secondary API call (member and resource-name validation is pure local regex)."

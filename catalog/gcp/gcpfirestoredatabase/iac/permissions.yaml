@@ -1,0 +1,34 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpfirestoredatabase
+spec:
+  gcp:
+    groups:
+      - purpose: EnableFirestoreApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling firestore.googleapis.com on the target project. disable_on_destroy is false in both modules, so the disable permission is never needed.
+      - purpose: ManageDatabase
+        permissions:
+          - datastore.databases.create
+          - datastore.databases.delete
+          - datastore.databases.getMetadata
+          - datastore.databases.update
+          - datastore.locations.get
+          - datastore.locations.list
+          - datastore.operations.get
+        provenance: derived
+        notes: Covers google_firestore_database -- create with location, type, edition, PITR, and CMEK; getMetadata for read/refresh (Firestore's read-database permission is getMetadata, NOT datastore.databases.get, which authorizes transactions); update for the mutable fields (PITR, delete protection, concurrency, access modes); delete on destroy once delete_protection_state allows it. Google's Firestore IAM reference marks the locations permissions "Required to create a new database", and create/update return long-running operations the provider polls via datastore.operations.get. The datastore service is not yet in the committed action-inventory snapshot; every permission here was verified against Google's Firestore IAM reference (cloud.google.com/firestore/docs/security/iam) live.
+      - purpose: BindResourceManagerTags
+        permissions:
+          - datastore.databases.createTagBinding
+        provenance: derived
+        notes: Required only when resource_manager_tags is set -- Google's Firestore IAM reference lists createTagBinding as the additional permission a create request with tags needs (listTagBindings/listEffectiveTags only matter for verifying bindings, which the modules never do). Verified against the same live reference; datastore service not yet in the inventory snapshot.

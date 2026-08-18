@@ -1,0 +1,97 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcppubsubtopic
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Pub/Sub encrypts every stored message with Google-managed keys unconditionally; there is no switch to store messages unencrypted.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_name
+      evidence:
+        type: spec_default
+        reference: Unset (the default) uses Google-managed keys; referencing a Cloud KMS key encrypts messages at rest under the customer-managed key instead. The Pub/Sub service agent must hold roles/cloudkms.cryptoKeyEncrypterDecrypter on the key or publishes fail.
+      notes: Preset 02 pairs CMEK with a single-region storage policy -- the data-residency-plus-key-custody posture for audit streams. Revoking the key stops the topic cold; that is the control working as designed.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Pub/Sub is reached exclusively through Google's TLS-terminated APIs (HTTPS/gRPC); no plaintext listener exists to disable.
+      notes: message_storage_policy.enforce_in_transit adds a REGIONAL in-transit guarantee on top -- publishes and subscribes from non-allowed regions are rejected outright rather than routed, keeping message bytes inside the allowed regions even in transit (preset 02).
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A topic has no network endpoint to expose -- it is an API resource reachable only through authenticated, IAM-authorized Pub/Sub calls. There is no anonymous or unauthenticated path to publish or read.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network ingress exists to restrict -- who may publish is an IAM question (see rbac), and where message bytes may live and travel is message_storage_policy's residency surface, not a network perimeter.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No web-facing surface exists for a WAF to front; publishers are authenticated API clients, and malformed-payload defense at the boundary is schema_settings' job (publish-time validation), not request filtering.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Both planes are IAM-governed unconditionally -- management mutations authorize against pubsub.topics create/update/delete, and the data plane's publish authorizes against pubsub.topics.publish per topic, grantable per-principal at topic granularity.
+      notes: Publisher identity is the topic's whole admission model -- grant roles/pubsub.publisher on exactly the topics a workload publishes to.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: Every cross-cloud ingestion source authenticates through a GCP service account via federated identity -- the spec carries AWS role ARNs, Azure tenant/client IDs, and Confluent identity-pool IDs alongside gcp_service_account, and has no field anywhere for a static cloud credential.
+      notes: The AI-inference transform likewise invokes its Vertex AI endpoint as a service account (or the Pub/Sub service agent), never with an API key. GCP-side publishers authenticate with their own workload identities, assessed on those components.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The topic carries no authentication protocol of its own to harden -- all access rides IAM-authorized Google API calls, and no weaker fallback path exists on the resource.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Topic create, update, delete, and IAM policy changes land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+      notes: Per-message publish visibility is Data Access audit logging, a project-level configuration outside this spec.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Pub/Sub exports topic metrics -- publish request counts, throughput bytes, message sizes -- to Cloud Monitoring automatically with no configuration on the resource.
+      notes: For import topics, ingestion_data_source_settings.platform_logs_settings additionally writes ingestion-pipeline logs to Cloud Logging at a chosen severity floor (preset 04 uses INFO).
+    - control_id: backup-recovery
+      status: configurable
+      field_path: message_retention_duration
+      evidence:
+        type: spec_default
+        reference: Unset (the default) leaves retention to individual subscriptions -- an acknowledged message is gone. Setting it makes the topic itself retain every published message for the window, and ANY attached subscription can seek back to a timestamp within it -- replay as a recovery primitive.
+      notes: Preset 03 retains 7 days exactly so a consumer bug can be answered by seeking the subscription back and reprocessing. This is point-in-time replay, not a backup copy in separate storage.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: message_retention_duration
+      evidence:
+        type: spec_validation
+        reference: The retention window is an explicit duration from 600s (10 minutes) to 2678400s (31 days) -- organizational replay policy is set directly, and Google enforces the bounds at the API.
+      notes: Longer windows bill $0.27/GiB-month on everything published; the policy choice is a cost dial as much as a compliance one.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Pub/Sub persists every message in multiple zones as part of the managed service -- no single-zone failure mode exists, and no configuration on the resource can reduce durability below that.
+      notes: message_storage_policy narrows which REGIONS may hold messages (residency), never the multi-zone replication within them.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE (the topic is removed; its subscriptions survive but receive no new messages and drain to empty); PREVENT makes destroy fail outright -- a guard for the topic an event pipeline publishes into; ABANDON unmanages the topic while publishers and subscriptions keep working.
+      notes: Deleting a topic is silent for publishers only until their next publish fails -- PREVENT is most valuable on topics many teams publish into.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Pub/Sub is a fully managed service -- Google operates and patches the brokers, storage, and API frontends invisibly, and the resource exposes no version, runtime, or maintenance channel to manage.

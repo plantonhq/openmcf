@@ -1,0 +1,41 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpbackendbucket
+spec:
+  presets:
+    - preset: 01-cdn-static-assets
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - cache data transfer out bills per GiB served from the edge, tiered by destination (North America and Europe $0.08/GiB for the first 10 TiB per month, cheaper above) -- the dominant meter for a busy asset origin
+        - cache fill bills per GiB fetched into the edge ($0.01 within North America or Europe, $0.02 within other continents, $0.04 inter-region); the preset's TTLs, negative caching, and request coalescing exist to keep it small
+        - cache lookups bill $0.0075 per 10,000 GET/HEAD requests; cache misses additionally incur Cloud Storage operation charges on the origin bucket
+      notes: An idle backend bucket with CDN on costs exactly zero -- every meter starts with the first request, so the estimate is commitment-absence, not freeness.
+    - preset: 02-plain-origin
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - CDN is off, so no Cloud CDN meter can start -- every request proxies to the origin and bills as load-balancer data processing and Cloud Storage egress on those components
+        - the origin bucket's storage and operations bill on the GcpGcsBucket component
+      notes: With enable_cdn false the backend bucket is pure routing configuration; the zero is real for this resource, and the download traffic's cost lives entirely on the load balancer and bucket components.
+    - preset: 03-signed-url-private-cdn
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - cache data transfer out, cache fill, and cache lookups meter exactly as for public CDN content -- signed requests are billed no differently, and signed-URL keys themselves are free
+        - USE_ORIGIN_HEADERS caches only what the origin marks cacheable, so poorly-headered private media shifts spend from cache egress toward per-request origin fetches (fill plus Cloud Storage operations on the bucket)
+      notes: Zero committed at creation -- private-media spend follows how much signed content is served and how well the origin's cache headers let the edge hold it.

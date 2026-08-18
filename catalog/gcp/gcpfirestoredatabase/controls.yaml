@@ -1,0 +1,88 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpfirestoredatabase
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Firestore encrypts all stored documents, indexes, and metadata at rest with Google-managed keys by default; encryption cannot be disabled.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_name
+      evidence:
+        type: spec_default
+        reference: Unset means Google-managed encryption; naming a Cloud KMS key encrypts the database with it. Immutable -- the encryption posture is fixed at creation. Multi-region databases need the key in the matching KMS multi-region (nam5 needs "us", eur3 needs "europe").
+      notes: Preset 03 enables CMEK on an ENTERPRISE nam5 database with a key in the us multi-region.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All access -- server client libraries, mobile/web SDKs, and the MongoDB-compatible API alike -- goes through Google's Firestore endpoints over TLS; no plaintext access path exists.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The database has no network endpoint to expose. Server access is IAM-gated; mobile and web SDK access is governed by Firestore Security Rules -- a rules document managed outside this spec, whose default deny/allow posture is set when rules are first deployed, not by a database field.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network ingress surface exists on the database; restricting which networks may reach the Firestore API is a VPC Service Controls perimeter decision at the project level.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The database serves no HTTP application traffic of its own; there is no request surface for a web application firewall to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Server-side access authorizes against IAM datastore.* permissions (entities, databases, schemas) on every call; no non-authorized access path exists.
+      notes: Mobile and web clients authorize through Firestore Security Rules instead of IAM -- a complementary, code-reviewed rules surface deployed separately from this component. ENTERPRISE data-access-mode fields gate whole API surfaces (Firestore vs MongoDB-compatible) but are protocol switches, not principal grants.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The database runs no workloads and holds no credentials; callers authenticate with their own IAM identities or Firebase Authentication tokens evaluated by Security Rules.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No legacy authentication path exists to disable. app_engine_integration_mode couples the database's LIFECYCLE to a legacy App Engine app (presets 02 and 03 set DISABLED to decouple it); it is not an authentication mechanism.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Database create, update, and delete land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+      notes: Data Access audit logs for document reads and writes are opt-in project-level Cloud Audit Logs configuration, not a database field.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Firestore publishes usage metrics (document operations, stored bytes, active connections) to Cloud Monitoring for every database without configuration.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: point_in_time_recovery_enablement
+      evidence:
+        type: spec_default
+        reference: Unset defaults to POINT_IN_TIME_RECOVERY_DISABLED (1 hour of version history); enabling retains 7 days -- reads and restores can target any timestamp in the past hour or any 1-minute snapshot within the window.
+      notes: Presets 02 and 03 enable PITR. Scheduled backups with their own retention are a separate composable resource (GcpFirestoreBackupSchedule).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Backup retention length lives on the GcpFirestoreBackupSchedule that creates the backups (its retention field); the PITR window here is a fixed 7 days when enabled, not a tunable retention.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Firestore automatically replicates data across multiple zones within the database's location; no customer action or field enables it.
+      notes: The immutable location_id extends redundancy further -- multi-region locations (nam5 in presets 01 and 03, eur3 for Europe) replicate across regions for higher availability at higher cost.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: delete_protection_state
+      evidence:
+        type: spec_default
+        reference: The spec defaults to DELETE_PROTECTION_DISABLED (matching GCP); DELETE_PROTECTION_ENABLED makes deletion fail through every interface -- Console, gcloud, API, and IaC alike -- until protection is lifted.
+      notes: All three presets enable it. deletion_policy layers on top -- the Planton default is DELETE (the raw provider would default to ABANDON, silently leaving the database running unmanaged after destroy); PREVENT is a second wall.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Firestore is a fully managed, serverless service -- Google operates and patches the storage and serving fleet; no version, channel, or maintenance surface exists on the database.

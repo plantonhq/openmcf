@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpgkeworkloadidentitybinding
+spec:
+  billing_model: free
+  free_tier: "Google's IAM billing-questions page states Identity and Access Management is offered at no additional charge for all Google Cloud customers, and the IAM product page lists Workforce and Workload Identity Federation among what is included with no additional cost per user or identity. This resource is one additive IAM grant on a Google Service Account (roles/iam.workloadIdentityUser to a constructed Kubernetes principal), so creating it, holding it, and the token exchanges it authorizes -- every keyless impersonation a pod performs through the GKE metadata server -- cost nothing at any grant count or token volume."
+  notes: "No field on this spec starts a meter. The spend lives around the binding, never in it: the GKE cluster and its GKE_METADATA-mode node pools bill as compute on their own resources, and everything the impersonating workload then does bills on the GCP services it touches under the granted GSA's roles -- the binding is the free hinge between the two. Removal is free and takes effect on the workload's next token refresh, cutting the pods off from GCP; see deletion-protection in controls.yaml."

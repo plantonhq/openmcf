@@ -1,0 +1,35 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpartifactregistryrepo
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: mode
+      sku_meter: artifact storage
+      pricing_unit: GiB-months
+      impact: Standard and remote repositories store artifacts and bill $0.000136986 per GiB-hour past the billing account's shared 0.5 GiB-month free tier -- a remote cache accrues storage for every upstream artifact it pulls through. Virtual repositories store nothing; their spend lands on the upstream repositories they serve from.
+    - field_path: location
+      sku_meter: data transfer
+      pricing_unit: GiB delivered
+      impact: Storage rates are identical for regional and multi-regional repositories, so location is a transfer decision -- pulls within the same location are free, cross-region pulls in US/Canada bill $0.01/GiB rising to $0.08/GiB across continents and $0.15/GiB to or from Oceania, and internet egress bills at Premium tier rates. Co-locating the repository with GKE/Cloud Run/build infrastructure kills the biggest meter.
+    - field_path: cleanup_policies
+      sku_meter: artifact storage
+      pricing_unit: GiB-months
+      impact: The cost brake -- deleting superseded untagged digests and age-expired versions is what keeps a CI-pushed repository from billing forever; KEEP policies carve out what the DELETE policies may never touch.
+    - field_path: cleanup_policy_dry_run
+      sku_meter: artifact storage
+      pricing_unit: GiB-months
+      impact: True disengages the brake -- matches are only logged and nothing is deleted, so storage keeps accruing until the flag is turned off. Meant for validating new policies, not for leaving on.
+    - field_path: vulnerability_scanning_enablement
+      sku_meter: vulnerability scanning
+      pricing_unit: scans
+      impact: With the Container Scanning API enabled on the project, empty/INHERITED scans every newly pushed digest at $0.26 per scan (the initial scan only -- re-pulls and re-tags of the same digest are free); DISABLED opts this repository out regardless of the project setting.
+  estimate_exclusions:
+    - an empty repository bills nothing -- storage accrues per GiB-hour as CI pushes artifacts, past the 0.5 GiB-month free tier shared across the whole billing account
+    - data transfer bills per GiB delivered and follows pull traffic and topology; transfer into Google Cloud (a remote cache's upstream fetches included) is free
+    - vulnerability scan charges follow push cadence, one $0.26 scan per new digest where scanning is on
+  notes: "A repository is a rate card waiting for pushes: creation is free, and every charge follows bytes stored, bytes delivered, or digests scanned (Artifact Registry pricing page; scan price from Artifact Analysis pricing). The free storage tier is per BILLING ACCOUNT, not per repository, so a fleet of repositories shares one 0.5 GiB-month allowance. deletion_policy ABANDON leaves the repository standing -- storing and serving -- so its storage keeps billing after the resource is unmanaged."

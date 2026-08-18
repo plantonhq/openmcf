@@ -1,0 +1,42 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpfirestoredatabase
+spec:
+  presets:
+    - preset: 01-default-native
+      region_assumption: nam5
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the "(default)" database is the one database per project eligible for Google's free tier -- 1 GiB stored, 50,000 reads, 20,000 writes, and 20,000 deletes per day, 10 GiB egress per month; beyond it, operations and storage bill at nam5 multi-region rates
+        - document operations and stored bytes (index and metadata overhead included) follow application traffic
+      notes: Creation is free and this preset can run entirely inside the free tier -- the zero is commitment-absence, and light workloads may genuinely stay at zero.
+    - preset: 02-named-native-pitr
+      region_assumption: us-east1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - named databases get NO free quota (Google grants free tier to exactly one database per project) -- reads, writes, deletes, and stored bytes bill from the first operation at us-east1 rates
+        - PITR bills a second storage meter, roughly doubling the storage cost of whatever the database grows to hold -- and it has no free usage
+        - egress beyond the free monthly allowance follows read traffic
+      notes: Zero committed at creation -- PITR and delete protection are armed by the manifest, but both meters scale with data that does not exist yet.
+    - preset: 03-enterprise-cmek
+      region_assumption: nam5
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - ENTERPRISE bills by data-sized units -- read units per 4 KiB, write units per 1 KiB -- and stores data at the higher enterprise rate per GiB-month at nam5, with PITR adding its own storage meter
+        - the CMEK key's version storage and per-operation charges bill on the referenced GcpKmsKey component
+        - real-time updates and change-stream events bill their own per-million-unit meters if the application enables those ENTERPRISE surfaces
+      notes: Zero committed at creation -- the enterprise meter family is pricier per byte processed, but every meter still starts at the first document.

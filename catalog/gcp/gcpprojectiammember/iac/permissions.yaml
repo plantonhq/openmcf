@@ -1,0 +1,18 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpprojectiammember
+spec:
+  gcp:
+    groups:
+      - purpose: ManageProjectIamGrant
+        permissions:
+          - resourcemanager.projects.getIamPolicy
+          - resourcemanager.projects.setIamPolicy
+        provenance: derived
+        notes: "Covers google_project_iam_member (Pulumi projects.IAMMember) -- the provider implements the additive grant as a read-modify-write of the project's IAM policy: getIamPolicy on create, every refresh, and destroy; setIamPolicy on create (merging the pair in) and destroy (subtracting exactly it). Both permissions are carried by roles/resourcemanager.projectIamAdmin, the role the READMEs recommend granting on the target project. State the privilege honestly: setIamPolicy writes the WHOLE policy, so a runner holding it can grant any role to any member on that project -- it is project-admin-equivalent power, scoped only by which project it is granted on. The modules' client-config lookup (count-gated data.google_client_config / Pulumi GetClientConfig, used only when project_id is omitted) reads local provider configuration and makes no authorized API call."

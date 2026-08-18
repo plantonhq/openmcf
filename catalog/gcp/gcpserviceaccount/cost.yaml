@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpserviceaccount
+spec:
+  billing_model: free
+  free_tier: "Google's Identity and Access Management pricing page states it in one sentence: all use of the Identity and Access Management API is free of charge. The service account, its optional user-managed key, and every additive role grant this component makes are all IAM API content -- creating them, holding them, and authenticating with them costs nothing at any account count, key count, or token volume."
+  notes: "No field on this spec starts a meter -- not even user_managed_key: keys are free, in either the generate or upload flow. The identity is where spend ROUTES, never where it lands: everything a workload authenticating as this account does bills on the resources it touches (the Cloud Run service, the GCS bucket, the BigQuery scan), under whatever roles project_iam_roles, org_iam_roles, or sibling GcpProjectIamMember grants confer. Account and grant mutations land in Admin Activity audit logs, stored free in the non-deletable _Required bucket; opt-in Data Access audit logging for IAM (a project-wide choice outside this resource) bills Cloud Logging storage at $0.50/GiB past the 50 GiB monthly allotment. Parking key_base64 in a GcpSecretManagerSecret bills on Secret Manager, a sibling resource with its own cost profile."
