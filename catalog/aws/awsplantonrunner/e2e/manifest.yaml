@@ -1,8 +1,8 @@
 # Minimal AwsPlantonRunner manifest for local module testing. The
 # credentials value below is an obviously-fake placeholder document with
 # the right shape -- real deployments supply a managed-secret reference
-# ($secret/<slug>) holding the JSON emitted by
-# `planton runner generate-credentials`.
+# ($secret/<slug>) that the platform fills with the runner's identity
+# document when it enrolls the appliance.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsPlantonRunner
 metadata:

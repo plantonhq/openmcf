@@ -35,8 +35,8 @@ it deliberately has no representation here.
 # Minimal AwsPlantonRunner manifest for local module testing. The
 # credentials value below is an obviously-fake placeholder document with
 # the right shape -- real deployments supply a managed-secret reference
-# ($secret/<slug>) holding the JSON emitted by
-# `planton runner generate-credentials`.
+# ($secret/<slug>) that the platform fills with the runner's identity
+# document when it enrolls the appliance.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsPlantonRunner
 metadata:
@@ -192,13 +192,16 @@ How the runner executes work:
 
 `string` · required · sensitive
 
-The runner's credentials document: the JSON issued when the runner
-registration is created (planton runner generate-credentials). It
-carries the runner's identity, its API key, and the connectivity
-endpoints -- everything the runner needs to introduce itself to the
-control plane. This is a secret: supply it as a managed-secret
-reference, never inline plaintext; it reaches the runner through the
-platform's secret store, not through any launch configuration.
+The runner's identity document: the JSON the control plane mints when
+it enrolls this appliance. The platform creates the runner
+registration and writes the document at exactly the managed-secret
+reference this field names, before the infrastructure applies -- there
+is no manual credential step. It carries the runner's identity, its
+API key, and the connectivity endpoints -- everything the runner needs
+to introduce itself to the control plane. This is a secret: supply it
+as a managed-secret reference, never inline plaintext; it reaches the
+runner through the platform's secret store, not through any launch
+configuration.
 
 - rule: {"required":true}
 

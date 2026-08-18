@@ -113,13 +113,16 @@ type AwsPlantonRunnerSpec struct {
 	//   - "grpc": CloudOps only, no deploy operations. Rarely what you want
 	//     for a standing appliance; prefer dual.
 	ExecutionMode *string `protobuf:"bytes,9,opt,name=execution_mode,json=executionMode,proto3,oneof" json:"execution_mode,omitempty"`
-	// The runner's credentials document: the JSON issued when the runner
-	// registration is created (planton runner generate-credentials). It
-	// carries the runner's identity, its API key, and the connectivity
-	// endpoints -- everything the runner needs to introduce itself to the
-	// control plane. This is a secret: supply it as a managed-secret
-	// reference, never inline plaintext; it reaches the runner through the
-	// platform's secret store, not through any launch configuration.
+	// The runner's identity document: the JSON the control plane mints when
+	// it enrolls this appliance. The platform creates the runner
+	// registration and writes the document at exactly the managed-secret
+	// reference this field names, before the infrastructure applies -- there
+	// is no manual credential step. It carries the runner's identity, its
+	// API key, and the connectivity endpoints -- everything the runner needs
+	// to introduce itself to the control plane. This is a secret: supply it
+	// as a managed-secret reference, never inline plaintext; it reaches the
+	// runner through the platform's secret store, not through any launch
+	// configuration.
 	Credentials string `protobuf:"bytes,10,opt,name=credentials,proto3" json:"credentials,omitempty"`
 	// The IAM role the runner itself holds at runtime -- its AWS identity
 	// when cloud operations or IaC runs use role-based (keyless) access

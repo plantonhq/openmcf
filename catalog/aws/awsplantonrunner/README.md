@@ -60,13 +60,10 @@ spec:
   credentials: $secret/vpc-runner-credentials
 ```
 
-Create the runner registration and its credentials first:
-
-```shell
-planton runner generate-credentials vpc-runner
-```
-
-store the emitted JSON as the managed secret the manifest references, then
+There is no manual credential step: before the infrastructure applies, the
+platform enrolls the runner itself -- it creates the runner registration,
+mints the runner's identity document, and writes it at exactly the
+managed-secret reference the manifest declares. Pick any secret slug and
 deploy with:
 
 ```shell

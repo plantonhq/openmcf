@@ -22,9 +22,9 @@ deployable.
 - **Two private subnets in different AZs** -- the runner reschedules
   across an AZ event; private subnets need a NAT route for the runner's
   outbound traffic (image pulls, control plane)
-- **Credentials as a managed-secret reference** -- the document from
-  `planton runner generate-credentials`, stored once as a secret and
-  resolved just-in-time; it never appears in plaintext anywhere
+- **Credentials as a managed-secret reference** -- the identity document
+  the platform mints when it enrolls the appliance, written to the secret
+  and resolved just-in-time; it never appears in plaintext anywhere
 - **Default sizing (0.5 vCPU / 1 GiB)** -- comfortable for typical IaC
   operations; see the high-capacity preset when stacks grow large
 
@@ -35,7 +35,7 @@ deployable.
 | `<runner-name>` | Name for the runner appliance | Match the runner registration's name |
 | `<aws-region>` | AWS region code | The region hosting the private targets |
 | `<private-subnet-a/b-resource-name>` | Names of the private AwsSubnet resources | Your subnet manifests' `metadata.name` |
-| `<runner-credentials-secret-slug>` | The managed secret holding the credentials JSON | Created from `planton runner generate-credentials <runner-name>` |
+| `<runner-credentials-secret-slug>` | The managed secret holding the identity document | Any slug you choose -- the platform writes the document there when it enrolls the appliance |
 
 ## Related Presets
 

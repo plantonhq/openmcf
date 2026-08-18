@@ -197,17 +197,11 @@ The connection is ready to use. Planton's runner will assume this IAM role via S
 
 This approach provides the highest security posture. Instead of storing any credentials in Planton -- even as secret references -- you deploy a Planton Runner in your own infrastructure and let it authenticate using the AWS SDK's default credential chain. The runner can use IAM Roles for Service Accounts (IRSA) on EKS, an EC2 instance profile, an ECS task role, or environment variables. No sensitive values are ever transmitted to or stored in the Planton control plane.
 
-This approach requires a registered and running Planton Runner. If you do not have one yet, the steps below walk you through registration.
+This approach requires a running Planton Runner. If you do not have one yet, the steps below walk you through enrollment.
 
-### Step 1: Register a Runner
+### Step 1: Create a Runner Token
 
-Register a new runner with the Planton control plane:
-
-```bash
-planton runner register --name my-aws-runner
-```
-
-The CLI creates a runner registration and prompts you to generate credentials for the runner-to-control-plane tunnel (a mutual TLS connection). These credentials are stored locally on the machine where the runner will run. Follow the interactive prompts to generate and save the credentials.
+Create a runner token from the console's Runners area. The token is a named, revocable secret that authorizes runners to join your organization — it is never a runner's identity. A runner started with the token enrolls itself with the control plane on arrival and receives its own identity (a dedicated service account, an API key, and the mutual-TLS material for the runner-to-control-plane tunnel), stored locally on the machine where the runner runs.
 
 ### Step 2: Deploy the Runner with AWS IAM Bindings
 
@@ -223,11 +217,7 @@ The runner uses the AWS SDK's default credential chain, so any method that makes
 
 ### Step 3: Start the Runner
 
-```bash
-planton runner start
-```
-
-The runner establishes an outbound mTLS tunnel to the Planton control plane. It is now ready to receive and execute operations.
+Start the runner with your runner token and a name (for example, `my-aws-runner`). On first start it enrolls itself — the registration appears in your Runners list at that moment — then establishes an outbound mTLS tunnel to the Planton control plane. It is now ready to receive and execute operations.
 
 ### Step 4: Write the Connection Manifest
 
@@ -251,7 +241,7 @@ spec:
 The key differences from the inline manifest:
 
 - **`auth_mode: runner`** tells Planton to delegate authentication entirely to the runner's environment.
-- **`runner: my-aws-runner`** is the name of the runner registration you created in Step 1. This tells Planton which runner to route operations to.
+- **`runner: my-aws-runner`** is the name the runner enrolled under in Step 3. This tells Planton which runner to route operations to.
 - There are no `access_key_id` or `secret_access_key` fields. In runner mode, these fields are ignored even if provided.
 
 ### Step 5: Apply the Manifest

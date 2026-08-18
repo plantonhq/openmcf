@@ -20,7 +20,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### Planton Setup
 
 - **AWS Provider Connection** -- the credential used to provision the appliance itself. Required.
-- **Runner registration and credentials** -- create the registration and mint its credentials document with `planton runner generate-credentials <runner-name>`, store the JSON as a managed secret, and reference it as `$secret/<slug>` in the `credentials` field. Plaintext is rejected.
+- **Runner registration and credentials** -- nothing to create by hand: the platform enrolls the appliance itself, creating the runner registration and minting its identity document into the managed secret the manifest references. Choose a secret slug and reference it as `$secret/<slug>` in the `credentials` field. Plaintext is rejected.
 
 ### AWS Account
 

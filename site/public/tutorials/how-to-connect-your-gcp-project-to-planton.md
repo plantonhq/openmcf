@@ -217,17 +217,11 @@ This approach provides the highest security posture. Instead of storing any cred
 
 On GKE, the runner can use Workload Identity to map its Kubernetes service account to a Google service account. On Compute Engine, it can use the instance's metadata service. The runner supports any credential source in GCP's standard ADC chain.
 
-This approach requires a registered and running Planton Runner. If you do not have one yet, the steps below walk you through registration.
+This approach requires a running Planton Runner. If you do not have one yet, the steps below walk you through enrollment.
 
-### Step 1: Register a Runner
+### Step 1: Create a Runner Token
 
-Register a new runner with the Planton control plane:
-
-```bash
-planton runner register --name my-gcp-runner
-```
-
-The CLI creates a runner registration and prompts you to generate credentials for the runner-to-control-plane tunnel (a mutual TLS connection). These credentials authenticate the runner with the control plane -- they are separate from GCP credentials. Follow the interactive prompts to generate and save the credentials.
+Create a runner token from the console's Runners area. The token is a named, revocable secret that authorizes runners to join your organization — it is never a runner's identity. A runner started with the token enrolls itself with the control plane on arrival and receives its own identity (a dedicated service account, an API key, and the mutual-TLS material for the runner-to-control-plane tunnel) — these are separate from GCP credentials.
 
 ### Step 2: Deploy the Runner with GCP IAM Bindings
 
@@ -243,11 +237,7 @@ The runner uses GCP's Application Default Credentials, so any method that makes 
 
 ### Step 3: Start the Runner
 
-```bash
-planton runner start
-```
-
-The runner establishes an outbound mTLS tunnel to the Planton control plane. It is now ready to receive and execute operations.
+Start the runner with your runner token and a name (for example, `my-gcp-runner`). On first start it enrolls itself — the registration appears in your Runners list at that moment — then establishes an outbound mTLS tunnel to the Planton control plane. It is now ready to receive and execute operations.
 
 ### Step 4: Write the Connection Manifest
 
@@ -267,7 +257,7 @@ spec:
 The key differences from the service account key manifest:
 
 - **`auth_mode: runner`** tells Planton to delegate authentication entirely to the runner's environment.
-- **`runner: my-gcp-runner`** is the name of the runner registration you created in Step 1. This tells Planton which runner to route operations to.
+- **`runner: my-gcp-runner`** is the name the runner enrolled under in Step 3. This tells Planton which runner to route operations to.
 - There is no `service_account_key` field. In runner mode, secret reference fields are ignored even if provided.
 
 ### Step 5: Apply the Manifest

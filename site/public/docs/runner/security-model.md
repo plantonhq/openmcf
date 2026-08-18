@@ -85,9 +85,9 @@ Both sides are authenticated. A man-in-the-middle attack would require compromis
 
 ## Credential Lifecycle
 
-### Generation
+### Minting
 
-Credentials are generated server-side via the `generate-credentials` command. The output is a single JSON file containing the mTLS certificates (CA, runner certificate, runner private key), an API key for the auto-provisioned service account, the control-plane endpoint, and organizational context. The private key and API key are returned once — Planton does not store them in any database or cache. If you lose the credentials file, you can generate a new one (which mints a fresh API key while leaving previous keys valid).
+A runner's credentials are minted server-side when the runner enrolls — a runner started with a runner token registers itself and receives its identity document: the mTLS certificates (CA, runner certificate, runner private key), an API key for its auto-provisioned service account, the control-plane endpoint, and organizational context, in a single JSON document delivered only to the runner. The private key and API key are returned once — Planton does not store them in any database or cache. Every mint revokes the runner's previous API keys, so one runner holds exactly one live key at all times.
 
 ### Storage
 
@@ -100,13 +100,9 @@ You are responsible for storing credentials securely. For production deployments
 
 ### Rotation
 
-To rotate credentials, regenerate them:
+Re-enrolling IS rotating: when a runner enrolls again under its admitting token, it receives fresh certificates and a fresh API key, and all previous API keys for its service account are revoked in the same act. There is no separate rotation command and no human handling of credential material — rotation happens at the runner, never in a browser or clipboard.
 
-```bash
-planton runner regenerate-credentials prod-runner --output-dir ./new-creds
-```
-
-This generates new certificates and a new API key, and revokes all previous API keys for the runner's service account. The runner will lose both tunnel connectivity and control-plane authentication until you deploy the new credentials file. There is no graceful rotation — old certificates and API keys are invalidated immediately. Plan for a brief connectivity gap during rotation, or deploy a second runner before revoking the first runner's credentials.
+If a runner's identity AND its admitting token are both compromised, revoke the token, reset the runner's enrollment from its detail page (an audited action that revokes its identity and clears its token lineage), and let the runner re-enroll with a new token. Old certificates and API keys are invalidated immediately on any re-mint — plan for a brief connectivity gap, or run a second runner before resetting the first.
 
 ## Authentication Modes
 
@@ -160,7 +156,7 @@ This dual-layer enforcement means:
 
 - A runner registered to **org A** cannot receive requests intended for **org B**, even if both runners connect to the same infrastructure.
 - A runner cannot claim a different identity by modifying its configuration — the identity is bound to the certificate and the service account, both of which are signed and verified server-side.
-- Revoking a runner's credentials (via `regenerate-credentials`) immediately prevents both the old certificate and API key from being accepted, even if the runner is still running with old credentials.
+- Revoking a runner's credentials (any re-enrollment, or an operator's enrollment reset) immediately prevents both the old certificate and API key from being accepted, even if the runner is still running with old credentials.
 
 ## What the Runner Cannot Do
 

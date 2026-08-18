@@ -340,13 +340,13 @@ export const RunnerCapabilities = () => (
     <FeatureBentoSection />
     <IaCDeepDive />
     <SecureTunnelSection />
-    {/* SCREENSHOT OPPORTUNITY: Runner Registration & Credentials
-       Show: The Planton console's Runner registration page showing a newly created Runner with:
-       - The generated credentials.json download prompt (first-time only)
+    {/* SCREENSHOT OPPORTUNITY: Runner Enrollment
+       Show: The Planton console's Runners page showing a freshly enrolled Runner with:
+       - The runner token that admitted it (attribution on the detail page)
        - Runner status showing "Connected" with a green indicator
        - The tunnel connection details (channel ID, last heartbeat)
-       Value: Proves the "install in minutes" claim and shows the polished console experience.
-       Suggested: 16:9 aspect ratio, dark theme, show the registration flow or the connected state.
+       Value: Proves the "start with a token, it enrolls itself" claim and shows the polished console experience.
+       Suggested: 16:9 aspect ratio, dark theme, show the connected state.
        Placement: Add an <img> tag wrapped in a <Section> component between SecureTunnelSection and CTA.
     */}
   </>
