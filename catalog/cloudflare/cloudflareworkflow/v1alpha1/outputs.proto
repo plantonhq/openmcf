@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflareworkflow.v1alpha1;
+
+// CloudflareWorkflowStackOutputs captures the observable outputs after
+// registering a workflow.
+message CloudflareWorkflowStackOutputs {
+  // The workflow's name -- its identity within the account, and what Worker
+  // workflow bindings reference.
+  string workflow_name = 1;
+
+  // The ID of the workflow version the registration produced.
+  string version_id = 2;
+}

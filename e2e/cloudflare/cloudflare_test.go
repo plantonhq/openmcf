@@ -340,6 +340,34 @@ func TestCloudflareAuthenticatedOriginPullsCertificate_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "cloudflareauthenticatedoriginpullscertificate", "terraform")
 }
 
+func TestCloudflareWorkflow_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflareworkflow", "pulumi")
+}
+func TestCloudflareWorkflow_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflareworkflow", "terraform")
+}
+
+func TestCloudflareSecretsStore_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflaresecretsstore", "pulumi")
+}
+func TestCloudflareSecretsStore_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflaresecretsstore", "terraform")
+}
+
+func TestCloudflareSecretsStoreSecret_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflaresecretsstoresecret", "pulumi")
+}
+func TestCloudflareSecretsStoreSecret_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflaresecretsstoresecret", "terraform")
+}
+
+func TestCloudflareAiGateway_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflareaigateway", "pulumi")
+}
+func TestCloudflareAiGateway_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflareaigateway", "terraform")
+}
+
 func TestCloudflareZeroTrustAccessIdentityProvider_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "cloudflarezerotrustaccessidentityprovider", "pulumi")
 }

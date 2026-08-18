@@ -37,6 +37,11 @@ type EnvelopePresence struct {
 	// list while the endpoint keeps answering (snippet rules -- a zone
 	// singleton whose Delete wipes every rule and GET then returns []).
 	EmptyResultArray bool
+	// IsDeletedFlag: a 200 whose result.is_deleted is a non-zero number
+	// counts as absent. The Workflows API's variant of soft-delete: its GET
+	// response carries is_deleted as a required numeric field instead of the
+	// deleted_at timestamp the SoftDeleted probe reads.
+	IsDeletedFlag bool
 }
 
 // API is the surface verifiers need from the harness client: an
@@ -104,6 +109,12 @@ type apiPathVerifier struct {
 	// 200 whose result is [] counts as gone (snippet rules -- destroy
 	// empties the zone's table and the GET keeps answering).
 	emptyResultArray bool
+	// isDeletedFlag opts into the is_deleted-flag absence probe: a 200
+	// whose result.is_deleted is a non-zero number counts as gone. The
+	// Workflows API's variant of soft-delete -- its GET response carries
+	// is_deleted as a required numeric field (not deleted_at), so neither
+	// the plain 404 probe nor softDeleted would see the deletion.
+	isDeletedFlag bool
 }
 
 // IDOutputKey returns the last output key -- the resource's own identifier
@@ -162,11 +173,12 @@ func (v *apiPathVerifier) VerifyAbsent(ctx context.Context, api API, outputs map
 // probe selects the existence check: the plain status-code probe, or the
 // envelope-aware one for soft-deleting / status-enum families.
 func (v *apiPathVerifier) probe(ctx context.Context, api API, path string) (bool, error) {
-	if v.softDeleted || len(v.absentStatuses) > 0 || v.emptyResultArray {
+	if v.softDeleted || len(v.absentStatuses) > 0 || v.emptyResultArray || v.isDeletedFlag {
 		return api.ResourcePresent(ctx, path, EnvelopePresence{
 			SoftDeleted:      v.softDeleted,
 			AbsentStatuses:   v.absentStatuses,
 			EmptyResultArray: v.emptyResultArray,
+			IsDeletedFlag:    v.isDeletedFlag,
 		})
 	}
 	return api.ResourceExists(ctx, path)
@@ -566,6 +578,45 @@ var verifiers = map[string]Verifier{
 		pathFormat:     "zones/%s/origin_tls_client_auth/hostnames/certificates/%s",
 		outputKeys:     []string{"zone_id", "certificate_id"},
 		absentStatuses: []string{"pending_deletion", "deleted"},
+	},
+	// Workflows delete for real, but the API keeps answering GET 200 for
+	// deleted workflows with a required numeric is_deleted marker (the
+	// Workflows variant of soft-delete; neither deleted_at nor a 404).
+	// Identity is the workflow NAME -- the provider's Read is
+	// GET accounts/{a}/workflows/{name}.
+	"cloudflareworkflow": &apiPathVerifier{
+		component:     "cloudflareworkflow",
+		pathFormat:    "accounts/%s/workflows/%s",
+		outputKeys:    []string{"workflow_name"},
+		accountScoped: true,
+		isDeletedFlag: true,
+	},
+	// The Secrets Store deletes for real and has a GET-by-id
+	// (accounts/{a}/secrets_store/stores/{id} -- confirmed in
+	// cloudflare-go v7). One store per account: a create-conflict on an
+	// account with an existing store is a lane fact, not a verifier one.
+	"cloudflaresecretsstore": &apiPathVerifier{
+		component:     "cloudflaresecretsstore",
+		pathFormat:    "accounts/%s/secrets_store/stores/%s",
+		outputKeys:    []string{"store_id"},
+		accountScoped: true,
+	},
+	// Store secrets delete for real; the value never round-trips (write-
+	// only) but the record itself 404s honestly once gone.
+	"cloudflaresecretsstoresecret": &apiPathVerifier{
+		component:     "cloudflaresecretsstoresecret",
+		pathFormat:    "accounts/%s/secrets_store/stores/%s/secrets/%s",
+		outputKeys:    []string{"store_id", "secret_id"},
+		accountScoped: true,
+	},
+	// AI gateways delete for real. Identity is the user-chosen gateway id
+	// (the URL slug). Dynamic routes are folded resources that die with
+	// the gateway; the gateway probe is the honest single handle.
+	"cloudflareaigateway": &apiPathVerifier{
+		component:     "cloudflareaigateway",
+		pathFormat:    "accounts/%s/ai-gateway/gateways/%s",
+		outputKeys:    []string{"gateway_id"},
+		accountScoped: true,
 	},
 }
 

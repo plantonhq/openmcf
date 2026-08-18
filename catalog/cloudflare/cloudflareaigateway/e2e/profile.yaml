@@ -1,0 +1,22 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflareaigateway
+spec:
+  # AI Gateway under live E2E: account-scoped create (free tier), verify via
+  # the gateway GET, destroy (real delete). Watch items for the proving
+  # session: (a) the provider ships ZERO acceptance tests for this resource
+  # and its dynamic routing -- these lanes are their first real-world proof
+  # anywhere, so treat any drift or API surprise as reportable; (b) the
+  # routing scenario exercises the folded per-route object -- its elements
+  # list is create-only (any edit replaces the route), and the provider's
+  # Update response decode is broken upstream (a rename leaves computed
+  # fields stale until refresh); (c) spend-limit rules carry explicit ids by
+  # spec law (the provider default is a leaked example value that collapses
+  # rules).
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10

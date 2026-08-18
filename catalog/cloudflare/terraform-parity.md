@@ -29,11 +29,11 @@ that has progressed.
 |---|---|
 | Provider schema | `aws@6.58.0` |
 | Provider schema (parity baseline) | `cloudflare@5.23.0` |
-| Kinds in the catalog | 48 |
-| Distinct provider resources consumed | 86 |
-| Spec fields authored across all kinds | 1629 |
+| Kinds in the catalog | 52 |
+| Distinct provider resources consumed | 91 |
+| Spec fields authored across all kinds | 1737 |
 | Module pins on `aws` | `~> 5.0` × 1 |
-| Module pins on `cloudflare` | `~> 5.23` × 48 |
+| Module pins on `cloudflare` | `~> 5.23` × 52 |
 | Module pins on `tls` | `~> 4.0` × 1 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -48,10 +48,11 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**48 of 48 kinds are at total accounting; 0 proven live.**
+**52 of 52 kinds are at total accounting; 0 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
+| CloudflareAiGateway | 27 | 15 | 12 | 0 | 0 | ✅ | — |
 | CloudflareAuthenticatedOriginPulls | 4 | 2 | 2 | 0 | 0 | ✅ | — |
 | CloudflareAuthenticatedOriginPullsCertificate | 6 | 6 | 0 | 0 | 0 | ✅ | — |
 | CloudflareBotManagement | 16 | 16 | 0 | 0 | 0 | ✅ | — |
@@ -81,6 +82,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | CloudflareQueue | 9 | 5 | 2 | 2 | 0 | ✅ | — |
 | CloudflareR2Bucket | 34 | 22 | 12 | 0 | 0 | ✅ | — |
 | CloudflareRuleset | 7 | 5 | 2 | 0 | 0 | ✅ | — |
+| CloudflareSecretsStore | 2 | 2 | 0 | 0 | 0 | ✅ | — |
+| CloudflareSecretsStoreSecret | 6 | 6 | 0 | 0 | 0 | ✅ | — |
 | CloudflareSnippet | 4 | 2 | 2 | 0 | 0 | ✅ | — |
 | CloudflareSnippetRules | 2 | 1 | 1 | 0 | 0 | ✅ | — |
 | CloudflareTurnstileWidget | 9 | 9 | 0 | 0 | 0 | ✅ | — |
@@ -88,6 +91,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | CloudflareWaitingRoomEvent | 17 | 17 | 0 | 0 | 0 | ✅ | — |
 | CloudflareWorker | 40 | 10 | 20 | 10 | 0 | ✅ | — |
 | CloudflareWorkersKvPair | 5 | 5 | 0 | 0 | 0 | ✅ | — |
+| CloudflareWorkflow | 7 | 4 | 3 | 0 | 0 | ✅ | — |
 | CloudflareZeroTrustAccessApplication | 39 | 29 | 10 | 0 | 0 | ✅ | — |
 | CloudflareZeroTrustAccessGroup | 7 | 4 | 3 | 0 | 0 | ✅ | — |
 | CloudflareZeroTrustAccessIdentityProvider | 8 | 6 | 2 | 0 | 0 | ✅ | — |
@@ -107,10 +111,10 @@ All resources of `cloudflare@5.23.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 84 | consumed by a kind's Terraform module today |
+| Modeled | 89 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 0 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 121 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 116 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 45 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 7 | deprecated or superseded provider surface |
 | **Total** | **257** | |
@@ -120,11 +124,13 @@ All resources of `cloudflare@5.23.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (84)
+### Modeled (89)
 
 | Resource | Consuming kinds |
 |---|---|
 | `cloudflare_access_rule` | consumed by CloudflareIpAccessRule |
+| `cloudflare_ai_gateway` | consumed by CloudflareAiGateway |
+| `cloudflare_ai_gateway_dynamic_routing` | consumed by CloudflareAiGateway |
 | `cloudflare_argo_smart_routing` | consumed by CloudflareCacheSettings |
 | `cloudflare_argo_tiered_caching` | consumed by CloudflareCacheSettings |
 | `cloudflare_authenticated_origin_pulls` | consumed by CloudflareAuthenticatedOriginPulls |
@@ -170,6 +176,8 @@ rather than trusted.
 | `cloudflare_r2_managed_domain` | consumed by CloudflareR2Bucket |
 | `cloudflare_regional_tiered_cache` | consumed by CloudflareCacheSettings |
 | `cloudflare_ruleset` | consumed by CloudflareRuleset |
+| `cloudflare_secrets_store` | consumed by CloudflareSecretsStore |
+| `cloudflare_secrets_store_secret` | consumed by CloudflareSecretsStoreSecret |
 | `cloudflare_snippet` | consumed by CloudflareSnippet |
 | `cloudflare_snippet_rules` | consumed by CloudflareSnippetRules |
 | `cloudflare_tiered_cache` | consumed by CloudflareCacheSettings |
@@ -188,6 +196,7 @@ rather than trusted.
 | `cloudflare_workers_route` | consumed by CloudflareWorker |
 | `cloudflare_workers_script` | consumed by CloudflareWorker |
 | `cloudflare_workers_script_subdomain` | consumed by CloudflareWorker |
+| `cloudflare_workflow` | consumed by CloudflareWorkflow |
 | `cloudflare_zero_trust_access_application` | consumed by CloudflareZeroTrustAccessApplication |
 | `cloudflare_zero_trust_access_group` | consumed by CloudflareZeroTrustAccessGroup |
 | `cloudflare_zero_trust_access_identity_provider` | consumed by CloudflareZeroTrustAccessIdentityProvider |
@@ -209,7 +218,7 @@ rather than trusted.
 | `cloudflare_zone_setting` | consumed by CloudflareZoneSettings |
 | `cloudflare_zone_subscription` | consumed by CloudflareDnsZone |
 
-### Planned (121)
+### Planned (116)
 
 | Resource | Recorded reason |
 |---|---|
@@ -218,8 +227,6 @@ rather than trusted.
 | `cloudflare_account_member` | judged as a planned CloudflareAccountMember kind (memberships with roles) |
 | `cloudflare_account_subscription` | folds into the planned CloudflareAccount kind (the plan is an attribute of the account) |
 | `cloudflare_account_token` | judged as a planned CloudflareAccountApiToken kind (scoped account API tokens with independent rotation lifecycle) |
-| `cloudflare_ai_gateway` | judged as a planned CloudflareAiGateway kind (caching, rate limiting, and logging for AI calls) |
-| `cloudflare_ai_gateway_dynamic_routing` | folds into the planned CloudflareAiGateway kind (routing configuration of the gateway) |
 | `cloudflare_ai_search_instance` | judged as a planned CloudflareAiSearchInstance kind (managed retrieval-augmented search instance) |
 | `cloudflare_ai_search_namespace` | judged as a planned CloudflareAiSearchNamespace kind (grouping namespace referenced by search instances) |
 | `cloudflare_ai_search_token` | folds into the planned CloudflareAiSearchInstance kind (endpoint access token of the instance) |
@@ -262,8 +269,6 @@ rather than trusted.
 | `cloudflare_schema_validation_operation_settings` | folds into the planned CloudflareApiShield kind (per-operation validation overrides) |
 | `cloudflare_schema_validation_schemas` | judged as a planned CloudflareSchemaValidationSchema kind (uploaded OpenAPI schema with its own upload and activation lifecycle) |
 | `cloudflare_schema_validation_settings` | folds into the planned CloudflareApiShield kind (v2 zone validation defaults) |
-| `cloudflare_secrets_store` | judged as a planned CloudflareSecretsStore kind (account secrets store, parent of secrets) |
-| `cloudflare_secrets_store_secret` | judged as a planned CloudflareSecretsStoreSecret kind (secrets referenced by Worker bindings, rotating independently) |
 | `cloudflare_share` | judged as a planned CloudflareShare kind (cross-account resource sharing) |
 | `cloudflare_share_recipient` | folds into the planned CloudflareShare kind (recipient rows of the share) |
 | `cloudflare_share_resource` | folds into the planned CloudflareShare kind (resource rows of the share) |
@@ -283,7 +288,6 @@ rather than trusted.
 | `cloudflare_worker_version` | folds into the existing CloudflareWorker kind's planned depth expansion (versions are deployment artifacts of the worker, not independent objects) |
 | `cloudflare_workers_deployment` | folds into the existing CloudflareWorker kind's planned depth expansion (gradual-deployment configuration of the worker) |
 | `cloudflare_workers_for_platforms_dispatch_namespace` | judged as a planned CloudflareWorkersDispatchNamespace kind (Workers for Platforms dispatch namespace referenced by dispatch workers) |
-| `cloudflare_workflow` | judged as a planned CloudflareWorkflow kind (durable-execution workflows bound to a worker script) |
 | `cloudflare_zero_trust_access_ai_controls_mcp_portal` | judged as a planned CloudflareZeroTrustMcpPortal kind (MCP server portals behind Access) |
 | `cloudflare_zero_trust_access_ai_controls_mcp_server` | judged as a planned CloudflareZeroTrustMcpServer kind (registered MCP servers behind Access, pairing with the portal) |
 | `cloudflare_zero_trust_access_custom_page` | judged as a planned CloudflareZeroTrustAccessCustomPage kind (branded block and login pages referenced by applications) |

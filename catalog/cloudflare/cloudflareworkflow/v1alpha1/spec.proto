@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflareworkflow.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// CloudflareWorkflowSpec registers a Workflow: a durable, multi-step
+// execution program served by a class exported from a deployed Worker
+// script. The Workflow object binds a name to that class and carries the
+// engine settings (instance retention, step limits, cron triggers);
+// instances of the workflow are then created at runtime by the Worker
+// platform, never by this resource.
+//
+// Two provider behaviors worth knowing before authoring:
+//   - Create IS a PUT: registering a workflow name that already exists
+//     silently adopts and overwrites it (the name-as-upsert class). Choose
+//     names deliberately.
+//   - The API keeps answering for deleted workflows with an is_deleted
+//     marker instead of a 404 -- deletion is real, but tooling that probes
+//     for existence must read the marker.
+message CloudflareWorkflowSpec {
+  // The Cloudflare account the workflow lives in.
+  string account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "account_id.hex32"
+      message: "account_id must be a 32-character hex string"
+      expression: "this.matches('^[0-9a-fA-F]{32}$')"
+    }
+  ];
+
+  // The workflow's name -- its identity within the account. Changing it
+  // replaces the workflow (the provider forces a new resource). Because the
+  // API treats create as an upsert, a name collision overwrites the existing
+  // workflow rather than failing.
+  string workflow_name = 2 [(buf.validate.field).string.min_len = 1];
+
+  // The name of the class exported by the Worker script that implements
+  // this workflow (the `WorkflowEntrypoint` subclass).
+  string class_name = 3 [(buf.validate.field).required = true];
+
+  // The Worker script that exports the workflow class: a literal script
+  // name, or a reference to a CloudflareWorker resource's script_name
+  // output. The script must be deployed before the workflow registers.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef script_name = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareWorker,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.script_name"
+  ];
+
+  // How long finished workflow instances are retained before the engine
+  // discards their state. Omit to keep Cloudflare's defaults.
+  CloudflareWorkflowRetention default_retention = 5;
+
+  // Engine limits applied to every instance of this workflow. Omit to keep
+  // Cloudflare's defaults.
+  CloudflareWorkflowLimits limits = 6;
+
+  // Cron triggers that start new workflow instances on a schedule. Each
+  // entry is one cron expression evaluated in UTC.
+  repeated CloudflareWorkflowSchedule schedules = 7;
+}
+
+// CloudflareWorkflowRetention controls how long finished instances (and
+// their step results) stay queryable. The API accepts either a plain number
+// of milliseconds ("5000") or a duration expression ("5 minutes", "1 hour")
+// -- both forms are passed through verbatim as strings. The provider models
+// these as dynamic int-or-string values and suppresses the diff when the API
+// echoes an equivalent representation.
+message CloudflareWorkflowRetention {
+  // Retention for instances that finished in error, as milliseconds
+  // ("5000") or a duration expression ("5 minutes").
+  string error_retention = 1;
+
+  // Retention for instances that finished successfully, as milliseconds
+  // ("5000") or a duration expression ("5 minutes").
+  string success_retention = 2;
+}
+
+// CloudflareWorkflowLimits caps what one workflow instance may do.
+message CloudflareWorkflowLimits {
+  // The maximum number of steps an instance may execute. Cloudflare
+  // requires at least 1.
+  optional int64 steps = 1 [(buf.validate.field).int64.gte = 1];
+}
+
+// CloudflareWorkflowSchedule starts new instances on a cron cadence.
+message CloudflareWorkflowSchedule {
+  // The cron expression (five-field, evaluated in UTC), e.g. "0 3 * * *"
+  // for 03:00 daily.
+  string cron = 1 [(buf.validate.field).required = true];
+}

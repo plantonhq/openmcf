@@ -1,0 +1,51 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareAiGateway
+metadata:
+  name: routed-gateway
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  gateway_id: routed-gateway
+  cache_invalidate_on_update: true
+  cache_ttl: 0
+  collect_logs: true
+  rate_limiting_interval: 60
+  rate_limiting_limit: 500
+  dynamic_routes:
+    - name: cheap-first
+      elements:
+        - id: start
+          type: start
+          outputs:
+            next:
+              element_id: check
+        - id: check
+          type: conditional
+          outputs:
+            on_true:
+              element_id: cheap
+            on_false:
+              element_id: smart
+          properties:
+            conditions: '{"metadata.tier": {"$eq": "free"}}'
+        - id: cheap
+          type: model
+          outputs:
+            success:
+              element_id: done
+            fallback:
+              element_id: smart
+          properties:
+            model: "@cf/meta/llama-3.1-8b-instruct"
+            provider: workers-ai
+            retries: 1
+        - id: smart
+          type: model
+          outputs:
+            success:
+              element_id: done
+          properties:
+            model: gpt-4o
+            provider: openai
+        - id: done
+          type: end
+          outputs: {}

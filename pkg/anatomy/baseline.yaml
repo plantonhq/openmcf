@@ -1057,6 +1057,7 @@ violations:
   - catalog/azure/azurewebapplicationfirewallpolicy/iac:missing-permissions
   - catalog/azure/azurewebapplicationfirewallpolicy:missing-control-profile
   - catalog/azure/azurewebapplicationfirewallpolicy:missing-cost-profile
+  - catalog/cloudflare/cloudflareaigateway/iac:missing-permissions
   - catalog/cloudflare/cloudflareauthenticatedoriginpulls/iac:missing-permissions
   - catalog/cloudflare/cloudflareauthenticatedoriginpullscertificate/iac:missing-permissions
   - catalog/cloudflare/cloudflarebotmanagement/iac:missing-permissions
@@ -1128,6 +1129,8 @@ violations:
   - catalog/cloudflare/cloudflareruleset/iac:missing-permissions
   - catalog/cloudflare/cloudflareruleset:missing-control-profile
   - catalog/cloudflare/cloudflareruleset:missing-cost-profile
+  - catalog/cloudflare/cloudflaresecretsstore/iac:missing-permissions
+  - catalog/cloudflare/cloudflaresecretsstoresecret/iac:missing-permissions
   - catalog/cloudflare/cloudflaresnippet/iac:missing-permissions
   - catalog/cloudflare/cloudflaresnippetrules/iac:missing-permissions
   - catalog/cloudflare/cloudflareturnstilewidget/iac:missing-permissions
@@ -1141,6 +1144,7 @@ violations:
   - catalog/cloudflare/cloudflareworkerskvpair/iac:missing-permissions
   - catalog/cloudflare/cloudflareworkerskvpair:missing-control-profile
   - catalog/cloudflare/cloudflareworkerskvpair:missing-cost-profile
+  - catalog/cloudflare/cloudflareworkflow/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrustaccessapplication/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrustaccessapplication:missing-control-profile
   - catalog/cloudflare/cloudflarezerotrustaccessapplication:missing-cost-profile

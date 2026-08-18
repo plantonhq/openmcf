@@ -5685,6 +5685,45 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"certificate_id", "zone_id", "expires_on", "status"},
 		},
 		{
+			name: "CloudflareWorkflow",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareWorkflow,
+			rawOutputs: map[string]interface{}{
+				"workflow_name": "order-fulfillment",
+				"version_id":    "b71b0b3f-13a8-4a90-9c56-8f2b6e6f3c5e",
+			},
+			mustPopulate: []string{"workflow_name", "version_id"},
+		},
+		{
+			name: "CloudflareSecretsStore",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareSecretsStore,
+			rawOutputs: map[string]interface{}{
+				"store_id": "7b0a3d5c1e9f42c68d1a2b3c4d5e6f70",
+			},
+			mustPopulate: []string{"store_id"},
+		},
+		{
+			name: "CloudflareSecretsStoreSecret",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareSecretsStoreSecret,
+			rawOutputs: map[string]interface{}{
+				"secret_id": "3a5c1e9f42c68d1a2b3c4d5e6f707b0a",
+				"store_id":  "7b0a3d5c1e9f42c68d1a2b3c4d5e6f70",
+			},
+			mustPopulate: []string{"secret_id", "store_id"},
+		},
+		{
+			// CloudflareAiGateway: the gateway slug plus the keyed map of
+			// managed dynamic-route ids (route name -> id) must both land on
+			// the StackOutputs proto -- the per-route import identity derives
+			// from the map.
+			name: "CloudflareAiGateway",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareAiGateway,
+			rawOutputs: map[string]interface{}{
+				"gateway_id":        "prod-llm-gateway",
+				"dynamic_route_ids": map[string]interface{}{"cheap-first": "route-1"},
+			},
+			mustPopulate: []string{"gateway_id", "dynamic_route_ids"},
+		},
+		{
 			// AzureResourceGroup: flat scalar outputs from both engines (ARM id,
 			// name, region) must each land on the StackOutputs proto --
 			// resource_group_name is the FK target every other Azure kind

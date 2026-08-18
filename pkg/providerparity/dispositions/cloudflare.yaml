@@ -137,15 +137,6 @@ resources:
   - resource: cloudflare_workers_for_platforms_dispatch_namespace
     disposition: model-planned
     reason: "judged as a planned CloudflareWorkersDispatchNamespace kind (Workers for Platforms dispatch namespace referenced by dispatch workers)"
-  - resource: cloudflare_workflow
-    disposition: model-planned
-    reason: "judged as a planned CloudflareWorkflow kind (durable-execution workflows bound to a worker script)"
-  - resource: cloudflare_secrets_store
-    disposition: model-planned
-    reason: "judged as a planned CloudflareSecretsStore kind (account secrets store, parent of secrets)"
-  - resource: cloudflare_secrets_store_secret
-    disposition: model-planned
-    reason: "judged as a planned CloudflareSecretsStoreSecret kind (secrets referenced by Worker bindings, rotating independently)"
   - resource: cloudflare_pipeline
     disposition: model-planned
     reason: "judged as a planned CloudflarePipeline kind (ingestion pipeline referencing sinks and streams)"
@@ -163,12 +154,6 @@ resources:
     disposition: model-planned
     reason: "folds into the existing CloudflareR2Bucket kind's planned depth expansion (per-bucket data catalog toggle)"
   # ---- AI ----------------------------------------------------------------------
-  - resource: cloudflare_ai_gateway
-    disposition: model-planned
-    reason: "judged as a planned CloudflareAiGateway kind (caching, rate limiting, and logging for AI calls)"
-  - resource: cloudflare_ai_gateway_dynamic_routing
-    disposition: model-planned
-    reason: "folds into the planned CloudflareAiGateway kind (routing configuration of the gateway)"
   - resource: cloudflare_ai_search_instance
     disposition: model-planned
     reason: "judged as a planned CloudflareAiSearchInstance kind (managed retrieval-augmented search instance)"

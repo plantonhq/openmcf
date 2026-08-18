@@ -1,0 +1,43 @@
+# Consumer-scoped CloudflareWorker install profile for CloudflareWorkflow's
+# registry prerequisite: a workflow registers a class exported by a DEPLOYED
+# Worker script, so one must exist before the workflow's lane deploys. This
+# profile lives in the CONSUMER's folder (the resolver prefers
+# <consumer>/e2e/prerequisites/<dep>.yaml) because the Worker kind's own
+# folder is held by the proof queue and publishes no install profile yet.
+# The fixture exports a real WorkflowEntrypoint subclass -- whether the
+# Workflows API validates the class at registration is a proof-lane fact,
+# and an honest fixture answers it either way. The script name is run-scoped
+# so two lanes in the same account cannot collide; metadata.name stays
+# stable -- it is the key the scenario's valueFrom reference resolves
+# against.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareWorker
+metadata:
+  name: planton-oss-e2e-cloudflareworker-prereq
+  id: planton-oss-e2e-cloudflareworker-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareworker
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  workerName: e2e-cfwf-prereq-${E2E_RUN_ID}
+  content: |
+    import { WorkflowEntrypoint } from "cloudflare:workers";
+    export class E2eWorkflow extends WorkflowEntrypoint {
+      async run(event, step) {
+        await step.do("noop", async () => "ok");
+        return "ok";
+      }
+    }
+    export default {
+      async fetch() {
+        return new Response("ok");
+      }
+    };
+  compatibilityDate: "2025-01-15"

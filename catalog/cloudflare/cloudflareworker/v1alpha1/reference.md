@@ -1768,6 +1768,7 @@ Fields on other kinds that can point at this resource:
 | CloudflareWorker | `spec.migrations.steps[].transferredClasses[].fromScript` | `status.outputs.script_name` |
 | CloudflareWorker | `spec.dispatchNamespaces[].outbound.worker.service` | `status.outputs.script_name` |
 | CloudflareWorker | `spec.tailConsumerBindings[].service` | `status.outputs.script_name` |
+| CloudflareWorkflow | `spec.scriptName` | `status.outputs.script_name` |
 
 ## See Also
 

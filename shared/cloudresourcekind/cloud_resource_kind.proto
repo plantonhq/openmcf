@@ -5542,6 +5542,45 @@ enum CloudResourceKind {
     prerequisites: [CloudflareWaitingRoom]
   }];
 
+  // --- 7270-7299: Cloudflare Workers-platform sub-band ---
+
+  // CloudflareWorker is a prerequisite because a workflow registers a class
+  // exported by a DEPLOYED Worker script -- the spec's script_name reference
+  // must resolve first.
+  CloudflareWorkflow = 7270 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfwf"
+    prerequisites: [CloudflareWorker]
+  }];
+  // No prerequisites: the Secrets Store is an account-scoped container and
+  // self-contained -- consumers (store secrets, Worker bindings, AI Gateway
+  // authentication) reference it, not the reverse.
+  CloudflareSecretsStore = 7271 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfss"
+  }];
+  // CloudflareSecretsStore is a prerequisite because every secret lives
+  // inside a store -- the spec's store_id reference must resolve first.
+  CloudflareSecretsStoreSecret = 7272 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfsss"
+    prerequisites: [CloudflareSecretsStore]
+  }];
+
+  // --- 7300-7369: Cloudflare AI sub-band ---
+
+  // No prerequisites: the gateway is account-scoped and self-contained; its
+  // optional Secrets Store link (BYO provider keys) is a scenario-level
+  // composition, not a structural requirement.
+  CloudflareAiGateway = 7300 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfaig"
+  }];
+
   // --- 7400-7409: Cloudflare load-balancing & health completions sub-band ---
 
   // CloudflareDnsZone is a prerequisite because standalone health checks are

@@ -537,3 +537,40 @@ spec:
     - terraform_type: cloudflare_waiting_room_event
       pulumi_type: cloudflare:index/waitingRoomEvent:WaitingRoomEvent
       id_format: "{zone_id}/{waiting_room_id}/{event_id}"
+    # --- Workers platform: Workflows and Secrets Store ------------------------------
+    - terraform_type: cloudflare_workflow
+      pulumi_type: cloudflare:index/workflow:Workflow
+      id_format: "{account_id}/{workflow_name}"
+      notes: >-
+        Identity is the workflow NAME, not a UUID. The API answers GET for
+        deleted workflows with a numeric is_deleted marker instead of a 404,
+        and create is a PUT -- importing an existing name and re-applying is
+        always an adopt, never a conflict.
+    - terraform_type: cloudflare_secrets_store
+      pulumi_type: cloudflare:index/secretsStore:SecretsStore
+      id_format: "{account_id}/{store_id}"
+      notes: >-
+        Every argument is create-only (the provider's Update is an empty
+        stub), and Cloudflare allows one store per account -- import is how
+        an existing (e.g. dashboard-created) store is adopted instead of
+        failing the create.
+    - terraform_type: cloudflare_secrets_store_secret
+      pulumi_type: cloudflare:index/secretsStoreSecret:SecretsStoreSecret
+      id_format: "{account_id}/{store_id}/{secret_id}"
+      notes: >-
+        value is write-only (never returned by the API) -- the round-trip
+        lands with an empty value and must re-assert it from configuration.
+    # --- AI ---------------------------------------------------------------------
+    - terraform_type: cloudflare_ai_gateway
+      pulumi_type: cloudflare:index/aiGateway:AiGateway
+      id_format: "{account_id}/{gateway_id}"
+      notes: >-
+        The gateway id is the user-chosen URL slug (the resource's own id
+        argument), not a server-generated UUID.
+    - terraform_type: cloudflare_ai_gateway_dynamic_routing
+      pulumi_type: cloudflare:index/aiGatewayDynamicRouting:AiGatewayDynamicRouting
+      id_format: "{account_id}/{gateway_id}/{route_id}"
+      notes: >-
+        The elements list forces replacement on any change, so a post-import
+        graph edit plans a replace, never an update -- renaming the route is
+        the only in-place change.

@@ -1839,6 +1839,10 @@ Allowed values (use exactly as shown):
 - `CloudflareSnippetRules` -- CloudflareDnsZone and CloudflareSnippet are prerequisites: the rules table is zone-scoped and every rule invokes a snippet by name.
 - `CloudflareWaitingRoom` -- CloudflareDnsZone is a prerequisite because waiting rooms sit on a zone's host+path -- the spec's zone_id reference must resolve first.
 - `CloudflareWaitingRoomEvent` -- CloudflareWaitingRoom is a prerequisite because events run on a room (and the room's own chain brings the zone).
+- `CloudflareWorkflow` -- CloudflareWorker is a prerequisite because a workflow registers a class exported by a DEPLOYED Worker script -- the spec's script_name reference must resolve first.
+- `CloudflareSecretsStore` -- No prerequisites: the Secrets Store is an account-scoped container and self-contained -- consumers (store secrets, Worker bindings, AI Gateway authentication) reference it, not the reverse.
+- `CloudflareSecretsStoreSecret` -- CloudflareSecretsStore is a prerequisite because every secret lives inside a store -- the spec's store_id reference must resolve first.
+- `CloudflareAiGateway` -- No prerequisites: the gateway is account-scoped and self-contained; its optional Secrets Store link (BYO provider keys) is a scenario-level composition, not a structural requirement.
 - `CloudflareHealthcheck` -- CloudflareDnsZone is a prerequisite because standalone health checks are zone-scoped -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
@@ -2646,6 +2650,10 @@ Allowed values (use exactly as shown):
 - `CloudflareSnippetRules` -- CloudflareDnsZone and CloudflareSnippet are prerequisites: the rules table is zone-scoped and every rule invokes a snippet by name.
 - `CloudflareWaitingRoom` -- CloudflareDnsZone is a prerequisite because waiting rooms sit on a zone's host+path -- the spec's zone_id reference must resolve first.
 - `CloudflareWaitingRoomEvent` -- CloudflareWaitingRoom is a prerequisite because events run on a room (and the room's own chain brings the zone).
+- `CloudflareWorkflow` -- CloudflareWorker is a prerequisite because a workflow registers a class exported by a DEPLOYED Worker script -- the spec's script_name reference must resolve first.
+- `CloudflareSecretsStore` -- No prerequisites: the Secrets Store is an account-scoped container and self-contained -- consumers (store secrets, Worker bindings, AI Gateway authentication) reference it, not the reverse.
+- `CloudflareSecretsStoreSecret` -- CloudflareSecretsStore is a prerequisite because every secret lives inside a store -- the spec's store_id reference must resolve first.
+- `CloudflareAiGateway` -- No prerequisites: the gateway is account-scoped and self-contained; its optional Secrets Store link (BYO provider keys) is a scenario-level composition, not a structural requirement.
 - `CloudflareHealthcheck` -- CloudflareDnsZone is a prerequisite because standalone health checks are zone-scoped -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
@@ -4601,6 +4609,10 @@ Allowed values (use exactly as shown):
 - `CloudflareSnippetRules` -- CloudflareDnsZone and CloudflareSnippet are prerequisites: the rules table is zone-scoped and every rule invokes a snippet by name.
 - `CloudflareWaitingRoom` -- CloudflareDnsZone is a prerequisite because waiting rooms sit on a zone's host+path -- the spec's zone_id reference must resolve first.
 - `CloudflareWaitingRoomEvent` -- CloudflareWaitingRoom is a prerequisite because events run on a room (and the room's own chain brings the zone).
+- `CloudflareWorkflow` -- CloudflareWorker is a prerequisite because a workflow registers a class exported by a DEPLOYED Worker script -- the spec's script_name reference must resolve first.
+- `CloudflareSecretsStore` -- No prerequisites: the Secrets Store is an account-scoped container and self-contained -- consumers (store secrets, Worker bindings, AI Gateway authentication) reference it, not the reverse.
+- `CloudflareSecretsStoreSecret` -- CloudflareSecretsStore is a prerequisite because every secret lives inside a store -- the spec's store_id reference must resolve first.
+- `CloudflareAiGateway` -- No prerequisites: the gateway is account-scoped and self-contained; its optional Secrets Store link (BYO provider keys) is a scenario-level composition, not a structural requirement.
 - `CloudflareHealthcheck` -- CloudflareDnsZone is a prerequisite because standalone health checks are zone-scoped -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
@@ -5408,6 +5420,10 @@ Allowed values (use exactly as shown):
 - `CloudflareSnippetRules` -- CloudflareDnsZone and CloudflareSnippet are prerequisites: the rules table is zone-scoped and every rule invokes a snippet by name.
 - `CloudflareWaitingRoom` -- CloudflareDnsZone is a prerequisite because waiting rooms sit on a zone's host+path -- the spec's zone_id reference must resolve first.
 - `CloudflareWaitingRoomEvent` -- CloudflareWaitingRoom is a prerequisite because events run on a room (and the room's own chain brings the zone).
+- `CloudflareWorkflow` -- CloudflareWorker is a prerequisite because a workflow registers a class exported by a DEPLOYED Worker script -- the spec's script_name reference must resolve first.
+- `CloudflareSecretsStore` -- No prerequisites: the Secrets Store is an account-scoped container and self-contained -- consumers (store secrets, Worker bindings, AI Gateway authentication) reference it, not the reverse.
+- `CloudflareSecretsStoreSecret` -- CloudflareSecretsStore is a prerequisite because every secret lives inside a store -- the spec's store_id reference must resolve first.
+- `CloudflareAiGateway` -- No prerequisites: the gateway is account-scoped and self-contained; its optional Secrets Store link (BYO provider keys) is a scenario-level composition, not a structural requirement.
 - `CloudflareHealthcheck` -- CloudflareDnsZone is a prerequisite because standalone health checks are zone-scoped -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
@@ -7404,6 +7420,10 @@ Allowed values (use exactly as shown):
 - `CloudflareSnippetRules` -- CloudflareDnsZone and CloudflareSnippet are prerequisites: the rules table is zone-scoped and every rule invokes a snippet by name.
 - `CloudflareWaitingRoom` -- CloudflareDnsZone is a prerequisite because waiting rooms sit on a zone's host+path -- the spec's zone_id reference must resolve first.
 - `CloudflareWaitingRoomEvent` -- CloudflareWaitingRoom is a prerequisite because events run on a room (and the room's own chain brings the zone).
+- `CloudflareWorkflow` -- CloudflareWorker is a prerequisite because a workflow registers a class exported by a DEPLOYED Worker script -- the spec's script_name reference must resolve first.
+- `CloudflareSecretsStore` -- No prerequisites: the Secrets Store is an account-scoped container and self-contained -- consumers (store secrets, Worker bindings, AI Gateway authentication) reference it, not the reverse.
+- `CloudflareSecretsStoreSecret` -- CloudflareSecretsStore is a prerequisite because every secret lives inside a store -- the spec's store_id reference must resolve first.
+- `CloudflareAiGateway` -- No prerequisites: the gateway is account-scoped and self-contained; its optional Secrets Store link (BYO provider keys) is a scenario-level composition, not a structural requirement.
 - `CloudflareHealthcheck` -- CloudflareDnsZone is a prerequisite because standalone health checks are zone-scoped -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
@@ -8211,6 +8231,10 @@ Allowed values (use exactly as shown):
 - `CloudflareSnippetRules` -- CloudflareDnsZone and CloudflareSnippet are prerequisites: the rules table is zone-scoped and every rule invokes a snippet by name.
 - `CloudflareWaitingRoom` -- CloudflareDnsZone is a prerequisite because waiting rooms sit on a zone's host+path -- the spec's zone_id reference must resolve first.
 - `CloudflareWaitingRoomEvent` -- CloudflareWaitingRoom is a prerequisite because events run on a room (and the room's own chain brings the zone).
+- `CloudflareWorkflow` -- CloudflareWorker is a prerequisite because a workflow registers a class exported by a DEPLOYED Worker script -- the spec's script_name reference must resolve first.
+- `CloudflareSecretsStore` -- No prerequisites: the Secrets Store is an account-scoped container and self-contained -- consumers (store secrets, Worker bindings, AI Gateway authentication) reference it, not the reverse.
+- `CloudflareSecretsStoreSecret` -- CloudflareSecretsStore is a prerequisite because every secret lives inside a store -- the spec's store_id reference must resolve first.
+- `CloudflareAiGateway` -- No prerequisites: the gateway is account-scoped and self-contained; its optional Secrets Store link (BYO provider keys) is a scenario-level composition, not a structural requirement.
 - `CloudflareHealthcheck` -- CloudflareDnsZone is a prerequisite because standalone health checks are zone-scoped -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`

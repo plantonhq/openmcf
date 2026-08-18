@@ -1,0 +1,13 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflaresecretsstore
+spec:
+  billing_model: free
+  notes: >-
+    The account Secrets Store is free on every plan -- creating the store,
+    holding secrets, and reads by Workers or AI Gateway create no charge.
+    The consumers that read from it carry their own cost profiles.

@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflaresecretsstoresecret.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// CloudflareSecretsStoreSecretSpec manages one secret inside the account
+// Secrets Store. The secret's VALUE is write-only at Cloudflare: the API
+// never returns it, so a value change is proven by the deployment, never by
+// reading back. Consumers (Worker secrets-store bindings, AI Gateway
+// authentication) reference the secret by store and name/ID -- rotating the
+// value here rotates it for every consumer without touching them.
+//
+// The name is create-only: renaming replaces the secret (new secret ID),
+// and consumers referencing the old name must be re-pointed.
+message CloudflareSecretsStoreSecretSpec {
+  // The Cloudflare account the store belongs to.
+  string account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "account_id.hex32"
+      message: "account_id must be a 32-character hex string"
+      expression: "this.matches('^[0-9a-fA-F]{32}$')"
+    }
+  ];
+
+  // The Secrets Store holding this secret: a literal store ID, or a
+  // reference to a CloudflareSecretsStore resource's store_id output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef store_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareSecretsStore,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.store_id"
+  ];
+
+  // The secret's name -- what consumers reference. Create-only: renaming
+  // replaces the secret under a new ID.
+  string name = 3 [(buf.validate.field).required = true];
+
+  // The secret value (up to 64 KiB). WRITE-ONLY: Cloudflare never returns
+  // it, so it can never be read back, imported, or drift-detected. Provide a
+  // managed-secret reference; the platform resolves it just-in-time at
+  // deploy and never stores it in plaintext.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef value = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // The Cloudflare surfaces allowed to read this secret. Cloudflare accepts
+  // exactly these scopes and always RETURNS them alphabetically sorted --
+  // the provider models the list as ordered, so any other order in
+  // configuration shows as permanent plan drift (a defect documented in the
+  // provider's own tests). This spec therefore requires the canonical
+  // alphabetical order up front, killing the drift class at the source.
+  repeated string scopes = 5 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).cel = {
+      id: "scopes.canonical"
+      message: "scopes must be drawn from access, ai_gateway, dex, workers -- listed alphabetically, without duplicates (e.g. [access, workers]); Cloudflare returns them sorted, so any other order would drift forever"
+      expression: "this == ['access', 'ai_gateway', 'dex', 'workers'].filter(s, s in this)"
+    }
+  ];
+
+  // A free-form note about the secret (shown in the dashboard).
+  string comment = 6;
+}

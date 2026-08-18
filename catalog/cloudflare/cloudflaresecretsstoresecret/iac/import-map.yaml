@@ -1,0 +1,27 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflaresecretsstoresecret
+spec:
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account home (Account ID in the
+        right-hand panel), or `GET /accounts` on the Cloudflare v4 API (the
+        id field).
+    - name: store_id
+      derivations:
+        - from_stack_output: store_id
+      where_to_find: >-
+        `GET /accounts/<account_id>/secrets_store/stores` on the Cloudflare
+        v4 API (the id field of the account's store), or the dashboard's
+        Secrets Store page.
+    - name: secret_id
+      derivations:
+        - from_stack_output: secret_id
+      where_to_find: >-
+        `GET /accounts/<account_id>/secrets_store/stores/<store_id>/secrets`
+        on the Cloudflare v4 API (the id field of the matching entry), or
+        the dashboard's Secrets Store page (secret details).

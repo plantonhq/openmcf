@@ -1,0 +1,20 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflareworkflow
+spec:
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account home (Account ID in the
+        right-hand panel), or `GET /accounts` on the Cloudflare v4 API (the
+        id field).
+    - name: workflow_name
+      derivations:
+        - from_stack_output: workflow_name
+      where_to_find: >-
+        Cloudflare dashboard -> Workers & Pages -> Workflows (the workflow's
+        name IS its identity), or `GET /accounts/<account_id>/workflows` on
+        the Cloudflare v4 API (the name field).

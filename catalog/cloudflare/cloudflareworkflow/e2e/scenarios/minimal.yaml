@@ -1,0 +1,30 @@
+# Minimal CloudflareWorkflow scenario: register a workflow bound to the
+# fixture Worker's exported class, with a step cap so the limits tree is
+# exercised live. The workflow name is run-scoped -- create is a PUT
+# (name-as-upsert), so a stable name would silently adopt a leaked earlier
+# registration instead of failing.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareWorkflow
+metadata:
+  name: planton-oss-e2e-cloudflareworkflow-minimal
+  id: planton-oss-e2e-cloudflareworkflow-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareworkflow
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  workflow_name: e2e-cfwf-min-${E2E_RUN_ID}
+  class_name: E2eWorkflow
+  script_name:
+    valueFrom:
+      kind: CloudflareWorker
+      name: planton-oss-e2e-cloudflareworker-prereq
+      fieldPath: status.outputs.script_name
+  limits:
+    steps: 32

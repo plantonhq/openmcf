@@ -366,6 +366,7 @@ import (
 	azurevpnserverconfigurationv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevpnserverconfiguration/v1alpha1"
 	azurevpnsitev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevpnsite/v1alpha1"
 	azurewebapplicationfirewallpolicyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurewebapplicationfirewallpolicy/v1alpha1"
+	cloudflareaigatewayv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareaigateway/v1alpha1"
 	cloudflareauthenticatedoriginpullsv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareauthenticatedoriginpulls/v1alpha1"
 	cloudflareauthenticatedoriginpullscertificatev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareauthenticatedoriginpullscertificate/v1alpha1"
 	cloudflarebotmanagementv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarebotmanagement/v1alpha1"
@@ -395,6 +396,8 @@ import (
 	cloudflarequeuev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarequeue/v1alpha1"
 	cloudflarer2bucketv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarer2bucket/v1alpha1"
 	cloudflarerulesetv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareruleset/v1alpha1"
+	cloudflaresecretsstorev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflaresecretsstore/v1alpha1"
+	cloudflaresecretsstoresecretv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflaresecretsstoresecret/v1alpha1"
 	cloudflaresnippetv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflaresnippet/v1alpha1"
 	cloudflaresnippetrulesv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflaresnippetrules/v1alpha1"
 	cloudflareturnstilewidgetv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareturnstilewidget/v1alpha1"
@@ -402,6 +405,7 @@ import (
 	cloudflarewaitingroomeventv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarewaitingroomevent/v1alpha1"
 	cloudflareworkerv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareworker/v1alpha1"
 	cloudflareworkerskvpairv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareworkerskvpair/v1alpha1"
+	cloudflareworkflowv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareworkflow/v1alpha1"
 	cloudflarezerotrustaccessapplicationv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessapplication/v1alpha1"
 	cloudflarezerotrustaccessgroupv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessgroup/v1alpha1"
 	cloudflarezerotrustaccessidentityproviderv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessidentityprovider/v1alpha1"
@@ -1034,6 +1038,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 }
 
 var ProviderCloudflareMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
+	cloudresourcekind.CloudResourceKind_CloudflareAiGateway:                           &cloudflareaigatewayv1alpha1.CloudflareAiGateway{},
 	cloudresourcekind.CloudResourceKind_CloudflareAuthenticatedOriginPulls:            &cloudflareauthenticatedoriginpullsv1alpha1.CloudflareAuthenticatedOriginPulls{},
 	cloudresourcekind.CloudResourceKind_CloudflareAuthenticatedOriginPullsCertificate: &cloudflareauthenticatedoriginpullscertificatev1alpha1.CloudflareAuthenticatedOriginPullsCertificate{},
 	cloudresourcekind.CloudResourceKind_CloudflareBotManagement:                       &cloudflarebotmanagementv1alpha1.CloudflareBotManagement{},
@@ -1063,6 +1068,8 @@ var ProviderCloudflareMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_CloudflareQueue:                               &cloudflarequeuev1alpha1.CloudflareQueue{},
 	cloudresourcekind.CloudResourceKind_CloudflareR2Bucket:                            &cloudflarer2bucketv1alpha1.CloudflareR2Bucket{},
 	cloudresourcekind.CloudResourceKind_CloudflareRuleset:                             &cloudflarerulesetv1alpha1.CloudflareRuleset{},
+	cloudresourcekind.CloudResourceKind_CloudflareSecretsStore:                        &cloudflaresecretsstorev1alpha1.CloudflareSecretsStore{},
+	cloudresourcekind.CloudResourceKind_CloudflareSecretsStoreSecret:                  &cloudflaresecretsstoresecretv1alpha1.CloudflareSecretsStoreSecret{},
 	cloudresourcekind.CloudResourceKind_CloudflareSnippet:                             &cloudflaresnippetv1alpha1.CloudflareSnippet{},
 	cloudresourcekind.CloudResourceKind_CloudflareSnippetRules:                        &cloudflaresnippetrulesv1alpha1.CloudflareSnippetRules{},
 	cloudresourcekind.CloudResourceKind_CloudflareTurnstileWidget:                     &cloudflareturnstilewidgetv1alpha1.CloudflareTurnstileWidget{},
@@ -1070,6 +1077,7 @@ var ProviderCloudflareMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_CloudflareWaitingRoomEvent:                    &cloudflarewaitingroomeventv1alpha1.CloudflareWaitingRoomEvent{},
 	cloudresourcekind.CloudResourceKind_CloudflareWorker:                              &cloudflareworkerv1alpha1.CloudflareWorker{},
 	cloudresourcekind.CloudResourceKind_CloudflareWorkersKvPair:                       &cloudflareworkerskvpairv1alpha1.CloudflareWorkersKvPair{},
+	cloudresourcekind.CloudResourceKind_CloudflareWorkflow:                            &cloudflareworkflowv1alpha1.CloudflareWorkflow{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessApplication:          &cloudflarezerotrustaccessapplicationv1alpha1.CloudflareZeroTrustAccessApplication{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessGroup:                &cloudflarezerotrustaccessgroupv1alpha1.CloudflareZeroTrustAccessGroup{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessIdentityProvider:     &cloudflarezerotrustaccessidentityproviderv1alpha1.CloudflareZeroTrustAccessIdentityProvider{},

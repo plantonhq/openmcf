@@ -100,7 +100,8 @@ func (c *Client) ResourceExists(ctx context.Context, path string) (bool, error) 
 // ResourcePresent reports whether a GET finds a resource that is still
 // present after applying opts. 404 and Cloudflare's 400/7003 unknown-object
 // answer are always absent. A 200 is present unless SoftDeleted sees a
-// non-null result.deleted_at or result.status matches AbsentStatuses.
+// non-null result.deleted_at, IsDeletedFlag sees a non-zero
+// result.is_deleted, or result.status matches AbsentStatuses.
 // Parses the v4 envelope, so it must never replace ResourceExists on
 // raw-body endpoints (e.g. the KV value endpoint).
 func (c *Client) ResourcePresent(ctx context.Context, path string, opts verify.EnvelopePresence) (bool, error) {
@@ -111,7 +112,7 @@ func (c *Client) ResourcePresent(ctx context.Context, path string, opts verify.E
 
 	switch resp.StatusCode {
 	case http.StatusOK:
-		if !opts.SoftDeleted && len(opts.AbsentStatuses) == 0 && !opts.EmptyResultArray {
+		if !opts.SoftDeleted && len(opts.AbsentStatuses) == 0 && !opts.EmptyResultArray && !opts.IsDeletedFlag {
 			return true, nil
 		}
 		var envelope struct {
@@ -126,15 +127,22 @@ func (c *Client) ResourcePresent(ctx context.Context, path string, opts verify.E
 				return false, nil
 			}
 		}
-		if opts.SoftDeleted || len(opts.AbsentStatuses) > 0 {
+		if opts.SoftDeleted || len(opts.AbsentStatuses) > 0 || opts.IsDeletedFlag {
 			var object struct {
-				DeletedAt *string `json:"deleted_at"`
-				Status    string  `json:"status"`
+				DeletedAt *string  `json:"deleted_at"`
+				Status    string   `json:"status"`
+				IsDeleted *float64 `json:"is_deleted"`
 			}
 			if err := json.Unmarshal(envelope.Result, &object); err != nil {
 				return false, errors.Errorf("GET %s returned 200 with an unparseable result object: %s", path, body)
 			}
 			if opts.SoftDeleted && object.DeletedAt != nil && *object.DeletedAt != "" {
+				return false, nil
+			}
+			// The Workflows API's soft-delete variant: is_deleted is a
+			// required NUMERIC field in the GET response (not a timestamp),
+			// non-zero once the workflow is deleted.
+			if opts.IsDeletedFlag && object.IsDeleted != nil && *object.IsDeleted != 0 {
 				return false, nil
 			}
 			for _, status := range opts.AbsentStatuses {

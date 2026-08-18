@@ -1,0 +1,29 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareAiGateway
+metadata:
+  name: prod-llm-gateway
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  gateway_id: prod-llm-gateway
+  cache_invalidate_on_update: true
+  cache_ttl: 300
+  collect_logs: true
+  rate_limiting_interval: 60
+  rate_limiting_limit: 1000
+  rate_limiting_technique: sliding
+  authentication: true
+  retry:
+    backoff: exponential
+    delay: 1000
+    max_attempts: 3
+  guardrails:
+    prompt:
+      p1: BLOCK
+    response: {}
+  spend_limits:
+    enabled: true
+    rules:
+      - id: daily-cap
+        limit: 50
+        limit_type: cost
+        window: 86400

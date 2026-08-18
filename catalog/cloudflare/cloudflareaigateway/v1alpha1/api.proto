@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflareaigateway.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflareaigateway/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflareaigateway/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareAiGateway is a KRM-style resource for managing one AI Gateway:
+// the caching, rate-limiting, guardrails, spend-limits, and routing control
+// plane in front of AI model traffic.
+message CloudflareAiGateway {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareAiGateway'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareAiGatewaySpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareAiGatewayStatus status = 5;
+}
+
+// CloudflareAiGatewayStatus represents the observed state of the gateway.
+message CloudflareAiGatewayStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareAiGatewayStackOutputs outputs = 1;
+}
