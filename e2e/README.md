@@ -2068,6 +2068,32 @@ owns two responsibilities beyond wiring verifiers:
   live: a project ghost does not block recreating the same name (the
   hub's purge sweeps its children's ghosts); a stranded standalone
   project ghost, should one ever surface, is a portal-only purge.
+- **Recovery Services protected-item deletes are asynchronous BEYOND the
+  engine's poller, and can silently never land.** Measured live (session 055,
+  VM protection): after a `pulumi destroy` the provider reported successful,
+  ARM reads kept answering 200 on the item for minutes (a smoke item has ZERO
+  recovery points, so a landed delete removes it outright -- the 14-day
+  soft-delete ghost class only applies to items WITH recovery points). One
+  run went further: the provider's DeleteThenPoll returned success while the
+  vault ran NO DeleteBackupData job at all -- the item survived ACTIVE, still
+  policy-attached, indefinitely. A surviving active item then wedges the whole
+  teardown chain: the policy delete fails `BMSUserErrorPolicyObjectInUse`, the
+  vault delete fails `BMSUserErrorVaultDeletionNotAllowed`, and the resource
+  group destroy hangs until the test binary's timeout panics (eating the
+  stage summary). The absence bar these verifiers use: a bounded poll (10
+  min) where 404 is absent, a 200 with
+  `properties.isScheduledForDeferredDelete: true` is ALSO absent (the azurerm
+  provider's own ghost bar), and an item still active at the deadline fails
+  honestly. Manual recovery for the dropped-delete flake:
+  `az backup protection disable --delete-backup-data true --yes` with
+  FRIENDLY names (`--container-name <vm-name> --item-name <vm-name>` -- the
+  full semicolon container ID fails `BMSUserErrorContainerNameIncorrectFormat`
+  from the CLI) lands in seconds, then vault and RG delete normally. The
+  orphan sweep owns the recycle-bin listing (`az backup item list
+  --backup-management-type AzureIaaSVM` on any surviving vault); the modules
+  deliberately leave the provider's `recover_soft_deleted_backup_protected_vm`
+  feature off (silently adopting ghost recovery points is not smoke-lane
+  behavior).
 - **A workspace managed VNet (approved-outbound + provision-on-creation)
   is a new medium-slow AND fragile class.** Create of the workspace object
   is ~1 min; adding the managed VNet plus a private-endpoint outbound

@@ -70,6 +70,12 @@ message AzureBackupPolicyVmSpec {
   // VM (fast restores without vault round-trips): 1-30. On V1
   // policies the cap is 5 (the provider's own contract). Unspecified
   // applies the service default (2 for V1, 7 for V2).
+  //
+  // Azure requires vaulted daily retention to be STRICTLY greater
+  // than this value (BMSUserErrorInstantRPRetentionExceedsVaultedRetention
+  // -- live-proven). A V2 policy that leaves this unset therefore
+  // cannot use retention_daily.count of 7: set this field to 1-6, or
+  // raise daily count above 7.
   optional int32 instant_restore_retention_days = 6 [
     (buf.validate.field).int32.gte = 1,
     (buf.validate.field).int32.lte = 30
@@ -140,6 +146,11 @@ message AzureBackupPolicyVmSpec {
     id: "bpv_instant_restore_v1_cap"
     message: "instant_restore_retention_days is capped at 5 on V1 policies -- use policy_type V2 for up to 30 days"
     expression: "!has(this.instant_restore_retention_days) || (has(this.policy_type) && this.policy_type == 'V2') || this.instant_restore_retention_days <= 5"
+  };
+  option (buf.validate.message).cel = {
+    id: "bpv_instant_lt_daily"
+    message: "instant_restore_retention_days must be less than retention_daily.count -- Azure rejects Instant RP that meets or exceeds vaulted daily retention (BMSUserErrorInstantRPRetentionExceedsVaultedRetention). V2 defaults Instant RP to 7 days when unset, so a daily count of 7 needs an explicit smaller instant value"
+    expression: "!has(this.retention_daily) || (has(this.instant_restore_retention_days) ? this.instant_restore_retention_days < this.retention_daily.count : !(has(this.policy_type) && this.policy_type == 'V2' && this.retention_daily.count <= 7))"
   };
 }
 
