@@ -12,11 +12,12 @@ spec:
     groups:
       - purpose: ManageProject
         permissions:
+          - resourcemanager.projects.create
           - resourcemanager.projects.get
           - resourcemanager.projects.update
           - resourcemanager.projects.delete
         provenance: derived
-        notes: Covers google_project after creation -- read/refresh, in-place updates (display name, labels), and destroy. delete performs the shutdown that starts the 30-day pending-deletion window; deletion_policy PREVENT and ABANDON are client-side stances that never call the API. CREATION needs one more grant this list cannot carry -- resourcemanager.projects.create authorizes on the PARENT node (the organization or folder named by parent_type/parent_id), never on the project itself, so it appears only in IAM's org/folder-scoped testable-permissions inventory (verified live against both scopes) and is the grant inside roles/resourcemanager.projectCreator. Grant it to the deploying principal on the destination parent alongside this group.
+        notes: Covers the whole google_project lifecycle -- create, read/refresh, in-place updates (display name, labels), and destroy. delete performs the shutdown that starts the 30-day pending-deletion window; deletion_policy PREVENT and ABANDON are client-side stances that never call the API. Grant placement for create differs from its siblings -- resourcemanager.projects.create authorizes on the PARENT node (the organization or folder named by parent_type/parent_id), never on the project itself (it lives in IAM's org/folder-scoped inventory and is the grant inside roles/resourcemanager.projectCreator), so grant it to the deploying principal on the destination parent.
       - purpose: MoveProjectParent
         permissions:
           - resourcemanager.projects.move
@@ -26,8 +27,9 @@ spec:
         permissions:
           - resourcemanager.projects.createBillingAssignment
           - resourcemanager.projects.deleteBillingAssignment
+          - billing.resourceAssociations.create
         provenance: derived
-        notes: Required only when billing_account_id is set. The link is authorized on BOTH sides, and this list carries only the project side -- billing.resourceAssociations.create authorizes on the billing account itself, so it appears only in IAM's billing-account-scoped testable-permissions inventory (verified live against that scope) and is the heart of roles/billing.user; grant it to the deploying principal on the billing account alongside this group. deleteBillingAssignment covers unlinking or switching accounts on update.
+        notes: Required only when billing_account_id is set. The link is authorized on BOTH sides -- the project-side assignments, and billing.resourceAssociations.create on the billing account itself (it lives in IAM's billing-account-scoped inventory and is the heart of roles/billing.user), so grant that one to the deploying principal ON the billing account, not the project. deleteBillingAssignment covers unlinking or switching accounts on update.
       - purpose: EnableApis
         permissions:
           - serviceusage.services.enable

@@ -119,6 +119,67 @@ func TestStaticSlugHoursAndCounts(t *testing.T) {
 	}
 }
 
+// TestSlugRegionAndCurrencyAgreement pins the live boundary's agreement
+// check on slug-named prices: pricing a Frankfurt manifest with a
+// Virginia rate would be a wrong number that looks exactly like a right
+// one -- the defining failure mode this engine exists to prevent -- so a
+// slug entry whose region disagrees with the manifest's refuses (naming
+// both regions), a "global" entry prices anywhere, and a currency
+// disagreement refuses too. Mirrors the Java evaluator's identical pin.
+func TestSlugRegionAndCurrencyAgreement(t *testing.T) {
+	manifest := &albv1.AwsAlb{Spec: &albv1.AwsAlbSpec{
+		Region:   "eu-central-1",
+		Internal: true,
+	}}
+	spec := &derivationv1.ComponentCostDerivationSpec{
+		Currency:      "USD",
+		HoursPerMonth: 730,
+		Region:        &derivationv1.RegionBinding{FromField: "region", Assumption: "us-east-1"},
+		Lines: []*derivationv1.LineRule{{
+			SkuMeter: "Application Load Balancer hours",
+			Quantity: []*derivationv1.QuantityFactor{constantFactor("1"), hoursFactor()},
+			Price:    &derivationv1.LineRule_PriceSlug{PriceSlug: "alb-hours-us-east-1"},
+			Basis:    "one load balancer, billed every hour of the month",
+		}},
+	}
+
+	// A slug entry pinned for another region refuses instead of silently
+	// pricing this one, and the reason names both regions.
+	entries := entriesBySlug(usdEntry("alb-hours-us-east-1", "Elastic Load Balancing", "hours", "us-east-1"))
+	preset, refusal, err := Evaluate(manifest, spec, entries)
+	if err != nil || preset != nil {
+		t.Fatalf("Evaluate(wrong region): err=%v preset=%+v, want a refusal", err, preset)
+	}
+	if refusal == nil {
+		t.Fatal("Evaluate(wrong region): priced instead of refusing")
+	}
+	if !strings.Contains(refusal.Reason, "eu-central-1") || !strings.Contains(refusal.Reason, "us-east-1") {
+		t.Errorf("refusal reason must name both regions, got %q", refusal.Reason)
+	}
+
+	// A "global" entry prices the same manifest fine.
+	entries = entriesBySlug(usdEntry("alb-hours-us-east-1", "Elastic Load Balancing", "hours", "global"))
+	preset, refusal, err = Evaluate(manifest, spec, entries)
+	if err != nil || refusal != nil {
+		t.Fatalf("Evaluate(global entry): err=%v refusal=%+v, want priced", err, refusal)
+	}
+	if len(preset.GetQuantityLines()) != 1 {
+		t.Fatalf("global entry lines: got %d, want 1", len(preset.GetQuantityLines()))
+	}
+
+	// A currency disagreement refuses too, naming both currencies.
+	eurEntry := usdEntry("alb-hours-us-east-1", "Elastic Load Balancing", "hours", "eu-central-1")
+	eurEntry.Currency = "EUR"
+	entries = entriesBySlug(eurEntry)
+	_, refusal, err = Evaluate(manifest, spec, entries)
+	if err != nil {
+		t.Fatalf("Evaluate(wrong currency): %v", err)
+	}
+	if refusal == nil || !strings.Contains(refusal.Reason, "EUR") || !strings.Contains(refusal.Reason, "USD") {
+		t.Errorf("currency refusal must name both currencies, got %+v", refusal)
+	}
+}
+
 // TestAttributeLookup exercises value-keyed price selection: manifest
 // values pick the entry, zero matches refuse, ambiguity refuses.
 func TestAttributeLookup(t *testing.T) {

@@ -60,21 +60,59 @@ func TestAwsActionsExist(t *testing.T) {
 				t.Fatalf("loading %s/%s: %v", provider, component, err)
 			}
 			for _, statement := range manifest.GetSpec().GetAws().GetStatements() {
+				// The scopability census for this statement: one
+				// non-scopable action anywhere in it decides the whole
+				// statement's resource shape (IAM evaluates every action
+				// against the same Resource list).
+				nonScopableAction := ""
+				scopableAction := ""
+				allResolved := true
 				for _, action := range statement.GetActions() {
 					prefix, name, found := strings.Cut(action, ":")
 					if !found {
 						t.Errorf("%s/%s: action %q has no service prefix", provider, component, action)
+						allResolved = false
 						continue
 					}
 					referenced[prefix] = true
-					published := inv.ServiceActions(prefix)
-					if published == nil {
+					svc := inv.Lookup(prefix)
+					if svc == nil {
 						t.Errorf("%s/%s: action %q names service %q which the inventory snapshot does not cover -- run `make generate-action-inventory`", provider, component, action, prefix)
+						allResolved = false
 						continue
 					}
-					if MatchAction(published, name) == 0 {
+					total := MatchAction(svc.Actions, name)
+					if total == 0 {
 						t.Errorf("%s/%s: action %q does not exist in AWS's service reference for %q -- the name is invented or misspelled", provider, component, action, prefix)
+						allResolved = false
+						continue
 					}
+					nonScopable := MatchAction(svc.NonScopableActions, name)
+					if nonScopable > 0 && nonScopableAction == "" {
+						nonScopableAction = action
+					}
+					if total > nonScopable && scopableAction == "" {
+						scopableAction = action
+					}
+				}
+				// The scopability gate. AWS's reference declares, per
+				// action, the resource types an ARN can name; an action
+				// declaring NONE is evaluated against Resource "*" only,
+				// so a statement carrying one must grant exactly "*" --
+				// an ARN-scoped grant reads tighter than required and
+				// silently DENIES at runtime, the quiet failure mode a
+				// least-privilege catalog must make impossible. The
+				// converse holds too: a "*" statement whose actions all
+				// scope is wider than required -- split the statement and
+				// scope what scopes (the manifests' own sibling-split
+				// idiom).
+				resources := statement.GetResources()
+				starOnly := len(resources) == 1 && resources[0] == "*"
+				if nonScopableAction != "" && !starOnly {
+					t.Errorf("%s/%s: statement %q grants %s, which AWS's reference lists NO resource types for -- IAM evaluates it against Resource \"*\" only, so this statement's resources %v never match and the grant denies at runtime; make the resources exactly [\"*\"] (moving scopable siblings to their own scoped statement)", provider, component, statement.GetSid(), nonScopableAction, resources)
+				}
+				if starOnly && allResolved && nonScopableAction == "" && scopableAction != "" {
+					t.Errorf("%s/%s: statement %q grants Resource \"*\" but every action in it (e.g. %s) supports resource-level scoping -- scope the statement to the resources the module manages, or defend the wildcard where truly unavoidable", provider, component, statement.GetSid(), scopableAction)
 				}
 			}
 		}
@@ -254,11 +292,12 @@ func TestRenderLoadRoundTrip(t *testing.T) {
 		Provider: "aws",
 		Services: []Service{
 			{
-				Prefix:         "lambda",
-				SourceURL:      "https://servicereference.us-east-1.amazonaws.com/v1/lambda/lambda.json",
-				SourceModified: "2026-08-01",
-				RetrievedOn:    "2026-08-15",
-				Actions:        []string{"CreateFunction", "DeleteFunction"},
+				Prefix:             "lambda",
+				SourceURL:          "https://servicereference.us-east-1.amazonaws.com/v1/lambda/lambda.json",
+				SourceModified:     "2026-08-01",
+				RetrievedOn:        "2026-08-15",
+				Actions:            []string{"CreateFunction", "DeleteFunction", "ListFunctions"},
+				NonScopableActions: []string{"ListFunctions"},
 			},
 			{
 				Prefix:         "s3",
@@ -309,6 +348,10 @@ func TestLoadAwsRefusals(t *testing.T) {
 		{"duplicate action", func(i *Inventory) { i.Services[0].Actions = []string{"CreateFunction", "CreateFunction"} }, "duplicates"},
 		{"empty actions", func(i *Inventory) { i.Services[0].Actions = nil }, "no actions"},
 		{"missing provenance", func(i *Inventory) { i.Services[0].RetrievedOn = "" }, "required"},
+		{"non-scopable entry not published", func(i *Inventory) { i.Services[0].NonScopableActions = []string{"FrobnicateFunction"} }, "not in actions"},
+		{"unsorted non-scopable actions", func(i *Inventory) {
+			i.Services[0].NonScopableActions = []string{"DeleteFunction", "CreateFunction"}
+		}, "not sorted"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -429,6 +472,12 @@ func renderRaw(inv *Inventory) string {
 		if len(svc.Actions) > 0 {
 			b.WriteString("    actions:\n")
 			for _, action := range svc.Actions {
+				b.WriteString("      - " + action + "\n")
+			}
+		}
+		if len(svc.NonScopableActions) > 0 {
+			b.WriteString("    non_scopable_actions:\n")
+			for _, action := range svc.NonScopableActions {
 				b.WriteString("      - " + action + "\n")
 			}
 		}

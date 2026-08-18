@@ -6,7 +6,10 @@
 # whichever meter applies (Azure's default is 1 when unset). BASIC
 # refuses honestly: its throughput-unit rate is not pinned in the price
 # book (no committed preset deploys BASIC), and a refusal beats an
-# unproven figure. The estimate generator replays the catalog presets
+# unproven figure. A namespace wired onto a dedicated cluster refuses
+# too: cluster placement moves the bill to the cluster's capacity
+# units, so the tier meters here would overstate a bill the cluster
+# already carries. The estimate generator replays the catalog presets
 # through these rules to emit ../estimates/azureeventhubnamespace.yaml;
 # a server-side estimator evaluates the same rules against live
 # manifests.
@@ -27,6 +30,10 @@ spec:
           op: equals
           value: BASIC
       reason: the Basic tier's throughput-unit rate is not pinned in the price book -- no committed preset deploys BASIC, and stating a committed figure from an unpinned rate would misstate the bill; Basic namespaces price when their rate enters the book
+    - when:
+        - field_path: dedicated_cluster_id
+          op: is_set
+      reason: a namespace placed on a dedicated cluster bills through the cluster's capacity units on its own AzureEventHubCluster component, not through these tier meters -- pricing the namespace's own tier would state a charge the cluster placement supersedes
   lines:
     - sku_meter: throughput units
       applies_when:
@@ -81,4 +88,4 @@ spec:
           op: equals
           value: PREMIUM
       text: The price list publishes no Premium ingress or capture meters -- both are included in the PU rate.
-    - text: A namespace placed on a dedicated cluster (dedicated_cluster_id) bills through the cluster's capacity units on its own AzureEventHubCluster component instead of these meters -- a reference these rules cannot read, so this estimate prices the namespace's own tier.
+    - text: A namespace placed on a dedicated cluster (dedicated_cluster_id) bills through the cluster's capacity units on its own AzureEventHubCluster component -- these rules refuse such a manifest rather than pricing tier meters the placement supersedes; the committed presets all deploy self-serve tiers.

@@ -24,6 +24,22 @@ import (
 // existence question.
 const queryTestablePermissionsURL = "https://iam.googleapis.com/v1/permissions:queryTestablePermissions"
 
+// The org and billing-account anchor environment variables. IAM's
+// inventory is SCOPE-TYPED: a permission is listed only under the
+// resource types it can be tested on, so permissions that authorize
+// exclusively on organizations/folders (resourcemanager.projects.create)
+// or billing accounts (billing.resourceAssociations.create) are
+// structurally invisible to a project-anchored query -- the gate would
+// reject real, live-verified permissions. The fetcher therefore queries
+// all three scopes and unions the results. Like the project anchor, WHICH
+// org or billing account does not matter (names are global within a
+// scope); the anchors exist only to type the queries, and they are
+// explicit configuration because a principal can often see several.
+const (
+	gcpOrgEnvVar            = "PLANTON_GCP_ORG"
+	gcpBillingAccountEnvVar = "PLANTON_GCP_BILLING_ACCOUNT"
+)
+
 // refreshGcp rewrites the committed GCP snapshot
 // (pkg/iac/actioninventory/gcp.yaml) from IAM's testable-permissions
 // inventory, scoped to exactly the services (the first dotted segment,
@@ -31,7 +47,10 @@ const queryTestablePermissionsURL = "https://iam.googleapis.com/v1/permissions:q
 // permissions manifests reference. The credential contract mirrors the
 // GCP price fetcher's ADC arm: the operator's own application-default
 // credentials mint the bearer token (network in make, never in CI). The
-// query anchors on the operator's active gcloud project.
+// queries anchor on three scopes -- the operator's active gcloud project,
+// the organization named by PLANTON_GCP_ORG, and the billing account
+// named by PLANTON_GCP_BILLING_ACCOUNT -- and union the results, because
+// the inventory is scope-typed (see the anchor constants above).
 func refreshGcp(repoRoot string) error {
 	services, err := referencedGcpServices(repoRoot)
 	if err != nil {
@@ -50,11 +69,27 @@ func refreshGcp(repoRoot string) error {
 	if err != nil {
 		return err
 	}
+	org := strings.TrimSpace(os.Getenv(gcpOrgEnvVar))
+	if org == "" {
+		return fmt.Errorf("no organization anchor -- set %s=<organization-id> (any organization the credential can query; it only anchors the org-scoped inventory query, without which org-scoped permissions like resourcemanager.projects.create are invisible)", gcpOrgEnvVar)
+	}
+	billingAccount := strings.TrimSpace(os.Getenv(gcpBillingAccountEnvVar))
+	if billingAccount == "" {
+		return fmt.Errorf("no billing-account anchor -- set %s=<billing-account-id> (any billing account the credential can query; it only anchors the billing-scoped inventory query, without which billing-scoped permissions like billing.resourceAssociations.create are invisible)", gcpBillingAccountEnvVar)
+	}
 
 	client := &http.Client{Timeout: 60 * time.Second}
-	permissionsByService, err := fetchTestablePermissions(client, token, project)
-	if err != nil {
-		return err
+	anchors := []string{
+		"//cloudresourcemanager.googleapis.com/projects/" + project,
+		"//cloudresourcemanager.googleapis.com/organizations/" + org,
+		"//cloudbilling.googleapis.com/billingAccounts/" + billingAccount,
+	}
+	permissionsByService := map[string][]string{}
+	seen := map[string]bool{}
+	for _, anchor := range anchors {
+		if err := mergeTestablePermissions(client, token, anchor, permissionsByService, seen); err != nil {
+			return err
+		}
 	}
 
 	today := time.Now().UTC().Format("2006-01-02")
@@ -152,31 +187,31 @@ func gcloudProject() (string, error) {
 	return project, nil
 }
 
-// fetchTestablePermissions pages through IAM's full permission inventory
-// for the anchor project and returns the names grouped by service segment
-// (the part before the first dot), stripped of that segment.
-func fetchTestablePermissions(client *http.Client, token, project string) (map[string][]string, error) {
-	permissionsByService := map[string][]string{}
-	seen := map[string]bool{}
+// mergeTestablePermissions pages through IAM's permission inventory for
+// one scope anchor and merges the names into the by-service map, grouped
+// by service segment (the part before the first dot) and stripped of that
+// segment. The shared seen set makes the three anchors' union
+// order-independent: a permission testable on several scopes lands once.
+func mergeTestablePermissions(client *http.Client, token, fullResourceName string, permissionsByService map[string][]string, seen map[string]bool) error {
 	pageToken := ""
 	for {
 		body, err := json.Marshal(map[string]any{
-			"fullResourceName": "//cloudresourcemanager.googleapis.com/projects/" + project,
+			"fullResourceName": fullResourceName,
 			"pageSize":         1000,
 			"pageToken":        pageToken,
 		})
 		if err != nil {
-			return nil, err
+			return err
 		}
 		request, err := http.NewRequest(http.MethodPost, queryTestablePermissionsURL, bytes.NewReader(body))
 		if err != nil {
-			return nil, err
+			return err
 		}
 		request.Header.Set("Authorization", "Bearer "+token)
 		request.Header.Set("Content-Type", "application/json")
 		response, err := client.Do(request)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		var doc struct {
 			Permissions []struct {
@@ -187,10 +222,10 @@ func fetchTestablePermissions(client *http.Client, token, project string) (map[s
 		decodeErr := json.NewDecoder(response.Body).Decode(&doc)
 		response.Body.Close()
 		if response.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("POST %s: %s", queryTestablePermissionsURL, response.Status)
+			return fmt.Errorf("POST %s for %s: %s", queryTestablePermissionsURL, fullResourceName, response.Status)
 		}
 		if decodeErr != nil {
-			return nil, fmt.Errorf("POST %s: decoding: %w", queryTestablePermissionsURL, decodeErr)
+			return fmt.Errorf("POST %s for %s: decoding: %w", queryTestablePermissionsURL, fullResourceName, decodeErr)
 		}
 		for _, permission := range doc.Permissions {
 			service, name, found := strings.Cut(permission.Name, ".")
@@ -201,7 +236,7 @@ func fetchTestablePermissions(client *http.Client, token, project string) (map[s
 			permissionsByService[service] = append(permissionsByService[service], name)
 		}
 		if doc.NextPageToken == "" {
-			return permissionsByService, nil
+			return nil
 		}
 		pageToken = doc.NextPageToken
 	}

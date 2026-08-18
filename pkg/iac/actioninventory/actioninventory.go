@@ -21,7 +21,13 @@
 // price books' immutable versioned offer documents, the reference serves
 // latest-only URLs, so each service records the retrieval date and the
 // index's own modification stamp instead of claiming an immutability the
-// source does not offer.
+// source does not offer. The reference also publishes, per action, the
+// resource types the action can be scoped to; actions publishing NONE are
+// evaluated by IAM against Resource "*" only, and the snapshot records
+// them (non_scopable_actions) so the scopability gate can refuse the
+// quietest least-privilege mistake: a statement scoped to an ARN pattern
+// its own actions can never match, which reads tighter than required and
+// denies at runtime instead.
 //
 // Azure is the second arm, read from ARM's provider-operations metadata
 // (the inventory behind `az provider operation list`). Azure separates
@@ -39,7 +45,16 @@
 // permissions are flat dotted names ("container.clusters.create"); the
 // snapshot keys them by their service segment (the part before the first
 // dot) with the remainder as the action, and like ARM the API publishes
-// no modification stamp. Providers without a machine-readable inventory
+// no modification stamp. The inventory is SCOPE-TYPED -- a permission is
+// listed only under the resource types it can be tested on, so
+// permissions that authorize exclusively on organizations/folders
+// (resourcemanager.projects.create) or billing accounts
+// (billing.resourceAssociations.create) never appear in a
+// project-anchored query -- so the fetcher queries the project, an
+// organization, and a billing-account scope and unions the results;
+// permissions a provider enforces but publishes under NO scope (Cloud
+// Run's domainmappings family) stay teachable only in manifest notes,
+// exactly as before. Providers without a machine-readable inventory
 // arm (kubernetes) are exempt from existence checking (their structural
 // validation lives in pkg/iac/permissions) -- exemption is stated here,
 // never silent.
@@ -97,6 +112,16 @@ type Service struct {
 	// sorted, without the service prefix. For Azure these are the
 	// management-plane operations (a role definition's `actions`).
 	Actions []string `yaml:"actions"`
+	// NonScopableActions is the subset of Actions whose provider
+	// reference declares NO resource types. IAM evaluates such actions
+	// against Resource "*" only: an ARN-scoped grant NEVER matches them,
+	// so a policy statement that looks tighter than the provider supports
+	// silently denies at runtime -- the scopability gate holds every
+	// statement carrying one of these to exactly the "*" resource. Sorted;
+	// every entry must also appear in Actions. Only providers whose
+	// reference publishes per-action resource types (AWS's service
+	// reference) populate it.
+	NonScopableActions []string `yaml:"non_scopable_actions,omitempty"`
 	// DataActions are the provider's data-plane operation names for this
 	// service, sorted, without the service prefix. Only providers that
 	// split planes (Azure) populate it; a manifest's data_actions are held
@@ -168,6 +193,23 @@ func load(dir, fileName, provider string, requireSourceModified bool) (*Inventor
 		}
 		if err := checkActionList(fileName, svc.Prefix, "data_actions", svc.DataActions); err != nil {
 			return nil, err
+		}
+		if err := checkActionList(fileName, svc.Prefix, "non_scopable_actions", svc.NonScopableActions); err != nil {
+			return nil, err
+		}
+		// The subset invariant: a non-scopable entry that is not a
+		// published action would let the scopability gate reason about a
+		// name the existence gate never admitted.
+		if len(svc.NonScopableActions) > 0 {
+			published := make(map[string]bool, len(svc.Actions))
+			for _, action := range svc.Actions {
+				published[action] = true
+			}
+			for _, action := range svc.NonScopableActions {
+				if !published[action] {
+					return nil, fmt.Errorf("%s: service %q non_scopable_actions entry %q is not in actions", fileName, svc.Prefix, action)
+				}
+			}
 		}
 	}
 	return inv, nil
@@ -294,6 +336,14 @@ func Render(inv *Inventory) string {
 			actions := append([]string(nil), svc.Actions...)
 			sort.Strings(actions)
 			for _, action := range actions {
+				b.WriteString("      - " + action + "\n")
+			}
+		}
+		if len(svc.NonScopableActions) > 0 {
+			b.WriteString("    non_scopable_actions:\n")
+			nonScopable := append([]string(nil), svc.NonScopableActions...)
+			sort.Strings(nonScopable)
+			for _, action := range nonScopable {
 				b.WriteString("      - " + action + "\n")
 			}
 		}

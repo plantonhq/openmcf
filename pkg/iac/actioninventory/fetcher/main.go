@@ -58,7 +58,7 @@ func main() {
 		if !ok {
 			fatal(fmt.Errorf("service prefix %q (used by a permissions manifest) does not exist in the AWS service reference -- the prefix itself is wrong", prefix))
 		}
-		actions, err := fetchServiceActions(client, entry.URL)
+		actions, nonScopable, err := fetchServiceActions(client, entry.URL)
 		if err != nil {
 			fatal(fmt.Errorf("service %q: %w", prefix, err))
 		}
@@ -66,11 +66,12 @@ func main() {
 			fatal(fmt.Errorf("service %q: the reference lists no actions -- refusing to commit an empty inventory", prefix))
 		}
 		inv.Services = append(inv.Services, actioninventory.Service{
-			Prefix:         prefix,
-			SourceURL:      entry.URL,
-			SourceModified: time.Unix(entry.Modified, 0).UTC().Format("2006-01-02"),
-			RetrievedOn:    today,
-			Actions:        actions,
+			Prefix:             prefix,
+			SourceURL:          entry.URL,
+			SourceModified:     time.Unix(entry.Modified, 0).UTC().Format("2006-01-02"),
+			RetrievedOn:        today,
+			Actions:            actions,
+			NonScopableActions: nonScopable,
 		})
 	}
 
@@ -147,27 +148,39 @@ func fetchIndex(client *http.Client) (map[string]indexEntry, error) {
 }
 
 // fetchServiceActions reads one service's reference document and returns
-// its action names, sorted and de-duplicated.
-func fetchServiceActions(client *http.Client, url string) ([]string, error) {
+// its action names plus the subset that declares no resource types, both
+// sorted and de-duplicated. The reference marks a scopable action with a
+// Resources list naming the resource types its ARNs can name; an action
+// with NO Resources entry is evaluated by IAM against Resource "*" only,
+// and the snapshot must carry that fact so the scopability gate can hold
+// statements to it.
+func fetchServiceActions(client *http.Client, url string) ([]string, []string, error) {
 	var doc struct {
 		Actions []struct {
-			Name string `json:"Name"`
+			Name      string `json:"Name"`
+			Resources []struct {
+				Name string `json:"Name"`
+			} `json:"Resources"`
 		} `json:"Actions"`
 	}
 	if err := getJSON(client, url, &doc); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	seen := map[string]bool{}
-	var actions []string
+	var actions, nonScopable []string
 	for _, action := range doc.Actions {
 		if action.Name == "" || seen[action.Name] {
 			continue
 		}
 		seen[action.Name] = true
 		actions = append(actions, action.Name)
+		if len(action.Resources) == 0 {
+			nonScopable = append(nonScopable, action.Name)
+		}
 	}
 	sort.Strings(actions)
-	return actions, nil
+	sort.Strings(nonScopable)
+	return actions, nonScopable, nil
 }
 
 func getJSON(client *http.Client, url string, out any) error {

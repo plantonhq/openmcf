@@ -6,9 +6,13 @@ import (
 	"strings"
 	"testing"
 
+	eventhubnsv1 "github.com/plantonhq/planton/catalog/azure/azureeventhubnamespace/v1alpha1"
 	costestimatev1 "github.com/plantonhq/planton/finops/componentcostestimate/v1"
 	"github.com/plantonhq/planton/pkg/finops/costderivation"
+	"github.com/plantonhq/planton/pkg/finops/costestimator"
+	"github.com/plantonhq/planton/pkg/finops/pricebook"
 	"github.com/plantonhq/planton/pkg/protobufyaml"
+	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
 )
 
 // TestPresetReplayHonesty pins the honesty semantics of derivation-driven
@@ -121,6 +125,40 @@ func TestPresetReplayHonesty(t *testing.T) {
 		}
 		if lines := linesForMeter(public, "provisioned instance memory"); len(lines) != 1 || lines[0].GetPricingQuantity() != "1460" {
 			t.Errorf("basic preset memory: want one line of 1460 GB-hours (2048 MB / 1024 x 730), got %+v", lines)
+		}
+	})
+
+	t.Run("azureeventhubnamespace", func(t *testing.T) {
+		// The reference-presence fixture on the refusal side: a namespace
+		// wired onto a dedicated cluster BY REFERENCE bills through the
+		// cluster's capacity units, so the committed derivation must
+		// refuse it rather than pricing tier meters the placement
+		// supersedes. No committed preset places on a cluster, so the
+		// pin evaluates the committed rules against a synthetic
+		// cluster-placed manifest.
+		derivation, err := costderivation.Load(root, "azureeventhubnamespace")
+		if err != nil {
+			t.Fatalf("loading the committed derivation: %v", err)
+		}
+		entries, err := pricebook.Entries(root, "azure")
+		if err != nil {
+			t.Fatalf("loading the azure price book: %v", err)
+		}
+		manifest := &eventhubnsv1.AzureEventHubNamespace{Spec: &eventhubnsv1.AzureEventHubNamespaceSpec{
+			Region: "eastus",
+			Sku:    eventhubnsv1.AzureEventHubNamespaceSku_STANDARD,
+			DedicatedClusterId: &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+					ValueFrom: &foreignkeyv1.ValueFromRef{Name: "shared-dedicated-cluster"},
+				},
+			},
+		}}
+		preset, refusal, err := costestimator.Evaluate(manifest, derivation.GetSpec(), entries)
+		if err != nil || preset != nil {
+			t.Fatalf("Evaluate(cluster-placed): err=%v preset=%+v, want a refusal", err, preset)
+		}
+		if refusal == nil || !strings.Contains(refusal.Reason, "dedicated cluster") {
+			t.Errorf("a cluster-placed namespace must refuse naming the cluster placement, got %+v", refusal)
 		}
 	})
 

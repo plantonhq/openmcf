@@ -179,8 +179,27 @@ func resolvePrice(
 	currency string,
 ) (string, *Refusal, error) {
 	if slug := rule.GetPriceSlug(); slug != "" {
-		if _, ok := entries[slug]; !ok {
+		entry, ok := entries[slug]
+		if !ok {
 			return "", nil, fmt.Errorf("line %q: price_slug %q resolves to no price book entry", rule.GetSkuMeter(), slug)
+		}
+		// The live boundary's own agreement check: the replay lane's
+		// generator re-proves entry/preset region and currency agreement
+		// offline, but a LIVE manifest carries its own region -- pricing a
+		// Frankfurt manifest with a Virginia rate would be a wrong number
+		// that looks exactly like a right one, so a slug-named entry that
+		// disagrees refuses instead of silently pricing. Mirrors the Java
+		// evaluator's identical check; value-keyed lookups filter on both
+		// fields already.
+		if entry.GetCurrency() != currency {
+			return "", &Refusal{Reason: fmt.Sprintf(
+				"the pinned price for %s is in %s but this component prices in %s -- a number across currencies would be a guess",
+				rule.GetSkuMeter(), entry.GetCurrency(), currency)}, nil
+		}
+		if entry.GetRegion() != pricebook.GlobalRegion && entry.GetRegion() != region {
+			return "", &Refusal{Reason: fmt.Sprintf(
+				"no pinned price for %s in %s -- the price book covers this charge in %s only, and a number priced from another region's rate would be a guess",
+				rule.GetSkuMeter(), region, entry.GetRegion())}, nil
 		}
 		return slug, nil, nil
 	}

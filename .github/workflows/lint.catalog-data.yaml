@@ -10,7 +10,10 @@
 # a permission entry without provenance or structural validity, or an AWS,
 # Azure, or GCP permission action that does not exist in the provider's own
 # inventory (pkg/iac/actioninventory's committed snapshots -- an invented
-# or misspelled action name cannot ship). Also guards
+# or misspelled action name cannot ship), or an AWS statement whose
+# resource scope disagrees with its actions' published scopability (an
+# ARN-scoped grant on a non-scopable action denies at runtime; a wildcard
+# grant on all-scopable actions is wider than required). Also guards
 # the central control catalog and framework crosswalks themselves
 # (catalog/_compliance/) and the whole cost-estimate pipeline
 # (catalog/_pricing/): the price books' pinned prices must carry sources

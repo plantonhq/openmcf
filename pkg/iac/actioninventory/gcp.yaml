@@ -10,7 +10,7 @@ provider: gcp
 services:
   - prefix: aiplatform
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - agentAnomalyDetectionScopes.create
       - agentAnomalyDetectionScopes.delete
@@ -486,7 +486,7 @@ services:
       - tuningJobs.vertexTune
   - prefix: alloydb
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - backups.create
       - backups.createTagBinding
@@ -745,7 +745,7 @@ services:
       - transfers.update
   - prefix: bigtable
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - appProfiles.create
       - appProfiles.delete
@@ -837,9 +837,68 @@ services:
       - tables.setIamPolicy
       - tables.undelete
       - tables.update
+  - prefix: billing
+    source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
+    retrieved_on: "2026-08-18"
+    actions:
+      - accounts.close
+      - accounts.create
+      - accounts.get
+      - accounts.getCarbonInformation
+      - accounts.getIamPolicy
+      - accounts.getPaymentInfo
+      - accounts.getPricing
+      - accounts.getSpendingInformation
+      - accounts.getSpendingInformationScoped
+      - accounts.getUsageExportSpec
+      - accounts.list
+      - accounts.move
+      - accounts.redeemPromotion
+      - accounts.removeFromOrganization
+      - accounts.reopen
+      - accounts.setIamPolicy
+      - accounts.update
+      - accounts.updatePaymentInfo
+      - accounts.updateUsageExportSpec
+      - anomalies.get
+      - anomalies.list
+      - anomalies.submitFeedback
+      - anomaliesConfigs.get
+      - anomaliesConfigs.update
+      - billingAccountPrice.get
+      - billingAccountPrices.list
+      - billingAccountServices.get
+      - billingAccountServices.list
+      - billingAccountSkuGroupSkus.get
+      - billingAccountSkuGroupSkus.list
+      - billingAccountSkuGroups.get
+      - billingAccountSkuGroups.list
+      - billingAccountSkus.get
+      - billingAccountSkus.list
+      - budgets.configureSpendCap
+      - budgets.create
+      - budgets.delete
+      - budgets.get
+      - budgets.list
+      - budgets.update
+      - costRecommendations.listScoped
+      - credits.list
+      - finOpsBenchmarkInformation.get
+      - finOpsHealthInformation.get
+      - resourceAssociations.create
+      - resourceAssociations.delete
+      - resourceAssociations.list
+      - resourceCosts.get
+      - resourcebudgets.configureSpendCap
+      - resourcebudgets.read
+      - resourcebudgets.write
+      - subscriptions.create
+      - subscriptions.get
+      - subscriptions.list
+      - subscriptions.update
   - prefix: certificatemanager
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - certissuanceconfigs.create
       - certissuanceconfigs.createTagBinding
@@ -910,7 +969,7 @@ services:
       - trustconfigs.use
   - prefix: cloudkms
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - autokeyConfigs.get
       - autokeyConfigs.update
@@ -953,6 +1012,7 @@ services:
       - ekmConnections.update
       - ekmConnections.use
       - ekmConnections.verifyConnectivity
+      - folders.showEffectiveAutokeyConfig
       - importJobs.create
       - importJobs.delete
       - importJobs.get
@@ -999,7 +1059,7 @@ services:
       - singleTenantHsmInstances.use
   - prefix: cloudscheduler
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - jobs.create
       - jobs.delete
@@ -1014,7 +1074,7 @@ services:
       - locations.list
   - prefix: cloudsql
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - backupRuns.create
       - backupRuns.delete
@@ -1115,7 +1175,7 @@ services:
       - tasks.run
   - prefix: composer
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - dags.execute
       - dags.get
@@ -1147,7 +1207,7 @@ services:
       - userworkloadssecrets.update
   - prefix: compute
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - acceleratorTypes.get
       - acceleratorTypes.list
@@ -1253,6 +1313,7 @@ services:
       - externalVpnGateways.setLabels
       - externalVpnGateways.use
       - firewallPolicies.cloneRules
+      - firewallPolicies.copyRules
       - firewallPolicies.create
       - firewallPolicies.createTagBinding
       - firewallPolicies.delete
@@ -1262,6 +1323,7 @@ services:
       - firewallPolicies.list
       - firewallPolicies.listEffectiveTags
       - firewallPolicies.listTagBindings
+      - firewallPolicies.move
       - firewallPolicies.setIamPolicy
       - firewallPolicies.update
       - firewallPolicies.use
@@ -1662,6 +1724,16 @@ services:
       - nodeTemplates.setIamPolicy
       - nodeTypes.get
       - nodeTypes.list
+      - orgRolloutPlans.create
+      - orgRolloutPlans.delete
+      - orgRolloutPlans.get
+      - orgRolloutPlans.list
+      - orgRollouts.cancel
+      - orgRollouts.delete
+      - orgRollouts.get
+      - orgRollouts.list
+      - orgRollouts.pause
+      - orgRollouts.resume
       - organizations.disableXpnHost
       - organizations.disableXpnResource
       - organizations.enableXpnHost
@@ -1669,6 +1741,7 @@ services:
       - organizations.listAssociations
       - organizations.setFirewallPolicy
       - organizations.setSecurityPolicy
+      - oslogin.updateExternalUser
       - packetMirrorings.create
       - packetMirrorings.createTagBinding
       - packetMirrorings.delete
@@ -1947,6 +2020,8 @@ services:
       - routes.list
       - routes.listEffectiveTags
       - routes.listTagBindings
+      - securityPolicies.addAssociation
+      - securityPolicies.copyRules
       - securityPolicies.create
       - securityPolicies.createTagBinding
       - securityPolicies.delete
@@ -1955,6 +2030,8 @@ services:
       - securityPolicies.list
       - securityPolicies.listEffectiveTags
       - securityPolicies.listTagBindings
+      - securityPolicies.move
+      - securityPolicies.removeAssociation
       - securityPolicies.setLabels
       - securityPolicies.update
       - securityPolicies.use
@@ -2191,7 +2268,7 @@ services:
       - zones.list
   - prefix: container
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - apiServices.create
       - apiServices.delete
@@ -2608,7 +2685,7 @@ services:
       - volumeSnapshots.updateStatus
   - prefix: dataproc
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - agents.create
       - agents.delete
@@ -2747,7 +2824,7 @@ services:
       - userCreds.update
   - prefix: dns
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - changes.create
       - changes.get
@@ -2859,6 +2936,7 @@ services:
       - messageBuses.setIamPolicy
       - messageBuses.update
       - messageBuses.use
+      - multiProjectSources.collectGoogleApiEvents
       - operations.cancel
       - operations.delete
       - operations.get
@@ -2886,7 +2964,7 @@ services:
       - triggers.update
   - prefix: file
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - backups.create
       - backups.createTagBinding
@@ -2927,7 +3005,7 @@ services:
       - snapshots.update
   - prefix: iam
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - accesspolicies.bind
       - accesspolicies.create
@@ -2959,6 +3037,44 @@ services:
       - googleapis.com/oauthClients.list
       - googleapis.com/oauthClients.undelete
       - googleapis.com/oauthClients.update
+      - googleapis.com/workforcePoolProviderKeys.create
+      - googleapis.com/workforcePoolProviderKeys.delete
+      - googleapis.com/workforcePoolProviderKeys.get
+      - googleapis.com/workforcePoolProviderKeys.list
+      - googleapis.com/workforcePoolProviderKeys.undelete
+      - googleapis.com/workforcePoolProviderScimGroups.create
+      - googleapis.com/workforcePoolProviderScimGroups.delete
+      - googleapis.com/workforcePoolProviderScimGroups.get
+      - googleapis.com/workforcePoolProviderScimGroups.list
+      - googleapis.com/workforcePoolProviderScimGroups.patch
+      - googleapis.com/workforcePoolProviderScimGroups.put
+      - googleapis.com/workforcePoolProviderScimUsers.create
+      - googleapis.com/workforcePoolProviderScimUsers.delete
+      - googleapis.com/workforcePoolProviderScimUsers.get
+      - googleapis.com/workforcePoolProviderScimUsers.list
+      - googleapis.com/workforcePoolProviderScimUsers.patch
+      - googleapis.com/workforcePoolProviderScimUsers.put
+      - googleapis.com/workforcePoolProviders.computeUserAttributes
+      - googleapis.com/workforcePoolProviders.create
+      - googleapis.com/workforcePoolProviders.delete
+      - googleapis.com/workforcePoolProviders.get
+      - googleapis.com/workforcePoolProviders.list
+      - googleapis.com/workforcePoolProviders.undelete
+      - googleapis.com/workforcePoolProviders.update
+      - googleapis.com/workforcePoolSubjects.delete
+      - googleapis.com/workforcePoolSubjects.undelete
+      - googleapis.com/workforcePools.create
+      - googleapis.com/workforcePools.createPolicyBinding
+      - googleapis.com/workforcePools.delete
+      - googleapis.com/workforcePools.deletePolicyBinding
+      - googleapis.com/workforcePools.get
+      - googleapis.com/workforcePools.getIamPolicy
+      - googleapis.com/workforcePools.list
+      - googleapis.com/workforcePools.searchPolicyBindings
+      - googleapis.com/workforcePools.setIamPolicy
+      - googleapis.com/workforcePools.undelete
+      - googleapis.com/workforcePools.update
+      - googleapis.com/workforcePools.updatePolicyBinding
       - googleapis.com/workloadIdentityPoolManagedIdentities.create
       - googleapis.com/workloadIdentityPoolManagedIdentities.delete
       - googleapis.com/workloadIdentityPoolManagedIdentities.get
@@ -2994,6 +3110,10 @@ services:
       - googleapis.com/workloadIdentityPools.setIamPolicy
       - googleapis.com/workloadIdentityPools.undelete
       - googleapis.com/workloadIdentityPools.update
+      - googleapis.com/workspacePools.createPolicyBinding
+      - googleapis.com/workspacePools.deletePolicyBinding
+      - googleapis.com/workspacePools.searchPolicyBindings
+      - googleapis.com/workspacePools.updatePolicyBinding
       - oauthClientCredentials.create
       - oauthClientCredentials.delete
       - oauthClientCredentials.get
@@ -3055,6 +3175,44 @@ services:
       - serviceAccounts.signJwt
       - serviceAccounts.undelete
       - serviceAccounts.update
+      - workforcePoolProviderKeys.create
+      - workforcePoolProviderKeys.delete
+      - workforcePoolProviderKeys.get
+      - workforcePoolProviderKeys.list
+      - workforcePoolProviderKeys.undelete
+      - workforcePoolProviderScimGroups.create
+      - workforcePoolProviderScimGroups.delete
+      - workforcePoolProviderScimGroups.get
+      - workforcePoolProviderScimGroups.list
+      - workforcePoolProviderScimGroups.patch
+      - workforcePoolProviderScimGroups.put
+      - workforcePoolProviderScimUsers.create
+      - workforcePoolProviderScimUsers.delete
+      - workforcePoolProviderScimUsers.get
+      - workforcePoolProviderScimUsers.list
+      - workforcePoolProviderScimUsers.patch
+      - workforcePoolProviderScimUsers.put
+      - workforcePoolProviders.computeUserAttributes
+      - workforcePoolProviders.create
+      - workforcePoolProviders.delete
+      - workforcePoolProviders.get
+      - workforcePoolProviders.list
+      - workforcePoolProviders.undelete
+      - workforcePoolProviders.update
+      - workforcePoolSubjects.delete
+      - workforcePoolSubjects.undelete
+      - workforcePools.create
+      - workforcePools.createPolicyBinding
+      - workforcePools.delete
+      - workforcePools.deletePolicyBinding
+      - workforcePools.get
+      - workforcePools.getIamPolicy
+      - workforcePools.list
+      - workforcePools.searchPolicyBindings
+      - workforcePools.setIamPolicy
+      - workforcePools.undelete
+      - workforcePools.update
+      - workforcePools.updatePolicyBinding
       - workloadIdentityPoolManagedIdentities.create
       - workloadIdentityPoolManagedIdentities.delete
       - workloadIdentityPoolManagedIdentities.get
@@ -3094,9 +3252,13 @@ services:
       - workloadIdentityPools.undelete
       - workloadIdentityPools.update
       - workloadIdentityPools.updatePolicyBinding
+      - workspacePools.createPolicyBinding
+      - workspacePools.deletePolicyBinding
+      - workspacePools.searchPolicyBindings
+      - workspacePools.updatePolicyBinding
   - prefix: logging
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - buckets.copyLogEntries
       - buckets.create
@@ -3185,7 +3347,7 @@ services:
       - views.update
   - prefix: memorystore
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - backupCollections.get
       - backupCollections.list
@@ -3210,7 +3372,7 @@ services:
       - operations.list
   - prefix: monitoring
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - alertPolicies.create
       - alertPolicies.createTagBinding
@@ -3277,7 +3439,7 @@ services:
       - uptimeCheckConfigs.update
   - prefix: networkconnectivity
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - gatewayAdvertisedRoutes.create
       - gatewayAdvertisedRoutes.delete
@@ -3385,7 +3547,7 @@ services:
       - transports.update
   - prefix: networksecurity
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - addressGroups.create
       - addressGroups.delete
@@ -3563,7 +3725,7 @@ services:
       - urlLists.use
   - prefix: notebooks
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - environments.create
       - environments.delete
@@ -3624,7 +3786,7 @@ services:
       - schedules.setIamPolicy
   - prefix: pubsub
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - messageTransforms.validate
       - schemas.attach
@@ -3679,7 +3841,7 @@ services:
       - topics.updateTag
   - prefix: redis
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - aclPolicies.create
       - aclPolicies.delete
@@ -3727,12 +3889,37 @@ services:
       - operations.list
   - prefix: resourcemanager
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
+      - capabilities.get
+      - capabilities.update
+      - folders.create
+      - folders.createPolicyBinding
+      - folders.delete
+      - folders.deletePolicyBinding
+      - folders.get
+      - folders.getIamPolicy
+      - folders.list
+      - folders.move
+      - folders.searchPolicyBinding
+      - folders.searchPolicyBindings
+      - folders.setIamPolicy
+      - folders.undelete
+      - folders.update
+      - folders.updatePolicyBinding
       - hierarchyNodes.createTagBinding
       - hierarchyNodes.deleteTagBinding
       - hierarchyNodes.listEffectiveTags
       - hierarchyNodes.listTagBindings
+      - organizations.createPolicyBinding
+      - organizations.deletePolicyBinding
+      - organizations.get
+      - organizations.getIamPolicy
+      - organizations.searchPolicyBinding
+      - organizations.searchPolicyBindings
+      - organizations.setIamPolicy
+      - organizations.updatePolicyBinding
+      - projects.create
       - projects.createBillingAssignment
       - projects.createPolicyBinding
       - projects.delete
@@ -3740,6 +3927,7 @@ services:
       - projects.deletePolicyBinding
       - projects.get
       - projects.getIamPolicy
+      - projects.list
       - projects.move
       - projects.searchPolicyBinding
       - projects.searchPolicyBindings
@@ -3844,7 +4032,7 @@ services:
       - workerpools.update
   - prefix: secretmanager
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - locations.get
       - locations.list
@@ -3870,7 +4058,7 @@ services:
       - versions.list
   - prefix: servicenetworking
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - operations.cancel
       - operations.delete
@@ -3896,7 +4084,7 @@ services:
       - services.use
   - prefix: serviceusage
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - apiKeys.create
       - apiKeys.delete
@@ -3930,7 +4118,7 @@ services:
       - values.test
   - prefix: spanner
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - backupOperations.cancel
       - backupOperations.get
@@ -4018,7 +4206,7 @@ services:
       - sessions.list
   - prefix: storage
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - anywhereCaches.create
       - anywhereCaches.disable
@@ -4094,7 +4282,7 @@ services:
       - objects.updateContext
   - prefix: vpcaccess
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - connectors.create
       - connectors.delete

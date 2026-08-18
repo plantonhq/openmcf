@@ -414,11 +414,15 @@ generate-price-book:
 
 # Refreshes the committed action-inventory snapshots
 # (pkg/iac/actioninventory/{aws,azure,gcp}.yaml) from each provider's own
-# published inventory -- AWS's machine-readable service reference, ARM's
-# provider-operations metadata (the Azure arm needs a signed-in Azure CLI
-# for its bearer token), and GCP IAM's testable-permissions inventory (the
-# GCP arm needs gcloud application-default credentials and an active
-# gcloud project) -- scoped to the services the committed runner
+# published inventory -- AWS's machine-readable service reference
+# (including each action's resource-scopability, which the scopability
+# gate holds statements to), ARM's provider-operations metadata (the
+# Azure arm needs a signed-in Azure CLI for its bearer token), and GCP
+# IAM's testable-permissions inventory (the GCP arm needs gcloud
+# application-default credentials, an active gcloud project, and the
+# PLANTON_GCP_ORG / PLANTON_GCP_BILLING_ACCOUNT anchors -- any org and
+# billing account the credential can query; they only type the queries,
+# whose results union) -- scoped to the services the committed runner
 # permissions manifests reference. Requires network access; CI never
 # fetches -- it validates every manifest action against the committed
 # snapshots (an invented or misspelled action name cannot ship).
