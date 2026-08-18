@@ -2858,6 +2858,14 @@ Fields that can point at another resource's outputs:
 | `spec.domains[].zone` | DigitalOceanDnsZone | `status.outputs.zone_name` |
 | `spec.vpc` | DigitalOceanVpc | `status.outputs.vpc_id` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| DigitalOceanDatabaseFirewall | `spec.appIds` | `status.outputs.app_id` |
+
 ## See Also
 
 - [Overview](../README.md)

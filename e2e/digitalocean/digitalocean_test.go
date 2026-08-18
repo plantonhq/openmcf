@@ -125,6 +125,51 @@ func TestDigitalOceanDatabaseCluster_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "digitaloceandatabasecluster", "terraform")
 }
 
+// --- DigitalOcean Database User (satellite: rides the cluster prerequisite) ---
+
+func TestDigitalOceanDatabaseUser_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceandatabaseuser", "pulumi")
+}
+func TestDigitalOceanDatabaseUser_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceandatabaseuser", "terraform")
+}
+
+// --- DigitalOcean Database Db (satellite: rides the cluster prerequisite) ---
+
+func TestDigitalOceanDatabaseDb_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceandatabasedb", "pulumi")
+}
+func TestDigitalOceanDatabaseDb_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceandatabasedb", "terraform")
+}
+
+// --- DigitalOcean Database Connection Pool (satellite: rides the cluster prerequisite) ---
+
+func TestDigitalOceanDatabaseConnectionPool_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceandatabaseconnectionpool", "pulumi")
+}
+func TestDigitalOceanDatabaseConnectionPool_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceandatabaseconnectionpool", "terraform")
+}
+
+// --- DigitalOcean Database Firewall (satellite: rides the cluster prerequisite) ---
+
+func TestDigitalOceanDatabaseFirewall_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceandatabasefirewall", "pulumi")
+}
+func TestDigitalOceanDatabaseFirewall_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceandatabasefirewall", "terraform")
+}
+
+// --- DigitalOcean Database Replica (satellite; its own billing class: a second cluster-sized node) ---
+
+func TestDigitalOceanDatabaseReplica_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceandatabasereplica", "pulumi")
+}
+func TestDigitalOceanDatabaseReplica_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceandatabasereplica", "terraform")
+}
+
 // --- DigitalOcean Kubernetes Cluster (slow lane: ~5-10 min creates; Vpc prerequisite) ---
 
 func TestDigitalOceanKubernetesCluster_Pulumi(t *testing.T) {

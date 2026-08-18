@@ -10,9 +10,12 @@
 //	├── catalog.md         the catalog page                       (required)
 //	├── logo.svg           the component logo                     (required)
 //	├── GUIDE.md           authored operational judgment          (optional)
+//	├── cost.yaml          the component's cost profile           (accepted)
+//	├── controls.yaml      the component's control profile        (accepted)
 //	├── iac/               ONE live module set per component      (required)
 //	│   ├── pulumi/        with README.md, no Makefile            (required)
 //	│   ├── tf/            with README.md, no .gitignore          (required)
+//	│   ├── permissions.yaml   runner least-privilege manifest    (accepted)
 //	│   ├── import-map.yaml                                       (optional)
 //	│   └── provider-parity.yaml   recorded parity judgment       (optional)
 //	├── presets/           .yaml manifests + .md sidecar pairs    (required)
@@ -21,6 +24,13 @@
 //	└── <version>/         the versioned contract ONLY:
 //	    api.proto, spec.proto, input.proto, outputs.proto,
 //	    their .pb.go stubs, BUILD.bazel, spec_test.go, reference.md
+//
+// cost.yaml, controls.yaml, and iac/permissions.yaml are the per-component
+// profile sidecars (schemas: finops/componentcostprofile,
+// compliance/componentcontrolprofile, iac/componentpermissions). This gate
+// ACCEPTS them wherever they exist; the requirement (with its burn-down
+// baseline) is enforced by the gate revision that owns the sidecar
+// amendment, so components authored with them never regress to violations.
 //
 // Two prefix conventions coexist deliberately: underscore dirs at the catalog
 // root (_docs/, _patterns/) hold docs-only content Go tooling must ignore,
@@ -93,14 +103,16 @@ const (
 // (plus version dirs, matched by grammar). An entry outside this set is the
 // exact drift class this gate exists to catch.
 var componentEntries = map[string]bool{
-	"README.md":   true,
-	"catalog.md":  true,
-	"GUIDE.md":    true,
-	"logo.svg":    true,
-	"iac":         true,
-	"presets":     true,
-	"e2e":         true,
-	"conversions": true,
+	"README.md":     true,
+	"catalog.md":    true,
+	"GUIDE.md":      true,
+	"logo.svg":      true,
+	"cost.yaml":     true,
+	"controls.yaml": true,
+	"iac":           true,
+	"presets":       true,
+	"e2e":           true,
+	"conversions":   true,
 }
 
 // versionEntries is the CLOSED set of names allowed inside a version dir:
@@ -249,13 +261,13 @@ func checkComponent(repoRoot, componentRel string, add func(rel, rule, detail st
 		iacEntries, _ := os.ReadDir(filepath.Join(repoRoot, iacRel))
 		for _, e := range iacEntries {
 			switch e.Name() {
-			case "pulumi", "tf", "import-map.yaml", "provider-parity.yaml":
+			case "pulumi", "tf", "permissions.yaml", "import-map.yaml", "provider-parity.yaml":
 			case "crds":
 				// Operator kinds stage the CRD manifests their modules apply
 				// (both engines read them) -- declared-optional module payload.
 			default:
 				add(filepath.Join(iacRel, e.Name()), RuleUnexpectedEntry,
-					"iac/ holds exactly pulumi/, tf/, optionally import-map.yaml, provider-parity.yaml, and staged crds/")
+					"iac/ holds exactly pulumi/, tf/, permissions.yaml, optionally import-map.yaml, provider-parity.yaml, and staged crds/")
 			}
 		}
 		for _, engine := range []string{"pulumi", "tf"} {

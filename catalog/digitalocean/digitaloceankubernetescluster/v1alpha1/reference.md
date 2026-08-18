@@ -733,6 +733,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| DigitalOceanDatabaseFirewall | `spec.kubernetesClusterIds` | `status.outputs.cluster_id` |
 | DigitalOceanFirewall | `spec.inboundRules[].sourceKubernetesIds` | `status.outputs.cluster_id` |
 | DigitalOceanFirewall | `spec.outboundRules[].destinationKubernetesIds` | `status.outputs.cluster_id` |
 | DigitalOceanKubernetesNodePool | `spec.cluster` | `status.outputs.cluster_id` |

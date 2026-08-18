@@ -1,0 +1,27 @@
+# Minimal DigitalOceanDatabaseDb: one additional logical database on the
+# PostgreSQL cluster registry prerequisite (the DigitalOceanDatabaseCluster
+# minimal profile). Proves the full create/verify/destroy lifecycle and the
+# (cluster_id, database_name) identity outputs the verifier addresses the
+# database with -- the resource's whole surface (there is nothing else to
+# prove).
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseDb
+metadata:
+  name: planton-oss-e2e-digitaloceandatabasedb-min
+  id: planton-oss-e2e-digitaloceandatabasedb-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandatabasedb
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  cluster:
+    valueFrom:
+      kind: DigitalOceanDatabaseCluster
+      name: planton-oss-e2e-digitaloceandatabasecluster-min
+      fieldPath: status.outputs.cluster_id
+  databaseName: pltn-e2e-dodbdb-min

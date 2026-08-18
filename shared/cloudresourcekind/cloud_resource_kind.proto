@@ -4655,6 +4655,52 @@ enum CloudResourceKind {
     prerequisites: [DigitalOceanDnsZone]
   }];
 
+  // An additional user on a managed database cluster: the cluster
+  // reference is required, resolved to the DigitalOceanDatabaseCluster's
+  // exported cluster_id output.
+  DigitalOceanDatabaseUser = 5015 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dodbu"
+    prerequisites: [DigitalOceanDatabaseCluster]
+  }];
+
+  // An additional logical database on a managed database cluster: the
+  // cluster reference is required.
+  DigitalOceanDatabaseDb = 5016 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dodbdb"
+    prerequisites: [DigitalOceanDatabaseCluster]
+  }];
+
+  // A PgBouncer connection pool on a managed PostgreSQL cluster: the
+  // cluster reference is required.
+  DigitalOceanDatabaseConnectionPool = 5017 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dodbcp"
+    prerequisites: [DigitalOceanDatabaseCluster]
+  }];
+
+  // The inbound trusted-sources rule set of a managed database cluster:
+  // the cluster reference is required.
+  DigitalOceanDatabaseFirewall = 5018 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dodbfw"
+    prerequisites: [DigitalOceanDatabaseCluster]
+  }];
+
+  // A read-only replica of a managed database cluster: the primary
+  // cluster reference is required.
+  DigitalOceanDatabaseReplica = 5019 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dodbrep"
+    prerequisites: [DigitalOceanDatabaseCluster]
+  }];
+
   // 6000–6999: Civo resources
   CivoBucket = 6000 [(kind_meta) = {
     provider: civo

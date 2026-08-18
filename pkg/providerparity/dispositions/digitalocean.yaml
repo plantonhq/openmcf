@@ -43,15 +43,6 @@ resources:
   - resource: digitalocean_database_advanced_postgresql_config
     disposition: composed
     reason: "extended per-cluster PostgreSQL settings singleton -- exactly one per cluster, lifecycle identical to the parent; folds into DigitalOceanDatabaseCluster as per-engine settings"
-  - resource: digitalocean_database_connection_pool
-    disposition: model-planned
-    reason: "judged as a planned DigitalOceanDatabaseConnectionPool kind (PgBouncer pools have their own endpoint and are referenced by workloads; FK cluster, db, user)"
-  - resource: digitalocean_database_db
-    disposition: model-planned
-    reason: "judged as a planned DigitalOceanDatabaseDb kind (logical databases are many-per-cluster and created/dropped independently of the cluster; FK cluster)"
-  - resource: digitalocean_database_firewall
-    disposition: model-planned
-    reason: "judged as a planned DigitalOceanDatabaseFirewall kind (trusted-source rules churn on a different cadence and often under different ownership than the cluster; FK cluster, rule values reference droplets/Kubernetes clusters/apps)"
   - resource: digitalocean_database_kafka_config
     disposition: composed
     reason: "per-cluster Kafka broker settings singleton -- exactly one per cluster, lifecycle identical to the parent; folds into DigitalOceanDatabaseCluster as per-engine settings"
@@ -85,12 +76,6 @@ resources:
   - resource: digitalocean_database_redis_config
     disposition: composed
     reason: "per-cluster Redis/Caching settings singleton -- exactly one per cluster, lifecycle identical to the parent; folds into DigitalOceanDatabaseCluster as per-engine settings"
-  - resource: digitalocean_database_replica
-    disposition: model-planned
-    reason: "judged as a planned DigitalOceanDatabaseReplica kind (a replica has its own endpoint, size, and region -- an independent lifecycle that apps reference directly; FK cluster)"
-  - resource: digitalocean_database_user
-    disposition: model-planned
-    reason: "judged as a planned DigitalOceanDatabaseUser kind (many-per-cluster with independent create/rotate/delete lifecycle; referenced by application configs; FK cluster)"
   - resource: digitalocean_database_valkey_config
     disposition: composed
     reason: "per-cluster Valkey settings singleton -- exactly one per cluster, lifecycle identical to the parent; folds into DigitalOceanDatabaseCluster as per-engine settings"

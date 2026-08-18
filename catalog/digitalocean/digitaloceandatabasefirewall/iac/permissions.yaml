@@ -1,0 +1,24 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# DigitalOcean authenticates with a bearer API token, not IAM-statement
+# policies, so none of the schema's provider sections (aws/gcp/azure/
+# kubernetes) applies -- their absence is the schema's own claim that the
+# modules touch no such API. The DigitalOcean least-privilege story lives in
+# the token's SCOPES until the schema grows a DigitalOcean section, at which
+# point this inventory converts mechanically:
+#
+#   Custom-scopes token (recommended):
+#     database:read    -- read the rule set through GET /v2/databases/{c}/firewall (provenance: derived)
+#     database:update  -- create, update, AND destroy are all PUT /v2/databases/{c}/firewall (the rule set is a property of the cluster; "destroy" PUTs an empty list) (derived)
+#   A full-access token also works; it is never least-privilege.
+#
+# All entries are derived from static analysis of the official modules
+# (digitalocean_database_firewall's create/read/update/delete/import
+# paths); the live capture lane upgrades them to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceandatabasefirewall
+spec: {}

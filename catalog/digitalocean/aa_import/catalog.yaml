@@ -143,6 +143,34 @@ spec:
         - eviction_policy
         - sql_mode
         - storage_autoscale
+    - terraform_type: digitalocean_database_user
+      pulumi_type: digitalocean:index/databaseUser:DatabaseUser
+      id_format: "{cluster_id},{user_name}"
+      # The API returns ACL settings only in the CREATE response -- GetUser
+      # never includes them (the provider sets them create-only by design),
+      # so import can never carry them.
+      config_only_attributes: [settings]
+      notes: >-
+        MongoDB user passwords exist only in the create response, so an
+        imported MongoDB user has an empty password attribute.
+    - terraform_type: digitalocean_database_db
+      pulumi_type: digitalocean:index/databaseDb:DatabaseDb
+      id_format: "{cluster_id},{database_name}"
+    - terraform_type: digitalocean_database_connection_pool
+      pulumi_type: digitalocean:index/databaseConnectionPool:DatabaseConnectionPool
+      id_format: "{cluster_id},{pool_name}"
+    - terraform_type: digitalocean_database_firewall
+      pulumi_type: digitalocean:index/databaseFirewall:DatabaseFirewall
+      id_format: "{cluster_id}"
+      notes: >-
+        The rule set is a property of its cluster: import takes the BARE
+        cluster UUID, and the importer then mints a fresh random state id
+        ("{cluster_id}-<uniqueid>") -- the state id is deliberately
+        non-deterministic and never compared. Rules read back in full.
+        Destroy is a PUT of an empty rule list, never a deletion.
+    - terraform_type: digitalocean_database_replica
+      pulumi_type: digitalocean:index/databaseReplica:DatabaseReplica
+      id_format: "{cluster_id},{replica_name}"
 
     # --- Spaces (S3-compatible object storage) --------------------------------
     - terraform_type: digitalocean_spaces_bucket

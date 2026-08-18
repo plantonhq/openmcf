@@ -1543,6 +1543,22 @@ const (
 	// under its domain: the spec's domain reference is required, resolved to
 	// the DigitalOceanDnsZone's exported zone_name output.
 	CloudResourceKind_DigitalOceanDnsRecord CloudResourceKind = 5014
+	// An additional user on a managed database cluster: the cluster
+	// reference is required, resolved to the DigitalOceanDatabaseCluster's
+	// exported cluster_id output.
+	CloudResourceKind_DigitalOceanDatabaseUser CloudResourceKind = 5015
+	// An additional logical database on a managed database cluster: the
+	// cluster reference is required.
+	CloudResourceKind_DigitalOceanDatabaseDb CloudResourceKind = 5016
+	// A PgBouncer connection pool on a managed PostgreSQL cluster: the
+	// cluster reference is required.
+	CloudResourceKind_DigitalOceanDatabaseConnectionPool CloudResourceKind = 5017
+	// The inbound trusted-sources rule set of a managed database cluster:
+	// the cluster reference is required.
+	CloudResourceKind_DigitalOceanDatabaseFirewall CloudResourceKind = 5018
+	// A read-only replica of a managed database cluster: the primary
+	// cluster reference is required.
+	CloudResourceKind_DigitalOceanDatabaseReplica CloudResourceKind = 5019
 	// 6000–6999: Civo resources
 	CloudResourceKind_CivoBucket             CloudResourceKind = 6000
 	CloudResourceKind_CivoCertificate        CloudResourceKind = 6001
@@ -2263,6 +2279,11 @@ var (
 		5012:  "DigitalOceanVpc",
 		5013:  "DigitalOceanCertificate",
 		5014:  "DigitalOceanDnsRecord",
+		5015:  "DigitalOceanDatabaseUser",
+		5016:  "DigitalOceanDatabaseDb",
+		5017:  "DigitalOceanDatabaseConnectionPool",
+		5018:  "DigitalOceanDatabaseFirewall",
+		5019:  "DigitalOceanDatabaseReplica",
 		6000:  "CivoBucket",
 		6001:  "CivoCertificate",
 		6002:  "CivoComputeInstance",
@@ -2973,6 +2994,11 @@ var (
 		"DigitalOceanVpc":                                5012,
 		"DigitalOceanCertificate":                        5013,
 		"DigitalOceanDnsRecord":                          5014,
+		"DigitalOceanDatabaseUser":                       5015,
+		"DigitalOceanDatabaseDb":                         5016,
+		"DigitalOceanDatabaseConnectionPool":             5017,
+		"DigitalOceanDatabaseFirewall":                   5018,
+		"DigitalOceanDatabaseReplica":                    5019,
 		"CivoBucket":                                     6000,
 		"CivoCertificate":                                6001,
 		"CivoComputeInstance":                            6002,
@@ -3526,7 +3552,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x8c\xbe\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xcc\xc0\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4101,7 +4127,12 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x12DigitalOceanVolume\x10\x93'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05dovol\x12/\n" +
 	"\x0fDigitalOceanVpc\x10\x94'\x1a\x19\xa2\xf7\x04\x15\b\x11\x12\bv1alpha1\"\x05dovpc0\x01\x126\n" +
 	"\x17DigitalOceanCertificate\x10\x95'\x1a\x18\xa2\xf7\x04\x14\b\x11\x12\bv1alpha1\"\x06docert\x12:\n" +
-	"\x15DigitalOceanDnsRecord\x10\x96'\x1a\x1e\xa2\xf7\x04\x1a\b\x11\x12\bv1alpha1\"\bdodnsrec:\x02\x8c'\x12(\n" +
+	"\x15DigitalOceanDnsRecord\x10\x96'\x1a\x1e\xa2\xf7\x04\x1a\b\x11\x12\bv1alpha1\"\bdodnsrec:\x02\x8c'\x12:\n" +
+	"\x18DigitalOceanDatabaseUser\x10\x97'\x1a\x1b\xa2\xf7\x04\x17\b\x11\x12\bv1alpha1\"\x05dodbu:\x02\x8b'\x129\n" +
+	"\x16DigitalOceanDatabaseDb\x10\x98'\x1a\x1c\xa2\xf7\x04\x18\b\x11\x12\bv1alpha1\"\x06dodbdb:\x02\x8b'\x12E\n" +
+	"\"DigitalOceanDatabaseConnectionPool\x10\x99'\x1a\x1c\xa2\xf7\x04\x18\b\x11\x12\bv1alpha1\"\x06dodbcp:\x02\x8b'\x12?\n" +
+	"\x1cDigitalOceanDatabaseFirewall\x10\x9a'\x1a\x1c\xa2\xf7\x04\x18\b\x11\x12\bv1alpha1\"\x06dodbfw:\x02\x8b'\x12?\n" +
+	"\x1bDigitalOceanDatabaseReplica\x10\x9b'\x1a\x1d\xa2\xf7\x04\x19\b\x11\x12\bv1alpha1\"\adodbrep:\x02\x8b'\x12(\n" +
 	"\n" +
 	"CivoBucket\x10\xf0.\x1a\x17\xa2\xf7\x04\x13\b\x0e\x12\bv1alpha1\"\x05cibkt\x12.\n" +
 	"\x0fCivoCertificate\x10\xf1.\x1a\x18\xa2\xf7\x04\x14\b\x0e\x12\bv1alpha1\"\x06cicert\x122\n" +

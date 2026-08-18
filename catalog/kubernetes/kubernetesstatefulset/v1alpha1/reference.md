@@ -1753,6 +1753,11 @@ Allowed values (use exactly as shown):
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
 - `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
+- `DigitalOceanDatabaseUser` -- An additional user on a managed database cluster: the cluster reference is required, resolved to the DigitalOceanDatabaseCluster's exported cluster_id output.
+- `DigitalOceanDatabaseDb` -- An additional logical database on a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
+- `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`
@@ -2626,6 +2631,11 @@ Allowed values (use exactly as shown):
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
 - `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
+- `DigitalOceanDatabaseUser` -- An additional user on a managed database cluster: the cluster reference is required, resolved to the DigitalOceanDatabaseCluster's exported cluster_id output.
+- `DigitalOceanDatabaseDb` -- An additional logical database on a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
+- `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`
@@ -4648,6 +4658,11 @@ Allowed values (use exactly as shown):
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
 - `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
+- `DigitalOceanDatabaseUser` -- An additional user on a managed database cluster: the cluster reference is required, resolved to the DigitalOceanDatabaseCluster's exported cluster_id output.
+- `DigitalOceanDatabaseDb` -- An additional logical database on a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
+- `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`
@@ -5521,6 +5536,11 @@ Allowed values (use exactly as shown):
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
 - `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
+- `DigitalOceanDatabaseUser` -- An additional user on a managed database cluster: the cluster reference is required, resolved to the DigitalOceanDatabaseCluster's exported cluster_id output.
+- `DigitalOceanDatabaseDb` -- An additional logical database on a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
+- `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`
@@ -7584,6 +7604,11 @@ Allowed values (use exactly as shown):
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
 - `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
+- `DigitalOceanDatabaseUser` -- An additional user on a managed database cluster: the cluster reference is required, resolved to the DigitalOceanDatabaseCluster's exported cluster_id output.
+- `DigitalOceanDatabaseDb` -- An additional logical database on a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
+- `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`
@@ -8457,6 +8482,11 @@ Allowed values (use exactly as shown):
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
 - `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
+- `DigitalOceanDatabaseUser` -- An additional user on a managed database cluster: the cluster reference is required, resolved to the DigitalOceanDatabaseCluster's exported cluster_id output.
+- `DigitalOceanDatabaseDb` -- An additional logical database on a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseConnectionPool` -- A PgBouncer connection pool on a managed PostgreSQL cluster: the cluster reference is required.
+- `DigitalOceanDatabaseFirewall` -- The inbound trusted-sources rule set of a managed database cluster: the cluster reference is required.
+- `DigitalOceanDatabaseReplica` -- A read-only replica of a managed database cluster: the primary cluster reference is required.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`

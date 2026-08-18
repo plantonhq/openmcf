@@ -1,0 +1,27 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: digitaloceandatabasefirewall
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests, both
+  # engine builds, tofu validate green, checker-green parity manifest,
+  # import map, presets, README/catalog/GUIDE). Live dual-engine proof has
+  # not yet run. TWO scenarios on the PostgreSQL cluster registry
+  # prerequisite: `minimal` proves the ip_addr fan-out across IPv4/CIDR/
+  # IPv6 shapes AND the kind's unusual destroy contract (the verifier
+  # asserts an EMPTY live rule list after destroy -- delete is a PUT of an
+  # empty set, and the cluster then accepts connections from anywhere);
+  # `full` proves droplet targeting through the droplet_ids REFERENCE (the
+  # Droplet fixture rides the scenario annotation, installing from that
+  # kind's minimal scenario). Deliberately not in the live lanes: tag rules
+  # (may require a pre-existing DigitalOcean tag -- same class as the
+  # network firewall's implicit-tag watch item; prove there first),
+  # kubernetes_cluster_ids (needs the slow ~10-min DOKS fixture), app_ids
+  # (needs an App Platform fixture) -- all three are the SAME fan-out code
+  # path the ip/droplet lanes prove. Firewall operations are seconds; the
+  # cluster fixture (~5 min, ~$0.02/hour) plus the full lane's droplet
+  # (~1 min, ~$0.009/hour) dominate.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 35

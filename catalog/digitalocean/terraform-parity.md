@@ -28,10 +28,10 @@ that has progressed.
 | | |
 |---|---|
 | Provider schema (parity baseline) | `digitalocean@2.99.1` |
-| Kinds in the catalog | 15 |
-| Distinct provider resources consumed | 18 |
-| Spec fields authored across all kinds | 552 |
-| Module pins on `digitalocean` | `~> 2.99` × 15 |
+| Kinds in the catalog | 20 |
+| Distinct provider resources consumed | 23 |
+| Spec fields authored across all kinds | 580 |
+| Module pins on `digitalocean` | `~> 2.99` × 20 |
 
 The GA provider is the parity baseline. Capability that exists only in a
 secondary channel (for Google, the `google-beta` provider) enters per kind
@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**15 of 15 kinds are at total accounting; 0 proven live.**
+**20 of 20 kinds are at total accounting; 0 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -54,6 +54,11 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | DigitalOceanCertificate | 6 | 0 | 5 | 1 | 0 | ✅ | — |
 | DigitalOceanContainerRegistry | 6 | 2 | 3 | 1 | 0 | ✅ | — |
 | DigitalOceanDatabaseCluster | 19 | 14 | 5 | 0 | 0 | ✅ | — |
+| DigitalOceanDatabaseConnectionPool | 6 | 4 | 2 | 0 | 0 | ✅ | — |
+| DigitalOceanDatabaseDb | 2 | 0 | 2 | 0 | 0 | ✅ | — |
+| DigitalOceanDatabaseFirewall | 3 | 0 | 2 | 1 | 0 | ✅ | — |
+| DigitalOceanDatabaseReplica | 7 | 4 | 3 | 0 | 0 | ✅ | — |
+| DigitalOceanDatabaseUser | 7 | 1 | 6 | 0 | 0 | ✅ | — |
 | DigitalOceanDnsRecord | 10 | 9 | 1 | 0 | 0 | ✅ | — |
 | DigitalOceanDnsZone | 12 | 8 | 3 | 1 | 0 | ✅ | — |
 | DigitalOceanDroplet | 21 | 16 | 4 | 1 | 0 | ✅ | — |
@@ -71,10 +76,10 @@ All resources of `digitalocean@2.99.1` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 18 | consumed by a kind's Terraform module today |
+| Modeled | 23 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 20 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 22 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 17 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 17 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 2 | deprecated or superseded provider surface |
 | **Total** | **79** | |
@@ -84,7 +89,7 @@ All resources of `digitalocean@2.99.1` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (18)
+### Modeled (23)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -93,6 +98,11 @@ rather than trusted.
 | `digitalocean_container_registry` | consumed by DigitalOceanContainerRegistry |
 | `digitalocean_container_registry_docker_credentials` | consumed by DigitalOceanContainerRegistry |
 | `digitalocean_database_cluster` | consumed by DigitalOceanDatabaseCluster |
+| `digitalocean_database_connection_pool` | consumed by DigitalOceanDatabaseConnectionPool |
+| `digitalocean_database_db` | consumed by DigitalOceanDatabaseDb |
+| `digitalocean_database_firewall` | consumed by DigitalOceanDatabaseFirewall |
+| `digitalocean_database_replica` | consumed by DigitalOceanDatabaseReplica |
+| `digitalocean_database_user` | consumed by DigitalOceanDatabaseUser |
 | `digitalocean_domain` | consumed by DigitalOceanDnsZone |
 | `digitalocean_droplet` | consumed by DigitalOceanDroplet |
 | `digitalocean_firewall` | consumed by DigitalOceanFirewall |
@@ -132,20 +142,15 @@ rather than trusted.
 | `digitalocean_uptime_alert` | alerts are many-per-check rows that cannot exist without the check and are always managed alongside it; the planned DigitalOceanUptimeCheck kind carries an alerts list |
 | `digitalocean_volume_attachment` | attachment is a nullable droplet FK on DigitalOceanVolume (the droplet kind's volume_ids covers it today); attach/detach is a field change, not a separate object lifecycle worth a kind |
 
-### Planned (22)
+### Planned (17)
 
 | Resource | Recorded reason |
 |---|---|
 | `digitalocean_cdn` | judged as a planned DigitalOceanCdn kind (CDN endpoint fronting a Spaces bucket origin, certificate reference for custom domains) |
 | `digitalocean_custom_image` | judged as a planned DigitalOceanCustomImage kind (imported images are first-class and referenced by droplets and autoscale pools) |
-| `digitalocean_database_connection_pool` | judged as a planned DigitalOceanDatabaseConnectionPool kind (PgBouncer pools have their own endpoint and are referenced by workloads; FK cluster, db, user) |
-| `digitalocean_database_db` | judged as a planned DigitalOceanDatabaseDb kind (logical databases are many-per-cluster and created/dropped independently of the cluster; FK cluster) |
-| `digitalocean_database_firewall` | judged as a planned DigitalOceanDatabaseFirewall kind (trusted-source rules churn on a different cadence and often under different ownership than the cluster; FK cluster, rule values reference droplets/Kubernetes clusters/apps) |
 | `digitalocean_database_kafka_schema_registry` | judged as a planned DigitalOceanDatabaseKafkaSchema kind (despite the resource name, each instance manages one registered schema -- many-per-cluster rows managed independently, like topics; FK cluster) |
 | `digitalocean_database_kafka_topic` | judged as a planned DigitalOceanDatabaseKafkaTopic kind (topics are many-per-cluster with independent lifecycle and per-topic config; FK cluster) |
 | `digitalocean_database_logsink_opensearch` | anchor of a planned DigitalOceanDatabaseLogsink kind modeling ship-cluster-logs-somewhere with a oneof destination config (FK cluster; optionally a Planton-managed OpenSearch cluster) |
-| `digitalocean_database_replica` | judged as a planned DigitalOceanDatabaseReplica kind (a replica has its own endpoint, size, and region -- an independent lifecycle that apps reference directly; FK cluster) |
-| `digitalocean_database_user` | judged as a planned DigitalOceanDatabaseUser kind (many-per-cluster with independent create/rotate/delete lifecycle; referenced by application configs; FK cluster) |
 | `digitalocean_dedicated_inference` | judged as a planned DigitalOceanDedicatedInference kind (GPU-backed inference endpoints with model deployments and accelerator scaling -- first-class, referenceable infrastructure; FK project) |
 | `digitalocean_droplet_autoscale` | judged as a planned DigitalOceanDropletAutoscalePool kind (a pool with its own scaling config and lifecycle -- the closest thing DigitalOcean has to a managed instance group; FK vpc, ssh keys, project) |
 | `digitalocean_monitor_alert` | judged as a planned DigitalOceanMonitorAlert kind (standalone alert policy over infrastructure metrics with its own lifecycle and notification config; FK droplets or tag-based targeting) |

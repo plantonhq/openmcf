@@ -117,6 +117,7 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | DigitalOceanApp | `spec.vpc` | `status.outputs.vpc_id` |
 | DigitalOceanDatabaseCluster | `spec.vpc` | `status.outputs.vpc_id` |
+| DigitalOceanDatabaseReplica | `spec.vpc` | `status.outputs.vpc_id` |
 | DigitalOceanDroplet | `spec.vpc` | `status.outputs.vpc_id` |
 | DigitalOceanKubernetesCluster | `spec.vpc` | `status.outputs.vpc_id` |
 | DigitalOceanLoadBalancer | `spec.vpc` | `status.outputs.vpc_id` |

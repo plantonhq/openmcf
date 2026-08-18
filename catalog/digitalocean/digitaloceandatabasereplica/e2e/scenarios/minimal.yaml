@@ -1,0 +1,30 @@
+# Minimal DigitalOceanDatabaseReplica: a same-region, same-size read
+# replica of the PostgreSQL cluster registry prerequisite. Proves the full
+# create/verify/destroy lifecycle (the verifier waits on status online and
+# asserts host/port and the UUID-vs-composite replica_id contract). Region
+# and size are explicit BY DESIGN -- the spec requires them (the provider's
+# omitted-value drift class is unrepresentable), so "inherit the primary"
+# is written out literally here.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseReplica
+metadata:
+  name: planton-oss-e2e-digitaloceandatabasereplica-min
+  id: planton-oss-e2e-digitaloceandatabasereplica-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandatabasereplica
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  cluster:
+    valueFrom:
+      kind: DigitalOceanDatabaseCluster
+      name: planton-oss-e2e-digitaloceandatabasecluster-min
+      fieldPath: status.outputs.cluster_id
+  replicaName: pltn-e2e-dodbrep-min
+  region: nyc3
+  size: db-s-1vcpu-1gb

@@ -542,6 +542,8 @@ github.com/pulumi/pulumi-confluentcloud/sdk/v2 v2.49.0 h1:Aey8tTNX4x8Vk7GifErMqe
 github.com/pulumi/pulumi-confluentcloud/sdk/v2 v2.49.0/go.mod h1:x2Df59CSDJyMaGMJEAtyIQIuaEHesjJicU6XfBX8ktI=
 github.com/pulumi/pulumi-digitalocean/sdk/v4 v4.49.0 h1:7mkHTeFgT+3zFvdQlHnKW1NcGKs/E+9NFLrAkN20ntk=
 github.com/pulumi/pulumi-digitalocean/sdk/v4 v4.49.0/go.mod h1:cYq42QaPIr4lQZNKnBG9Ng5CPC8XX0BmzKK6NjZ6IKs=
+github.com/pulumi/pulumi-digitalocean/sdk/v4 v4.53.0 h1:Ds1vEDn7//8giz8c30Z37YAeWAuRLBedNIl021B/PFA=
+github.com/pulumi/pulumi-digitalocean/sdk/v4 v4.53.0/go.mod h1:/aZf3ZyT9lm2QjtP6MuhrsWMsQ84TlvMjT4kH1NkjFc=
 github.com/pulumi/pulumi-gcp/sdk/v9 v9.29.0 h1:Iuge/kZ7CrpQ8IHGa61nelS4/kmhI/kC9Fdao7MpXJU=
 github.com/pulumi/pulumi-gcp/sdk/v9 v9.29.0/go.mod h1:d60JuN+7L+PscwZK++AlFyrfia1s1fWsO1EiSzbrelw=
 github.com/pulumi/pulumi-hcloud/sdk v1.32.1 h1:erzucxHkUCuFRHzHfT6L17gu7W4JgHlJl1eMBbis6g0=

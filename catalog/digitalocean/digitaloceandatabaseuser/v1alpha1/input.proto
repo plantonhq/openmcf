@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceandatabaseuser.v1alpha1;
+
+import "catalog/digitalocean/digitaloceandatabaseuser/v1alpha1/api.proto";
+import "catalog/digitalocean/provider.proto";
+
+//digital-ocean-database-user stack-input
+message DigitalOceanDatabaseUserStackInput {
+  //target cloud-resource
+  DigitalOceanDatabaseUser target = 1;
+  //provider-config
+  dev.planton.digitalocean.DigitalOceanProviderConfig provider_config = 2;
+}

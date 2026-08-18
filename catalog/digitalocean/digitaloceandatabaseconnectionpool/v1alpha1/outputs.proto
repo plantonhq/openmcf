@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceandatabaseconnectionpool.v1alpha1;
+
+// DigitalOceanDatabaseConnectionPoolStackOutputs captures the key outputs
+// after provisioning a connection pool on a DigitalOcean PostgreSQL
+// cluster. The cluster id and pool name are echoed so consumers (and
+// verification tooling) can address the pool directly -- the DigitalOcean
+// API has no standalone pool id; the (cluster, name) pair IS the identity.
+//
+// The connection URIs are assembled by the provisioners from the pool's
+// live connection details and embed credentials, so equality across
+// engines is asserted on host/port, never on the full URI.
+message DigitalOceanDatabaseConnectionPoolStackOutputs {
+  // UUID of the PostgreSQL cluster the pool runs on.
+  string cluster_id = 1;
+
+  // Name of the connection pool (its API identity within the cluster,
+  // and the database name clients connect to).
+  string pool_name = 2;
+
+  // Public hostname of the pool endpoint.
+  string host = 3;
+
+  // Private-network hostname of the pool endpoint, reachable from
+  // resources in the same VPC.
+  string private_host = 4;
+
+  // Port the pool listens on (distinct from the cluster's own port).
+  uint32 port = 5;
+
+  // Full public connection URI for the pool, including credentials.
+  // Secret.
+  string uri = 6;
+
+  // Full private-network connection URI for the pool, including
+  // credentials. Secret.
+  string private_uri = 7;
+
+  // Password of the pool's user. Secret. Empty for inbound-user pools
+  // (no dedicated user; clients bring their own credentials).
+  string password = 8;
+}

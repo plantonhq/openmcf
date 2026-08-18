@@ -392,6 +392,11 @@ import (
 	digitaloceancertificatev1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceancertificate/v1alpha1"
 	digitaloceancontainerregistryv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceancontainerregistry/v1alpha1"
 	digitaloceandatabaseclusterv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasecluster/v1alpha1"
+	digitaloceandatabaseconnectionpoolv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabaseconnectionpool/v1alpha1"
+	digitaloceandatabasedbv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasedb/v1alpha1"
+	digitaloceandatabasefirewallv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasefirewall/v1alpha1"
+	digitaloceandatabasereplicav1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasereplica/v1alpha1"
+	digitaloceandatabaseuserv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabaseuser/v1alpha1"
 	digitaloceandnsrecordv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandnsrecord/v1alpha1"
 	digitaloceandnszonev1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandnszone/v1alpha1"
 	digitaloceandropletv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandroplet/v1alpha1"
@@ -1136,21 +1141,26 @@ var ProviderConfluentMap = map[cloudresourcekind.CloudResourceKind]proto.Message
 }
 
 var ProviderDigitalOceanMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
-	cloudresourcekind.CloudResourceKind_DigitalOceanApp:                &digitaloceanappv1alpha1.DigitalOceanApp{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanBucket:             &digitaloceanbucketv1alpha1.DigitalOceanBucket{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanCertificate:        &digitaloceancertificatev1alpha1.DigitalOceanCertificate{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanContainerRegistry:  &digitaloceancontainerregistryv1alpha1.DigitalOceanContainerRegistry{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseCluster:    &digitaloceandatabaseclusterv1alpha1.DigitalOceanDatabaseCluster{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanDnsRecord:          &digitaloceandnsrecordv1alpha1.DigitalOceanDnsRecord{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanDnsZone:            &digitaloceandnszonev1alpha1.DigitalOceanDnsZone{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanDroplet:            &digitaloceandropletv1alpha1.DigitalOceanDroplet{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanFirewall:           &digitaloceanfirewallv1alpha1.DigitalOceanFirewall{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanFunction:           &digitaloceanfunctionv1alpha1.DigitalOceanFunction{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanKubernetesCluster:  &digitaloceankubernetesclusterv1alpha1.DigitalOceanKubernetesCluster{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanKubernetesNodePool: &digitaloceankubernetesnodepoolv1alpha1.DigitalOceanKubernetesNodePool{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanLoadBalancer:       &digitaloceanloadbalancerv1alpha1.DigitalOceanLoadBalancer{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanVolume:             &digitaloceanvolumev1alpha1.DigitalOceanVolume{},
-	cloudresourcekind.CloudResourceKind_DigitalOceanVpc:                &digitaloceanvpcv1alpha1.DigitalOceanVpc{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanApp:                    &digitaloceanappv1alpha1.DigitalOceanApp{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanBucket:                 &digitaloceanbucketv1alpha1.DigitalOceanBucket{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanCertificate:            &digitaloceancertificatev1alpha1.DigitalOceanCertificate{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanContainerRegistry:      &digitaloceancontainerregistryv1alpha1.DigitalOceanContainerRegistry{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseCluster:        &digitaloceandatabaseclusterv1alpha1.DigitalOceanDatabaseCluster{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseConnectionPool: &digitaloceandatabaseconnectionpoolv1alpha1.DigitalOceanDatabaseConnectionPool{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseDb:             &digitaloceandatabasedbv1alpha1.DigitalOceanDatabaseDb{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseFirewall:       &digitaloceandatabasefirewallv1alpha1.DigitalOceanDatabaseFirewall{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseReplica:        &digitaloceandatabasereplicav1alpha1.DigitalOceanDatabaseReplica{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseUser:           &digitaloceandatabaseuserv1alpha1.DigitalOceanDatabaseUser{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDnsRecord:              &digitaloceandnsrecordv1alpha1.DigitalOceanDnsRecord{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDnsZone:                &digitaloceandnszonev1alpha1.DigitalOceanDnsZone{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDroplet:                &digitaloceandropletv1alpha1.DigitalOceanDroplet{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanFirewall:               &digitaloceanfirewallv1alpha1.DigitalOceanFirewall{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanFunction:               &digitaloceanfunctionv1alpha1.DigitalOceanFunction{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanKubernetesCluster:      &digitaloceankubernetesclusterv1alpha1.DigitalOceanKubernetesCluster{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanKubernetesNodePool:     &digitaloceankubernetesnodepoolv1alpha1.DigitalOceanKubernetesNodePool{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanLoadBalancer:           &digitaloceanloadbalancerv1alpha1.DigitalOceanLoadBalancer{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanVolume:                 &digitaloceanvolumev1alpha1.DigitalOceanVolume{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanVpc:                    &digitaloceanvpcv1alpha1.DigitalOceanVpc{},
 }
 
 var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{

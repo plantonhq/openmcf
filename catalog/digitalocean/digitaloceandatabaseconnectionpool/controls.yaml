@@ -1,0 +1,66 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceandatabaseconnectionpool
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A connection pool stores no data; it proxies connections to the cluster, whose disk DigitalOcean encrypts at rest (the DigitalOceanDatabaseCluster's posture).
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: DigitalOcean Managed Database endpoints -- pool endpoints included -- require TLS; the pool's uri/private_uri outputs carry sslmode=require connection strings.
+      notes: There is no plaintext option to misconfigure.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The pool listens on the cluster's endpoints (public host, plus private host when the cluster is VPC-placed); it adds no exposure knob of its own. Exposure is governed by the cluster's VPC placement and its DigitalOceanDatabaseFirewall rule set.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound restriction lives on the cluster's DigitalOceanDatabaseFirewall rule set, which covers pool ports too.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No HTTP edge; there is no request-filtering surface.
+    - control_id: rbac
+      status: configurable
+      field_path: user
+      evidence:
+        type: spec_default
+        reference: Omitting user creates DigitalOcean's inbound-user pool, where every client authenticates with its OWN database credentials instead of a shared pool identity.
+      notes: The inbound-user default is the safer posture for shared pools; naming a user pins the pool to that single identity (all clients act as it).
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Pool authentication is database-credential based; no keyless path exists upstream.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication-protocol choice exists on the pool.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: No pool-level audit surface exists upstream.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Pools emit no metrics of their own; database monitoring targets the cluster.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Pools are stateless configuration, recreated by IaC.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The pool runs on the cluster's topology; it carries no availability posture of its own.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: DigitalOcean offers no deletion-protection flag for pools. Every spec field is create-only upstream, so ANY change replaces the pool and drops its live connections -- taught on the spec and in the GUIDE.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: PgBouncer is patched with the managed cluster.

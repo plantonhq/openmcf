@@ -90,7 +90,7 @@ require (
 	github.com/pulumi/pulumi-civo/sdk/v2 v2.4.8
 	github.com/pulumi/pulumi-cloudflare/sdk/v6 v6.17.0
 	github.com/pulumi/pulumi-confluentcloud/sdk/v2 v2.49.0
-	github.com/pulumi/pulumi-digitalocean/sdk/v4 v4.49.0
+	github.com/pulumi/pulumi-digitalocean/sdk/v4 v4.53.0
 	github.com/pulumi/pulumi-gcp/sdk/v9 v9.29.0
 	github.com/pulumi/pulumi-hcloud/sdk v1.32.1
 	github.com/pulumi/pulumi-kubernetes/sdk/v4 v4.33.0

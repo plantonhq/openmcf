@@ -364,6 +364,11 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | DigitalOceanApp | `spec.databases[].clusterName` | `spec.cluster_name` |
+| DigitalOceanDatabaseConnectionPool | `spec.cluster` | `status.outputs.cluster_id` |
+| DigitalOceanDatabaseDb | `spec.cluster` | `status.outputs.cluster_id` |
+| DigitalOceanDatabaseFirewall | `spec.cluster` | `status.outputs.cluster_id` |
+| DigitalOceanDatabaseReplica | `spec.cluster` | `status.outputs.cluster_id` |
+| DigitalOceanDatabaseUser | `spec.cluster` | `status.outputs.cluster_id` |
 
 ## See Also
 
