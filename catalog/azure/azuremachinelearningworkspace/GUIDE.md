@@ -4,7 +4,7 @@ Judgment that saves real time when running ML workspaces. The field reference li
 
 ## Deletion is a soft delete -- the name stays taken
 
-A deleted workspace becomes a purgeable ghost that keeps holding the workspace NAME (the Key Vault recycle-bin pattern). Recreating under the same name fails until the ghost is purged -- `az ml workspace list --archived` shows them. The provider purges on destroy only when the `machine_learning.purge_soft_deleted_workspace_on_destroy` features flag is set; without it, delete-recreate cycles under one name will surprise you.
+A deleted workspace becomes a purgeable ghost that keeps holding the workspace NAME (the Key Vault recycle-bin pattern). Both Planton modules enable the provider's `machine_learning.purge_soft_deleted_workspace_on_destroy` features flag, so a Planton destroy purges the ghost and the name frees immediately -- destroy means destroy, and there is no soft-delete recovery window to lean on. A workspace deleted OUTSIDE Planton (portal, `az ml workspace delete` without `--permanently-delete`) still ghosts and blocks a redeploy under the same name until purged. Know the boundary: NO CLI or REST API lists ghosts -- `az ml workspace list` has no soft-delete flag and Resource Graph indexes active resources only. The Azure portal's "Recently deleted" view (Azure Machine Learning service page, per region) is the one listing surface, and purging an existing ghost happens there too. The tell that a ghost is in your way: a create fails on a name conflict while no active workspace of that name exists anywhere.
 
 ## The companion services are a one-way door
 
@@ -21,6 +21,10 @@ Moving from `DISABLED` toward `ALLOW_ONLY_APPROVED_OUTBOUND` tightens the worksp
 ## The managed network provisions lazily -- and that bites the first job
 
 By default the managed VNet materializes on first compute creation, which adds minutes to the first job and can fail late on quota. Set `managedNetwork.provisionOnCreationEnabled: true` on isolated workspaces so the network exists (and fails, if it must) at deploy time instead.
+
+## Approved-outbound + provision-on-creation is a fragile create, and a PE outbound rule is a fragile delete
+
+Two live attempts at a Basic workspace with `ALLOW_ONLY_APPROVED_OUTBOUND` and `provision_on_creation_enabled` failed in different ways. Without a private-endpoint outbound rule, ARM rolled the workspace back mid-create after ~6 minutes (`Bad request to get identity secret: The workspace identity has been deleted` / workspace NotFound). With a PE rule to a Key Vault, create eventually succeeded and then destroy 409-looped for 40+ minutes (`privateEndpointConnectionProxies/validate` failing; workspace delete returning `InternalServerError` / 409) while the workspace stayed `Succeeded`. Manual recovery is `az ml workspace delete --yes --permanently-delete` (itself ~15 minutes; first `az ml` hangs forever unless the `ml` extension is already installed). Prefer the default network for day-one workspaces; if you need approved-outbound, add PE rules after the workspace is up, and delete those rules (and wait for the target-side connection to drop) before deleting the workspace.
 
 ## Grant the identity before you need it
 

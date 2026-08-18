@@ -44,6 +44,23 @@ Same class as the hub: Optional+Computed, service-flipped when hub
 encryption applies. Both engines send only when true; a pinned false
 would fight the read-back on a ForceNew flag.
 
+## Deletion has no purge seam -- and measured live, that is fine
+
+Projects are ML workspaces at ARM, so deletion is the family's SOFT
+delete -- but unlike the hub resource, the provider's project delete
+never consults the `machine_learning.
+purge_soft_deleted_workspace_on_destroy` features flag (it sends the
+default delete options; verified in the provider source at the pinned
+v5.0.0). Setting the flag in this kind's provider config would be a
+silent no-op, so the modules deliberately do not. Measured live:
+destroying a project and recreating the SAME name in the same
+resource group minutes later succeeded -- a project ghost does not
+block recreation the way a standalone hub/workspace ghost does (the
+hub's own purge-on-destroy sweeps its children's ghosts with it). If
+a standalone project ghost ever does surface, the Azure portal's
+"Recently deleted" view (per region) is the only listing and purge
+surface -- no CLI or REST API lists ML ghosts.
+
 ## E2E shape
 
 The smoke scenario is a system-identity project on the fixture hub

@@ -512,7 +512,9 @@ USER_ASSIGNED_IDENTITY requires storage_user_assigned_identity_id
 (both enforced here, exactly as Azure enforces them at apply time);
 SYSTEM_ASSIGNED_IDENTITY needs neither -- grant the app's
 system-assigned identity "Storage Blob Data Contributor" on the
-storage account instead.
+storage account instead. Live-proven: ARM does NOT check that
+grant at app create -- the site object succeeds without it. The
+grant is still required before a package deploy (day-2).
 
 - rule: {"required":true,"enum":{"definedOnly":true}}
 

@@ -3,17 +3,15 @@ kind: ComponentE2EProfile
 metadata:
   name: azurebackuppolicyfileshare
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, offline tofu plan green); live dual-engine
-  # proof has not yet run. The policy is a FREE configuration object
-  # on the fixture vault -- the lane's time is the fixture chain
-  # (resource group + vault, both fast). TWO scenarios run: the daily
-  # snapshot smoke (which doubles as the protected-share lane's
-  # install manifest -- deliberately the SAFE shape) and the
-  # hourly-vault-standard scenario proving the window dials and the
-  # vaulted tier live, isolated so a tier-side failure never couples
-  # into the dependent lane.
+  # PROVEN live on both engines (proof session, 2026-08-18), BOTH
+  # scenarios: the daily snapshot smoke (which doubles as the
+  # protected-share lane's install manifest) and hourly-vault-standard
+  # (window dials + the vaulted tier + month-days retention). Pulumi
+  # 5m25s / 5m44s; Terraform 6m14s / 5m55s each incl. a blind import
+  # round-trip (11-13s) with a no-differences re-plan. A FREE
+  # configuration object; the lane's time is the fixture chain
+  # (resource group + vault, both fast).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 45

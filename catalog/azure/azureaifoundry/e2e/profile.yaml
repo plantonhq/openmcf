@@ -12,10 +12,12 @@ spec:
   # isolation arms are offline-proven only (they need pre-granted key
   # access the minimal lane deliberately does not compose; the CMK key
   # must be a VERSIONED URL -- the hub's own contract). Deletion is a
-  # SOFT delete -- the hub ghost holds its name until purged; the
-  # orphan sweep adds `az ml workspace list --archived` (shared with
-  # the ML workspace class).
+  # SOFT delete -- the hub ghost holds its name until purged; both
+  # modules purge on destroy (proven live: dual-engine recreate of the
+  # same fixed name). No CLI or REST API lists ML ghosts -- the
+  # portal's "Recently deleted" view is the one listing surface
+  # (shared with the ML workspace class; see e2e/README.md).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 40

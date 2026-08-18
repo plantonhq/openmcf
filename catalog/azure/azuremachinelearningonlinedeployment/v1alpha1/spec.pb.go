@@ -72,8 +72,13 @@ type AzureMachineLearningOnlineDeploymentSpec struct {
 	InstanceCount *int32 `protobuf:"varint,5,opt,name=instance_count,json=instanceCount,proto3,oneof" json:"instance_count,omitempty"`
 	// The model the deployment serves: the ARM ID of a registered
 	// model version (.../workspaces/{ws}/models/{name}/versions/{v})
-	// or an azureml:// asset URI. Unset is legal at the ARM layer for
-	// bring-your-own-container images that embed their model.
+	// or an azureml:// asset URI. The ARM schema marks it optional
+	// (bring-your-own-container images embed their model), but the
+	// SERVICE rejects a create that names neither a model nor a
+	// self-contained custom container -- synchronously, as a bare
+	// 400 BadRequest "The request is invalid." with no field detail
+	// (live-proven). In practice: set this for every deployment
+	// except a true BYOC shape.
 	Model string `protobuf:"bytes,6,opt,name=model,proto3" json:"model,omitempty"`
 	// Where to mount the model inside a custom container image. Only
 	// meaningful with a custom environment.

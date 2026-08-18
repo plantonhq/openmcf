@@ -259,9 +259,13 @@ resource "azurerm_container_group" "main" {
           dynamic "http_get" {
             for_each = liveness_probe.value.http_get != null ? [liveness_probe.value.http_get] : []
             content {
-              path         = http_get.value.path != "" ? http_get.value.path : null
-              port         = http_get.value.port != 0 ? http_get.value.port : null
-              scheme       = http_get.value.scheme != "" ? http_get.value.scheme : null
+              path = http_get.value.path != "" ? http_get.value.path : null
+              port = http_get.value.port != 0 ? http_get.value.port : null
+              # Explicit-send "http" when unset: ARM materializes the
+              # scheme on reads and the provider treats it as
+              # replace-forcing, so an omitted scheme re-plans as a
+              # destroy+create (live-proven by the idempotency gate).
+              scheme       = http_get.value.scheme != "" ? http_get.value.scheme : "http"
               http_headers = length(http_get.value.http_headers) > 0 ? http_get.value.http_headers : null
             }
           }
@@ -283,9 +287,11 @@ resource "azurerm_container_group" "main" {
           dynamic "http_get" {
             for_each = readiness_probe.value.http_get != null ? [readiness_probe.value.http_get] : []
             content {
-              path         = http_get.value.path != "" ? http_get.value.path : null
-              port         = http_get.value.port != 0 ? http_get.value.port : null
-              scheme       = http_get.value.scheme != "" ? http_get.value.scheme : null
+              path = http_get.value.path != "" ? http_get.value.path : null
+              port = http_get.value.port != 0 ? http_get.value.port : null
+              # Explicit-send "http" when unset -- see the liveness
+              # probe's scheme note (replace-forcing echo).
+              scheme       = http_get.value.scheme != "" ? http_get.value.scheme : "http"
               http_headers = length(http_get.value.http_headers) > 0 ? http_get.value.http_headers : null
             }
           }
@@ -313,7 +319,11 @@ resource "azurerm_container_group" "main" {
         workspace_key = diagnostics.value.workspace_key
         log_type      = diagnostics.value.log_type != "" ? diagnostics.value.log_type : null
         # The provider only sends metadata alongside a log type
-        # (validated upstream).
+        # (validated upstream). Note the provider ALSO attaches an empty
+        # metadata object whenever a log type is set, which ARM rejects
+        # for ContainerInstanceLogs (LogAnalyticsMetadataNotAllowed,
+        # live-proven) -- a spec CEL blocks that log type until the
+        # provider stops sending the empty map.
         metadata = length(diagnostics.value.metadata) > 0 ? diagnostics.value.metadata : null
       }
     }

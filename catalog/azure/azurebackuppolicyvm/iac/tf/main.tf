@@ -31,7 +31,11 @@ resource "azurerm_backup_policy_vm" "main" {
   }
 
   # Omit when unset so the SERVICE default applies (2 days on V1, 7 on
-  # V2 -- version-dependent, so the platform pins no default).
+  # V2 -- version-dependent, so the platform pins no default). Azure
+  # requires vaulted daily retention > this value
+  # (BMSUserErrorInstantRPRetentionExceedsVaultedRetention); the spec
+  # CEL `bpv_instant_lt_daily` front-loads that, including the
+  # V2-unset-defaults-to-7 case.
   instant_restore_retention_days = var.spec.instant_restore_retention_days
 
   dynamic "instant_restore_resource_group" {

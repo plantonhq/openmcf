@@ -64,11 +64,21 @@ type AzureDiskSnapshotSpec struct {
 	// Can be a literal ARM ID or a reference to an AzureManagedDisk
 	// output.
 	//
-	// **ForceNew**: changing this destroys and recreates the snapshot.
+	// **Create-time-only**: a snapshot's creation data is immutable
+	// history, and Azure never returns the source on reads (live-proven
+	// at the v5 provider pin), so both engines deliberately ignore
+	// in-place edits to this field -- editing it does NOT destroy and
+	// recreate the snapshot (that would silently delete a backup
+	// artifact). To capture a different disk, create a NEW snapshot
+	// resource. This is also what makes adopting an existing snapshot
+	// (import) plan clean.
 	SourceResourceId *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=source_resource_id,json=sourceResourceId,proto3" json:"source_resource_id,omitempty"`
 	// The source VHD blob URI for create_option "Import".
 	//
-	// **ForceNew**: changing this destroys and recreates the snapshot.
+	// **Create-time-only**: like source_resource_id, the URI is immutable
+	// creation data Azure never returns on reads -- both engines ignore
+	// in-place edits (no destroy+recreate); importing a different VHD is
+	// a NEW snapshot resource.
 	SourceUri string `protobuf:"bytes,6,opt,name=source_uri,json=sourceUri,proto3" json:"source_uri,omitempty"`
 	// The storage account holding source_uri (the read grant for
 	// "Import"). Can be a literal ARM ID or a reference to an

@@ -218,7 +218,7 @@ Reference an output from another manifest as `valueFrom: {kind: AzureMachineLear
 | `status.outputs.batch_endpoint_id` | `string` | The Azure Resource Manager ID of the batch endpoint. Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.MachineLearningServices/workspaces/{ws}/batchEndpoints/{name} |
 | `status.outputs.batch_endpoint_name` | `string` | The endpoint's name -- what deployments attach to and what the default-deployment pointer routes submissions across. |
 | `status.outputs.scoring_uri` | `string` | The HTTPS address batch scoring jobs are submitted to (with a Microsoft Entra token). |
-| `status.outputs.swagger_uri` | `string` | The endpoint's OpenAPI (Swagger) document address -- the job submission request/response schema. |
+| `status.outputs.swagger_uri` | `string` | The endpoint's OpenAPI (Swagger) document address -- the job submission request/response schema. EMPTY until a deployment serves behind the endpoint (live-measured on both engines: ARM returns "" for a deployment-less endpoint, unlike the online sibling whose swagger URI populates at create). |
 | `status.outputs.system_assigned_identity_principal_id` | `string` | The principal (object) ID of the endpoint's system-assigned identity, when one is enabled -- what role grants bind to when organizational convention grants roles to the endpoint object. |
 
 ## References

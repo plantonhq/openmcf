@@ -69,5 +69,19 @@ resource "azurerm_snapshot" "main" {
     }
   }
 
+  # The source fields are create-time-only by contract: a snapshot's
+  # creation data is immutable history, and the provider (v5 pin) never
+  # reads source_resource_id/source_uri back from Azure -- an adopted
+  # (imported) snapshot therefore holds a null source in state, and
+  # without this guard every post-import plan proposes a destroy+create
+  # that would delete the very artifact the user adopted. Ignoring the
+  # pair also means an in-place source edit is a no-op rather than a
+  # silent deletion of a backup artifact; capturing a different disk is
+  # a NEW snapshot resource (the spec field comments teach this). The
+  # Pulumi module carries the same guard -- keep the engines in step.
+  lifecycle {
+    ignore_changes = [source_resource_id, source_uri]
+  }
+
   tags = local.final_tags
 }

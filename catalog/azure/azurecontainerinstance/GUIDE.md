@@ -12,7 +12,7 @@ There is no rescheduling, no rolling update, no horizontal scaling. A liveness p
 
 ## The secrets never come back
 
-Azure returns none of the group's secrets on reads: secure environment variables, volume storage keys, inline secret files, registry passwords, and the Log Analytics workspace key are all write-only. Two operational consequences: an IMPORT of an existing group cannot recover them (re-supply them in the manifest -- that is expected, not drift), and any identity update re-sends them from your configuration, so keep the manifest's secret references live (a rotated storage key must be updated in the manifest before the next apply, or the update call fails).
+Azure returns none of the group's secrets on reads: secure environment variables, volume storage keys, inline secret files, registry passwords, and the Log Analytics workspace key are all write-only. Two operational consequences: an IMPORT of an existing group cannot recover them (re-supply them in the manifest), and any identity update re-sends them from your configuration, so keep the manifest's secret references live (a rotated storage key must be updated in the manifest before the next apply, or the update call fails). One sharper consequence for adoption, live-proven: because the container list is create-only, a manifest carrying secure environment variables plans a ONE-TIME destroy-and-recreate on the first apply after importing an existing group -- the platform cannot verify the running group's secrets match yours, so it converges by replacing once. Plan that first apply for a maintenance window; after it, re-applies are clean. (This is also why rotating a secure env var replaces the group -- by design, not drift.)
 
 ## Networking: pick one of three postures and mean it
 
@@ -25,3 +25,7 @@ Azure returns none of the group's secrets on reads: secure environment variables
 ## Jobs: Never + exit codes, and the read-back quirks
 
 For run-once work set `restartPolicy: Never`, let the container exit, and read the exit state before deleting the group. Two read-back behaviors are expected, not drift: `commands` echoes the image's own entrypoint when you did not override it, and the group-level exposed ports echo the containers' ports when you omitted `exposedPorts`.
+
+## Log Analytics: leave logType unset or use ContainerInsights
+
+Wiring `diagnosticsLogAnalytics` with just the workspace id and key ships logs under Azure's server-side default schema and is the shape that always works. Setting `logType: ContainerInstanceLogs` explicitly does NOT work today and validation rejects it: whenever a log type is set, the provider attaches a metadata object (even empty) to the request, and ARM refuses metadata for that log type (`LogAnalyticsMetadataNotAllowed` -- live-proven on both engines). `ContainerInsights` accepts metadata, so use it when you want the dashboard-ready schema or per-record metadata tags. Know that the metadata keys are a closed vocabulary ARM validates (`InvalidLogAnalyticsMetadataKeys`, live-proven): only `pod-uuid`, `cluster-resource-id`, and `node-name` pass -- the Kubernetes-shaped tags Container Insights renders. This is Insights-integration plumbing, not a general labeling surface; for your own labels, use the group's tags.

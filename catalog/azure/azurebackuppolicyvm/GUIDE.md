@@ -14,6 +14,10 @@ Backup storage cost is retention math: `retentionDaily.count` dailies + weeklies
 
 The service rejects 2-6 days of daily retention at CREATE time -- a rule that surfaces nowhere in the portal until it fails. The spec front-loads it: `count: 1` (a single rolling daily) or `count: 7+`.
 
+## Instant restore must be shorter than daily retention
+
+Azure keeps a few days of snapshots next to the VM for fast restore. That window must be STRICTLY shorter than how long you keep the vaulted daily backups -- `BMSUserErrorInstantRPRetentionExceedsVaultedRetention` otherwise, with no field name in the error. V2 defaults the window to 7 days when you leave it unset, so a V2 policy with `retentionDaily.count: 7` and no `instantRestoreRetentionDays` is undeployable. Set the instant window to 1-6, or keep dailies longer than 7. The spec rejects the colliding shapes before Azure does.
+
 ## The time field is one dial for everything
 
 `backup.time` sets the backup start AND the retention times of every layer (the provider wires them together). It must land on the hour or half past. Pick a low-traffic window in the policy's `timezone` -- and remember VM snapshots briefly elevate IO.

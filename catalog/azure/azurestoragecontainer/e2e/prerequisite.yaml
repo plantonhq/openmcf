@@ -31,5 +31,5 @@ spec:
   # The container kind carries container METADATA (data-plane pairs),
   # not ARM tags.
   metadata:
-    e2e-suite: azure
+    e2e_suite: azure
     purpose: fixture

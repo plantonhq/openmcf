@@ -55,8 +55,12 @@ message AzureMachineLearningBatchDeploymentSpec {
   // The compute pool jobs run on, by ARM ID
   // (.../workspaces/{ws}/computes/{name}) -- typically an
   // AzureMachineLearningComputeCluster that scales to zero between
-  // jobs. Unset lets the service run jobs on serverless compute
-  // (where the workspace supports it).
+  // jobs. REQUIRED for a Model-type recipe despite the ARM schema
+  // marking it optional: the service validates the create
+  // synchronously and rejects an empty compute with 400
+  // Code="UserError", "'Compute Id' must not be empty."
+  // (ArgumentNullOrEmpty; live-proven). A pipeline-component recipe
+  // carries its compute in the component's own settings instead.
   dev.planton.shared.foreignkey.v1.StringValueOrRef compute_id = 4 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureMachineLearningComputeCluster,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.machine_learning_compute_cluster_id"
@@ -67,9 +71,14 @@ message AzureMachineLearningBatchDeploymentSpec {
   AzureMachineLearningBatchDeploymentResources resources = 5;
 
   // The model the recipe runs -- a registered model asset referenced
-  // one of three ways (exactly one when the block is present). Unset
-  // is legal at the ARM layer for recipes whose environment embeds
-  // the model or whose pipeline component carries it.
+  // one of three ways (exactly one when the block is present).
+  // REQUIRED for a Model-type recipe despite the ARM schema marking
+  // it optional: the service validates the create synchronously and
+  // rejects an empty model with 400 Code="UserError", "'Model
+  // Reference' must not be empty." (ArgumentNullOrEmpty;
+  // live-proven -- an environment image cannot stand in for it).
+  // Only a pipeline-component recipe omits it: the component
+  // carries its own steps.
   AzureMachineLearningBatchDeploymentModel model = 6;
 
   // The scoring code the recipe runs -- a registered code asset and
@@ -167,6 +176,18 @@ message AzureMachineLearningBatchDeploymentSpec {
   // resource id); a user tag with the same key wins. Updatable in
   // place.
   map<string, string> tags = 20;
+
+  // The service's own create-time validators, mirrored here so a bad
+  // recipe fails at manifest validation instead of at Azure: a
+  // Model-type recipe (no pipeline_component) must name both a model
+  // and a compute -- the service rejects either omission with 400
+  // Code="UserError" / ArgumentNullOrEmpty (live-proven; there is no
+  // provider schema behind this azapi-backed kind to catch it).
+  option (buf.validate.message).cel = {
+    id: "ml_batch_deployment_model_type_requires_model_and_compute"
+    message: "a model-type recipe (no pipeline_component) requires both model and compute_id -- the batch service rejects a create missing either"
+    expression: "has(this.pipeline_component) || (has(this.model) && has(this.compute_id))"
+  };
 }
 
 // Per-job compute sizing.

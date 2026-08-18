@@ -274,7 +274,7 @@ Reference an output from another manifest as `valueFrom: {kind: AzureMachineLear
 | `status.outputs.machine_learning_compute_instance_name` | `string` | The instance's name -- what its owner selects as their compute in notebooks and the ML studio. |
 | `status.outputs.system_assigned_identity_principal_id` | `string` | The principal (object) ID of the instance's system-assigned identity, when one is enabled -- what storage / Key Vault grants bind to. |
 | `status.outputs.ssh_username` | `string` | The admin username for SSH access, assigned by the service -- populated only when the ssh block is configured. |
-| `status.outputs.ssh_port` | `int32` | The port the instance answers SSH on, assigned by the service -- populated only when the ssh block is configured. |
+| `status.outputs.ssh_port` | `int32` | The port the instance answers SSH on, assigned by the service -- populated only when the ssh block is configured. When the block is absent both engines must still emit a numeric zero (not a nil / empty string): a raw nil Pulumi export fails the harness int32 parse. Use Elem() on the optional SSH fields; Terraform already falls back with try(..., 0). |
 
 ## References
 

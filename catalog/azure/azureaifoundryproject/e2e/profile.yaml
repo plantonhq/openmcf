@@ -13,6 +13,6 @@ spec:
   # resource group. The user-assigned identity arm is offline-proven
   # only (tenant-scoped values).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 45

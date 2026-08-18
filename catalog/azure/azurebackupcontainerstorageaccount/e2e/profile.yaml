@@ -3,17 +3,19 @@ kind: ComponentE2EProfile
 metadata:
   name: azurebackupcontainerstorageaccount
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, offline tofu plan green); live dual-engine
-  # proof has not yet run. Registration is FREE and data-free; the
-  # lane's time is the fixture chain (resource group + vault + storage
-  # account) plus the Register/Unregister LROs (the provider allows 30
-  # minutes each; normal runs are minutes). NOTE: this kind's smoke
-  # and the protected-share lane's fixture registration target the
-  # SAME ARM identity (fixture account x fixture vault) -- safe under
-  # the runner's sequential execution; never run the two lanes
-  # concurrently.
+  # PROVEN live on both engines (proof session, 2026-08-18): `minimal`
+  # (the fixture storage account registered with the fixture vault) --
+  # Pulumi 12m8s (register 3m11, unregister 1m38), Terraform 9m53s
+  # incl. a 16s blind import round-trip on the semicolon container ID
+  # with a no-differences re-plan. Registration is FREE and data-free;
+  # the lane's time is the fixture chain plus the Register/Unregister
+  # LROs. NOTE: this kind's smoke and the protected-share lane's
+  # fixture registration target the SAME ARM identity (fixture account
+  # x fixture vault) -- safe under the runner's sequential execution;
+  # never run the two lanes concurrently. While registered, Azure
+  # Backup's DoNotDelete lock on the account also blocks deleting its
+  # SHARES -- the ScopeLocked ordering class in the e2e README.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 45

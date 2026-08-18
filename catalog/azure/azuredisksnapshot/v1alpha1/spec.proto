@@ -71,7 +71,14 @@ message AzureDiskSnapshotSpec {
   // Can be a literal ARM ID or a reference to an AzureManagedDisk
   // output.
   //
-  // **ForceNew**: changing this destroys and recreates the snapshot.
+  // **Create-time-only**: a snapshot's creation data is immutable
+  // history, and Azure never returns the source on reads (live-proven
+  // at the v5 provider pin), so both engines deliberately ignore
+  // in-place edits to this field -- editing it does NOT destroy and
+  // recreate the snapshot (that would silently delete a backup
+  // artifact). To capture a different disk, create a NEW snapshot
+  // resource. This is also what makes adopting an existing snapshot
+  // (import) plan clean.
   dev.planton.shared.foreignkey.v1.StringValueOrRef source_resource_id = 5 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AzureManagedDisk,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.disk_id"
@@ -79,7 +86,10 @@ message AzureDiskSnapshotSpec {
 
   // The source VHD blob URI for create_option "Import".
   //
-  // **ForceNew**: changing this destroys and recreates the snapshot.
+  // **Create-time-only**: like source_resource_id, the URI is immutable
+  // creation data Azure never returns on reads -- both engines ignore
+  // in-place edits (no destroy+recreate); importing a different VHD is
+  // a NEW snapshot resource.
   string source_uri = 6;
 
   // The storage account holding source_uri (the read grant for

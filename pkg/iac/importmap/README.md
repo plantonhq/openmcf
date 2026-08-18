@@ -129,6 +129,24 @@ match the real key (Kubernetes Secret data keys like htpasswd file
 names are the canonical case; proven live on a blind round-trip that
 failed its declared tolerance until the grammar could express the key).
 
+**REPLACES are never tolerable — and one class of config can only plan a
+replace after import.** Every tolerance above covers in-place updates; a
+post-import plan proposing destroy+create always fails the oracle, because
+silently "passing" a plan that would destroy the adopted resource is worse
+than any recipe bug. A scenario whose config carries **write-only ForceNew
+SECRETS** (first live case: a container group's secure environment
+variables) sits exactly there: the blind import necessarily lacks the
+secret, the config supplies it, the attribute forces replacement — and
+`ignore_changes` must never paper it over, because rotating such a secret
+is SUPPOSED to replace the resource. Such a scenario opts out of the
+round-trip with the reason-carrying manifest annotation
+`planton.dev/e2e-import-roundtrip-skip: "<why>"` (an empty value does not
+skip; the runner prints the reason into the lane log), while the kind's
+recipes stay enrolled and prove on its secret-free scenarios. The kind's
+user docs must teach the adoption consequence: the first apply after
+importing a secret-bearing instance replaces it once, converging to the
+manifest's secrets.
+
 ## Enrollment is the file itself
 
 The import-map file's presence is the single enrollment signal everywhere:

@@ -124,8 +124,10 @@ type AzureStorageContainerSpec struct {
 	EncryptionScopeOverrideEnabled *bool `protobuf:"varint,5,opt,name=encryption_scope_override_enabled,json=encryptionScopeOverrideEnabled,proto3,oneof" json:"encryption_scope_override_enabled,omitempty"`
 	// Free-form metadata key/value pairs stored on the container (visible
 	// to anyone who can read container properties -- not for secrets).
-	// Keys must be valid C# identifiers per Azure's rule; lowercase is
-	// canonical (Azure lowercases keys on read).
+	// Keys must be valid C# identifiers per Azure's rule and lowercase
+	// (Azure lowercases keys on read). Hyphens fail at apply
+	// ("MetaData must start with letters or an underscores and be all
+	// lowercase" -- live-caught on Pulumi when a fixture used e2e-suite).
 	Metadata      map[string]string `protobuf:"bytes,6,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -207,8 +209,7 @@ var File_catalog_azure_azurestoragecontainer_v1alpha1_spec_proto protoreflect.Fi
 
 const file_catalog_azure_azurestoragecontainer_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"7catalog/azure/azurestoragecontainer/v1alpha1/spec.proto\x120dev.planton.azure.azurestoragecontainer.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x99\n" +
-	"\n" +
+	"7catalog/azure/azurestoragecontainer/v1alpha1/spec.proto\x120dev.planton.azure.azurestoragecontainer.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x95\f\n" +
 	"\x19AzureStorageContainerSpec\x12\x92\x01\n" +
 	"\x12storage_account_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xd9\x0f\x92\xd4a!status.outputs.storage_account_idR\x10storageAccountId\x12\xaf\x02\n" +
 	"\x0econtainer_name\x18\x02 \x01(\tB\x87\x02\xbaH\x83\x02\xba\x01\xf6\x01\n" +
@@ -219,8 +220,9 @@ const file_catalog_azure_azurestoragecontainer_v1alpha1_spec_proto_rawDesc = "" 
 	"\bmetadata\x18\x06 \x03(\v2Y.dev.planton.azure.azurestoragecontainer.v1alpha1.AzureStorageContainerSpec.MetadataEntryR\bmetadata\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xe4\x01\xbaH\xe0\x01\x1a\xdd\x01\n" +
-	",storage_container_scope_override_needs_scope\x12Yencryption_scope_override_enabled is only meaningful when default_encryption_scope is set\x1aR!has(this.encryption_scope_override_enabled) || has(this.default_encryption_scope)B$\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xe0\x03\xbaH\xdc\x03\x1a\xdd\x01\n" +
+	",storage_container_scope_override_needs_scope\x12Yencryption_scope_override_enabled is only meaningful when default_encryption_scope is set\x1aR!has(this.encryption_scope_override_enabled) || has(this.default_encryption_scope)\x1a\xf9\x01\n" +
+	"@storage_container_metadata_keys_are_lowercase_csharp_identifiers\x12~container metadata keys must be lowercase C# identifiers (letter-or-underscore, then letters/digits/underscores -- no hyphens)\x1a5this.metadata.all(k, k.matches('^[a-z_][a-z0-9_]*$'))B$\n" +
 	"\"_encryption_scope_override_enabled*|\n" +
 	"\x1fAzureStorageContainerAccessType\x123\n" +
 	"/azure_storage_container_access_type_unspecified\x10\x00\x12\v\n" +
