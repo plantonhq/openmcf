@@ -56,6 +56,7 @@ import (
 	awscertmanagercertv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscertmanagercert/v1alpha1"
 	awsclientvpnv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsclientvpn/v1alpha1"
 	awscloudfrontv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudfront/v1alpha1"
+	awscloudmapnamespacev1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudmapnamespace/v1alpha1"
 	awscloudtrailv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudtrail/v1alpha1"
 	awscloudtraileventdatastorev1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudtraileventdatastore/v1alpha1"
 	awscloudwatchalarmv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchalarm/v1alpha1"
@@ -171,6 +172,9 @@ import (
 	awsrestapivpclinkv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsrestapivpclink/v1alpha1"
 	awsroute53dnsrecordv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsroute53dnsrecord/v1alpha1"
 	awsroute53healthcheckv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsroute53healthcheck/v1alpha1"
+	awsroute53resolverendpointv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsroute53resolverendpoint/v1alpha1"
+	awsroute53resolverfirewallv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsroute53resolverfirewall/v1alpha1"
+	awsroute53resolverquerylogv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsroute53resolverquerylog/v1alpha1"
 	awsroute53zonev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsroute53zone/v1alpha1"
 	awss3bucketv1alpha1 "github.com/plantonhq/planton/catalog/aws/awss3bucket/v1alpha1"
 	awss3directorybucketv1alpha1 "github.com/plantonhq/planton/catalog/aws/awss3directorybucket/v1alpha1"
@@ -730,6 +734,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsCertManagerCert:                     &awscertmanagercertv1alpha1.AwsCertManagerCert{},
 	cloudresourcekind.CloudResourceKind_AwsClientVpn:                           &awsclientvpnv1alpha1.AwsClientVpn{},
 	cloudresourcekind.CloudResourceKind_AwsCloudFront:                          &awscloudfrontv1alpha1.AwsCloudFront{},
+	cloudresourcekind.CloudResourceKind_AwsCloudMapNamespace:                   &awscloudmapnamespacev1alpha1.AwsCloudMapNamespace{},
 	cloudresourcekind.CloudResourceKind_AwsCloudTrail:                          &awscloudtrailv1alpha1.AwsCloudTrail{},
 	cloudresourcekind.CloudResourceKind_AwsCloudTrailEventDataStore:            &awscloudtraileventdatastorev1alpha1.AwsCloudTrailEventDataStore{},
 	cloudresourcekind.CloudResourceKind_AwsCloudwatchAlarm:                     &awscloudwatchalarmv1alpha1.AwsCloudwatchAlarm{},
@@ -845,6 +850,9 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsRestApiVpcLink:                      &awsrestapivpclinkv1alpha1.AwsRestApiVpcLink{},
 	cloudresourcekind.CloudResourceKind_AwsRoute53DnsRecord:                    &awsroute53dnsrecordv1alpha1.AwsRoute53DnsRecord{},
 	cloudresourcekind.CloudResourceKind_AwsRoute53HealthCheck:                  &awsroute53healthcheckv1alpha1.AwsRoute53HealthCheck{},
+	cloudresourcekind.CloudResourceKind_AwsRoute53ResolverEndpoint:             &awsroute53resolverendpointv1alpha1.AwsRoute53ResolverEndpoint{},
+	cloudresourcekind.CloudResourceKind_AwsRoute53ResolverFirewall:             &awsroute53resolverfirewallv1alpha1.AwsRoute53ResolverFirewall{},
+	cloudresourcekind.CloudResourceKind_AwsRoute53ResolverQueryLog:             &awsroute53resolverquerylogv1alpha1.AwsRoute53ResolverQueryLog{},
 	cloudresourcekind.CloudResourceKind_AwsRoute53Zone:                         &awsroute53zonev1alpha1.AwsRoute53Zone{},
 	cloudresourcekind.CloudResourceKind_AwsS3Bucket:                            &awss3bucketv1alpha1.AwsS3Bucket{},
 	cloudresourcekind.CloudResourceKind_AwsS3DirectoryBucket:                   &awss3directorybucketv1alpha1.AwsS3DirectoryBucket{},

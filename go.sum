@@ -201,6 +201,8 @@ github.com/aws/aws-sdk-go-v2/service/redshiftserverless v1.35.10 h1:rDxX89JlNXjj
 github.com/aws/aws-sdk-go-v2/service/redshiftserverless v1.35.10/go.mod h1:suarck9cSGKaEbmz6IhEknaLaDdVFQQm1PgkgMKh17U=
 github.com/aws/aws-sdk-go-v2/service/route53 v1.46.2 h1:wmt05tPp/CaRZpPV5B4SaJ5TwkHKom07/BzHoLdkY1o=
 github.com/aws/aws-sdk-go-v2/service/route53 v1.46.2/go.mod h1:d+K9HESMpGb1EU9/UmmpInbGIUcAkwmcY6ZO/A3zZsw=
+github.com/aws/aws-sdk-go-v2/service/route53resolver v1.48.6 h1:pblCOVNCzBzfWBh8sQzUPnXB6lCGqMzdsXMpl9Lx0r4=
+github.com/aws/aws-sdk-go-v2/service/route53resolver v1.48.6/go.mod h1:kzgv7mqNMNKpNasYJpt7OxWxorTKkVok/ZqcvW2skTw=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.104.0 h1:ta8csKy5vN91F3i5gGR85lFV0srBqySEji7Jroes6rE=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.104.0/go.mod h1:77ZAgynvx1txMvDG8gGWoWkO1augYDxkp9JElWFgjQU=
 github.com/aws/aws-sdk-go-v2/service/s3tables v1.18.6 h1:5Kl+auYm47p8Ay0oRErFq83XgpZ8q9ogW6LdvFw//dk=
@@ -213,6 +215,8 @@ github.com/aws/aws-sdk-go-v2/service/scheduler v1.20.2 h1:rKQOeeBzt9xDvoatpAnbf8
 github.com/aws/aws-sdk-go-v2/service/scheduler v1.20.2/go.mod h1:0P6j3bPtLj8+YllLCKmNvmLF3ZsOOzifMyghlg6r1g4=
 github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.34.6 h1:1KDMKvOKNrpD667ORbZ/+4OgvUoaok1gg/MLzrHF9fw=
 github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.34.6/go.mod h1:DmtyfCfONhOyVAJ6ZMTrDSFIeyCBlEO93Qkfhxwbxu0=
+github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.43.6 h1:guHDa1QE4NMKTHaM6VgXLkttVKzGJCMrzKczfV0Q0z4=
+github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.43.6/go.mod h1:HNgDtTSIiL+HD+35am/X0rv+EHOA+vi8/n4vkLU9b2g=
 github.com/aws/aws-sdk-go-v2/service/sesv2 v1.63.0 h1:sVd6FrVJZo+FOZ46Bdtujc82tq/WVo96LkIR9ll9adg=
 github.com/aws/aws-sdk-go-v2/service/sesv2 v1.63.0/go.mod h1:HlQu5hAX7DOaLl8AK1ac10N4PhMhslC7mds020yPKJ8=
 github.com/aws/aws-sdk-go-v2/service/sfn v1.44.0 h1:4v05JQSOFrZ1TB+kKs+cv16LBJP3UvniiMysb3CJn5o=

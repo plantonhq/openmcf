@@ -1903,3 +1903,101 @@ spec:
       pulumi_type: aws:s3/vectorsIndex:VectorsIndex
       id_format: "{index_arn}"
       cloud_control_type_name: AWS::S3Vectors::Index
+
+    # --- Route 53 Resolver ---------------------------------------------------
+    - terraform_type: aws_route53_resolver_endpoint
+      pulumi_type: aws:route53/resolverEndpoint:ResolverEndpoint
+      id_format: "{endpoint_id}"
+      notes: >-
+        The endpoint's AWS-generated ID (`aws route53resolver
+        list-resolver-endpoints` shows Id, "rslvr-in-..."/"rslvr-out-...").
+    - terraform_type: aws_route53_resolver_rule
+      pulumi_type: aws:route53/resolverRule:ResolverRule
+      id_format: "{rule_id}"
+      notes: >-
+        The rule's AWS-generated ID (`aws route53resolver
+        list-resolver-rules` shows Id, "rslvr-rr-..."). Tags on a
+        RAM-shared rule are never read back by the provider.
+    - terraform_type: aws_route53_resolver_rule_association
+      pulumi_type: aws:route53/resolverRuleAssociation:ResolverRuleAssociation
+      id_format: "{rule_association_id}"
+      notes: >-
+        The association's AWS-generated ID (`aws route53resolver
+        list-resolver-rule-associations` shows Id, "rslvr-rrassoc-...").
+    - terraform_type: aws_route53_resolver_firewall_rule_group
+      pulumi_type: aws:route53/resolverFirewallRuleGroup:ResolverFirewallRuleGroup
+      id_format: "{rule_group_id}"
+      notes: >-
+        The rule group's AWS-generated ID (`aws route53resolver
+        list-firewall-rule-groups` shows Id, "rslvr-frg-...").
+    - terraform_type: aws_route53_resolver_firewall_domain_list
+      pulumi_type: aws:route53/resolverFirewallDomainList:ResolverFirewallDomainList
+      id_format: "{domain_list_id}"
+      notes: >-
+        The domain list's AWS-generated ID (`aws route53resolver
+        list-firewall-domain-lists` shows Id, "rslvr-fdl-...").
+    - terraform_type: aws_route53_resolver_firewall_rule
+      pulumi_type: aws:route53/resolverFirewallRule:ResolverFirewallRule
+      id_format: "{rule_group_id}:{rule_match_id}"
+      notes: >-
+        Colon-separated rule group ID and the rule's match identity --
+        the domain list ID ("rslvr-fdl-...") for standard rules, the
+        threat-protection ID ("rslvr-ftp-...") for DNS Firewall Advanced
+        rules (`aws route53resolver list-firewall-rules
+        --firewall-rule-group-id <id>`).
+    - terraform_type: aws_route53_resolver_firewall_rule_group_association
+      pulumi_type: aws:route53/resolverFirewallRuleGroupAssociation:ResolverFirewallRuleGroupAssociation
+      id_format: "{firewall_association_id}"
+      notes: >-
+        The association's AWS-generated ID (`aws route53resolver
+        list-firewall-rule-group-associations` shows Id,
+        "rslvr-frgassoc-...").
+    - terraform_type: aws_route53_resolver_query_log_config
+      pulumi_type: aws:route53/resolverQueryLogConfig:ResolverQueryLogConfig
+      id_format: "{query_log_config_id}"
+      notes: >-
+        The configuration's AWS-generated ID (`aws route53resolver
+        list-resolver-query-log-configs` shows Id, "rqlc-...").
+    - terraform_type: aws_route53_resolver_query_log_config_association
+      pulumi_type: aws:route53/resolverQueryLogConfigAssociation:ResolverQueryLogConfigAssociation
+      id_format: "{query_log_association_id}"
+      notes: >-
+        The association's AWS-generated ID (`aws route53resolver
+        list-resolver-query-log-config-associations` shows Id,
+        "rqlca-...").
+
+    # --- Cloud Map (service discovery) ----------------------------------------
+    - terraform_type: aws_service_discovery_http_namespace
+      pulumi_type: aws:servicediscovery/httpNamespace:HttpNamespace
+      id_format: "{namespace_id}"
+      notes: >-
+        The namespace's AWS-generated ID (`aws servicediscovery
+        list-namespaces` shows Id, "ns-...").
+    - terraform_type: aws_service_discovery_private_dns_namespace
+      pulumi_type: aws:servicediscovery/privateDnsNamespace:PrivateDnsNamespace
+      id_format: "{namespace_id}:{vpc_id}"
+      notes: >-
+        Colon-separated namespace ID and VPC ID -- the provider never
+        reads the VPC back from AWS, so the import ID must carry it.
+    - terraform_type: aws_service_discovery_public_dns_namespace
+      pulumi_type: aws:servicediscovery/publicDnsNamespace:PublicDnsNamespace
+      id_format: "{namespace_id}"
+      notes: >-
+        The namespace's AWS-generated ID (`aws servicediscovery
+        list-namespaces` shows Id, "ns-...").
+    - terraform_type: aws_service_discovery_service
+      pulumi_type: aws:servicediscovery/service:Service
+      id_format: "{service_id}"
+      # force_destroy is engine behavior (deregister-everything-before-
+      # delete), never read back -- post-import plans showing only this
+      # attribute are clean.
+      config_only_attributes: [force_destroy]
+      notes: >-
+        The service's AWS-generated ID (`aws servicediscovery
+        list-services` shows Id, "srv-...").
+    - terraform_type: aws_service_discovery_instance
+      pulumi_type: aws:servicediscovery/instance:Instance
+      id_format: "{instance_service_id}/{instance_id}"
+      notes: >-
+        Slash-separated service ID and the user-chosen instance ID
+        (`aws servicediscovery list-instances --service-id <id>`).

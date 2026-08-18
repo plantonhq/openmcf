@@ -172,6 +172,9 @@ violations:
   - catalog/aws/awsclientvpn/iac:missing-permissions
   - catalog/aws/awsclientvpn:missing-control-profile
   - catalog/aws/awsclientvpn:missing-cost-profile
+  - catalog/aws/awscloudmapnamespace/iac:missing-permissions
+  - catalog/aws/awscloudmapnamespace:missing-control-profile
+  - catalog/aws/awscloudmapnamespace:missing-cost-profile
   - catalog/aws/awscloudtrail/iac:missing-permissions
   - catalog/aws/awscloudtrail:missing-control-profile
   - catalog/aws/awscloudtrail:missing-cost-profile
@@ -503,6 +506,15 @@ violations:
   - catalog/aws/awsroute53healthcheck/iac:missing-permissions
   - catalog/aws/awsroute53healthcheck:missing-control-profile
   - catalog/aws/awsroute53healthcheck:missing-cost-profile
+  - catalog/aws/awsroute53resolverendpoint/iac:missing-permissions
+  - catalog/aws/awsroute53resolverendpoint:missing-control-profile
+  - catalog/aws/awsroute53resolverendpoint:missing-cost-profile
+  - catalog/aws/awsroute53resolverfirewall/iac:missing-permissions
+  - catalog/aws/awsroute53resolverfirewall:missing-control-profile
+  - catalog/aws/awsroute53resolverfirewall:missing-cost-profile
+  - catalog/aws/awsroute53resolverquerylog/iac:missing-permissions
+  - catalog/aws/awsroute53resolverquerylog:missing-control-profile
+  - catalog/aws/awsroute53resolverquerylog:missing-cost-profile
   - catalog/aws/awss3directorybucket/iac:missing-permissions
   - catalog/aws/awss3directorybucket:missing-control-profile
   - catalog/aws/awss3directorybucket:missing-cost-profile

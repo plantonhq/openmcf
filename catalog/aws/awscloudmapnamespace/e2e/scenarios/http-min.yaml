@@ -1,0 +1,28 @@
+# Minimal HTTP (API-only) namespace: one service discovered via
+# DiscoverInstances, one instance carrying only custom attributes - no
+# DNS records exist anywhere in this shape. Free at AWS.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudMapNamespace
+metadata:
+  name: planton-oss-e2e-awscmns-http
+  id: planton-oss-e2e-awscmns-http
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscloudmapnamespace
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  type: HTTP
+  description: Planton E2E API-only discovery namespace
+  services:
+    - name: workers
+      instances:
+        - instanceId: worker-1
+          customAttributes:
+            stage: e2e
+            zone: usw2-az1

@@ -442,6 +442,7 @@ Fields on other kinds that can point at this resource:
 | AwsRedshiftCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsRedshiftServerlessWorkgroup | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsRedshiftServerlessWorkgroup | `spec.endpointAccesses[].subnetIds` | `status.outputs.subnet_id` |
+| AwsRoute53ResolverEndpoint | `spec.ipAddresses[].subnetId` | `status.outputs.subnet_id` |
 | AwsSagemakerDomain | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsSagemakerModel | `spec.vpcConfig.subnetIds` | `status.outputs.subnet_id` |
 | AwsSagemakerNotebookInstance | `spec.subnetId` | `status.outputs.subnet_id` |

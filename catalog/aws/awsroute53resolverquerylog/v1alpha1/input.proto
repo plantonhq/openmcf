@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsroute53resolverquerylog.v1alpha1;
+
+import "catalog/aws/awsroute53resolverquerylog/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// AwsRoute53ResolverQueryLogStackInput is the input for the IaC
+// modules that manage a resolver query logging configuration with its
+// VPC associations.
+message AwsRoute53ResolverQueryLogStackInput {
+  // target is the AwsRoute53ResolverQueryLog resource to deploy.
+  AwsRoute53ResolverQueryLog target = 1;
+  // provider_config contains the AWS provider credentials and configuration.
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

@@ -457,6 +457,7 @@ Fields on other kinds that can point at this resource:
 | AwsRedshiftCluster | `spec.endpointAccesses[].vpcSecurityGroupIds` | `status.outputs.security_group_id` |
 | AwsRedshiftServerlessWorkgroup | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsRedshiftServerlessWorkgroup | `spec.endpointAccesses[].vpcSecurityGroupIds` | `status.outputs.security_group_id` |
+| AwsRoute53ResolverEndpoint | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsSagemakerDomain | `spec.defaultUserSettings.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsSagemakerDomain | `spec.defaultSpaceSettings.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsSagemakerDomain | `spec.domainSecurityGroupIds` | `status.outputs.security_group_id` |

@@ -41,7 +41,10 @@ func TestAwsProviderTfConvergence(t *testing.T) {
 	require.NoError(t, err)
 
 	// Sized assertion: a new AWS tofu kind must adopt the canonical block (bump this with intent).
-	assert.Len(t, matches, 112, "unexpected number of AWS tofu provider.tf files")
+	// 199 = the 112 depth-wave kinds plus the 87 P0/P1 breadth-wave forges through the
+	// DNS & service discovery family (the count had gone stale at 112 while the waves
+	// landed; every module in between carries the canonical block, verified below).
+	assert.Len(t, matches, 199, "unexpected number of AWS tofu provider.tf files")
 
 	forbidden := []string{
 		"region =", "access_key", "secret_key", "session_token", "var.provider_config",

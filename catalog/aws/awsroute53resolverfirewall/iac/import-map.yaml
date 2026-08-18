@@ -1,0 +1,41 @@
+# Where each placeholder in this component's import-ID formats comes
+# from (the formats themselves live in aa_import/catalog.yaml).
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsroute53resolverfirewall
+spec:
+  # The rule group imports by its AWS-generated id. Folded satellites
+  # derive blind from output maps keyed exactly like the modules'
+  # for_each entries; each rule's composite second half (domain list
+  # XOR threat-protection id) rides the rule_match_ids map.
+  values:
+    - name: rule_group_id
+      derivations:
+        - from_stack_output: rule_group_id
+      where_to_find: >-
+        Route 53 console -> Resolver -> DNS Firewall -> Rule groups
+        (the ID column), or `aws route53resolver
+        list-firewall-rule-groups` (Id).
+    - name: domain_list_id
+      derivations:
+        - from_stack_output_keyed_by_address: domain_list_ids
+      where_to_find: >-
+        `aws route53resolver list-firewall-domain-lists` lists domain
+        lists with Id ("rslvr-fdl-..."); match each to its
+        spec.domain_lists entry by Name.
+    - name: rule_match_id
+      derivations:
+        - from_stack_output_keyed_by_address: rule_match_ids
+      where_to_find: >-
+        `aws route53resolver list-firewall-rules
+        --firewall-rule-group-id <id>` shows FirewallDomainListId for
+        standard rules and FirewallThreatProtectionId for Advanced
+        rules; match each to its spec.rules entry by Name.
+    - name: firewall_association_id
+      derivations:
+        - from_stack_output_keyed_by_address: association_ids
+      where_to_find: >-
+        `aws route53resolver list-firewall-rule-group-associations`
+        lists associations with Id ("rslvr-frgassoc-..."); match each
+        to its spec.vpc_associations entry by Name.

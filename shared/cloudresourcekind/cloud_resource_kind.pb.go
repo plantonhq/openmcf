@@ -773,6 +773,30 @@ const (
 	// union. AwsIamRole is a prerequisite because DLM acts through a
 	// required execution role.
 	CloudResourceKind_AwsDlmLifecyclePolicy CloudResourceKind = 1335
+	// A Route 53 Resolver endpoint (the hybrid-DNS bridge between a VPC
+	// and outside networks) with its forwarding rules and their VPC
+	// associations managed in-line. Subnets place the ENIs and security
+	// groups guard them - both schema-required. 1340 opens the DNS &
+	// service discovery sub-band (1340-1349).
+	CloudResourceKind_AwsRoute53ResolverEndpoint CloudResourceKind = 1340
+	// A Route 53 Resolver DNS Firewall rule group with its domain
+	// lists, filtering rules, and VPC associations managed in-line -
+	// the DNS-layer block/allow policy for VPC egress queries. AwsVpc
+	// is a prerequisite because the association arm filters a
+	// referenced VPC.
+	CloudResourceKind_AwsRoute53ResolverFirewall CloudResourceKind = 1341
+	// A Resolver query logging configuration (every DNS query VPCs make
+	// through the resolver, to CloudWatch Logs / S3 / Firehose) with
+	// its VPC associations managed in-line. AwsVpc is a prerequisite
+	// because the association arm logs a referenced VPC.
+	CloudResourceKind_AwsRoute53ResolverQueryLog CloudResourceKind = 1342
+	// An AWS Cloud Map namespace (HTTP-XOR-private-DNS-XOR-public-DNS)
+	// with its discoverable services and statically registered
+	// instances managed in-line - the service-discovery registry ECS
+	// and custom applications look each other up in. AwsVpc is a
+	// prerequisite because the private-DNS arm binds its hosted zone to
+	// a referenced VPC.
+	CloudResourceKind_AwsCloudMapNamespace CloudResourceKind = 1343
 	// Account/region settings singleton (one SES account object per
 	// account+region): the suppression list and VDM posture. 1360 opens
 	// the SES P1 sub-band (1360-1369).
@@ -2232,6 +2256,10 @@ var (
 		1333: "AwsS3TableBucket",
 		1334: "AwsS3VectorBucket",
 		1335: "AwsDlmLifecyclePolicy",
+		1340: "AwsRoute53ResolverEndpoint",
+		1341: "AwsRoute53ResolverFirewall",
+		1342: "AwsRoute53ResolverQueryLog",
+		1343: "AwsCloudMapNamespace",
 		1360: "AwsSesAccountSettings",
 		2000: "AzureResourceGroup",
 		2001: "AzureAksCluster",
@@ -2888,6 +2916,10 @@ var (
 		"AwsS3TableBucket":                               1333,
 		"AwsS3VectorBucket":                              1334,
 		"AwsDlmLifecyclePolicy":                          1335,
+		"AwsRoute53ResolverEndpoint":                     1340,
+		"AwsRoute53ResolverFirewall":                     1341,
+		"AwsRoute53ResolverQueryLog":                     1342,
+		"AwsCloudMapNamespace":                           1343,
 		"AwsSesAccountSettings":                          1360,
 		"AzureResourceGroup":                             2000,
 		"AzureAksCluster":                                2001,
@@ -3725,7 +3757,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x9d\xac\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\x9e\xae\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -3957,7 +3989,15 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x11AwsS3VectorBucket\x10\xb6\n" +
 	"\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\bv1alpha1\"\tawss3vecb\x128\n" +
 	"\x15AwsDlmLifecyclePolicy\x10\xb7\n" +
-	"\x1a\x1c\xa2\xf7\x04\x18\b\f\x12\bv1alpha1\"\x06awsdlm:\x02\xf0\a\x126\n" +
+	"\x1a\x1c\xa2\xf7\x04\x18\b\f\x12\bv1alpha1\"\x06awsdlm:\x02\xf0\a\x12A\n" +
+	"\x1aAwsRoute53ResolverEndpoint\x10\xbc\n" +
+	"\x1a \xa2\xf7\x04\x1c\b\f\x12\bv1alpha1\"\bawsr53re:\x04\xbc\b\xf7\a\x12@\n" +
+	"\x1aAwsRoute53ResolverFirewall\x10\xbd\n" +
+	"\x1a\x1f\xa2\xf7\x04\x1b\b\f\x12\bv1alpha1\"\tawsr53rfw:\x02\xf8\a\x12@\n" +
+	"\x1aAwsRoute53ResolverQueryLog\x10\xbe\n" +
+	"\x1a\x1f\xa2\xf7\x04\x1b\b\f\x12\bv1alpha1\"\tawsr53rql:\x02\xf8\a\x128\n" +
+	"\x14AwsCloudMapNamespace\x10\xbf\n" +
+	"\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawscmns:\x02\xf8\a\x126\n" +
 	"\x15AwsSesAccountSettings\x10\xd0\n" +
 	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssesas\x121\n" +
 	"\x12AzureResourceGroup\x10\xd0\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\bv1alpha1\"\x04azrg0\x01\x121\n" +

@@ -1,0 +1,107 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_service_discovery_http_namespace:
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the namespace name IS the resource's identity (the AwsRoute53Zone precedent for dotted names)
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+  aws_service_discovery_private_dns_namespace:
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: vpc
+        spec: spec.vpc_id
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the namespace name IS the resource's identity (the AwsRoute53Zone precedent for dotted names)
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+  aws_service_discovery_public_dns_namespace:
+    mappings:
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the namespace name IS the resource's identity (the AwsRoute53Zone precedent for dotted names)
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+  aws_service_discovery_service:
+    mappings:
+      - arg: region
+        spec: spec.region
+      # Services fold in as the spec.services list.
+      - arg: name
+        spec: spec.services.name
+      - arg: description
+        spec: spec.services.description
+      - arg: force_destroy
+        spec: spec.services.force_destroy
+      - arg: dns_config
+        spec: spec.services.dns_config
+      - arg: dns_config.dns_records
+        spec: spec.services.dns_config.records
+      - arg: dns_config.dns_records.type
+        spec: spec.services.dns_config.records.type
+      - arg: health_check_config
+        spec: spec.services.health_check_config
+    exclusions:
+      - arg: namespace_id
+        reason: wired by the module to the folded namespace's own AWS-generated ID (top-level for API-only services, inside dns_config for DNS services -- the provider's own documented split) -- a service always lives in THIS namespace
+      - arg: dns_config.namespace_id
+        reason: wired by the module to the folded namespace's own AWS-generated ID -- the provider's legacy duplicated pointer, same wiring as the top-level namespace_id
+      - arg: type
+        reason: one-value vocabulary (HTTP is the only legal value, and only meaningful in an HTTP namespace where it is implied) -- lands as a real field if the provider adds a second value
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+  aws_service_discovery_instance:
+    mappings:
+      - arg: region
+        spec: spec.region
+      # Instances fold in as each service's instances list.
+      - arg: instance_id
+        spec: spec.services.instances.instance_id
+      # The provider's untyped attribute map is composed by the module
+      # from the typed fields plus the custom passthrough map (fan-in:
+      # every typed field feeds the one attributes argument).
+      - arg: attributes
+        spec: spec.services.instances.custom_attributes
+      - arg: attributes
+        spec: spec.services.instances.ip
+      - arg: attributes
+        spec: spec.services.instances.ipv6
+      - arg: attributes
+        spec: spec.services.instances.port
+      - arg: attributes
+        spec: spec.services.instances.cname
+      - arg: attributes
+        spec: spec.services.instances.alias_dns_name
+      - arg: attributes
+        spec: spec.services.instances.ec2_instance_id
+    exclusions:
+      - arg: service_id
+        reason: wired by the module to the folded service's own AWS-generated ID -- a registration always belongs to THIS kind's service
+# Spec fields with no single provider argument.
+specExclusions:
+  - field: spec.type
+    reason: derived discriminator -- selects WHICH of the three namespace resources (http/private_dns/public_dns) the modules render; no provider argument carries it

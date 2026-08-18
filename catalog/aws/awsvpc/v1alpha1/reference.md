@@ -446,6 +446,7 @@ Fields on other kinds that can point at this resource:
 | AwsBedrockAgentCoreRuntime | `spec.customJwtAuthorizer.privateEndpoint.managedVpc.vpcId` | `status.outputs.vpc_id` |
 | AwsBedrockAgentCoreRuntime | `spec.customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.vpcId` | `status.outputs.vpc_id` |
 | AwsClientVpn | `spec.vpcId` | `status.outputs.vpc_id` |
+| AwsCloudMapNamespace | `spec.vpcId` | `status.outputs.vpc_id` |
 | AwsCodeBuildProject | `spec.vpcConfig.vpcId` | `status.outputs.vpc_id` |
 | AwsEgressOnlyInternetGateway | `spec.vpcId` | `status.outputs.vpc_id` |
 | AwsInternetGateway | `spec.vpcId` | `status.outputs.vpc_id` |
@@ -453,6 +454,9 @@ Fields on other kinds that can point at this resource:
 | AwsNatGateway | `spec.vpcId` | `status.outputs.vpc_id` |
 | AwsNetworkAcl | `spec.vpcId` | `status.outputs.vpc_id` |
 | AwsRedshiftCluster | `spec.endpointAuthorizations[].vpcIds` | `status.outputs.vpc_id` |
+| AwsRoute53ResolverEndpoint | `spec.rules[].vpcIds` | `status.outputs.vpc_id` |
+| AwsRoute53ResolverFirewall | `spec.vpcAssociations[].vpcId` | `status.outputs.vpc_id` |
+| AwsRoute53ResolverQueryLog | `spec.vpcIds` | `status.outputs.vpc_id` |
 | AwsRoute53Zone | `spec.vpcAssociations[].vpcId` | `status.outputs.vpc_id` |
 | AwsSagemakerDomain | `spec.vpcId` | `status.outputs.vpc_id` |
 | AwsSecurityGroup | `spec.vpcId` | `status.outputs.vpc_id` |

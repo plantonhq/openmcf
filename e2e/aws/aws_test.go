@@ -1713,6 +1713,38 @@ func TestAwsS3VectorBucket_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awss3vectorbucket", "terraform")
 }
 
+func TestAwsRoute53ResolverEndpoint_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53resolverendpoint", "pulumi")
+}
+
+func TestAwsRoute53ResolverEndpoint_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53resolverendpoint", "terraform")
+}
+
+func TestAwsRoute53ResolverFirewall_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53resolverfirewall", "pulumi")
+}
+
+func TestAwsRoute53ResolverFirewall_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53resolverfirewall", "terraform")
+}
+
+func TestAwsRoute53ResolverQueryLog_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53resolverquerylog", "pulumi")
+}
+
+func TestAwsRoute53ResolverQueryLog_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsroute53resolverquerylog", "terraform")
+}
+
+func TestAwsCloudMapNamespace_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudmapnamespace", "pulumi")
+}
+
+func TestAwsCloudMapNamespace_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudmapnamespace", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

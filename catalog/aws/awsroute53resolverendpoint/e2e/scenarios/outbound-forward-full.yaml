@@ -1,0 +1,65 @@
+# Full-surface outbound endpoint: explicit protocols and both metrics
+# toggles, one FORWARD rule to TEST-NET name servers (control-plane
+# operations never query the targets, so unreachable documentation IPs
+# are safe) associated to the chain VPC, and one SYSTEM override rule.
+# Exercises the rule fold, the association join, and the tri-state
+# metrics send paths.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRoute53ResolverEndpoint
+metadata:
+  name: planton-oss-e2e-awsr53re-full
+  id: planton-oss-e2e-awsr53re-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsroute53resolverendpoint
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  direction: OUTBOUND
+  endpointType: IPV4
+  protocols:
+    - Do53
+  rniEnhancedMetricsEnabled: true
+  targetNameServerMetricsEnabled: true
+  ipAddresses:
+    - subnetId:
+        valueFrom:
+          kind: AwsSubnet
+          name: planton-oss-e2e-awssubnet-prereq-a
+          fieldPath: status.outputs.subnet_id
+    - subnetId:
+        valueFrom:
+          kind: AwsSubnet
+          name: planton-oss-e2e-awssubnet-prereq-b
+          fieldPath: status.outputs.subnet_id
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: planton-oss-e2e-awssg-resolver-dns
+        fieldPath: status.outputs.security_group_id
+  rules:
+    - name: corp-forward
+      domainName: corp.example.com
+      ruleType: FORWARD
+      targetIps:
+        - ip: 192.0.2.53
+        - ip: 192.0.2.54
+          port: 8053
+      vpcIds:
+        - valueFrom:
+            kind: AwsVpc
+            name: planton-oss-e2e-awsvpc-prereq
+            fieldPath: status.outputs.vpc_id
+    - name: keep-recursive
+      domainName: aws.corp.example.com
+      ruleType: SYSTEM
+      vpcIds:
+        - valueFrom:
+            kind: AwsVpc
+            name: planton-oss-e2e-awsvpc-prereq
+            fieldPath: status.outputs.vpc_id

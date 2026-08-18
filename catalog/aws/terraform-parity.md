@@ -28,10 +28,10 @@ that has progressed.
 | | |
 |---|---|
 | Provider schema (parity baseline) | `aws@6.58.0` |
-| Kinds in the catalog | 195 |
-| Distinct provider resources consumed | 478 |
-| Spec fields authored across all kinds | 7151 |
-| Module pins on `aws` | `~> 6.58` × 195 |
+| Kinds in the catalog | 199 |
+| Distinct provider resources consumed | 492 |
+| Spec fields authored across all kinds | 7212 |
+| Module pins on `aws` | `~> 6.58` × 199 |
 | Module pins on `time` | `~> 0.13` × 1 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -46,7 +46,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**195 of 195 kinds are at total accounting; 113 proven live.**
+**199 of 199 kinds are at total accounting; 113 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -89,6 +89,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsCertManagerCert | 18 | 7 | 7 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsClientVpn | 47 | 29 | 7 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCloudFront | 126 | 32 | 88 | 6 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCloudMapNamespace | 35 | 3 | 17 | 15 | 0 | ✅ | — |
 | AwsCloudTrail | 30 | 9 | 18 | 3 | 0 | ✅ | — |
 | AwsCloudTrailEventDataStore | 19 | 6 | 10 | 3 | 0 | ✅ | — |
 | AwsCloudwatchAlarm | 39 | 24 | 12 | 3 | 0 | ✅ | ✅ pulumi, terraform |
@@ -204,6 +205,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsRestApiVpcLink | 6 | 1 | 2 | 3 | 0 | ✅ | — |
 | AwsRoute53DnsRecord | 25 | 7 | 17 | 1 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRoute53HealthCheck | 23 | 17 | 2 | 4 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsRoute53ResolverEndpoint | 28 | 5 | 15 | 8 | 0 | ✅ | — |
+| AwsRoute53ResolverFirewall | 31 | 0 | 21 | 10 | 0 | ✅ | — |
+| AwsRoute53ResolverQueryLog | 8 | 1 | 3 | 4 | 0 | ✅ | — |
 | AwsRoute53Zone | 17 | 5 | 5 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsS3Bucket | 204 | 24 | 102 | 78 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsS3DirectoryBucket | 8 | 2 | 3 | 3 | 0 | ✅ | — |
@@ -252,10 +256,10 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 477 | consumed by a kind's Terraform module today |
+| Modeled | 491 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 34 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 507 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 493 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 544 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
@@ -265,7 +269,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (477)
+### Modeled (491)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -643,6 +647,15 @@ rather than trusted.
 | `aws_route53_key_signing_key` | consumed by AwsRoute53Zone |
 | `aws_route53_query_log` | consumed by AwsRoute53Zone |
 | `aws_route53_record` | consumed by AwsAlb, AwsCertManagerCert, AwsNlb, AwsRoute53DnsRecord |
+| `aws_route53_resolver_endpoint` | consumed by AwsRoute53ResolverEndpoint |
+| `aws_route53_resolver_firewall_domain_list` | consumed by AwsRoute53ResolverFirewall |
+| `aws_route53_resolver_firewall_rule` | consumed by AwsRoute53ResolverFirewall |
+| `aws_route53_resolver_firewall_rule_group` | consumed by AwsRoute53ResolverFirewall |
+| `aws_route53_resolver_firewall_rule_group_association` | consumed by AwsRoute53ResolverFirewall |
+| `aws_route53_resolver_query_log_config` | consumed by AwsRoute53ResolverQueryLog |
+| `aws_route53_resolver_query_log_config_association` | consumed by AwsRoute53ResolverQueryLog |
+| `aws_route53_resolver_rule` | consumed by AwsRoute53ResolverEndpoint |
+| `aws_route53_resolver_rule_association` | consumed by AwsRoute53ResolverEndpoint |
 | `aws_route53_zone` | consumed by AwsRoute53Zone |
 | `aws_route_table` | consumed by AwsSubnet |
 | `aws_route_table_association` | consumed by AwsSubnet |
@@ -704,6 +717,11 @@ rather than trusted.
 | `aws_secretsmanager_secret_rotation` | consumed by AwsSecretsManagerSecret |
 | `aws_secretsmanager_secret_version` | consumed by AwsPlantonRunner, AwsSecretsManagerSecret |
 | `aws_security_group` | consumed by AwsPlantonRunner, AwsSecurityGroup |
+| `aws_service_discovery_http_namespace` | consumed by AwsCloudMapNamespace |
+| `aws_service_discovery_instance` | consumed by AwsCloudMapNamespace |
+| `aws_service_discovery_private_dns_namespace` | consumed by AwsCloudMapNamespace |
+| `aws_service_discovery_public_dns_namespace` | consumed by AwsCloudMapNamespace |
+| `aws_service_discovery_service` | consumed by AwsCloudMapNamespace |
 | `aws_sesv2_account_suppression_attributes` | consumed by AwsSesAccountSettings |
 | `aws_sesv2_account_vdm_attributes` | consumed by AwsSesAccountSettings |
 | `aws_sesv2_configuration_set` | consumed by AwsSesConfigurationSet |
@@ -786,7 +804,7 @@ rather than trusted.
 | `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
 | `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (507)
+### Planned (493)
 
 | Resource | Recorded reason |
 |---|---|
@@ -1116,16 +1134,7 @@ rather than trusted.
 | `aws_route53_delegation_set` | account-scoped reusable delegation set: one fixed four-name-server set shared by MANY zones (white-label/vanity name servers, bulk migrations) -- an account object zones reference, never one zone's satellite; judged as a planned AwsRoute53DelegationSet kind (AwsRoute53Zone.spec.delegation_set_id already composes onto it by id) |
 | `aws_route53_resolver_config` | per-VPC resolver settings; fold into the existing AwsVpc kind as its spec deepens |
 | `aws_route53_resolver_dnssec_config` | per-VPC resolver settings; fold into the existing AwsVpc kind as its spec deepens |
-| `aws_route53_resolver_endpoint` | judged as a planned AwsRoute53ResolverEndpoint kind (endpoints, forwarding rules, rule associations) |
-| `aws_route53_resolver_firewall_config` | judged as a planned AwsRoute53ResolverFirewall kind (configs, domain lists, rules, rule groups, associations) |
-| `aws_route53_resolver_firewall_domain_list` | judged as a planned AwsRoute53ResolverFirewall kind (configs, domain lists, rules, rule groups, associations) |
-| `aws_route53_resolver_firewall_rule` | judged as a planned AwsRoute53ResolverFirewall kind (configs, domain lists, rules, rule groups, associations) |
-| `aws_route53_resolver_firewall_rule_group` | judged as a planned AwsRoute53ResolverFirewall kind (configs, domain lists, rules, rule groups, associations) |
-| `aws_route53_resolver_firewall_rule_group_association` | judged as a planned AwsRoute53ResolverFirewall kind (configs, domain lists, rules, rule groups, associations) |
-| `aws_route53_resolver_query_log_config` | judged as a planned AwsRoute53ResolverQueryLog kind (configs with associations) |
-| `aws_route53_resolver_query_log_config_association` | judged as a planned AwsRoute53ResolverQueryLog kind (configs with associations) |
-| `aws_route53_resolver_rule` | judged as a planned AwsRoute53ResolverEndpoint kind (endpoints, forwarding rules, rule associations) |
-| `aws_route53_resolver_rule_association` | judged as a planned AwsRoute53ResolverEndpoint kind (endpoints, forwarding rules, rule associations) |
+| `aws_route53_resolver_firewall_config` | per-VPC resolver settings; fold into the existing AwsVpc kind as its spec deepens (re-judged out of AwsRoute53ResolverFirewall 2026-08-18: zero schema edge to rule groups, delete merely resets fail-open to DISABLED - the same per-VPC settings class as resolver_config and resolver_dnssec_config, and per-VPC state a rule group associable to many VPCs cannot own) |
 | `aws_route53_vpc_association_authorization` | zone-owner side of the CROSS-ACCOUNT private-zone handshake (authorizes another account's VPC to associate; runs with the zone owner's credentials); same-account associations are modeled on AwsRoute53Zone.spec.vpc_associations -- judged as a planned AwsRoute53VpcAssociationAuthorization kind (the cross-account-half class, the TGW vpc-attachment-accepter precedent) |
 | `aws_route53_zone_association` | VPC-owner side of the CROSS-ACCOUNT private-zone handshake (associates a foreign account's authorized zone; runs with the VPC owner's credentials); same-account associations are modeled on AwsRoute53Zone.spec.vpc_associations -- judged as a planned AwsRoute53ZoneAssociation kind pairing with AwsRoute53VpcAssociationAuthorization |
 | `aws_route53domains_delegation_signer_record` | judged as a planned AwsRoute53Domain kind (registered domains, delegation signer records) |
@@ -1165,11 +1174,6 @@ rather than trusted.
 | `aws_securityhub_standards_control` | judged as a planned AwsSecurityHub kind (account enablement v1/v2, organization configuration, standards, insights, action targets, automation rules, aggregators, connectors) |
 | `aws_securityhub_standards_control_association` | judged as a planned AwsSecurityHub kind (account enablement v1/v2, organization configuration, standards, insights, action targets, automation rules, aggregators, connectors) |
 | `aws_securityhub_standards_subscription` | judged as a planned AwsSecurityHub kind (account enablement v1/v2, organization configuration, standards, insights, action targets, automation rules, aggregators, connectors) |
-| `aws_service_discovery_http_namespace` | judged as a planned AwsCloudMapNamespace kind (HTTP/DNS namespaces, services, instances) |
-| `aws_service_discovery_instance` | judged as a planned AwsCloudMapNamespace kind (HTTP/DNS namespaces, services, instances) |
-| `aws_service_discovery_private_dns_namespace` | judged as a planned AwsCloudMapNamespace kind (HTTP/DNS namespaces, services, instances) |
-| `aws_service_discovery_public_dns_namespace` | judged as a planned AwsCloudMapNamespace kind (HTTP/DNS namespaces, services, instances) |
-| `aws_service_discovery_service` | judged as a planned AwsCloudMapNamespace kind (HTTP/DNS namespaces, services, instances) |
 | `aws_servicecatalog_budget_resource_association` | judged as a planned AwsServiceCatalogPortfolio kind (portfolios, shares, principal associations, constraints, budgets, tag options, service actions, organizations access) |
 | `aws_servicecatalog_constraint` | judged as a planned AwsServiceCatalogPortfolio kind (portfolios, shares, principal associations, constraints, budgets, tag options, service actions, organizations access) |
 | `aws_servicecatalog_organizations_access` | judged as a planned AwsServiceCatalogPortfolio kind (portfolios, shares, principal associations, constraints, budgets, tag options, service actions, organizations access) |

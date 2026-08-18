@@ -2546,36 +2546,9 @@ resources:
   - resource: aws_route53_resolver_dnssec_config
     disposition: model-planned
     reason: "per-VPC resolver settings; fold into the existing AwsVpc kind as its spec deepens"
-  - resource: aws_route53_resolver_endpoint
-    disposition: model-planned
-    reason: "judged as a planned AwsRoute53ResolverEndpoint kind (endpoints, forwarding rules, rule associations)"
   - resource: aws_route53_resolver_firewall_config
     disposition: model-planned
-    reason: "judged as a planned AwsRoute53ResolverFirewall kind (configs, domain lists, rules, rule groups, associations)"
-  - resource: aws_route53_resolver_firewall_domain_list
-    disposition: model-planned
-    reason: "judged as a planned AwsRoute53ResolverFirewall kind (configs, domain lists, rules, rule groups, associations)"
-  - resource: aws_route53_resolver_firewall_rule
-    disposition: model-planned
-    reason: "judged as a planned AwsRoute53ResolverFirewall kind (configs, domain lists, rules, rule groups, associations)"
-  - resource: aws_route53_resolver_firewall_rule_group
-    disposition: model-planned
-    reason: "judged as a planned AwsRoute53ResolverFirewall kind (configs, domain lists, rules, rule groups, associations)"
-  - resource: aws_route53_resolver_firewall_rule_group_association
-    disposition: model-planned
-    reason: "judged as a planned AwsRoute53ResolverFirewall kind (configs, domain lists, rules, rule groups, associations)"
-  - resource: aws_route53_resolver_query_log_config
-    disposition: model-planned
-    reason: "judged as a planned AwsRoute53ResolverQueryLog kind (configs with associations)"
-  - resource: aws_route53_resolver_query_log_config_association
-    disposition: model-planned
-    reason: "judged as a planned AwsRoute53ResolverQueryLog kind (configs with associations)"
-  - resource: aws_route53_resolver_rule
-    disposition: model-planned
-    reason: "judged as a planned AwsRoute53ResolverEndpoint kind (endpoints, forwarding rules, rule associations)"
-  - resource: aws_route53_resolver_rule_association
-    disposition: model-planned
-    reason: "judged as a planned AwsRoute53ResolverEndpoint kind (endpoints, forwarding rules, rule associations)"
+    reason: "per-VPC resolver settings; fold into the existing AwsVpc kind as its spec deepens (re-judged out of AwsRoute53ResolverFirewall 2026-08-18: zero schema edge to rule groups, delete merely resets fail-open to DISABLED - the same per-VPC settings class as resolver_config and resolver_dnssec_config, and per-VPC state a rule group associable to many VPCs cannot own)"
   - resource: aws_route53_traffic_policy
     disposition: deferred
     reason: "Route 53 Traffic Flow policies are the legacy routing-policy path; deferred"
@@ -2867,21 +2840,6 @@ resources:
   - resource: aws_serverlessapplicationrepository_cloudformation_stack
     disposition: deferred
     reason: "Serverless Application Repository deployments are CloudFormation-mediated; contrary to catalog doctrine; deferred"
-  - resource: aws_service_discovery_http_namespace
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudMapNamespace kind (HTTP/DNS namespaces, services, instances)"
-  - resource: aws_service_discovery_instance
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudMapNamespace kind (HTTP/DNS namespaces, services, instances)"
-  - resource: aws_service_discovery_private_dns_namespace
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudMapNamespace kind (HTTP/DNS namespaces, services, instances)"
-  - resource: aws_service_discovery_public_dns_namespace
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudMapNamespace kind (HTTP/DNS namespaces, services, instances)"
-  - resource: aws_service_discovery_service
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudMapNamespace kind (HTTP/DNS namespaces, services, instances)"
   - resource: aws_servicecatalog_budget_resource_association
     disposition: model-planned
     reason: "judged as a planned AwsServiceCatalogPortfolio kind (portfolios, shares, principal associations, constraints, budgets, tag options, service actions, organizations access)"

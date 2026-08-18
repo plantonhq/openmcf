@@ -1,0 +1,3 @@
+name: awsroute53resolverquerylog
+runtime: go
+description: Pulumi module to manage a Resolver query logging configuration with in-line VPC associations

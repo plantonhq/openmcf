@@ -1374,6 +1374,7 @@ Fields on other kinds that can point at this resource:
 | AwsMskCluster | `spec.logging.cloudwatchLogs.logGroup` | `status.outputs.log_group_name` |
 | AwsOpenSearchDomain | `spec.logPublishingOptions[].cloudwatchLogGroupArn` | `status.outputs.log_group_arn` |
 | AwsRestApiGateway | `spec.stage.accessLog.destinationArn` | `status.outputs.log_group_arn` |
+| AwsRoute53ResolverQueryLog | `spec.destinationArn` | `status.outputs.log_group_arn` |
 | AwsRoute53Zone | `spec.queryLogging.cloudwatchLogGroupArn` | `status.outputs.log_group_arn` |
 | AwsStepFunction | `spec.logging.logDestination` | `status.outputs.log_group_arn` |
 
