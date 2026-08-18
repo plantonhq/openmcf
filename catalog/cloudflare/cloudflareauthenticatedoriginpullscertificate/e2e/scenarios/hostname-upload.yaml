@@ -1,0 +1,22 @@
+# The hostname-scoped upload arm: upload an env-supplied self-signed client
+# certificate for per-hostname associations to reference. The PEMs enter by
+# env reference, never literals in the manifest; without the env vars the
+# lane skips honestly. The zone-scoped surface is plan-proven offline by
+# e2e/manifest.yaml (its provider Update is empty and a key-only rotation
+# silently no-ops -- the measured v5.23.0 defect the GUIDE teaches around).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareAuthenticatedOriginPullsCertificate
+metadata:
+  name: e2e-aopc-host-${E2E_RUN_ID}
+  annotations:
+    planton.dev/e2e-required-env: PLANTON_E2E_AOP_CLIENT_CERT_PEM,PLANTON_E2E_AOP_CLIENT_KEY_PEM
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  scope: hostname
+  certificate: ${E2E_ENV:PLANTON_E2E_AOP_CLIENT_CERT_PEM}
+  private_key:
+    value: ${E2E_ENV:PLANTON_E2E_AOP_CLIENT_KEY_PEM}

@@ -1206,11 +1206,14 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| CloudflareAuthenticatedOriginPulls | `spec.zoneId` | `status.outputs.zone_id` |
+| CloudflareAuthenticatedOriginPullsCertificate | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareBotManagement | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareCacheSettings | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareCertificatePack | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareCustomHostname | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareCustomHostnameFallbackOrigin | `spec.zoneId` | `status.outputs.zone_id` |
+| CloudflareCustomSslCertificate | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareDnsRecord | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareDnsZone | `spec.dnsSettings.internalDns.referenceZoneId` | `status.outputs.zone_id` |
 | CloudflareEmailRoutingRule | `spec.zoneId` | `status.outputs.zone_id` |

@@ -1878,6 +1878,24 @@ const (
 	// CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped
 	// configuration -- the spec's zone_id reference must resolve first.
 	CloudResourceKind_CloudflareZoneTlsSettings CloudResourceKind = 7150
+	// CloudflareDnsZone is a prerequisite because a custom certificate is
+	// uploaded to an existing zone -- the spec's zone_id reference must resolve
+	// first.
+	CloudResourceKind_CloudflareCustomSslCertificate CloudResourceKind = 7151
+	// No prerequisites: mTLS certificates are account-scoped uploads and
+	// self-contained -- consumers (zone TLS CA associations, Authenticated
+	// Origin Pulls rows, Workers mTLS bindings) reference them, not the
+	// reverse.
+	CloudResourceKind_CloudflareMtlsCertificate CloudResourceKind = 7152
+	// CloudflareDnsZone is a prerequisite because Authenticated Origin Pulls
+	// enablement configures an existing zone -- the spec's zone_id reference
+	// must resolve first. The per-hostname certificate edge is optional and
+	// scenario-declared, never a registry prerequisite.
+	CloudResourceKind_CloudflareAuthenticatedOriginPulls CloudResourceKind = 7153
+	// CloudflareDnsZone is a prerequisite because the client certificate is
+	// uploaded to an existing zone -- the spec's zone_id reference must resolve
+	// first.
+	CloudResourceKind_CloudflareAuthenticatedOriginPullsCertificate CloudResourceKind = 7154
 	// CloudflareDnsZone is a prerequisite because zone settings configure an
 	// existing zone -- the spec's zone_id reference must resolve first.
 	CloudResourceKind_CloudflareZoneSettings CloudResourceKind = 7180
@@ -2543,6 +2561,10 @@ var (
 		7060: "CloudflareZeroTrustGatewayPolicy",
 		7061: "CloudflareZeroTrustList",
 		7150: "CloudflareZoneTlsSettings",
+		7151: "CloudflareCustomSslCertificate",
+		7152: "CloudflareMtlsCertificate",
+		7153: "CloudflareAuthenticatedOriginPulls",
+		7154: "CloudflareAuthenticatedOriginPullsCertificate",
 		7180: "CloudflareZoneSettings",
 		7181: "CloudflareCacheSettings",
 		7210: "CloudflareIpAccessRule",
@@ -3183,6 +3205,10 @@ var (
 		"CloudflareZeroTrustGatewayPolicy":               7060,
 		"CloudflareZeroTrustList":                        7061,
 		"CloudflareZoneTlsSettings":                      7150,
+		"CloudflareCustomSslCertificate":                 7151,
+		"CloudflareMtlsCertificate":                      7152,
+		"CloudflareAuthenticatedOriginPulls":             7153,
+		"CloudflareAuthenticatedOriginPullsCertificate":  7154,
 		"CloudflareZoneSettings":                         7180,
 		"CloudflareCacheSettings":                        7181,
 		"CloudflareIpAccessRule":                         7210,
@@ -3581,7 +3607,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xa5\xa6\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xba\xa8\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4242,7 +4268,11 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"%CloudflareZeroTrustAccessServiceToken\x10\xf76\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfztst\x12?\n" +
 	" CloudflareZeroTrustGatewayPolicy\x10\x947\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfztgp\x125\n" +
 	"\x17CloudflareZeroTrustList\x10\x957\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfztl\x12;\n" +
-	"\x19CloudflareZoneTlsSettings\x10\xee7\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x05cftls:\x02\xd86\x129\n" +
+	"\x19CloudflareZoneTlsSettings\x10\xee7\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x05cftls:\x02\xd86\x12A\n" +
+	"\x1eCloudflareCustomSslCertificate\x10\xef7\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x06cfcssl:\x02\xd86\x128\n" +
+	"\x19CloudflareMtlsCertificate\x10\xf07\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfmtls\x12D\n" +
+	"\"CloudflareAuthenticatedOriginPulls\x10\xf17\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x05cfaop:\x02\xd86\x12P\n" +
+	"-CloudflareAuthenticatedOriginPullsCertificate\x10\xf27\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x06cfaopc:\x02\xd86\x129\n" +
 	"\x16CloudflareZoneSettings\x10\x8c8\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x06cfzset:\x02\xd86\x12;\n" +
 	"\x17CloudflareCacheSettings\x10\x8d8\x1a\x1d\xa2\xf7\x04\x19\b\x0f\x12\bv1alpha1\"\acfcache:\x02\xd86\x125\n" +
 	"\x16CloudflareIpAccessRule\x10\xaa8\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfipar\x129\n" +

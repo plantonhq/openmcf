@@ -1,0 +1,25 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarecustomsslcertificate
+spec:
+  # Custom SSL under live E2E: the harness deploys the CloudflareDnsZone
+  # prerequisite, resolves zone_id, uploads the env-supplied certificate,
+  # verifies via the zone's custom_certificates API, destroys (real delete).
+  # Watch items for the proving session: (a) THE PLAN GATE -- custom
+  # certificates are a Business/Enterprise zone feature; on a free fixture
+  # zone the create 402/403s, which is the entitlement deferral class, not a
+  # module bug; (b) THE TRUST GATE -- Cloudflare rejects certificates not
+  # issued by a CA on its trust list, so the env-supplied pair must be a real
+  # issued certificate covering the run zone's hostnames (self-signed will
+  # not do); without the env vars the lane skips honestly; (c) deployment is
+  # ASYNC -- status may read pending before active, and the policy field has
+  # a request/response asymmetry (sent as policy, read as
+  # policy_restrictions) the provider normalizes; a non-empty re-plan on
+  # policy is upstream's SECENG-12729 class, not ours.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10

@@ -29,11 +29,11 @@ that has progressed.
 |---|---|
 | Provider schema | `aws@6.58.0` |
 | Provider schema (parity baseline) | `cloudflare@5.23.0` |
-| Kinds in the catalog | 44 |
-| Distinct provider resources consumed | 80 |
-| Spec fields authored across all kinds | 1606 |
+| Kinds in the catalog | 48 |
+| Distinct provider resources consumed | 86 |
+| Spec fields authored across all kinds | 1629 |
 | Module pins on `aws` | `~> 5.0` × 1 |
-| Module pins on `cloudflare` | `~> 5.23` × 44 |
+| Module pins on `cloudflare` | `~> 5.23` × 48 |
 | Module pins on `tls` | `~> 4.0` × 1 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -48,15 +48,18 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**44 of 44 kinds are at total accounting; 0 proven live.**
+**48 of 48 kinds are at total accounting; 0 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
+| CloudflareAuthenticatedOriginPulls | 4 | 2 | 2 | 0 | 0 | ✅ | — |
+| CloudflareAuthenticatedOriginPullsCertificate | 6 | 6 | 0 | 0 | 0 | ✅ | — |
 | CloudflareBotManagement | 16 | 16 | 0 | 0 | 0 | ✅ | — |
 | CloudflareCacheSettings | 12 | 6 | 6 | 0 | 0 | ✅ | — |
 | CloudflareCertificatePack | 7 | 7 | 0 | 0 | 0 | ✅ | — |
 | CloudflareCustomHostname | 6 | 5 | 1 | 0 | 0 | ✅ | — |
 | CloudflareCustomHostnameFallbackOrigin | 2 | 2 | 0 | 0 | 0 | ✅ | — |
+| CloudflareCustomSslCertificate | 9 | 8 | 1 | 0 | 0 | ✅ | — |
 | CloudflareD1Database | 5 | 2 | 3 | 0 | 0 | ✅ | — |
 | CloudflareDnsRecord | 12 | 10 | 2 | 0 | 0 | ✅ | — |
 | CloudflareDnsZone | 38 | 21 | 12 | 5 | 0 | ✅ | — |
@@ -72,6 +75,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | CloudflareLoadBalancer | 20 | 11 | 9 | 0 | 0 | ✅ | — |
 | CloudflareLoadBalancerMonitor | 17 | 16 | 1 | 0 | 0 | ✅ | — |
 | CloudflareLoadBalancerPool | 15 | 9 | 4 | 2 | 0 | ✅ | — |
+| CloudflareMtlsCertificate | 5 | 5 | 0 | 0 | 0 | ✅ | — |
 | CloudflareOriginCaCertificate | 4 | 4 | 0 | 0 | 0 | ✅ | — |
 | CloudflarePagesProject | 9 | 4 | 5 | 0 | 0 | ✅ | — |
 | CloudflareQueue | 9 | 5 | 2 | 2 | 0 | ✅ | — |
@@ -103,10 +107,10 @@ All resources of `cloudflare@5.23.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 78 | consumed by a kind's Terraform module today |
+| Modeled | 84 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 0 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 127 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 121 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 45 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 7 | deprecated or superseded provider surface |
 | **Total** | **257** | |
@@ -116,18 +120,23 @@ All resources of `cloudflare@5.23.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (78)
+### Modeled (84)
 
 | Resource | Consuming kinds |
 |---|---|
 | `cloudflare_access_rule` | consumed by CloudflareIpAccessRule |
 | `cloudflare_argo_smart_routing` | consumed by CloudflareCacheSettings |
 | `cloudflare_argo_tiered_caching` | consumed by CloudflareCacheSettings |
+| `cloudflare_authenticated_origin_pulls` | consumed by CloudflareAuthenticatedOriginPulls |
+| `cloudflare_authenticated_origin_pulls_certificate` | consumed by CloudflareAuthenticatedOriginPullsCertificate |
+| `cloudflare_authenticated_origin_pulls_hostname_certificate` | consumed by CloudflareAuthenticatedOriginPullsCertificate |
+| `cloudflare_authenticated_origin_pulls_settings` | consumed by CloudflareAuthenticatedOriginPulls |
 | `cloudflare_bot_management` | consumed by CloudflareBotManagement |
 | `cloudflare_certificate_authorities_hostname_associations` | consumed by CloudflareZoneTlsSettings |
 | `cloudflare_certificate_pack` | consumed by CloudflareCertificatePack |
 | `cloudflare_custom_hostname` | consumed by CloudflareCustomHostname |
 | `cloudflare_custom_hostname_fallback_origin` | consumed by CloudflareCustomHostnameFallbackOrigin |
+| `cloudflare_custom_ssl` | consumed by CloudflareCustomSslCertificate |
 | `cloudflare_d1_database` | consumed by CloudflareD1Database |
 | `cloudflare_dns_record` | consumed by CloudflareDnsRecord, CloudflareDnsZone |
 | `cloudflare_email_routing_address` | consumed by CloudflareEmailRoutingAddress |
@@ -144,6 +153,7 @@ rather than trusted.
 | `cloudflare_load_balancer_monitor` | consumed by CloudflareLoadBalancerMonitor |
 | `cloudflare_load_balancer_pool` | consumed by CloudflareLoadBalancerPool |
 | `cloudflare_managed_transforms` | consumed by CloudflareZoneSettings |
+| `cloudflare_mtls_certificate` | consumed by CloudflareMtlsCertificate |
 | `cloudflare_origin_ca_certificate` | consumed by CloudflareOriginCaCertificate |
 | `cloudflare_origin_cloud_region` | consumed by CloudflareZoneSettings |
 | `cloudflare_origin_tls_compliance_modes` | consumed by CloudflareZoneTlsSettings |
@@ -199,7 +209,7 @@ rather than trusted.
 | `cloudflare_zone_setting` | consumed by CloudflareZoneSettings |
 | `cloudflare_zone_subscription` | consumed by CloudflareDnsZone |
 
-### Planned (127)
+### Planned (121)
 
 | Resource | Recorded reason |
 |---|---|
@@ -217,10 +227,6 @@ rather than trusted.
 | `cloudflare_api_shield_operation` | folds into the planned CloudflareApiShield kind (endpoint registrations are per-zone configuration rows meaningless outside the shield) |
 | `cloudflare_api_shield_schema_validation_settings` | folds into the planned CloudflareApiShield kind (zone validation defaults) |
 | `cloudflare_api_token` | judged as a planned CloudflareApiToken kind (user-scoped tokens; the API and ownership model differ from account tokens) |
-| `cloudflare_authenticated_origin_pulls` | judged as a planned CloudflareAuthenticatedOriginPulls kind (zone and hostname authenticated-origin-pulls enablement) |
-| `cloudflare_authenticated_origin_pulls_certificate` | judged as a planned CloudflareAuthenticatedOriginPullsCertificate kind (uploaded client certificate with independent rotation lifecycle) |
-| `cloudflare_authenticated_origin_pulls_hostname_certificate` | folds into the planned CloudflareAuthenticatedOriginPullsCertificate kind (hostname-scoped variant of the same certificate upload) |
-| `cloudflare_authenticated_origin_pulls_settings` | folds into the planned CloudflareAuthenticatedOriginPulls kind (settings of the enablement surface) |
 | `cloudflare_calls_sfu_app` | judged as a planned CloudflareCallsSfuApp kind (realtime SFU application credentials provisioned per application) |
 | `cloudflare_calls_turn_app` | judged as a planned CloudflareCallsTurnApp kind (TURN service credentials provisioned per application) |
 | `cloudflare_client_certificate` | judged as a planned CloudflareClientCertificate kind (Cloudflare-issued client certificates for API Shield mTLS) |
@@ -232,7 +238,6 @@ rather than trusted.
 | `cloudflare_custom_origin_trust_store` | judged as a planned CloudflareCustomOriginTrustStore kind (uploaded CA bundle for origin verification) |
 | `cloudflare_custom_page_asset` | folds into the planned CloudflareCustomPage kind (uploaded assets exist only to serve custom pages) |
 | `cloudflare_custom_pages` | judged as a planned CloudflareCustomPage kind (one instance per error-page identifier with independent lifecycle) |
-| `cloudflare_custom_ssl` | judged as a planned CloudflareCustomSslCertificate kind (bring-your-own certificate upload with rotation lifecycle) |
 | `cloudflare_dns_firewall` | judged as a planned CloudflareDnsFirewall kind (standalone DNS firewall clusters with their own nameserver IPs and lifecycle) |
 | `cloudflare_flagship_app` | judged as a planned CloudflareFlagshipApp kind (feature-flags application container) |
 | `cloudflare_flagship_flag` | judged as a planned CloudflareFlagshipFlag kind (flags with independent lifecycle referenced by SDKs) |
@@ -243,7 +248,6 @@ rather than trusted.
 | `cloudflare_load_balancer_monitor_group` | judged as a planned CloudflareLoadBalancerMonitorGroup kind (monitor groups referenced by pools) |
 | `cloudflare_logpush_job` | judged as a planned CloudflareLogpushJob kind (log delivery jobs, the observability backbone) |
 | `cloudflare_logpush_ownership_challenge` | folds into the planned CloudflareLogpushJob kind (the challenge is a destination-validation step, not an object) |
-| `cloudflare_mtls_certificate` | judged as a planned CloudflareMtlsCertificate kind (CA certificates referenced by Workers mTLS bindings and authenticated origin pulls) |
 | `cloudflare_notification_policy` | judged as a planned CloudflareNotificationPolicy kind (alerting policies for every Cloudflare product) |
 | `cloudflare_notification_policy_webhooks` | judged as a planned CloudflareNotificationWebhook kind (webhook destinations referenced by policies) |
 | `cloudflare_oauth_client` | judged as a planned CloudflareOauthClient kind (OAuth clients against Cloudflare as identity provider) |

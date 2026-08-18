@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflareauthenticatedoriginpullscertificate.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflareauthenticatedoriginpullscertificate/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflareauthenticatedoriginpullscertificate/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareAuthenticatedOriginPullsCertificate is a KRM-style resource for
+// managing one uploaded Authenticated Origin Pulls client certificate
+// (zone-wide or hostname-scoped).
+message CloudflareAuthenticatedOriginPullsCertificate {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareAuthenticatedOriginPullsCertificate'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareAuthenticatedOriginPullsCertificateSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareAuthenticatedOriginPullsCertificateStatus status = 5;
+}
+
+// CloudflareAuthenticatedOriginPullsCertificateStatus represents the observed
+// state of the uploaded certificate.
+message CloudflareAuthenticatedOriginPullsCertificateStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareAuthenticatedOriginPullsCertificateStackOutputs outputs = 1;
+}

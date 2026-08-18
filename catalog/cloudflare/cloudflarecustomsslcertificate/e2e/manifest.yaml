@@ -1,0 +1,26 @@
+# A complete, protovalidate-valid CloudflareCustomSslCertificate example: an
+# SNI certificate upload with an explicit bundle method and a US private-key
+# geo restriction. The PEM values are placeholders -- a real upload needs a
+# certificate issued by a publicly trusted CA covering the zone's hostnames.
+# Custom certificates are a Business/Enterprise zone feature; the plan gate
+# is Cloudflare's, at create.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareCustomSslCertificate
+metadata:
+  name: www-custom-certificate
+spec:
+  zone_id:
+    value: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  certificate: |
+    -----BEGIN CERTIFICATE-----
+    REPLACE_WITH_CERTIFICATE_PEM
+    -----END CERTIFICATE-----
+  private_key:
+    value: |
+      -----BEGIN PRIVATE KEY-----
+      REPLACE_WITH_PRIVATE_KEY_PEM
+      -----END PRIVATE KEY-----
+  type: sni_custom
+  bundle_method: ubiquitous
+  geo_restrictions:
+    label: us

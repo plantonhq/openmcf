@@ -312,6 +312,34 @@ func TestCloudflareZoneTlsSettings_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "cloudflarezonetlssettings", "terraform")
 }
 
+func TestCloudflareCustomSslCertificate_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarecustomsslcertificate", "pulumi")
+}
+func TestCloudflareCustomSslCertificate_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarecustomsslcertificate", "terraform")
+}
+
+func TestCloudflareMtlsCertificate_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflaremtlscertificate", "pulumi")
+}
+func TestCloudflareMtlsCertificate_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflaremtlscertificate", "terraform")
+}
+
+func TestCloudflareAuthenticatedOriginPulls_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflareauthenticatedoriginpulls", "pulumi")
+}
+func TestCloudflareAuthenticatedOriginPulls_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflareauthenticatedoriginpulls", "terraform")
+}
+
+func TestCloudflareAuthenticatedOriginPullsCertificate_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflareauthenticatedoriginpullscertificate", "pulumi")
+}
+func TestCloudflareAuthenticatedOriginPullsCertificate_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflareauthenticatedoriginpullscertificate", "terraform")
+}
+
 func TestCloudflareZeroTrustAccessIdentityProvider_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "cloudflarezerotrustaccessidentityprovider", "pulumi")
 }

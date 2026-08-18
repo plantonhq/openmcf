@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflareauthenticatedoriginpullscertificate.v1alpha1;
+
+import "catalog/cloudflare/cloudflareauthenticatedoriginpullscertificate/v1alpha1/api.proto";
+import "catalog/cloudflare/provider.proto";
+
+// CloudflareAuthenticatedOriginPullsCertificateStackInput is the input to the
+// IaC module. It contains the target resource and provider configuration.
+message CloudflareAuthenticatedOriginPullsCertificateStackInput {
+  // target cloud-resource to be deployed
+  CloudflareAuthenticatedOriginPullsCertificate target = 1;
+  // provider-config for Cloudflare authentication
+  dev.planton.cloudflare.CloudflareProviderConfig provider_config = 2;
+}

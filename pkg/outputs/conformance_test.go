@@ -5645,6 +5645,46 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"event_id", "waiting_room_id", "zone_id"},
 		},
 		{
+			name: "CloudflareCustomSslCertificate",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareCustomSslCertificate,
+			rawOutputs: map[string]interface{}{
+				"certificate_id": "7e7b8deba8538af625850b7b2530034c",
+				"zone_id":        "0da42c8d2132a9ddaf714f9e7c920711",
+				"expires_on":     "2027-02-01T05:20:00Z",
+				"status":         "active",
+			},
+			mustPopulate: []string{"certificate_id", "zone_id", "expires_on", "status"},
+		},
+		{
+			name: "CloudflareMtlsCertificate",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareMtlsCertificate,
+			rawOutputs: map[string]interface{}{
+				"certificate_id": "2458ce5a-0c35-4c7f-82c7-8e9487d3ff60",
+				"expires_on":     "2027-01-01T00:00:00Z",
+				"serial_number":  "6743787633689793699141714808227354901927759474",
+			},
+			mustPopulate: []string{"certificate_id", "expires_on", "serial_number"},
+		},
+		{
+			name: "CloudflareAuthenticatedOriginPulls",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareAuthenticatedOriginPulls,
+			rawOutputs: map[string]interface{}{
+				"zone_id": "0da42c8d2132a9ddaf714f9e7c920711",
+			},
+			mustPopulate: []string{"zone_id"},
+		},
+		{
+			name: "CloudflareAuthenticatedOriginPullsCertificate",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareAuthenticatedOriginPullsCertificate,
+			rawOutputs: map[string]interface{}{
+				"certificate_id": "9e13e848-3aa1-4a4e-b222-e5e79e15fc1a",
+				"zone_id":        "0da42c8d2132a9ddaf714f9e7c920711",
+				"expires_on":     "2027-01-01T00:00:00Z",
+				"status":         "active",
+			},
+			mustPopulate: []string{"certificate_id", "zone_id", "expires_on", "status"},
+		},
+		{
 			// AzureResourceGroup: flat scalar outputs from both engines (ARM id,
 			// name, region) must each land on the StackOutputs proto --
 			// resource_group_name is the FK target every other Azure kind

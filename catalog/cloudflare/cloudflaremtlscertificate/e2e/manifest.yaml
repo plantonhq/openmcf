@@ -1,0 +1,17 @@
+# A complete, protovalidate-valid CloudflareMtlsCertificate example: a CA
+# certificate uploaded to the account store for Authenticated Origin Pulls
+# rows, zone TLS CA associations, and Workers mTLS bindings to reference.
+# The PEM value is a placeholder -- CA uploads validating clients carry no
+# private key.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareMtlsCertificate
+metadata:
+  name: origin-pull-ca
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  name: origin-pull-ca
+  ca: true
+  certificates: |
+    -----BEGIN CERTIFICATE-----
+    REPLACE_WITH_CA_CERTIFICATE_PEM
+    -----END CERTIFICATE-----

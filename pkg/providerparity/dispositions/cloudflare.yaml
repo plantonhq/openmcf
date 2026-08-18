@@ -80,15 +80,9 @@ resources:
   # cloudflare_origin_tls_compliance_modes, and
   # cloudflare_certificate_authorities_hostname_associations are consumed by
   # CloudflareZoneTlsSettings -- census-proven, so absent here.)
-  - resource: cloudflare_custom_ssl
-    disposition: model-planned
-    reason: "judged as a planned CloudflareCustomSslCertificate kind (bring-your-own certificate upload with rotation lifecycle)"
   - resource: cloudflare_custom_csr
     disposition: model-planned
     reason: "judged as a planned CloudflareCustomCsr kind (CSR generation referenced during certificate issuance)"
-  - resource: cloudflare_mtls_certificate
-    disposition: model-planned
-    reason: "judged as a planned CloudflareMtlsCertificate kind (CA certificates referenced by Workers mTLS bindings and authenticated origin pulls)"
   - resource: cloudflare_client_certificate
     disposition: model-planned
     reason: "judged as a planned CloudflareClientCertificate kind (Cloudflare-issued client certificates for API Shield mTLS)"
@@ -98,18 +92,6 @@ resources:
   - resource: cloudflare_custom_origin_trust_store
     disposition: model-planned
     reason: "judged as a planned CloudflareCustomOriginTrustStore kind (uploaded CA bundle for origin verification)"
-  - resource: cloudflare_authenticated_origin_pulls
-    disposition: model-planned
-    reason: "judged as a planned CloudflareAuthenticatedOriginPulls kind (zone and hostname authenticated-origin-pulls enablement)"
-  - resource: cloudflare_authenticated_origin_pulls_settings
-    disposition: model-planned
-    reason: "folds into the planned CloudflareAuthenticatedOriginPulls kind (settings of the enablement surface)"
-  - resource: cloudflare_authenticated_origin_pulls_certificate
-    disposition: model-planned
-    reason: "judged as a planned CloudflareAuthenticatedOriginPullsCertificate kind (uploaded client certificate with independent rotation lifecycle)"
-  - resource: cloudflare_authenticated_origin_pulls_hostname_certificate
-    disposition: model-planned
-    reason: "folds into the planned CloudflareAuthenticatedOriginPullsCertificate kind (hostname-scoped variant of the same certificate upload)"
   # ---- Rulesets & zone security ----------------------------------------------
   - resource: cloudflare_zone_lockdown
     disposition: model-planned

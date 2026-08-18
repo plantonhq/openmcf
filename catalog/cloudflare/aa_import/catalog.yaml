@@ -455,6 +455,50 @@ spec:
         document only this form), while "{zone_id}/{mtls_certificate_id}"
         imports an mTLS certificate's own hostname list. Use the form
         matching the row being adopted.
+    # --- TLS uploads + Authenticated Origin Pulls -----------------------------------
+    # Certificate uploads never round-trip their key material: the API never
+    # returns certificate or private_key, so every blind import re-asserts
+    # them from configuration.
+    - terraform_type: cloudflare_custom_ssl
+      pulumi_type: cloudflare:index/customSsl:CustomSsl
+      id_format: "{zone_id}/{certificate_id}"
+      notes: >-
+        certificate and private_key are write-only (never returned by the
+        API) -- the round-trip re-asserts them from configuration. status is
+        asynchronous (pending before active) and never round-trips cleanly.
+    - terraform_type: cloudflare_mtls_certificate
+      pulumi_type: cloudflare:index/mtlsCertificate:MtlsCertificate
+      id_format: "{account_id}/{certificate_id}"
+      notes: >-
+        private_key is write-only (never returned by the API); CA uploads
+        carry no key at all. Every argument is create-only, so a post-import
+        value change plans a replace, never an update.
+    - terraform_type: cloudflare_authenticated_origin_pulls
+      pulumi_type: cloudflare:index/authenticatedOriginPulls:AuthenticatedOriginPulls
+      id_format: "{zone_id}/{hostname}"
+      notes: >-
+        The config list never survives import (no_refresh) even though it is
+        Required -- re-assert the association row from configuration; the
+        write is idempotent for identical values.
+    - terraform_type: cloudflare_authenticated_origin_pulls_settings
+      pulumi_type: cloudflare:index/authenticatedOriginPullsSettings:AuthenticatedOriginPullsSettings
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_authenticated_origin_pulls_certificate
+      pulumi_type: cloudflare:index/authenticatedOriginPullsCertificate:AuthenticatedOriginPullsCertificate
+      id_format: "{zone_id}/{certificate_id}"
+      notes: >-
+        certificate and private_key are write-only -- the round-trip
+        re-asserts them from configuration. Deletion is asynchronous
+        (pending_deletion/deleted statuses answer 200 before the record
+        goes).
+    - terraform_type: cloudflare_authenticated_origin_pulls_hostname_certificate
+      pulumi_type: cloudflare:index/authenticatedOriginPullsHostnameCertificate:AuthenticatedOriginPullsHostnameCertificate
+      id_format: "{zone_id}/{certificate_id}"
+      notes: >-
+        certificate and private_key are write-only -- the round-trip
+        re-asserts them from configuration. Deletion is asynchronous
+        (pending_deletion/deleted statuses answer 200 before the record
+        goes).
     # --- Zone security ------------------------------------------------------------
     # Access rules are dual-scope: the documented import ID carries a literal
     # "accounts/" or "zones/" prefix. Live scenarios are account-scoped.

@@ -1,0 +1,19 @@
+# The hostname-association arm: pin one fixture-zone hostname WITHOUT a
+# certificate id (the association then rides the zone-level certificate
+# material) and with enabled omitted -- proving the module's send-true
+# default (Cloudflare treats null as "void the association"). The uploaded
+# per-hostname certificate edge is proven offline by e2e/manifest.yaml --
+# wiring it live would chain this lane onto the certificate kind's env-gated
+# PEM supply for no extra lifecycle coverage.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareAuthenticatedOriginPulls
+metadata:
+  name: e2e-aop-assoc-${E2E_RUN_ID}
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  hostname_associations:
+    - hostname: origin.planton-e2e-${E2E_RUN_ID}.com

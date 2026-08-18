@@ -5429,6 +5429,43 @@ enum CloudResourceKind {
     id_prefix: "cftls"
     prerequisites: [CloudflareDnsZone]
   }];
+  // CloudflareDnsZone is a prerequisite because a custom certificate is
+  // uploaded to an existing zone -- the spec's zone_id reference must resolve
+  // first.
+  CloudflareCustomSslCertificate = 7151 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfcssl"
+    prerequisites: [CloudflareDnsZone]
+  }];
+  // No prerequisites: mTLS certificates are account-scoped uploads and
+  // self-contained -- consumers (zone TLS CA associations, Authenticated
+  // Origin Pulls rows, Workers mTLS bindings) reference them, not the
+  // reverse.
+  CloudflareMtlsCertificate = 7152 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfmtls"
+  }];
+  // CloudflareDnsZone is a prerequisite because Authenticated Origin Pulls
+  // enablement configures an existing zone -- the spec's zone_id reference
+  // must resolve first. The per-hostname certificate edge is optional and
+  // scenario-declared, never a registry prerequisite.
+  CloudflareAuthenticatedOriginPulls = 7153 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfaop"
+    prerequisites: [CloudflareDnsZone]
+  }];
+  // CloudflareDnsZone is a prerequisite because the client certificate is
+  // uploaded to an existing zone -- the spec's zone_id reference must resolve
+  // first.
+  CloudflareAuthenticatedOriginPullsCertificate = 7154 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfaopc"
+    prerequisites: [CloudflareDnsZone]
+  }];
 
   // --- 7180-7209: Cloudflare zone-behavior sub-band ---
 

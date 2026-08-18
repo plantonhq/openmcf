@@ -532,6 +532,41 @@ var verifiers = map[string]Verifier{
 		pathFormat: "zones/%s/waiting_rooms/%s/events/%s",
 		outputKeys: []string{"zone_id", "waiting_room_id", "event_id"},
 	},
+	// Custom SSL deletes for real, but the status enum carries deletion
+	// states (deployment and deletion are asynchronous) -- a 200 whose
+	// status reads deleted counts as absent.
+	"cloudflarecustomsslcertificate": &apiPathVerifier{
+		component:      "cloudflarecustomsslcertificate",
+		pathFormat:     "zones/%s/custom_certificates/%s",
+		outputKeys:     []string{"zone_id", "certificate_id"},
+		absentStatuses: []string{"deleted"},
+	},
+	// mTLS certificates are account-scoped uploads with a real delete and
+	// an honest 404.
+	"cloudflaremtlscertificate": &apiPathVerifier{
+		component:     "cloudflaremtlscertificate",
+		pathFormat:    "accounts/%s/mtls_certificates/%s",
+		outputKeys:    []string{"certificate_id"},
+		accountScoped: true,
+	},
+	// Authenticated Origin Pulls is a zone-singleton surface: the zone-wide
+	// toggle has NO delete at Cloudflare (destroy abandons the value) and
+	// associations revert rather than delete -- verify-absent asserts the
+	// settings surface still answers, per the settings-singleton contract.
+	"cloudflareauthenticatedoriginpulls": &settingsSingletonVerifier{
+		component:  "cloudflareauthenticatedoriginpulls",
+		pathFormat: "zones/%s/origin_tls_client_auth/settings",
+	},
+	// AOP client certificates delete for real but asynchronously: the API
+	// answers 200 with pending_deletion/deleted before the record goes.
+	// The live arm is the hostname-scoped upload (the zone-scoped surface
+	// is plan-proven offline), so the probe speaks the hostname path.
+	"cloudflareauthenticatedoriginpullscertificate": &apiPathVerifier{
+		component:      "cloudflareauthenticatedoriginpullscertificate",
+		pathFormat:     "zones/%s/origin_tls_client_auth/hostnames/certificates/%s",
+		outputKeys:     []string{"zone_id", "certificate_id"},
+		absentStatuses: []string{"pending_deletion", "deleted"},
+	},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is

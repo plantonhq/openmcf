@@ -1827,6 +1827,10 @@ Allowed values (use exactly as shown):
 - `CloudflareZeroTrustGatewayPolicy` -- No prerequisites: Gateway policies are account-scoped, and their list / virtual-network references are optional per-manifest edges.
 - `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomSslCertificate` -- CloudflareDnsZone is a prerequisite because a custom certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareMtlsCertificate` -- No prerequisites: mTLS certificates are account-scoped uploads and self-contained -- consumers (zone TLS CA associations, Authenticated Origin Pulls rows, Workers mTLS bindings) reference them, not the reverse.
+- `CloudflareAuthenticatedOriginPulls` -- CloudflareDnsZone is a prerequisite because Authenticated Origin Pulls enablement configures an existing zone -- the spec's zone_id reference must resolve first. The per-hostname certificate edge is optional and scenario-declared, never a registry prerequisite.
+- `CloudflareAuthenticatedOriginPullsCertificate` -- CloudflareDnsZone is a prerequisite because the client certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareIpAccessRule` -- No prerequisites: IP Access rules are account-scoped in the canonical case (the zone scope is a per-manifest choice, not a structural dependency).
@@ -2630,6 +2634,10 @@ Allowed values (use exactly as shown):
 - `CloudflareZeroTrustGatewayPolicy` -- No prerequisites: Gateway policies are account-scoped, and their list / virtual-network references are optional per-manifest edges.
 - `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomSslCertificate` -- CloudflareDnsZone is a prerequisite because a custom certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareMtlsCertificate` -- No prerequisites: mTLS certificates are account-scoped uploads and self-contained -- consumers (zone TLS CA associations, Authenticated Origin Pulls rows, Workers mTLS bindings) reference them, not the reverse.
+- `CloudflareAuthenticatedOriginPulls` -- CloudflareDnsZone is a prerequisite because Authenticated Origin Pulls enablement configures an existing zone -- the spec's zone_id reference must resolve first. The per-hostname certificate edge is optional and scenario-declared, never a registry prerequisite.
+- `CloudflareAuthenticatedOriginPullsCertificate` -- CloudflareDnsZone is a prerequisite because the client certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareIpAccessRule` -- No prerequisites: IP Access rules are account-scoped in the canonical case (the zone scope is a per-manifest choice, not a structural dependency).
@@ -4581,6 +4589,10 @@ Allowed values (use exactly as shown):
 - `CloudflareZeroTrustGatewayPolicy` -- No prerequisites: Gateway policies are account-scoped, and their list / virtual-network references are optional per-manifest edges.
 - `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomSslCertificate` -- CloudflareDnsZone is a prerequisite because a custom certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareMtlsCertificate` -- No prerequisites: mTLS certificates are account-scoped uploads and self-contained -- consumers (zone TLS CA associations, Authenticated Origin Pulls rows, Workers mTLS bindings) reference them, not the reverse.
+- `CloudflareAuthenticatedOriginPulls` -- CloudflareDnsZone is a prerequisite because Authenticated Origin Pulls enablement configures an existing zone -- the spec's zone_id reference must resolve first. The per-hostname certificate edge is optional and scenario-declared, never a registry prerequisite.
+- `CloudflareAuthenticatedOriginPullsCertificate` -- CloudflareDnsZone is a prerequisite because the client certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareIpAccessRule` -- No prerequisites: IP Access rules are account-scoped in the canonical case (the zone scope is a per-manifest choice, not a structural dependency).
@@ -5384,6 +5396,10 @@ Allowed values (use exactly as shown):
 - `CloudflareZeroTrustGatewayPolicy` -- No prerequisites: Gateway policies are account-scoped, and their list / virtual-network references are optional per-manifest edges.
 - `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomSslCertificate` -- CloudflareDnsZone is a prerequisite because a custom certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareMtlsCertificate` -- No prerequisites: mTLS certificates are account-scoped uploads and self-contained -- consumers (zone TLS CA associations, Authenticated Origin Pulls rows, Workers mTLS bindings) reference them, not the reverse.
+- `CloudflareAuthenticatedOriginPulls` -- CloudflareDnsZone is a prerequisite because Authenticated Origin Pulls enablement configures an existing zone -- the spec's zone_id reference must resolve first. The per-hostname certificate edge is optional and scenario-declared, never a registry prerequisite.
+- `CloudflareAuthenticatedOriginPullsCertificate` -- CloudflareDnsZone is a prerequisite because the client certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareIpAccessRule` -- No prerequisites: IP Access rules are account-scoped in the canonical case (the zone scope is a per-manifest choice, not a structural dependency).
@@ -7376,6 +7392,10 @@ Allowed values (use exactly as shown):
 - `CloudflareZeroTrustGatewayPolicy` -- No prerequisites: Gateway policies are account-scoped, and their list / virtual-network references are optional per-manifest edges.
 - `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomSslCertificate` -- CloudflareDnsZone is a prerequisite because a custom certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareMtlsCertificate` -- No prerequisites: mTLS certificates are account-scoped uploads and self-contained -- consumers (zone TLS CA associations, Authenticated Origin Pulls rows, Workers mTLS bindings) reference them, not the reverse.
+- `CloudflareAuthenticatedOriginPulls` -- CloudflareDnsZone is a prerequisite because Authenticated Origin Pulls enablement configures an existing zone -- the spec's zone_id reference must resolve first. The per-hostname certificate edge is optional and scenario-declared, never a registry prerequisite.
+- `CloudflareAuthenticatedOriginPullsCertificate` -- CloudflareDnsZone is a prerequisite because the client certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareIpAccessRule` -- No prerequisites: IP Access rules are account-scoped in the canonical case (the zone scope is a per-manifest choice, not a structural dependency).
@@ -8179,6 +8199,10 @@ Allowed values (use exactly as shown):
 - `CloudflareZeroTrustGatewayPolicy` -- No prerequisites: Gateway policies are account-scoped, and their list / virtual-network references are optional per-manifest edges.
 - `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomSslCertificate` -- CloudflareDnsZone is a prerequisite because a custom certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
+- `CloudflareMtlsCertificate` -- No prerequisites: mTLS certificates are account-scoped uploads and self-contained -- consumers (zone TLS CA associations, Authenticated Origin Pulls rows, Workers mTLS bindings) reference them, not the reverse.
+- `CloudflareAuthenticatedOriginPulls` -- CloudflareDnsZone is a prerequisite because Authenticated Origin Pulls enablement configures an existing zone -- the spec's zone_id reference must resolve first. The per-hostname certificate edge is optional and scenario-declared, never a registry prerequisite.
+- `CloudflareAuthenticatedOriginPullsCertificate` -- CloudflareDnsZone is a prerequisite because the client certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareZoneSettings` -- CloudflareDnsZone is a prerequisite because zone settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareCacheSettings` -- CloudflareDnsZone is a prerequisite because cache settings configure an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareIpAccessRule` -- No prerequisites: IP Access rules are account-scoped in the canonical case (the zone scope is a per-manifest choice, not a structural dependency).

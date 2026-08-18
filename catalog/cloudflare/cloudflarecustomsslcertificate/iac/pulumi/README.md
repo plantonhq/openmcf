@@ -1,0 +1,30 @@
+# CloudflareCustomSslCertificate Pulumi Module
+
+Pulumi (Go) IaC module for a bring-your-own TLS certificate uploaded to a Cloudflare zone.
+
+## Architecture
+
+```
+main.go                              — Entrypoint loading the stack input
+module/main.go                       — Resources(): provider setup, resource, outputs
+module/locals.go                     — Locals initialization
+module/custom_ssl_certificate.go     — cloudflare.CustomSsl
+module/outputs.go                    — Stack output keys
+```
+
+## Behavior
+
+Mirrors the Terraform module's contract exactly: replacement-on-rotation semantics, empty-string drops for `policy`/`custom_csr_id`, the nested geo restriction sent only when the label is present, and the `certificate_id` / `zone_id` / `expires_on` / `status` stack outputs. `priority` is deliberately absent (read-only at provider v5.23.0).
+
+## Outputs
+
+| Name | Description |
+|------|-------------|
+| `certificate_id` | The uploaded certificate's ID |
+| `zone_id` | The zone the certificate belongs to |
+| `expires_on` | Expiry timestamp (RFC3339) |
+| `status` | Deployment status (asynchronous) |
+
+## Provider Version
+
+Uses `pulumi-cloudflare` SDK v6 (Cloudflare Terraform provider v5 line).

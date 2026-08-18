@@ -1,0 +1,70 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarecustomsslcertificate
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloudflare stores the uploaded private key encrypted in its key infrastructure; the API never returns it.
+      notes: The geo controls (policy, geo_restrictions) govern WHERE the key is held, on top of the unconditional encryption.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-managed key surface -- Cloudflare's key infrastructure holds the upload.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The component's entire purpose is visitor-facing TLS -- the uploaded certificate terminates HTTPS at Cloudflare's edge.
+      notes: Management traffic to the Cloudflare API is HTTPS unconditionally.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The certificate is served to visitors by design; the private key is never publicly reachable.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress surface of its own -- the zone's proxy serves the certificate.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The certificate is edge material, not an edge-protection policy; WAF/rulesets are separate kinds.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is Cloudflare account-membership posture; the upload exposes no data plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The private key is TLS material for the zone, not a workload credential this component distributes.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path of its own. Prefer a scoped API token with SSL and Certificates Edit.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records certificate uploads and deletions in the account audit log unconditionally -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No metrics surface of its own; watch the expires_on output for renewal, which is this component's operational duty.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration re-creatable from the manifest PLUS the externally held certificate and key -- the API never returns them, so the secret store is the real backup.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloudflare serves the certificate from its global edge; geo restrictions narrow key placement without creating a single point of failure.
+      notes: Restricting the key's geography trades latency/failover breadth for jurisdiction control -- a deliberate lever, not a defect.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Destroy is a real delete; the zone falls back to Universal SSL / Advanced certificates. Verify a fallback is active before destroying.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Cloudflare operates the TLS termination; the customer's only lifecycle duty is certificate renewal.
