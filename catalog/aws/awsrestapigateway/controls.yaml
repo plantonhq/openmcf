@@ -1,0 +1,92 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsrestapigateway
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: stage.method_settings.cache_data_encrypted
+      evidence:
+        type: spec_default
+        reference: API Gateway's own stored state (routes, models, authorizer definitions) is configuration encrypted by the managed service; the one place customer response data can rest on this component is the optional stage cache, and cached responses are encrypted only when cache_data_encrypted is set on the method settings that enable caching.
+      notes: Without a cache_cluster the component holds no customer data at rest -- payloads land in the backends, which own their own posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-managed-key surface exists for REST APIs -- neither the configuration store nor the stage cache accepts a KMS key; at-rest keying belongs to the backend components that persist the data.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: REST API endpoints serve HTTPS only -- plaintext HTTP is not offered on execute-api endpoints. The security_policy field tunes the TLS floor and cipher family; client_certificate makes API Gateway present a TLS client certificate to HTTP backends so they can verify calls came through the API.
+      notes: routes.integration.tls_insecure_skip_verification can disable backend certificate verification for HTTP integrations -- a last-resort knob that weakens the backend leg without turning off encryption.
+    - control_id: no-public-access
+      status: configurable
+      field_path: endpoint_configuration.type
+      evidence:
+        type: spec_default
+        reference: Omitted means a REGIONAL endpoint reachable from the public internet (per-route authorization still applies); PRIVATE confines the API to the referenced interface VPC endpoints, unreachable from outside the VPCs that hold them. disable_execute_api_endpoint additionally closes the default endpoint when a custom domain owns the public surface.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: policy
+      evidence:
+        type: spec_default
+        reference: Unset means no resource policy -- any caller passing the route's authorization may invoke; a resource policy restricts invocation to declared sources (IP ranges, VPCs, VPC endpoints, accounts) and is required in practice for PRIVATE endpoints to admit their VPC endpoints.
+      notes: Per-route authorization (AWS_IAM, CUSTOM, COGNITO_USER_POOLS) is identity-based ingress control layered on top of the network-source policy.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: REST API stages accept an AWS WAF web ACL, but the association is composed from the WAF side against the stage ARN -- no field of this spec attaches one. gateway_responses can customize the WAF_FILTERED response callers see; throttling in method_settings is quota control, not request inspection.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane operation on the API is IAM-authorized; data-plane invocation is governed per route by the declared authorization type, including AWS_IAM SigV4, Lambda authorizers, and Cognito user pools.
+    - control_id: workload-identity
+      status: configurable
+      field_path: routes.integration.credentials_arn
+      evidence:
+        type: spec_default
+        reference: AWS-service integrations assume the referenced role for each backend call -- short-lived credentials, no static keys. Lambda-proxy integrations instead rely on the function's resource policy admitting apigateway.amazonaws.com; authorizers carry the parallel authorizers.credentials_arn for invoking their Lambda.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: security_policy
+      evidence:
+        type: spec_default
+        reference: Omitted means the AWS default TLS policy for the endpoint type; the legacy TLS_1_0 policy remains selectable for old clients, and the SecurityPolicy_TLS13_* family refuses pre-1.2 TLS entirely. Choosing a modern policy is how the weak-protocol path is closed.
+      notes: api_key_required marks routes that demand an API key -- keys identify usage-plan customers and are not an authentication mechanism; authorization is the field that carries real caller identity.
+    - control_id: audit-logging
+      status: configurable
+      field_path: stage.access_log
+      evidence:
+        type: spec_default
+        reference: Unset means no access logs; the access_log block writes a per-request record in the declared format to the referenced CloudWatch log group. Management-plane calls land in CloudTrail by default regardless.
+      notes: method_settings.logging_level adds execution logs (requires the account's region-level CloudWatch role, a singleton outside this component); data_trace_enabled logs full payloads -- invaluable for debugging, unsafe for production PII.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: API Gateway publishes request count, 4XX/5XX rates, latency, integration latency, and cache hit/miss metrics to CloudWatch automatically per API; method_settings.metrics_enabled deepens this to per-method resolution and stage.xray_tracing_enabled adds distributed traces.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The API is stateless configuration recreated from the manifest -- the explicit deployment snapshots the definition, and every spec change rolls a new one; there is no customer data to back up (the stage cache is a disposable copy of backend responses).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No stored data means no retention surface; access-log and execution-log retention are governed on the referenced CloudWatch log groups.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: REST APIs are served by regional, multi-AZ managed infrastructure; no single-zone deployment mode exists. EDGE endpoints add CloudFront's global points of presence in front of the same regional service.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists for REST APIs; a deleted API is recreated from the manifest, though its generated execute-api id changes -- callers pinned to the old invoke URL must re-resolve (a custom domain via AwsRestApiDomain survives recreation).
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the gateway fleet; no customer-visible patch surface exists.

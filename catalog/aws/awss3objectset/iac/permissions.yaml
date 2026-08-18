@@ -1,0 +1,55 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awss3objectset
+spec:
+  aws:
+    statements:
+      - sid: WriteObjects
+        actions:
+          - s3:PutObject
+          - s3:PutObjectTagging
+          - s3:PutObjectAcl
+        resources:
+          - arn:aws:s3:::*/*
+        provenance: derived
+        notes: Covers aws_s3_object uploads and aws_s3_object_copy destinations -- CopyObject authorizes as s3:PutObject on the DESTINATION object. Placement headers (storage class, SSE settings, website redirect) ride the same PutObject call and can be narrowed with their s3:x-amz-* condition keys. PutObjectTagging serves tag-only reconciliation; PutObjectAcl serves acl changes on existing objects (only functional on buckets whose ownership controls permit ACLs). All three scope to the object ARN (bucket/key).
+      - sid: ReadObjects
+        actions:
+          - s3:GetObject
+          - s3:GetObjectTagging
+          - s3:GetObjectRetention
+          - s3:GetObjectLegalHold
+        resources:
+          - arn:aws:s3:::*/*
+        provenance: derived
+        notes: "Plan/refresh reads (the providers HEAD each managed object -- authorized as s3:GetObject -- and read tags back), plus the SOURCE-side read of every copy_from: CopyObject authorizes s3:GetObject on the source object, the one permission the copy needs outside the destination bucket. The lock reads let refresh see retention and legal-hold state on Object Lock buckets. All scope to object ARNs."
+      - sid: DeleteObjects
+        actions:
+          - s3:DeleteObject
+          - s3:DeleteObjectVersion
+          - s3:BypassGovernanceRetention
+        resources:
+          - arn:aws:s3:::*/*
+        provenance: derived
+        notes: "Destroy and replace (a key change is delete + create). On a versioning-enabled bucket, destroying a managed object removes ALL of its versions -- that is DeleteObjectVersion, a separate action from DeleteObject. BypassGovernanceRetention is exercised only when an object sets force_destroy: the delete then carries the governance-bypass flag, which S3 rejects on non-Object-Lock buckets. COMPLIANCE-mode retention is not bypassable by any grant."
+      - sid: ListVersions
+        actions:
+          - s3:ListBucketVersions
+        resources:
+          - arn:aws:s3:::*
+        provenance: derived
+        notes: The version enumeration behind all-version deletes on versioning-enabled buckets. Unlike the object actions, this authorizes on the BUCKET ARN (no trailing /key) -- granting it on object ARNs never matches.
+      - sid: UseKmsForSseKms
+        actions:
+          - kms:GenerateDataKey
+          - kms:Decrypt
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: "Exercised only around SSE-KMS. Writing an object with the aws:kms override (or into a bucket whose default encryption is SSE-KMS) needs kms:GenerateDataKey on the key -- the spec calls this out on the kms_key field. kms:Decrypt covers copy sources that are themselves SSE-KMS-encrypted: the copy decrypts the source before re-encrypting at the destination. With SSE-S3 on both ends this statement is never used."

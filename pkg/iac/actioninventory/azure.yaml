@@ -400,7 +400,7 @@ services:
       - roleManagementPolicyAssignments/read
   - prefix: Microsoft.Cache
     source_url: https://management.azure.com/providers/Microsoft.Authorization/providerOperations/Microsoft.Cache?api-version=2022-04-01&$expand=resourceTypes
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - checknameavailability/action
       - locations/asyncOperations/read
@@ -467,6 +467,7 @@ services:
       - redisEnterprise/listSkusForScaling/action
       - redisEnterprise/migrations/cancel/action
       - redisEnterprise/migrations/read
+      - redisEnterprise/migrations/unlinkMigratedEndpoint/action
       - redisEnterprise/migrations/validate/action
       - redisEnterprise/migrations/write
       - redisEnterprise/operationResults/read
@@ -8442,7 +8443,7 @@ services:
       - namespaces/revokeUserDelegationKeys/action
   - prefix: Microsoft.Sql
     source_url: https://management.azure.com/providers/Microsoft.Authorization/providerOperations/Microsoft.Sql?api-version=2022-04-01&$expand=resourceTypes
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - checkNameAvailability/action
       - instancePools/delete
@@ -8512,7 +8513,11 @@ services:
       - locations/longTermRetentionManagedInstanceBackupOperationResults/read
       - locations/longTermRetentionManagedInstanceBackups/read
       - locations/longTermRetentionManagedInstances/longTermRetentionDatabases/longTermRetentionManagedInstanceBackups/delete
+      - locations/longTermRetentionManagedInstances/longTermRetentionDatabases/longTermRetentionManagedInstanceBackups/lockTimeBasedImmutability/action
       - locations/longTermRetentionManagedInstances/longTermRetentionDatabases/longTermRetentionManagedInstanceBackups/read
+      - locations/longTermRetentionManagedInstances/longTermRetentionDatabases/longTermRetentionManagedInstanceBackups/removeLegalHoldImmutability/action
+      - locations/longTermRetentionManagedInstances/longTermRetentionDatabases/longTermRetentionManagedInstanceBackups/removeTimeBasedImmutability/action
+      - locations/longTermRetentionManagedInstances/longTermRetentionDatabases/longTermRetentionManagedInstanceBackups/setLegalHoldImmutability/action
       - locations/longTermRetentionManagedInstances/longTermRetentionManagedInstanceBackups/read
       - locations/longTermRetentionPolicyAzureAsyncOperation/read
       - locations/longTermRetentionPolicyOperationResults/read
@@ -9277,7 +9282,7 @@ services:
       - storageAccounts/tableServices/tables/entities/write
   - prefix: Microsoft.Web
     source_url: https://management.azure.com/providers/Microsoft.Authorization/providerOperations/Microsoft.Web?api-version=2022-04-01&$expand=resourceTypes
-    retrieved_on: "2026-08-16"
+    retrieved_on: "2026-08-18"
     actions:
       - Sites/joinPerimeter/action
       - Sites/networkSecurityPerimeterAssociationProxies/delete
@@ -9604,6 +9609,7 @@ services:
       - sites/host/functionkeys/write
       - sites/host/listkeys/action
       - sites/host/listsyncstatus/action
+      - sites/host/properties/read
       - sites/host/sync/action
       - sites/host/systemkeys/delete
       - sites/host/systemkeys/write
@@ -9614,10 +9620,12 @@ services:
       - sites/hostruntime/host/_master/read
       - sites/hostruntime/host/action
       - sites/hostruntime/host/read
+      - sites/hostruntime/vfs/read
       - sites/hostruntime/webhooks/api/workflows/runs/read
       - sites/hostruntime/webhooks/api/workflows/triggers/listCallbackUrl/action
       - sites/hostruntime/webhooks/api/workflows/triggers/read
       - sites/hostruntime/webhooks/api/workflows/triggers/run/action
+      - sites/hostruntime/webhooks/api/workflows/validate/action
       - sites/hybridconnection/delete
       - sites/hybridconnection/read
       - sites/hybridconnection/write
@@ -9631,6 +9639,7 @@ services:
       - sites/instances/extensions/log/read
       - sites/instances/extensions/processes/read
       - sites/instances/extensions/read
+      - sites/instances/logs/read
       - sites/instances/processes/delete
       - sites/instances/processes/modules/read
       - sites/instances/processes/read

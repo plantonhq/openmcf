@@ -1,0 +1,56 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awseventbridgebus
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: resource_policy
+      sku_meter: custom events published
+      pricing_unit: events
+      impact: Every custom event put onto the bus bills the bus owner at the per-million rate, in 64 KB chunks (a 256 KB payload bills as four events). Cross-account PutEvents grants in this policy are what open the bus to other accounts' publishers -- each grant widens the population that can generate billed ingestion.
+    - field_path: event_source_name
+      sku_meter: partner events ingested
+      pricing_unit: events
+      impact: A partner bus receives the SaaS partner's event stream, and every partner event ingested bills at the per-million partner rate with the same 64 KB chunking -- the partner's traffic volume, not anything in this manifest, decides the bill.
+    - field_path: archives
+      sku_meter: archive processing
+      pricing_unit: GB
+      impact: Each archive pays a per-GB processing fee on every event it records, then per-GB-month storage while the event is retained. An archive with no matching traffic costs nothing; a catch-all archive on a busy bus meters the bus's full delivered volume twice (processing on the way in, storage while kept).
+    - field_path: archives.event_pattern
+      sku_meter: archive processing
+      pricing_unit: GB
+      impact: The pattern is the archive's volume filter -- omitted means EVERY event delivered to the bus is archived and billed; a narrow source/detail-type pattern archives only what replay actually needs.
+    - field_path: archives.retention_days
+      sku_meter: archive storage
+      pricing_unit: GB-months
+      impact: Zero retains archived events indefinitely, so storage only ever grows; a day count expires events and caps the accumulating GB-month charge. This is the only meter on the bus that keeps accruing while traffic is idle.
+    - field_path: log_config.level
+      sku_meter: CloudWatch Logs ingestion
+      pricing_unit: GB
+      impact: Delivery logging writes records to CloudWatch Logs at that component's ingestion and storage rates -- billed under CloudWatch Logs, not EventBridge. TRACE logs every event including unmatched ones, so on a busy bus it meters more records than the rules deliver.
+    - field_path: log_config.include_detail
+      sku_meter: CloudWatch Logs ingestion
+      pricing_unit: GB
+      impact: FULL embeds the complete event payload in every log record, multiplying the ingested bytes per record; NONE keeps records to routing metadata.
+    - field_path: kms_key_identifier
+      sku_meter: KMS key usage
+      pricing_unit: requests
+      impact: Omitted means an AWS-owned key at no charge. A customer-managed key makes EventBridge call KMS on your key for event encryption -- the key's monthly fee and API requests bill on the referenced AwsKmsKey component, not here.
+    - field_path: dead_letter_config.arn
+      sku_meter: SQS requests and storage
+      pricing_unit: requests
+      impact: Events that fail delivery to every target land in the referenced queue, billing its per-request and storage meters on the AwsSqsQueue component -- a healthy bus sends it nothing.
+  free_tier: AWS management events (the control-plane events over 250 AWS services emit automatically) are ingested by event buses for free, permanently. Custom and partner events carry no free allotment -- they bill from the first event.
+  estimate_exclusions:
+    - event volume is entirely traffic-driven -- an idle bus with no archives bills nothing
+    - payloads bill in 64 KB chunks, so average event size scales the effective per-event rate
+    - delivery to another event bus or another account is its own per-million meter that follows composition, not this manifest
+    - replay is an on-demand operation (StartReplay) billed as custom-event publishing at replay time
+    - cross-region delivery adds standard AWS data transfer charges
+    - rule targets' compute (Lambda, Step Functions, API destinations) bills on their own components
+    - delivery-log ingestion and storage bill on the CloudWatch log group, governed by its own retention
+  notes: "A custom event bus is free to exist -- the bill is event flow: custom and partner events ingested per million in 64 KB chunks, with AWS management events riding free. The widespread misreading is that rules or targets carry the meter; they do not -- ingestion bills on the bus, and the separate delivery meter applies only when events cross to another bus or account. Archives are the one meter that outlives traffic: per-GB processing on the way in, per-GB-month storage until retention expires (indefinite when retention_days is 0), and replaying archived events bills again as custom-event publishing. Global endpoints add no charge of their own."

@@ -1,0 +1,36 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Both presets are zero-committed: an empty store bills
+# nothing on existence, and all three Lake meters (ingestion per GB,
+# extended retention per GB-month, queries per GB scanned) follow the
+# account activity the selectors admit -- stated in exclusions, never
+# padded into fabricated dollars.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awscloudtraileventdatastore
+spec:
+  presets:
+    - preset: 01-security-investigation-store
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - the management-events selector meters Lake ingestion per GB against the account's entire control-plane activity, from every region (multi_region defaults on) -- volume the manifest cannot see, zero in an idle account
+        - on the default extendable pricing mode, each GB's first year of retention is included; the unset retention period defaults to 2555 days, so data kept past year one bills extended retention per compressed GB-month for six more years unless the dial is turned down
+        - investigation queries bill per GB scanned as they run -- driven by who queries and how often
+        - the 30-day new-customer trial (5 GB ingested, 5 GB scanned) is a trial, not an ongoing allotment
+      notes: Zero committed cost -- the store is free until events flow, but the defaults deserve respect; management ingestion starts with the account's first API call, and seven-year retention is the default posture, not an opt-in.
+    - preset: 02-scoped-data-events-store
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - matched S3 object writes in the one scoped bucket prefix meter Lake ingestion per GB on FIXED_RETENTION_PRICING's volume-tiered schedule, which includes seven years of retention in the ingest rate -- cheaper than extendable only at sustained high volume
+        - the 90-day retention_period_days sets the deletion horizon; on fixed pricing it changes no charge, since retention is already priced into ingestion
+        - queries bill per GB scanned; queries run through Amazon Athena instead bill on Athena's own meters
+        - fixed pricing can later become extendable, never the reverse -- the one hard-to-unwind decision in this manifest
+      notes: Zero committed cost -- the tight four-condition selector means nothing meters until objects are written in the scoped prefix; the fixed-pricing bet only pays off if that volume then stays high.

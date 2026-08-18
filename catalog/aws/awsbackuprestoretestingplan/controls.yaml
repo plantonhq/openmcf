@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbackuprestoretestingplan
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The testing plan stores no data of its own -- it orchestrates temporary restores of recovery points whose encryption posture belongs to the vaults that hold them and the services the copies restore into.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest lives here to key (see enc-at-rest); key posture for recovery points and restored copies is vault-side and service-side.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A testing plan terminates no connections of its own. Management calls and the service-side restore orchestration travel AWS API paths serving exclusively over TLS as provider behavior, not per-plan configuration.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The plan has no network endpoint to expose. The temporary restored copies CAN have network presence for their validation window -- restore_metadata_overrides is where a test pins them into a private subnet, but that is per-type restore metadata, not an exposure dial on this component.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter on the plan itself; any ingress posture of a restored test copy belongs to the restored resource type's own controls during its short life.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A testing plan receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may create, edit, or delete the testing plan is governed by IAM permissions on the Backup API -- account-level posture outside this spec and the modules. The only principals the spec carries are execution roles the service assumes (see workload-identity).
+    - control_id: workload-identity
+      status: enforced_by_default
+      field_path: selections.iam_role_arn
+      evidence:
+        type: provider_default
+        reference: AWS Backup runs every restore test by assuming the selection's IAM role through short-lived STS credentials -- there is no static-credential path. The role must trust backup.amazonaws.com and carry restore permissions for the tested resource type.
+      notes: The role also bounds the test's blast radius -- a selection can only restore what its role permits, which matters because tests create real (temporary) resources.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The plan exposes no authentication path of its own -- there is no protocol, credential, or client negotiation to harden.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Every management call against the plan is recorded by AWS CloudTrail as account-level posture, and each test run's outcome lands in AWS Backup's restore job history as service behavior.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The spec carries no monitoring dial. Test results surface through Backup's restore job records, and the restore-time metrics the tests generate are exactly what Backup Audit Manager frameworks and report plans consume -- observability composed on those components.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The plan holds no data to back up -- its entire purpose is the other direction, continuously PROVING that recovery points created elsewhere actually restore. It is the recovery-validation half of a backup posture whose creation half lives on AwsBackupPlan.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist here to retain (see backup-recovery); retention of the tested recovery points is the backup plans' lifecycle territory. The nearest analog here -- how long restored TEST copies live -- is selections.validation_window_hours, after which AWS deletes them.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A regional control-plane object with no zonal placement of its own; test restores land wherever each resource type's restore metadata puts them, for hours, then vanish.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for restore testing plans; deleting one stops future tests and touches neither the recovery points nor any in-flight restored copy's cleanup.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A restore testing plan is a pure configuration object with no software to patch.

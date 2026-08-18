@@ -1,0 +1,41 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureapplicationgateway
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Application Gateway
+      sku_meter: fixed gateway hours
+      pricing_unit: hours
+      description: Every v2 gateway bills a flat hourly fixed meter from provisioning until deletion, at the SKU's rate -- the same per hour whether zero or 125 instances are running, and even with an autoscale floor of zero.
+    - service_name: Application Gateway
+      sku_meter: capacity units
+      pricing_unit: capacity-unit-hours
+      description: The scaling meter. A fixed capacity of N instances -- or an autoscale minimum of N -- reserves N x 10 capacity units billed every hour regardless of load; traffic beyond the reservation bills additional units on the same meter (a capacity unit is the max of 1 compute unit, 2,500 persistent connections, or 2.22 Mbps of throughput).
+  cost_drivers:
+    - field_path: sku
+      sku_meter: fixed gateway hours
+      pricing_unit: hours
+      impact: Picks the rate ladder for BOTH meters -- WAF_V2 bills its own higher fixed and capacity-unit rates (the price of inline request filtering), STANDARD_V2 the base v2 rates, BASIC a smaller fixed-capacity ladder for dev/test.
+    - field_path: capacity
+      sku_meter: capacity units
+      pricing_unit: capacity-unit-hours
+      impact: A manually scaled gateway reserves 10 capacity units per instance, billed around the clock -- capacity is the committed-spend dial, and each added instance is a fixed monthly increment.
+    - field_path: autoscale.min_capacity
+      sku_meter: capacity units
+      pricing_unit: capacity-unit-hours
+      impact: The autoscale floor is a billing floor -- min_capacity instances reserve 10 capacity units each whether traffic arrives or not; 0 removes all committed capacity spend and leaves the capacity meter entirely traffic-driven.
+    - field_path: autoscale.max_capacity
+      sku_meter: capacity units
+      pricing_unit: capacity-unit-hours
+      impact: The spend ceiling under load -- the gateway never scales (or bills) beyond it; omitting it lets billed capacity climb to the subscription maximum during traffic spikes.
+  estimate_exclusions:
+    - capacity units consumed above the reserved floor follow traffic and cannot be known from the manifest
+    - outbound data transfer bills per GB at Azure's bandwidth rates
+    - the referenced Standard public IPs bill hourly on their own components
+    - Key Vault-sourced certificates bill on the referenced vault's component
+  notes: "The v2 platform bills gateway-plus-capacity: a fixed hourly meter the SKU choice prices, and a capacity-unit meter fed by reservation (10 units per instance of fixed capacity or autoscale minimum) and by consumption above it. The WAF policy a WAF_V2 gateway references adds no meter of its own -- WAF enforcement is priced into the gateway's higher fixed and capacity-unit rates. One rate-changer hides outside the manifest: a virtual network protected by DDoS Network Protection moves a WAF_V2 gateway onto Microsoft's discounted meters at Standard_V2-equal rates. And one conditional meter follows the referenced WAF policy's rule actions: CAPTCHA challenges bill $0.40 per 1,000 CAPTCHA sessions (the Standard Captcha Sessions meter under Application Gateway WAF v2, verified at the Retail Prices API) -- a gateway whose WAF rules never issue CAPTCHA never starts it."

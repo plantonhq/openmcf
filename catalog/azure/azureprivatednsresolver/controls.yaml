@@ -1,0 +1,66 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureprivatednsresolver
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The resolver is a stateless DNS proxy -- Microsoft's reliability documentation states it maintains no customer data, so there is nothing at rest to encrypt.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The resolver speaks classic DNS on port 53 -- plaintext by protocol, with no DoT or DoH surface to configure. The traffic's containment is topological, not cryptographic -- queries ride the virtual network and the private hybrid paths (peering, VPN, ExpressRoute) that reach it.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every endpoint carries only a private address from its dedicated subnet -- the inbound endpoint is reachable solely over private network paths, the outbound endpoint egresses toward the ruleset's declared targets, and nothing about the resolver is internet-facing by construction.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound filtering is NSG territory on the dedicated endpoint subnets -- first-class components of their own, deliberately outside this manifest. Worth knowing when composing them -- DNS has no data-plane authentication, so anything with network reach to the inbound endpoint's IP can query it; the subnet's NSG IS the access control.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A DNS proxy offers no request-filtering attachment point; WAF belongs to HTTP-aware tiers. The DNS-layer analogue -- domain filtering and query logging -- is Azure's DNS security policy, a separate resource kind outside this spec.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the resolver exposes no authentication plane of its own -- its data plane is unauthenticated DNS, governed by network reach (see restricted-ingress).
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The resolver runs no customer workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own to strengthen or disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane changes land in the Azure Activity Log as subscription-level posture; the resolver offers no per-query audit trail of its own -- query logging at the DNS layer is Azure's DNS security policy, a separate resource kind.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The resolver publishes no per-resource platform metrics -- Microsoft's own operations inventory defines no metric surface for dnsResolvers (unlike private DNS zones, which meter queries and record sets). Operational visibility rides Azure Resource Health for the resolver's availability and the linked private zones' query metrics for traffic.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless and configuration-only -- Microsoft's reliability guidance is explicit that no backup surface exists and recovery is redeployment from infrastructure-as-code. The blast radius worth knowing is that recreation hands the inbound endpoint a DIFFERENT dynamic address unless private_ip_allocation_method pins it STATIC -- on-premises forwarder configurations are what break.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: DNS Private Resolver is zone-redundant automatically in regions that support availability zones -- Microsoft provisions the service across all zones, requires no configuration, and offers no way to disable it (Azure reliability documentation for DNS Private Resolver).
+      notes: Zone-redundant is not region-redundant -- the resolver is a single-region service, and cross-region resilience is composed from a second resolver in another region with failover forwarding.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the DNS Resolver API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. Endpoints are children of the resolver and go with it -- and with them the private IPs every on-premises forwarder points at.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- displacing self-run DNS server VMs is the product's reason to exist. Microsoft applies service maintenance automatically with no expected downtime; no customer-visible patch surface exists.

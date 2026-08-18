@@ -96,10 +96,3 @@ module "vpn_gateway" {
   provider's default (on) matches the spec's documented default.
 - An empty ip configuration name becomes `vnetGatewayConfig`, the name
   the Azure portal uses, on both engines.
-
-## Required Permissions
-
-The deploying credential needs
-`Microsoft.Network/virtualNetworkGateways/*` on the resource group,
-plus join rights on the gateway subnet and public IPs -- held via
-Network Contributor, Contributor, or Owner.

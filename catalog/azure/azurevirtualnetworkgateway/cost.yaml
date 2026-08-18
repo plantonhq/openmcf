@@ -1,0 +1,33 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurevirtualnetworkgateway
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: VPN Gateway
+      sku_meter: gateway compute
+      pricing_unit: hours
+      description: The gateway bills its SKU's hourly rate from the moment it provisions until it is deleted -- a 25-45 minute create buying a meter that never idles. ExpressRoute-type gateways bill an equivalent hourly meter under the ExpressRoute service instead.
+  cost_drivers:
+    - field_path: sku
+      sku_meter: gateway compute
+      pricing_unit: hours
+      impact: The dominant lever -- each tier has its own hourly rate, multiplying roughly 1.7-2.6x between adjacent steps up the VpnGw AZ ladder. Resizing within the VpnGw family is an in-place update; BASIC cannot resize and must be replaced.
+    - field_path: type
+      sku_meter: gateway compute
+      impact: Switches which meter ladder bills -- VPN gateways bill under the VPN Gateway service, EXPRESS_ROUTE gateways under the ExpressRoute service's virtual network gateway meters, at different rates for nominally similar tiers.
+    - field_path: vpn_client_configuration
+      sku_meter: P2S connections
+      pricing_unit: hours
+      impact: Point-to-site connections beyond the included 128 bill a per-connection hourly meter that follows how many clients are actually connected -- present only when the gateway carries a client configuration.
+  free_tier: Each VPN gateway's hourly SKU rate includes its first 10 site-to-site tunnels and first 128 point-to-site connections; only tunnels and connections beyond those allotments bill their own per-tunnel / per-connection hourly meters, counted across the whole gateway.
+  estimate_exclusions:
+    - site-to-site tunnels beyond the included 10 bill per tunnel-hour, counted across all the gateway's connections
+    - point-to-site connections beyond the included 128 bill per connection-hour and follow client behavior
+    - egress data transfer bills at standard rates (same-region VNet-to-VNet traffic through the gateway is free in both directions; cross-region bills inter-VNet rates by source region)
+    - the referenced public IPs and the GatewaySubnet's virtual network are first-class components billing on their own lines
+  notes: "The SKU string is the bill: one hourly meter per gateway, fixed by tier, with the AZ tiers (the only creatable VpnGw SKUs since Azure retired non-AZ creates) priced 5-10% above their retired non-AZ ancestors. Three facts spare common overestimates: active-active costs the same as active-standby (Microsoft bills one SKU rate however many instances are live -- only the second public IP adds spend, on its own component), the generation knob changes throughput ceilings, not the rate (the price sheet keys on SKU alone), and NAT rules are free configuration (the VPN Gateway price list carries no NAT meter)."

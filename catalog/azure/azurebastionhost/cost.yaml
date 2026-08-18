@@ -1,0 +1,33 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurebastionhost
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Azure Bastion
+      sku_meter: gateway hours
+      pricing_unit: hours
+      description: Dedicated-infrastructure hosts (BASIC, STANDARD, PREMIUM) bill a flat hourly gateway meter at the SKU's rate from provisioning until deletion, sessions or no sessions; the base rate includes the first 2 instances on every SKU.
+  cost_drivers:
+    - field_path: sku
+      sku_meter: gateway hours
+      pricing_unit: hours
+      impact: The whole rate ladder -- DEVELOPER is free (shared Azure-hosted infrastructure, no meter at all), BASIC the fixed-capacity entry rate, STANDARD adds scaling and the feature set at a higher rate, PREMIUM (session recording, private-only) the dearest. Downgrading replaces the host, so the tier choice is a commitment.
+    - field_path: scale_units
+      sku_meter: additional instance hours
+      pricing_unit: hours
+      impact: STANDARD and PREMIUM include 2 instances in the base gateway rate; every scale unit above 2 bills its own hourly additional-instance meter around the clock. Each unit carries ~20 concurrent sessions -- capacity and committed spend move together, adjustable in place.
+    - field_path: ip_configuration.public_ip_address_id
+      sku_meter: public IP addresses
+      pricing_unit: IP-hours
+      impact: The referenced Standard public IP bills hourly on its own component; the host binds it exclusively. A PREMIUM host omitting it (private-only) simply has no address to pay for.
+  free_tier: The DEVELOPER SKU is free -- Azure-hosted shared infrastructure with no gateway meter (verified against the Retail Prices API, which carries no Developer meter); its real spend is outbound data transfer and the VMs behind it. Every SKU's first 5 GB of outbound data transfer each month is also free.
+  estimate_exclusions:
+    - outbound data transfer through sessions bills per GB in volume tiers after the free 5 GB/month
+    - the referenced public IP bills hourly on its own component
+    - the target virtual machines bill on their own components -- Bastion replaces their public exposure, not their compute
+  notes: "Bastion is jump-host-as-a-meter: an always-on hourly gateway fee fixed by the SKU, an additional-instance meter for scale units beyond the included 2 (STANDARD/PREMIUM only -- BASIC and DEVELOPER are pinned at 2), and tiered outbound data transfer. The feature toggles (file copy, tunneling, IP connect, Kerberos, shareable links, session recording) gate on SKU but carry no meters of their own -- the SKU choice, not the toggles, is the money decision."

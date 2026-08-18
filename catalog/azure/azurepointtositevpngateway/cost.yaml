@@ -1,0 +1,28 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurepointtositevpngateway
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Virtual WAN
+      sku_meter: VPN P2S scale units
+      pricing_unit: hours
+      description: The gateway bills one point-to-site scale unit meter per configured scale unit, every deployment hour from creation until deletion -- capacity across the managed instance pair, bought whether or not anyone is connected.
+  cost_drivers:
+    - field_path: scale_unit
+      sku_meter: VPN P2S scale units
+      pricing_unit: hours
+      impact: The committed-spend lever -- the hourly rate multiplies linearly by scale units (unset applies 1), and the value updates in place, so capacity tunes without replacing the gateway.
+    - field_path: connection_configurations
+      sku_meter: VPN P2S connection units
+      pricing_unit: hours
+      impact: Each concurrently connected user bills one connection unit per hour, and the address pools sized here bound how many users CAN be connected -- the manifest caps the usage-driven half of the bill without fixing it.
+  estimate_exclusions:
+    - connection units follow how many users are actually connected each hour -- a fleet's dial-in behavior, which no manifest can know
+    - data leaving Azure through client tunnels bills at standard data-transfer rates and follows traffic
+    - the hub's deployment hours and per-GB data processing bill on the AzureVirtualHub component
+  notes: "Point-to-site spend has two halves: an always-on scale-unit meter (capacity) and a per-connected-user connection-unit meter (attendance) -- Microsoft's own definition is that a P2S connection unit 'implies remote users'. The second half is why this profile is hybrid rather than always_on: at fleet scale the attendance meter reaches the same order as the capacity meter. Authentication choices live on the referenced AzureVpnServerConfiguration and cost nothing here."

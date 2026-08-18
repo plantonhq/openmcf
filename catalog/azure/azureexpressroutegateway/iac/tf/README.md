@@ -68,10 +68,3 @@ module "hub_er_gateway" {
   imported connection configured with one legitimately plans an
   in-place update on it.
 - Deletion is bottom-up: connections → gateway → hub.
-
-## Required Permissions
-
-The deploying credential needs
-`Microsoft.Network/expressRouteGateways/write` (plus
-`expressRouteGateways/expressRouteConnections/write` for connections)
--- held via Network Contributor, Contributor, or Owner.

@@ -1,0 +1,79 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awstransitgateway
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A transit gateway routes packets between attachments and stores no customer payload -- its route tables are configuration metadata, not data at rest. Whatever the traffic carries is stored (and encrypted) on the workloads at either end.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With no customer data at rest there is no key choice to make -- the gateway's API carries no encryption-key surface.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: encryption_support
+      evidence:
+        type: spec_default
+        reference: Unset leaves AWS's own default (disabled) -- traffic crosses the hub as the workloads sent it. Enabling turns on Encryption Support for VPC Encryption Control, after which traffic between attached VPCs in Enforce mode traverses fully encrypted links through the gateway.
+      notes: AWS only accepts enablement on an EXISTING gateway (the provider calls ModifyTransitGateway after create), and the transition can take up to 14 days with no downtime. Once enabled, disabling requires stating disable explicitly. The attached VPCs' own Encryption Control mode decides how far the guarantee reaches beyond the hub.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A transit gateway is reachable only through its attachments -- VPCs, VPN connections, Direct Connect gateways, peered gateways. It has no public endpoint, no address on the internet, and nothing to expose; even TGW Connect addresses (transit_gateway_cidr_blocks) are routable only from inside the attached network fabric.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: auto_accept_shared_attachments
+      evidence:
+        type: spec_default
+        reference: The default (false) means every cross-account attachment request shared through AWS RAM waits for explicit acceptance by the hub owner -- WHO joins the hub is gated by a human decision. Setting it true admits any requester the RAM share reaches, trading the review step for convenience.
+      notes: What joined spokes can REACH each other is the second half of ingress control -- default_route_table_association and default_route_table_propagation decide whether new attachments land in (and advertise into) the shared default routing domain, or wait for explicit AwsTransitGatewayRouteTable composition.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A layer-3 hub offers no WAF attachment point. Traffic inspection is composed AROUND the gateway -- an inspection VPC or AWS Network Firewall plugged in as an attachment, with route tables hair-pinning inter-spoke flows through it.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management operation -- create, modify, delete, tagging, attachment acceptance -- authorizes through IAM unconditionally. Cross-account visibility exists only through an explicit AWS RAM share, and even then attachment requests are governed by the acceptance dial.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The gateway holds no credentials and calls no APIs as itself -- it is routed infrastructure, not a workload. Caller identity posture belongs to the workloads in the attached VPCs.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: There is no authentication surface at all -- no listener, no credential exchange, no protocol negotiation. Packets are admitted by attachment membership and routing, which is network topology, not authentication.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane call -- CreateTransitGateway, ModifyTransitGateway, DeleteTransitGateway, attachment acceptance, tagging -- lands in AWS CloudTrail unconditionally.
+      notes: Per-flow visibility is Transit Gateway Flow Logs, an opt-in composition outside this spec.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Amazon VPC publishes gateway-level CloudWatch metrics under AWS/TransitGateway automatically -- bytes and packets in/out plus drop counters (blackhole, no-route, TTL-expired) -- at 60-second intervals for every transit gateway; all metrics are always reported and this cannot be disabled.
+      notes: The drop counters are the operational tell -- a sustained non-zero BytesDropCountNoRoute means an attachment is sending traffic the routing domain never learned a path for.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The gateway carries no data to back up -- its entire state is this manifest plus the composed attachment and route-table manifests, all recreated declaratively. There is nothing a restore would bring back that a re-apply does not.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With nothing backed up there is no retention to configure.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The hub itself is regional AWS-operated infrastructure with no zone placement to configure -- no field of this manifest picks or spreads zones. Per-AZ reachability is decided by each attachment's subnet set (the gateway routes only to and from zones an attachment has an ENI in), which lives on the AwsTransitGatewayVpcAttachment components.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor this spec offers a deletion-protection flag for a transit gateway. AWS does refuse to delete a gateway that still has attachments -- every spoke must detach first -- so a hub in active use cannot vanish in one step, but that is dependency ordering, not a configurable guard.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the Transit Gateway fleet; no customer-visible runtime, version, or maintenance window exists.

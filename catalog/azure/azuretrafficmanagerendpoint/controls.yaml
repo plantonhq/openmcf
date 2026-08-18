@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuretrafficmanagerendpoint
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The endpoint is a DNS routing entry -- it stores no customer data. Its configuration (target, weight, geo claims) is ARM metadata on Microsoft's control plane, not a data store this manifest could encrypt.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With nothing stored, there is no store to key -- neither the endpoint API nor this spec carries any encryption surface.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Traffic Manager is DNS-based -- client traffic never flows through it; clients receive the target's address and connect directly, so transport encryption is decided between the client and the destination on its own component. Probe transport (HTTP vs HTTPS) is the referenced PROFILE's monitor configuration.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The endpoint exposes nothing itself -- it is one answer the profile's public DNS name can return. The destination's internet exposure is a property of the destination (a public Azure resource, an external service, a child profile), governed on those components; Traffic Manager only steers toward what is already reachable.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: geo_mappings and subnets restrict which CALLERS receive this endpoint in DNS answers -- routing scoped by caller geography or source IP -- but that is steering, not enforcement; a client addressing the destination directly bypasses Traffic Manager entirely. Real ingress restriction lives on the destination's own network controls.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A DNS answer offers no WAF attachment point -- request filtering is composed on the destination (Application Gateway, Front Door) that the endpoint steers toward, never on the routing entry.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management operation on the endpoint -- create, retarget, drain, delete -- is a write on the parent profile's typed endpoint collection, authorized by Azure RBAC unconditionally.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The endpoint runs no workloads and calls no APIs on the customer's behalf -- there is no identity to attach.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The endpoint's only surface is the ARM management plane, authenticated by Entra ID -- there is no local-credential or legacy-protocol path to disable. The DNS protocol it participates in is unauthenticated by design, for every resolver on the internet.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane action on the endpoint lands in the Azure Activity Log unconditionally -- who retargeted it, who drained it, who deleted it.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The endpoint emits no metrics of its own -- probe results and per-endpoint status surface as the referenced PROFILE's Azure Monitor metrics (endpoint status by endpoint), configured and observed on that component.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: There is no data to back up -- the endpoint is declarative in this manifest and re-creatable by a fresh deploy.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility, there is no retention to configure.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The endpoint is a configuration entry, not a running instance -- there is nothing of it to replicate. It is itself a building block of composed HA -- the profile fails traffic over between endpoints when probes report one down -- and Traffic Manager's own name servers are globally distributed on Microsoft's side.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the endpoint API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. The enabled field offers the safer operational move -- drain the endpoint from answers without deleting its configuration.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The endpoint is pure configuration -- there is no software surface to patch. The Traffic Manager service answering queries is Microsoft-managed infrastructure behind the profile.

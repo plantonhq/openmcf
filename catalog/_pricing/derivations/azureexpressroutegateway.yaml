@@ -1,0 +1,65 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureExpressRouteGateway manifest's spec values into metered
+# quantities and price choices -- the ExpressRoute scale-unit meter
+# multiplied by the manifest's scale units, plus one connection-unit
+# meter per composed circuit connection (a uniform per-element fee,
+# countable from the repeated connections field). Scale units 6-10 are
+# refusals: Microsoft bills a lower marginal increment from the 6th
+# unit up, an excess-over-baseline shape these rules cannot express.
+# The hub's deployment and data processing meters ride the
+# AzureVirtualHub, and the circuit bills as its own resource family --
+# Virtual WAN's own split. The estimate generator replays the catalog
+# presets through these rules; a server-side estimator evaluates the
+# same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azureexpressroutegateway
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  refusals:
+    - when:
+        - field_path: scale_units
+          op: not_equals
+          value: "1"
+        - field_path: scale_units
+          op: not_equals
+          value: "2"
+        - field_path: scale_units
+          op: not_equals
+          value: "3"
+        - field_path: scale_units
+          op: not_equals
+          value: "4"
+        - field_path: scale_units
+          op: not_equals
+          value: "5"
+      reason: the 6th through 10th scale units each bill a lower marginal increment than the first five (Microsoft's tier break), and first-five-at-one-rate-plus-excess-at-another is subtraction these rules cannot express -- a flat-rate figure would overstate the bill
+  lines:
+    - sku_meter: ExpressRoute scale units
+      quantity:
+        - field_value:
+            field_path: scale_units
+        - hours_in_month: true
+      price_slug: vwan-er-scale-unit-eastus
+      basis: the gateway bills its configured scale units (about 2 Gbps of circuit-to-WAN throughput each; the spec requires an explicit 1-10 value, and scaling is a manual operation in Virtual WAN, so the configured value is what bills) x 730 hours at the flat first-five rate -- units 6-10 refuse above
+    - sku_meter: ExpressRoute connection units
+      quantity:
+        - count_of: connections
+        - hours_in_month: true
+      price_slug: vwan-er-connection-unit-eastus
+      basis: each composed connection joins one circuit peering to the hub and bills one ExpressRoute connection unit per hour -- Microsoft counts circuit connections, uniformly per connection, so the repeated field's element count is the quantity; a connectionless gateway emits nothing here
+  exclusions:
+    - text: the hub's deployment hours and per-GB data processing bill on the AzureVirtualHub component
+    - text: the circuit's port and peering charges, and outbound data on metered circuit SKUs, bill on the circuit's own components
+    - text: data leaving Azure over the circuits bills at ExpressRoute data-transfer rates and follows traffic
+  notes:
+    - applies_when:
+        - field_path: connections
+          op: is_set
+      text: The per-connection FastPath and internet-security toggles are free configuration -- the complete Virtual WAN price list carries no meter for either.

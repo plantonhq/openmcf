@@ -21,7 +21,3 @@ Exactly one of `network.TrafficManagerAzureEndpoint`, `network.TrafficManagerExt
 - **Nested endpoints carry no always-serve switch** -- the provider exposes none (child health is the point of nesting).
 - **The subnet/header builders are typed per variant** -- the SDK generates a distinct Go type per resource for structurally identical blocks, hence three small builders instead of one.
 - **Endpoints carry NO ARM tags on any engine** and are free at rest -- billable meters live on the profile.
-
-## Required Permissions
-
-The deploying principal needs `Microsoft.Network/trafficManagerProfiles/*` (endpoints are profile children; Network Contributor on the resource group covers it).

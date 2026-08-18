@@ -1,0 +1,30 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureVpnGatewayConnection manifest into metered quantities and price
+# choices -- one site-to-site connection unit, every hour the connection
+# exists. The unit counts branch memberships, not tunnels: Microsoft's
+# own definition is that an S2S connection unit "implies branches", so
+# the quantity is a constant 1 however many vpn_links the connection
+# carries. The connection spec carries no region of its own (ARM derives
+# it through the gateway), so the region assumption is declared. The
+# estimate generator replays the catalog presets through these rules; a
+# server-side estimator evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azurevpngatewayconnection
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    assumption: eastus
+  lines:
+    - sku_meter: VPN S2S connection unit
+      quantity:
+        - constant: "1"
+        - hours_in_month: true
+      price_slug: vwan-vpn-s2s-connection-unit-eastus
+      basis: one connected branch is one connection unit x 730 hours -- the unit counts branch sites, not tunnels, so a two-link active-active connection bills the same as a single-link one; the region rides the owning gateway and is assumed eastus
+  exclusions:
+    - text: data leaving Azure through the tunnels bills at standard data-transfer rates and follows traffic
+    - text: the gateway's scale units (capacity) bill on the AzureVpnGateway component; the hub's deployment hours and data processing bill on the AzureVirtualHub

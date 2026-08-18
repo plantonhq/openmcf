@@ -71,9 +71,3 @@ module "branch_london" {
   the value is sensitive and never appears in plan output.
 - A tunnel provisions even when the branch device is absent -- ARM
   state is not tunnel state (provisioned-is-not-connected).
-
-## Required Permissions
-
-The deploying credential needs
-`Microsoft.Network/vpnGateways/vpnConnections/write` plus read on the
-VPN site -- held via Network Contributor, Contributor, or Owner.

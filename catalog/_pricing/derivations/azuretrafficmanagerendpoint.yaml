@@ -1,0 +1,63 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureTrafficManagerEndpoint manifest's spec values into metered
+# quantities and price choices -- the monthly monitored-endpoint fee,
+# keyed by which endpoint variant the manifest declares (Azure vs
+# external; the price list charges per MONITORED endpoint, so a
+# disabled endpoint bills nothing). Traffic Manager's meters bill
+# region "Global" -- one worldwide rate -- and the spec carries no
+# region field. Nested endpoints refuse: their monthly fee is not
+# pinned in the price book (no committed preset composes profile
+# trees). The estimate generator replays the catalog presets through
+# these rules to emit ../estimates/azuretrafficmanagerendpoint.yaml; a
+# server-side estimator evaluates the same rules against live
+# manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azuretrafficmanagerendpoint
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    assumption: global
+  refusals:
+    - when:
+        - field_path: nested
+          op: is_set
+      reason: a nested endpoint (a child Traffic Manager profile as the destination) bills its own monthly fee, an order of magnitude above the flat endpoint types -- that meter is not pinned in the price book (no committed preset composes profile trees), and pricing a nested endpoint at a flat-endpoint rate would understate the bill several-fold
+  lines:
+    - sku_meter: Azure endpoint health checks
+      applies_when:
+        - field_path: azure
+          op: is_set
+        - field_path: enabled
+          op: not_equals
+          value: "false"
+      quantity:
+        - constant: "1"
+      price_slug: traffic-manager-azure-endpoint-health-check
+      basis: one monitored Azure endpoint x the flat monthly basic health-check fee -- the price list charges per monitored endpoint on a global meter, one worldwide rate
+    - sku_meter: external endpoint health checks
+      applies_when:
+        - field_path: external
+          op: is_set
+        - field_path: enabled
+          op: not_equals
+          value: "false"
+      quantity:
+        - constant: "1"
+      price_slug: traffic-manager-external-endpoint-health-check
+      basis: one monitored external endpoint x the flat monthly basic health-check fee for non-Azure destinations -- half again the Azure-endpoint rate for the same probing, on the same global meter convention
+  exclusions:
+    - text: DNS queries bill per million against the referenced profile and follow client traffic (recursive-resolver caching, tuned by the profile's TTL, absorbs most of it) -- the profile component's spend, not this endpoint's
+    - text: the fast-interval health-check add-on bills per monitored endpoint but is switched by the referenced profile's probing interval, which this manifest cannot see
+    - text: the HTTPS health-check add-on bills per monitored endpoint but is switched by the referenced profile's monitor protocol, which this manifest cannot see
+    - text: the destination itself -- the Azure resource, external service, or child profile -- bills on its own components
+  notes:
+    - applies_when:
+        - field_path: enabled
+          op: equals
+          value: "false"
+      text: A disabled endpoint leaves DNS answers and stops being probed -- Traffic Manager charges per MONITORED endpoint, so the monthly fee stops with the monitoring while the configuration stays deletable-free.
+    - text: Traffic Manager traffic never transits the service -- clients get the destination's address from DNS and connect directly -- so the health-check fee is the endpoint's whole committed bill.

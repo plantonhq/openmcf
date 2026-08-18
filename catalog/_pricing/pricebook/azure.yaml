@@ -669,3 +669,385 @@ spec:
         arm_sku_name: Standard_DS3_v2
         meter_name: DS3 v2
         product_name: Virtual Machines DSv2 Series
+    - name: vwan-vpn-s2s-scale-unit-eastus
+      service_name: Virtual WAN
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.361"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual WAN' and armRegionName eq 'eastus' and meterName eq 'VPN S2S Scale Unit' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Virtual WAN
+        arm_region_name: eastus
+        meter_name: VPN S2S Scale Unit
+    - name: vwan-vpn-s2s-connection-unit-eastus
+      service_name: Virtual WAN
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.05"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual WAN' and armRegionName eq 'eastus' and meterName eq 'VPN S2S Connection Unit' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Virtual WAN
+        arm_region_name: eastus
+        meter_name: VPN S2S Connection Unit
+    - name: vwan-vpn-p2s-scale-unit-eastus
+      service_name: Virtual WAN
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.361"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual WAN' and armRegionName eq 'eastus' and meterName eq 'VPN P2S Scale Unit' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Virtual WAN
+        arm_region_name: eastus
+        meter_name: VPN P2S Scale Unit
+    - name: vpngw-vpngw1az-eastus
+      service_name: VPN Gateway
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.21"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'VPN Gateway' and armRegionName eq 'eastus' and meterName eq 'VpnGw1AZ' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      attributes:
+        gateway_sku: VPN_GW_1_AZ
+      azure_selector:
+        service_name: VPN Gateway
+        arm_region_name: eastus
+        meter_name: VpnGw1AZ
+    - name: vpngw-vpngw2az-eastus
+      service_name: VPN Gateway
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.54"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'VPN Gateway' and armRegionName eq 'eastus' and meterName eq 'VpnGw2AZ' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      attributes:
+        gateway_sku: VPN_GW_2_AZ
+      azure_selector:
+        service_name: VPN Gateway
+        arm_region_name: eastus
+        meter_name: VpnGw2AZ
+    - name: vwan-er-scale-unit-eastus
+      service_name: Virtual WAN
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.42"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual WAN' and armRegionName eq 'eastus' and meterName eq 'ExpressRoute Scale Unit' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Virtual WAN
+        arm_region_name: eastus
+        meter_name: ExpressRoute Scale Unit
+    - name: vwan-er-connection-unit-eastus
+      service_name: Virtual WAN
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.05"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual WAN' and armRegionName eq 'eastus' and meterName eq 'ExpressRoute Connection Unit' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Virtual WAN
+        arm_region_name: eastus
+        meter_name: ExpressRoute Connection Unit
+    - name: public-ip-prefix-per-ip-eastus
+      service_name: Virtual Network
+      pricing_unit: IP-hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.006"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Network' and armRegionName eq 'eastus' and meterName eq 'Standard Static IP Addresses' and productName eq 'Public IP Prefix' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Virtual Network
+        arm_region_name: eastus
+        meter_name: Standard Static IP Addresses
+        product_name: Public IP Prefix
+    - name: private-endpoint-hour
+      service_name: Virtual Network
+      pricing_unit: hours
+      region: global
+      currency: USD
+      list_unit_price: "0.01"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Network' and armRegionName eq 'Global' and meterName eq 'Standard Private Endpoint' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Virtual Network
+        arm_region_name: Global
+        meter_name: Standard Private Endpoint
+    - name: dns-private-zone
+      service_name: Azure DNS
+      pricing_unit: zone-months
+      region: global
+      currency: USD
+      list_unit_price: "0.5"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure DNS' and armRegionName eq 'Zone 1' and meterName eq 'Private Zone' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Azure DNS
+        arm_region_name: Zone 1
+        meter_name: Private Zone
+        tier_minimum_units: "0"
+    - name: dns-resolver-inbound-endpoint
+      service_name: Azure DNS
+      pricing_unit: endpoint-months
+      region: global
+      currency: USD
+      list_unit_price: "180"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure DNS' and armRegionName eq 'Zone 1' and meterName eq 'Private Resolver Inbound Endpoint' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Azure DNS
+        arm_region_name: Zone 1
+        meter_name: Private Resolver Inbound Endpoint
+    - name: dns-resolver-outbound-endpoint
+      service_name: Azure DNS
+      pricing_unit: endpoint-months
+      region: global
+      currency: USD
+      list_unit_price: "180"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure DNS' and armRegionName eq 'Zone 1' and meterName eq 'Private Resolver Outbound Endpoint' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Azure DNS
+        arm_region_name: Zone 1
+        meter_name: Private Resolver Outbound Endpoint
+    - name: appgw-standard-v2-fixed-eastus
+      service_name: Application Gateway
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.2"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Application Gateway' and armRegionName eq 'eastus' and meterName eq 'Standard Fixed Cost' and productName eq 'Application Gateway Standard v2' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      attributes:
+        sku: STANDARD_V2
+      azure_selector:
+        service_name: Application Gateway
+        arm_region_name: eastus
+        meter_name: Standard Fixed Cost
+        product_name: Application Gateway Standard v2
+    - name: appgw-standard-v2-capacity-unit-eastus
+      service_name: Application Gateway
+      pricing_unit: capacity-unit-hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.008"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Application Gateway' and armRegionName eq 'eastus' and meterName eq 'Standard Capacity Units' and productName eq 'Application Gateway Standard v2' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      attributes:
+        sku: STANDARD_V2
+      azure_selector:
+        service_name: Application Gateway
+        arm_region_name: eastus
+        meter_name: Standard Capacity Units
+        product_name: Application Gateway Standard v2
+    - name: appgw-waf-v2-fixed-eastus
+      service_name: Application Gateway
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.36"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Application Gateway' and armRegionName eq 'eastus' and meterName eq 'Standard Fixed Cost' and productName eq 'Application Gateway WAF v2' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      attributes:
+        sku: WAF_V2
+      azure_selector:
+        service_name: Application Gateway
+        arm_region_name: eastus
+        meter_name: Standard Fixed Cost
+        product_name: Application Gateway WAF v2
+    - name: appgw-waf-v2-capacity-unit-eastus
+      service_name: Application Gateway
+      pricing_unit: capacity-unit-hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.0144"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Application Gateway' and armRegionName eq 'eastus' and meterName eq 'Standard Capacity Units' and productName eq 'Application Gateway WAF v2' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      attributes:
+        sku: WAF_V2
+      azure_selector:
+        service_name: Application Gateway
+        arm_region_name: eastus
+        meter_name: Standard Capacity Units
+        product_name: Application Gateway WAF v2
+    - name: azure-firewall-standard-deployment-eastus
+      service_name: Azure Firewall
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "1.25"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Firewall' and armRegionName eq 'eastus' and meterName eq 'Standard Deployment' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Azure Firewall
+        arm_region_name: eastus
+        meter_name: Standard Deployment
+    - name: bastion-basic-gateway-eastus
+      service_name: Azure Bastion
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.19"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Bastion' and armRegionName eq 'eastus' and meterName eq 'Basic Gateway' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Azure Bastion
+        arm_region_name: eastus
+        meter_name: Basic Gateway
+    - name: bastion-standard-gateway-eastus
+      service_name: Azure Bastion
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.29"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Bastion' and armRegionName eq 'eastus' and meterName eq 'Standard Gateway' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Azure Bastion
+        arm_region_name: eastus
+        meter_name: Standard Gateway
+    - name: bastion-standard-additional-gateway-eastus
+      service_name: Azure Bastion
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.14"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Bastion' and armRegionName eq 'eastus' and meterName eq 'Standard Additional Gateway' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Azure Bastion
+        arm_region_name: eastus
+        meter_name: Standard Additional Gateway
+    - name: front-door-standard-base-fee
+      service_name: Azure Front Door Service
+      pricing_unit: profile-months
+      region: global
+      currency: USD
+      list_unit_price: "35"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Front Door Service' and armRegionName eq 'Zone 1' and meterName eq 'Standard Base Fees' and productName eq 'Azure Front Door' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      attributes:
+        sku: STANDARD
+      azure_selector:
+        service_name: Azure Front Door Service
+        arm_region_name: Zone 1
+        meter_name: Standard Base Fees
+        product_name: Azure Front Door
+    - name: front-door-premium-base-fee
+      service_name: Azure Front Door Service
+      pricing_unit: profile-months
+      region: global
+      currency: USD
+      list_unit_price: "330"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Front Door Service' and armRegionName eq 'Zone 1' and meterName eq 'Premium Base Fees' and productName eq 'Azure Front Door' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      attributes:
+        sku: PREMIUM
+      azure_selector:
+        service_name: Azure Front Door Service
+        arm_region_name: Zone 1
+        meter_name: Premium Base Fees
+        product_name: Azure Front Door
+    - name: expressroute-direct-10gbps-metered-port-zone1
+      service_name: ExpressRoute
+      pricing_unit: port-months
+      region: zone-1
+      currency: USD
+      list_unit_price: "6000"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'ExpressRoute' and armRegionName eq 'Zone 1' and meterName eq 'Port 10 Gbps Port' and productName eq 'ExpressRoute Direct' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: ExpressRoute
+        arm_region_name: Zone 1
+        meter_name: Port 10 Gbps Port
+        product_name: ExpressRoute Direct
+    - name: expressroute-direct-100gbps-unlimited-port-zone1
+      service_name: ExpressRoute
+      pricing_unit: port-months
+      region: zone-1
+      currency: USD
+      list_unit_price: "250000"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'ExpressRoute' and armRegionName eq 'Zone 1' and meterName eq 'Port Unlimited 100 Gbps Port' and productName eq 'ExpressRoute Direct' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: ExpressRoute
+        arm_region_name: Zone 1
+        meter_name: Port Unlimited 100 Gbps Port
+        product_name: ExpressRoute Direct
+    - name: vwan-standard-hub-unit-eastus
+      service_name: Virtual WAN
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.25"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual WAN' and armRegionName eq 'eastus' and meterName eq 'Standard Hub Unit' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Virtual WAN
+        arm_region_name: eastus
+        meter_name: Standard Hub Unit
+    - name: traffic-manager-azure-endpoint-health-check
+      service_name: Traffic Manager
+      pricing_unit: endpoint-months
+      region: global
+      currency: USD
+      list_unit_price: "0.36"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Traffic Manager' and armRegionName eq 'Global' and meterName eq 'Azure Endpoint Health Checks' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Traffic Manager
+        arm_region_name: Global
+        meter_name: Azure Endpoint Health Checks
+    - name: traffic-manager-external-endpoint-health-check
+      service_name: Traffic Manager
+      pricing_unit: endpoint-months
+      region: global
+      currency: USD
+      list_unit_price: "0.54"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Traffic Manager' and armRegionName eq 'Global' and meterName eq 'Non-Azure Endpoint Health Checks' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Traffic Manager
+        arm_region_name: Global
+        meter_name: Non-Azure Endpoint Health Checks
+    - name: eventgrid-standard-throughput-unit-eastus
+      service_name: Event Grid
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.04"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Event Grid' and armRegionName eq 'eastus' and meterName eq 'Standard Throughput Unit' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Event Grid
+        arm_region_name: eastus
+        meter_name: Standard Throughput Unit
+    - name: servicebus-premium-messaging-unit-eastus
+      service_name: Service Bus
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.9275"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Service Bus' and armRegionName eq 'eastus' and meterName eq 'Premium Messaging Unit' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"
+      azure_selector:
+        service_name: Service Bus
+        arm_region_name: eastus
+        meter_name: Premium Messaging Unit
+    - name: servicebus-standard-base-unit-monthly-eastus
+      service_name: Service Bus
+      pricing_unit: months
+      region: eastus
+      currency: USD
+      list_unit_price: "10.0"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Service Bus' and armRegionName eq 'eastus' and meterName eq 'Standard Base Unit' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-18"

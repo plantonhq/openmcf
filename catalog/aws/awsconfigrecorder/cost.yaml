@@ -1,0 +1,39 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsconfigrecorder
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: recording_group
+      sku_meter: configuration items recorded
+      pricing_unit: configuration items
+      impact: The scope dial. Unset records EVERY supported resource type -- each recorded resource's every configuration change becomes a billed item, so the bill scales with fleet size times change rate. Inclusion and exclusion lists are the precision instruments for trimming it.
+    - field_path: recording_group.include_global_resource_types
+      sku_meter: configuration items recorded
+      pricing_unit: configuration items
+      impact: Global resources (IAM users, roles, policies) recorded in EVERY region's recorder multiply the same changes into duplicate items region after region -- record them in exactly one region, which is why this is a separate switch.
+    - field_path: recording_mode.recording_frequency
+      sku_meter: configuration items recorded
+      pricing_unit: configuration items
+      impact: The rate-class switch. CONTINUOUS bills an item per change at the continuous per-item rate; DAILY bills at most one item per resource per day at a per-item rate four times higher -- daily wins exactly when resources change more than four times a day, and loses otherwise.
+    - field_path: recording_mode.override
+      sku_meter: configuration items recorded
+      pricing_unit: configuration items
+      impact: Pins a different frequency for named resource types -- the surgical version of the frequency lever, typically parking chatty types (network interfaces, spot requests) on DAILY while the rest stays CONTINUOUS.
+    - field_path: recording_enabled
+      sku_meter: configuration items recorded
+      pricing_unit: configuration items
+      impact: The pause switch -- a configured-but-stopped recorder generates no items and bills nothing, without losing already-recorded history. Unset means running, because running is the reason this component exists.
+  free_tier: AWS Config publishes no free tier -- there is no free allotment of configuration items; the pricing page's terms are pay-per-use with no minimums.
+  estimate_exclusions:
+    - item volume is workload-driven -- continuous recording follows the fleet's change rate, daily recording follows its size, and neither is visible in the manifest
+    - S3 storage and requests for delivered history and snapshot files bill on the referenced AwsS3Bucket (snapshot_delivery_frequency shapes that volume)
+    - SNS delivery notifications bill on the referenced AwsSnsTopic
+    - SSE-KMS encryption requests bill per call on the referenced AwsKmsKey
+    - rule and conformance-pack evaluations bill on the AwsConfigRule and AwsConfigConformancePack components, not here
+    - retention of already-recorded items (retention_period_in_days) carries no Config meter
+  notes: "The recorder object is free -- the bill starts when items flow, and every driver above is a multiplier on one meter: configuration items recorded. The two postures that surprise: the DEFAULT scope records everything including global resources (so an untouched recording_group in several regions bills the same IAM changes repeatedly), and CONTINUOUS is the default frequency (so one flapping resource can generate hundreds of billed items a day -- the recording-mode override exists for exactly those types). Config's own retention of recorded items is unmetered; the S3 files, SNS notices, and the rule evaluations this recorder feeds all bill on their own components."

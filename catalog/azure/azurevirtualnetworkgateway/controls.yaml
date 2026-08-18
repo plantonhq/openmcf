@@ -1,0 +1,82 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurevirtualnetworkgateway
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The gateway stores no customer data -- it is a managed appliance whose only state is ARM configuration. Tunnel pre-shared keys live on the AzureVirtualNetworkGatewayConnection resources, point-to-site root certificates are public key material, and the RADIUS secrets are held by Azure's control plane, not on any disk this manifest governs.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With no data store there is no encryption key to bring -- neither the virtualNetworkGateways API nor this spec carries a customer-managed-key surface.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: type
+      evidence:
+        type: spec_default
+        reference: Unspecified deploys the VPN type, where every carried path is encrypted -- site-to-site and VNet-to-VNet tunnels are IKE-negotiated IPsec, and point-to-site clients ride OpenVPN, IKEv2, or SSTP, all encrypted transports. Choosing EXPRESS_ROUTE trades encryption for a private circuit -- ExpressRoute private peering is NOT encrypted by default, and the gateway offers no encryption toggle for it.
+      notes: All three presets deploy VPN-type gateways. Encrypting ExpressRoute transit is composed outside this manifest -- IPsec over the circuit (a VPN tunnel riding private peering) or MACsec on ExpressRoute Direct ports.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: There is no exposure toggle to govern -- the spec's own validation rules pin the posture per type. VPN gateways REQUIRE a public IP on every ip_configuration (the vpn_gateway_requires_public_ips contract; terminating tunnels from the internet is the function), while EXPRESS_ROUTE gateways must NOT carry one (the express_route_gateway_has_no_public_ips contract; Azure manages their addressing and they expose no internet listener).
+    - control_id: restricted-ingress
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The gateway establishes tunnels only with far sides declared to it -- each connection pins one local network gateway, peer gateway, or circuit at creation, and traffic enters the VNet only through a security association negotiated with those declared endpoints. Point-to-site clients pass only after authenticating against the configured method (Entra ID, certificate chains, or RADIUS).
+      notes: The IKE listener itself is internet-reachable on VPN gateways (that is how far sides dial in); what is restricted is passage. policy_groups and client_connections can further segment point-to-site clients into per-group address pools.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A tunnel terminator is not an HTTP surface -- there is no request stream for a web application firewall to filter and no WAF attachment point on the virtualNetworkGateways API.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane operation on the gateway and its NAT rules -- create, resize, reconfigure, delete -- is authorized by Azure RBAC unconditionally. The gateway holds no data-plane credential of its own; tunnel authentication is per-connection pre-shared keys and point-to-site authentication lives on the client configuration.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The gateway runs no customer workloads and calls no cloud APIs on the customer's behalf -- there is no identity block on the virtualNetworkGateways API and nothing here that could hold a credential.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: vpn_type
+      evidence:
+        type: spec_default
+        reference: Unspecified deploys ROUTE_BASED -- modern IKEv2 negotiation. POLICY_BASED reopens legacy IKEv1 with static traffic selectors (BASIC SKU only, no BGP, no point-to-site) and exists solely for on-premises devices that cannot do route-based.
+      notes: All three presets ride the route-based default. Two adjacent legacy arms live elsewhere -- per-tunnel IKEv1 is chosen on the connection resource's connection_protocol, and the point-to-site protocol list may include SSTP, the legacy TLS transport Microsoft keeps for old Windows clients (the 03 preset pins OpenVPN).
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane action on the gateway lands in the Azure Activity Log unconditionally -- who created it, who resized the SKU, who deleted it. Tunnel-level diagnostics (IKE negotiation logs, point-to-site connection logs, route logs) are opt-in via Azure Monitor diagnostic settings on the gateway, composed outside this spec.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Platform metrics for the gateway (tunnel bandwidth and packet counts, point-to-site connection count, BGP peer status) flow to Azure Monitor for every virtual network gateway with no configuration -- ARM registers metric definitions on the virtualNetworkGateways resource type itself.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: There is no data to back up -- the gateway is regenerable configuration, restored by redeploying the manifest. Tunnel state (security associations, BGP routes) is renegotiated live, never restored.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility there is no retention to configure.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: sku
+      evidence:
+        type: spec_default
+        reference: The AZ tiers -- the only creatable VpnGw SKUs since Azure retired non-AZ creates -- deploy the gateway's instances zone-redundant in regions with availability zones (regional pairs elsewhere); BASIC never does. The SKU choice is explicit by spec contract, so zone redundancy is a deliberate selection, not an accident.
+      notes: All three presets pin AZ SKUs. active_active layers instance-level redundancy on top -- two always-live instances, each with its own public IP, at the same SKU rate. The zones themselves attach on the referenced public IPs, which must carry zones for AZ SKUs (ARM's VmssVpnGatewayPublicIpsMustHaveZonesConfigured contract) -- a cross-resource requirement governed on the AzurePublicIp component.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the virtualNetworkGateways API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. ARM does refuse to delete a gateway that still has connections -- an ordering constraint the runner's reverse teardown handles, not a protection toggle.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The gateway is a fully managed appliance -- Microsoft owns the instances' operating system, patch cadence, and upgrades, and exposes no version or maintenance surface to configure or neglect. The generation knob selects a capability tier, not a software version to maintain.

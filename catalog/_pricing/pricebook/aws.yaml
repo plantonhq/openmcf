@@ -1573,3 +1573,57 @@ spec:
         offer_code: AmazonECS
         region_code: us-east-1
         usage_type: USE1-Fargate-GB-Hours
+    - name: msk-serverless-cluster-hours-us-west-2
+      service_name: Amazon Managed Streaming for Apache Kafka
+      pricing_unit: hours
+      region: us-west-2
+      currency: USD
+      list_unit_price: "0.75"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonMSK/20260729211408/us-west-2/index.json
+      retrieved_on: "2026-08-18"
+      attributes:
+        cluster_mode: serverless
+      aws_selector:
+        offer_code: AmazonMSK
+        region_code: us-west-2
+        usage_type: USW2-KafkaServerless-ClusterHours
+        operation: Serverless
+    - name: vpc-endpoint-interface-hours-us-east-1
+      service_name: Amazon Virtual Private Cloud
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.01"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/20260724154225/us-east-1/index.json
+      retrieved_on: "2026-08-18"
+      aws_selector:
+        offer_code: AmazonVPC
+        region_code: us-east-1
+        usage_type: USE1-VpcEndpoint-Hours
+        operation: VpcEndpoint
+    - name: vpc-endpoint-gwlbe-hours-us-east-1
+      service_name: Amazon Virtual Private Cloud
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.01"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/20260724154225/us-east-1/index.json
+      retrieved_on: "2026-08-18"
+      aws_selector:
+        offer_code: AmazonVPC
+        region_code: us-east-1
+        usage_type: USE1-VpcEndpoint-GWLBE-Hours
+        operation: VpcEndpoint
+    - name: vpc-endpoint-resource-hours-us-east-1
+      service_name: Amazon Virtual Private Cloud
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.02"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/20260724154225/us-east-1/index.json
+      retrieved_on: "2026-08-18"
+      aws_selector:
+        offer_code: AmazonVPC
+        region_code: us-east-1
+        usage_type: USE1-VpcEndpoint-Resource-Hours
+        operation: VpcResourceConsumer

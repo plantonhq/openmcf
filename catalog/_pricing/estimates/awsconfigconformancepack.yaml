@@ -1,0 +1,33 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsconfigconformancepack
+spec:
+  presets:
+    - preset: 01-s3-best-practices
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the template's three managed S3 rules meter the in-scope bucket fleet three times per evaluation cycle, billing per evaluation on the conformance-pack tiered schedule from the first one -- AWS Config publishes no free tier
+        - the configuration items that feed these evaluations bill on the region's AwsConfigRecorder component, and the pack refuses to deploy without a running recorder
+        - the pack's rules are created by the pack itself (not standalone AwsConfigRule components) -- deleting the pack deletes them and their spend together
+      notes: Zero committed cost -- a pack over an empty bucket fleet evaluates nothing; each bucket that exists or changes multiplies the meter by the template's three rules.
+    - preset: 02-organization-baseline
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the organization pack deploys into every member account, and each account's evaluations bill there -- the S3-hosted template's rule count times every member fleet, with the excluded sandbox account subtracting its whole fleet from the volume
+        - the template lives in S3 and is opaque to an estimator -- AWS never reports the rule count back after deploy, so the multiplier itself is unknowable from this manifest
+        - each member account needs its own running configuration recorder, whose items bill in that account
+      notes: Zero committed cost in this manifest -- but the zero is emphatically commitment-absence, since an organization-wide pack's meter runs in every member account the moment their recorders feed it resources to judge.

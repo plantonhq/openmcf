@@ -1,0 +1,28 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureexpressroutegateway
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Virtual WAN
+      sku_meter: ExpressRoute scale units
+      pricing_unit: hours
+      description: The gateway bills one ExpressRoute scale-unit meter per configured scale unit, every deployment hour from creation (a roughly 30-minute operation) until deletion -- each unit buys about 2 Gbps of circuit-to-WAN throughput, up to the API's ceiling of 10 units.
+  cost_drivers:
+    - field_path: scale_units
+      sku_meter: ExpressRoute scale units
+      pricing_unit: hours
+      impact: The dominant lever -- the hourly rate multiplies by scale units, and the value updates in place. Unlike its site-to-site sibling, this ladder has a tier break -- the 6th through 10th units each bill a lower marginal increment than the first five.
+    - field_path: connections
+      sku_meter: ExpressRoute connection units
+      pricing_unit: hours
+      impact: Each connection joins one circuit peering to the hub and bills one connection unit per hour from its creation -- Microsoft counts circuit connections, so two circuits connected means two units, regardless of traffic.
+  estimate_exclusions:
+    - the hub's deployment hours and its per-GB data processing bill on the AzureVirtualHub component
+    - the circuit's port and peering charges, and outbound data on metered circuit SKUs, bill on the circuit's own components
+    - data leaving Azure over the circuits bills at ExpressRoute data-transfer rates and follows traffic
+  notes: "Virtual WAN splits ExpressRoute spend the same three ways as VPN: the gateway carries scale units (capacity) and connection units (circuit memberships), while the hub carries deployment hours plus data processing (transit) and the circuit bills separately as its own resource family. Scaling is a manual operation in Virtual WAN -- Microsoft's own guidance is that gateways do not automatically scale, so the configured scale_units value is what bills (the ARM API models the field as an autoscale floor, autoScaleConfiguration.bounds.min, but no max is ever set by the official modules). The per-connection FastPath and internet-security toggles are free configuration -- the Virtual WAN price list carries no meter for either."

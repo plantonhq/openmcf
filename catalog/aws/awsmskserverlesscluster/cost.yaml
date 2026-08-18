@@ -1,0 +1,26 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsmskserverlesscluster
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon Managed Streaming for Apache Kafka
+      sku_meter: serverless cluster hours
+      pricing_unit: hours
+      description: Every serverless cluster bills a flat hourly meter from creation to deletion, before any topic exists or any byte moves -- "serverless" here means no capacity planning, not scale-to-zero. An idle cluster still accrues roughly 730 cluster-hours a month.
+  cost_drivers:
+    - field_path: region
+      sku_meter: serverless cluster hours
+      pricing_unit: hours
+      impact: The only rate lever this manifest holds -- every serverless meter (cluster-hours, partition-hours, data in/out, storage) is priced per region, and MSK Serverless is offered in a subset of regions.
+  free_tier: ""
+  estimate_exclusions:
+    - partition-hours -- each partition your workloads create bills hourly from creation, whether or not it carries traffic, and Kafka never shrinks a topic's partition count, so partition spend only ratchets up until topics are deleted
+    - data throughput bills per GB written by producers and per GB read by consumers
+    - storage bills per GB-month of retained data; retention is set per topic through the Kafka admin API (defaults 7 days / 250 GiB per partition), outside this manifest
+    - data transfer to another region or out to the public internet bills at standard AWS rates; in-region client traffic to the cluster carries no transfer charge
+  notes: "The cluster-hour floor is the certain spend; the real money follows the workload -- partition-hours and per-GB throughput routinely exceed the floor on busy clusters, and the partition meter is the classic surprise: a topic created with generous partitioning bills every partition every hour even when idle. What this manifest shapes is deliberately little, because serverless MSK has no brokers, storage volumes, or throughput settings to declare. Additional vpc_configs placements add NO meter -- multi-VPC access is built into serverless (client ENIs in every listed VPC), unlike provisioned MSK where multi-VPC private connectivity bills per cluster-hour and per GB processed."

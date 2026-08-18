@@ -1,0 +1,32 @@
+# Cost derivation: the machine-executable rules turning any
+# AzurePrivateEndpoint manifest's spec values into metered quantities
+# and price choices -- one flat hourly meter per endpoint, billing from
+# provisioning to deletion whether or not traffic flows. Nothing in the
+# connection's shape moves the rate (resource-ID and alias targets,
+# auto and manual approval, dynamic and static IPs all bill
+# identically), so every manifest prices through the same line. The
+# per-GB data-processed meters are the usage arm and ride exclusion
+# prose. The estimate generator replays the catalog presets through
+# these rules to emit ../estimates/azureprivateendpoint.yaml; a
+# server-side estimator evaluates the same rules against live
+# manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azureprivateendpoint
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  lines:
+    - sku_meter: endpoint hours
+      quantity:
+        - hours_in_month: true
+      price_slug: private-endpoint-hour
+      basis: one private endpoint x 730 hours at the Standard rate -- the meter bills in Azure's Global region at one worldwide rate, runs from provisioning to deletion, idle or busy, and is identical whichever service or sub-resource the connection targets
+  exclusions:
+    - text: data processed through the endpoint bills per GB in EACH direction -- ingress and egress are metered separately, tiered from the first-petabyte rate down -- and follows traffic entirely
+    - text: the referenced subnet, private DNS zones, application security groups, and the target service are first-class components billing on their own lines; the DNS zone group itself adds no meter

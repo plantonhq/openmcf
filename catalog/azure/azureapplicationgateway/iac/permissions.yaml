@@ -1,0 +1,39 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureapplicationgateway
+spec:
+  azure:
+    groups:
+      - purpose: ManageApplicationGateway
+        actions:
+          - Microsoft.Network/applicationGateways/read
+          - Microsoft.Network/applicationGateways/write
+          - Microsoft.Network/applicationGateways/delete
+        provenance: derived
+        notes: Covers azurerm_application_gateway / network.NewApplicationGateway -- the single ARM resource carrying every sub-object (frontends, listeners, pools, rules, certificates, profiles, rewrites), so create, refresh, every sub-object edit, and destroy all land on these three actions. Applies routinely run 15-25 minutes; the write authorization is checked once, not per sub-object.
+      - purpose: JoinGatewaySubnet
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/join/action
+        provenance: derived
+        notes: The modules never mutate the subnet -- they pass the resolved subnet_id in the gateway payload -- but ARM authorizes placing the gateway IP configuration, private frontends, and Private Link NAT allocations into each referenced subnet with join/action on the subnet's scope at create (service-side).
+      - purpose: JoinPublicAddresses
+        actions:
+          - Microsoft.Network/publicIPAddresses/join/action
+        provenance: derived
+        notes: Public frontends reference Standard public IPs by ARM ID; ARM authorizes binding each referenced address with join/action on the IP's scope (service-side; the modules only pass the resolved IDs).
+      - purpose: AttachWafPolicy
+        actions:
+          - Microsoft.Network/ApplicationGatewayWebApplicationFirewallPolicies/join/action
+        provenance: derived
+        notes: Required only when firewall_policy_id is set anywhere -- gateway-wide, on a listener, or on a URL path rule. ARM authorizes each policy reference with join/action on the policy's scope (service-side); the namespace spells this resource type with a capital A, exactly as Microsoft's providerOperations inventory does.
+      - purpose: AssignUserManagedIdentities
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: Required only when identity carries USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED identities (the Key Vault certificate path requires one) -- ARM checks assign/action on every identity referenced in the gateway payload (service-side). The identity's own GET grant on the vault's secrets is the identity's data-plane posture, not a runner permission.

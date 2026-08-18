@@ -1,0 +1,70 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azurepublicipprefix
+spec:
+  presets:
+    - preset: 01-nat-snat-range
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Virtual Network
+          sku_meter: prefix reserved addresses
+          pricing_unit: IP-hours
+          pricing_quantity: "11680"
+          quantity_basis: a /28 reserves 2^(32-28) = 16 addresses, each billing every hour of the month (x 730) from the moment the prefix exists, drawn or idle
+          list_unit_price: "0.006"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Network' and armRegionName eq 'eastus' and meterName eq 'Standard Static IP Addresses' and productName eq 'Public IP Prefix' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "70.0800"
+      total_list_cost: "70.0800"
+      exclusions:
+        - traffic to and from addresses in the range bills per GB as bandwidth on the resources using them
+        - AzurePublicIp resources drawn from the prefix add no meter of their own -- the reservation already paid for them
+    - preset: 02-partner-allowlist
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Virtual Network
+          sku_meter: prefix reserved addresses
+          pricing_unit: IP-hours
+          pricing_quantity: "2920"
+          quantity_basis: a /30 reserves 2^(32-30) = 4 addresses, each billing every hour of the month (x 730) from the moment the prefix exists, drawn or idle
+          list_unit_price: "0.006"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Network' and armRegionName eq 'eastus' and meterName eq 'Standard Static IP Addresses' and productName eq 'Public IP Prefix' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "17.5200"
+      total_list_cost: "17.5200"
+      exclusions:
+        - traffic to and from addresses in the range bills per GB as bandwidth on the resources using them
+        - AzurePublicIp resources drawn from the prefix add no meter of their own -- the reservation already paid for them
+    - preset: 03-from-prefix-public-ip
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Virtual Network
+          sku_meter: prefix reserved addresses
+          pricing_unit: IP-hours
+          pricing_quantity: "11680"
+          quantity_basis: a /28 reserves 2^(32-28) = 16 addresses, each billing every hour of the month (x 730) from the moment the prefix exists, drawn or idle
+          list_unit_price: "0.006"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Network' and armRegionName eq 'eastus' and meterName eq 'Standard Static IP Addresses' and productName eq 'Public IP Prefix' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "70.0800"
+      total_list_cost: "70.0800"
+      exclusions:
+        - traffic to and from addresses in the range bills per GB as bandwidth on the resources using them
+        - AzurePublicIp resources drawn from the prefix add no meter of their own -- the reservation already paid for them

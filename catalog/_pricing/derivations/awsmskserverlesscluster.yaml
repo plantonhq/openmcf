@@ -1,0 +1,40 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsMskServerlessCluster manifest's spec values into metered quantities
+# and price choices. The whole committed bill is one unconditional line:
+# a serverless cluster bills a flat cluster-hour meter from creation to
+# deletion, before any topic exists or any byte moves -- everything else
+# (partition-hours, per-GB throughput, storage) follows the workload and
+# is excluded. The estimate generator replays the catalog presets through
+# these rules to emit ../estimates/awsmskserverlesscluster.yaml; a
+# server-side estimator evaluates the same rules against live manifests.
+# Prices live in the provider's price book (../pricebook/).
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsmskserverlesscluster
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  lines:
+    - sku_meter: serverless cluster hours
+      quantity:
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Managed Streaming for Apache Kafka
+        pricing_unit: hours
+        attributes:
+          - key: cluster_mode
+            constant: serverless
+      basis: one serverless cluster billed every hour of the month from creation to deletion, idle or busy; the lookup resolves the manifest's region to its cluster-hour rate
+  exclusions:
+    - text: partition-hours bill hourly for every partition workloads create, carrying traffic or not, and Kafka never shrinks a topic's partition count -- the meter only ratchets up until topics are deleted
+    - text: data throughput bills per GB written by producers and per GB read by consumers
+    - text: storage bills per GB-month of retained data; retention is set per topic through the Kafka admin API, outside this manifest
+    - text: data transfer to another region or out to the public internet bills at standard AWS rates; in-region client traffic to the cluster carries no transfer charge
+  notes:
+    - text: The cluster-hours line is the entire committed bill however many VPC placements the manifest declares -- multi-VPC access is built into serverless, so additional vpc_configs entries add client ENIs but no meter.
+    - text: The floor is the certain spend; on busy clusters the excluded workload meters (partition-hours and per-GB throughput) routinely exceed it.

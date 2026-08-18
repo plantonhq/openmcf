@@ -22,10 +22,6 @@ With the default association and propagation dials enabled (the defaults), every
 - **Two VPCs only**: Simple VPC peering may be more cost-effective for exactly two VPCs with low traffic.
 - **Cross-region**: Each Transit Gateway is regional. Cross-region connectivity uses TGW peering attachments -- a separate surface (see the docs deferral ledger).
 
-## Prerequisites
-
-- AWS credentials with permissions for `ec2:CreateTransitGateway` and related actions.
-
 ## Spec Fields
 
 ### Core Configuration

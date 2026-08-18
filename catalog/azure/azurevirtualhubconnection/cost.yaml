@@ -1,0 +1,32 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. This component deliberately ships no
+# estimate: the attachment itself carries no meter -- Azure's Virtual WAN
+# price list has hourly connection units for BRANCHES (VPN, ExpressRoute,
+# point-to-site), not for VNet attachments -- so an idle connection bills
+# nothing, and everything it does cost follows traffic.
+# Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurevirtualhubconnection
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: remote_virtual_network_id
+      sku_meter: VNet peering data transfer
+      pricing_unit: GB
+      impact: Every GB the attached spoke sends or receives through the hub bills standard VNet peering data rates on the spoke's traffic -- the attachment is implemented as a Microsoft-managed peering between the hub and this VNet, so the peering meters, not a connection meter, are where the money moves.
+    - field_path: internet_security_enabled
+      sku_meter: hub firewall data processing
+      pricing_unit: GB
+      impact: On, the hub advertises 0.0.0.0/0 to this spoke, so its internet-bound traffic transits the hub -- typically into a hub firewall whose per-GB processing and the eventual internet egress bill on their own components; off (the default), the spoke keeps its own egress path and this connection adds nothing to it.
+    - field_path: routing.static_vnet_routes
+      sku_meter: hub data processing
+      pricing_unit: GB
+      impact: Steering other networks' traffic through an NVA in this spoke makes this connection a transit path -- the steered GBs bill hub data processing plus this spoke's peering both ways, and the NVA's own compute bills on its component.
+  estimate_exclusions:
+    - the attachment has no hourly meter -- Virtual WAN connection units bill branches (VPN, ExpressRoute, P2S), never VNet attachments, so every preset estimates to a commitment-absence zero
+    - VNet-to-VNet traffic through the hub additionally bills the hub router's per-GB data processing, carried on the hub's own component
+    - inter-region spoke traffic adds standard inter-region data-transfer rates
+  notes: "The connection is the free half of a paid pattern: the hub bills hourly for existing, and the traffic bills per GB for moving -- peering data on this spoke's flows, hub data processing on VNet-to-VNet transit, firewall processing when internet security steers egress through a secured hub. The attachment itself never appears on the invoice, which is why isolation topologies (many connections, custom route tables) cost exactly as much as any-to-any: routing choices here move WHERE traffic flows and therefore where its per-GB charges land, not what the connection costs."

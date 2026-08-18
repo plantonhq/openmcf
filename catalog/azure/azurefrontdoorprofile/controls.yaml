@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurefrontdoorprofile
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The profile is the container for a delivery deployment -- sku, timeout, identity, log scrubbing -- and stores no customer data at rest. Edge caching (transient copies of origin responses at Microsoft's POPs) is switched per route on the AzureFrontDoorRoute kind, and the durable data lives on the origins themselves.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest). Bring-your-own TLS certificates stay in the customer's Key Vault -- Front Door reads them through the profile's managed identity rather than copying key material into the profile.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The profile terminates no connections -- client-side TLS lives on the endpoint's *.azurefd.net hostname (always HTTPS-capable with a Microsoft-managed certificate) and on AzureFrontDoorCustomDomain (which pins the minimum TLS version), HTTP-to-HTTPS redirection is an AzureFrontDoorRoute choice, and origin-side re-encryption is the route's forwarding protocol. Each is a separate kind referencing this profile.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A profile with no endpoints is unreachable -- the public entry hostname is the AzureFrontDoorEndpoint kind, and Front Door exists to serve public edge traffic. The exposure this platform can REMOVE is origin-side; PREMIUM's Private Link (an AzureFrontDoorOrigin choice) lets backends disable public access entirely.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The spec carries no source filter by design, matching Azure's model -- IP, geo, and rate restrictions are WAF custom rules on an AzureFrontDoorFirewallPolicy, attached to this profile's domains through an AzureFrontDoorSecurityPolicy.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The profile has no WAF field -- request filtering composes by attaching an AzureFrontDoorFirewallPolicy through an AzureFrontDoorSecurityPolicy, and Azure requires the policy's sku to match this profile's. The sku chosen here decides the ceiling -- Microsoft's managed rule sets and Bot Manager enforce only on PREMIUM.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the profile exposes no authentication plane of its own toward the traffic its endpoints serve.
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: Unset means the profile holds no platform identity; SYSTEM_ASSIGNED (or user-assigned identities) lets Front Door fetch bring-your-own TLS certificates from Key Vault with short-lived Entra tokens instead of an access-policy secret -- grants compose via AzureRoleAssignment against the identity_principal_id output.
+      notes: The premium-private-origins preset carries a system-assigned identity for exactly this certificate path.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The profile authenticates no clients -- application authentication is origin territory, and minimum-TLS-version policy for custom domains lives on the AzureFrontDoorCustomDomain kind.
+    - control_id: audit-logging
+      status: not_applicable
+      field_path: log_scrubbing_variables
+      notes: Management-plane changes land in the Azure Activity Log automatically as subscription-level posture. Per-request access logs, WAF logs, and health-probe logs are emitted through a diagnostic setting on the profile -- a separate kind targeting the profile_id output. What THIS spec controls is the logs' content -- log_scrubbing_variables masks client IPs, request URIs, and query-string arguments before a line is ever written, the privacy lever the compliance-log-scrubbing preset demonstrates.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure publishes Front Door metrics -- request count, response size, latency, origin health percentage, origin latency, and WAF request count -- to Azure Monitor automatically for every Standard/Premium profile; no configuration exists to disable them.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The profile holds delivery configuration, not data -- the manifest recreates it declaratively, and the content it accelerates lives on the origins.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Front Door is a global anycast service -- Azure deploys every profile across its worldwide edge POPs with no zone or region to configure, and the loss of any single location reroutes clients to the next-nearest POP by anycast. Both tiers carry a 99.99% availability SLA.
+      notes: Origin-side redundancy is separate -- an AzureFrontDoorOriginGroup load-balances and health-probes multiple origins, which is where backend failover is composed.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Cdn API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. Deletion is unusually consequential here -- every endpoint, origin group, route, and custom domain is nested under the profile in ARM and dies with it.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Microsoft operates and patches the global edge fleet, the TLS stack, and (on PREMIUM) the managed WAF rule content; no customer-visible patch surface exists.

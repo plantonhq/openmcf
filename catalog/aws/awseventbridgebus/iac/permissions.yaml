@@ -1,0 +1,46 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awseventbridgebus
+spec:
+  aws:
+    statements:
+      - sid: ManageEventBus
+        actions:
+          - events:CreateEventBus
+          - events:DescribeEventBus
+          - events:UpdateEventBus
+          - events:DeleteEventBus
+          - events:TagResource
+          - events:UntagResource
+          - events:ListTagsForResource
+        resources:
+          - arn:aws:events:*:*:event-bus/*
+        provenance: derived
+        notes: Covers aws_cloudwatch_event_bus / cloudwatch.EventBus -- create (including partner buses, which ride the same CreateEventBus call with event_source_name set and the bus name matching it), the DescribeEventBus read during plan/refresh, in-place updates to description, KMS key, DLQ, and log config, and destroy. All seven actions authorize on the event-bus ARN format per the service reference; tag actions ride the create call and later tag reconciliation.
+      - sid: ManageBusPolicy
+        actions:
+          - events:PutPermission
+          - events:RemovePermission
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_cloudwatch_event_bus_policy / cloudwatch.EventBusPolicy -- the bus's resource-based policy carrying cross-account and cross-organization PutEvents grants. The service reference lists NO resource types for either action (unlike the bus CRUD actions, which scope to the event-bus ARN), so IAM evaluates them against Resource "*" -- an ARN-scoped grant never matches and would deny the policy apply at runtime. The wildcard is the narrowest possible scope; note these are Permissions-management-class actions that can grant other accounts publish access to ANY bus in the account.
+      - sid: ManageArchives
+        actions:
+          - events:CreateArchive
+          - events:DescribeArchive
+          - events:UpdateArchive
+          - events:DeleteArchive
+        resources:
+          - arn:aws:events:*:*:archive/*
+          - arn:aws:events:*:*:event-bus/*
+          - arn:aws:kms:*:*:key/*
+          - arn:aws:kms:*:*:alias/*
+        provenance: derived
+        notes: Covers aws_cloudwatch_event_archive / cloudwatch.EventArchive -- one archive per spec.archives entry, recorded from this bus's ARN. The service reference requires CreateArchive on BOTH the archive and the source event-bus ARN formats (an archive-only grant denies creation), and additionally authorizes Create/UpdateArchive on the KMS key and alias ARN formats when archives.kms_key_identifier supplies a customer-managed key. Describe and Delete authorize on the archive ARN alone.

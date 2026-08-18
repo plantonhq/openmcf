@@ -1,0 +1,40 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awseventbridgerule
+spec:
+  aws:
+    statements:
+      - sid: ManageRule
+        actions:
+          - events:PutRule
+          - events:DescribeRule
+          - events:DeleteRule
+          - events:TagResource
+          - events:UntagResource
+          - events:ListTagsForResource
+        resources:
+          - arn:aws:events:*:*:rule/*
+        provenance: derived
+        notes: Covers aws_cloudwatch_event_rule / cloudwatch.EventRule -- create and every in-place update (pattern, schedule, state, description, rule-level role) ride PutRule; DescribeRule reads during plan/refresh; DeleteRule destroys (force_destroy folds target removal into the same teardown). The service reference defines TWO rule ARN formats -- rule/${RuleName} on the default bus and rule/${EventBusName}/${RuleName} on custom buses -- and authorizes all six actions on both; the rule/* pattern matches either, so one grant serves rules on any bus. Tag actions ride the create call and later tag reconciliation.
+      - sid: ManageTargets
+        actions:
+          - events:PutTargets
+          - events:RemoveTargets
+          - events:ListTargetsByRule
+        resources:
+          - arn:aws:events:*:*:rule/*
+        provenance: derived
+        notes: Covers aws_cloudwatch_event_target / cloudwatch.EventTarget -- one per spec.targets entry, keyed by target name as the EventBridge target_id. Target actions authorize on the RULE's ARN (both formats, same rule/* pattern), never on the target service's ARN -- attaching a Lambda or SQS target needs no permission on that resource here; the invoke-side grant is the target's own resource policy or the passed invocation role.
+      - sid: PassInvocationRoles
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: PutRule passes the rule-level role_arn and PutTargets passes each target's role_arn -- the roles EventBridge assumes to invoke role-based targets (Step Functions, ECS, Kinesis, Batch, Redshift, SSM, SageMaker, AppSync, cross-account buses). The service reference names events.amazonaws.com as the iam:PassedToService value on both operations; add that condition and narrow to the actual role ARNs in a hardened deployment. Rules whose targets all use resource-based policies (Lambda, SQS, SNS) never exercise this statement.

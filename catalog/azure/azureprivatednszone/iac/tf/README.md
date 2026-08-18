@@ -62,9 +62,3 @@ module "private_dns_zone" {
   }
 }
 ```
-
-## Required Permissions
-
-The deploying credential needs `Microsoft.Network/privateDnsZones/write`
-on the resource group -- held via Private DNS Zone Contributor,
-Contributor, or Owner.

@@ -1,0 +1,79 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureexpressrouteport
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A transport port stores no customer data at rest -- traffic flows through the physical links. The MACsec CAK/CKN key material stays in the customer's Key Vault, referenced by secret URL rather than copied into the port.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest); custody of the MACsec secrets under customer-managed keys is the referenced Key Vault's posture, a separate kind.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: link1
+      evidence:
+        type: spec_default
+        reference: Unset link blocks leave the physical pair carrying traffic in the clear at layer 2 -- private, dedicated fiber into Microsoft's edge, but unencrypted. Setting the MACsec CKN/CAK Key Vault secret pair on a link (both keys or neither, spec-enforced) encrypts everything on the wire at line rate; macsec_cipher defaults to GCM_AES_128, with GCM_AES_256 and the XPN variants for sustained rates above ~40 Gbps where a 32-bit packet number wraps too quickly.
+      notes: Configure link1 and link2 symmetrically -- the macsec-port preset encrypts both links with GCM_AES_256. MACsec requires a user-assigned identity on the port (spec-enforced) to read the secrets, and both sides of each link must agree on SCI tagging. Higher-layer encryption (IPsec over the circuits' peerings) composes on other kinds.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: An ExpressRoute Direct port has no internet-facing surface by construction -- it terminates a dedicated physical cross-connect between the customer's equipment and a Microsoft Enterprise Edge router pair inside a colocation facility. Nothing about it is reachable from the public internet, and no field could make it so.
+      notes: What the private path ultimately reaches (private peering into VNets, Microsoft peering toward public service endpoints) is decided on the circuits and their peerings -- separate kinds.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The port carries no traffic policy -- what may flow is decided by the circuits carved from it, their peerings, and the gateways they attach to (all separate kinds). Physical-layer access is restricted by the cross-connect itself, which only the facility provisions against the letter-of-authorization facts in this component's outputs.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Layer-1/2 transport with no HTTP surface -- request filtering has no attachment point here.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice. Worth knowing the sharing model -- same-subscription circuits are authorized by RBAC against the port's scope, while the authorizations field issues ARM-generated bearer keys that let circuits in OTHER subscriptions build on this port's capacity; the keys surface as sensitive outputs, and deleting an entry revokes the grant.
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: Unset means the port holds no platform identity; a USER_ASSIGNED identity (required whenever MACsec keys are configured, spec-enforced) lets the port read the CAK/CKN secrets from Key Vault with short-lived Entra tokens instead of any static credential -- grant it secret GET before the port provisions its links.
+      notes: The macsec-port preset carries a user-assigned identity for exactly this path; ports without MACsec need no identity at all.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The port authenticates no clients -- there is no weaker protocol path to disable at layer 1/2. Cross-subscription authorization keys are the designed sharing mechanism, not a legacy one (their custody is covered under rbac).
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Management-plane changes -- port creation, link enablement, MACsec changes, authorization issue and revocation -- land in the Azure Activity Log automatically as subscription-level posture. The port emits no per-flow access logs; traffic-level visibility lives on the circuits and gateways behind it.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure publishes port-level metrics to Azure Monitor automatically for every ExpressRoute Direct port -- per-link bits in/out, line protocol state, and optical receive/transmit light levels -- with no configuration to enable them; light-level metrics are the operational signal for cross-connect health.
+      notes: Alerting on LineProtocol and light levels is how a dark or degraded link is caught before workloads notice.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The port holds physical-capacity configuration, not data -- the manifest recreates it declaratively (though a replacement port requires a new facility cross-connect, which is logistics, not backup).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Redundancy is built into the product -- ARM always provisions the port as a PAIR of physical links terminating on separate Microsoft Enterprise Edge routers (dual 10 or 100 Gbps interfaces across a router pair), and the ExpressRoute SLA rides that active-active pair. The pair cannot be reduced to a single link.
+      notes: The redundancy is only real once BOTH links are cross-connected and administratively enabled -- links start DISABLED, and all three presets enable both. Site-level resilience (a second port at another peering location) composes from multiple ports.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Network API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. ARM refuses to delete a port that still carries circuits, but that is dependency ordering, not a control.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The port pair lives on Microsoft Enterprise Edge routers that Microsoft operates and patches; no customer-visible patch surface exists on the Azure side of the cross-connect.
+      notes: The customer's own edge devices in the facility are theirs to patch -- outside this manifest entirely.

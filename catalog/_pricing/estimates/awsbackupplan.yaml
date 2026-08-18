@@ -1,0 +1,35 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsbackupplan
+spec:
+  presets:
+    - preset: 01-daily-tagged-backups
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - backup storage bills on the average GB held through the month at per-resource-type rates -- the daily schedule with 35-day retention holds up to 35 recovery points per protected resource at steady state, all sized by workload data the manifest cannot see
+        - the tag selection (backup=true) is the quantity dial -- nothing bills until resources carry the tag, and everything tagged multiplies every meter
+        - restores bill per GB on their own meter when recovery points are pulled back
+        - vault-side spend (storage encryption keys, vault policies) bills on the referenced AwsBackupVault and its KMS key
+      notes: Zero committed cost -- a rule that never fires costs nothing; the storage meter starts with the first nightly run against the first tagged resource.
+    - preset: 02-dr-cold-storage
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - weekly recovery points bill warm storage for their first 30 days, then the cheaper cold rate until day-365 expiry -- the cold tier carries a 90-day minimum stay, with early deletion billing the remaining days pro-rated
+        - the copy action bills cross-Region transfer per GB to this (sending) account and a second copy's storage to the destination vault's account, retained its own 365 days
+        - cold-tier transition applies only to eligible resource types (EBS, EFS, DynamoDB, Timestream, SAP HANA on EC2, VMware); others stay warm at the warm rate
+        - restores bill per GB on demand -- the DR posture this plan buys is exercised, not prepaid
+      notes: Zero committed cost -- the plan commits nothing until resources tagged tier=critical exist; from the first weekly run, retention length and the second DR copy are the multipliers that decide the bill.

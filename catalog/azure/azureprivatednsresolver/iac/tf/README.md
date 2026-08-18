@@ -38,7 +38,3 @@ The module is executed by the Planton platform with a tfvars file converted from
 - **The inbound Static/Dynamic contract is spec-validated** (STATIC requires an address; DYNAMIC forbids one) -- mirroring the provider's own pre-flight check.
 - **Endpoint deletes outlive the API's first answer** -- the provider polls until the endpoint is verifiably gone (up to a few minutes each).
 - **Endpoints bill hourly** from the moment they provision; the resolver object itself is free. Azure allows up to 5 endpoints each way per resolver (a service quota, deliberately not mirrored as validation).
-
-## Required Permissions
-
-The deploying principal needs `Microsoft.Network/dnsResolvers/*` plus join permissions on the delegated subnets (Network Contributor on the resource group covers both).

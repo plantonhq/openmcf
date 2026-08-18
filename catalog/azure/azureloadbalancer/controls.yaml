@@ -1,0 +1,75 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureloadbalancer
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A Layer 4 load balancer forwards packets and stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Azure Load Balancer is a passthrough Layer 4 distributor -- it never terminates or originates TLS, so encrypted traffic stays encrypted end-to-end between client and backend. TLS termination is Application Gateway / Front Door territory, composed as separate components.
+    - control_id: no-public-access
+      status: configurable
+      field_path: frontend_ip_configurations
+      evidence:
+        type: spec_default
+        reference: Each frontend chooses its exposure -- subnet_id makes it internal (a private address in the subnet), public_ip_address_id or public_ip_prefix_id makes it public. A load balancer whose frontends are all internal has no public surface at all.
+      notes: The 02-internal preset is the fully private shape; 01-public and 03-outbound-and-nat deliberately expose a public frontend.
+    - control_id: restricted-ingress
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Standard SKU (the default; Basic is retired and not modeled) is secure by default -- traffic arriving at a frontend reaches no backend until a network security group on the backend subnet or NIC explicitly allows it, so the closed posture is the starting point.
+      notes: The allow rules themselves live on AzureNetworkSecurityGroup components attached to the backend subnets or NICs, deliberately outside this manifest -- matching Azure's model, where the load balancer forwards and the NSG filters.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A Layer 4 distributor offers no WAF attachment point -- request filtering requires an HTTP-aware tier (Application Gateway, Front Door) composed in front, never on the load balancer resource itself.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the load balancer exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The load balancer runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own -- the data plane is raw TCP/UDP forwarding.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Traffic through the load balancer is auditable with NSG flow logs or virtual network flow logs -- separate resources, not fields of this spec. Control-plane changes (rule edits, pool changes) land in the Azure Activity Log as subscription-level posture.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Standard load balancers publish multi-dimensional metrics to Azure Monitor automatically -- data-path availability, health-probe status per backend, SNAT connection counts and allocated/used SNAT ports -- with no configuration on this resource.
+      notes: Health-probe status is only as informative as the probes declared in health_probes -- an HTTP probe against a real health endpoint beats a TCP port check.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless traffic distribution -- no data to back up; the configuration is declarative and re-creatable from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: frontend_ip_configurations.zones
+      evidence:
+        type: spec_default
+        reference: An internal frontend declares its own zone posture -- ["1","2","3"] is zone-redundant, a single entry pins one zone, empty leaves no guarantee. A public frontend inherits its zone posture from the referenced public IP resource instead (spec validation forbids zones on public frontends).
+      notes: The 02-internal preset pins the zone-redundant posture. The data plane's resilience also depends on backends actually spanning zones -- the frontend's zones only cover the address.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Load Balancer API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. Referenced public IPs, prefixes, and subnets survive deletion by design -- only the distributor and its rules go.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Microsoft operates and patches the load-balancing data plane; no customer-visible patch surface exists.

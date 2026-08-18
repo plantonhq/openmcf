@@ -1,0 +1,39 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurepublicipprefix
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Virtual Network
+      sku_meter: prefix reserved addresses
+      pricing_unit: IP-hours
+      description: The prefix bills every address in its reserved block per IP-hour from the moment it is created -- drawn or idle, attached or not. The per-address rate carries a premium over a standalone static address (the price of reservation); addresses drawn FROM the prefix add no meter of their own.
+  cost_drivers:
+    - field_path: prefix_length
+      sku_meter: prefix reserved addresses
+      pricing_unit: IP-hours
+      impact: The dominant lever -- the block size is 2^(32-length) addresses and every one of them bills hourly, so each step smaller in CIDR length doubles the bill. Azure's default of /28 reserves (and bills) 16 addresses; fixed at creation, so the size decision is permanent.
+    - field_path: sku_tier
+      sku_meter: prefix reserved addresses
+      pricing_unit: IP-hours
+      impact: The GLOBAL tier (cross-region load balancer frontends) bills each reserved address at double the regional Standard per-address rate.
+    - field_path: sku
+      sku_meter: prefix reserved addresses
+      pricing_unit: IP-hours
+      impact: STANDARD_V2 (StandardV2 NAT gateway association) has no meter of its own in Azure's retail price API -- Microsoft's pricing page lists it at the Standard rate, but no API-verifiable price exists yet.
+    - field_path: ip_version
+      sku_meter: prefix reserved addresses
+      pricing_unit: IP-hours
+      impact: Microsoft's price documents meter only IPv4 prefixes -- the published per-address charge is an IPv4 charge, and no IPv6-prefix meter exists in the price API.
+    - field_path: custom_ip_prefix_id
+      sku_meter: prefix reserved addresses
+      pricing_unit: IP-hours
+      impact: Carving the prefix out of a bring-your-own IP range removes the charge entirely -- Microsoft states prefixes derived from Custom IP Prefixes (BYOIP) are free; the addresses were already yours.
+  estimate_exclusions:
+    - traffic to and from addresses in the range bills per GB as bandwidth on the resources using them
+    - individual AzurePublicIp resources drawn from the prefix and NAT gateways associating it bill (or not) on their own components
+  notes: "A prefix is a bulk address reservation, and Azure bills the reservation, not the usage: 2^(32-length) addresses times the per-IP-hour rate, from creation to deletion, regardless of how many addresses are drawn. The per-address rate is deliberately above the standalone static-address rate -- contiguity costs extra -- and in exchange, addresses drawn from the block bill nothing individually. The one genuinely free shape is BYOIP: a prefix carved from a Custom IP Prefix (your own onboarded range) has no charge at all, though its egress traffic still bills at internet rates."
