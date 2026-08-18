@@ -3522,14 +3522,19 @@ enum CloudResourceKind {
   // -- the binding that puts one Azure Files share under a backup
   // policy's protection. The share's storage account must already be
   // registered with the vault (AzureBackupContainerStorageAccount).
+  // Prerequisite ORDER is load-bearing for teardown (destroy runs in
+  // reverse): the registration must list AFTER the share so it
+  // unregisters FIRST -- Azure Backup holds a DoNotDelete lock on a
+  // registered storage account, and a share delete under that lock
+  // fails ScopeLocked.
   AzureBackupProtectedFileShare = 2179 [(kind_meta) = {
     provider: azure
     version: "v1alpha1"
     id_prefix: "azbprfs"
     prerequisites: [
-      AzureBackupContainerStorageAccount,
+      AzureStorageShare,
       AzureBackupPolicyFileShare,
-      AzureStorageShare
+      AzureBackupContainerStorageAccount
     ]
   }];
   // The Data Protection backup vault (Microsoft.DataProtection/

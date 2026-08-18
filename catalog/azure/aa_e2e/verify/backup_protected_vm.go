@@ -42,12 +42,14 @@ const recoveryServicesProtectedItemAPIVersion = "2023-02-01"
 // --delete-backup-data true` (lands in seconds), then re-run.
 type backupProtectedVmVerifier struct{}
 
-// backupProtectedVmAbsencePollTimeout bounds the absence poll: long
-// enough to absorb the measured minutes-scale read lag after a landed
-// delete, short enough to surface a dropped delete within the lane.
-const backupProtectedVmAbsencePollTimeout = 10 * time.Minute
+// recoveryServicesProtectedItemAbsencePollTimeout bounds the absence
+// poll (shared by the VM and file-share protected-item verifiers):
+// long enough to absorb the measured minutes-scale read lag after a
+// landed delete, short enough to surface a dropped delete within the
+// lane.
+const recoveryServicesProtectedItemAbsencePollTimeout = 10 * time.Minute
 
-const backupProtectedVmAbsencePollInterval = 15 * time.Second
+const recoveryServicesProtectedItemAbsencePollInterval = 15 * time.Second
 
 // IDOutputKey is the protected item's full ARM ID.
 func (*backupProtectedVmVerifier) IDOutputKey() string {
@@ -70,7 +72,7 @@ func (*backupProtectedVmVerifier) VerifyAbsent(ctx context.Context, cred azcore.
 	if err != nil {
 		return pkgerrors.Wrapf(err, "azurebackupprotectedvm verify-absent failed for %q", id)
 	}
-	deadline := time.Now().Add(backupProtectedVmAbsencePollTimeout)
+	deadline := time.Now().Add(recoveryServicesProtectedItemAbsencePollTimeout)
 	for {
 		resp, err := client.GetByID(ctx, id, recoveryServicesProtectedItemAPIVersion, nil)
 		if err != nil {
@@ -89,12 +91,12 @@ func (*backupProtectedVmVerifier) VerifyAbsent(ctx context.Context, cred azcore.
 			}
 		}
 		if time.Now().After(deadline) {
-			return pkgerrors.Errorf("azurebackupprotectedvm %q still exists (active, not soft-delete-ghosted) %s after destroy -- the engine-reported delete never landed", id, backupProtectedVmAbsencePollTimeout)
+			return pkgerrors.Errorf("azurebackupprotectedvm %q still exists (active, not soft-delete-ghosted) %s after destroy -- the engine-reported delete never landed", id, recoveryServicesProtectedItemAbsencePollTimeout)
 		}
 		select {
 		case <-ctx.Done():
 			return pkgerrors.Wrapf(ctx.Err(), "azurebackupprotectedvm verify-absent cancelled for %q", id)
-		case <-time.After(backupProtectedVmAbsencePollInterval):
+		case <-time.After(recoveryServicesProtectedItemAbsencePollInterval):
 		}
 	}
 }

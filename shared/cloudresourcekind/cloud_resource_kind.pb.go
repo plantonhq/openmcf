@@ -1403,6 +1403,11 @@ const (
 	// -- the binding that puts one Azure Files share under a backup
 	// policy's protection. The share's storage account must already be
 	// registered with the vault (AzureBackupContainerStorageAccount).
+	// Prerequisite ORDER is load-bearing for teardown (destroy runs in
+	// reverse): the registration must list AFTER the share so it
+	// unregisters FIRST -- Azure Backup holds a DoNotDelete lock on a
+	// registered storage account, and a share delete under that lock
+	// fails ScopeLocked.
 	CloudResourceKind_AzureBackupProtectedFileShare CloudResourceKind = 2179
 	// The Data Protection backup vault (Microsoft.DataProtection/
 	// backupVaults) -- the safe that MODERN Azure Backup data lives in
@@ -4216,7 +4221,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x13AzureBackupPolicyVm\x10\x80\x11\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azbpv:\x02\xff\x10\x12;\n" +
 	"\x16AzureBackupProtectedVm\x10\x81\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azbprv:\x04\x80\x11\xd8\x0f\x12=\n" +
 	"\x1aAzureBackupPolicyFileShare\x10\x82\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azbpfs:\x02\xff\x10\x12E\n" +
-	"\x1dAzureBackupProtectedFileShare\x10\x83\x11\x1a!\xa2\xf7\x04\x1d\b\r\x12\bv1alpha1\"\aazbprfs:\x06\xa5\x11\x82\x11\xab\x10\x12A\n" +
+	"\x1dAzureBackupProtectedFileShare\x10\x83\x11\x1a!\xa2\xf7\x04\x1d\b\r\x12\bv1alpha1\"\aazbprfs:\x06\xab\x10\x82\x11\xa5\x11\x12A\n" +
 	"\x1eAzureDataProtectionBackupVault\x10\x84\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdpbv:\x02\xd0\x0f\x12B\n" +
 	"\x1fAzureDataProtectionBackupPolicy\x10\x85\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdpbp:\x02\x84\x11\x12F\n" +
 	"!AzureDataProtectionBackupInstance\x10\x86\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azdpbi:\x04\x84\x11\x85\x11\x128\n" +

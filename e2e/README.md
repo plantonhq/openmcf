@@ -2093,7 +2093,25 @@ owns two responsibilities beyond wiring verifiers:
   --backup-management-type AzureIaaSVM` on any surviving vault); the modules
   deliberately leave the provider's `recover_soft_deleted_backup_protected_vm`
   feature off (silently adopting ghost recovery points is not smoke-lane
-  behavior).
+  behavior). The FILE-SHARE sibling measured the same read-lag class
+  (session 056: VERIFY-CLN saw a 200 seconds after a clean destroy; the item
+  cleared before the registration's unregister, which succeeded) -- both
+  protected-item verifiers now share the bounded-poll absence bar.
+- **A registered storage account's DoNotDelete lock blocks deleting its
+  SHARES, and prerequisite ORDER is the fix.** Azure Backup locks a storage
+  account while it is registered with a vault (AzureBackupContainerStorageAccount);
+  the lock's scope covers children, so deleting ANY file share in the account
+  -- protected or not -- fails `ScopeLocked` naming the account. Measured
+  live (session 056): the protected-file-share lane's teardown deleted the
+  share fixture BEFORE unregistering (destroy reverses deploy order, and the
+  registration was listed first in the kind's registry prerequisites) and
+  409-looped for 11 minutes. The fix is the prerequisite ORDER on
+  `AzureBackupProtectedFileShare` -- the share lists BEFORE the registration,
+  so teardown unregisters first (lock released), then deletes the share; the
+  reorder is commented in `cloud_resource_kind.proto` as load-bearing. The
+  general rule: when a prerequisite kind LOCKS another prerequisite's
+  resources while alive (registrations, guards, attachments), the locking
+  kind must list LAST among its siblings so it dies first.
 - **A workspace managed VNet (approved-outbound + provision-on-creation)
   is a new medium-slow AND fragile class.** Create of the workspace object
   is ~1 min; adding the managed VNet plus a private-endpoint outbound
