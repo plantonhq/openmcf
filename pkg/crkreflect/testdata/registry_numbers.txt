@@ -212,6 +212,7 @@ AwsRoute53ResolverEndpoint=1340
 AwsRoute53ResolverFirewall=1341
 AwsRoute53ResolverQueryLog=1342
 AwsCloudMapNamespace=1343
+AwsAppSyncApi=1350
 AwsLambdaLayer=1351
 AwsRdsProxy=1352
 AwsAuroraDsql=1353

@@ -15,3 +15,7 @@ Both modules compose the CA, activation, certificates, permission, and policy id
 ## Chart Wiring
 
 `certificate_authority_arn` → AwsMskCluster's `tls_certificate_authority_arns`, AwsCertManagerCert's issuing CA, or a subordinate AwsPrivateCa's `subordinate_activation.parent_ca_arn`; `revocation.crl.s3_bucket_name` → AwsS3Bucket `bucket_id`. Set `acm_renewal_permission` whenever ACM certificates are issued from this CA — without it their renewals fail silently at expiry.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -2152,3 +2152,96 @@ spec:
       notes: >-
         The CA's ARN (the policy attaches to the CA; `aws acm-pca
         get-policy --resource-arn <arn>`).
+    # --- AppSync -----------------------------------------------------------------
+    - terraform_type: aws_appsync_graphql_api
+      pulumi_type: aws:appsync/graphQLApi:GraphQLApi
+      id_format: "{api_id}"
+      # The schema applies via async StartSchemaCreation and the provider
+      # performs NO drift detection on it - an import carries whatever
+      # AWS returns, and out-of-band schema edits are invisible either
+      # way (upstream-documented).
+      config_only_attributes: [schema]
+      notes: >-
+        The bare GraphQL API id (`aws appsync list-graphql-apis` shows
+        apiId).
+    - terraform_type: aws_appsync_api
+      pulumi_type: aws:appsync/api:Api
+      id_format: "{api_id}"
+      notes: >-
+        The bare Events API id (`aws appsync list-apis` shows apiId).
+    - terraform_type: aws_appsync_datasource
+      pulumi_type: aws:appsync/dataSource:DataSource
+      id_format: "{api_id}-{datasource_name}"
+      notes: >-
+        Hyphen-joined API id and data source name; the parser splits on
+        the FIRST hyphen only, and data source names are hyphen-free by
+        AWS's own charset.
+    - terraform_type: aws_appsync_type
+      pulumi_type: aws:appsync/type:Type
+      id_format: "{api_id}:{type_format}:{type_name}"
+      notes: >-
+        Colon-joined API id, format (SDL/JSON), and the type's name as
+        AWS derives it from the definition (`aws appsync list-types
+        --api-id <id> --format SDL`).
+    - terraform_type: aws_appsync_function
+      pulumi_type: aws:appsync/function:Function
+      id_format: "{api_id}-{function_id}"
+      notes: >-
+        Hyphen-joined API id and the cloud-generated function id
+        (`aws appsync list-functions --api-id <id>` shows functionId).
+    - terraform_type: aws_appsync_resolver
+      pulumi_type: aws:appsync/resolver:Resolver
+      id_format: "{api_id}-{resolver_type}-{resolver_field}"
+      notes: >-
+        Hyphen-joined API id, type, and field; type and field names are
+        hyphen-free by AWS's GraphQL charset, so the three-way split is
+        unambiguous.
+    - terraform_type: aws_appsync_api_cache
+      pulumi_type: aws:appsync/apiCache:ApiCache
+      id_format: "{api_id}"
+      notes: >-
+        The API id - the cache is one-per-API (its AWS id IS the API
+        id).
+    - terraform_type: aws_appsync_api_key
+      pulumi_type: aws:appsync/apiKey:ApiKey
+      id_format: "{api_id}:{api_key_id}"
+      # AWS returns a key's secret only at creation; after an import the
+      # provider's key attribute holds the key ID, never the secret.
+      config_only_attributes: [key]
+      notes: >-
+        Colon-joined API id and key id (`aws appsync list-api-keys
+        --api-id <id>` shows id - the "da2-..." key id).
+    - terraform_type: aws_appsync_channel_namespace
+      pulumi_type: aws:appsync/channelNamespace:ChannelNamespace
+      id_format: "{api_id},{channel_namespace_name}"
+      notes: >-
+        Comma-joined Events API id and namespace name (`aws appsync
+        list-channel-namespaces --api-id <id>`).
+    - terraform_type: aws_appsync_domain_name
+      pulumi_type: aws:appsync/domainName:DomainName
+      id_format: "{custom_domain_name}"
+      notes: >-
+        The domain name itself (`aws appsync list-domain-names` shows
+        domainName).
+    - terraform_type: aws_appsync_domain_name_api_association
+      pulumi_type: aws:appsync/domainNameApiAssociation:DomainNameApiAssociation
+      id_format: "{custom_domain_name}"
+      notes: >-
+        The domain name - the association is 1:1 with the domain (its
+        AWS id IS the domain name).
+    - terraform_type: aws_appsync_source_api_association
+      pulumi_type: aws:appsync/sourceApiAssociation:SourceApiAssociation
+      id_format: "{api_id},{source_api_association_id}"
+      notes: >-
+        Comma-joined MERGED API id and association id, in CODE order -
+        the provider docs' prose reads them reversed, but InitFromID
+        assigns parts[0] to merged_api_id (`aws appsync
+        list-source-api-associations --api-id <merged-id>` shows
+        associationId).
+    - terraform_type: aws_wafv2_web_acl_association
+      pulumi_type: aws:wafv2/webAclAssociation:WebAclAssociation
+      id_format: "{web_acl_arn},{api_arn}"
+      notes: >-
+        Comma-joined web ACL ARN and protected-resource ARN (here the
+        GraphQL API's ARN) - `aws wafv2 list-web-acls --scope REGIONAL`
+        for the ACL, the API's arn output for the resource.

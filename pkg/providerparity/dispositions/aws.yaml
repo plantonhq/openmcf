@@ -191,42 +191,6 @@ resources:
   - resource: aws_appstream_user_stack_association
     disposition: deferred
     reason: "application-streaming vertical (AppStream); deferred pending demand"
-  - resource: aws_appsync_api
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_api_cache
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_api_key
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_channel_namespace
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_datasource
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_domain_name
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_domain_name_api_association
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_function
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_graphql_api
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_resolver
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_source_api_association
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
-  - resource: aws_appsync_type
-    disposition: model-planned
-    reason: "judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains)"
   - resource: aws_arcregionswitch_plan
     disposition: deferred
     reason: "Route 53 ARC region/zonal shift controls; deferred pending demand"

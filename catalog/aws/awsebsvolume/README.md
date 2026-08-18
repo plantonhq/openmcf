@@ -16,3 +16,7 @@ Both modules render the same arm selection and export the same outputs: `volume_
 ## Chart Wiring
 
 `instance_id` references an AwsEc2Instance output; `snapshot_id` references an AwsEbsSnapshot; `kms_key_id` references an AwsKmsKey. The `volume_id` output is what AwsEbsSnapshot's volume arm and other volumes' `copy_from` reference back.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

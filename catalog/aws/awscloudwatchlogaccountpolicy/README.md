@@ -12,3 +12,7 @@ One CloudWatch Logs account-level policy: a per-(name, type) policy object AWS a
 ## Both Engines
 
 Both modules render the single resource identically and export the same outputs: `policy_name` and `policy_type` (together, the import ID).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -317,6 +317,10 @@ Fields on other kinds that can point at this resource:
 | AwsApiGatewayAccountSettings | `spec.cloudwatchRoleArn` | `status.outputs.role_arn` |
 | AwsAppRunnerService | `spec.imageSource.accessRoleArn` | `status.outputs.role_arn` |
 | AwsAppRunnerService | `spec.instanceRoleArn` | `status.outputs.role_arn` |
+| AwsAppSyncApi | `spec.graphql.logConfig.cloudwatchLogsRoleArn` | `status.outputs.role_arn` |
+| AwsAppSyncApi | `spec.graphql.merged.executionRoleArn` | `status.outputs.role_arn` |
+| AwsAppSyncApi | `spec.events.logConfig.cloudwatchLogsRoleArn` | `status.outputs.role_arn` |
+| AwsAppSyncApi | `spec.datasources[].serviceRoleArn` | `status.outputs.role_arn` |
 | AwsAthenaWorkgroup | `spec.executionRole` | `status.outputs.role_arn` |
 | AwsAutoScalingGroup | `spec.lifecycleHooks[].roleArn` | `status.outputs.role_arn` |
 | AwsBackupPlan | `spec.scanSetting.scannerRoleArn` | `status.outputs.role_arn` |

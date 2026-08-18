@@ -15,3 +15,7 @@ Both modules publish the version and attach the grants identically and export th
 ## Chart Wiring
 
 `code.bucket` → AwsS3Bucket `bucket_id`; `layer_version_arn` → AwsLambda's `layers` list. Publish the layer and the functions that attach it in one chart — the version ARN wires by reference.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

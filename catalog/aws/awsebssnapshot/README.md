@@ -16,3 +16,7 @@ Both modules render the same arm selection with the FSR and share satellites and
 ## Chart Wiring
 
 `volume_id` references an AwsEbsVolume; `source_snapshot_id` references another AwsEbsSnapshot; `kms_key_id` references an AwsKmsKey. The `snapshot_id` output is what AwsEbsVolume restores and copies reference back.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

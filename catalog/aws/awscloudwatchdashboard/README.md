@@ -16,3 +16,7 @@ The Terraform/OpenTofu and Pulumi modules render the same single resource and ex
 ## Chart Wiring
 
 Dashboards chart metrics by namespace/name, not by resource reference — widget properties carry the metric coordinates of whatever the chart deploys (Lambda names, ALB dimensions, custom namespaces).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

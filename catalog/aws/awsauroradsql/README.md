@@ -15,3 +15,7 @@ Both modules render the cluster and its pairing identically and export the same 
 ## Chart Wiring
 
 `kms_encryption_key` → AwsKmsKey `key_arn`; `multi_region.peer_cluster_arns` → another AwsAuroraDsql's `cluster_arn`. Applications take the `endpoint` output as their PostgreSQL host and sign in with IAM auth tokens — DSQL has no native passwords.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

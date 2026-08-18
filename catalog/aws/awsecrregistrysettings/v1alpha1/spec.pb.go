@@ -835,7 +835,7 @@ const file_catalog_aws_awsecrregistrysettings_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1aupstream_repository_prefix\x18\x03 \x01(\tBU\xbaHR\xd8\x01\x01rM\x18\x1e2I^((?:[a-z0-9]+(?:[._-][a-z0-9]+)*/)*[a-z0-9]+(?:[._-][a-z0-9]+)*/?|ROOT)$R\x18upstreamRepositoryPrefix\x12}\n" +
 	"\x0ecredential_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x9c\t\x92\xd4a\x19status.outputs.secret_arnR\rcredentialArn\x12|\n" +
 	"\x0fcustom_role_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\rcustomRoleArn:\xf9\x01\xbaH\xf5\x01\x1a\xf2\x01\n" +
-	"%cache_rule.credential_xor_custom_role\x12\x8e\x01set at most one of credential_arn (external upstreams - Docker Hub, GitHub, Kubernetes, ...) and custom_role_arn (cross-account ECR upstreams)\x1a8!(has(this.credential_arn) && has(this.custom_role_arn))\"\xbb\x0f\n" +
+	"%cache_rule.credential_xor_custom_role\x12\x8e\x01set at most one of credential_arn (external upstreams - Docker Hub, GitHub, Kubernetes, ...) and custom_role_arn (cross-account ECR upstreams)\x1a8!(has(this.credential_arn) && has(this.custom_role_arn))\"\xc6\x0f\n" +
 	" AwsEcrRepositoryCreationTemplate\x12k\n" +
 	"\x06prefix\x18\x01 \x01(\tBS\xbaHPrN\x10\x02\x18\x80\x022G^(ROOT|(?:[a-z0-9]+(?:[._-][a-z0-9]+)*/)*[a-z0-9]+(?:[._-][a-z0-9]+)*)$R\x06prefix\x12-\n" +
 	"\vdescription\x18\x02 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\x18\xff\x01R\vdescription\x12`\n" +
@@ -855,9 +855,9 @@ const file_catalog_aws_awsecrregistrysettings_v1alpha1_spec_proto_rawDesc = "" +
 	" \x03(\v2c.dev.planton.aws.awsecrregistrysettings.v1alpha1.AwsEcrRepositoryCreationTemplate.ResourceTagsEntryB\x16\xbaH\x13\x9a\x01\x10\"\ar\x05\x10\x01\x18\x80\x01*\x05r\x03\x18\x80\x02R\fresourceTags\x1a?\n" +
 	"\x11ResourceTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x97\x04\xbaH\x93\x04\x1a\xc3\x02\n" +
-	"7template.exclusion_filters_require_exclusion_mutability\x12wimage_tag_mutability_exclusion_filters requires image_tag_mutability IMMUTABLE_WITH_EXCLUSION or MUTABLE_WITH_EXCLUSION\x1a\x8e\x01this.image_tag_mutability_exclusion_filters.size() == 0 || this.image_tag_mutability in ['IMMUTABLE_WITH_EXCLUSION', 'MUTABLE_WITH_EXCLUSION']\x1a\xca\x01\n" +
-	",template.exclusion_filters_max_two_wildcards\x12Lan image_tag_mutability exclusion filter can contain at most 2 wildcards (*)\x1aLthis.image_tag_mutability_exclusion_filters.all(f, f.split('*').size() <= 3)\"\xfc\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xa2\x04\xbaH\x9e\x04\x1a\xc3\x02\n" +
+	"7template.exclusion_filters_require_exclusion_mutability\x12wimage_tag_mutability_exclusion_filters requires image_tag_mutability IMMUTABLE_WITH_EXCLUSION or MUTABLE_WITH_EXCLUSION\x1a\x8e\x01this.image_tag_mutability_exclusion_filters.size() == 0 || this.image_tag_mutability in ['IMMUTABLE_WITH_EXCLUSION', 'MUTABLE_WITH_EXCLUSION']\x1a\xd5\x01\n" +
+	",template.exclusion_filters_max_two_wildcards\x12Lan image_tag_mutability exclusion filter can contain at most 2 wildcards (*)\x1aWthis.image_tag_mutability_exclusion_filters.all(f, f.matches('^[^*]*(\\\\*[^*]*){0,2}$'))\"\xfc\x02\n" +
 	"\x18AwsEcrTemplateEncryption\x123\n" +
 	"\x04type\x18\x01 \x01(\tB\x1f\xbaH\x1c\xd8\x01\x01r\x17R\x06AES256R\x03KMSR\bKMS_DSSER\x04type\x12l\n" +
 	"\akms_key\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x06kmsKey:\xbc\x01\xbaH\xb8\x01\x1a\xb5\x01\n" +

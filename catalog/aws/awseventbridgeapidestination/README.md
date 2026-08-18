@@ -16,3 +16,7 @@ Both modules render the two arms identically (the connection's 20-minute auth st
 ## Chart Wiring
 
 `destination.connection_arn` → another AwsEventBridgeApiDestination's `connection_arn` (the shared-connection topology); `kms_key_identifier` → AwsKmsKey `key_arn`. The `api_destination_arn` output is what AwsEventBridgeRule targets, pipes, and schedules invoke.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

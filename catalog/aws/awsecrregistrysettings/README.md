@@ -15,3 +15,7 @@ Both modules render every arm identically and export the same outputs: `registry
 ## Chart Wiring
 
 `pull_through_cache_rules[].credential_arn` → AwsSecretsManagerSecret `secret_arn`; `custom_role_arn` fields → AwsIamRole `role_arn`; template `encryption.kms_key` → AwsKmsKey `key_arn`; `pull_time_update_exclusions` → AwsIamRole `role_arn`. Pair with AwsEcrRepo kinds — this kind sets the registry posture their images live under.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

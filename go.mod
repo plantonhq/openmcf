@@ -20,6 +20,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/apigateway v1.42.5
 	github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.36.0
 	github.com/aws/aws-sdk-go-v2/service/apprunner v1.41.0
+	github.com/aws/aws-sdk-go-v2/service/appsync v1.56.6
 	github.com/aws/aws-sdk-go-v2/service/athena v1.59.0
 	github.com/aws/aws-sdk-go-v2/service/autoscaling v1.68.1
 	github.com/aws/aws-sdk-go-v2/service/backup v1.60.1

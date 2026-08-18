@@ -16,3 +16,7 @@ Both modules render the scraper and its logging configuration identically and ex
 ## Chart Wiring
 
 `source_eks.cluster_arn` → AwsEksCluster; subnets/security groups → AwsSubnet/AwsSecurityGroup; `amp_workspace_arn` → AwsManagedPrometheus; `role_configuration` → AwsIamRole pairs for cross-account scraping.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

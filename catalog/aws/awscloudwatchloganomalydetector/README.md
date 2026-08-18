@@ -15,3 +15,7 @@ Both modules render the single resource identically and export the same output: 
 ## Chart Wiring
 
 `log_group_arns` → AwsCloudwatchLogGroup `log_group_arn` outputs; `kms_key_id` → AwsKmsKey `key_arn`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

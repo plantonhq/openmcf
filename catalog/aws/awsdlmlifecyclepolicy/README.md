@@ -16,3 +16,7 @@ Both modules derive the mode arguments identically and export the same outputs: 
 ## Chart Wiring
 
 `execution_role_arn` references an AwsIamRole (DLM's trust is `dlm.amazonaws.com`). The policy pairs naturally with AwsEbsVolume in charts: tag the volumes, target the tags — nothing else to wire.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

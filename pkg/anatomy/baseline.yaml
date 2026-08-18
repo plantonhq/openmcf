@@ -66,6 +66,9 @@ violations:
   - catalog/aws/awsapprunnervpcconnector/iac:missing-permissions
   - catalog/aws/awsapprunnervpcconnector:missing-control-profile
   - catalog/aws/awsapprunnervpcconnector:missing-cost-profile
+  - catalog/aws/awsappsyncapi/iac:missing-permissions
+  - catalog/aws/awsappsyncapi:missing-control-profile
+  - catalog/aws/awsappsyncapi:missing-cost-profile
   - catalog/aws/awsathenaworkgroup/iac:missing-permissions
   - catalog/aws/awsathenaworkgroup:missing-control-profile
   - catalog/aws/awsathenaworkgroup:missing-cost-profile

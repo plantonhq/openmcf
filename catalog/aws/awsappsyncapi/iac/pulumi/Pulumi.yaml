@@ -1,0 +1,3 @@
+name: awsappsyncapi
+runtime: go
+description: Pulumi module to manage an AppSync API (GraphQL or Events) with data sources, resolvers, functions, caching, API keys, channel namespaces, and a custom domain

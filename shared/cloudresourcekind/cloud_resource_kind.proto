@@ -2072,12 +2072,26 @@ enum CloudResourceKind {
     prerequisites: [AwsVpc]
   }];
 
+  // An AppSync API - AWS's managed API service, as a GraphQL API
+  // (SDL schema, resolvers over data sources, caching, the MERGED
+  // federation variant) XOR an Events API (real-time pub/sub over
+  // channel namespaces) - with its data sources, resolvers,
+  // functions, types, API keys, and custom domain managed in-line.
+  // Every backend reference (data source targets, roles, the
+  // certificate) is optional, so no registry prerequisite - lanes
+  // exercise the fixture-free arms.
+  AwsAppSyncApi = 1350 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsappsy"
+  }];
+
   // A Lambda layer version - a shared code archive (libraries, custom
   // runtimes) functions attach by ARN - with its cross-account and
   // organization share grants managed in-line. The archive lives in
   // S3 (an optional reference, so no registry prerequisite - lanes
   // compose their own bucket fixture). 1351 sits in the app & data
-  // services sub-band (1350-1359; 1350 is reserved for AwsAppSyncApi).
+  // services sub-band (1350-1359; 1350 opens it with AwsAppSyncApi).
   AwsLambdaLayer = 1351 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"

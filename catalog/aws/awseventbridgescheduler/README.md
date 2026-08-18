@@ -16,3 +16,7 @@ Both modules render the schedule (and optional group) identically and export the
 ## Chart Wiring
 
 `target.role_arn` → AwsIamRole `role_arn`; `target.dead_letter_queue_arn` → AwsSqsQueue `queue_arn`; ECS parameters → AwsEcsTaskDefinition `task_definition_arn`, AwsSubnet `subnet_id`, AwsSecurityGroup `security_group_id`; `kms_key_arn` → AwsKmsKey `key_arn`. The target ARN wires to any invocable kind with an explicit `kind:`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

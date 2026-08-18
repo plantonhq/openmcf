@@ -41,6 +41,7 @@ go_library(
         "//catalog/aws/awsapprunnerobservabilityconfiguration/v1alpha1",
         "//catalog/aws/awsapprunnerservice/v1alpha1",
         "//catalog/aws/awsapprunnervpcconnector/v1alpha1",
+        "//catalog/aws/awsappsyncapi/v1alpha1",
         "//catalog/aws/awsathenaworkgroup/v1alpha1",
         "//catalog/aws/awsauroradsql/v1alpha1",
         "//catalog/aws/awsautoscalinggroup/v1alpha1",

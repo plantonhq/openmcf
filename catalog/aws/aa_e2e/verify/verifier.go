@@ -137,6 +137,7 @@ var verifiers = map[string]Verifier{
 	"awscloudmapnamespace":            &cloudMapNamespaceVerifier{},
 	"awslambdalayer":                  &lambdaLayerVerifier{},
 	"awsrdsproxy":                     &rdsProxyVerifier{},
+	"awsappsyncapi":                   &appSyncApiVerifier{},
 	"awsauroradsql":                   &dsqlClusterVerifier{},
 	"awsecrregistrysettings":          &ecrRegistrySettingsVerifier{},
 	"awsprivateca":                    &privateCaVerifier{},

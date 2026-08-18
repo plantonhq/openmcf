@@ -16,3 +16,7 @@ Both modules render the group, lists, rules, and associations identically and ex
 ## Chart Wiring
 
 `vpc_associations.vpc_id` → AwsVpc `vpc_id`. Rules reference owned lists by name (uniqueness and existence are CELs) or any external list by literal ID.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

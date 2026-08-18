@@ -15,3 +15,7 @@ Both modules render the proxy, pool, endpoints, and target identically and expor
 ## Chart Wiring
 
 `role_arn` → AwsIamRole `role_arn`; `auth[].secret_arn` → AwsSecretsManagerSecret `secret_arn`; `vpc_subnet_ids` → AwsSubnet `subnet_id`; `vpc_security_group_ids` → AwsSecurityGroup `security_group_id`; `target.db_instance_identifier` → AwsRdsInstance `instance_identifier` (or `target.db_cluster_identifier` → AwsRdsCluster `cluster_identifier`). Applications take the `endpoint` output as their database host.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

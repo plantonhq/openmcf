@@ -16,3 +16,7 @@ Both modules render the single resource with in-line dynamic rule blocks identic
 ## Chart Wiring
 
 `vpc_id` → AwsVpc `vpc_id`; `subnet_ids` → AwsSubnet `subnet_id` outputs. Pair with AwsSecurityGroup for the stateful instance-level half of the story.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

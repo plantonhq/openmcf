@@ -15,3 +15,7 @@ Both modules render whichever namespace arm the spec's type selects, plus servic
 ## Chart Wiring
 
 `vpc_id` → AwsVpc `vpc_id`; `instances.cname` → any endpoint output (an RDS address, an internal hostname); `instances.alias_dns_name` → AwsAlb `load_balancer_dns_name`; `instances.ec2_instance_id` → AwsEc2Instance `instance_id`. The `service_arns` map is what ECS service registries consume.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

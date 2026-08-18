@@ -16,3 +16,7 @@ Both modules render the single resource with in-line entries identically and exp
 ## Chart Wiring
 
 The `prefix_list_id` output is what AwsSecurityGroup rules, AwsNetworkAcl consumers, and route-table surfaces reference. Standalone by design — the list itself references nothing.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -1,0 +1,78 @@
+# Canonical AwsAppSyncApi example (hack/dev manifest and refgen Example
+# source): a GraphQL API with API_KEY primary auth plus an AWS_IAM
+# additional provider, an HTTP data source and a local NONE data
+# source, a pipeline function, a pipeline resolver and a unit
+# resolver (both APPSYNC_JS), and one API key.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsAppSyncApi
+metadata:
+  name: orders-api
+  id: orders-api
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  graphql:
+    apiName: orders_api
+    auth:
+      type: API_KEY
+    additionalAuthProviders:
+      - type: AWS_IAM
+    schema: |
+      type Order {
+        id: ID!
+        total: Float
+      }
+      type Query {
+        getOrder(id: ID!): Order
+      }
+      type Mutation {
+        putOrder(id: ID!, total: Float): Order
+      }
+      schema {
+        query: Query
+        mutation: Mutation
+      }
+    queryDepthLimit: "10"
+    xrayEnabled: true
+    functions:
+      - name: fetch_order
+        dataSourceName: orders_backend
+        code: |
+          export function request(ctx) {
+            return { method: "GET", resourcePath: `/orders/${ctx.args.id}` };
+          }
+          export function response(ctx) {
+            return JSON.parse(ctx.result.body);
+          }
+    resolvers:
+      - type: Query
+        field: getOrder
+        pipelineFunctions:
+          - fetch_order
+        code: |
+          export function request(ctx) { return {}; }
+          export function response(ctx) { return ctx.prev.result; }
+      - type: Mutation
+        field: putOrder
+        dataSourceName: local_passthrough
+        code: |
+          export function request(ctx) {
+            return { payload: ctx.args };
+          }
+          export function response(ctx) {
+            return ctx.result;
+          }
+  datasources:
+    - name: orders_backend
+      type: HTTP
+      description: The orders service's HTTPS endpoint
+      http:
+        endpoint: https://orders.internal.example.com
+    - name: local_passthrough
+      type: NONE
+      description: Local resolver logic with no backend
+  apiKeys:
+    - name: web_client
+      description: The web client's key
+      expires: "2027-02-01T00:00:00Z"

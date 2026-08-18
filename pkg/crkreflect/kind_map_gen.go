@@ -23,6 +23,7 @@ import (
 	awsapprunnerobservabilityconfigurationv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsapprunnerobservabilityconfiguration/v1alpha1"
 	awsapprunnerservicev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsapprunnerservice/v1alpha1"
 	awsapprunnervpcconnectorv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsapprunnervpcconnector/v1alpha1"
+	awsappsyncapiv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsappsyncapi/v1alpha1"
 	awsathenaworkgroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsathenaworkgroup/v1alpha1"
 	awsauroradsqlv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsauroradsql/v1alpha1"
 	awsautoscalinggroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsautoscalinggroup/v1alpha1"
@@ -706,6 +707,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsAppRunnerObservabilityConfiguration: &awsapprunnerobservabilityconfigurationv1alpha1.AwsAppRunnerObservabilityConfiguration{},
 	cloudresourcekind.CloudResourceKind_AwsAppRunnerService:                    &awsapprunnerservicev1alpha1.AwsAppRunnerService{},
 	cloudresourcekind.CloudResourceKind_AwsAppRunnerVpcConnector:               &awsapprunnervpcconnectorv1alpha1.AwsAppRunnerVpcConnector{},
+	cloudresourcekind.CloudResourceKind_AwsAppSyncApi:                          &awsappsyncapiv1alpha1.AwsAppSyncApi{},
 	cloudresourcekind.CloudResourceKind_AwsAthenaWorkgroup:                     &awsathenaworkgroupv1alpha1.AwsAthenaWorkgroup{},
 	cloudresourcekind.CloudResourceKind_AwsAuroraDsql:                          &awsauroradsqlv1alpha1.AwsAuroraDsql{},
 	cloudresourcekind.CloudResourceKind_AwsAutoScalingGroup:                    &awsautoscalinggroupv1alpha1.AwsAutoScalingGroup{},

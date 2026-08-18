@@ -1761,6 +1761,14 @@ func TestAwsRdsProxy_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsrdsproxy", "terraform")
 }
 
+func TestAwsAppSyncApi_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsappsyncapi", "pulumi")
+}
+
+func TestAwsAppSyncApi_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsappsyncapi", "terraform")
+}
+
 func TestAwsAuroraDsql_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "awsauroradsql", "pulumi")
 }

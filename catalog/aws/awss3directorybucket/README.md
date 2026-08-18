@@ -15,3 +15,7 @@ Both modules derive the identical bucket name and export the same outputs: `buck
 ## Chart Wiring
 
 Co-locate by wiring the same zone into the compute (AwsEc2Instance via its subnet's AZ, EKS node groups) and this bucket. Standalone otherwise — Express buckets authenticate via the S3 Express session API against the bucket name.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -16,3 +16,7 @@ Both modules key namespaces by name and tables by `namespace//table`, and export
 ## Chart Wiring
 
 `kms_key_arn` references an AwsKmsKey; replication roles reference AwsIamRole. The `table_bucket_arn` output is what catalog integrations (Athena, Glue, EMR via the analytics-catalog integration) and cross-account policies reference; per-table ARNs come from the `table_arns` map.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

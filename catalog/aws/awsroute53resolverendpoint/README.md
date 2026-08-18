@@ -15,3 +15,7 @@ Both modules render the endpoint, its rules, and their associations identically 
 ## Chart Wiring
 
 `ip_addresses.subnet_id` → AwsSubnet `subnet_id`; `security_group_ids` → AwsSecurityGroup `security_group_id`; `rules.vpc_ids` → AwsVpc `vpc_id`. The inbound endpoint's `ip_addresses` output is what on-prem resolvers target.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

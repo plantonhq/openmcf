@@ -15,3 +15,7 @@ Both modules render whichever arm the spec configured and export the same output
 ## Chart Wiring
 
 `request.vpc_id` / `request.peer_vpc_id` → AwsVpc `vpc_id`; `accept.vpc_peering_connection_id` → another AwsVpcPeering's `peering_connection_id`. After activation, each side adds routes toward the peer CIDR (AwsVpc route surfaces) — peering carries no routes itself.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

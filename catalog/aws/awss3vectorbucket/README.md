@@ -16,3 +16,7 @@ Both modules key indexes by name and export the same outputs: `vector_bucket_arn
 ## Chart Wiring
 
 `kms_key_arn` references an AwsKmsKey. The `index_arns` map is what a Bedrock knowledge base's s3_vectors arm consumes; the `vector_bucket_arn` is what policies and cross-account grants reference.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

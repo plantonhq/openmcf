@@ -124,13 +124,15 @@ type AwsCertManagerCertSpec struct {
 	// material before expiry (updates re-import in place, keeping the
 	// same ARN so consumers are undisturbed).
 	Imported *AwsCertManagerCertImported `protobuf:"bytes,10,opt,name=imported,proto3" json:"imported,omitempty"`
-	// The ARN of an AWS Private Certificate Authority (ACM-PCA).
-	// Setting this together with primary_domain_name selects the
-	// private mode: the CA issues the certificate directly, no public
-	// validation happens, and validation_method must stay unset.
-	// Private certificates are for internal TLS (service meshes,
-	// internal ALBs) where clients trust your private root.
-	CertificateAuthorityArn string `protobuf:"bytes,11,opt,name=certificate_authority_arn,json=certificateAuthorityArn,proto3" json:"certificate_authority_arn,omitempty"`
+	// The AWS Private Certificate Authority (ACM-PCA) that issues this
+	// certificate. Setting this together with primary_domain_name
+	// selects the private mode: the CA issues the certificate directly,
+	// no public validation happens, and validation_method must stay
+	// unset. Private certificates are for internal TLS (service meshes,
+	// internal ALBs) where clients trust your private root. Can
+	// reference an AwsPrivateCa resource or pass a literal
+	// certificate-authority ARN.
+	CertificateAuthorityArn *v1.StringValueOrRef `protobuf:"bytes,11,opt,name=certificate_authority_arn,json=certificateAuthorityArn,proto3" json:"certificate_authority_arn,omitempty"`
 	// How long before expiry ACM starts the managed renewal of this
 	// PRIVATE certificate -- either an RFC 3339 duration ("P90D",
 	// "P3M") or a Go-style duration ("2160h"). Durations under 60 days
@@ -243,11 +245,11 @@ func (x *AwsCertManagerCertSpec) GetImported() *AwsCertManagerCertImported {
 	return nil
 }
 
-func (x *AwsCertManagerCertSpec) GetCertificateAuthorityArn() string {
+func (x *AwsCertManagerCertSpec) GetCertificateAuthorityArn() *v1.StringValueOrRef {
 	if x != nil {
 		return x.CertificateAuthorityArn
 	}
-	return ""
+	return nil
 }
 
 func (x *AwsCertManagerCertSpec) GetEarlyRenewalDuration() string {
@@ -448,7 +450,7 @@ var File_catalog_aws_awscertmanagercert_v1alpha1_spec_proto protoreflect.FileDes
 
 const file_catalog_aws_awscertmanagercert_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"2catalog/aws/awscertmanagercert/v1alpha1/spec.proto\x12+dev.planton.aws.awscertmanagercert.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xd6\x17\n" +
+	"2catalog/aws/awscertmanagercert/v1alpha1/spec.proto\x12+dev.planton.aws.awscertmanagercert.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xba\x1a\n" +
 	"\x16AwsCertManagerCertSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12s\n" +
 	"\x13primary_domain_name\x18\x02 \x01(\tBC\xbaH@\xd8\x01\x01r;29^(?:\\*\\.[A-Za-z0-9\\-\\.]+|[A-Za-z0-9\\-\\.]+\\.[A-Za-z]{2,})$R\x11primaryDomainName\x12}\n" +
@@ -460,14 +462,16 @@ const file_catalog_aws_awscertmanagercert_v1alpha1_spec_proto_rawDesc = "" +
 	"\x13wait_for_validation\x18\b \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x11waitForValidation\x88\x01\x01\x12`\n" +
 	"\aoptions\x18\t \x01(\v2F.dev.planton.aws.awscertmanagercert.v1alpha1.AwsCertManagerCertOptionsR\aoptions\x12c\n" +
 	"\bimported\x18\n" +
-	" \x01(\v2G.dev.planton.aws.awscertmanagercert.v1alpha1.AwsCertManagerCertImportedR\bimported\x12\x8f\x01\n" +
-	"\x19certificate_authority_arn\x18\v \x01(\tBS\xbaHP\xd8\x01\x01rK2I^arn:aws[a-zA-Z-]*:acm-pca:[a-z0-9-]+:[0-9]{12}:certificate-authority/.+$R\x17certificateAuthorityArn\x12\xc2\x01\n" +
-	"\x16early_renewal_duration\x18\f \x01(\tB\x8b\x01\xbaH\x87\x01\xd8\x01\x01r\x81\x012\x7f^(P([0-9]+Y)?([0-9]+M)?([0-9]+W)?([0-9]+D)?(T([0-9]+H)?([0-9]+M)?([0-9]+(\\.[0-9]+)?S)?)?|([0-9]+(\\.[0-9]+)?(ns|us|ms|s|m|h))+)$R\x14earlyRenewalDuration:\xe1\f\xbaH\xdd\f\x1a\xd0\x01\n" +
+	" \x01(\v2G.dev.planton.aws.awscertmanagercert.v1alpha1.AwsCertManagerCertImportedR\bimported\x12\xa1\x01\n" +
+	"\x19certificate_authority_arn\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\x88\xd4a\xcb\n" +
+	"\x92\xd4a(status.outputs.certificate_authority_arnR\x17certificateAuthorityArn\x12\xc2\x01\n" +
+	"\x16early_renewal_duration\x18\f \x01(\tB\x8b\x01\xbaH\x87\x01\xd8\x01\x01r\x81\x012\x7f^(P([0-9]+Y)?([0-9]+M)?([0-9]+W)?([0-9]+D)?(T([0-9]+H)?([0-9]+M)?([0-9]+(\\.[0-9]+)?S)?)?|([0-9]+(\\.[0-9]+)?(ns|us|ms|s|m|h))+)$R\x14earlyRenewalDuration:\xb3\x0f\xbaH\xaf\x0f\x1a\xd0\x01\n" +
 	"\x19exactly_one_creation_mode\x12{set exactly one of primary_domain_name (requested or private certificate) or imported (bring-your-own certificate material)\x1a6(this.primary_domain_name != '') != has(this.imported)\x1a\xa6\x04\n" +
-	"!imported_excludes_issuance_fields\x12\xf7\x01imported certificates derive their domains, algorithm, and options from the certificate material -- remove alternate_domain_names, validation_method, validation_options, key_algorithm, options, certificate_authority_arn, and route53_hosted_zone_id\x1a\x86\x02!has(this.imported) || (this.alternate_domain_names.size() == 0 && this.validation_method == '' && this.validation_options.size() == 0 && this.key_algorithm == '' && !has(this.options) && this.certificate_authority_arn == '' && !has(this.route53_hosted_zone_id))\x1a\xed\x02\n" +
-	"\x1eprivate_ca_excludes_validation\x12\xb5\x01private (ACM-PCA) certificates are issued without public validation -- remove validation_method, validation_options, and route53_hosted_zone_id when certificate_authority_arn is set\x1a\x92\x01this.certificate_authority_arn == '' || (this.validation_method == '' && this.validation_options.size() == 0 && !has(this.route53_hosted_zone_id))\x1a\x83\x02\n" +
-	"$route53_zone_requires_dns_validation\x12uroute53_hosted_zone_id automates DNS validation records -- it cannot be combined with validation_method EMAIL or HTTP\x1ad!has(this.route53_hosted_zone_id) || this.validation_method == '' || this.validation_method == 'DNS'\x1a\xe8\x01\n" +
-	"!early_renewal_requires_private_ca\x12xearly_renewal_duration drives managed renewal of private (ACM-PCA) certificates -- it requires certificate_authority_arn\x1aIthis.early_renewal_duration == '' || this.certificate_authority_arn != ''B\x16\n" +
+	"!imported_excludes_issuance_fields\x12\xf7\x01imported certificates derive their domains, algorithm, and options from the certificate material -- remove alternate_domain_names, validation_method, validation_options, key_algorithm, options, certificate_authority_arn, and route53_hosted_zone_id\x1a\x86\x02!has(this.imported) || (this.alternate_domain_names.size() == 0 && this.validation_method == '' && this.validation_options.size() == 0 && this.key_algorithm == '' && !has(this.options) && !has(this.certificate_authority_arn) && !has(this.route53_hosted_zone_id))\x1a\xed\x02\n" +
+	"\x1eprivate_ca_excludes_validation\x12\xb5\x01private (ACM-PCA) certificates are issued without public validation -- remove validation_method, validation_options, and route53_hosted_zone_id when certificate_authority_arn is set\x1a\x92\x01!has(this.certificate_authority_arn) || (this.validation_method == '' && this.validation_options.size() == 0 && !has(this.route53_hosted_zone_id))\x1a\x83\x02\n" +
+	"$route53_zone_requires_dns_validation\x12uroute53_hosted_zone_id automates DNS validation records -- it cannot be combined with validation_method EMAIL or HTTP\x1ad!has(this.route53_hosted_zone_id) || this.validation_method == '' || this.validation_method == 'DNS'\x1a\xe7\x01\n" +
+	"!early_renewal_requires_private_ca\x12xearly_renewal_duration drives managed renewal of private (ACM-PCA) certificates -- it requires certificate_authority_arn\x1aHthis.early_renewal_duration == '' || has(this.certificate_authority_arn)\x1a\xd0\x02\n" +
+	" certificate_authority_arn_format\x12\x81\x01certificate_authority_arn must be an ACM-PCA certificate-authority ARN (arn:aws:acm-pca:region:account:certificate-authority/...)\x1a\xa7\x01!has(this.certificate_authority_arn.value) || this.certificate_authority_arn.value.matches('^arn:aws[a-zA-Z-]*:acm-pca:[a-z0-9-]+:[0-9]{12}:certificate-authority/.+$')B\x16\n" +
 	"\x14_wait_for_validation\"\x84\x01\n" +
 	"\"AwsCertManagerCertValidationOption\x12(\n" +
 	"\vdomain_name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\n" +
@@ -509,11 +513,12 @@ var file_catalog_aws_awscertmanagercert_v1alpha1_spec_proto_depIdxs = []int32{
 	4, // 1: dev.planton.aws.awscertmanagercert.v1alpha1.AwsCertManagerCertSpec.route53_hosted_zone_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	2, // 2: dev.planton.aws.awscertmanagercert.v1alpha1.AwsCertManagerCertSpec.options:type_name -> dev.planton.aws.awscertmanagercert.v1alpha1.AwsCertManagerCertOptions
 	3, // 3: dev.planton.aws.awscertmanagercert.v1alpha1.AwsCertManagerCertSpec.imported:type_name -> dev.planton.aws.awscertmanagercert.v1alpha1.AwsCertManagerCertImported
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	4, // 4: dev.planton.aws.awscertmanagercert.v1alpha1.AwsCertManagerCertSpec.certificate_authority_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awscertmanagercert_v1alpha1_spec_proto_init() }

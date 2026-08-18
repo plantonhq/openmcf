@@ -16,3 +16,7 @@ Both modules render the single resource identically and export the same outputs:
 ## Chart Wiring
 
 `resource_arn` → AwsCloudwatchLogGroup `log_group_arn`; the document's Resource entries typically reference the log groups the granted service writes to.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

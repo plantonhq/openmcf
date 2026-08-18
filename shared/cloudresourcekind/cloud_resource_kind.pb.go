@@ -797,12 +797,21 @@ const (
 	// prerequisite because the private-DNS arm binds its hosted zone to
 	// a referenced VPC.
 	CloudResourceKind_AwsCloudMapNamespace CloudResourceKind = 1343
+	// An AppSync API - AWS's managed API service, as a GraphQL API
+	// (SDL schema, resolvers over data sources, caching, the MERGED
+	// federation variant) XOR an Events API (real-time pub/sub over
+	// channel namespaces) - with its data sources, resolvers,
+	// functions, types, API keys, and custom domain managed in-line.
+	// Every backend reference (data source targets, roles, the
+	// certificate) is optional, so no registry prerequisite - lanes
+	// exercise the fixture-free arms.
+	CloudResourceKind_AwsAppSyncApi CloudResourceKind = 1350
 	// A Lambda layer version - a shared code archive (libraries, custom
 	// runtimes) functions attach by ARN - with its cross-account and
 	// organization share grants managed in-line. The archive lives in
 	// S3 (an optional reference, so no registry prerequisite - lanes
 	// compose their own bucket fixture). 1351 sits in the app & data
-	// services sub-band (1350-1359; 1350 is reserved for AwsAppSyncApi).
+	// services sub-band (1350-1359; 1350 opens it with AwsAppSyncApi).
 	CloudResourceKind_AwsLambdaLayer CloudResourceKind = 1351
 	// An RDS Proxy - the managed connection pool between
 	// connection-hungry applications and a database - with its
@@ -2292,6 +2301,7 @@ var (
 		1341: "AwsRoute53ResolverFirewall",
 		1342: "AwsRoute53ResolverQueryLog",
 		1343: "AwsCloudMapNamespace",
+		1350: "AwsAppSyncApi",
 		1351: "AwsLambdaLayer",
 		1352: "AwsRdsProxy",
 		1353: "AwsAuroraDsql",
@@ -2957,6 +2967,7 @@ var (
 		"AwsRoute53ResolverFirewall":                     1341,
 		"AwsRoute53ResolverQueryLog":                     1342,
 		"AwsCloudMapNamespace":                           1343,
+		"AwsAppSyncApi":                                  1350,
 		"AwsLambdaLayer":                                 1351,
 		"AwsRdsProxy":                                    1352,
 		"AwsAuroraDsql":                                  1353,
@@ -3799,7 +3810,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x97\xb0\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*ǰ\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4039,7 +4050,9 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1aAwsRoute53ResolverQueryLog\x10\xbe\n" +
 	"\x1a\x1f\xa2\xf7\x04\x1b\b\f\x12\bv1alpha1\"\tawsr53rql:\x02\xf8\a\x128\n" +
 	"\x14AwsCloudMapNamespace\x10\xbf\n" +
-	"\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawscmns:\x02\xf8\a\x12/\n" +
+	"\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawscmns:\x02\xf8\a\x12.\n" +
+	"\rAwsAppSyncApi\x10\xc6\n" +
+	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsappsy\x12/\n" +
 	"\x0eAwsLambdaLayer\x10\xc7\n" +
 	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawslayer\x121\n" +
 	"\vAwsRdsProxy\x10\xc8\n" +

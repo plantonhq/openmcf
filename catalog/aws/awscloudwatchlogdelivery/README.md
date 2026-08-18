@@ -15,3 +15,7 @@ Both modules render the same six-resource surface and export the same outputs: `
 ## Chart Wiring
 
 The source's `resource_arn` takes any vended-logs producer's ARN output (a Bedrock knowledge base, a CloudFront distribution, ...); destination targets reference AwsS3Bucket/AwsCloudwatchLogGroup/AwsKinesisFirehose ARNs; the cross-account arm wires AwsIamRole + AwsKinesisStream.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

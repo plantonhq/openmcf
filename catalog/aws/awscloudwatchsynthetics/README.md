@@ -16,3 +16,7 @@ Both modules render the canary, the owned groups (name-keyed), and the joins ide
 ## Chart Wiring
 
 `execution_role_arn` → AwsIamRole, `artifact_bucket` + `code.s3_bucket` → AwsS3Bucket, `vpc_config` subnets/security groups → AwsSubnet/AwsSecurityGroup, artifact encryption key → AwsKmsKey.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

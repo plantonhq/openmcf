@@ -47,6 +47,7 @@ use_repo(
     "com_github_aws_aws_sdk_go_v2_service_apigateway",
     "com_github_aws_aws_sdk_go_v2_service_apigatewayv2",
     "com_github_aws_aws_sdk_go_v2_service_apprunner",
+    "com_github_aws_aws_sdk_go_v2_service_appsync",
     "com_github_aws_aws_sdk_go_v2_service_athena",
     "com_github_aws_aws_sdk_go_v2_service_autoscaling",
     "com_github_aws_aws_sdk_go_v2_service_backup",

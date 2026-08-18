@@ -16,3 +16,7 @@ Both modules render the seven-resource surface identically and export the same o
 ## Chart Wiring
 
 `kms_key_arn` → AwsKmsKey; logging and query-logging destinations → AwsCloudwatchLogGroup; downstream, scrapers and remote-write clients consume `workspace_arn`/`prometheus_endpoint`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

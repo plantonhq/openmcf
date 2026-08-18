@@ -282,11 +282,14 @@ message AwsEcrRepositoryCreationTemplate {
     message: "image_tag_mutability_exclusion_filters requires image_tag_mutability IMMUTABLE_WITH_EXCLUSION or MUTABLE_WITH_EXCLUSION"
     expression: "this.image_tag_mutability_exclusion_filters.size() == 0 || this.image_tag_mutability in ['IMMUTABLE_WITH_EXCLUSION', 'MUTABLE_WITH_EXCLUSION']"
   };
-  // AWS caps exclusion filters at 2 wildcards each.
+  // AWS caps exclusion filters at 2 wildcards each. (Expressed as an
+  // anchored regex - CEL's split() exists only on some engines, and
+  // every rule must compile on protovalidate-java, the control
+  // plane's engine.)
   option (buf.validate.message).cel = {
     id: "template.exclusion_filters_max_two_wildcards"
     message: "an image_tag_mutability exclusion filter can contain at most 2 wildcards (*)"
-    expression: "this.image_tag_mutability_exclusion_filters.all(f, f.split('*').size() <= 3)"
+    expression: "this.image_tag_mutability_exclusion_filters.all(f, f.matches('^[^*]*(\\\\*[^*]*){0,2}$'))"
   };
 
   // The repository-name prefix this template stamps - "ROOT" applies

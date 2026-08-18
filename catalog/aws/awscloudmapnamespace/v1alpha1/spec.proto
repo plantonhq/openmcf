@@ -170,9 +170,7 @@ message AwsCloudMapService {
 message AwsCloudMapServiceDnsConfig {
   // The record types instances publish. Fixed per record entry at the
   // provider (changing a type replaces the service's records).
-  repeated AwsCloudMapServiceDnsRecord records = 1 [(buf.validate.field).repeated = {
-    min_items: 1
-  }];
+  repeated AwsCloudMapServiceDnsRecord records = 1 [(buf.validate.field).repeated = {min_items: 1}];
 
   // How queries pick among healthy instances. MULTIVALUE answers with
   // up to eight healthy records; WEIGHTED answers with one, picked by

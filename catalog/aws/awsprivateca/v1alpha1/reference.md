@@ -587,6 +587,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsCertManagerCert | `spec.certificateAuthorityArn` | `status.outputs.certificate_authority_arn` |
 | AwsMskCluster | `spec.authentication.tlsCertificateAuthorityArns` | `status.outputs.certificate_authority_arn` |
 | AwsPrivateCa | `spec.subordinateActivation.parentCaArn` | `status.outputs.certificate_authority_arn` |
 

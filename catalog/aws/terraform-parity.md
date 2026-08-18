@@ -28,10 +28,10 @@ that has progressed.
 | | |
 |---|---|
 | Provider schema (parity baseline) | `aws@6.58.0` |
-| Kinds in the catalog | 204 |
-| Distinct provider resources consumed | 512 |
-| Spec fields authored across all kinds | 7324 |
-| Module pins on `aws` | `~> 6.58` × 204 |
+| Kinds in the catalog | 205 |
+| Distinct provider resources consumed | 524 |
+| Spec fields authored across all kinds | 7459 |
+| Module pins on `aws` | `~> 6.58` × 205 |
 | Module pins on `time` | `~> 0.13` × 1 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -46,7 +46,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**204 of 204 kinds are at total accounting; 113 proven live.**
+**205 of 205 kinds are at total accounting; 113 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -56,6 +56,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsAppRunnerObservabilityConfiguration | 5 | 2 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAppRunnerService | 55 | 6 | 38 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAppRunnerVpcConnector | 6 | 1 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsAppSyncApi | 168 | 13 | 131 | 24 | 0 | ✅ | — |
 | AwsAthenaWorkgroup | 37 | 4 | 26 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAuroraDsql | 11 | 5 | 3 | 3 | 0 | ✅ | — |
 | AwsAutoScalingGroup | 217 | 54 | 146 | 17 | 0 | ✅ | ✅ pulumi, terraform |
@@ -261,10 +262,10 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 511 | consumed by a kind's Terraform module today |
+| Modeled | 523 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 34 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 473 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 461 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 544 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
@@ -274,7 +275,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (511)
+### Modeled (523)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -332,6 +333,18 @@ rather than trusted.
 | `aws_apprunner_service` | consumed by AwsAppRunnerService |
 | `aws_apprunner_vpc_connector` | consumed by AwsAppRunnerVpcConnector |
 | `aws_apprunner_vpc_ingress_connection` | consumed by AwsAppRunnerService |
+| `aws_appsync_api` | consumed by AwsAppSyncApi |
+| `aws_appsync_api_cache` | consumed by AwsAppSyncApi |
+| `aws_appsync_api_key` | consumed by AwsAppSyncApi |
+| `aws_appsync_channel_namespace` | consumed by AwsAppSyncApi |
+| `aws_appsync_datasource` | consumed by AwsAppSyncApi |
+| `aws_appsync_domain_name` | consumed by AwsAppSyncApi |
+| `aws_appsync_domain_name_api_association` | consumed by AwsAppSyncApi |
+| `aws_appsync_function` | consumed by AwsAppSyncApi |
+| `aws_appsync_graphql_api` | consumed by AwsAppSyncApi |
+| `aws_appsync_resolver` | consumed by AwsAppSyncApi |
+| `aws_appsync_source_api_association` | consumed by AwsAppSyncApi |
+| `aws_appsync_type` | consumed by AwsAppSyncApi |
 | `aws_athena_workgroup` | consumed by AwsAthenaWorkgroup |
 | `aws_autoscaling_group` | consumed by AwsAutoScalingGroup |
 | `aws_autoscaling_lifecycle_hook` | consumed by AwsAutoScalingGroup |
@@ -787,7 +800,7 @@ rather than trusted.
 | `aws_wafv2_ip_set` | consumed by AwsWafIpSet |
 | `aws_wafv2_regex_pattern_set` | consumed by AwsWafRegexPatternSet |
 | `aws_wafv2_web_acl` | consumed by AwsWafWebAcl |
-| `aws_wafv2_web_acl_association` | consumed by AwsAlb, AwsAppRunnerService |
+| `aws_wafv2_web_acl_association` | consumed by AwsAlb, AwsAppRunnerService, AwsAppSyncApi |
 | `aws_wafv2_web_acl_logging_configuration` | consumed by AwsWafWebAcl |
 
 ### Composed (34)
@@ -829,7 +842,7 @@ rather than trusted.
 | `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
 | `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (473)
+### Planned (461)
 
 | Resource | Recorded reason |
 |---|---|
@@ -857,18 +870,6 @@ rather than trusted.
 | `aws_appconfig_extension_association` | judged as a planned AwsAppConfig kind (application, environments, profiles, versions, deployment strategies, extensions) |
 | `aws_appconfig_hosted_configuration_version` | judged as a planned AwsAppConfig kind (application, environments, profiles, versions, deployment strategies, extensions) |
 | `aws_apprunner_connection` | future AwsAppRunnerConnection kind: account-scoped GitHub/Bitbucket authorization shared by many services and referenced by AwsAppRunnerService code sources (connection_arn); its one-time OAuth handshake belongs to that kind's own lifecycle story (the codebuild source-credential class) |
-| `aws_appsync_api` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
-| `aws_appsync_api_cache` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
-| `aws_appsync_api_key` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
-| `aws_appsync_channel_namespace` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
-| `aws_appsync_datasource` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
-| `aws_appsync_domain_name` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
-| `aws_appsync_domain_name_api_association` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
-| `aws_appsync_function` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
-| `aws_appsync_graphql_api` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
-| `aws_appsync_resolver` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
-| `aws_appsync_source_api_association` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
-| `aws_appsync_type` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
 | `aws_athena_data_catalog` | judged as a planned AwsAthenaDataCatalog kind -- a federated catalog is a standalone peer registration queried from any workgroup, not a workgroup satellite |
 | `aws_bcmdataexports_export` | billing data exports fold into the planned cost-reporting kinds (with aws_cur_report_definition) |
 | `aws_ce_cost_allocation_tag` | judged as a planned AwsCostAllocationTags account-settings kind: a per-tag-key account activation toggle (delete merely sets Inactive) with no schema edge to any cost category - folding it into the many-instance AwsCostCategory would make instances fight over one account object |

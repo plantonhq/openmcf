@@ -17,3 +17,7 @@ Both modules render the single `aws_pipes_pipe` / `pipes.Pipe` identically — t
 ## Chart Wiring
 
 `role_arn` → AwsIamRole `role_arn`; stream DLQs → AwsSqsQueue `queue_arn`; ECS targets → AwsEcsTaskDefinition `task_definition_arn`, AwsSubnet/AwsSecurityGroup ids; log destinations → AwsCloudwatchLogGroup `log_group_arn`, AwsKinesisFirehose `delivery_stream_arn`, AwsS3Bucket `bucket_id`; `kms_key_identifier` → AwsKmsKey `key_arn`. Source/target/enrichment ARNs wire to any producing kind with an explicit `kind:`.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

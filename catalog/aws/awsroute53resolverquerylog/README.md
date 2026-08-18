@@ -15,3 +15,7 @@ Both modules render the configuration and its associations identically and expor
 ## Chart Wiring
 
 `destination_arn` → AwsCloudwatchLogGroup `log_group_arn` (or any S3 bucket / Firehose stream ARN); `vpc_ids` → AwsVpc `vpc_id`. Pair with AwsRoute53ResolverFirewall to see which queries its rules fired on.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).
