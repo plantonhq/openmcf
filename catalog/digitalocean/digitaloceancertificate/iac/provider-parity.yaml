@@ -11,6 +11,9 @@
 # typed oneof: each provider argument maps to its branch's field.
 resources:
   digitalocean_certificate:
+    exclusions:
+      - arg: type
+        reason: derived by the modules from the certificate_source oneof branch -- a separate spec field could only disagree with the branch that determines it
     mappings:
       - spec: spec.certificate_name
         arg: name

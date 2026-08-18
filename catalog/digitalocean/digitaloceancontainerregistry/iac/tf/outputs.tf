@@ -1,41 +1,30 @@
-output "endpoint" {
-  description = "The registry hostname (e.g., registry.digitalocean.com/my-registry)"
-  value       = digitalocean_container_registry.registry.endpoint
-}
-
-output "server_url" {
-  description = "The full registry URL for Docker login"
-  value       = digitalocean_container_registry.registry.server_url
-}
-
-output "name" {
-  description = "The name of the container registry"
+output "registry_name" {
+  description = "The registry name (also the registry's resource identifier in DigitalOcean)."
   value       = digitalocean_container_registry.registry.name
 }
 
-output "subscription_tier_slug" {
-  description = "The subscription tier slug"
-  value       = digitalocean_container_registry.registry.subscription_tier_slug
+output "server_url" {
+  description = "The registry host, always \"registry.digitalocean.com\"."
+  value       = digitalocean_container_registry.registry.server_url
+}
+
+output "endpoint" {
+  description = "The full endpoint for docker push/pull, i.e. \"registry.digitalocean.com/<registry_name>\"."
+  value       = digitalocean_container_registry.registry.endpoint
 }
 
 output "region" {
-  description = "The region where the registry is deployed"
+  description = "Region slug where the registry is hosted (reported by DigitalOcean, covering the DigitalOcean-chooses case)."
   value       = digitalocean_container_registry.registry.region
 }
 
-output "created_at" {
-  description = "The timestamp when the registry was created"
-  value       = digitalocean_container_registry.registry.created_at
-}
-
-output "storage_usage_bytes" {
-  description = "Current storage usage in bytes"
-  value       = digitalocean_container_registry.registry.storage_usage_bytes
-}
-
 output "docker_credentials" {
-  description = "Temporary Docker credentials for registry access (sensitive)"
-  value       = digitalocean_container_registry_docker_credentials.credentials.docker_credentials
+  description = "Base64-encoded Docker config.json for this registry -- a SECRET. Empty when the spec's docker_credentials block is unset."
+  value       = local.create_docker_credentials ? digitalocean_container_registry_docker_credentials.credentials[0].docker_credentials : ""
   sensitive   = true
 }
 
+output "credential_expiration_time" {
+  description = "RFC 3339 timestamp at which the minted docker credentials expire. Empty when the spec's docker_credentials block is unset."
+  value       = local.create_docker_credentials ? digitalocean_container_registry_docker_credentials.credentials[0].credential_expiration_time : ""
+}

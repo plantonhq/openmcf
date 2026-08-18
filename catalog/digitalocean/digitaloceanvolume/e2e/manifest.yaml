@@ -1,14 +1,32 @@
+# Example DigitalOceanVolume manifests. Deploy with:
+#   planton apply -f manifest.yaml
+#
+# Document 1 -- the smallest real volume: region + size, left unformatted
+# (format it yourself from the Droplet).
+#
+# Document 2 -- a production-shaped volume: xfs-formatted with a filesystem
+# label, described, and tagged. Attach volumes through the Droplet kind's
+# volumeIds list; attachment is a property of the Droplet, never the volume.
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanVolume
 metadata:
-  name: first-volume
+  name: example-dovol-minimal
 spec:
-  volumeName: data-volume-01          # lowercase letters, numbers, hyphens
-  description: "Block storage for PostgreSQL"
-  region: nyc3                        # any valid DigitalOceanRegion enum value
-  sizeGib: 100                        # 1 – 16000 GiB
-  filesystemType: ext4                # EXT4 | XFS | NONE
-  snapshotId: ""                      # leave blank if not using a snapshot
+  volumeName: scratch-data
+  region: nyc3
+  sizeGib: 50
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanVolume
+metadata:
+  name: example-dovol-full
+spec:
+  volumeName: postgres-data
+  description: PostgreSQL data volume for production
+  region: nyc3
+  sizeGib: 500
+  filesystemType: xfs
+  initialFilesystemLabel: pgdata
   tags:
-    - planton
-    - env-staging
+    - env:prod
+    - service:postgres

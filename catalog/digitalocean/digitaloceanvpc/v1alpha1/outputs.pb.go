@@ -21,11 +21,17 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// DigitalOceanVpcStackOutputs captures the resulting Droplet info after provisioning.
+// DigitalOceanVpcStackOutputs captures the resulting VPC info after provisioning.
 type DigitalOceanVpcStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The unique identifier (UUID) of the created DigitalOcean VPC.
-	VpcId         string `protobuf:"bytes,1,opt,name=vpc_id,json=vpcId,proto3" json:"vpc_id,omitempty"`
+	// The unique identifier (UUID) of the created DigitalOcean VPC. Other kinds' `vpc`
+	// references resolve against this output.
+	VpcId string `protobuf:"bytes,1,opt,name=vpc_id,json=vpcId,proto3" json:"vpc_id,omitempty"`
+	// The VPC's IP range in CIDR notation. Reported by DigitalOcean, which also covers the case
+	// where ip_range_cidr was left unset and DigitalOcean auto-assigned a range.
+	IpRange string `protobuf:"bytes,2,opt,name=ip_range,json=ipRange,proto3" json:"ip_range,omitempty"`
+	// The uniform resource name (URN) of the VPC, e.g. "do:vpc:<uuid>".
+	Urn           string `protobuf:"bytes,3,opt,name=urn,proto3" json:"urn,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -67,13 +73,29 @@ func (x *DigitalOceanVpcStackOutputs) GetVpcId() string {
 	return ""
 }
 
+func (x *DigitalOceanVpcStackOutputs) GetIpRange() string {
+	if x != nil {
+		return x.IpRange
+	}
+	return ""
+}
+
+func (x *DigitalOceanVpcStackOutputs) GetUrn() string {
+	if x != nil {
+		return x.Urn
+	}
+	return ""
+}
+
 var File_catalog_digitalocean_digitaloceanvpc_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_digitalocean_digitaloceanvpc_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	";catalog/digitalocean/digitaloceanvpc/v1alpha1/outputs.proto\x121dev.planton.digitalocean.digitaloceanvpc.v1alpha1\"4\n" +
+	";catalog/digitalocean/digitaloceanvpc/v1alpha1/outputs.proto\x121dev.planton.digitalocean.digitaloceanvpc.v1alpha1\"a\n" +
 	"\x1bDigitalOceanVpcStackOutputs\x12\x15\n" +
-	"\x06vpc_id\x18\x01 \x01(\tR\x05vpcIdB\x92\x03\n" +
+	"\x06vpc_id\x18\x01 \x01(\tR\x05vpcId\x12\x19\n" +
+	"\bip_range\x18\x02 \x01(\tR\aipRange\x12\x10\n" +
+	"\x03urn\x18\x03 \x01(\tR\x03urnB\x92\x03\n" +
 	"5com.dev.planton.digitalocean.digitaloceanvpc.v1alpha1B\fOutputsProtoP\x01Zbgithub.com/plantonhq/planton/catalog/digitalocean/digitaloceanvpc/v1alpha1;digitaloceanvpcv1alpha1\xa2\x02\x04DPDD\xaa\x021Dev.Planton.Digitalocean.Digitaloceanvpc.V1alpha1\xca\x021Dev\\Planton\\Digitalocean\\Digitaloceanvpc\\V1alpha1\xe2\x02=Dev\\Planton\\Digitalocean\\Digitaloceanvpc\\V1alpha1\\GPBMetadata\xea\x025Dev::Planton::Digitalocean::Digitaloceanvpc::V1alpha1b\x06proto3"
 
 var (

@@ -31,7 +31,7 @@ Start with:
 | [civo](../civo/reference-index.md) | 12 | 2 | 0 |
 | [cloudflare](../cloudflare/reference-index.md) | 30 | 30 | 0 |
 | [confluent](../confluent/reference-index.md) | 1 | 1 | 0 |
-| [digitalocean](../digitalocean/reference-index.md) | 15 | 14 | 11 |
+| [digitalocean](../digitalocean/reference-index.md) | 15 | 15 | 15 |
 | [gcp](../gcp/reference-index.md) | 98 | 98 | 96 |
 | [hetznercloud](../hetznercloud/reference-index.md) | 12 | 12 | 0 |
 | [kubernetes](../kubernetes/reference-index.md) | 120 | 120 | 71 |

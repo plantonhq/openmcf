@@ -6,7 +6,7 @@ Deploys a DigitalOcean Virtual Private Cloud with configurable CIDR range and re
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **DigitalOcean VPC** -- a regional private network with the configured IP range (or an auto-generated /20 CIDR if omitted), optional description, and default-for-region setting
+- **DigitalOcean VPC** -- a regional private network with the configured IP range (or a DigitalOcean-assigned range if omitted) and optional description
 
 ## Before You Deploy
 
@@ -18,7 +18,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### DigitalOcean Account
 
 - **A target region** -- DigitalOcean VPCs are regional and cannot span regions. Choose the region where your resources will be deployed (e.g., `nyc1`, `sfo3`, `fra1`).
-- **IP address planning** (optional) -- if you need specific, non-overlapping CIDR blocks across multiple VPCs, plan your ranges before deployment. Only /16, /20, and /24 blocks are supported.
+- **IP address planning** (optional) -- if you need specific, non-overlapping CIDR blocks across multiple VPCs, plan your ranges before deployment. DigitalOcean accepts prefix lengths from /16 through /24, and the range is immutable after creation.
 
 ## Deploy
 
@@ -31,7 +31,7 @@ Open the deployment store, find **VPC on DigitalOcean**, and click **Deploy**. T
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: digitalocean.planton.dev/v1
+apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanVpc
 metadata:
   name: app-network
@@ -45,17 +45,17 @@ spec:
 planton apply -f do-vpc.yaml
 ```
 
-This creates a VPC in the NYC1 region with a DigitalOcean auto-generated /20 CIDR block. No explicit IP range or default-for-region setting is configured. A Stack Job tracks the provisioning in real time.
+This creates a VPC in the NYC1 region with a DigitalOcean-assigned, non-conflicting IP range (reported through the `ip_range` output). A Stack Job tracks the provisioning in real time.
 
 ## Key Configuration
 
 These are the most important decisions when configuring a VPC. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**IP range** -- The `ipRangeCidr` field accepts /16, /20, or /24 CIDR blocks (e.g., `"10.10.0.0/16"`). When omitted, DigitalOcean auto-generates a non-conflicting /20 block with 4,096 IPs. Specify an explicit range for production environments with IPAM requirements or when running multiple VPCs that must not overlap.
+**IP range** -- The `ipRangeCidr` field accepts CIDR blocks with prefix lengths /16 through /24 (e.g., `"10.10.0.0/16"`). When omitted, DigitalOcean assigns a non-conflicting range and reports it through the `ip_range` output. Specify an explicit range for production environments with IPAM requirements or when running multiple VPCs that must not overlap. The range is immutable -- changing it later replaces the VPC.
 
 **Region** -- The `region` field determines where the VPC is created. All resources placed in this VPC (Droplets, databases, Kubernetes clusters) must be in the same region.
 
-**Default for region** -- Set `isDefaultForRegion: true` to make this VPC the automatic default for new resources in the region. Only one VPC can be the default per region.
+Whether a VPC is the region's DEFAULT is computed by DigitalOcean and cannot be set here -- wire every resource's `vpc` reference explicitly instead of relying on regional defaults.
 
 ## Outputs and Dependencies
 
@@ -70,6 +70,8 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `vpc_id` | Unique VPC identifier (UUID) on DigitalOcean | Droplet VPC placement, Kubernetes cluster networking, database cluster VPC attachment, load balancer VPC placement |
+| `ip_range` | The VPC's CIDR range as DigitalOcean reports it (covers the auto-assigned case) | Firewall rules, peering and VPN planning |
+| `urn` | The VPC's uniform resource name (`do:vpc:<uuid>`) | DigitalOcean project assignment, audit |
 
 ## Common Patterns
 

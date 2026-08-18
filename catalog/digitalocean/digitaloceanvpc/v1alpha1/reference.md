@@ -6,23 +6,40 @@
 
 **apiVersion**: `digital-ocean.planton.dev/v1alpha1`
 
-DigitalOceanVpcSpec defines the specification required to deploy a DigitalOcean Virtual Private Cloud (VPC).
-A DigitalOcean VPC allows you to create a private, isolated network for your Droplets and other resources,
-enabling secure communication within your infrastructure.
-This specification focuses on the essential parameters for creating a VPC, adhering to the 80/20 principle.
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
+DigitalOceanVpcSpec defines the specification required to deploy a DigitalOcean Virtual
+Private Cloud (VPC) -- a private, isolated network for Droplets and other resources within one
+region. The VPC's name comes from the resource's metadata.name; the spec models the provider's
+remaining argument surface in full.
 
 ## Example
 
 ```yaml
+# Example DigitalOceanVpc manifests. Deploy with:
+#   planton apply -f manifest.yaml
+#
+# Document 1 -- the smallest real VPC: region only. DigitalOcean assigns a
+# non-conflicting IP range and reports it through the ip_range output.
+#
+# Document 2 -- a production-shaped VPC: described, with an explicit /16 for
+# deliberate IP planning. The range is immutable -- changing it later
+# replaces the VPC.
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanVpc
 metadata:
-  name: first-vpc
+  name: example-dovpc-minimal
 spec:
-  description: "Primary VPC for Planton staging environment"
-  region: blr1
+  region: nyc3
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanVpc
+metadata:
+  name: example-dovpc-full
+spec:
+  description: Production network for the web tier
+  region: nyc3
   ipRangeCidr: "10.10.0.0/16"
-  isDefaultForRegion: false
 ```
 
 ## Spec Fields
@@ -32,7 +49,6 @@ spec:
 | `spec.description` | `string` |  |  |  |
 | `spec.region` | `enum` | yes |  |  |
 | `spec.ipRangeCidr` | `string` |  |  |  |
-| `spec.isDefaultForRegion` | `bool` |  | `false` |  |
 
 ## Field Details
 
@@ -40,17 +56,15 @@ spec:
 
 `string`
 
-A human-readable description for the VPC.
-Constraints: Maximum 100 characters.
+(Optional) A human-readable description for the VPC (up to 255 characters).
 
-- rule: {"string":{"maxLen":"100"}}
+- rule: {"string":{"maxLen":"255"}}
 
 ### spec.region
 
 `enum` · required
 
-The DigitalOcean region where the VPC will be created.
-This determines the geographical location of the VPC.
+The DigitalOcean region where the VPC will be created. Cannot be changed after creation.
 
 - rule: {"required":true}
 
@@ -75,25 +89,15 @@ Allowed values (use exactly as shown):
 
 `string`
 
-The IP range for the VPC in CIDR notation (optional).
-Only /16, /20, or /24 CIDR blocks are supported for VPCs on DigitalOcean.
+(Optional) The IP range for the VPC in CIDR notation. DigitalOcean accepts prefix lengths
+from /16 through /24, and the range must not overlap any other network in the account.
 Example: "10.10.0.0/16"
 
-80/20 Principle: When omitted, DigitalOcean auto-generates a non-conflicting /20 CIDR block (4,096 IPs).
-This is the recommended approach for dev/test environments and when explicit IP planning is not required.
-For production environments with specific IPAM requirements, explicitly specify the CIDR block.
+When omitted, DigitalOcean auto-generates a non-conflicting range and reports it back
+through the `ip_range` stack output. The range is immutable: changing it after creation
+REPLACES the VPC.
 
-- rule: {"string":{"pattern":"^([0-9]{1,3}\\.){3}[0-9]{1,3}/(16|20|24)$"}}
-
-### spec.isDefaultForRegion
-
-`bool`
-
-A boolean indicating whether this VPC should be set as the default for the specified region.
-Only one VPC can be the default for a given region.
-Default: false
-
-- default: `false`
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^([0-9]{1,3}\\.){3}[0-9]{1,3}/(1[6-9]|2[0-4])$"}}
 
 ## Outputs
 
@@ -101,7 +105,9 @@ Reference an output from another manifest as `valueFrom: {kind: DigitalOceanVpc,
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.vpc_id` | `string` | The unique identifier (UUID) of the created DigitalOcean VPC. |
+| `status.outputs.vpc_id` | `string` | The unique identifier (UUID) of the created DigitalOcean VPC. Other kinds' `vpc` references resolve against this output. |
+| `status.outputs.ip_range` | `string` | The VPC's IP range in CIDR notation. Reported by DigitalOcean, which also covers the case where ip_range_cidr was left unset and DigitalOcean auto-assigned a range. |
+| `status.outputs.urn` | `string` | The uniform resource name (URN) of the VPC, e.g. "do:vpc:<uuid>". |
 
 ## Referenced By
 

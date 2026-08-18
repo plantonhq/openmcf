@@ -1,20 +1,28 @@
+# The PEM values below are a THROWAWAY self-signed example pair (CN
+# planton-e2e.invalid) so the preset validates and deploys as-is for a dry
+# run. Replace all three values with your real certificate material.
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanCertificate
 metadata:
   name: my-custom-cert
 spec:
   certificateName: my-custom-cert
-  type: custom
   custom:
     leafCertificate: |
       -----BEGIN CERTIFICATE-----
-      <paste-your-leaf-certificate-pem>
+      MIIBkDCCATegAwIBAgIUZTNBcipSFS0umzBYZfnmE3UJ2YQwCgYIKoZIzj0EAwIw
+      HjEcMBoGA1UEAwwTcGxhbnRvbi1lMmUuaW52YWxpZDAeFw0yNjA4MTgwNTI4MjVa
+      Fw0zNjA4MTUwNTI4MjVaMB4xHDAaBgNVBAMME3BsYW50b24tZTJlLmludmFsaWQw
+      WTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQosROw/D3FMQWRMKGFdcfpYUFaFuar
+      eIRnJCbKT+y8i+hmk09dzw+i6Md3ruweTaXEc8P+CYPf6LbhJzR/OLqFo1MwUTAd
+      BgNVHQ4EFgQU0gFX4oBzgNuZ+mSFs44uPvImF68wHwYDVR0jBBgwFoAU0gFX4oBz
+      gNuZ+mSFs44uPvImF68wDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBE
+      AiBWQte/D5NHcDDduh/R5LYqA+A7ukhFhM6KpFzAFQnRHwIgTk1HMKYXSr+EBndV
+      ktTsgT2GaJQv5Ygbwv3VidvCTcY=
       -----END CERTIFICATE-----
     privateKey: |
       -----BEGIN PRIVATE KEY-----
-      <paste-your-private-key-pem>
+      MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgI+JHoXfavvhJ48oX
+      NY8PFbglsE3gttH0JFhDQngkWcGhRANCAAQosROw/D3FMQWRMKGFdcfpYUFaFuar
+      eIRnJCbKT+y8i+hmk09dzw+i6Md3ruweTaXEc8P+CYPf6LbhJzR/OLqF
       -----END PRIVATE KEY-----
-    certificateChain: |
-      -----BEGIN CERTIFICATE-----
-      <paste-intermediate-chain-pem-optional>
-      -----END CERTIFICATE-----

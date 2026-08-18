@@ -1,295 +1,65 @@
 # DigitalOcean Container Registry
 
-Manage private Docker container registries on DigitalOcean using a type-safe, protobuf-defined API with Planton.
+A DigitalOcean Container Registry (DOCR) described once in a Planton manifest: the account's private Docker registry with its subscription tier and region, plus optionally minted Docker credentials (read-only or write, with a controlled lifetime) exported as a stack output. A DigitalOcean account holds exactly ONE registry, and registry names are globally unique across all DigitalOcean accounts.
 
-## Overview
+## What this component models
 
-**DigitalOceanContainerRegistry** enables you to provision and manage private container registries on DigitalOcean with a focus on the essential 80/20 configuration: registry name, subscription tier, region, and garbage collection.
+The spec maps onto DigitalOcean's `digitalocean_container_registry` plus the optional `digitalocean_container_registry_docker_credentials`:
 
-DigitalOcean Container Registry (DOCR) is a fully managed private container registry designed to integrate seamlessly with DigitalOcean Kubernetes (DOKS) and App Platform. It provides OCI-compliant storage for Docker images and Helm charts with transparent pricing and zero operational overhead.
+| Spec field | What it controls |
+|---|---|
+| `name` | The registry's name — globally unique across ALL DigitalOcean accounts, create-only, and the resource identity |
+| `subscriptionTier` | `starter` (free) / `basic` / `professional` — the one attribute that can change after creation |
+| `region` | Where registry data is stored; omit to let DigitalOcean choose (create-only either way) |
+| `dockerCredentials` | When set, mints a Docker credential: `write` (push access, default read-only) and `expirySeconds` (default: the API maximum, ~50 years) |
 
-## Why Use This Component?
+## Quick start
 
-- **Type-Safe Configuration**: Protobuf-based API with compile-time validation prevents invalid registry configurations
-- **80/20 Focused**: Exposes only the essential fields needed for most use cases (name, tier, region, garbage collection)
-- **Production-Ready Defaults**: Follows DigitalOcean best practices for cost management and operational safety
-- **Transparent Pricing**: Subscription tiers make cost predictable (Starter: free, Basic/Professional: fixed monthly rates)
-
-## Quick Start
-
-### Minimal Configuration (Starter Tier)
-
-For development and testing:
+The smallest real registry:
 
 ```yaml
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanContainerRegistry
 metadata:
-  name: dev-registry
+  name: my-registry
 spec:
-  name: dev-registry
-  subscription_tier: STARTER
-  region: nyc3
-  garbage_collection_enabled: false
+  name: acme-registry
+  subscriptionTier: starter
 ```
 
-### Production Configuration (Professional Tier)
-
-For production workloads with automated cleanup:
+A production registry with push credentials that expire:
 
 ```yaml
-apiVersion: digital-ocean.planton.dev/v1alpha1
-kind: DigitalOceanContainerRegistry
-metadata:
-  name: prod-registry
 spec:
-  name: prod-registry
-  subscription_tier: PROFESSIONAL
+  name: acme-registry-prod
+  subscriptionTier: basic
   region: nyc3
-  garbage_collection_enabled: true
+  dockerCredentials:
+    write: true
+    expirySeconds: 2592000 # 30 days
 ```
 
-## Key Features
+## Behavior worth knowing
 
-### Subscription Tiers
-- **STARTER**: Free tier with 500MB storage, 500MB bandwidth/month - perfect for dev/testing
-- **BASIC**: $20/month with 5GB storage, 5GB bandwidth/month - suitable for small teams
-- **PROFESSIONAL**: $50/month with 100GB storage, 100GB bandwidth/month - production-ready
-
-### Garbage Collection
-- **Automated Cleanup**: When enabled, Planton schedules garbage collection to remove untagged images
-- **Cost Control**: Prevents storage bloat from orphaned layers and old image versions
-- **Read-Only Awareness**: GC operations are scheduled during maintenance windows to avoid disrupting CI/CD
-
-### DOKS Integration
-- **Automatic Integration**: Planton handles the "1-click" DOKS integration that Terraform/Pulumi can't do
-- **ImagePullSecrets**: Automatically configures service accounts across all namespaces
-- **Seamless Pulls**: Kubernetes pods can pull images without manual credential management
-
-## Configuration Reference
-
-### Core Fields
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | string | Yes | Registry name (1-63 chars, lowercase, alphanumeric + hyphens) |
-| `subscription_tier` | enum | Yes | STARTER, BASIC, or PROFESSIONAL |
-| `region` | enum | Yes | DigitalOcean region (e.g., nyc3, sfo3, lon1) |
-| `garbage_collection_enabled` | bool | No | Enable automated cleanup of untagged images (default: false) |
-
-### Subscription Tier Selection
-
-**Choose STARTER when:**
-- Running dev/test environments
-- Learning Docker and container workflows
-- Building personal projects
-- Cost is the primary concern
-
-**Choose BASIC when:**
-- Running small production workloads
-- Team of 2-5 developers
-- Storage needs are < 5GB
-- Bandwidth usage is predictable
-
-**Choose PROFESSIONAL when:**
-- Running production at scale
-- Multiple teams/projects sharing the registry
-- Storage needs are > 5GB
-- Need headroom for growth
-
-### Region Selection
-
-**Best Practices:**
-- **Co-locate with DOKS**: Choose the same region as your Kubernetes cluster for fastest image pulls
-- **Data Residency**: If you have compliance requirements, choose a region in the appropriate jurisdiction
-- **Latency**: For App Platform, choose the region closest to your users
-
-**Common Regions:**
-- `nyc3` - New York (US East)
-- `sfo3` - San Francisco (US West)
-- `lon1` - London (Europe)
-- `fra1` - Frankfurt (Europe)
-- `sgp1` - Singapore (Asia)
+- **One registry per account** — a second manifest fails at create; the registry is an account-level singleton.
+- **Names are globally unique** — across every DigitalOcean account, like domain names; an "already exists" error may mean another account holds the name.
+- **Credentials are minted only when asked** — no `dockerCredentials` block, no long-lived token. When set, the credential lands in the `docker_credentials` output (a secret) as a base64 Docker `config.json`.
+- **Credential knobs are write-only** — the API never reports `write`/`expirySeconds` back, and the credentials resource cannot be imported at the current provider pin (its importer is defective; recorded in the import map).
+- **The registry imports by name** — the `registry_name` output is the resource identity.
 
 ## Outputs
 
-After successful provisioning, the following outputs are available:
+| Output | Meaning |
+|---|---|
+| `registry_name` | The registry's name — also its resource identifier (`status.outputs.registry_name`) |
+| `server_url` | The registry host, always `registry.digitalocean.com` |
+| `endpoint` | The full docker push/pull endpoint: `registry.digitalocean.com/<name>` |
+| `region` | The region slug DigitalOcean reports (covers the DigitalOcean-chooses case) |
+| `docker_credentials` | Base64 Docker `config.json` — a SECRET; empty when credentials are not configured |
+| `credential_expiration_time` | RFC 3339 expiry of the minted credential; empty when not configured |
 
-| Output | Description |
-|--------|-------------|
-| `endpoint` | Registry hostname (e.g., `registry.digitalocean.com/my-registry`) |
-| `server_url` | Full registry URL for Docker login |
-| `name` | Registry name |
+## See also
 
-## Common Use Cases
-
-### 1. Development Registry (Free Tier)
-
-```yaml
-spec:
-  name: dev-team-registry
-  subscription_tier: STARTER
-  region: nyc3
-  garbage_collection_enabled: true  # Keep it clean even on free tier
-```
-
-### 2. Production Registry (Professional Tier)
-
-```yaml
-spec:
-  name: prod-app-registry
-  subscription_tier: PROFESSIONAL
-  region: nyc3  # Same as DOKS cluster
-  garbage_collection_enabled: true
-```
-
-### 3. Multi-Region Setup
-
-Deploy separate registries in different regions for global apps:
-
-```yaml
-# US Registry
-spec:
-  name: us-registry
-  subscription_tier: PROFESSIONAL
-  region: nyc3
-  garbage_collection_enabled: true
----
-# EU Registry
-spec:
-  name: eu-registry
-  subscription_tier: PROFESSIONAL
-  region: fra1
-  garbage_collection_enabled: true
-```
-
-## Best Practices
-
-### Cost Management
-1. **Enable Garbage Collection**: Prevents storage bloat from untagged images (can save 50%+ on storage costs)
-2. **Start with STARTER**: Use the free tier for dev/test, upgrade to paid tiers only for production
-3. **Monitor Usage**: Track storage consumption in the DigitalOcean dashboard
-4. **Tag Strategy**: Use semantic versioning tags instead of `latest` to make GC more predictable
-
-### Security
-1. **Limit Access**: Use DigitalOcean's token-based authentication with least-privilege scopes
-2. **Scan Images**: Integrate with Snyk (via DigitalOcean UI) for vulnerability scanning
-3. **Private by Default**: All DOCR registries are private; images are never publicly accessible
-4. **Credential Rotation**: Docker credentials expire; use DOKS integration for automatic rotation
-
-### Operational Safety
-1. **Schedule GC During Off-Hours**: Garbage collection puts the registry in read-only mode
-2. **Test in Staging First**: Validate registry configs in a non-production environment
-3. **Co-locate with Workloads**: Same-region placement = faster pulls and lower latency
-4. **Plan for Growth**: Professional tier offers 100GB; consider this when estimating image storage
-
-## Integration
-
-### With DigitalOcean Kubernetes (DOKS)
-
-Planton automatically configures DOKS integration:
-- Creates imagePullSecrets in all namespaces
-- Patches service accounts to use these secrets
-- Handles credential rotation
-
-Your Kubernetes deployments can reference images directly:
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: my-app
-spec:
-  template:
-    spec:
-      containers:
-      - name: app
-        image: registry.digitalocean.com/prod-registry/my-app:v1.0.0
-```
-
-### With App Platform
-
-App Platform auto-deploys when you push to DOCR (exclusive feature):
-
-1. Deploy registry via Planton
-2. Configure App Platform component to watch DOCR
-3. `docker push` triggers automatic deployment
-
-## Troubleshooting
-
-### Registry Name Already Exists
-
-**Cause**: Registry names are globally unique across all DigitalOcean accounts.
-
-**Solution**: Choose a different, more specific name (e.g., `company-app-registry` instead of `app-registry`).
-
-### Storage Limit Exceeded
-
-**Cause**: Too many images/layers, or garbage collection disabled.
-
-**Solution**:
-1. Enable `garbage_collection_enabled: true`
-2. Wait for scheduled GC to run
-3. If still over limit, upgrade to next tier (Starter → Basic → Professional)
-
-### Image Pull Failures in DOKS
-
-**Cause**: DOKS integration not configured or credentials expired.
-
-**Solution**: Planton handles this automatically. If using manual Terraform/Pulumi, you'll need to manually create imagePullSecrets.
-
-### Garbage Collection Breaks CI/CD
-
-**Cause**: GC runs during business hours, putting registry in read-only mode.
-
-**Solution**: Planton schedules GC during configured maintenance windows. Verify your maintenance window is set correctly.
-
-## Validation Rules
-
-The protobuf spec enforces these constraints at compile-time:
-
-- `name`: 1-63 characters, lowercase alphanumeric + hyphens, must start/end with alphanumeric
-- `subscription_tier`: Must be STARTER, BASIC, or PROFESSIONAL
-- `region`: Must be a valid DigitalOcean region enum value
-- `garbage_collection_enabled`: Boolean (default: false)
-
-## Limitations and Workarounds
-
-### What Planton Handles
-
-✅ Registry provisioning (name, tier, region)  
-✅ Garbage collection scheduling (via custom controller)  
-✅ DOKS integration (imagePullSecrets automation)  
-✅ Cost optimization (automated cleanup)
-
-### What Requires Manual Configuration
-
-❌ **Image Signing**: Not supported by DOCR; use external tools like Cosign  
-❌ **Vulnerability Scanning**: Configure via DigitalOcean UI (Snyk integration)  
-❌ **Access Control**: Manage via DigitalOcean API tokens (not registry-level permissions)
-
-### The IaC Gap
-
-Terraform and Pulumi can create the registry but **cannot**:
-- Schedule or automate garbage collection
-- Integrate with DOKS ("1-click" feature)
-- Configure vulnerability scanning
-
-Planton bridges these gaps with custom controllers.
-
-## Further Reading
-
-- **Pulumi Module**: See [iac/pulumi/README.md](./iac/pulumi/README.md) for standalone Pulumi usage
-- **Terraform Module**: See [iac/tf/README.md](./iac/tf/README.md) for standalone Terraform usage
-
-## Support
-
-For issues, questions, or contributions, refer to the [Planton documentation](https://planton.dev) or file an issue in the repository.
-
----
-
-**TL;DR**: Use STARTER tier for dev/test, PROFESSIONAL for production. Enable garbage collection to avoid surprise bills. Co-locate with DOKS for fastest image pulls.
-
----
-
-© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).
+- `GUIDE.md` — operational judgment calls (the singleton constraint, credential lifetimes, tier changes)
+- `presets/` — professional-tier starting point
+- `v1alpha1/reference.md` — the generated field-by-field contract

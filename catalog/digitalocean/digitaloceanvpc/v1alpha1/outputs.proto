@@ -2,8 +2,16 @@ syntax = "proto3";
 
 package dev.planton.digitalocean.digitaloceanvpc.v1alpha1;
 
-// DigitalOceanVpcStackOutputs captures the resulting Droplet info after provisioning.
+// DigitalOceanVpcStackOutputs captures the resulting VPC info after provisioning.
 message DigitalOceanVpcStackOutputs {
-  // The unique identifier (UUID) of the created DigitalOcean VPC.
+  // The unique identifier (UUID) of the created DigitalOcean VPC. Other kinds' `vpc`
+  // references resolve against this output.
   string vpc_id = 1;
+
+  // The VPC's IP range in CIDR notation. Reported by DigitalOcean, which also covers the case
+  // where ip_range_cidr was left unset and DigitalOcean auto-assigned a range.
+  string ip_range = 2;
+
+  // The uniform resource name (URN) of the VPC, e.g. "do:vpc:<uuid>".
+  string urn = 3;
 }

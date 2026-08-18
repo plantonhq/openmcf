@@ -1,40 +1,80 @@
-# Overview
+# DigitalOcean Volume
 
-The **Azure Azure AKS Cluster API Resource** provides a consistent and standardized interface for deploying and managing Azure Kubernetes Service (AKS) clusters within our infrastructure. This resource simplifies the orchestration of Kubernetes clusters on Azure, allowing users to run containerized applications at scale without the complexity of manual setup and configuration.
+A DigitalOcean block storage volume described once in a Planton manifest: expandable network-attached storage for Droplets, optionally pre-formatted (ext4/xfs) with a filesystem label, created empty or from a snapshot, and tagged. Attachment is a property of the Droplet — its `volumeIds` list consumes this kind's `volume_id` output — never of the volume itself.
 
-## Purpose
+## What this component models
 
-We developed this API resource to streamline the deployment and management of AKS clusters on Azure. By offering a unified interface, it reduces the complexity involved in setting up Kubernetes environments on Azure, enabling users to:
+The spec maps onto DigitalOcean's `digitalocean_volume` in full:
 
-- **Easily Deploy Azure AKS Clusters**: Quickly provision AKS clusters with minimal configuration.
-- **Customize Cluster Settings**: Configure cluster parameters such as credentials and environment settings.
-- **Integrate Seamlessly**: Utilize existing Azure credentials and integrate with other Azure services.
-- **Focus on Applications**: Allow developers to concentrate on deploying applications rather than managing infrastructure.
+| Spec field | What it controls |
+|---|---|
+| `volumeName` | The volume's name (lowercase, hyphens; create-only) |
+| `region` | Where the volume lives — must match the Droplet's region to attach |
+| `sizeGib` | Size in GiB; can only be EXPANDED after creation (a shrink fails at plan time) |
+| `description` | Free-form description; create-only at the current provider pin (a change REPLACES the volume) |
+| `filesystemType` | Optional one-time formatting at creation (`ext4`/`xfs`); leave unset to format yourself |
+| `initialFilesystemLabel` | The label applied when formatting (e.g. `pgdata`); only meaningful with `filesystemType` |
+| `snapshotId` | Create the volume from a volume snapshot (inherits its region and minimum size) |
+| `tags` | User tags; both provisioners merge them with the standard Planton labels |
 
-## Key Features
+## Quick start
 
-- **Consistent Interface**: Aligns with our existing APIs for deploying open-source software, microservices, and cloud infrastructure.
-- **Simplified Deployment**: Automates the provisioning of AKS clusters, including resource groups and network configurations.
-- **Flexible Configuration**: Supports specifying Azure credentials and integrating with existing environments.
-- **Scalability**: Leverages Azure AKS to manage Kubernetes clusters that can scale to meet application demands.
-- **Integration**: Works seamlessly with other Azure services and infrastructure components.
+The smallest real volume:
 
-## Use Cases
+```yaml
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanVolume
+metadata:
+  name: my-volume
+spec:
+  volumeName: scratch-data
+  region: nyc3
+  sizeGib: 50
+```
 
-- **Container Orchestration**: Deploy and manage containerized applications using Kubernetes on Azure.
-- **Microservices Architecture**: Run microservices workloads with the flexibility and scalability of Kubernetes.
-- **Hybrid Deployments**: Integrate on-premises Kubernetes deployments with cloud-based AKS clusters.
-- **Development and Testing**: Provide scalable and consistent environments for development and testing purposes.
+A production database volume, formatted and labeled:
 
-## Future Enhancements
+```yaml
+spec:
+  volumeName: postgres-data
+  description: PostgreSQL data volume for production
+  region: nyc3
+  sizeGib: 500
+  filesystemType: xfs
+  initialFilesystemLabel: pgdata
+  tags:
+    - env:prod
+    - service:postgres
+```
 
-As this resource is currently in a partial implementation phase, future updates will include:
+Attach it from the Droplet:
 
-- **Advanced Configuration Options**: Support for node pools, networking policies, and access controls.
-- **Enhanced Security Features**: Integration with Azure Active Directory and security policies for cluster management.
-- **Monitoring and Logging**: Improved support for cluster monitoring and logging using Azure Monitor and other tools.
-- **Comprehensive Documentation**: Expanded usage examples, best practices, and troubleshooting guides.
+```yaml
+# on the DigitalOceanDroplet spec
+volumeIds:
+  - valueFrom:
+      kind: DigitalOceanVolume
+      name: my-volume
+      fieldPath: status.outputs.volume_id
+```
 
----
+## Behavior worth knowing
 
-© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).
+- **Size only grows** — the provider rejects a shrink at plan time; DigitalOcean caps volumes at 16 TiB.
+- **Formatting happens exactly once** — `filesystemType`, `initialFilesystemLabel`, and `snapshotId` act at creation and are never reported back by the API; after import they stay empty in state.
+- **Description is create-only** — at the current provider pin, editing it replaces the volume. Write it right the first time.
+- **One Droplet at a time** — DigitalOcean volumes attach to a single Droplet; regional, not zonal.
+- **Volumes import by UUID** — the `volume_id` output is the resource identity.
+
+## Outputs
+
+| Output | Meaning |
+|---|---|
+| `volume_id` | The volume's UUID — what the Droplet kind's `volumeIds` consumes (`status.outputs.volume_id`) |
+| `urn` | The uniform resource name (`do:volume:<uuid>`) |
+
+## See also
+
+- `GUIDE.md` — operational judgment calls (expand-only sizing, formatting, snapshots)
+- `presets/` — general-purpose ext4 and database xfs starting points
+- `v1alpha1/reference.md` — the generated field-by-field contract

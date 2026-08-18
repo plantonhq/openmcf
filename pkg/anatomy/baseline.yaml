@@ -155,8 +155,6 @@ violations:
   - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/iac/pulumi:missing-iac-readme
   - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/iac/tf:missing-iac-readme
   - catalog/confluent/confluentkafka:missing-presets
-  - catalog/digitalocean/digitaloceancontainerregistry/iac/pulumi:missing-iac-readme
-  - catalog/digitalocean/digitaloceancontainerregistry/iac/tf:missing-iac-readme
   - catalog/kubernetes/kubernetesairflow/iac/pulumi:missing-iac-readme
   - catalog/kubernetes/kubernetesairflow/iac/tf:missing-iac-readme
   - catalog/kubernetes/kubernetesargoworkflows/iac/pulumi:missing-iac-readme

@@ -1,0 +1,21 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: digitaloceanvolume
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests, both
+  # engine builds, tofu validate green, checker-green parity manifest,
+  # import map, presets, README/catalog/GUIDE). Live dual-engine proof has
+  # not yet run. TWO scenarios: `minimal` (region + size only, unformatted)
+  # and `full` (ext4 formatting + filesystem label + description + tags --
+  # the cross-engine tag-union arm). DEFERRED ARM: snapshot_id needs a
+  # pre-existing volume snapshot in the account (the snapshot resource's own
+  # kind is a recorded deferred disposition); unblock condition: a snapshot
+  # fixture. Volumes bill ~$0.10/GiB/mo prorated -- these 10 GiB lanes cost
+  # pennies. Watch on first live run: the create-only trio (snapshot_id,
+  # initial_filesystem_type, initial_filesystem_label) stays empty on the
+  # blind import round-trip (config-only tolerances).
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15
