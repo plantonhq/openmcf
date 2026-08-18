@@ -1,0 +1,1347 @@
+syntax = "proto3";
+
+package dev.planton.aws.awseventbridgepipe.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsEventBridgePipeSpec defines one EventBridge Pipe: a managed
+// point-to-point integration that reads from ONE source, optionally
+// filters and enriches events in flight, and delivers to ONE target -
+// no event bus in between.
+//
+// The pipe's name in AWS is metadata.name. The SOURCE is fixed for
+// life (changing it replaces the pipe, resetting consumer positions);
+// the TARGET swaps in place. The execution role must allow the pipe to
+// read the source and write the target - its trust policy allows
+// pipes.amazonaws.com.
+//
+// Source and target ARNs range over many services (SQS, Kinesis,
+// DynamoDB streams, Kafka, MQ on the source side; 16+ services on the
+// target side), so no single kind dominates - references on those
+// fields carry NO default kind, and a valueFrom in a manifest must
+// state its kind explicitly.
+//
+// Pipes bill per event processed - an idle pipe on an empty source
+// costs nothing at rest. desired_state STOPPED pauses consumption
+// without losing the pipe (creates and state flips can take minutes;
+// the provider waits up to 30).
+message AwsEventBridgePipeSpec {
+  // Enrichment parameters shape the enrichment call.
+  option (buf.validate.message).cel = {
+    id: "spec.enrichment_parameters_require_enrichment"
+    message: "enrichment_parameters shape the enrichment invocation - configure enrichment or drop them"
+    expression: "!has(this.enrichment_parameters) || has(this.enrichment)"
+  };
+
+  // The AWS region the pipe lives in. Example: "us-east-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // What this pipe moves and why.
+  string description = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 512
+  ];
+
+  // The source's ARN: an SQS queue, Kinesis stream, DynamoDB stream,
+  // MSK topic, self-managed Kafka cluster, or ActiveMQ/RabbitMQ
+  // broker. FIXED FOR LIFE - changing the source replaces the whole
+  // pipe. References here carry no default kind: state the kind
+  // explicitly in valueFrom.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source = 3 [(buf.validate.field).required = true];
+
+  // Source-family tuning (batching, positions, credentials) plus the
+  // event filter. The family block must match the source's service;
+  // AWS applies service defaults when unset.
+  AwsEventBridgePipeSourceParameters source_parameters = 4;
+
+  // The enrichment step's ARN: a Lambda function, Step Functions
+  // express state machine, or API destination that transforms each
+  // batch before delivery. Unset skips enrichment. References here
+  // carry no default kind: state the kind explicitly in valueFrom.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef enrichment = 5;
+
+  // HTTP shaping (for API-destination enrichment) and the input
+  // template applied before the enrichment call.
+  AwsEventBridgePipeEnrichmentParameters enrichment_parameters = 6;
+
+  // The target's ARN: an ECS cluster, Batch job queue, Lambda
+  // function, Step Functions state machine, Kinesis stream, SQS queue,
+  // Redshift cluster, SageMaker pipeline, CloudWatch log group,
+  // EventBridge bus, or API destination. Swaps in place. References
+  // here carry no default kind: state the kind explicitly in
+  // valueFrom.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target = 7 [(buf.validate.field).required = true];
+
+  // Target-family invocation shaping plus the input template applied
+  // before delivery. The family block must match the target's service.
+  AwsEventBridgePipeTargetParameters target_parameters = 8;
+
+  // The role the pipe assumes to read the source, call the enrichment,
+  // and write the target. Trust policy allows pipes.amazonaws.com.
+  // Reference an AwsIamRole role_arn output or pass a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 9 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // RUNNING consumes and delivers; STOPPED pauses consumption without
+  // deleting the pipe (stream positions are kept). Unset keeps AWS's
+  // default (RUNNING).
+  string desired_state = 10 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "RUNNING",
+        "STOPPED"
+      ]
+    }
+  ];
+
+  // Customer-managed KMS key that encrypts pipe data at rest (unset
+  // uses AWS-owned keys). Reference an AwsKmsKey key_arn output or
+  // pass a literal key id/ARN/alias.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_identifier = 11 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Execution logging: level plus one or more destinations (CloudWatch
+  // Logs, Firehose, S3). Unset disables pipe logging.
+  AwsEventBridgePipeLogConfiguration log_configuration = 12;
+}
+
+// ---------------------------------------------------------------------------
+// Source parameters
+// ---------------------------------------------------------------------------
+
+// AwsEventBridgePipeSourceParameters tunes how the pipe reads its
+// source: exactly one service-family block (matching the source ARN's
+// service), plus the orthogonal event filter.
+message AwsEventBridgePipeSourceParameters {
+  // The family blocks are alternatives - the one that matches the
+  // source's service.
+  option (buf.validate.message).cel = {
+    id: "source_parameters.at_most_one_family"
+    message: "configure at most one source family block (sqs, kinesis, dynamodb, msk, self_managed_kafka, activemq, rabbitmq) - it must match the source arn's service"
+    expression: "[has(this.sqs), has(this.kinesis), has(this.dynamodb), has(this.msk), has(this.self_managed_kafka), has(this.activemq), has(this.rabbitmq)].filter(x, x).size() <= 1"
+  };
+
+  // Event filter: only events matching at least one pattern reach the
+  // enrichment/target (and only matching events bill). At most 5
+  // patterns, each in EventBridge pattern syntax.
+  AwsEventBridgePipeFilterCriteria filter_criteria = 1;
+
+  // SQS source tuning.
+  AwsEventBridgePipeSqsSourceParameters sqs = 2;
+
+  // Kinesis stream source tuning.
+  AwsEventBridgePipeKinesisSourceParameters kinesis = 3;
+
+  // DynamoDB stream source tuning.
+  AwsEventBridgePipeDynamoDbSourceParameters dynamodb = 4;
+
+  // Amazon MSK source tuning.
+  AwsEventBridgePipeMskSourceParameters msk = 5;
+
+  // Self-managed Apache Kafka source tuning.
+  AwsEventBridgePipeSelfManagedKafkaSourceParameters self_managed_kafka = 6;
+
+  // ActiveMQ broker source tuning.
+  AwsEventBridgePipeActiveMqSourceParameters activemq = 7;
+
+  // RabbitMQ broker source tuning.
+  AwsEventBridgePipeRabbitMqSourceParameters rabbitmq = 8;
+}
+
+// AwsEventBridgePipeFilterCriteria is the pipe's event filter.
+message AwsEventBridgePipeFilterCriteria {
+  // The filter patterns (OR-ed; at most 5), each an EventBridge event
+  // pattern JSON document. Example: {"body":{"type":["order"]}}.
+  repeated AwsEventBridgePipeFilter filters = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 5
+  }];
+}
+
+// AwsEventBridgePipeFilter is one filter pattern.
+message AwsEventBridgePipeFilter {
+  // The EventBridge event pattern (JSON, up to 4096 characters).
+  string pattern = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 4096
+  }];
+}
+
+// AwsEventBridgePipeSqsSourceParameters tunes an SQS source.
+message AwsEventBridgePipeSqsSourceParameters {
+  // Events per batch (1-10000; FIFO queues cap at 10). Unset keeps
+  // AWS's default (10).
+  optional int32 batch_size = 1 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 10000
+  }];
+
+  // How long to gather a batch before invoking (0-300 seconds).
+  optional int32 maximum_batching_window_in_seconds = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 300
+  }];
+}
+
+// AwsEventBridgePipeKinesisSourceParameters tunes a Kinesis stream
+// source.
+message AwsEventBridgePipeKinesisSourceParameters {
+  // AT_TIMESTAMP needs its timestamp; the other positions forbid it.
+  option (buf.validate.message).cel = {
+    id: "kinesis.timestamp_matches_position"
+    message: "starting_position AT_TIMESTAMP requires starting_position_timestamp; TRIM_HORIZON/LATEST forbid it"
+    expression: "(this.starting_position == 'AT_TIMESTAMP') == (this.starting_position_timestamp != '')"
+  };
+
+  // Where a NEW pipe starts reading. FIXED FOR LIFE - changing it
+  // replaces the pipe.
+  string starting_position = 1 [(buf.validate.field).string = {
+    in: [
+      "TRIM_HORIZON",
+      "LATEST",
+      "AT_TIMESTAMP"
+    ]
+  }];
+
+  // The instant to start from (RFC3339), with AT_TIMESTAMP. Fixed for
+  // life.
+  string starting_position_timestamp = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Events per batch (1-10000). Unset keeps AWS's default (100).
+  optional int32 batch_size = 3 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 10000
+  }];
+
+  // How long to gather a batch before invoking (0-300 seconds).
+  optional int32 maximum_batching_window_in_seconds = 4 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 300
+  }];
+
+  // Discard records older than this (60-604800 seconds; -1 never
+  // discards). Unset keeps AWS's default (-1).
+  optional int32 maximum_record_age_in_seconds = 5 [(buf.validate.field).int32 = {
+    gte: -1
+    lte: 604800
+  }];
+
+  // Retry a failed batch at most this many times (-1 retries until
+  // the records expire). Unset keeps AWS's default (-1).
+  optional int32 maximum_retry_attempts = 6 [(buf.validate.field).int32 = {
+    gte: -1
+    lte: 10000
+  }];
+
+  // On a partial batch failure, AUTOMATIC_BISECT splits the batch and
+  // retries the halves. Unset retries the whole batch.
+  string on_partial_batch_item_failure = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: ["AUTOMATIC_BISECT"]
+    }
+  ];
+
+  // Concurrent batches per shard (1-10). Unset keeps AWS's default
+  // (1).
+  optional int32 parallelization_factor = 8 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 10
+  }];
+
+  // Where records land after retries are exhausted (an SQS queue or
+  // SNS topic ARN). Reference an AwsSqsQueue queue_arn output or pass
+  // a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef dead_letter_queue_arn = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSqsQueue,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.queue_arn"
+  ];
+}
+
+// AwsEventBridgePipeDynamoDbSourceParameters tunes a DynamoDB stream
+// source.
+message AwsEventBridgePipeDynamoDbSourceParameters {
+  // Where a NEW pipe starts reading. FIXED FOR LIFE - changing it
+  // replaces the pipe.
+  string starting_position = 1 [(buf.validate.field).string = {
+    in: [
+      "TRIM_HORIZON",
+      "LATEST"
+    ]
+  }];
+
+  // Events per batch (1-10000). Unset keeps AWS's default (100).
+  optional int32 batch_size = 2 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 10000
+  }];
+
+  // How long to gather a batch before invoking (0-300 seconds).
+  optional int32 maximum_batching_window_in_seconds = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 300
+  }];
+
+  // Discard records older than this (60-604800 seconds; -1 never
+  // discards). Unset keeps AWS's default (-1).
+  optional int32 maximum_record_age_in_seconds = 4 [(buf.validate.field).int32 = {
+    gte: -1
+    lte: 604800
+  }];
+
+  // Retry a failed batch at most this many times (-1 retries until
+  // the records expire). Unset keeps AWS's default (-1).
+  optional int32 maximum_retry_attempts = 5 [(buf.validate.field).int32 = {
+    gte: -1
+    lte: 10000
+  }];
+
+  // On a partial batch failure, AUTOMATIC_BISECT splits the batch and
+  // retries the halves. Unset retries the whole batch.
+  string on_partial_batch_item_failure = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: ["AUTOMATIC_BISECT"]
+    }
+  ];
+
+  // Concurrent batches per shard (1-10). Unset keeps AWS's default
+  // (1).
+  optional int32 parallelization_factor = 7 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 10
+  }];
+
+  // Where records land after retries are exhausted (an SQS queue or
+  // SNS topic ARN). Reference an AwsSqsQueue queue_arn output or pass
+  // a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef dead_letter_queue_arn = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSqsQueue,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.queue_arn"
+  ];
+}
+
+// AwsEventBridgePipeMskSourceParameters tunes an Amazon MSK source.
+message AwsEventBridgePipeMskSourceParameters {
+  // The topic to read (1-249 characters, Kafka topic charset). FIXED
+  // FOR LIFE - changing it replaces the pipe.
+  string topic_name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 249
+    pattern: "^[^.]([0-9A-Za-z_.-]+)$"
+  }];
+
+  // The Kafka consumer group id (up to 200 characters). Unset lets
+  // AWS generate one.
+  string consumer_group_id = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 200
+  ];
+
+  // Where a NEW pipe starts reading. Fixed for life.
+  string starting_position = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "TRIM_HORIZON",
+        "LATEST"
+      ]
+    }
+  ];
+
+  // Events per batch (1-10000). Unset keeps AWS's default (100).
+  optional int32 batch_size = 4 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 10000
+  }];
+
+  // How long to gather a batch before invoking (0-300 seconds).
+  optional int32 maximum_batching_window_in_seconds = 5 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 300
+  }];
+
+  // Broker credentials, as the ARN of the Secrets Manager secret
+  // holding them - a reference, never the credential value itself.
+  AwsEventBridgePipeMskCredentials credentials = 6;
+}
+
+// AwsEventBridgePipeMskCredentials selects the MSK auth mechanism.
+message AwsEventBridgePipeMskCredentials {
+  // Exactly one mechanism.
+  option (buf.validate.message).cel = {
+    id: "msk_credentials.exactly_one"
+    message: "set exactly one of client_certificate_tls_auth and sasl_scram_512_auth"
+    expression: "(this.client_certificate_tls_auth != '') != (this.sasl_scram_512_auth != '')"
+  };
+
+  // Secrets Manager secret ARN holding the client TLS certificate.
+  string client_certificate_tls_auth = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^arn:aws.*:secretsmanager:.*$"
+  ];
+
+  // Secrets Manager secret ARN holding the SASL/SCRAM-512 credentials.
+  string sasl_scram_512_auth = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^arn:aws.*:secretsmanager:.*$"
+  ];
+}
+
+// AwsEventBridgePipeSelfManagedKafkaSourceParameters tunes a
+// self-managed Apache Kafka source.
+message AwsEventBridgePipeSelfManagedKafkaSourceParameters {
+  // The topic to read (1-249 characters, Kafka topic charset). FIXED
+  // FOR LIFE.
+  string topic_name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 249
+    pattern: "^[^.]([0-9A-Za-z_.-]+)$"
+  }];
+
+  // Extra bootstrap "host:port" endpoints beyond the source ARN's (at
+  // most 2). Fixed for life.
+  repeated string additional_bootstrap_servers = 2 [(buf.validate.field).repeated = {
+    max_items: 2
+    items: {
+      string: {
+        min_len: 1
+        max_len: 300
+      }
+    }
+  }];
+
+  // The Kafka consumer group id (up to 200 characters). FIXED FOR
+  // LIFE on self-managed Kafka (unlike MSK).
+  string consumer_group_id = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 200
+  ];
+
+  // Where a NEW pipe starts reading. Fixed for life.
+  string starting_position = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "TRIM_HORIZON",
+        "LATEST"
+      ]
+    }
+  ];
+
+  // Events per batch (1-10000). Unset keeps AWS's default (100).
+  optional int32 batch_size = 5 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 10000
+  }];
+
+  // How long to gather a batch before invoking (0-300 seconds).
+  optional int32 maximum_batching_window_in_seconds = 6 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 300
+  }];
+
+  // Broker credentials, as the ARN of the Secrets Manager secret
+  // holding them - a reference, never the credential value itself.
+  AwsEventBridgePipeSelfManagedKafkaCredentials credentials = 7;
+
+  // Secrets Manager secret ARN holding the brokers' root CA
+  // certificate, for private CAs.
+  string server_root_ca_certificate = 8 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^arn:aws.*$"
+  ];
+
+  // VPC placement for reaching brokers on private networks.
+  AwsEventBridgePipeSelfManagedKafkaVpc vpc = 9;
+}
+
+// AwsEventBridgePipeSelfManagedKafkaCredentials selects the
+// self-managed Kafka auth mechanism.
+message AwsEventBridgePipeSelfManagedKafkaCredentials {
+  // Exactly one mechanism.
+  option (buf.validate.message).cel = {
+    id: "smk_credentials.exactly_one"
+    message: "set exactly one of basic_auth, client_certificate_tls_auth, sasl_scram_256_auth, and sasl_scram_512_auth"
+    expression: "[this.basic_auth != '', this.client_certificate_tls_auth != '', this.sasl_scram_256_auth != '', this.sasl_scram_512_auth != ''].filter(x, x).size() == 1"
+  };
+
+  // Secrets Manager secret ARN holding SASL/PLAIN credentials.
+  string basic_auth = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^arn:aws.*:secretsmanager:.*$"
+  ];
+
+  // Secrets Manager secret ARN holding the client TLS certificate.
+  string client_certificate_tls_auth = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^arn:aws.*:secretsmanager:.*$"
+  ];
+
+  // Secrets Manager secret ARN holding SASL/SCRAM-256 credentials.
+  string sasl_scram_256_auth = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^arn:aws.*:secretsmanager:.*$"
+  ];
+
+  // Secrets Manager secret ARN holding SASL/SCRAM-512 credentials.
+  string sasl_scram_512_auth = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^arn:aws.*:secretsmanager:.*$"
+  ];
+}
+
+// AwsEventBridgePipeSelfManagedKafkaVpc places the pipe's Kafka client
+// in a VPC.
+message AwsEventBridgePipeSelfManagedKafkaVpc {
+  // The subnets the client uses (at most 16). Reference AwsSubnet
+  // subnet_id outputs or pass literal subnet-... ids.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnets = 1 [
+    (buf.validate.field).repeated = {
+      min_items: 1
+      max_items: 16
+    },
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // The security groups attached to the client (at most 5). Reference
+  // AwsSecurityGroup security_group_id outputs or pass literal sg-...
+  // ids.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_groups = 2 [
+    (buf.validate.field).repeated.max_items = 5,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+}
+
+// AwsEventBridgePipeActiveMqSourceParameters tunes an ActiveMQ broker
+// source.
+message AwsEventBridgePipeActiveMqSourceParameters {
+  // The queue to read (1-1000 characters). FIXED FOR LIFE.
+  string queue_name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 1000
+  }];
+
+  // Secrets Manager secret ARN holding the broker's basic-auth
+  // credentials - a reference, never the credential value itself.
+  // REQUIRED by AWS for ActiveMQ.
+  string basic_auth_credentials = 2 [
+    (buf.validate.field).string.pattern = "^arn:aws.*:secretsmanager:.*$",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "a Secrets Manager secret ARN (a reference), never the credential value"
+  ];
+
+  // Events per batch (1-10000). Unset keeps AWS's default (100).
+  optional int32 batch_size = 3 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 10000
+  }];
+
+  // How long to gather a batch before invoking (0-300 seconds).
+  optional int32 maximum_batching_window_in_seconds = 4 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 300
+  }];
+}
+
+// AwsEventBridgePipeRabbitMqSourceParameters tunes a RabbitMQ broker
+// source.
+message AwsEventBridgePipeRabbitMqSourceParameters {
+  // The queue to read (1-1000 characters). FIXED FOR LIFE.
+  string queue_name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 1000
+  }];
+
+  // The RabbitMQ virtual host (unset uses "/"). Fixed for life.
+  string virtual_host = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 200
+  ];
+
+  // Secrets Manager secret ARN holding the broker's basic-auth
+  // credentials - a reference, never the credential value itself.
+  // REQUIRED by AWS for RabbitMQ.
+  string basic_auth_credentials = 3 [
+    (buf.validate.field).string.pattern = "^arn:aws.*:secretsmanager:.*$",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "a Secrets Manager secret ARN (a reference), never the credential value"
+  ];
+
+  // Events per batch (1-10000). Unset keeps AWS's default (100).
+  optional int32 batch_size = 4 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 10000
+  }];
+
+  // How long to gather a batch before invoking (0-300 seconds).
+  optional int32 maximum_batching_window_in_seconds = 5 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 300
+  }];
+}
+
+// ---------------------------------------------------------------------------
+// Enrichment parameters
+// ---------------------------------------------------------------------------
+
+// AwsEventBridgePipeEnrichmentParameters shapes the enrichment call.
+message AwsEventBridgePipeEnrichmentParameters {
+  // The input template applied to each event BEFORE the enrichment
+  // call (up to 8192 characters; static text with <$.json.path>
+  // placeholders).
+  string input_template = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 8192
+  ];
+
+  // HTTP shaping when the enrichment is an API destination.
+  AwsEventBridgePipeHttpParameters http_parameters = 2;
+}
+
+// AwsEventBridgePipeHttpParameters shapes an API-destination call
+// (headers, path wildcards, query string).
+message AwsEventBridgePipeHttpParameters {
+  // Headers added to the request.
+  map<string, string> header_parameters = 1;
+
+  // The value filling the destination URL's "*" path wildcard. (AWS's
+  // API models this as a list but accepts exactly ONE entry.)
+  string path_parameter_value = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Query-string parameters added to the request.
+  map<string, string> query_string_parameters = 3;
+}
+
+// ---------------------------------------------------------------------------
+// Target parameters
+// ---------------------------------------------------------------------------
+
+// AwsEventBridgePipeTargetParameters shapes delivery: an optional
+// input template plus at most one service-family block matching the
+// target's service.
+message AwsEventBridgePipeTargetParameters {
+  // The family blocks are alternatives - the one that matches the
+  // target's service.
+  option (buf.validate.message).cel = {
+    id: "target_parameters.at_most_one_family"
+    message: "configure at most one target family block (sqs, kinesis, lambda, step_function, ecs_task, batch_job, redshift_data, sagemaker_pipeline, eventbridge_event_bus, cloudwatch_logs, http) - it must match the target arn's service"
+    expression: "[has(this.sqs), has(this.kinesis), has(this.lambda), has(this.step_function), has(this.ecs_task), has(this.batch_job), has(this.redshift_data), has(this.sagemaker_pipeline), has(this.eventbridge_event_bus), has(this.cloudwatch_logs), has(this.http)].filter(x, x).size() <= 1"
+  };
+
+  // The input template applied to each event BEFORE delivery (up to
+  // 8192 characters; static text with <$.json.path> placeholders).
+  // Removing it later genuinely clears it at AWS.
+  string input_template = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 8192
+  ];
+
+  // SQS SendMessage shaping (FIFO group/dedup ids).
+  AwsEventBridgePipeSqsTargetParameters sqs = 2;
+
+  // Kinesis PutRecord shaping (partition key).
+  AwsEventBridgePipeKinesisTargetParameters kinesis = 3;
+
+  // Lambda invocation type.
+  AwsEventBridgePipeLambdaTargetParameters lambda = 4;
+
+  // Step Functions invocation type.
+  AwsEventBridgePipeStepFunctionTargetParameters step_function = 5;
+
+  // ECS RunTask shaping (target arn: the cluster).
+  AwsEventBridgePipeEcsTaskTargetParameters ecs_task = 6;
+
+  // Batch SubmitJob shaping (target arn: the job queue).
+  AwsEventBridgePipeBatchJobTargetParameters batch_job = 7;
+
+  // Redshift Data API statement shaping (target arn: the cluster).
+  AwsEventBridgePipeRedshiftDataTargetParameters redshift_data = 8;
+
+  // SageMaker StartPipelineExecution shaping.
+  AwsEventBridgePipeSageMakerPipelineTargetParameters sagemaker_pipeline = 9;
+
+  // EventBridge PutEvents shaping (target arn: the bus).
+  AwsEventBridgePipeEventBusTargetParameters eventbridge_event_bus = 10;
+
+  // CloudWatch Logs PutLogEvents shaping (target arn: the log group).
+  AwsEventBridgePipeCloudWatchLogsTargetParameters cloudwatch_logs = 11;
+
+  // API-destination HTTP shaping.
+  AwsEventBridgePipeHttpParameters http = 12;
+}
+
+// AwsEventBridgePipeSqsTargetParameters shapes SQS delivery.
+message AwsEventBridgePipeSqsTargetParameters {
+  // The FIFO message group id (up to 100 characters). FIFO queues
+  // only.
+  string message_group_id = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 100
+  ];
+
+  // The FIFO deduplication id (up to 100 characters; supports
+  // <$.json.path> dynamic values). FIFO queues without
+  // content-based deduplication only.
+  string message_deduplication_id = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 100
+  ];
+}
+
+// AwsEventBridgePipeKinesisTargetParameters shapes Kinesis delivery.
+message AwsEventBridgePipeKinesisTargetParameters {
+  // The partition key (up to 256 characters; supports <$.json.path>
+  // dynamic values).
+  string partition_key = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+  }];
+}
+
+// AwsEventBridgePipeLambdaTargetParameters shapes Lambda invocation.
+message AwsEventBridgePipeLambdaTargetParameters {
+  // REQUEST_RESPONSE waits for the function result (failures retry);
+  // FIRE_AND_FORGET does not.
+  string invocation_type = 1 [(buf.validate.field).string = {
+    in: [
+      "REQUEST_RESPONSE",
+      "FIRE_AND_FORGET"
+    ]
+  }];
+}
+
+// AwsEventBridgePipeStepFunctionTargetParameters shapes Step Functions
+// invocation.
+message AwsEventBridgePipeStepFunctionTargetParameters {
+  // REQUEST_RESPONSE waits for the execution to finish (EXPRESS state
+  // machines only); FIRE_AND_FORGET starts it and moves on.
+  string invocation_type = 1 [(buf.validate.field).string = {
+    in: [
+      "REQUEST_RESPONSE",
+      "FIRE_AND_FORGET"
+    ]
+  }];
+}
+
+// AwsEventBridgePipeEcsTaskTargetParameters shapes the RunTask call
+// when the target is an ECS cluster.
+message AwsEventBridgePipeEcsTaskTargetParameters {
+  // The task definition to run. Reference an AwsEcsTaskDefinition
+  // task_definition_arn output or pass a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef task_definition_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsEcsTaskDefinition,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.task_definition_arn"
+  ];
+
+  // How many tasks each event batch launches. Unset keeps AWS's
+  // default (1).
+  optional int32 task_count = 2 [(buf.validate.field).int32.gte = 1];
+
+  // FARGATE, EC2, or EXTERNAL. Unset lets the cluster's default
+  // capacity providers decide (mutually exclusive with
+  // capacity_provider_strategy at AWS).
+  string launch_type = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "EC2",
+        "FARGATE",
+        "EXTERNAL"
+      ]
+    }
+  ];
+
+  // Capacity provider strategy entries (at most 6). Mutually exclusive
+  // with launch_type at AWS.
+  repeated AwsEventBridgePipeCapacityProviderStrategy capacity_provider_strategy = 4 [(buf.validate.field).repeated.max_items = 6];
+
+  // VPC networking for awsvpc-mode tasks (required for Fargate).
+  AwsEventBridgePipeEcsNetworkConfiguration network_configuration = 5;
+
+  // The ECS task group name (up to 255 characters).
+  string group = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 255
+  ];
+
+  // The Fargate platform version (e.g. "LATEST", "1.4.0"). Fargate
+  // only.
+  string platform_version = 7 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Per-launch overrides of the task definition (containers, sizing,
+  // roles).
+  AwsEventBridgePipeEcsTaskOverrides overrides = 8;
+
+  // Placement constraints (at most 10). EC2 launch type only.
+  repeated AwsEventBridgePipePlacementConstraint placement_constraints = 9 [(buf.validate.field).repeated.max_items = 10];
+
+  // Placement strategies (at most 5). EC2 launch type only.
+  repeated AwsEventBridgePipePlacementStrategy placement_strategy = 10 [(buf.validate.field).repeated.max_items = 5];
+
+  // Propagate tags from the task definition to launched tasks. The
+  // only value AWS accepts is "TASK_DEFINITION"; unset propagates
+  // nothing.
+  string propagate_tags = 11 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: ["TASK_DEFINITION"]
+    }
+  ];
+
+  // Tags applied to every launched task.
+  map<string, string> tags = 12;
+
+  // Use ECS managed tags on launched tasks.
+  bool enable_ecs_managed_tags = 13;
+
+  // Enable ECS Exec on launched tasks (interactive debugging).
+  bool enable_execute_command = 14;
+
+  // The reference id attached to each RunTask call (up to 1024
+  // characters).
+  string reference_id = 15 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 1024
+  ];
+}
+
+// AwsEventBridgePipeCapacityProviderStrategy is one capacity provider
+// strategy entry.
+message AwsEventBridgePipeCapacityProviderStrategy {
+  // The capacity provider's name (e.g. "FARGATE", "FARGATE_SPOT", or a
+  // custom provider).
+  string capacity_provider = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 255
+  }];
+
+  // How many tasks run on this provider before the weights apply
+  // (0-100000).
+  int32 base = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100000
+  }];
+
+  // The relative share of remaining tasks on this provider (0-1000).
+  int32 weight = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 1000
+  }];
+}
+
+// AwsEventBridgePipeEcsNetworkConfiguration is the awsvpc networking
+// for launched tasks.
+message AwsEventBridgePipeEcsNetworkConfiguration {
+  // The subnets tasks launch into (at most 16). Reference AwsSubnet
+  // subnet_id outputs or pass literal subnet-... ids.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnets = 1 [
+    (buf.validate.field).repeated = {
+      min_items: 1
+      max_items: 16
+    },
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // The security groups attached to tasks (at most 5). Unset uses the
+  // VPC's default. Reference AwsSecurityGroup security_group_id
+  // outputs or pass literal sg-... ids.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_groups = 2 [
+    (buf.validate.field).repeated.max_items = 5,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+
+  // Assign public IPs to tasks (public-subnet Fargate tasks that pull
+  // images over the internet need this).
+  bool assign_public_ip = 3;
+}
+
+// AwsEventBridgePipeEcsTaskOverrides overrides the task definition per
+// launch.
+message AwsEventBridgePipeEcsTaskOverrides {
+  // Per-container overrides.
+  repeated AwsEventBridgePipeEcsContainerOverride container_overrides = 1;
+
+  // The task-level CPU override (e.g. "1 vCPU").
+  string cpu = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // The task-level memory override (e.g. "2048").
+  string memory = 3 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // The ephemeral storage size in GiB (21-200). Fargate only.
+  optional int32 ephemeral_storage_size_in_gib = 4 [(buf.validate.field).int32 = {
+    gte: 21
+    lte: 200
+  }];
+
+  // The execution role override. Reference an AwsIamRole role_arn
+  // output or pass a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef execution_role_arn = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // The task role override. Reference an AwsIamRole role_arn output or
+  // pass a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef task_role_arn = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Inference accelerator overrides.
+  repeated AwsEventBridgePipeEcsInferenceAcceleratorOverride inference_accelerator_overrides = 7;
+}
+
+// AwsEventBridgePipeEcsContainerOverride overrides one container.
+message AwsEventBridgePipeEcsContainerOverride {
+  // The container's name (as in the task definition).
+  string name = 1 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // The command override.
+  repeated string command = 2;
+
+  // The CPU units override.
+  optional int32 cpu = 3;
+
+  // The hard memory limit override (MiB).
+  optional int32 memory = 4;
+
+  // The soft memory limit override (MiB).
+  optional int32 memory_reservation = 5;
+
+  // Environment variable overrides.
+  repeated AwsEventBridgePipeEcsEnvironmentVariable environment = 6;
+
+  // Environment files (S3 ARNs of .env objects).
+  repeated AwsEventBridgePipeEcsEnvironmentFile environment_files = 7;
+
+  // Resource requirement overrides (GPU / InferenceAccelerator).
+  repeated AwsEventBridgePipeEcsResourceRequirement resource_requirements = 8;
+}
+
+// AwsEventBridgePipeEcsEnvironmentVariable is one environment variable
+// override.
+message AwsEventBridgePipeEcsEnvironmentVariable {
+  // The variable's name.
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The variable's value.
+  string value = 2;
+}
+
+// AwsEventBridgePipeEcsEnvironmentFile is one environment file.
+message AwsEventBridgePipeEcsEnvironmentFile {
+  // The only type AWS supports is "s3".
+  string type = 1 [(buf.validate.field).string = {
+    in: ["s3"]
+  }];
+
+  // The S3 object ARN of the .env file.
+  string value = 2 [(buf.validate.field).string.pattern = "^arn:aws.*$"];
+}
+
+// AwsEventBridgePipeEcsResourceRequirement is one resource requirement
+// override.
+message AwsEventBridgePipeEcsResourceRequirement {
+  // "GPU" or "InferenceAccelerator".
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "GPU",
+      "InferenceAccelerator"
+    ]
+  }];
+
+  // The requirement's value (GPU count, or the accelerator device
+  // name).
+  string value = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsEventBridgePipeEcsInferenceAcceleratorOverride overrides one
+// inference accelerator.
+message AwsEventBridgePipeEcsInferenceAcceleratorOverride {
+  // The accelerator device name (as in the task definition).
+  string device_name = 1 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // The accelerator device type.
+  string device_type = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+}
+
+// AwsEventBridgePipePlacementConstraint is one task placement
+// constraint.
+message AwsEventBridgePipePlacementConstraint {
+  // "distinctInstance" (spread tasks across instances) or "memberOf"
+  // (cluster-query-language expression).
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "distinctInstance",
+      "memberOf"
+    ]
+  }];
+
+  // The cluster query language expression, for type memberOf.
+  string expression = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 2000
+  ];
+}
+
+// AwsEventBridgePipePlacementStrategy is one task placement strategy.
+message AwsEventBridgePipePlacementStrategy {
+  // "random", "spread", or "binpack".
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "random",
+      "spread",
+      "binpack"
+    ]
+  }];
+
+  // The field the strategy applies to (e.g. "instanceId" or
+  // "attribute:ecs.availability-zone" for spread, "cpu"/"memory" for
+  // binpack).
+  string field = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 255
+  ];
+}
+
+// AwsEventBridgePipeBatchJobTargetParameters shapes the SubmitJob call
+// when the target is a Batch job queue.
+message AwsEventBridgePipeBatchJobTargetParameters {
+  // The job definition (name, name:revision, or ARN).
+  string job_definition = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The submitted job's name (up to 128 characters).
+  string job_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+
+  // Array job sizing (2-10000 child jobs). Unset submits a regular
+  // job.
+  optional int32 array_size = 3 [(buf.validate.field).int32 = {
+    gte: 2
+    lte: 10000
+  }];
+
+  // Retry attempts override (1-10). Unset keeps the job definition's.
+  optional int32 retry_attempts = 4 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 10
+  }];
+
+  // Job parameter placeholders (name → value), substituted into the
+  // job definition.
+  map<string, string> parameters = 5;
+
+  // Jobs this submission depends on (at most 20).
+  repeated AwsEventBridgePipeBatchJobDependency depends_on = 6 [(buf.validate.field).repeated.max_items = 20];
+
+  // The container override for the submitted job.
+  AwsEventBridgePipeBatchContainerOverrides container_overrides = 7;
+}
+
+// AwsEventBridgePipeBatchJobDependency is one job dependency.
+message AwsEventBridgePipeBatchJobDependency {
+  // The job id this submission waits on.
+  string job_id = 1 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // "SEQUENTIAL" or "N_TO_N" (array jobs).
+  string type = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "SEQUENTIAL",
+        "N_TO_N"
+      ]
+    }
+  ];
+}
+
+// AwsEventBridgePipeBatchContainerOverrides overrides the Batch job's
+// container.
+message AwsEventBridgePipeBatchContainerOverrides {
+  // The command override.
+  repeated string command = 1;
+
+  // Environment variable overrides.
+  repeated AwsEventBridgePipeEcsEnvironmentVariable environment = 2;
+
+  // The instance type override (multi-node parallel jobs only).
+  string instance_type = 3 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Resource requirement overrides ("GPU", "MEMORY", "VCPU").
+  repeated AwsEventBridgePipeBatchResourceRequirement resource_requirements = 4;
+}
+
+// AwsEventBridgePipeBatchResourceRequirement is one Batch resource
+// requirement override.
+message AwsEventBridgePipeBatchResourceRequirement {
+  // "GPU", "MEMORY", or "VCPU".
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "GPU",
+      "MEMORY",
+      "VCPU"
+    ]
+  }];
+
+  // The requirement's value (count, MiB, or vCPUs).
+  string value = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsEventBridgePipeRedshiftDataTargetParameters shapes Data API
+// statements when the target is a Redshift cluster.
+message AwsEventBridgePipeRedshiftDataTargetParameters {
+  // Exactly one auth path: a db_user (temporary credentials) or a
+  // Secrets Manager secret.
+  option (buf.validate.message).cel = {
+    id: "redshift.exactly_one_auth"
+    message: "set exactly one of db_user (temporary credentials) and secret_manager_arn (stored credentials)"
+    expression: "(this.db_user != '') != (this.secret_manager_arn != '')"
+  };
+
+  // The database to run statements in (1-64 characters).
+  string database = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+
+  // The SQL statements to run (each up to 100000 characters).
+  repeated string sqls = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {
+        min_len: 1
+        max_len: 100000
+      }
+    }
+  }];
+
+  // The database user for temporary-credential auth (1-128
+  // characters).
+  string db_user = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // Secrets Manager secret ARN holding the database credentials - a
+  // reference, never the credential value itself.
+  string secret_manager_arn = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^arn:aws.*$"
+  ];
+
+  // The statement name, for Data API auditing (1-500 characters).
+  string statement_name = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 500
+  ];
+
+  // Send an event back to EventBridge when the statement finishes.
+  bool with_event = 6;
+}
+
+// AwsEventBridgePipeSageMakerPipelineTargetParameters shapes the
+// StartPipelineExecution call.
+message AwsEventBridgePipeSageMakerPipelineTargetParameters {
+  // Pipeline parameters must have unique names.
+  option (buf.validate.message).cel = {
+    id: "sagemaker.parameter_names_unique"
+    message: "pipeline_parameters entries must have unique names"
+    expression: "this.pipeline_parameters.map(p, p.name).unique()"
+  };
+
+  // Name/value parameters passed to the pipeline execution (at most
+  // 200).
+  repeated AwsEventBridgePipeSageMakerPipelineParameter pipeline_parameters = 1 [(buf.validate.field).repeated.max_items = 200];
+}
+
+// AwsEventBridgePipeSageMakerPipelineParameter is one pipeline
+// parameter.
+message AwsEventBridgePipeSageMakerPipelineParameter {
+  // The parameter's name (supports <$.json.path> dynamic values).
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+  }];
+
+  // The parameter's value.
+  string value = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 1024
+  }];
+}
+
+// AwsEventBridgePipeEventBusTargetParameters shapes the PutEvents call
+// when the target is an EventBridge bus.
+message AwsEventBridgePipeEventBusTargetParameters {
+  // The event's detail-type (what rules match on; up to 128
+  // characters).
+  string detail_type = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // The event's source (e.g. "com.acme.orders"; up to 256 characters).
+  string source = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 256
+  ];
+
+  // The global-endpoint id for multi-region buses (e.g.
+  // "abcde.veo"). Unset for regular buses.
+  string endpoint_id = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 50
+      pattern: "^[0-9A-Za-z-]+[.][0-9A-Za-z-]+$"
+    }
+  ];
+
+  // ARNs the event claims involvement of (rule matching on resources;
+  // at most 10).
+  repeated string resources = 4 [(buf.validate.field).repeated = {
+    max_items: 10
+    items: {
+      string: {pattern: "^arn:aws.*$"}
+    }
+  }];
+
+  // The event's timestamp, as a <$.json.path> expression into the
+  // source event. Unset stamps delivery time.
+  string time = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 256
+      pattern: "^\\$(\\.[\\w/_-]+(\\[(\\d+|\\*)\\])*)*$"
+    }
+  ];
+}
+
+// AwsEventBridgePipeCloudWatchLogsTargetParameters shapes the
+// PutLogEvents call when the target is a log group.
+message AwsEventBridgePipeCloudWatchLogsTargetParameters {
+  // The log stream to write to (up to 256 characters). Unset lets the
+  // pipe manage streams.
+  string log_stream_name = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 256
+  ];
+
+  // The log event's timestamp, as a <$.json.path> expression into the
+  // source event (e.g. "$.detail.timestamp"). Unset stamps delivery
+  // time.
+  string timestamp = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 256
+      pattern: "^\\$(\\.[\\w/_-]+(\\[(\\d+|\\*)\\])*)*$"
+    }
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// Log configuration
+// ---------------------------------------------------------------------------
+
+// AwsEventBridgePipeLogConfiguration is the pipe's execution logging:
+// a level plus one or more destinations.
+message AwsEventBridgePipeLogConfiguration {
+  // A level other than OFF needs somewhere to write.
+  option (buf.validate.message).cel = {
+    id: "log_configuration.destination_required"
+    message: "configure at least one destination (cloudwatch_logs, firehose, s3) - a level with nowhere to write logs nothing"
+    expression: "this.level == 'OFF' || has(this.cloudwatch_logs) || has(this.firehose) || has(this.s3)"
+  };
+
+  // How much to log: OFF, ERROR, INFO, or TRACE (TRACE includes
+  // payloads when include_execution_data is set - mind the
+  // sensitivity).
+  string level = 1 [(buf.validate.field).string = {
+    in: [
+      "OFF",
+      "ERROR",
+      "INFO",
+      "TRACE"
+    ]
+  }];
+
+  // Include event payloads in execution logs. Payloads may carry
+  // sensitive data - enable deliberately.
+  bool include_execution_data = 2;
+
+  // Write execution logs to a CloudWatch log group.
+  AwsEventBridgePipeCloudWatchLogsLogDestination cloudwatch_logs = 3;
+
+  // Write execution logs to a Firehose delivery stream.
+  AwsEventBridgePipeFirehoseLogDestination firehose = 4;
+
+  // Write execution logs to an S3 bucket.
+  AwsEventBridgePipeS3LogDestination s3 = 5;
+}
+
+// AwsEventBridgePipeCloudWatchLogsLogDestination is the CloudWatch
+// Logs destination.
+message AwsEventBridgePipeCloudWatchLogsLogDestination {
+  // The log group's ARN. Reference an AwsCloudwatchLogGroup
+  // log_group_arn output or pass a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef log_group_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCloudwatchLogGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.log_group_arn"
+  ];
+}
+
+// AwsEventBridgePipeFirehoseLogDestination is the Firehose
+// destination.
+message AwsEventBridgePipeFirehoseLogDestination {
+  // The delivery stream's ARN. Reference an AwsKinesisFirehose
+  // delivery_stream_arn output or pass a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef delivery_stream_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKinesisFirehose,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.delivery_stream_arn"
+  ];
+}
+
+// AwsEventBridgePipeS3LogDestination is the S3 destination.
+message AwsEventBridgePipeS3LogDestination {
+  // The receiving bucket's name. Reference an AwsS3Bucket bucket_id
+  // output or pass a literal bucket name.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // The bucket owner's AWS account id (cross-account bucket
+  // protection).
+  string bucket_owner = 2 [(buf.validate.field).string.pattern = "^\\d{12}$"];
+
+  // The log object format. Unset keeps AWS's default (json).
+  string output_format = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "json",
+        "plain",
+        "w3c"
+      ]
+    }
+  ];
+
+  // The key prefix under the bucket.
+  string prefix = 4 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+}

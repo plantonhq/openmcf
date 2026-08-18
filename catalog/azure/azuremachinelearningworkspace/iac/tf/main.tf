@@ -10,10 +10,11 @@
 # rule, cross-type outbound-rule name uniqueness) -- by the time this
 # module runs, the shape is legal.
 #
-# Deletion is a SOFT delete: the workspace becomes a purgeable ghost
-# that keeps holding its name. The provider purges it when the
-# features flag `machine_learning.purge_soft_deleted_workspace_on_destroy`
-# is enabled.
+# Deletion is a SOFT delete at the service: the workspace becomes a
+# purgeable ghost that keeps holding its name. This module's provider
+# block (provider.tf) enables
+# `machine_learning.purge_soft_deleted_workspace_on_destroy`, so a
+# destroy purges the ghost and frees the name.
 resource "azurerm_machine_learning_workspace" "main" {
   name                = var.spec.name
   location            = var.spec.region
@@ -88,8 +89,14 @@ resource "azurerm_machine_learning_workspace" "main" {
   # the provider default (also "Basic").
   sku_name = var.spec.sku_name != "" ? var.spec.sku_name : null
 
-  # Requires the encryption block (spec CEL). ForceNew.
-  service_side_encryption_enabled = var.spec.service_side_encryption_enabled
+  # SENT ONLY WHEN TRUE: the provider pairs this with the encryption
+  # block via RequiredWith, which fires on any SPECIFIED value -- an
+  # explicit false without the block fails validation ("all of
+  # encryption,service_side_encryption_enabled must be specified" --
+  # live-caught). null omits it so the provider default (false)
+  # applies; the spec CEL guarantees the encryption block whenever
+  # this is true. ForceNew.
+  service_side_encryption_enabled = var.spec.service_side_encryption_enabled ? true : null
 
   v1_legacy_mode_enabled = var.spec.v1_legacy_mode_enabled
 

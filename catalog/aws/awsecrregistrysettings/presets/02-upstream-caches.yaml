@@ -1,0 +1,31 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEcrRegistrySettings
+metadata:
+  name: us-east-1-registry-caches
+spec:
+  region: us-east-1
+  pullThroughCacheRules:
+    - ecrRepositoryPrefix: docker-hub
+      upstreamRegistryUrl: registry-1.docker.io
+      credentialArn:
+        valueFrom:
+          kind: AwsSecretsManagerSecret
+          name: ecr-pullthroughcache-dockerhub
+          fieldPath: status.outputs.secret_arn
+    - ecrRepositoryPrefix: k8s
+      upstreamRegistryUrl: registry.k8s.io
+    - ecrRepositoryPrefix: quay
+      upstreamRegistryUrl: quay.io
+  repositoryCreationTemplates:
+    - prefix: docker-hub
+      description: Cached Docker Hub images
+      appliedFor:
+        - PULL_THROUGH_CACHE
+      imageTagMutability: IMMUTABLE
+      lifecyclePolicy: '{"rules":[{"rulePriority":1,"description":"expire stale cached images","selection":{"tagStatus":"any","countType":"sinceImagePushed","countUnit":"days","countNumber":90},"action":{"type":"expire"}}]}'
+    - prefix: k8s
+      description: Cached registry.k8s.io images
+      appliedFor:
+        - PULL_THROUGH_CACHE
+      imageTagMutability: IMMUTABLE
+      lifecyclePolicy: '{"rules":[{"rulePriority":1,"description":"expire stale cached images","selection":{"tagStatus":"any","countType":"sinceImagePushed","countUnit":"days","countNumber":90},"action":{"type":"expire"}}]}'

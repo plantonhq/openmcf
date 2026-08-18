@@ -1,0 +1,15 @@
+# Where each placeholder in this component's import-ID formats comes
+# from (the formats themselves live in aa_import/catalog.yaml).
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awseventbridgepipe
+spec:
+  values:
+    - name: pipe_name
+      derivations:
+        - from_stack_output: pipe_name
+        - from_metadata_name: true
+      where_to_find: >-
+        EventBridge console -> Pipes (the Name column), or
+        `aws pipes list-pipes` (Name).

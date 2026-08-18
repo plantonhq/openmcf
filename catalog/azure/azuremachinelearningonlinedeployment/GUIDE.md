@@ -6,6 +6,10 @@ Judgment that saves real time when running managed online deployments. The field
 
 The endpoint is the stable contract; deployments exist to be replaced. Name them for their rollout role (`blue`/`green`, or a model-version suffix), ship every model change as a NEW deployment, and shift the endpoint's traffic map -- never mutate a serving deployment's model in place if you can avoid it. An in-place model change goes through a full PUT that rolls every instance while it serves.
 
+## A bare 400 at create almost always means "no model"
+
+The ARM schema marks `model`, `environmentId`, and `codeConfiguration` all optional, but the service enforces its own floor: a managed deployment that names neither a model nor a self-contained custom container is rejected synchronously with `Status=400 Code="BadRequest" Message="The request is invalid."` -- no field name, no hint (live-proven). If you meet that message seconds into a create, check the model reference before anything else. The cheapest working shape is an MLflow model with `environmentId` and `codeConfiguration` left unset: Azure generates the scoring server and builds the container from the model's own conda environment (the no-code-deployment path).
+
 ## Budget the quota BEFORE the first apply
 
 Managed online endpoints draw from their OWN VM quota, separate from the regular compute quota you already requested for training. A deployment that exceeds it fails at provisioning with a quota error that looks like a capacity problem. Check the `Machine Learning managed online endpoint` quota for the instance family and region first -- and remember mirrored traffic and blue/green overlaps mean BOTH deployments' instances count at once.

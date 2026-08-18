@@ -267,14 +267,24 @@ message AwsBedrockAgentPromptConfiguration {
   // = AWS default (DEFAULT).
   string parser_mode = 3 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["DEFAULT", "OVERRIDDEN"]}
+    (buf.validate.field).string = {
+      in: [
+        "DEFAULT",
+        "OVERRIDDEN"
+      ]
+    }
   ];
 
   // Whether this step runs at all: ENABLED or DISABLED (e.g. disable
   // PRE_PROCESSING entirely). Omitted = AWS default (ENABLED).
   string prompt_state = 4 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["ENABLED", "DISABLED"]}
+    (buf.validate.field).string = {
+      in: [
+        "ENABLED",
+        "DISABLED"
+      ]
+    }
   ];
 
   // Model sampling parameters for this step.
@@ -333,7 +343,12 @@ message AwsBedrockAgentActionGroup {
   // the model cannot call it. Omitted = AWS default (ENABLED).
   string state = 3 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["ENABLED", "DISABLED"]}
+    (buf.validate.field).string = {
+      in: [
+        "ENABLED",
+        "DISABLED"
+      ]
+    }
   ];
 
   // Reserved AWS capability signature. AMAZON.UserInput lets the agent ask
@@ -571,7 +586,12 @@ message AwsBedrockAgentCollaborator {
   // TO_COLLABORATOR or DISABLED. Omitted = AWS default (DISABLED).
   string relay_conversation_history = 4 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["TO_COLLABORATOR", "DISABLED"]}
+    (buf.validate.field).string = {
+      in: [
+        "TO_COLLABORATOR",
+        "DISABLED"
+      ]
+    }
   ];
 }
 
@@ -605,6 +625,11 @@ message AwsBedrockAgentKnowledgeBaseAssociation {
   // but is never queried. Omitted = AWS default (ENABLED).
   string state = 4 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["ENABLED", "DISABLED"]}
+    (buf.validate.field).string = {
+      in: [
+        "ENABLED",
+        "DISABLED"
+      ]
+    }
   ];
 }

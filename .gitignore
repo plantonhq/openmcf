@@ -69,6 +69,10 @@ web-app/src/gen/
 !tools/ci/**/*.sh
 # CI guard scripts must be tracked (run by .github/workflows/lint.*.yaml)
 !hack/guards/*.sh
+# Scenario SETUP-phase scripts (see e2e/README.md). The blanket *.sh
+# ignore would otherwise leave them only on the machine that wrote them
+# and break every fresh checkout's lane.
+!catalog/**/e2e/scenarios/*.setup.sh
 **/*.env
 # Local-only provider credentials for live E2E (see forge rule "Post-Forge Live
 # E2E Validation"). NEVER commit. Note **/*.env above does not match *.env.e2e.

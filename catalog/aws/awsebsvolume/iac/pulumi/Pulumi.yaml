@@ -1,0 +1,3 @@
+name: awsebsvolume
+runtime: go
+description: Pulumi module to manage a standalone AWS EBS volume with in-line attachments

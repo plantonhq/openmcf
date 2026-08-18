@@ -34,6 +34,30 @@ spec:
     # field today.
     - terraform_type: azapi_resource
       id_format: "{arm_resource_id}?api-version={azapi_api_version}"
+      # response_export_values is a client-side instruction (which response
+      # fields to surface as the computed `output`) -- it has no cloud-side
+      # existence, so a blind import leaves it null and the first plan
+      # re-asserts it from config. Live evidence: the ML online endpoint's
+      # first azapi round-trip.
+      config_only_attributes: [response_export_values]
+      # azapi fills `body` on import with ARM's FULL READ (the resource's
+      # kind, server-populated properties, echoed defaults), while the
+      # config holds the module's minimal WRITE shape -- provider
+      # construction on EVERY azapi kind, measured live on the first azapi
+      # round-trip (ML online endpoint). The first post-adoption plan
+      # therefore always re-asserts the write shape, and the
+      # reconcile-apply converges it (a re-PUT of the same body the create
+      # sent). Tolerating body cannot mask a wrong-resource import: the
+      # resource's identity lives in type + name + parent_id + location,
+      # which stay under the oracle. The identity sub-paths are the
+      # block's computed members (principal_id / tenant_id recompute on
+      # any in-place update) and the provider's []-vs-null echo on
+      # identity_ids.
+      write_normalized_attributes:
+        - body
+        - identity.identity_ids
+        - identity.principal_id
+        - identity.tenant_id
 
     # --- Hybrid connectivity: the virtual network gateway family ----------
     - terraform_type: azurerm_virtual_network_gateway
@@ -743,6 +767,12 @@ spec:
       # Import cannot recover the group's secrets (secure environment
       # variables, volume storage keys/secret files, registry passwords,
       # the Log Analytics workspace key) -- Azure never returns them.
+      # And because the container list is ForceNew, a config carrying
+      # secure environment variables plans a ONE-TIME REPLACE on the
+      # first apply after import (live-proven) -- no tolerance can cover
+      # a replace, and none should: rotating such a secret is supposed
+      # to replace the group. Secret-bearing E2E scenarios carry the
+      # e2e-import-roundtrip-skip annotation with this reason.
 
     # --- App Service: Flex Consumption -------------------------------------
     - terraform_type: azurerm_function_app_flex_consumption

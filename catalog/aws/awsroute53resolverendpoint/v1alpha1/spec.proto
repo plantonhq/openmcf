@@ -1,0 +1,255 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsroute53resolverendpoint.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsRoute53ResolverEndpointSpec defines one Route 53 Resolver endpoint
+// - the hybrid-DNS bridge between a VPC and networks outside it - with
+// its forwarding rules and their VPC associations managed in-line.
+//
+// An INBOUND endpoint exposes ENI IP addresses that on-prem resolvers
+// forward queries TO. An OUTBOUND endpoint sends queries FROM the VPC
+// to on-prem (or other) name servers, steered by the forwarding rules
+// below. An INBOUND_DELEGATION endpoint serves the delegation feature
+// that pairs with DELEGATE rules.
+//
+// Rules ride the endpoint because forwarding is what an outbound
+// endpoint exists for: FORWARD rules bind to this endpoint and carry
+// target name servers; SYSTEM rules override a broader FORWARD rule
+// for a subdomain (recursive resolution instead of forwarding) and are
+// meaningless without the forwarding they punch a hole in. Each rule
+// associates to the VPCs that should honor it.
+//
+// Associating a rule RAM-shared FROM another account is out of scope
+// here (single-account posture) - it lands as its own arm on demand.
+message AwsRoute53ResolverEndpointSpec {
+  // FORWARD rules bind to an outbound endpoint; AWS rejects them on
+  // inbound endpoints.
+  option (buf.validate.message).cel = {
+    id: "spec.forward_rules_require_outbound"
+    message: "rules with rule_type FORWARD require direction OUTBOUND - forwarding is an outbound endpoint's job"
+    expression: "this.direction == 'OUTBOUND' || !this.rules.exists(r, r.rule_type == 'FORWARD')"
+  };
+  // Rule names key the for_each on both engines and the output maps.
+  option (buf.validate.message).cel = {
+    id: "spec.rule_names_unique"
+    message: "rule names must be unique within the endpoint"
+    expression: "this.rules.map(r, r.name).unique()"
+  };
+
+  // The AWS region the endpoint (and its rules) live in. Example:
+  // "us-west-2".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Which way DNS queries flow through this endpoint. INBOUND receives
+  // queries from outside the VPC (on-prem resolvers target the ENI
+  // IPs); OUTBOUND sends queries out through the forwarding rules;
+  // INBOUND_DELEGATION serves delegated subdomains (pairs with
+  // DELEGATE rules). Fixed for life.
+  string direction = 2 [(buf.validate.field).string = {
+    in: [
+      "INBOUND",
+      "OUTBOUND",
+      "INBOUND_DELEGATION"
+    ]
+  }];
+
+  // The ENIs this endpoint answers or originates on: one entry per
+  // subnet (2-10, different AZs recommended by AWS). Each entry may
+  // pin a fixed private IPv4/IPv6 within its subnet; unset lets AWS
+  // pick one.
+  repeated AwsRoute53ResolverEndpointIpAddress ip_addresses = 3 [(buf.validate.field).repeated = {
+    min_items: 2
+    max_items: 10
+  }];
+
+  // Security groups controlling DNS traffic to/from the endpoint
+  // ENIs (allow TCP+UDP 53 from the peers that will use it).
+  // Reference AwsSecurityGroup security_group_id outputs or pass
+  // literal sg-... ids. Fixed for life at the provider.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 64,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+
+  // The endpoint's IP family. Unset lets AWS default (IPV4).
+  string endpoint_type = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "IPV4",
+        "IPV6",
+        "DUALSTACK"
+      ]
+    }
+  ];
+
+  // The DNS transport protocols the endpoint speaks (at most 2).
+  // "Do53" is plain DNS; "DoH" is DNS-over-HTTPS; "DoH-FIPS" is the
+  // FIPS-compliant variant (inbound only). Unset lets AWS default
+  // (Do53).
+  repeated string protocols = 6 [
+    (buf.validate.field).cel = {
+      id: "spec.protocols_unique"
+      message: "protocols must be unique"
+      expression: "this.unique()"
+    },
+    (buf.validate.field).repeated.max_items = 2,
+    (buf.validate.field).repeated.items = {
+      string: {
+        in: [
+          "Do53",
+          "DoH",
+          "DoH-FIPS"
+        ]
+      }
+    }
+  ];
+
+  // Publish enhanced resolver network interface metrics to CloudWatch.
+  // Unset leaves AWS's default; an explicit false turns them off.
+  optional bool rni_enhanced_metrics_enabled = 7;
+
+  // Publish per-target-name-server metrics to CloudWatch (outbound
+  // endpoints). Unset leaves AWS's default; an explicit false turns
+  // them off.
+  optional bool target_name_server_metrics_enabled = 8;
+
+  // The forwarding rules managed with this endpoint, keyed by name.
+  // Each rule steers queries for one domain and associates to the
+  // VPCs that should honor it.
+  repeated AwsRoute53ResolverEndpointRule rules = 9;
+}
+
+// AwsRoute53ResolverEndpointIpAddress is one ENI placement for the
+// endpoint.
+message AwsRoute53ResolverEndpointIpAddress {
+  // The subnet the ENI lives in. Reference an AwsSubnet subnet_id
+  // output or pass a literal subnet-... id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Pin a specific private IPv4 within the subnet. Unset lets AWS
+  // pick a free address.
+  string ip = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.ipv4 = true
+  ];
+
+  // Pin a specific IPv6 within the subnet (IPV6/DUALSTACK endpoints).
+  // Unset lets AWS pick a free address.
+  string ipv6 = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.ipv6 = true
+  ];
+}
+
+// AwsRoute53ResolverEndpointRule is one forwarding rule managed with
+// the endpoint, plus the VPC associations that put it into effect.
+message AwsRoute53ResolverEndpointRule {
+  // A FORWARD rule needs somewhere to send queries.
+  option (buf.validate.message).cel = {
+    id: "rule.forward_requires_targets"
+    message: "rule_type FORWARD requires at least one target_ips entry - the name servers queries forward to"
+    expression: "this.rule_type != 'FORWARD' || this.target_ips.size() > 0"
+  };
+  // A SYSTEM rule punches a recursive-resolution hole - it has no
+  // targets by definition.
+  option (buf.validate.message).cel = {
+    id: "rule.system_forbids_targets"
+    message: "rule_type SYSTEM does not accept target_ips - it restores recursive resolution for the domain"
+    expression: "this.rule_type != 'SYSTEM' || this.target_ips.size() == 0"
+  };
+  // Each target is IPv4 or IPv6, never both.
+  option (buf.validate.message).cel = {
+    id: "rule.targets_one_family_each"
+    message: "each target_ips entry sets exactly one of ip and ipv6"
+    expression: "this.target_ips.all(t, (t.ip != '') != (t.ipv6 != ''))"
+  };
+
+  // Rule name - the for_each key on both engines and the key in the
+  // rule_ids / association ID outputs. Also becomes the rule's AWS
+  // name.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+    pattern: "^[0-9A-Za-z_-]+$"
+  }];
+
+  // The domain whose queries this rule steers, e.g. "corp.example.com".
+  // AWS strips a trailing dot; the most specific matching rule wins.
+  string domain_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+  }];
+
+  // What the rule does with matching queries. FORWARD sends them to
+  // target_ips through this (outbound) endpoint. SYSTEM restores
+  // recursive resolution for a subdomain of a forwarded domain.
+  // DELEGATE serves the delegation feature (pairs with an
+  // INBOUND_DELEGATION endpoint; shape enforced server-side).
+  // RECURSIVE rules are Resolver-owned (the autodefined rules) - AWS
+  // rejects user-created ones, so the vocabulary excludes it.
+  string rule_type = 3 [(buf.validate.field).string = {
+    in: [
+      "FORWARD",
+      "SYSTEM",
+      "DELEGATE"
+    ]
+  }];
+
+  // The name servers FORWARD queries go to (on-prem or other
+  // resolvers reachable from the endpoint's subnets).
+  repeated AwsRoute53ResolverEndpointRuleTarget target_ips = 4;
+
+  // The VPCs this rule is associated with (the rule takes effect for
+  // queries originating in these VPCs). Reference AwsVpc vpc_id
+  // outputs or pass literal vpc-... ids.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_ids = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
+  ];
+}
+
+// AwsRoute53ResolverEndpointRuleTarget is one name server a FORWARD
+// rule sends queries to.
+message AwsRoute53ResolverEndpointRuleTarget {
+  // The target's IPv4 address.
+  string ip = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.ipv4 = true
+  ];
+
+  // The target's IPv6 address.
+  string ipv6 = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.ipv6 = true
+  ];
+
+  // The port queries are sent to. Unset means AWS's default (53).
+  int64 port = 3 [(buf.validate.field).cel = {
+    id: "target.port_range"
+    message: "port must be between 1 and 65535"
+    expression: "this == 0 || (this >= 1 && this <= 65535)"
+  }];
+
+  // The transport to this target. Unset means AWS's default (Do53).
+  string protocol = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Do53",
+        "DoH",
+        "DoH-FIPS"
+      ]
+    }
+  ];
+}

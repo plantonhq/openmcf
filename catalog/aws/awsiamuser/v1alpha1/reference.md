@@ -192,6 +192,15 @@ Fields that can point at another resource's outputs:
 | `spec.managedPolicyArns` | AwsIamPolicy | `status.outputs.policy_arn` |
 | `spec.permissionsBoundary` | AwsIamPolicy | `status.outputs.policy_arn` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsBudget | `spec.actions[].iamActionDefinition.users` | `status.outputs.user_name` |
+| AwsIamGroup | `spec.users` | `status.outputs.user_name` |
+
 ## See Also
 
 - [Overview](../README.md)

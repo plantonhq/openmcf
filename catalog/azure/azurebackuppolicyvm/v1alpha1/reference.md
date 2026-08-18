@@ -239,6 +239,12 @@ VM (fast restores without vault round-trips): 1-30. On V1
 policies the cap is 5 (the provider's own contract). Unspecified
 applies the service default (2 for V1, 7 for V2).
 
+Azure requires vaulted daily retention to be STRICTLY greater
+than this value (BMSUserErrorInstantRPRetentionExceedsVaultedRetention
+-- live-proven). A V2 policy that leaves this unset therefore
+cannot use retention_daily.count of 7: set this field to 1-6, or
+raise daily count above 7.
+
 - rule: {"int32":{"lte":30,"gte":1}}
 
 ### spec.instantRestoreResourceGroup
@@ -485,6 +491,7 @@ Month-days form: whether the month's LAST day's backup is kept.
 - `bpv_hourly_requires_v2`: an Hourly schedule requires policy_type V2 (enhanced policy) -- V1 policies back up at most once a day
 - `bpv_crash_consistent_requires_v2`: consistency_type OnlyCrashConsistent requires policy_type V2 (the provider's own contract)
 - `bpv_instant_restore_v1_cap`: instant_restore_retention_days is capped at 5 on V1 policies -- use policy_type V2 for up to 30 days
+- `bpv_instant_lt_daily`: instant_restore_retention_days must be less than retention_daily.count -- Azure rejects Instant RP that meets or exceeds vaulted daily retention (BMSUserErrorInstantRPRetentionExceedsVaultedRetention). V2 defaults Instant RP to 7 days when unset, so a daily count of 7 needs an explicit smaller instant value
 
 ## Outputs
 

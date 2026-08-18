@@ -1,0 +1,3 @@
+name: awscloudwatchloganomalydetector
+runtime: go
+description: Pulumi module to manage an AWS CloudWatch Logs anomaly detector

@@ -29,6 +29,10 @@ var (
 	repoRoot         string
 	runID            string
 	pulumiBackendURL string
+	// assertApplyIdempotency mirrors the provider profile's
+	// assert_apply_idempotency field: when armed, every scenario lifecycle
+	// gains the IDEMPOTENCY phase (re-plan after apply must be empty).
+	assertApplyIdempotency bool
 )
 
 func TestMain(m *testing.M) {
@@ -53,6 +57,13 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "failed to login to pulumi backend: %v\n", err)
 		os.Exit(1)
 	}
+
+	providerProfile, err := profilepkg.LoadProviderProfile(repoRoot, "azure")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to load Azure provider E2E profile: %v\n", err)
+		os.Exit(1)
+	}
+	assertApplyIdempotency = providerProfile.GetSpec().GetAssertApplyIdempotency()
 
 	testHarness = azuree2e.NewHarness()
 	ctx := context.Background()
@@ -502,7 +513,7 @@ func TestAzureCognitiveAccountProject_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurecognitiveaccountproject", "terraform")
 }
 
-// --- Azure Machine Learning Workspace (composed: fixture storage account + key vault + application insights -> a Basic workspace with the managed VNet provisioned at approved-outbound isolation and one outbound rule of each type; the workspace is minutes, the managed network several more -- soft-delete ghosts hold the name, the orphan sweep checks `az ml workspace list --archived`) ---
+// --- Azure Machine Learning Workspace (composed: fixture storage account + key vault + application insights -> a Basic system-identity workspace on the DEFAULT network; create ~1 min, destroy ~2 min; deletes purge the soft-delete ghost via the modules' machine_learning features flag; ghosts have no list API, portal "Recently deleted" only. The managed-VNet + outbound-rule flagship stayed offline-proven after two live failures.) ---
 
 func TestAzureMachineLearningWorkspace_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "azuremachinelearningworkspace", "pulumi")
@@ -574,7 +585,7 @@ func TestAzureMachineLearningOnlineEndpoint_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azuremachinelearningonlineendpoint", "terraform")
 }
 
-// --- Azure ML Online Deployment (composed: workspace chain -> fixture endpoint -> one Standard_F2s_v2 managed instance; 10-20 min provisioning, bills until destroy -- no scale-to-zero. Model-less by design: whether the service accepts a bare managed deployment is the lane's proof point; deployment names are endpoint-scoped, so scenarios carry the run-id token because both engines attach to the SAME fixture endpoint) ---
+// --- Azure ML Online Deployment (composed: workspace chain -> fixture endpoint -> one Standard_F2s_v2 managed instance serving a SETUP-seeded MLflow model; 10-20 min provisioning, bills until destroy -- no scale-to-zero. A model is required live: the service rejects a model-less managed create with a bare 400 despite the ARM schema marking model/environment/code optional; deployment names are endpoint-scoped, so scenarios carry the run-id token because both engines attach to the SAME fixture endpoint) ---
 
 func TestAzureMachineLearningOnlineDeployment_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "azuremachinelearningonlinedeployment", "pulumi")
@@ -592,7 +603,7 @@ func TestAzureMachineLearningBatchEndpoint_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azuremachinelearningbatchendpoint", "terraform")
 }
 
-// --- Azure ML Batch Deployment (composed: workspace chain -> fixture batch endpoint -> a BARE recipe; nothing provisions or bills at create -- compute materializes per job and no lane submits one. Whether the service accepts a bare batch deployment is the lane's proof point; deployment names are endpoint-scoped, so scenarios carry the run-id token because both engines attach to the SAME fixture endpoint) ---
+// --- Azure ML Batch Deployment (composed: workspace chain -> fixture batch endpoint + fixture scale-to-zero compute cluster -> a Model-type recipe serving a SETUP-seeded MLflow model; nothing provisions or bills -- compute materializes per job and no lane submits one. A model AND a compute are required live: the service rejects a bare recipe with 400 UserError naming both properties (now a spec CEL); deployment names are endpoint-scoped, so scenarios carry the run-id token because both engines attach to the SAME fixture endpoint) ---
 
 func TestAzureMachineLearningBatchDeployment_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "azuremachinelearningbatchdeployment", "pulumi")
@@ -1702,6 +1713,15 @@ func TestAzureContainerInstance_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurecontainerinstance", "terraform")
 }
 
+// --- Function App Flex Consumption (two scenarios, each chaining its OWN scenario-local FC1 plan + storage account + blob container by annotation -- the shared plan fixture's B1 SKU is illegal for flex; `minimal` proves connection-string deployment-storage auth with the scale dials and one always-ready warm instance, `identity-auth` proves system-assigned-identity storage auth with no key anywhere; both effectively $0) ---
+
+func TestAzureFunctionAppFlexConsumption_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefunctionappflexconsumption", "pulumi")
+}
+func TestAzureFunctionAppFlexConsumption_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefunctionappflexconsumption", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()
@@ -1756,14 +1776,15 @@ func runSingleScenario(t *testing.T, component, moduleDir, engine string, scenar
 	t.Helper()
 
 	tc := &provider.ComponentTestContext{
-		Component:    component,
-		Provider:     "azure",
-		Engine:       engine,
-		ModuleDir:    moduleDir,
-		ManifestPath: scenario.ManifestPath,
-		RepoRoot:     repoRoot,
-		RunID:        runID,
-		T:            t,
+		Component:              component,
+		Provider:               "azure",
+		Engine:                 engine,
+		ModuleDir:              moduleDir,
+		ManifestPath:           scenario.ManifestPath,
+		RepoRoot:               repoRoot,
+		RunID:                  runID,
+		T:                      t,
+		AssertApplyIdempotency: assertApplyIdempotency,
 	}
 
 	if engine == "pulumi" {

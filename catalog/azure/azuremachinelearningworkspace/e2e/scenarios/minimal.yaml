@@ -1,20 +1,25 @@
 # Minimal AzureMachineLearningWorkspace scenario: a Basic workspace
 # with a system identity on the fixture companion chain (storage
-# account + key vault + application insights), plus the managed
-# network at approved-outbound isolation with one rule of EACH type --
-# the flagship proof of the three composed outbound-rule children
-# surfacing in the name-keyed *_outbound_rule_ids outputs (they share
-# ONE ARM collection). The private-endpoint rule targets the fixture
-# key vault, which is already in the prerequisite chain.
+# account + key vault + application insights). DEFAULT managed-network
+# mode -- no isolation, no outbound rules. Two live attempts at the
+# approved-outbound + provision-on-creation flagship failed in
+# different ways (PE-rule destroy 409-loop; managed-VNet create
+# rolled the workspace back with "workspace identity has been
+# deleted"). The workspace OBJECT lifecycle (create, identity,
+# outputs, purge-on-destroy) is what this lane proves; the managed
+# network and its three composed children stay offline-proven, with
+# the live findings on the spec fields.
 #
 # The workspace object provisions in two to five minutes;
 # provisionOnCreationEnabled makes the managed VNet materialize at
 # deploy time (several more minutes, incl. the private endpoint) so
 # failures land in the create, not on a first job. The Basic tier is
 # free at rest -- the fixture storage/insights/log-analytics cost
-# pennies. Deletion is a SOFT delete: the workspace ghost holds its
-# name until purged; the orphan sweep's recycle-bin check is
-# `az ml workspace list --archived`.
+# pennies. Deletion is a SOFT delete at the service: both modules
+# enable the provider's machine_learning purge features flag, so the
+# lane's destroy purges the ghost and frees this fixed name for the
+# other engine's run (no CLI or API lists ML ghosts -- the portal's
+# "Recently deleted" view is the only listing surface).
 apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMachineLearningWorkspace
 metadata:
@@ -47,25 +52,6 @@ spec:
   identity:
     type: SYSTEM_ASSIGNED
   friendlyName: E2E Smoke Workspace
-  managedNetwork:
-    isolationMode: ALLOW_ONLY_APPROVED_OUTBOUND
-    provisionOnCreationEnabled: true
-  fqdnOutboundRules:
-    - name: e2e-allow-pypi
-      destinationFqdn: pypi.org
-  privateEndpointOutboundRules:
-    - name: e2e-to-vault
-      serviceResourceId:
-        valueFrom:
-          kind: AzureKeyVault
-          name: planton-oss-e2e-azure-fixture-kv
-          fieldPath: status.outputs.key_vault_id
-      subResourceTarget: vault
-  serviceTagOutboundRules:
-    - name: e2e-allow-storage
-      serviceTag: Storage
-      protocol: TCP
-      portRanges: "443"
   tags:
     e2e-suite: azure
     purpose: smoke

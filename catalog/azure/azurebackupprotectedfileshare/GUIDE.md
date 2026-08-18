@@ -16,7 +16,7 @@ Creating the binding registers protection; the first recovery point lands at the
 
 ## Destroy deletes the data, and soft delete holds it
 
-Destroying this resource stops protection AND deletes the backup data. Vault soft delete -- always on since Azure's secure-by-default policy -- holds the deleted item for 14 days: it still counts against the vault, blocks unregistering the storage account, and blocks vault deletion. Teardown order is protections → registration → vault, and a just-deleted protection can delay the registration's unregister until the soft-deleted item is purged or expires.
+Destroying this resource stops protection AND deletes the backup data. Vault soft delete -- always on since Azure's secure-by-default policy -- holds the deleted item for 14 days: it still counts against the vault, blocks unregistering the storage account, and blocks vault deletion. Teardown order is protections → registration → vault, and a just-deleted protection can delay the registration's unregister until the soft-deleted item is purged or expires. The 14-day hold applies to items WITH recovery points; a protection destroyed before its first backup ever ran deletes outright (measured live -- the unregister minutes later succeeded). Note also that the delete is asynchronous beyond what the IaC engines poll: reads on the item can keep answering briefly after a destroy the engine already reported successful.
 
 ## Expect the 80-minute timeout class
 

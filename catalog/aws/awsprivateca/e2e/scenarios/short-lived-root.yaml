@@ -1,0 +1,63 @@
+# A self-activating ROOT CA in SHORT_LIVED_CERTIFICATE mode (USD
+# 50/month prorated hourly - the cheap mode; revocation is forbidden
+# there, matching the lane's no-CRL posture), with the ACM renewal
+# permission granted, a 7-day restore window (frees the deleted CA's
+# slot fastest), and one end-entity client certificate issued from a
+# committed CSR. The CSR's private key was discarded at authoring -
+# the certificate authenticates nothing; it proves the issue path.
+# Lane cost: ~USD 0.07/hour of CA lifetime plus USD 0.75 for the one
+# issued certificate.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsPrivateCa
+metadata:
+  name: planton-oss-e2e-awspca-root
+  id: planton-oss-e2e-awspca-root
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsprivateca
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  type: ROOT
+  keyAlgorithm: RSA_2048
+  signingAlgorithm: SHA256WITHRSA
+  subject:
+    commonName: Planton OSS E2E Root CA
+    organization: Planton OSS E2E
+    country: US
+  usageMode: SHORT_LIVED_CERTIFICATE
+  rootCaValidity:
+    type: YEARS
+    value: "10"
+  acmRenewalPermission: true
+  permanentDeletionTimeInDays: 7
+  issuedCertificates:
+    - name: mtls-client
+      signingAlgorithm: SHA256WITHRSA
+      # Short-lived mode caps end-entity validity at 7 days.
+      validity:
+        type: DAYS
+        value: "7"
+      templateArn: arn:aws:acm-pca:::template/EndEntityClientAuthCertificate/V1
+      csr: |
+        -----BEGIN CERTIFICATE REQUEST-----
+        MIIChTCCAW0CAQAwQDEkMCIGA1UEAwwbcGxhbnRvbi1vc3MtZTJlLW10bHMtY2xp
+        ZW50MRgwFgYDVQQKDA9QbGFudG9uIE9TUyBFMkUwggEiMA0GCSqGSIb3DQEBAQUA
+        A4IBDwAwggEKAoIBAQCVPJH/7di6t3gRWGEDo7z+JW2Tub3sQZVU6BT7axGnCKrr
+        Bulg7E9izfH0lCuAEXeJRsJDp9drRAMnhA8jJTc2RfLN4gIrBvP4wKH5O6gA/DAx
+        hbFdVAMZs3UC9+450TpkGNlHpWHcTCdZpgTJKIubO9U8wSPhQLEW9uBslgfgPNQp
+        eM01FVYj4GqcZOgPx5AxWrcTxldqVvuLvduiiResGFM+xOiH82C3h6UePA471+Q8
+        kgFrPVWr3lpKnr+SJ39WoxWD1fOHV55aG2RY1x0rtng+IGFwcqMP2n2EfMpqr0k5
+        2facY71BAdogKc/MKjoVIfbnhsHvyeRxZj+thmaZAgMBAAGgADANBgkqhkiG9w0B
+        AQsFAAOCAQEABtWMEvvYKmYBnyvQDuOB7Z07sKeCITNizpJHZ5ccizgKTy8RCxci
+        GmfR9lmKHHJNMRYBXt6oSwozicaqjQlNZBN0l4+vrsaPUVZKihcG60MSouUWA73A
+        1iLvNuxndwr0OpqcJgU8Ll8LA1mzyRO6JlJ94op0z4bjphcx70zW9jN7eQziJ0lR
+        k/T4Q1+qb5BSHZIYIwzY9cbUG0xaMttfhFo32qNokYOTfgrkNevX/vX1AFW9mXmW
+        3OdN+eHYiuJFZBVQhKcTNic8tn+ee0wMAJvEvjmoBlY/S58IZUOeVnde15eWBPm/
+        eM3MmApTpEPoJf3+GAumVoRkiz8IOZxfTQ==
+        -----END CERTIFICATE REQUEST-----

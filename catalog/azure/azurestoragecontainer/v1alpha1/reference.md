@@ -122,12 +122,15 @@ meaningful with default_encryption_scope. Fixed at creation.
 
 Free-form metadata key/value pairs stored on the container (visible
 to anyone who can read container properties -- not for secrets).
-Keys must be valid C# identifiers per Azure's rule; lowercase is
-canonical (Azure lowercases keys on read).
+Keys must be valid C# identifiers per Azure's rule and lowercase
+(Azure lowercases keys on read). Hyphens fail at apply
+("MetaData must start with letters or an underscores and be all
+lowercase" -- live-caught on Pulumi when a fixture used e2e-suite).
 
 ## Validation Rules
 
 - `storage_container_scope_override_needs_scope`: encryption_scope_override_enabled is only meaningful when default_encryption_scope is set
+- `storage_container_metadata_keys_are_lowercase_csharp_identifiers`: container metadata keys must be lowercase C# identifiers (letter-or-underscore, then letters/digits/underscores -- no hyphens)
 
 ## Outputs
 

@@ -1,0 +1,24 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awscloudwatchlogaccountpolicy
+spec:
+  # An account-wide FIELD_INDEX_POLICY narrowed to an absent E2E prefix
+  # (free, zero blast radius). The account allows ONE policy per type
+  # per region - the lane collides with any concurrent same-type lane
+  # (the account-global collision class); Q44 runs it serially.
+  #
+  # Deliberately not exercised live:
+  #   - the other four policy types -- one type proves the per-(name,
+  #     type) identity, the document path, and the selection criteria;
+  #     DATA_PROTECTION/SUBSCRIPTION_FILTER/TRANSFORMER/
+  #     METRIC_EXTRACTION documents are type-specific payloads on the
+  #     same resource lifecycle. Unblock: dedicated lanes when the
+  #     proof queue wants per-type evidence.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q44
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

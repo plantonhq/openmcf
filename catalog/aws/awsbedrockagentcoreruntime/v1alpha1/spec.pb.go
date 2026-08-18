@@ -1148,6 +1148,8 @@ type AwsBedrockAgentCoreRuntimeFilesystem struct {
 	// (6-200 characters).
 	MountPath string `protobuf:"bytes,1,opt,name=mount_path,json=mountPath,proto3" json:"mount_path,omitempty"`
 	// Mount an EFS access point (durable, shared across sessions).
+	// Reference an AwsEfsAccessPoint access_point_arn output or pass a
+	// literal ARN.
 	EfsAccessPointArn *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=efs_access_point_arn,json=efsAccessPointArn,proto3" json:"efs_access_point_arn,omitempty"`
 	// Mount an S3 files access point.
 	S3FilesAccessPointArn *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=s3_files_access_point_arn,json=s3FilesAccessPointArn,proto3" json:"s3_files_access_point_arn,omitempty"`
@@ -1386,11 +1388,11 @@ const file_catalog_aws_awsbedrockagentcoreruntime_v1alpha1_spec_proto_rawDesc = 
 	"*AwsBedrockAgentCorePrivateEndpointOverride\x12\"\n" +
 	"\x06domain\x18\x01 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x18\xfd\x01R\x06domain\x12\x8a\x01\n" +
-	"\x10private_endpoint\x18\x02 \x01(\v2W.dev.planton.aws.awsbedrockagentcoreruntime.v1alpha1.AwsBedrockAgentCorePrivateEndpointB\x06\xbaH\x03\xc8\x01\x01R\x0fprivateEndpoint\"\xff\x04\n" +
+	"\x10private_endpoint\x18\x02 \x01(\v2W.dev.planton.aws.awsbedrockagentcoreruntime.v1alpha1.AwsBedrockAgentCorePrivateEndpointB\x06\xbaH\x03\xc8\x01\x01R\x0fprivateEndpoint\"\xa3\x05\n" +
 	"$AwsBedrockAgentCoreRuntimeFilesystem\x12C\n" +
 	"\n" +
-	"mount_path\x18\x01 \x01(\tB$\xbaH!r\x1f\x10\x06\x18\xc8\x012\x18^/mnt/[a-zA-Z0-9._-]+/?$R\tmountPath\x12j\n" +
-	"\x14efs_access_point_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x05\x88\xd4a\x88\tR\x11efsAccessPointArn\x12l\n" +
+	"mount_path\x18\x01 \x01(\tB$\xbaH!r\x1f\x10\x06\x18\xc8\x012\x18^/mnt/[a-zA-Z0-9._-]+/?$R\tmountPath\x12\x8d\x01\n" +
+	"\x14efs_access_point_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\x88\t\x92\xd4a\x1fstatus.outputs.access_point_arnR\x11efsAccessPointArn\x12l\n" +
 	"\x19s3_files_access_point_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x15s3FilesAccessPointArn\x12'\n" +
 	"\x0fsession_storage\x18\x04 \x01(\bR\x0esessionStorage:\x8e\x02\xbaH\x8a\x02\x1a\x87\x02\n" +
 	"\x1dfilesystem_source_exactly_one\x12ffilesystem must set exactly one of efs_access_point_arn, s3_files_access_point_arn, or session_storage\x1a~(has(this.efs_access_point_arn) ? 1 : 0) + (has(this.s3_files_access_point_arn) ? 1 : 0) + (this.session_storage ? 1 : 0) == 1\"\xbf\x01\n" +

@@ -1,0 +1,29 @@
+# Canonical AwsEventBridgeScheduler example (hack/dev manifest and
+# refgen Example source): a five-minute rate schedule delivering a
+# static payload to an SQS queue, in an owned group, with bounded
+# retries.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEventBridgeScheduler
+metadata:
+  name: queue-heartbeat
+  id: queue-heartbeat
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  description: Heartbeat message to the jobs queue every five minutes
+  group:
+    name: batch-jobs
+  scheduleExpression: rate(5 minutes)
+  flexibleTimeWindow:
+    mode: "OFF"
+  target:
+    arn:
+      value: arn:aws:sqs:us-west-2:123456789012:jobs
+    roleArn:
+      value: arn:aws:iam::123456789012:role/scheduler-exec
+    input: '{"type": "heartbeat"}'
+    retryPolicy:
+      maximumEventAgeInSeconds: 3600
+      maximumRetryAttempts: 3
+    sqsParameters: {}

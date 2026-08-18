@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package dev.planton.aws.awseventbridgepipe.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/aws/awseventbridgepipe/v1alpha1/outputs.proto";
+import "catalog/aws/awseventbridgepipe/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+message AwsEventBridgePipe {
+  string api_version = 1 [(buf.validate.field).string.const = 'aws.planton.dev/v1alpha1'];
+  string kind = 2 [(buf.validate.field).string.const = 'AwsEventBridgePipe'];
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+  AwsEventBridgePipeSpec spec = 4 [(buf.validate.field).required = true];
+  AwsEventBridgePipeStatus status = 5;
+}
+
+message AwsEventBridgePipeStatus {
+  AwsEventBridgePipeStackOutputs outputs = 1;
+}

@@ -1,0 +1,93 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_route53_resolver_firewall_rule_group:
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the resource's identity comes from the manifest, never a second free-form field
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+  aws_route53_resolver_firewall_domain_list:
+    mappings:
+      - arg: region
+        spec: spec.region
+      # Domain lists fold in as the spec.domain_lists list.
+      - arg: name
+        spec: spec.domain_lists.name
+      - arg: domains
+        spec: spec.domain_lists.domains
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+  aws_route53_resolver_firewall_rule:
+    mappings:
+      - arg: region
+        spec: spec.region
+      # Rules fold in as the spec.rules list.
+      - arg: name
+        spec: spec.rules.name
+      - arg: priority
+        spec: spec.rules.priority
+      - arg: action
+        spec: spec.rules.action
+      # The match source is a three-way union at the spec: an owned
+      # list by name, an external list by literal ID -- both feed the
+      # provider's one domain-list argument (fan-in).
+      - arg: firewall_domain_list_id
+        spec: spec.rules.domain_list_name
+      - arg: firewall_domain_list_id
+        spec: spec.rules.domain_list_id
+      - arg: dns_threat_protection
+        spec: spec.rules.dns_threat_protection
+      - arg: confidence_threshold
+        spec: spec.rules.confidence_threshold
+      - arg: block_response
+        spec: spec.rules.block_response
+      - arg: block_override_domain
+        spec: spec.rules.block_override_domain
+      - arg: block_override_ttl
+        spec: spec.rules.block_override_ttl
+      - arg: firewall_domain_redirection_action
+        spec: spec.rules.firewall_domain_redirection_action
+      - arg: q_type
+        spec: spec.rules.q_type
+    exclusions:
+      - arg: firewall_rule_group_id
+        reason: wired by the module to the folded rule group's own AWS-generated ID -- a rule always belongs to THIS group
+      - arg: block_override_dns_type
+        reason: one-value vocabulary (CNAME is the only legal value) -- the module pins it whenever block_response is OVERRIDE; lands as a real field if the provider adds a second value
+  aws_route53_resolver_firewall_rule_group_association:
+    mappings:
+      - arg: region
+        spec: spec.region
+      # Associations fold in as the spec.vpc_associations list.
+      - arg: name
+        spec: spec.vpc_associations.name
+      - arg: vpc_id
+        spec: spec.vpc_associations.vpc_id
+      - arg: priority
+        spec: spec.vpc_associations.priority
+      - arg: mutation_protection
+        spec: spec.vpc_associations.mutation_protection
+    exclusions:
+      - arg: firewall_rule_group_id
+        reason: wired by the module to the folded rule group's own AWS-generated ID -- an association always attaches THIS group to a VPC
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

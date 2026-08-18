@@ -1,0 +1,130 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# aws_acmpca_certificate plays THREE module roles: the ROOT
+# self-signing certificate, the SUBORDINATE activation certificate
+# issued by the parent, and the user-declared issued_certificates.
+# Its validity arguments therefore fan IN from three spec homes
+# (repeated mappings - the established multi-home idiom).
+
+resources:
+  aws_acmpca_certificate_authority:
+    mappings:
+      - arg: certificate_authority_configuration.key_algorithm
+        spec: spec.key_algorithm
+      - arg: certificate_authority_configuration.signing_algorithm
+        spec: spec.signing_algorithm
+      - arg: certificate_authority_configuration.subject.common_name
+        spec: spec.subject.common_name
+      - arg: certificate_authority_configuration.subject.organization
+        spec: spec.subject.organization
+      - arg: certificate_authority_configuration.subject.organizational_unit
+        spec: spec.subject.organizational_unit
+      - arg: certificate_authority_configuration.subject.country
+        spec: spec.subject.country
+      - arg: certificate_authority_configuration.subject.state
+        spec: spec.subject.state
+      - arg: certificate_authority_configuration.subject.locality
+        spec: spec.subject.locality
+      - arg: revocation_configuration.crl_configuration.enabled
+        spec: spec.revocation.crl.enabled
+      - arg: revocation_configuration.crl_configuration.expiration_in_days
+        spec: spec.revocation.crl.expiration_in_days
+      - arg: revocation_configuration.crl_configuration.s3_bucket_name
+        spec: spec.revocation.crl.s3_bucket_name
+      - arg: revocation_configuration.crl_configuration.s3_object_acl
+        spec: spec.revocation.crl.s3_object_acl
+      - arg: revocation_configuration.crl_configuration.custom_cname
+        spec: spec.revocation.crl.custom_cname
+      - arg: revocation_configuration.crl_configuration.custom_path
+        spec: spec.revocation.crl.custom_path
+      - arg: revocation_configuration.ocsp_configuration.enabled
+        spec: spec.revocation.ocsp.enabled
+      - arg: revocation_configuration.ocsp_configuration.ocsp_custom_cname
+        spec: spec.revocation.ocsp.custom_cname
+    exclusions:
+      - arg: certificate_authority_configuration.subject.distinguished_name_qualifier
+        reason: individual-identity X.500 attribute (with generation_qualifier/given_name/initials/pseudonym/surname/title) -- CA subjects are organizational; personal-name attributes belong on END-ENTITY certificates, whose subjects ride the CSR, never this kind's surface
+      - arg: certificate_authority_configuration.subject.generation_qualifier
+        reason: individual-identity X.500 attribute -- see distinguished_name_qualifier
+      - arg: certificate_authority_configuration.subject.given_name
+        reason: individual-identity X.500 attribute -- see distinguished_name_qualifier
+      - arg: certificate_authority_configuration.subject.initials
+        reason: individual-identity X.500 attribute -- see distinguished_name_qualifier
+      - arg: certificate_authority_configuration.subject.pseudonym
+        reason: individual-identity X.500 attribute -- see distinguished_name_qualifier
+      - arg: certificate_authority_configuration.subject.surname
+        reason: individual-identity X.500 attribute -- see distinguished_name_qualifier
+      - arg: certificate_authority_configuration.subject.title
+        reason: individual-identity X.500 attribute -- see distinguished_name_qualifier
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+  aws_acmpca_certificate:
+    mappings:
+      # The parent-CA arn is user surface only on the SUBORDINATE
+      # activation role; the root and issued roles wire it to the
+      # folded CA's own ARN.
+      - arg: certificate_authority_arn
+        spec: spec.subordinate_activation.parent_ca_arn
+      - arg: certificate_signing_request
+        spec: spec.issued_certificates.csr
+      - arg: signing_algorithm
+        spec: spec.issued_certificates.signing_algorithm
+      - arg: template_arn
+        spec: spec.issued_certificates.template_arn
+      - arg: api_passthrough
+        spec: spec.issued_certificates.api_passthrough
+      # validity fans in from the three roles' spec homes.
+      - arg: validity.type
+        spec: spec.issued_certificates.validity.type
+      - arg: validity.type
+        spec: spec.root_ca_validity.type
+      - arg: validity.type
+        spec: spec.subordinate_activation.validity.type
+      - arg: validity.value
+        spec: spec.issued_certificates.validity.value
+      - arg: validity.value
+        spec: spec.root_ca_validity.value
+      - arg: validity.value
+        spec: spec.subordinate_activation.validity.value
+    exclusions:
+      - arg: region
+        reason: wired by the module to spec.region -- the v6 per-resource region override rides every resource identically
+  aws_acmpca_certificate_authority_certificate:
+    exclusions:
+      - arg: certificate_authority_arn
+        reason: wired by the module to the folded CA's own ARN -- the activation always installs onto THIS CA
+      - arg: certificate
+        reason: wired by the module from the composed activation certificate (root self-signed XOR parent-issued) -- never user surface
+      - arg: certificate_chain
+        reason: wired by the module from the composed activation certificate's chain -- never user surface
+  aws_acmpca_permission:
+    exclusions:
+      - arg: certificate_authority_arn
+        reason: wired by the module to the folded CA's own ARN -- the grant always covers THIS CA
+      - arg: principal
+        reason: one-value vocabulary -- acm.amazonaws.com is the only principal AWS supports; the modules pin it
+      - arg: actions
+        reason: wired by the module to the full three-action set -- AWS documents that ACM renewal needs all three, and a partial grant fails silently at renewal
+      - arg: source_account
+        reason: provider-computed to the caller's account -- cross-account grants are the resource policy's job, never this arm's
+  aws_acmpca_policy:
+    exclusions:
+      - arg: resource_arn
+        reason: wired by the module to the folded CA's own ARN -- the policy always attaches to THIS CA
+
+# Spec fields with no single provider argument.
+specExclusions:
+  - field: spec.issued_certificates.name
+    reason: the for_each key on both engines and the issued_certificate_arns output-map key -- module bookkeeping, no provider argument carries it
+  - field: spec.acm_renewal_permission
+    reason: arm-presence toggle -- selects WHETHER the modules render the aws_acmpca_permission resource; its arguments are all module-pinned (see that resource's exclusions)
+  - field: spec.subordinate_activation.path_length
+    reason: template selector -- picks WHICH SubordinateCACertificate_PathLen{N} template ARN the modules pass; the template_arn argument itself is user surface only on issued certificates

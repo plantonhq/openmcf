@@ -3,20 +3,16 @@ kind: ComponentE2EProfile
 metadata:
   name: azuremachinelearningcomputeinstance
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests, both
-  # engine builds, offline tofu plan green); live dual-engine proof has
-  # not yet run. The instance is a REAL VM for the minutes it lives
-  # (create ~5-10 min; small workstation size keeps the lane's VM cost
-  # in cents); the rest of the time lives in its chain (the fixture
-  # workspace and its companion services). The scenario's cloud-side
-  # name carries ${E2E_RUN_ID}: instance names are reserved REGION-WIDE
-  # per subscription (and briefly after deletion), exactly the collision
-  # class the token exists for. The personal/assign-to-user arm is
-  # offline-proven only (honest values embed a real user's tenant and
-  # object IDs -- the same tenant-specificity that keeps AAD arms out of
-  # committed fixtures); SSH and VNet placement are offline-proven only
-  # this wave.
+  # PROVEN both engines 2026-08-14. One STANDARD_DS2_V2 workstation VM
+  # with a system identity on the fixture workspace. Cloud-side name
+  # carries ${E2E_RUN_ID} -- first Azure use of the token; both engines
+  # expand it (shape ci-<8-hex>-<p|t>) and the verifier reads the
+  # expanded ARM id. Outputs 3/5 (ssh_username / ssh_port empty -- no
+  # ssh block; Pulumi must Elem() those optional fields or the harness
+  # int32 parse fails). Identity principal populates on both engines.
+  # Terraform import RT zero-change. Create ~4.5-5 min, delete ~1 min.
+  # Personal/assign-to-user, SSH, and VNet stay offline-proven.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 45

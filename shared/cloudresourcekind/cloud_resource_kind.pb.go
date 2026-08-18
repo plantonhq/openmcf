@@ -583,6 +583,261 @@ const (
 	// registry prerequisite either. Identity is the AWS-generated
 	// association UUID.
 	CloudResourceKind_AwsSsmAssociation CloudResourceKind = 1264
+	// THE AWS Organization of the deploying account - creating it makes
+	// the caller the management account. Trusted service access,
+	// delegated administrators, the org's singleton resource policy, and
+	// centralized root-access management (IAM's organizations features -
+	// a management-account act requiring iam.amazonaws.com trusted
+	// access) fold in (none has a life of its own; the standalone
+	// service-access resource fights the org's own argument with a
+	// perpetual diff). Deleting this deletes the entire organization.
+	// 1270 opens the Organizations sub-band (1270-1279).
+	CloudResourceKind_AwsOrganization CloudResourceKind = 1270
+	// An organizational unit in the org's OU tree. The display name is
+	// an explicit spec field (OU names allow spaces metadata.name cannot
+	// carry); the parent reference (root or parent OU) is required and
+	// immutable, so the organization is a registry prerequisite.
+	CloudResourceKind_AwsOrganizationalUnit CloudResourceKind = 1271
+	// A MEMBER account of the organization: creation, OU placement, and
+	// the account-level settings satellites (alternate/primary contacts,
+	// opt-in region enablement) fold onto the created account's ID.
+	// Destroy is never a clean delete (remove-from-org or ~90-day
+	// close) - taught on the spec. No registry prerequisite by the
+	// schema-required-only rule (the OU parent reference is optional).
+	CloudResourceKind_AwsOrganizationAccount CloudResourceKind = 1272
+	// An Organizations policy (SCP and its twelve sibling types) with
+	// its folded attachments to roots, OUs, and member accounts. The
+	// policy type must be enabled on the organization first; AWS-managed
+	// policies are never adopted. No registry prerequisite by the
+	// schema-required-only rule (attachments are optional).
+	CloudResourceKind_AwsOrganizationPolicy CloudResourceKind = 1273
+	// A Budgets budget (COST/USAGE/RI/Savings Plans coverage and
+	// utilization) with its folded budget actions as name-keyed
+	// satellites - an action exists only on its budget and fires an
+	// IAM-policy application, an SCP attachment, or SSM instance stops
+	// when a threshold breaches. Budgets is account-global (served from
+	// us-east-1; the spec region is the provider endpoint). 1280 opens
+	// the cost-management sub-band (1280-1289).
+	CloudResourceKind_AwsBudget CloudResourceKind = 1280
+	// A Cost Explorer anomaly monitor (DIMENSIONAL over one dimension,
+	// or CUSTOM over a CE expression) with its folded alert
+	// subscriptions - a subscription's monitor list is the structural
+	// edge that makes it this monitor's satellite. Account-global; AWS
+	// identifies both by ARN.
+	CloudResourceKind_AwsCostAnomalyMonitor CloudResourceKind = 1281
+	// A Cost Explorer cost category: ordered rules (regular expression
+	// rules or inherited-value rules) over the recursive CE expression
+	// tree, plus split-charge rules. The account's cost-allocation-tag
+	// activation toggle is deliberately NOT folded here - it is a
+	// per-tag-key account feature with no edge to any category, so many
+	// category instances would fight over one account object.
+	CloudResourceKind_AwsCostCategory CloudResourceKind = 1282
+	// An IAM group with its folded declarative membership (the
+	// authoritative users list) and group policies - name-keyed inline
+	// documents plus managed-policy attachments. IAM is global; identity
+	// is the group name (renames update in place, the ARN recomputes).
+	// 1290 opens the IAM P1 sub-band (1290-1299).
+	CloudResourceKind_AwsIamGroup CloudResourceKind = 1290
+	// An IAM SAML identity provider: the account's federation trust
+	// anchor, created from the IdP's metadata XML (a public document
+	// carrying certificates, not a secret). Identity is the provider
+	// ARN; the name is write-once.
+	CloudResourceKind_AwsIamSamlProvider CloudResourceKind = 1291
+	// Account settings singleton for IAM (a GLOBAL service - one object
+	// per ACCOUNT, not per region): the sign-in alias, the password
+	// policy, and the STS global-endpoint token version. Destroy
+	// contracts DIFFER per arm (each taught on its arm): the alias truly
+	// deletes, the password policy resets to AWS defaults, the STS
+	// preference is a no-op delete that persists.
+	CloudResourceKind_AwsIamAccountSettings CloudResourceKind = 1292
+	// A CloudWatch dashboard: one named dashboard whose widget layout is
+	// the dashboard-body JSON document (modeled as a typed Struct, the
+	// catalog's uniform policy-document idiom). Dashboards are untaggable
+	// at AWS. Identity is the dashboard name; every change is an in-place
+	// PutDashboard upsert. 1300 opens the CloudWatch observability P1
+	// sub-band (1300-1309).
+	CloudResourceKind_AwsCloudwatchDashboard CloudResourceKind = 1300
+	// CloudWatch Synthetics: a canary (a scheduled scripted probe running
+	// from an S3-staged code bundle under an execution role, writing run
+	// artifacts to S3) plus the grouping surface - owned groups and the
+	// canary's group associations (joins by group NAME, so shared groups
+	// are referenced, never fought over). A groups-only instance manages
+	// shared groups with no canary.
+	CloudResourceKind_AwsCloudwatchSynthetics CloudResourceKind = 1301
+	// CloudWatch Logs delivery: the two ways logs leave CloudWatch. The
+	// vended-log arm pivots on a delivery SOURCE (one AWS resource whose
+	// service vends logs) with name-keyed deliveries fanning out to
+	// delivery destinations (S3 / CloudWatch Logs / Firehose / X-Ray),
+	// each created inline or referenced by ARN. The cross-account arm is
+	// the legacy Kinesis subscription destination with its access policy
+	// (whose delete is a no-op at AWS - the policy persists).
+	CloudResourceKind_AwsCloudwatchLogDelivery CloudResourceKind = 1302
+	// A CloudWatch Logs account-level policy: one policy object per
+	// (name, type) pair per region - data protection, subscription
+	// filter, field index, transformer, or metric extraction - applied
+	// account-wide, optionally narrowed by selection criteria. Standalone
+	// account configuration, never a per-log-group satellite.
+	CloudResourceKind_AwsCloudwatchLogAccountPolicy CloudResourceKind = 1303
+	// A CloudWatch Logs anomaly detector: one detector trains over a
+	// LIST of log groups (multi-parent scope - never a single group's
+	// satellite), surfacing anomalies on a chosen evaluation frequency
+	// with a bounded visibility window.
+	CloudResourceKind_AwsCloudwatchLogAnomalyDetector CloudResourceKind = 1304
+	// A CloudWatch Logs resource policy: the account-scoped named policy
+	// (or resource-scoped policy on one log group ARN) that grants AWS
+	// services permission to write logs - Route53 query logging,
+	// EventBridge, and friends. Exactly one scope per instance.
+	CloudResourceKind_AwsCloudwatchLogResourcePolicy CloudResourceKind = 1305
+	// An Amazon Managed Prometheus workspace with its folded satellites:
+	// workspace configuration (retention, label-set limits - a
+	// created-via-update singleton whose delete is a no-op at AWS), the
+	// alert manager definition (strictly one per workspace), name-keyed
+	// rule group namespaces, query logging, the workspace resource
+	// policy, and alias-keyed anomaly detectors. Scrapers are deliberately
+	// NOT folded here - a scraper can target CloudWatch with zero AMP
+	// workspaces, so it is its own kind.
+	CloudResourceKind_AwsManagedPrometheus CloudResourceKind = 1306
+	// An Amazon Managed Prometheus scraper: the agentless collector.
+	// Source is an EKS cluster or a bare VPC placement (both
+	// replace-on-change); destination is an AMP workspace or a CloudWatch
+	// dataset. Carries its own scraper logging configuration satellite.
+	// Scrape configuration is optional on the EKS arm (AWS publishes a
+	// default, resolved at deploy) and required on the VPC arm.
+	CloudResourceKind_AwsManagedPrometheusScraper CloudResourceKind = 1307
+	// An EventBridge Pipe: one point-to-point integration reading from
+	// one source (SQS, Kinesis, DynamoDB streams, MSK or self-managed
+	// Kafka, ActiveMQ/RabbitMQ), optionally filtering and enriching
+	// in-flight, and delivering to one target (ECS, Batch, Lambda, Step
+	// Functions, Kinesis, SQS, Redshift, SageMaker, CloudWatch Logs,
+	// EventBridge buses, HTTP via API destinations). The source is fixed
+	// for life (replace-on-change); the target swaps in place. 1310
+	// opens the EventBridge extras P1 sub-band (1310-1319).
+	CloudResourceKind_AwsEventBridgePipe CloudResourceKind = 1310
+	// An EventBridge Scheduler schedule: cron/rate/one-time invocation of
+	// one target under an execution role, with flexible time windows,
+	// retry policy, and a dead-letter queue. The schedule GROUP is folded
+	// own-XOR-existing (a name-and-tags container - the provider's own
+	// update path is tags-only); unset means AWS's default group.
+	CloudResourceKind_AwsEventBridgeScheduler CloudResourceKind = 1311
+	// An EventBridge API destination with its connection: the
+	// authenticated HTTP(S) endpoint rules, pipes, and schedules invoke.
+	// Two independently deployable arms - the CONNECTION (the shareable
+	// auth trust anchor: api-key, basic, or OAuth credentials that AWS
+	// stores in Secrets Manager) and the DESTINATION (endpoint + method +
+	// rate limit) whose connection is owned inline or referenced by ARN.
+	CloudResourceKind_AwsEventBridgeApiDestination CloudResourceKind = 1312
+	// A VPC peering connection, as a request-XOR-accept mode union: the
+	// REQUEST arm creates the peering from its VPC toward a peer VPC
+	// (same-account auto-accept supported; cross-account/cross-region
+	// stays pending until accepted), the ACCEPT arm adopts and accepts a
+	// pending connection by ID from the accepter side. DNS-resolution
+	// options fold into both arms. 1320 opens the VPC networking P1
+	// sub-band (1320-1329).
+	CloudResourceKind_AwsVpcPeering CloudResourceKind = 1320
+	// A network ACL: the stateless subnet-level firewall - ordered
+	// ingress/egress rules (allow or deny, evaluated by rule number) and
+	// the subnet associations, all folded in-line as the single
+	// declarative owner (the standalone rule/association resources are
+	// the same payload and fight the in-line form).
+	CloudResourceKind_AwsNetworkAcl CloudResourceKind = 1321
+	// A customer-managed prefix list: a named, versioned set of CIDR
+	// blocks that security-group rules, NACL rules, and route tables
+	// reference as one object. Entries fold in-line; max_entries is the
+	// capacity contract (referencing consumes that many rule slots
+	// regardless of how many entries exist).
+	CloudResourceKind_AwsManagedPrefixList CloudResourceKind = 1322
+	// A standalone EBS volume as a create-XOR-copy union (fresh in a
+	// zone, or cloned from another volume) with attachments managed
+	// in-line. 1330 opens the block & object storage sub-band
+	// (1330-1339).
+	CloudResourceKind_AwsEbsVolume CloudResourceKind = 1330
+	// An EBS snapshot as a three-way source union (snapshot a volume,
+	// copy a snapshot, or import a disk image) with archive tiering,
+	// fast snapshot restore, and cross-account share grants in-line.
+	CloudResourceKind_AwsEbsSnapshot CloudResourceKind = 1331
+	// An S3 directory bucket (S3 Express One Zone): single-AZ,
+	// single-digit-millisecond object storage. The modules derive the
+	// mandated "{name}--{zone_id}--x-s3" bucket name.
+	CloudResourceKind_AwsS3DirectoryBucket CloudResourceKind = 1332
+	// An S3 table bucket (S3 Tables - managed Apache Iceberg storage)
+	// with its namespaces, tables, policies, and replication folded
+	// in-line as the single declarative owner.
+	CloudResourceKind_AwsS3TableBucket CloudResourceKind = 1333
+	// An S3 vector bucket (AI embedding storage with similarity query)
+	// with its vector indexes folded in-line - the natural backend for
+	// Bedrock knowledge bases.
+	CloudResourceKind_AwsS3VectorBucket CloudResourceKind = 1334
+	// A Data Lifecycle Manager policy: account-level, tag-targeted
+	// snapshot/AMI automation (create, retain, archive, copy
+	// cross-region, share, deprecate) as a default-XOR-custom mode
+	// union. AwsIamRole is a prerequisite because DLM acts through a
+	// required execution role.
+	CloudResourceKind_AwsDlmLifecyclePolicy CloudResourceKind = 1335
+	// A Route 53 Resolver endpoint (the hybrid-DNS bridge between a VPC
+	// and outside networks) with its forwarding rules and their VPC
+	// associations managed in-line. Subnets place the ENIs and security
+	// groups guard them - both schema-required. 1340 opens the DNS &
+	// service discovery sub-band (1340-1349).
+	CloudResourceKind_AwsRoute53ResolverEndpoint CloudResourceKind = 1340
+	// A Route 53 Resolver DNS Firewall rule group with its domain
+	// lists, filtering rules, and VPC associations managed in-line -
+	// the DNS-layer block/allow policy for VPC egress queries. AwsVpc
+	// is a prerequisite because the association arm filters a
+	// referenced VPC.
+	CloudResourceKind_AwsRoute53ResolverFirewall CloudResourceKind = 1341
+	// A Resolver query logging configuration (every DNS query VPCs make
+	// through the resolver, to CloudWatch Logs / S3 / Firehose) with
+	// its VPC associations managed in-line. AwsVpc is a prerequisite
+	// because the association arm logs a referenced VPC.
+	CloudResourceKind_AwsRoute53ResolverQueryLog CloudResourceKind = 1342
+	// An AWS Cloud Map namespace (HTTP-XOR-private-DNS-XOR-public-DNS)
+	// with its discoverable services and statically registered
+	// instances managed in-line - the service-discovery registry ECS
+	// and custom applications look each other up in. AwsVpc is a
+	// prerequisite because the private-DNS arm binds its hosted zone to
+	// a referenced VPC.
+	CloudResourceKind_AwsCloudMapNamespace CloudResourceKind = 1343
+	// An AppSync API - AWS's managed API service, as a GraphQL API
+	// (SDL schema, resolvers over data sources, caching, the MERGED
+	// federation variant) XOR an Events API (real-time pub/sub over
+	// channel namespaces) - with its data sources, resolvers,
+	// functions, types, API keys, and custom domain managed in-line.
+	// Every backend reference (data source targets, roles, the
+	// certificate) is optional, so no registry prerequisite - lanes
+	// exercise the fixture-free arms.
+	CloudResourceKind_AwsAppSyncApi CloudResourceKind = 1350
+	// A Lambda layer version - a shared code archive (libraries, custom
+	// runtimes) functions attach by ARN - with its cross-account and
+	// organization share grants managed in-line. The archive lives in
+	// S3 (an optional reference, so no registry prerequisite - lanes
+	// compose their own bucket fixture). 1351 sits in the app & data
+	// services sub-band (1350-1359; 1350 opens it with AwsAppSyncApi).
+	CloudResourceKind_AwsLambdaLayer CloudResourceKind = 1351
+	// An RDS Proxy - the managed connection pool between
+	// connection-hungry applications and a database - with its
+	// connection-pool tuning, additional endpoints, and database target
+	// managed in-line. AwsIamRole is a prerequisite because the proxy
+	// assumes a required role to read database credentials from Secrets
+	// Manager; AwsSubnet because the proxy's network interfaces require
+	// at least two subnets.
+	CloudResourceKind_AwsRdsProxy CloudResourceKind = 1352
+	// An Aurora DSQL cluster - serverless, PostgreSQL-compatible
+	// distributed SQL with active-active multi-region pairing managed
+	// in-line. No prerequisites: a single-region cluster deploys from
+	// defaults alone (the KMS and peer references are optional arms).
+	CloudResourceKind_AwsAuroraDsql CloudResourceKind = 1353
+	// Region settings singleton (one private ECR registry per
+	// account+region): the registry policy, scanning configuration,
+	// replication rules, pull-through cache rules, repository creation
+	// templates, account settings, and pull-time update exclusions.
+	// Repository-scoped surface stays on AwsEcrRepo.
+	CloudResourceKind_AwsEcrRegistrySettings CloudResourceKind = 1354
+	// An AWS Private Certificate Authority with composed activation (a
+	// ROOT self-signs at apply; a subordinate activates from a parent
+	// AwsPrivateCa), issued certificates, the ACM renewal permission,
+	// and the resource policy managed in-line. No prerequisites: the
+	// S3 (CRL) and parent-CA references are optional arms.
+	CloudResourceKind_AwsPrivateCa CloudResourceKind = 1355
 	// Account/region settings singleton (one SES account object per
 	// account+region): the suppression list and VDM posture. 1360 opens
 	// the SES P1 sub-band (1360-1369).
@@ -1148,6 +1403,11 @@ const (
 	// -- the binding that puts one Azure Files share under a backup
 	// policy's protection. The share's storage account must already be
 	// registered with the vault (AzureBackupContainerStorageAccount).
+	// Prerequisite ORDER is load-bearing for teardown (destroy runs in
+	// reverse): the registration must list AFTER the share so it
+	// unregisters FIRST -- Azure Backup holds a DoNotDelete lock on a
+	// registered storage account, and a share delete under that lock
+	// fails ScopeLocked.
 	CloudResourceKind_AzureBackupProtectedFileShare CloudResourceKind = 2179
 	// The Data Protection backup vault (Microsoft.DataProtection/
 	// backupVaults) -- the safe that MODERN Azure Backup data lives in
@@ -2012,6 +2272,46 @@ var (
 		1262: "AwsSsmMaintenanceWindow",
 		1263: "AwsSsmPatchBaseline",
 		1264: "AwsSsmAssociation",
+		1270: "AwsOrganization",
+		1271: "AwsOrganizationalUnit",
+		1272: "AwsOrganizationAccount",
+		1273: "AwsOrganizationPolicy",
+		1280: "AwsBudget",
+		1281: "AwsCostAnomalyMonitor",
+		1282: "AwsCostCategory",
+		1290: "AwsIamGroup",
+		1291: "AwsIamSamlProvider",
+		1292: "AwsIamAccountSettings",
+		1300: "AwsCloudwatchDashboard",
+		1301: "AwsCloudwatchSynthetics",
+		1302: "AwsCloudwatchLogDelivery",
+		1303: "AwsCloudwatchLogAccountPolicy",
+		1304: "AwsCloudwatchLogAnomalyDetector",
+		1305: "AwsCloudwatchLogResourcePolicy",
+		1306: "AwsManagedPrometheus",
+		1307: "AwsManagedPrometheusScraper",
+		1310: "AwsEventBridgePipe",
+		1311: "AwsEventBridgeScheduler",
+		1312: "AwsEventBridgeApiDestination",
+		1320: "AwsVpcPeering",
+		1321: "AwsNetworkAcl",
+		1322: "AwsManagedPrefixList",
+		1330: "AwsEbsVolume",
+		1331: "AwsEbsSnapshot",
+		1332: "AwsS3DirectoryBucket",
+		1333: "AwsS3TableBucket",
+		1334: "AwsS3VectorBucket",
+		1335: "AwsDlmLifecyclePolicy",
+		1340: "AwsRoute53ResolverEndpoint",
+		1341: "AwsRoute53ResolverFirewall",
+		1342: "AwsRoute53ResolverQueryLog",
+		1343: "AwsCloudMapNamespace",
+		1350: "AwsAppSyncApi",
+		1351: "AwsLambdaLayer",
+		1352: "AwsRdsProxy",
+		1353: "AwsAuroraDsql",
+		1354: "AwsEcrRegistrySettings",
+		1355: "AwsPrivateCa",
 		1360: "AwsSesAccountSettings",
 		2000: "AzureResourceGroup",
 		2001: "AzureAksCluster",
@@ -2638,6 +2938,46 @@ var (
 		"AwsSsmMaintenanceWindow":                        1262,
 		"AwsSsmPatchBaseline":                            1263,
 		"AwsSsmAssociation":                              1264,
+		"AwsOrganization":                                1270,
+		"AwsOrganizationalUnit":                          1271,
+		"AwsOrganizationAccount":                         1272,
+		"AwsOrganizationPolicy":                          1273,
+		"AwsBudget":                                      1280,
+		"AwsCostAnomalyMonitor":                          1281,
+		"AwsCostCategory":                                1282,
+		"AwsIamGroup":                                    1290,
+		"AwsIamSamlProvider":                             1291,
+		"AwsIamAccountSettings":                          1292,
+		"AwsCloudwatchDashboard":                         1300,
+		"AwsCloudwatchSynthetics":                        1301,
+		"AwsCloudwatchLogDelivery":                       1302,
+		"AwsCloudwatchLogAccountPolicy":                  1303,
+		"AwsCloudwatchLogAnomalyDetector":                1304,
+		"AwsCloudwatchLogResourcePolicy":                 1305,
+		"AwsManagedPrometheus":                           1306,
+		"AwsManagedPrometheusScraper":                    1307,
+		"AwsEventBridgePipe":                             1310,
+		"AwsEventBridgeScheduler":                        1311,
+		"AwsEventBridgeApiDestination":                   1312,
+		"AwsVpcPeering":                                  1320,
+		"AwsNetworkAcl":                                  1321,
+		"AwsManagedPrefixList":                           1322,
+		"AwsEbsVolume":                                   1330,
+		"AwsEbsSnapshot":                                 1331,
+		"AwsS3DirectoryBucket":                           1332,
+		"AwsS3TableBucket":                               1333,
+		"AwsS3VectorBucket":                              1334,
+		"AwsDlmLifecyclePolicy":                          1335,
+		"AwsRoute53ResolverEndpoint":                     1340,
+		"AwsRoute53ResolverFirewall":                     1341,
+		"AwsRoute53ResolverQueryLog":                     1342,
+		"AwsCloudMapNamespace":                           1343,
+		"AwsAppSyncApi":                                  1350,
+		"AwsLambdaLayer":                                 1351,
+		"AwsRdsProxy":                                    1352,
+		"AwsAuroraDsql":                                  1353,
+		"AwsEcrRegistrySettings":                         1354,
+		"AwsPrivateCa":                                   1355,
 		"AwsSesAccountSettings":                          1360,
 		"AzureResourceGroup":                             2000,
 		"AzureAksCluster":                                2001,
@@ -3475,7 +3815,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x9f\x9f\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*ǰ\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -3649,7 +3989,85 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x0eAwsSsmDocument\x10\xed\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsssmd\x128\n" +
 	"\x17AwsSsmMaintenanceWindow\x10\xee\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsssmmw\x124\n" +
 	"\x13AwsSsmPatchBaseline\x10\xef\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsssmpb\x121\n" +
-	"\x11AwsSsmAssociation\x10\xf0\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsssma\x126\n" +
+	"\x11AwsSsmAssociation\x10\xf0\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsssma\x12.\n" +
+	"\x0fAwsOrganization\x10\xf6\t\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awsorg\x127\n" +
+	"\x15AwsOrganizationalUnit\x10\xf7\t\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\bv1alpha1\"\x05awsou:\x02\xf6\t\x127\n" +
+	"\x16AwsOrganizationAccount\x10\xf8\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsoacct\x125\n" +
+	"\x15AwsOrganizationPolicy\x10\xf9\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsopol\x12(\n" +
+	"\tAwsBudget\x10\x80\n" +
+	"\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awsbud\x124\n" +
+	"\x15AwsCostAnomalyMonitor\x10\x81\n" +
+	"\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awscam\x12/\n" +
+	"\x0fAwsCostCategory\x10\x82\n" +
+	"\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsccat\x12+\n" +
+	"\vAwsIamGroup\x10\x8a\n" +
+	"\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsiamg\x122\n" +
+	"\x12AwsIamSamlProvider\x10\x8b\n" +
+	"\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawssaml\x126\n" +
+	"\x15AwsIamAccountSettings\x10\x8c\n" +
+	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsiamas\x125\n" +
+	"\x16AwsCloudwatchDashboard\x10\x94\n" +
+	"\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awscwd\x12<\n" +
+	"\x17AwsCloudwatchSynthetics\x10\x95\n" +
+	"\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\x06awssyn:\x04\xf0\a\xf5\a\x128\n" +
+	"\x18AwsCloudwatchLogDelivery\x10\x96\n" +
+	"\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawscwld\x12>\n" +
+	"\x1dAwsCloudwatchLogAccountPolicy\x10\x97\n" +
+	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawscwlap\x12D\n" +
+	"\x1fAwsCloudwatchLogAnomalyDetector\x10\x98\n" +
+	"\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawscwlad:\x02\xd6\b\x12?\n" +
+	"\x1eAwsCloudwatchLogResourcePolicy\x10\x99\n" +
+	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawscwlrp\x123\n" +
+	"\x14AwsManagedPrometheus\x10\x9a\n" +
+	"\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awsamp\x12?\n" +
+	"\x1bAwsManagedPrometheusScraper\x10\x9b\n" +
+	"\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsamps:\x02\xbc\b\x125\n" +
+	"\x12AwsEventBridgePipe\x10\x9e\n" +
+	"\x1a\x1c\xa2\xf7\x04\x18\b\f\x12\bv1alpha1\"\x06awsebp:\x02\xf0\a\x12<\n" +
+	"\x17AwsEventBridgeScheduler\x10\x9f\n" +
+	"\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawsebsch:\x02\xf0\a\x12<\n" +
+	"\x1cAwsEventBridgeApiDestination\x10\xa0\n" +
+	"\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsebad\x124\n" +
+	"\rAwsVpcPeering\x10\xa8\n" +
+	"\x1a \xa2\xf7\x04\x1c\b\f\x12\bv1alpha1\"\n" +
+	"awsvpcpeer:\x02\xf8\a\x121\n" +
+	"\rAwsNetworkAcl\x10\xa9\n" +
+	"\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsnacl:\x02\xf8\a\x123\n" +
+	"\x14AwsManagedPrefixList\x10\xaa\n" +
+	"\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awsmpl\x12.\n" +
+	"\fAwsEbsVolume\x10\xb2\n" +
+	"\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\bv1alpha1\"\tawsebsvol\x121\n" +
+	"\x0eAwsEbsSnapshot\x10\xb3\n" +
+	"\x1a\x1c\xa2\xf7\x04\x18\b\f\x12\bv1alpha1\"\n" +
+	"awsebssnap\x126\n" +
+	"\x14AwsS3DirectoryBucket\x10\xb4\n" +
+	"\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\bv1alpha1\"\tawss3dirb\x122\n" +
+	"\x10AwsS3TableBucket\x10\xb5\n" +
+	"\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\bv1alpha1\"\tawss3tblb\x123\n" +
+	"\x11AwsS3VectorBucket\x10\xb6\n" +
+	"\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\bv1alpha1\"\tawss3vecb\x128\n" +
+	"\x15AwsDlmLifecyclePolicy\x10\xb7\n" +
+	"\x1a\x1c\xa2\xf7\x04\x18\b\f\x12\bv1alpha1\"\x06awsdlm:\x02\xf0\a\x12A\n" +
+	"\x1aAwsRoute53ResolverEndpoint\x10\xbc\n" +
+	"\x1a \xa2\xf7\x04\x1c\b\f\x12\bv1alpha1\"\bawsr53re:\x04\xbc\b\xf7\a\x12@\n" +
+	"\x1aAwsRoute53ResolverFirewall\x10\xbd\n" +
+	"\x1a\x1f\xa2\xf7\x04\x1b\b\f\x12\bv1alpha1\"\tawsr53rfw:\x02\xf8\a\x12@\n" +
+	"\x1aAwsRoute53ResolverQueryLog\x10\xbe\n" +
+	"\x1a\x1f\xa2\xf7\x04\x1b\b\f\x12\bv1alpha1\"\tawsr53rql:\x02\xf8\a\x128\n" +
+	"\x14AwsCloudMapNamespace\x10\xbf\n" +
+	"\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawscmns:\x02\xf8\a\x12.\n" +
+	"\rAwsAppSyncApi\x10\xc6\n" +
+	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsappsy\x12/\n" +
+	"\x0eAwsLambdaLayer\x10\xc7\n" +
+	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawslayer\x121\n" +
+	"\vAwsRdsProxy\x10\xc8\n" +
+	"\x1a\x1f\xa2\xf7\x04\x1b\b\f\x12\bv1alpha1\"\aawsrdsp:\x04\xf0\a\xbc\b\x12-\n" +
+	"\rAwsAuroraDsql\x10\xc9\n" +
+	"\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsdsql\x127\n" +
+	"\x16AwsEcrRegistrySettings\x10\xca\n" +
+	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsecrrs\x12+\n" +
+	"\fAwsPrivateCa\x10\xcb\n" +
+	"\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awspca\x126\n" +
 	"\x15AwsSesAccountSettings\x10\xd0\n" +
 	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssesas\x121\n" +
 	"\x12AzureResourceGroup\x10\xd0\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\bv1alpha1\"\x04azrg0\x01\x121\n" +
@@ -3803,7 +4221,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x13AzureBackupPolicyVm\x10\x80\x11\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azbpv:\x02\xff\x10\x12;\n" +
 	"\x16AzureBackupProtectedVm\x10\x81\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azbprv:\x04\x80\x11\xd8\x0f\x12=\n" +
 	"\x1aAzureBackupPolicyFileShare\x10\x82\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azbpfs:\x02\xff\x10\x12E\n" +
-	"\x1dAzureBackupProtectedFileShare\x10\x83\x11\x1a!\xa2\xf7\x04\x1d\b\r\x12\bv1alpha1\"\aazbprfs:\x06\xa5\x11\x82\x11\xab\x10\x12A\n" +
+	"\x1dAzureBackupProtectedFileShare\x10\x83\x11\x1a!\xa2\xf7\x04\x1d\b\r\x12\bv1alpha1\"\aazbprfs:\x06\xab\x10\x82\x11\xa5\x11\x12A\n" +
 	"\x1eAzureDataProtectionBackupVault\x10\x84\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdpbv:\x02\xd0\x0f\x12B\n" +
 	"\x1fAzureDataProtectionBackupPolicy\x10\x85\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdpbp:\x02\x84\x11\x12F\n" +
 	"!AzureDataProtectionBackupInstance\x10\x86\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azdpbi:\x04\x84\x11\x85\x11\x128\n" +

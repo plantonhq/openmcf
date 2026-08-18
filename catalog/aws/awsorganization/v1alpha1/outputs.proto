@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsorganization.v1alpha1;
+
+// AwsOrganizationStackOutputs captures the observable state of the
+// organization after apply.
+message AwsOrganizationStackOutputs {
+  // The organization's AWS-generated ID ("o-..." - also the
+  // provider's import ID).
+  string organization_id = 1;
+
+  // The organization's ARN.
+  string arn = 2;
+
+  // The management account's 12-digit account ID (the account this
+  // resource was deployed from).
+  string management_account_id = 3;
+
+  // The management account's ARN.
+  string management_account_arn = 4;
+
+  // The management account's email address.
+  string management_account_email = 5;
+
+  // The organization root's ID ("r-..."). The root is the top of the
+  // OU tree: first-level organizational units and root-scoped policy
+  // attachments reference it.
+  string root_id = 6;
+
+  // The folded resource policy's AWS-generated ID ("rp-..." - its
+  // import ID), empty when the spec carries no resource_policy arm.
+  string resource_policy_id = 7;
+}

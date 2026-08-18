@@ -1,0 +1,32 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_route53_resolver_query_log_config:
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the resource's identity comes from the manifest, never a second free-form field
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+  aws_route53_resolver_query_log_config_association:
+    mappings:
+      - arg: region
+        spec: spec.region
+      # Associations fold in as the spec.vpc_ids list.
+      - arg: resource_id
+        spec: spec.vpc_ids
+    exclusions:
+      - arg: resolver_query_log_config_id
+        reason: wired by the module to the folded configuration's own AWS-generated ID -- an association always joins THIS configuration to a VPC

@@ -1,0 +1,13 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3VectorBucket
+metadata:
+  name: kb-vectors
+spec:
+  region: us-east-1
+  indexes:
+    - name: kb-embeddings
+      dimension: 1024
+      distanceMetric: cosine
+      nonFilterableMetadataKeys:
+        - source_text
+        - source_uri

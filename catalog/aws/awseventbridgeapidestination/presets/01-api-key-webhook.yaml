@@ -1,0 +1,22 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEventBridgeApiDestination
+metadata:
+  name: partner-webhook
+spec:
+  region: us-east-1
+  connection:
+    name: partner-api
+    description: Partner ingestion API (api-key auth)
+    apiKey:
+      key: x-api-key
+      value: replace-with-real-key
+    invocationHttpParameters:
+      header:
+        - key: x-source
+          value: eventbridge
+  destination:
+    name: partner-webhook
+    description: Partner order-events webhook
+    invocationEndpoint: https://api.example.com/events
+    httpMethod: POST
+    invocationRateLimitPerSecond: 50

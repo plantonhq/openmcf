@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsmanagedprometheusscraper.v1alpha1;
+
+// AwsManagedPrometheusScraperStackOutputs captures the observable
+// state of the scraper after apply.
+message AwsManagedPrometheusScraperStackOutputs {
+  // The scraper's AWS-generated ID (the provider's import ID).
+  string scraper_id = 1;
+
+  // The scraper's ARN.
+  string scraper_arn = 2;
+
+  // The AWS-managed role the scraper writes to its destination with -
+  // grant it remote-write on cross-account destinations.
+  string scraper_role_arn = 3;
+}

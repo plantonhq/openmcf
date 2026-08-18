@@ -426,6 +426,13 @@ is then read back rather than defaulted here. Outbound rules
 (the *_outbound_rules lists) only take effect under the
 ALLOW_ONLY_APPROVED_OUTBOUND mode.
 
+Live-caught: provision_on_creation with ALLOW_ONLY_APPROVED_OUTBOUND
+is a fragile create. ARM can roll the workspace back mid-poll
+("workspace identity has been deleted" / workspace NotFound) after
+several minutes; a PE outbound rule on top of that then 409-loops
+destroy. The smoke lane therefore leaves this block unset and
+proves the workspace object; this arm stays offline-proven.
+
 ### spec.managedNetwork.isolationMode
 
 `enum`
@@ -575,6 +582,15 @@ Private-endpoint outbound rules on the workspace's managed
 network: the managed VNet creates a private endpoint to the named
 Azure resource. Each deploys as its own ARM child; ids surface
 name-keyed in the private_endpoint_outbound_rule_ids output.
+
+Destroy of a workspace that still has a PE outbound rule races
+ARM: workspace delete returns 409 InternalServerError
+(privateEndpointConnectionProxies/validate fails in a loop) for
+tens of minutes and the provider never finishes. The smoke
+scenario therefore proves the workspace object on the default
+network and leaves all three outbound-rule children
+offline-proven. Delete PE rules and wait for the target-side
+connection to drop before deleting the workspace.
 
 - rule: a Microsoft.KeyVault target requires sub_resource_target 'vault'
 - rule: a Microsoft.Cache target requires sub_resource_target 'redisCache'

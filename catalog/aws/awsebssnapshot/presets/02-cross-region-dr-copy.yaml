@@ -1,0 +1,14 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEbsSnapshot
+metadata:
+  name: db-data-dr
+spec:
+  region: us-west-2
+  copyFrom:
+    sourceSnapshotId:
+      value: snap-0123456789abcdef0
+    sourceRegion: us-east-1
+    encrypted: true
+    kmsKeyId:
+      value: arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab
+  description: dr replica of db-data-backup

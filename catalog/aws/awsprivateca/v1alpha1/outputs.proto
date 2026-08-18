@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsprivateca.v1alpha1;
+
+// AwsPrivateCaStackOutputs captures the observable state of the
+// private CA after apply.
+message AwsPrivateCaStackOutputs {
+  // The CA's ARN - the join key every consumer uses (MSK's TLS
+  // client-auth CA list, AwsCertManagerCert's issuing CA, a
+  // subordinate's parent reference).
+  string certificate_authority_arn = 1;
+
+  // The CA's id (the UUID tail of the ARN).
+  string certificate_authority_id = 2;
+
+  // The CA's certificate, PEM - what relying parties add to their
+  // trust stores.
+  string ca_certificate = 3;
+
+  // The CA's certificate chain, PEM (empty for a ROOT - it IS the
+  // anchor; a subordinate chains up to its root).
+  string ca_certificate_chain = 4;
+
+  // The CA's certificate signing request, PEM - what an EXTERNAL
+  // parent CA signs when activating a subordinate out of band.
+  string ca_csr = 5;
+
+  // Issued certificates' ARNs keyed by each entry's name - each
+  // value is that certificate's import ID.
+  map<string, string> issued_certificate_arns = 6;
+
+  // The ARN of the CA's own activation certificate (the root's
+  // self-signed certificate, or the parent-issued subordinate
+  // certificate) - empty until activated.
+  string activation_certificate_arn = 7;
+}

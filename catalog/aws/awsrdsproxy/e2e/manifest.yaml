@@ -1,0 +1,41 @@
+# Canonical AwsRdsProxy example (hack/dev manifest and refgen Example
+# source): a PostgreSQL proxy with IAM-authenticated clients, pool
+# tuning, a read-only endpoint, and an RDS instance target.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRdsProxy
+metadata:
+  name: orders-db-proxy
+  id: orders-db-proxy
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  engineFamily: POSTGRESQL
+  roleArn:
+    value: arn:aws:iam::123456789012:role/orders-proxy-secrets
+  vpcSubnetIds:
+    - value: subnet-0123456789abcdef0
+    - value: subnet-0123456789abcdef1
+  vpcSecurityGroupIds:
+    - value: sg-0123456789abcdef0
+  auth:
+    - secretArn:
+        value: arn:aws:secretsmanager:us-west-2:123456789012:secret:orders-db-creds-AbCdEf
+      description: Application read-write credentials
+      iamAuth: REQUIRED
+      clientPasswordAuthType: POSTGRES_SCRAM_SHA_256
+  requireTls: true
+  idleClientTimeout: 900
+  connectionPool:
+    maxConnectionsPercent: 90
+    maxIdleConnectionsPercent: 10
+    connectionBorrowTimeout: 120
+  endpoints:
+    - name: readers
+      targetRole: READ_ONLY
+      vpcSubnetIds:
+        - value: subnet-0123456789abcdef0
+        - value: subnet-0123456789abcdef1
+  target:
+    dbInstanceIdentifier:
+      value: orders-db

@@ -1,0 +1,27 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRoute53ResolverFirewall
+metadata:
+  name: egress-dns-policy
+spec:
+  region: us-east-1
+  domainLists:
+    - name: blocked-domains
+      domains:
+        - malware.example.
+        - phishing.example.
+  rules:
+    - name: sinkhole-blocked
+      priority: 100
+      action: BLOCK
+      domainListName: blocked-domains
+      blockResponse: OVERRIDE
+      blockOverrideDomain: sinkhole.example.com
+      blockOverrideTtl: 300
+  vpcAssociations:
+    - name: app-vpc
+      vpcId:
+        valueFrom:
+          kind: AwsVpc
+          name: app-vpc
+          fieldPath: status.outputs.vpc_id
+      priority: 200

@@ -1,0 +1,9 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3DirectoryBucket
+metadata:
+  name: edge-render-cache
+spec:
+  region: us-west-2
+  zoneId: usw2-lax1-az1
+  zoneType: LocalZone
+  dataRedundancy: SingleLocalZone

@@ -1,0 +1,38 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsiamgroup
+spec:
+  # The module names the group after the Planton resource (main.tf:
+  # name = var.metadata.name), so the group and both policy surfaces
+  # derive with zero user input: inline policies are keyed by their
+  # policy name and managed attachments by the policy ARN -- in both
+  # cases the module's for_each key IS the second import-ID segment,
+  # so the enumerated address carries it. The membership resource has
+  # NO importer at the pin (declared in the provider catalog); the
+  # round-trip re-applies the declarative users list instead.
+  values:
+    - name: group_name
+      derivations:
+        - from_metadata_name: true
+        - from_stack_output: group_name
+      where_to_find: >-
+        IAM console -> User groups (the group name), or `aws iam
+        list-groups` (GroupName). The name only -- not the path or
+        ARN.
+    - name: inline_policy_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        IAM console -> User groups -> <group> -> Permissions (each
+        inline policy's name), or
+        `aws iam list-group-policies --group-name <group>`
+        (PolicyNames).
+    - name: managed_policy_arn
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        IAM console -> User groups -> <group> -> Permissions (each
+        attached managed policy's ARN), or
+        `aws iam list-attached-group-policies --group-name <group>`
+        (PolicyArn).

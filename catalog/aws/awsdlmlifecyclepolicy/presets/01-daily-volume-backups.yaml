@@ -1,0 +1,23 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsDlmLifecyclePolicy
+metadata:
+  name: daily-volume-backups
+spec:
+  region: us-east-1
+  description: daily snapshots of tagged volumes
+  executionRoleArn:
+    value: arn:aws:iam::123456789012:role/AWSDataLifecycleManagerDefaultRole
+  customPolicy:
+    resourceTypes:
+      - VOLUME
+    targetTags:
+      backup: daily
+    schedules:
+      - name: daily
+        copyTags: true
+        createRule:
+          intervalHours: 24
+          times:
+            - "03:00"
+        retainRule:
+          count: 14

@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsmanagedprefixlist.v1alpha1;
+
+// AwsManagedPrefixListStackOutputs captures the observable state of
+// the prefix list after apply.
+message AwsManagedPrefixListStackOutputs {
+  // The prefix list's id (pl-...) - what security-group rules, NACL
+  // rules, and route tables reference, and the provider's import ID.
+  string prefix_list_id = 1;
+
+  // The prefix list's ARN.
+  string prefix_list_arn = 2;
+
+  // The AWS account that owns the list.
+  string owner_id = 3;
+
+  // The list's current version - AWS increments it on every entry
+  // change (its optimistic-concurrency token).
+  string version = 4;
+}

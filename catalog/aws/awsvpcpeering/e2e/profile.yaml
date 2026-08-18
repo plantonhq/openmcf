@@ -1,0 +1,26 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsvpcpeering
+spec:
+  # A same-account auto-accepted peering between the chain VPC and an
+  # extra-instance second VPC, DNS-resolution options both ways. Free
+  # at AWS; the connection activates in seconds.
+  #
+  # Deliberately not exercised live:
+  #   - the ACCEPT arm -- its destroy is a NO-OP at AWS (management is
+  #     abandoned, the peering persists), so a lane's verify-absent
+  #     phase cannot pass against it while the requester-side fixture
+  #     still holds the connection. Unblock: a harness arm for
+  #     abandon-semantics kinds (verify-absent asserting persistence,
+  #     the AwsBackupSettings class) or a cross-account accepter
+  #     account.
+  #   - cross-account / cross-region requests -- the shared test
+  #     account is deliberately standalone. Unblock: a second account.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q45
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

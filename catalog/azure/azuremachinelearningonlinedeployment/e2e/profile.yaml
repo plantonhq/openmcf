@@ -3,18 +3,16 @@ kind: ComponentE2EProfile
 metadata:
   name: azuremachinelearningonlinedeployment
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests, both
-  # engine builds, offline tofu plan green); live dual-engine proof has
-  # not yet run. The deployment provisions a REAL VM (10-20 minutes,
-  # bills until destroy -- no scale-to-zero); the smoke scenario is
-  # deliberately model-less, and whether the service accepts a bare
-  # managed deployment is itself the lane's proof point (the ARM
-  # contract allows it; the fallback -- a minimal registered model as a
-  # scenario-declared fixture -- rides the queue's watch-list). Probes,
-  # data collection, and secure egress are offline-proven only this
-  # wave. Managed-endpoint VM quota (separate from compute quota) is
-  # the likely first blocker on a fresh subscription.
+  # Proven live on both engines: one Standard_F2s_v2 instance serving
+  # a SETUP-seeded MLflow model (no-code path -- no environment, no
+  # scoring script). Measured: create 17-18 min, delete ~6 min; the
+  # instance bills until destroy (no scale-to-zero). The model-less
+  # arm is a live-proven service boundary (bare 400 BadRequest). The
+  # Terraform blind import was zero-change (no tolerances needed).
+  # Probes, data collection, and secure egress stay offline-proven.
+  # A first-create InternalServerError from Azure's MFE is transient
+  # -- retry the lane, do not debug the module.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 60

@@ -1,0 +1,47 @@
+# Consumer-scoped AwsIamRole install profile for the RDS proxy: the
+# ONE role the proxy assumes to read database credentials from
+# Secrets Manager (trusting rds.amazonaws.com). Scoping the fixture
+# keeps DEPENDENCIES-UP off the shared ~16-role profile (the
+# established consumer-scoped one-role pattern).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-rdsproxy-role
+  id: planton-oss-e2e-rdsproxy-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for the RDS proxy (Secrets Manager read)
+  inlinePolicies:
+    rdsProxySecrets:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - secretsmanager:GetSecretValue
+            - secretsmanager:DescribeSecret
+          Resource: "*"
+        # The proxy decrypts the secret with the account's default
+        # Secrets Manager KMS key.
+        - Effect: Allow
+          Action:
+            - kms:Decrypt
+          Resource: "*"
+          Condition:
+            StringEquals:
+              kms:ViaService: secretsmanager.us-west-2.amazonaws.com
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: rds.amazonaws.com
+        Action: sts:AssumeRole

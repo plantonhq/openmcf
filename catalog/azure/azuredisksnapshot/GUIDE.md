@@ -21,3 +21,7 @@ A snapshot's data plane supports export -- anyone with the right role can genera
 ## ADE settings ride along, one way
 
 The `encryptionSettings` block exists for sources encrypted with legacy in-guest Azure Disk Encryption: it records where the BitLocker/dm-crypt secrets live so a restored disk can boot. Platform-managed and customer-managed (disk encryption set) encryption need NOTHING here. Once set, the block cannot be removed in place (Azure cannot disable encryption on a snapshot) -- removal replaces the resource.
+
+## The source is immutable history -- edits are ignored, a new capture is a new resource
+
+Azure never returns a snapshot's source on reads (live-proven at the v5 provider pin: a freshly adopted snapshot holds no `sourceResourceId`/`sourceUri` in state), so both engines deliberately ignore in-place edits to the source fields. Two consequences worth internalizing: **adopting an existing snapshot (import) plans clean** -- the missing source is expected, not drift -- and **editing the source of a live snapshot does nothing** rather than silently deleting a backup artifact and re-snapshotting the disk's CURRENT state (which is what a destroy-and-recreate would actually do; the old point-in-time copy would be gone). When you want a snapshot of a different disk -- or a fresh capture of the same disk -- create a NEW snapshot resource with a new name. That is also the honest model: a point-in-time copy is defined by what it captured, not by what its manifest points at today.

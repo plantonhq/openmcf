@@ -18,7 +18,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### Azure Subscription
 
 - **Storage account shape** -- use a general-purpose account WITHOUT hierarchical namespace; the hub is an ML workspace at ARM, which rejects Data Lake Gen2 accounts as default storage.
-- **Soft delete** -- a deleted hub becomes a purgeable ghost that keeps holding the hub name; recreating under the same name fails until the ghost is purged (`az ml workspace list --archived` shows ghosts).
+- **Soft delete** -- a deleted hub becomes a purgeable ghost that keeps holding the hub name; recreating under the same name fails until the ghost is purged. Planton destroys purge automatically; for a hub deleted outside Planton, the Azure portal's "Recently deleted" view (per region) is the only place ghosts are listed and purged -- no CLI or REST API lists them.
 
 ## Deploy
 

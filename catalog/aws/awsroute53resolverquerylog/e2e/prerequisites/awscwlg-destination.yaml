@@ -1,0 +1,22 @@
+# Consumer-scoped destination fixture: the CloudWatch log group the
+# query-log lane writes to (the log-group kind publishes no shared
+# install profile). Resolver-to-CloudWatch needs no resource policy -
+# the service-linked permissions cover same-account delivery. Short
+# retention: the lane's queries are disposable.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchLogGroup
+metadata:
+  name: planton-oss-e2e-awsr53rql-dest
+  id: planton-oss-e2e-awsr53rql-dest
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsroute53resolverquerylog
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  retentionInDays: 1

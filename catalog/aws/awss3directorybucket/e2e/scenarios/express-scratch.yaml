@@ -1,0 +1,22 @@
+# A minimal directory bucket in the us-west-2 Express-supported zone
+# usw2-az1. Exercises the derived "{base}--{zone_id}--x-s3" name on
+# both engines, the location block, and force_destroy. Free at rest;
+# seconds per lifecycle phase.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3DirectoryBucket
+metadata:
+  name: planton-oss-e2e-awss3dirb
+  id: planton-oss-e2e-awss3dirb
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awss3directorybucket
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  zoneId: usw2-az1
+  forceDestroy: true

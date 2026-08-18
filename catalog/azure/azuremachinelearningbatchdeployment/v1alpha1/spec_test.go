@@ -31,9 +31,11 @@ const (
 	testJobId       = "/subscriptions/s/resourceGroups/rg/providers/Microsoft.MachineLearningServices/workspaces/ml-workspace/jobs/train-run-42"
 )
 
-// validResource returns a minimal valid bare deployment (no model, no
-// compute -- both schema-legal) that individual cases mutate into the
-// shape under test.
+// validResource returns a minimal valid Model-type recipe. Model and
+// compute are both present because the service REQUIRES them on a
+// Model-type create (live-proven: 400 UserError / ArgumentNullOrEmpty
+// on each when missing) -- a bare deployment is schema-legal but
+// undeployable, and the spec's CEL mirrors the service.
 func validResource() *AzureMachineLearningBatchDeployment {
 	return &AzureMachineLearningBatchDeployment{
 		ApiVersion: "azure.planton.dev/v1alpha1",
@@ -45,6 +47,10 @@ func validResource() *AzureMachineLearningBatchDeployment {
 			EndpointId: literal(testEndpointId),
 			Name:       "production",
 			Region:     "eastus",
+			ComputeId:  literal(testComputeId),
+			Model: &AzureMachineLearningBatchDeploymentModel{
+				Id: &AzureMachineLearningBatchDeploymentModelIdReference{AssetId: testModelId},
+			},
 		},
 	}
 }
@@ -54,7 +60,7 @@ var _ = ginkgo.Describe("AzureMachineLearningBatchDeploymentSpec Validation Test
 	ginkgo.Describe("When valid input is passed", func() {
 		ginkgo.Context("azure_machine_learning_batch_deployment", func() {
 
-			ginkgo.It("should not return a validation error for a minimal bare deployment", func() {
+			ginkgo.It("should not return a validation error for a minimal model recipe", func() {
 				err := protovalidate.Validate(validResource())
 				gomega.Expect(err).To(gomega.BeNil())
 			})
@@ -109,8 +115,13 @@ var _ = ginkgo.Describe("AzureMachineLearningBatchDeploymentSpec Validation Test
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should accept a pipeline-component recipe", func() {
+			ginkgo.It("should accept a pipeline-component recipe with no model or compute", func() {
+				// A pipeline recipe carries its own steps -- the service's
+				// model/compute validators apply to Model-type creates only,
+				// and the spec's CEL mirrors that split.
 				input := validResource()
+				input.Spec.Model = nil
+				input.Spec.ComputeId = nil
 				input.Spec.PipelineComponent = &AzureMachineLearningBatchDeploymentPipelineComponent{
 					ComponentId:    testComponentId,
 					Settings:       map[string]string{"default_compute": "cpu-pool", "continue_on_step_failure": "false"},
@@ -145,6 +156,31 @@ var _ = ginkgo.Describe("AzureMachineLearningBatchDeploymentSpec Validation Test
 			ginkgo.It("should reject a missing endpoint reference", func() {
 				input := validResource()
 				input.Spec.EndpointId = nil
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject a bare model-type recipe (the service's own boundary)", func() {
+				// Live-proven: the batch service rejects a Model-type create
+				// naming neither a model nor a compute with 400 UserError /
+				// ArgumentNullOrEmpty on both properties.
+				input := validResource()
+				input.Spec.Model = nil
+				input.Spec.ComputeId = nil
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject a model-type recipe without a compute", func() {
+				input := validResource()
+				input.Spec.ComputeId = nil
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject a model-type recipe without a model", func() {
+				input := validResource()
+				input.Spec.Model = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).NotTo(gomega.BeNil())
 			})

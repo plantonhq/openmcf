@@ -1,0 +1,33 @@
+# A snapshot of the fixture volume with fast snapshot restore enabled
+# in one zone. Exercises the volume arm, the description, and the FSR
+# satellite (billed per zone-hour - the lane's minutes cost cents).
+#
+# Deliberately unexercised arms (recorded in the profile): the COPY
+# arm (source is another AwsEbsSnapshot - the self-kind-prerequisite
+# guard), the IMPORT arm (needs a vmimport service role + a disk
+# image staged in S3), and the share grants (need a second account).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEbsSnapshot
+metadata:
+  name: planton-oss-e2e-awsebssnap-vol
+  id: planton-oss-e2e-awsebssnap-vol
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsebssnapshot
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "catalog/aws/awsebssnapshot/e2e/prerequisites/awsebsvolume.yaml"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  volumeId:
+    valueFrom:
+      kind: AwsEbsVolume
+      name: planton-oss-e2e-awsebssnap-source
+      fieldPath: status.outputs.volume_id
+  description: e2e volume-arm snapshot
+  fastRestoreAvailabilityZones:
+    - us-west-2a

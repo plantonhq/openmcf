@@ -167,7 +167,9 @@ message AwsBedrockAgentCoreMemoryStrategy {
   // exactly-one pair, and the living surface is this one.
   repeated string namespace_templates = 4 [(buf.validate.field).repeated = {
     min_items: 1
-    items: {string: {min_len: 1}}
+    items: {
+      string: {min_len: 1}
+    }
   }];
 
   // Prompt/model overrides - required when type is CUSTOM, forbidden
@@ -276,6 +278,8 @@ message AwsBedrockAgentCoreMemoryReflectionOverride {
   // Namespace templates reflection records land in (at least one).
   repeated string namespace_templates = 3 [(buf.validate.field).repeated = {
     min_items: 1
-    items: {string: {min_len: 1}}
+    items: {
+      string: {min_len: 1}
+    }
   }];
 }

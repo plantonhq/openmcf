@@ -1,0 +1,22 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "module",
+    srcs = [
+        "group.go",
+        "locals.go",
+        "main.go",
+        "outputs.go",
+    ],
+    importpath = "github.com/plantonhq/planton/catalog/aws/awsiamgroup/iac/pulumi/module",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//catalog/aws/awsiamgroup/v1alpha1",
+        "//internal/valuefrom",
+        "//pkg/iac/pulumi/pulumimodule/provider/aws/pulumiawsprovider",
+        "@com_github_pkg_errors//:errors",
+        "@com_github_pulumi_pulumi_aws_sdk_v7//go/aws/iam",
+        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
+        "@org_golang_google_protobuf//types/known/structpb",
+    ],
+)

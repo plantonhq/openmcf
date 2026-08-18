@@ -1,0 +1,19 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsiamaccountsettings
+spec:
+  # Three arms, three import stories: the alias imports by the alias
+  # string itself (derived from the spec); the password policy imports
+  # by the provider's literal word (no placeholder -- declared in the
+  # provider catalog); the STS preference has NO importer at the pin
+  # (declared in the provider catalog) and adopters re-apply the token
+  # version instead (an idempotent set-preferences call).
+  values:
+    - name: account_alias
+      derivations:
+        - from_spec_field: account_alias
+      where_to_find: >-
+        IAM console -> Dashboard (the account alias under the sign-in
+        URL), or `aws iam list-account-aliases` (AccountAliases -- an
+        account has at most one).

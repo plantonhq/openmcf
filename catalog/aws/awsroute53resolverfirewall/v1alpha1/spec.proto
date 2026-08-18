@@ -1,0 +1,288 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsroute53resolverfirewall.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsRoute53ResolverFirewallSpec defines one Route 53 Resolver DNS
+// Firewall rule group - the filtering policy for DNS queries leaving
+// VPCs - with its domain lists, rules, and VPC associations managed
+// in-line.
+//
+// The rule group is the pivot: rules cannot exist without one, and
+// associating the group to a VPC is what puts the policy into effect
+// there. Domain lists authored here are owned by this group's
+// lifecycle; rules can also reference AWS-managed domain lists (or any
+// external list) by ID.
+//
+// The per-VPC fail-open setting (what happens when the firewall
+// cannot evaluate a query) is deliberately NOT here - it is a VPC
+// setting, not a rule-group setting, and lives with the VPC's other
+// resolver settings.
+message AwsRoute53ResolverFirewallSpec {
+  // Names key the for_each on both engines and the output maps.
+  option (buf.validate.message).cel = {
+    id: "spec.domain_list_names_unique"
+    message: "domain list names must be unique within the rule group"
+    expression: "this.domain_lists.map(l, l.name).unique()"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.rule_names_unique"
+    message: "rule names must be unique within the rule group"
+    expression: "this.rules.map(r, r.name).unique()"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.association_names_unique"
+    message: "vpc association names must be unique within the rule group"
+    expression: "this.vpc_associations.map(a, a.name).unique()"
+  };
+  // AWS evaluates rules in priority order; duplicates are rejected
+  // server-side.
+  option (buf.validate.message).cel = {
+    id: "spec.rule_priorities_unique"
+    message: "rule priorities must be unique within the rule group"
+    expression: "this.rules.map(r, r.priority).unique()"
+  };
+  // A rule referencing an owned list must name one that exists here.
+  option (buf.validate.message).cel = {
+    id: "spec.rule_owned_list_exists"
+    message: "each rule's domain_list_name must name an entry in domain_lists"
+    expression: "this.rules.all(r, r.domain_list_name == '' || this.domain_lists.exists(l, l.name == r.domain_list_name))"
+  };
+
+  // The AWS region the rule group and its satellites live in.
+  // Example: "us-west-2".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The domain lists owned by this rule group, keyed by name. Rules
+  // reference them by that name.
+  repeated AwsRoute53ResolverFirewallDomainList domain_lists = 2;
+
+  // The filtering rules in this group, keyed by name. Evaluated in
+  // ascending priority order; the first matching rule's action
+  // applies.
+  repeated AwsRoute53ResolverFirewallRule rules = 3;
+
+  // The VPCs this rule group filters, keyed by association name. A
+  // VPC can carry multiple rule-group associations; AWS evaluates
+  // them in ascending association priority order.
+  repeated AwsRoute53ResolverFirewallVpcAssociation vpc_associations = 4;
+}
+
+// AwsRoute53ResolverFirewallDomainList is one domain list owned by
+// this rule group.
+message AwsRoute53ResolverFirewallDomainList {
+  // List name - the for_each key on both engines, the key in the
+  // domain_list_ids output, and what rules reference via
+  // domain_list_name. Also becomes the list's AWS name.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+    pattern: "^[0-9A-Za-z_-]+$"
+  }];
+
+  // The domains on the list, e.g. "malware.example." - AWS treats each
+  // entry as the domain and all its subdomains. A "*." prefix matches
+  // subdomains only.
+  repeated string domains = 2 [(buf.validate.field).cel = {
+    id: "domain_list.domains_unique"
+    message: "domains must be unique within a list"
+    expression: "this.unique()"
+  }];
+}
+
+// AwsRoute53ResolverFirewallRule is one filtering rule. It matches
+// queries against exactly one source - an owned domain list, an
+// external/AWS-managed domain list by ID, or a DNS threat-protection
+// class - and applies its action.
+message AwsRoute53ResolverFirewallRule {
+  // Exactly one match source.
+  option (buf.validate.message).cel = {
+    id: "rule.exactly_one_match_source"
+    message: "configure exactly one of domain_list_name (an owned list), domain_list_id (an external or AWS-managed list), and dns_threat_protection"
+    expression: "(this.domain_list_name != '' ? 1 : 0) + (has(this.domain_list_id) ? 1 : 0) + (this.dns_threat_protection != '' ? 1 : 0) == 1"
+  };
+  // Threat protection tunes with a confidence threshold - the provider
+  // enforces the pairing at plan time and so do we.
+  option (buf.validate.message).cel = {
+    id: "rule.threat_protection_pairs_with_confidence"
+    message: "dns_threat_protection and confidence_threshold are set together"
+    expression: "(this.dns_threat_protection == '') == (this.confidence_threshold == '')"
+  };
+  // Block-response tuning only means something on a BLOCK rule.
+  option (buf.validate.message).cel = {
+    id: "rule.block_response_requires_block"
+    message: "block_response applies only when action is BLOCK"
+    expression: "this.block_response == '' || this.action == 'BLOCK'"
+  };
+  // OVERRIDE substitutes a record - it needs the record's value and
+  // TTL.
+  option (buf.validate.message).cel = {
+    id: "rule.override_requires_domain_and_ttl"
+    message: "block_response OVERRIDE requires block_override_domain and block_override_ttl"
+    expression: "this.block_response != 'OVERRIDE' || (this.block_override_domain != '' && has(this.block_override_ttl))"
+  };
+  option (buf.validate.message).cel = {
+    id: "rule.override_fields_require_override"
+    message: "block_override_domain and block_override_ttl apply only when block_response is OVERRIDE"
+    expression: "(this.block_override_domain == '' && !has(this.block_override_ttl)) || this.block_response == 'OVERRIDE'"
+  };
+
+  // Rule name - the for_each key on both engines. Also becomes the
+  // rule's AWS name.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+    pattern: "^[0-9A-Za-z_-]+$"
+  }];
+
+  // Where this rule sits in the group's evaluation order (ascending;
+  // first match wins). Must be unique within the group. Leave gaps
+  // (100, 200, ...) so rules can be inserted later without renumbering.
+  int64 priority = 2 [(buf.validate.field).required = true];
+
+  // What to do with a matching query: ALLOW it through, ALERT (allow
+  // but log), or BLOCK it (shape the response with block_response).
+  string action = 3 [(buf.validate.field).string = {
+    in: [
+      "ALLOW",
+      "BLOCK",
+      "ALERT"
+    ]
+  }];
+
+  // Match against a domain list owned by this rule group (an entry in
+  // domain_lists, referenced by name).
+  string domain_list_name = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 64
+  ];
+
+  // Match against an external domain list by ID - an AWS-managed list
+  // (e.g. the malware or aggregate threat lists) or one owned by
+  // another rule group. Pass a literal rslvr-fdl-... id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef domain_list_id = 5;
+
+  // Match by DNS threat class instead of a domain list (Advanced
+  // protection): DGA catches algorithmically generated domains,
+  // DICTIONARY_DGA the dictionary-word variant, DNS_TUNNELING data
+  // exfiltration over DNS.
+  string dns_threat_protection = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "DGA",
+        "DICTIONARY_DGA",
+        "DNS_TUNNELING"
+      ]
+    }
+  ];
+
+  // How confident the threat detection must be before the rule fires.
+  // Set together with dns_threat_protection.
+  string confidence_threshold = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ]
+    }
+  ];
+
+  // How a BLOCK rule answers the query. NODATA says the domain exists
+  // but has no records; NXDOMAIN says it does not exist; OVERRIDE
+  // substitutes the record configured below. Unset means AWS's
+  // default (NODATA).
+  string block_response = 8 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "NODATA",
+        "NXDOMAIN",
+        "OVERRIDE"
+      ]
+    }
+  ];
+
+  // The record value an OVERRIDE response returns (AWS returns it as
+  // a CNAME - the record type has exactly one legal value, so the
+  // modules pin it).
+  string block_override_domain = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 255
+    }
+  ];
+
+  // The TTL (seconds, 0-604800) of the OVERRIDE record.
+  optional int64 block_override_ttl = 10 [(buf.validate.field).cel = {
+    id: "rule.block_override_ttl_range"
+    message: "block_override_ttl must be between 0 and 604800 seconds"
+    expression: "this >= 0 && this <= 604800"
+  }];
+
+  // How the firewall treats domains a matching CNAME chain redirects
+  // to. Unset means AWS's default (INSPECT_REDIRECTION_DOMAIN - the
+  // redirected-to domain is evaluated against the rules too);
+  // TRUST_REDIRECTION_DOMAIN skips that evaluation.
+  string firewall_domain_redirection_action = 11 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "INSPECT_REDIRECTION_DOMAIN",
+        "TRUST_REDIRECTION_DOMAIN"
+      ]
+    }
+  ];
+
+  // Restrict the rule to one DNS record type (e.g. "TXT", "MX").
+  // Unset matches all query types.
+  string q_type = 12 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 16
+    }
+  ];
+}
+
+// AwsRoute53ResolverFirewallVpcAssociation puts this rule group into
+// effect for one VPC.
+message AwsRoute53ResolverFirewallVpcAssociation {
+  // Association name - the for_each key on both engines and the key
+  // in the association_ids output. Also becomes the association's AWS
+  // name.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+    pattern: "^[0-9A-Za-z_-]+$"
+  }];
+
+  // The VPC to filter. Reference an AwsVpc vpc_id output or pass a
+  // literal vpc-... id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
+  ];
+
+  // Where this group sits among the VPC's rule-group associations
+  // (ascending evaluation order - the lowest number filters first).
+  int64 priority = 3 [(buf.validate.field).required = true];
+
+  // Protect the association from accidental deletion or modification.
+  // Unset leaves AWS's default (DISABLED).
+  string mutation_protection = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "ENABLED",
+        "DISABLED"
+      ]
+    }
+  ];
+}

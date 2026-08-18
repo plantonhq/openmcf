@@ -1,0 +1,41 @@
+# Where each placeholder in this component's import-ID formats comes
+# from (the formats themselves live in aa_import/catalog.yaml).
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsecrregistrysettings
+spec:
+  # The three registry singletons import by the account id; the keyed
+  # collections import by their own for_each keys (prefixes, setting
+  # names, principal ARNs - all derivable blind from the address).
+  values:
+    - name: registry_id
+      derivations:
+        - from_stack_output: registry_id
+      where_to_find: >-
+        The account's 12-digit id - `aws ecr describe-registry`
+        (registryId) or `aws sts get-caller-identity` (Account).
+    - name: ecr_repository_prefix
+      derivations:
+        - from_address_key_segment: 0
+      where_to_find: >-
+        The cache rule's prefix - `aws ecr
+        describe-pull-through-cache-rules` (ecrRepositoryPrefix).
+    - name: template_prefix
+      derivations:
+        - from_address_key_segment: 0
+      where_to_find: >-
+        The creation template's prefix - `aws ecr
+        describe-repository-creation-templates` (prefix).
+    - name: account_setting_name
+      derivations:
+        - from_address_key_segment: 0
+      where_to_find: >-
+        The setting's name - BASIC_SCAN_TYPE_VERSION, BLOB_MOUNTING, or
+        REGISTRY_POLICY_SCOPE.
+    - name: exclusion_principal_arn
+      derivations:
+        - from_address_key_segment: 0
+      where_to_find: >-
+        The excluded principal's ARN - `aws ecr
+        list-pull-time-update-exclusions`.

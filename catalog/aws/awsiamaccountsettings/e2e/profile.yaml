@@ -1,0 +1,30 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsiamaccountsettings
+spec:
+  # IAM's account-settings singleton under live E2E: one lane proves
+  # the password-policy and STS arms on the shared account (IAM is
+  # GLOBAL -- the singleton's identity is the ACCOUNT, so at most one
+  # lane may run at a time; the account-global collision class). ~$0.
+  #
+  # Destroy contracts the verifier asserts individually:
+  #   - password policy: destroy RESETS to AWS defaults --
+  #     GetAccountPasswordPolicy answers NoSuchEntity after destroy;
+  #   - STS preference: destroy is a NO-OP -- the applied v2 token
+  #     version PERSISTS (v2 is valid in every region, so leaving the
+  #     shared account on v2 is benign and deliberate).
+  #
+  # Deliberately not exercised live:
+  #   - the account_alias arm -- an account has exactly ONE alias and
+  #     applying one REPLACES the shared account's sign-in URL for
+  #     every human using it. Unblock: a verified-alias-free account
+  #     (aws iam list-account-aliases returns empty) or a dedicated
+  #     account.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q43
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

@@ -1,0 +1,3 @@
+name: awsrdsproxy
+runtime: go
+description: Pulumi module to manage an RDS Proxy with pool tuning, endpoints, and a database target

@@ -1,0 +1,3 @@
+name: awss3directorybucket
+runtime: go
+description: Pulumi module to manage an AWS S3 directory bucket (S3 Express One Zone)

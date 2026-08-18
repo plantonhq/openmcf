@@ -182,7 +182,7 @@ spec:
 | `spec.requestHeaderAllowlist` | `[]string` |  |  |  |
 | `spec.filesystems` | `[]AwsBedrockAgentCoreRuntimeFilesystem` |  |  |  |
 | `spec.filesystems[].mountPath` | `string` | yes |  |  |
-| `spec.filesystems[].efsAccessPointArn` | `string \| valueFrom` |  |  | AwsEfsAccessPoint |
+| `spec.filesystems[].efsAccessPointArn` | `string \| valueFrom` |  |  | AwsEfsAccessPoint (`status.outputs.access_point_arn`) |
 | `spec.filesystems[].s3FilesAccessPointArn` | `string \| valueFrom` |  |  |  |
 | `spec.filesystems[].sessionStorage` | `bool` |  |  |  |
 | `spec.endpoints` | `[]AwsBedrockAgentCoreRuntimeEndpoint` |  |  |  |
@@ -739,9 +739,11 @@ Where the filesystem appears inside sessions: /mnt/<one-level>
 `string | valueFrom`
 
 Mount an EFS access point (durable, shared across sessions).
+Reference an AwsEfsAccessPoint access_point_arn output or pass a
+literal ARN.
 
-- references: AwsEfsAccessPoint
-- rule: write as {value: <literal>} or {valueFrom: {kind: AwsEfsAccessPoint, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+- references: AwsEfsAccessPoint (`status.outputs.access_point_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsEfsAccessPoint, name: <that resource's name>, fieldPath: status.outputs.access_point_arn}} -- a bare string does not parse
 
 ### spec.filesystems[].s3FilesAccessPointArn
 
@@ -838,7 +840,7 @@ Fields that can point at another resource's outputs:
 | `spec.customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.vpcId` | AwsVpc | `status.outputs.vpc_id` |
 | `spec.customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.subnetIds` | AwsSubnet | `status.outputs.subnet_id` |
 | `spec.customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.securityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
-| `spec.filesystems[].efsAccessPointArn` | AwsEfsAccessPoint | `` |
+| `spec.filesystems[].efsAccessPointArn` | AwsEfsAccessPoint | `status.outputs.access_point_arn` |
 
 ## Referenced By
 

@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsiamgroup.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsIamGroupSpec defines one IAM group: the container that grants a
+// set of users a shared permission set. The group's permissions are
+// its managed-policy attachments (see AwsIamPolicy) plus inline
+// policies unique to this group; its MEMBERSHIP is the declarative
+// users list below.
+//
+// The group name comes from metadata.name (IAM group names allow
+// letters, digits, and +=,.@_- with no spaces; metadata.name is
+// always a valid subset). Renaming updates the group in place at AWS
+// - the ARN recomputes but the group and its members persist.
+//
+// IAM is a GLOBAL service: the group exists account-wide, and the
+// spec's region is only the provider endpoint region.
+message AwsIamGroupSpec {
+  // path, when set, must be "/" or a "/"-delimited sequence of
+  // non-empty segments.
+  option (buf.validate.message).cel = {
+    id: "path_format"
+    message: "path must begin and end with '/' and contain no empty segments, e.g. '/' or '/teams/'"
+    expression: "this.path == '' || this.path == '/' || this.path.matches('^/([A-Za-z0-9\\\\.,\\\\+@=_-]+/)+$')"
+  };
+  option (buf.validate.message).cel = {
+    id: "path_length"
+    message: "path must be at most 512 characters"
+    expression: "size(this.path) <= 512"
+  };
+
+  // The AWS region used by the provider while managing the group.
+  // IAM is a global service - the group is visible account-wide - but
+  // every AWS API call is still made against a regional endpoint.
+  // Example: "us-east-1", "eu-west-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The IAM path for the group, used to organize and match groups in
+  // IAM policies (e.g. "/teams/"). Unset = "/". Changing the path
+  // updates the group in place (like a rename).
+  string path = 2 [(dev.planton.shared.options.recommended_default) = "/"];
+
+  // The group's members - the DECLARATIVE membership: this list is
+  // authoritative, so users added to the group outside this resource
+  // are removed on the next apply. Reference an AwsIamUser's
+  // user_name output or pass literal user names. The users must
+  // already exist - IAM rejects unknown names.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef users = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamUser,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.user_name"
+  ];
+
+  // Managed policies attached to this group. Reference an
+  // AwsIamPolicy's policy_arn output or a literal ARN (literals are
+  // how AWS-managed policies like arn:aws:iam::aws:policy/
+  // ReadOnlyAccess attach). Prefer managed policies for anything
+  // reusable; use inline_policies for permissions unique to this one
+  // group.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef managed_policy_arns = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamPolicy,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.policy_arn"
+  ];
+
+  // Inline policies embedded in this group: a map of policy name to a
+  // free-form JSON permission document. An inline policy lives and
+  // dies with the group - use managed_policy_arns for anything shared
+  // or reusable.
+  map<string, google.protobuf.Struct> inline_policies = 5 [(buf.validate.field).map.keys = {
+    string: {max_len: 128}
+  }];
+}

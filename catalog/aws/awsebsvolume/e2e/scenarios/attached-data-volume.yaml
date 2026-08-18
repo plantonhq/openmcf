@@ -1,0 +1,39 @@
+# An encrypted gp3 data volume with explicit performance dials,
+# attached to the t3.micro fixture instance in the same availability
+# zone. Exercises the create arm (zone + size + type + iops +
+# throughput + encryption), the in-line attachment (device name,
+# stop-free detach on destroy), and both size/perf update paths.
+#
+# The copy arm is deliberately unexercised here - its source is
+# another AwsEbsVolume, the same kind under test (the harness's
+# self-kind-prerequisite guard); the profile records the deferral.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEbsVolume
+metadata:
+  name: planton-oss-e2e-awsebsvol-data
+  id: planton-oss-e2e-awsebsvol-data
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsebsvolume
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsSubnet,catalog/aws/awsebsvolume/e2e/prerequisites/awsec2instance.yaml"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  availabilityZone: us-west-2a
+  type: gp3
+  sizeGb: 10
+  iops: 3000
+  throughputMibps: 125
+  encrypted: true
+  attachments:
+    - deviceName: /dev/sdf
+      instanceId:
+        valueFrom:
+          kind: AwsEc2Instance
+          name: planton-oss-e2e-awsebsvol-target
+          fieldPath: status.outputs.instance_id

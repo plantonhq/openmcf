@@ -1,0 +1,28 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudMapNamespace
+metadata:
+  name: corp.internal
+spec:
+  region: us-east-1
+  type: PRIVATE_DNS
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: app-vpc
+      fieldPath: status.outputs.vpc_id
+  description: Service discovery for the corp platform
+  services:
+    - name: api
+      dnsConfig:
+        records:
+          - type: A
+            ttl: 10
+      healthCheckCustomConfig: {}
+    - name: db
+      dnsConfig:
+        records:
+          - type: CNAME
+            ttl: 30
+      instances:
+        - instanceId: primary
+          cname: mydb.cluster-abc.us-east-1.rds.amazonaws.com

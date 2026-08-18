@@ -1,0 +1,3 @@
+name: awscloudwatchlogdelivery
+runtime: go
+description: Pulumi module to manage AWS CloudWatch Logs deliveries

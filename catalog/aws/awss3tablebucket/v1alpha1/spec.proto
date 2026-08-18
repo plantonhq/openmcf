@@ -1,0 +1,252 @@
+syntax = "proto3";
+
+package dev.planton.aws.awss3tablebucket.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsS3TableBucketSpec defines one S3 table bucket (S3 Tables) with
+// its full contents: namespaces, Iceberg tables, resource policies,
+// and replication - one declarative owner for the whole analytics
+// storage unit.
+//
+// S3 Tables is purpose-built Apache Iceberg storage: tables are
+// first-class AWS resources (with ARNs and policies) that query
+// engines address through the catalog integration, and AWS maintains
+// them continuously (compaction, snapshot expiry, unreferenced-file
+// removal) per the maintenance dials below.
+//
+// The bucket's name is metadata.name (3-63 lowercase letters,
+// digits, hyphens). Namespaces key their entries by name; tables key
+// theirs by name within a namespace. The table format argument is
+// module-pinned to ICEBERG - the provider's enum holds exactly that
+// one value.
+message AwsS3TableBucketSpec {
+  // Namespace names are the satellite keys.
+  option (buf.validate.message).cel = {
+    id: "spec.namespace_names_unique"
+    message: "namespace names must be unique"
+    expression: "this.namespaces.map(n, n.name).unique()"
+  };
+
+  // The AWS region the table bucket lives in. Example: "us-east-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Encryption at rest for the bucket - the default new tables
+  // inherit. Unset means S3-managed keys (SSE-S3).
+  AwsS3TablesEncryption encryption = 2;
+
+  // AWS's background cleanup of files no longer referenced by any
+  // table snapshot. On by default at AWS; the dials tune how
+  // aggressively orphans age out.
+  AwsS3TablesUnreferencedFileRemoval unreferenced_file_removal = 3;
+
+  // Let destroy succeed on a non-empty bucket by deleting every
+  // table and namespace first. Off by default: destroying data
+  // should hurt. Config-only at AWS - imports never round-trip it.
+  bool force_destroy = 4;
+
+  // The bucket's resource policy (JSON) - who can create/query
+  // tables in it. Cross-account query access starts here.
+  string resource_policy = 5 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Replicate the bucket's tables to other table buckets.
+  AwsS3TablesReplication replication = 6;
+
+  // The namespaces (logical databases) and their tables, keyed by
+  // name.
+  repeated AwsS3TablesNamespace namespaces = 7;
+}
+
+// AwsS3TablesEncryption selects the at-rest encryption for a table
+// bucket or one table.
+message AwsS3TablesEncryption {
+  // A KMS key only pairs with aws:kms.
+  option (buf.validate.message).cel = {
+    id: "encryption.kms_key_requires_kms_algorithm"
+    message: "kms_key_arn requires sse_algorithm aws:kms"
+    expression: "!has(this.kms_key_arn) || this.sse_algorithm == 'aws:kms'"
+  };
+
+  // The algorithm: S3-managed keys (AES256) or KMS (aws:kms).
+  string sse_algorithm = 1 [(buf.validate.field).string = {
+    in: [
+      "AES256",
+      "aws:kms"
+    ]
+  }];
+
+  // The KMS key for aws:kms. The S3 Tables maintenance service must
+  // be granted use of it (kms:GenerateDataKey/Decrypt for
+  // maintenance.s3tables.amazonaws.com) or compaction silently
+  // stops. Reference an AwsKmsKey key_arn output or pass a literal
+  // key ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+}
+
+// AwsS3TablesUnreferencedFileRemoval tunes the bucket-level cleanup
+// of files no table snapshot references.
+message AwsS3TablesUnreferencedFileRemoval {
+  // Turn the cleanup off entirely (it is on at AWS by default).
+  // Orphaned files then accumulate storage cost forever.
+  bool disabled = 1;
+
+  // Days a file stays "noncurrent" before the cleanup marks it
+  // unreferenced. 0 means AWS's default (10).
+  int64 non_current_days = 2 [(buf.validate.field).int64.gte = 0];
+
+  // Days an unreferenced file survives before deletion. 0 means
+  // AWS's default (3).
+  int64 unreferenced_days = 3 [(buf.validate.field).int64.gte = 0];
+}
+
+// AwsS3TablesReplication replicates tables to destination table
+// buckets (bucket-level: every table participates).
+message AwsS3TablesReplication {
+  // The IAM role the replication service assumes. Reference an
+  // AwsIamRole role_arn output or pass a literal role ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // The destination table buckets (1-5), by ARN.
+  repeated string destination_table_bucket_arns = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 5
+    unique: true
+    items: {
+      string: {pattern: "^arn:aws[a-z-]*:s3tables:.+$"}
+    }
+  }];
+}
+
+// AwsS3TablesNamespace is one logical database within the bucket,
+// holding tables.
+message AwsS3TablesNamespace {
+  // Table names are the satellite keys within a namespace.
+  option (buf.validate.message).cel = {
+    id: "namespace.table_names_unique"
+    message: "table names must be unique within a namespace"
+    expression: "this.tables.map(t, t.name).unique()"
+  };
+
+  // The namespace name - what query engines address as the database.
+  // Lowercase letters, digits, underscores; must start with a letter
+  // or digit. Fixed for life.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 255
+    pattern: "^[a-z0-9][a-z0-9_]*$"
+  }];
+
+  // The namespace's tables, keyed by name.
+  repeated AwsS3TablesTable tables = 2;
+}
+
+// AwsS3TablesTable is one Iceberg table: schema, maintenance dials,
+// its own optional policy and replication.
+message AwsS3TablesTable {
+  // The table name - what query engines address. Lowercase letters,
+  // digits, underscores; must start with a letter or digit. Fixed
+  // for life.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 255
+    pattern: "^[a-z0-9][a-z0-9_]*$"
+  }];
+
+  // The table's Iceberg schema at creation. CREATE-ONLY at AWS: the
+  // provider never reads it back, schema evolution happens through
+  // query engines (ALTER TABLE), and changing it here replaces the
+  // table. Leave it unset to create schema-less and define columns
+  // through an engine.
+  AwsS3TablesIcebergSchema iceberg_schema = 2;
+
+  // Iceberg table properties at creation ("format-version",
+  // "write.parquet.compression-codec", ...). Create-only, like the
+  // schema.
+  map<string, string> properties = 3;
+
+  // Encryption for THIS table when it must differ from the bucket
+  // default. Fixed for life.
+  AwsS3TablesEncryption encryption = 4;
+
+  // AWS's automatic file compaction for this table. On at AWS by
+  // default.
+  AwsS3TablesCompaction compaction = 5;
+
+  // AWS's automatic snapshot expiry for this table. On at AWS by
+  // default.
+  AwsS3TablesSnapshotManagement snapshot_management = 6;
+
+  // The table's own resource policy (JSON) - per-table access grants
+  // on top of the bucket policy.
+  string resource_policy = 7 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Replicate THIS table to destination table buckets (table-level
+  // replication, independent of the bucket-level rule).
+  AwsS3TablesReplication replication = 8;
+}
+
+// AwsS3TablesIcebergSchema is a table's column set at creation.
+message AwsS3TablesIcebergSchema {
+  // Column names are unique.
+  option (buf.validate.message).cel = {
+    id: "iceberg_schema.field_names_unique"
+    message: "schema field names must be unique"
+    expression: "this.fields.map(f, f.name).unique()"
+  };
+
+  // The columns (at least one).
+  repeated AwsS3TablesSchemaField fields = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsS3TablesSchemaField is one column.
+message AwsS3TablesSchemaField {
+  // The column name.
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The Iceberg type: "int", "long", "float", "double", "string",
+  // "boolean", "date", "time", "timestamp", "timestamptz", "uuid",
+  // "binary", "decimal(p,s)", "fixed(n)", or a nested
+  // struct/list/map expression.
+  string type = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Whether the column is NOT NULL (Iceberg "required"). Default:
+  // nullable.
+  bool required = 3;
+}
+
+// AwsS3TablesCompaction tunes AWS's automatic file compaction for one
+// table.
+message AwsS3TablesCompaction {
+  // Turn compaction off (it is on at AWS by default). Small-file
+  // buildup then degrades query performance until an engine compacts
+  // manually.
+  bool disabled = 1;
+
+  // The target compacted file size in MiB. 0 means AWS's default
+  // (512).
+  int64 target_file_size_mb = 2 [(buf.validate.field).int64.gte = 0];
+}
+
+// AwsS3TablesSnapshotManagement tunes AWS's automatic snapshot expiry
+// for one table.
+message AwsS3TablesSnapshotManagement {
+  // Turn snapshot expiry off (it is on at AWS by default). Snapshots
+  // (and the files they pin) then accumulate forever.
+  bool disabled = 1;
+
+  // Hours a snapshot stays eligible for time travel before expiry.
+  // 0 means AWS's default (120).
+  int64 max_snapshot_age_hours = 2 [(buf.validate.field).int64.gte = 0];
+
+  // The minimum number of snapshots always kept regardless of age.
+  // 0 means AWS's default (1).
+  int64 min_snapshots_to_keep = 3 [(buf.validate.field).int64.gte = 0];
+}

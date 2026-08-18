@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.aws.awseventbridgepipe.v1alpha1;
+
+// AwsEventBridgePipeStackOutputs captures the observable state of the
+// pipe after apply.
+message AwsEventBridgePipeStackOutputs {
+  // The pipe's ARN.
+  string pipe_arn = 1;
+
+  // The pipe's name (metadata.name echoed back - the provider's import
+  // ID).
+  string pipe_name = 2;
+}

@@ -1,0 +1,99 @@
+# The GraphQL arm's core machinery, fixture-free: API_KEY primary auth
+# plus an AWS_IAM additional provider (the multi-auth surface), an SDL
+# schema, an HTTP data source (any HTTPS endpoint - no fixture) and a
+# local NONE data source, one APPSYNC_JS pipeline function, a pipeline
+# resolver and a unit resolver, one individually managed schema type
+# (the type resource's colon-composite import), an API key, and the
+# query-depth/resolver-count limits. AppSync APIs bill per request -
+# an idle API costs nothing.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsAppSyncApi
+metadata:
+  name: planton-oss-e2e-awsappsy-gql
+  id: planton-oss-e2e-awsappsy-gql
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsappsyncapi
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  graphql:
+    apiName: planton_oss_e2e_appsync_gql
+    auth:
+      type: API_KEY
+    additionalAuthProviders:
+      - type: AWS_IAM
+    schema: |
+      type Order {
+        id: ID!
+        total: Float
+      }
+      type Query {
+        getOrder(id: ID!): Order
+      }
+      type Mutation {
+        putOrder(id: ID!, total: Float): Order
+      }
+      schema {
+        query: Query
+        mutation: Mutation
+      }
+    queryDepthLimit: "10"
+    resolverCountLimit: "100"
+    xrayEnabled: true
+    types:
+      - name: AuditNote
+        format: SDL
+        definition: |
+          type AuditNote {
+            id: ID!
+            message: String
+          }
+    functions:
+      - name: fetch_order
+        dataSourceName: orders_backend
+        description: Fetches one order from the HTTP backend
+        code: |
+          export function request(ctx) {
+            return { method: "GET", resourcePath: `/orders/${ctx.args.id}` };
+          }
+          export function response(ctx) {
+            return JSON.parse(ctx.result.body);
+          }
+    resolvers:
+      - type: Query
+        field: getOrder
+        pipelineFunctions:
+          - fetch_order
+        code: |
+          export function request(ctx) { return {}; }
+          export function response(ctx) { return ctx.prev.result; }
+      - type: Mutation
+        field: putOrder
+        dataSourceName: local_passthrough
+        maxBatchSize: "0"
+        code: |
+          export function request(ctx) {
+            return { payload: ctx.args };
+          }
+          export function response(ctx) {
+            return ctx.result;
+          }
+  datasources:
+    - name: orders_backend
+      type: HTTP
+      description: A public HTTPS endpoint (no fixture needed)
+      http:
+        endpoint: https://httpbin.org
+    - name: local_passthrough
+      type: NONE
+      description: Local resolver logic with no backend
+  apiKeys:
+    - name: e2e_client
+      description: Planton E2E client key
+      expires: "2027-01-01T00:00:00Z"

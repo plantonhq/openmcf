@@ -1,0 +1,23 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCostAnomalyMonitor
+metadata:
+  name: service-spend-monitor
+spec:
+  region: us-east-1
+  monitorName: Service Spend Monitor
+  monitorType: DIMENSIONAL
+  monitorDimension: SERVICE
+  subscriptions:
+    - name: finops-daily-summary
+      frequency: DAILY
+      subscribers:
+        - address:
+            value: <finops-team@your-company.com>
+          type: EMAIL
+      thresholdExpression:
+        dimension:
+          key: ANOMALY_TOTAL_IMPACT_ABSOLUTE
+          matchOptions:
+            - GREATER_THAN_OR_EQUAL
+          values:
+            - "100"

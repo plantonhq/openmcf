@@ -1,0 +1,45 @@
+# AzureMachineLearningComputeCluster install profile used as a fixture
+# by dependent components (declared via the e2e-prerequisites
+# annotation -- the batch-deployment lane, whose recipe the service
+# refuses to create without a compute target). The harness deploys this
+# document after the fixture workspace chain and captures its outputs --
+# machine_learning_compute_cluster_id in particular -- for dependents'
+# references to resolve against.
+#
+# COST AND TIME: min_node_count 0 means NO node ever provisions unless
+# a job runs -- and no lane ever submits a job -- so the fixture is
+# free at rest and creates in a couple of minutes. The cloud-side name
+# is deliberately STABLE: cluster names are workspace-scoped and the
+# fixture workspace is deployed fresh per lane, so a fixed name can
+# never collide across engines.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningComputeCluster
+metadata:
+  name: planton-oss-e2e-azure-fixture-mlcc
+  id: planton-oss-e2e-azure-fixture-mlcc
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremachinelearningcomputecluster
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  workspaceId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-mlw
+  name: planton-oss-e2e-fixture-mlcc
+  region: eastus
+  vmSize: STANDARD_DS2_V2
+  vmPriority: DEDICATED
+  scaleSettings:
+    minNodeCount: 0
+    maxNodeCount: 1
+    scaleDownNodesAfterIdleDuration: PT5M
+  identity:
+    type: SYSTEM_ASSIGNED
+  tags:
+    e2e-suite: azure
+    purpose: fixture

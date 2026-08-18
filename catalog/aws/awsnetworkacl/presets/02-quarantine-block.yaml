@@ -1,0 +1,34 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsNetworkAcl
+metadata:
+  name: data-tier-acl
+spec:
+  region: us-east-1
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: app-vpc
+      fieldPath: status.outputs.vpc_id
+  ingress:
+    - ruleNo: 90
+      action: deny
+      protocol: "-1"
+      cidrBlock: 198.51.100.0/24
+    - ruleNo: 100
+      action: allow
+      protocol: tcp
+      cidrBlock: 10.0.0.0/16
+      fromPort: 5432
+      toPort: 5432
+  egress:
+    - ruleNo: 100
+      action: allow
+      protocol: tcp
+      cidrBlock: 10.0.0.0/16
+      fromPort: 1024
+      toPort: 65535
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: data-a
+        fieldPath: status.outputs.subnet_id

@@ -1,9 +1,49 @@
 package runner
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/plantonhq/planton/e2e/framework/provider"
 )
+
+// The scenario-declared skip annotation exists for configs that
+// STRUCTURALLY cannot round-trip to zero changes (write-only ForceNew
+// secrets, where the only post-import plan is a replace): the gate must
+// exclude a scenario ONLY when the annotation carries a reason, and an
+// annotation-free scenario must stay enrolled.
+func TestImportRoundTripEnabled_ScenarioSkipAnnotation(t *testing.T) {
+	repoRoot := t.TempDir()
+	mapDir := filepath.Join(repoRoot, "catalog", "aws", "awsecscluster", "iac")
+	if err := os.MkdirAll(mapDir, 0o755); err != nil {
+		t.Fatalf("mkdir import-map dir: %v", err)
+	}
+	mapYaml := "apiVersion: iac.planton.dev/v1\nkind: ComponentImportMap\n"
+	if err := os.WriteFile(filepath.Join(mapDir, "import-map.yaml"), []byte(mapYaml), 0o600); err != nil {
+		t.Fatalf("write import map: %v", err)
+	}
+	t.Setenv(ImportRoundTripEnvVar, "1")
+
+	tc := &provider.ComponentTestContext{
+		Component: "awsecscluster",
+		Provider:  "aws",
+		Engine:    "terraform",
+		RepoRoot:  repoRoot,
+	}
+
+	tc.ManifestPath = writeScenarioManifest(t, t.TempDir(), "")
+	if !importRoundTripEnabled(tc) {
+		t.Fatal("annotation-free scenario must stay enrolled in the round-trip")
+	}
+
+	tc.ManifestPath = writeScenarioManifest(t, t.TempDir(),
+		"  annotations:\n    planton.dev/e2e-import-roundtrip-skip: \"write-only ForceNew secrets cannot round-trip\"\n")
+	if importRoundTripEnabled(tc) {
+		t.Fatal("a reason-carrying skip annotation must exclude the scenario")
+	}
+}
 
 // The round-trip oracle's tolerance hinges on this differ naming EXACTLY the
 // attributes an in-place update touches: name too few and a real drift slips

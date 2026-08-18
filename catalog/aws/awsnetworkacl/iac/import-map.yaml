@@ -1,0 +1,18 @@
+# Where each placeholder in this component's import-ID formats comes
+# from (the formats themselves live in aa_import/catalog.yaml).
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsnetworkacl
+spec:
+  # The in-line rules and subnet associations import WITH the ACL -
+  # the provider reads them back from the one acl-... id.
+  values:
+    - name: network_acl_id
+      derivations:
+        - from_stack_output: network_acl_id
+        - from_arn_part: resource_id
+      where_to_find: >-
+        VPC console -> Network ACLs (the acl-... ID column), or
+        `aws ec2 describe-network-acls` (NetworkAclId). Default NACLs
+        (IsDefault true) refuse this import path.

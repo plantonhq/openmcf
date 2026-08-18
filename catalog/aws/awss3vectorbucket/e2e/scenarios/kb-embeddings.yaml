@@ -1,0 +1,29 @@
+# A vector bucket with one index sized for Titan Text v2 embeddings
+# (1024 dimensions, cosine) and non-filterable payload keys.
+# Exercises the bucket pivot, the index satellite (every property
+# create-only), and the metadata configuration. Free at rest - the
+# lane never puts a vector; seconds per lifecycle phase.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3VectorBucket
+metadata:
+  name: planton-oss-e2e-awss3vecb
+  id: planton-oss-e2e-awss3vecb
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awss3vectorbucket
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  forceDestroy: true
+  indexes:
+    - name: kb-embeddings
+      dimension: 1024
+      distanceMetric: cosine
+      nonFilterableMetadataKeys:
+        - source_text
+        - source_uri

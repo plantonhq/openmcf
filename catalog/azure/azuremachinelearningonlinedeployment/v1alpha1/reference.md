@@ -204,8 +204,13 @@ to zero.
 
 The model the deployment serves: the ARM ID of a registered
 model version (.../workspaces/{ws}/models/{name}/versions/{v})
-or an azureml:// asset URI. Unset is legal at the ARM layer for
-bring-your-own-container images that embed their model.
+or an azureml:// asset URI. The ARM schema marks it optional
+(bring-your-own-container images embed their model), but the
+SERVICE rejects a create that names neither a model nor a
+self-contained custom container -- synchronously, as a bare
+400 BadRequest "The request is invalid." with no field detail
+(live-proven). In practice: set this for every deployment
+except a true BYOC shape.
 
 ### spec.modelMountPath
 

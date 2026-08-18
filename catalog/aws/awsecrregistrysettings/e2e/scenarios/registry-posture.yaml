@@ -1,0 +1,48 @@
+# The region's registry posture: basic scanning with an
+# everything-on-push rule, a credential-less pull-through cache of
+# registry.k8s.io with its creation template, the basic-scanner
+# version pinned to AWS_NATIVE (today's AWS default - the persisting
+# account setting exercised without changing the account's behavior),
+# and one pull-time update exclusion for the CI-role fixture. The
+# registry policy and replication arms stay out: the policy needs the
+# account-id token in its JSON and replication would copy into a
+# second region (both recorded deferrals in the profile).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEcrRegistrySettings
+metadata:
+  name: planton-oss-e2e-awsecrrs-posture
+  id: planton-oss-e2e-awsecrrs-posture
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsecrregistrysettings
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "catalog/aws/awsecrregistrysettings/e2e/prerequisites/ci-role.yaml"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  scanning:
+    scanType: BASIC
+    rules:
+      - scanFrequency: SCAN_ON_PUSH
+        filters:
+          - "*"
+  pullThroughCacheRules:
+    - ecrRepositoryPrefix: planton-e2e-k8s
+      upstreamRegistryUrl: registry.k8s.io
+  repositoryCreationTemplates:
+    - prefix: planton-e2e-k8s
+      description: Planton E2E repositories created by the registry.k8s.io cache
+      appliedFor:
+        - PULL_THROUGH_CACHE
+      imageTagMutability: IMMUTABLE
+  accountSettings:
+    basicScanTypeVersion: AWS_NATIVE
+  pullTimeUpdateExclusions:
+    - valueFrom:
+        kind: AwsIamRole
+        name: planton-oss-e2e-awsecrrs-ci-role
+        fieldPath: status.outputs.role_arn

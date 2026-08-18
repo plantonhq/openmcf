@@ -61,6 +61,7 @@ go_test(
         "//catalog/gcp/gcpbackendservice/v1alpha1",
         "//catalog/gcp/gcptargethttpsproxy/v1alpha1",
         "//catalog/gcp/gcpurlmap/v1alpha1",
+        "//e2e/framework/provider",
         "//internal/manifest",
         "//shared/cloudresourcekind",
         "@io_k8s_sigs_yaml//:yaml",

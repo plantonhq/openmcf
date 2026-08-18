@@ -1,0 +1,21 @@
+# A single-region DSQL cluster from defaults: AWS-owned encryption,
+# no deletion protection (the lane destroys it minutes later),
+# identity tags only. Serverless pay-per-use - a never-queried
+# cluster bills ~nothing for lane minutes. No prerequisites: DSQL
+# needs no VPC, no subnets, no capacity.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsAuroraDsql
+metadata:
+  name: planton-oss-e2e-awsdsql-single
+  id: planton-oss-e2e-awsdsql-single
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsauroradsql
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2

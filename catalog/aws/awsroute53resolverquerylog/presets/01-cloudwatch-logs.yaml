@@ -1,0 +1,16 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRoute53ResolverQueryLog
+metadata:
+  name: vpc-dns-queries
+spec:
+  region: us-east-1
+  destinationArn:
+    valueFrom:
+      kind: AwsCloudwatchLogGroup
+      name: dns-query-logs
+      fieldPath: status.outputs.log_group_arn
+  vpcIds:
+    - valueFrom:
+        kind: AwsVpc
+        name: app-vpc
+        fieldPath: status.outputs.vpc_id

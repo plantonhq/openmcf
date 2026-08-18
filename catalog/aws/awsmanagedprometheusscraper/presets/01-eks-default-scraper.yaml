@@ -1,0 +1,27 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsManagedPrometheusScraper
+metadata:
+  name: platform-scraper
+spec:
+  region: us-east-1
+  alias: platform-scraper
+  sourceEks:
+    clusterArn:
+      valueFrom:
+        kind: AwsEksCluster
+        name: platform
+        fieldPath: status.outputs.cluster_arn
+    subnetIds:
+      - valueFrom:
+          kind: AwsSubnet
+          name: private-a
+          fieldPath: status.outputs.subnet_id
+      - valueFrom:
+          kind: AwsSubnet
+          name: private-b
+          fieldPath: status.outputs.subnet_id
+  ampWorkspaceArn:
+    valueFrom:
+      kind: AwsManagedPrometheus
+      name: platform-metrics
+      fieldPath: status.outputs.workspace_arn

@@ -19,8 +19,10 @@ const machineLearningAPIVersion = "2025-06-01"
 // deploy on the workspace's properties, and the composed outbound
 // rules are ARM children under the same path.
 // Absence-after-destroy is genuine absence: a soft-deleted workspace
-// ghost is not returned by GetByID -- the ORPHAN sweep is what checks
-// `az ml workspace list --archived`.
+// ghost is not returned by GetByID. Ghosts have NO list API (portal
+// "Recently deleted" only); the modules purge on destroy via the
+// provider's machine_learning features flag, and the dual-engine
+// lanes prove the purge by recreating the same fixed name.
 type machineLearningWorkspaceVerifier struct{}
 
 // IDOutputKey is the workspace's full ARM ID.

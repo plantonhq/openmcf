@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.aws.awscloudwatchlogdelivery.v1alpha1;
+
+// AwsCloudwatchLogDeliveryStackOutputs captures the observable state
+// of the delivery objects after apply.
+message AwsCloudwatchLogDeliveryStackOutputs {
+  // The vended source's ARN. Empty when the vended arm has no source.
+  string source_arn = 1;
+
+  // The vended source's name.
+  string source_name = 2;
+
+  // The service AWS recorded as the source's producer (derived from
+  // resource_arn).
+  string source_service = 3;
+
+  // Owned destination ARNs keyed by destination name - what other
+  // instances' deliveries reference.
+  map<string, string> destination_arns = 4;
+
+  // AWS-generated delivery IDs keyed by delivery name (each delivery
+  // imports by this ID).
+  map<string, string> delivery_ids = 5;
+
+  // Delivery ARNs keyed by delivery name.
+  map<string, string> delivery_arns = 6;
+
+  // The cross-account destination's ARN - what other accounts'
+  // subscription filters target. Empty without that arm.
+  string cross_account_destination_arn = 7;
+
+  // The cross-account destination's name (the provider's import ID
+  // for it).
+  string cross_account_destination_name = 8;
+}

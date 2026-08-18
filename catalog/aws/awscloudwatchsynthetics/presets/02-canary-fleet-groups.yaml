@@ -1,0 +1,9 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchSynthetics
+metadata:
+  name: canary-groups
+spec:
+  region: us-east-1
+  groups:
+    - name: prod-critical-flows
+    - name: prod-all

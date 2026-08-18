@@ -1,0 +1,12 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsOrganizationalUnit
+metadata:
+  name: workloads-ou
+spec:
+  region: <aws-region>
+  ouName: Workloads
+  parentId:
+    valueFrom:
+      kind: AwsOrganization
+      name: <organization-resource-name>
+      fieldPath: status.outputs.root_id

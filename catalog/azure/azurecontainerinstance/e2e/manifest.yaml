@@ -118,8 +118,12 @@ spec:
     workspaceKey:
       value: dGVzdC13b3Jrc3BhY2Uta2V5
     logType: ContainerInsights
+    # Metadata keys are a CLOSED ARM vocabulary (pod-uuid /
+    # cluster-resource-id / node-name -- the Kubernetes-shaped tags
+    # Container Insights understands); values are free strings.
     metadata:
-      team: platform
+      cluster-resource-id: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ContainerService/managedClusters/test-cluster
+      node-name: aci-connector
   dnsConfig:
     nameservers:
       - 10.0.0.10

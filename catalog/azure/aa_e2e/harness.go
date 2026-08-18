@@ -101,6 +101,15 @@ func (h *Harness) Setup(ctx context.Context) error {
 		}
 	}
 
+	// Also export the subscription under the manifest env-token prefix, so a
+	// scenario can compose subscription-scoped ARM IDs (e.g. a data-plane
+	// asset's full resource ID inside a fixture workspace) via
+	// ${E2E_ENV:PLANTON_E2E_AZURE_SUBSCRIPTION_ID} without hardcoding one
+	// account's identifier into a committed manifest.
+	if err := os.Setenv("PLANTON_E2E_AZURE_SUBSCRIPTION_ID", subscriptionID); err != nil {
+		return errors.Wrap(err, "failed to export PLANTON_E2E_AZURE_SUBSCRIPTION_ID")
+	}
+
 	// Skip per-apply Azure Resource Provider registration for the ephemeral test
 	// run. The pulumi-azure classic engine auto-registers a broad set of resource
 	// providers (Microsoft.Compute, .Storage, ...) at init, firing the

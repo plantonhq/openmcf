@@ -1,0 +1,15 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsManagedPrefixList
+metadata:
+  name: office-networks
+spec:
+  region: us-east-1
+  addressFamily: IPv4
+  maxEntries: 10
+  entries:
+    - cidr: 203.0.113.0/24
+      description: hq office
+    - cidr: 198.51.100.0/24
+      description: branch office
+    - cidr: 192.0.2.0/24
+      description: vpn egress

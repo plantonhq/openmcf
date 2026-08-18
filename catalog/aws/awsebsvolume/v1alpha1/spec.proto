@@ -1,0 +1,224 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsebsvolume.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsEbsVolumeSpec defines one standalone EBS volume as a
+// create-XOR-copy source union:
+//
+// The CREATE arm (the default) provisions a fresh volume in an
+// availability zone - empty (sized) or restored from a snapshot.
+//
+// The COPY arm (copy_from set) clones an existing volume. AWS creates
+// the copy in the SOURCE volume's availability zone and inherits its
+// encryption posture - which is why the create-arm placement and
+// encryption fields are forbidden alongside copy_from. Size, type,
+// iops, and throughput may be overridden on the copy.
+//
+// Attachments are managed in-line as part of the volume: each entry
+// attaches the volume to one instance at one device name. More than
+// one attachment requires multi_attach_enabled (io1/io2 only) - AWS
+// rejects a second attachment on a regular volume.
+message AwsEbsVolumeSpec {
+  // Exactly one creation mode: fresh volumes need a zone; copies
+  // inherit the source's.
+  option (buf.validate.message).cel = {
+    id: "spec.create_requires_availability_zone"
+    message: "availability_zone is required when creating a fresh volume (only a copy_from volume inherits its placement)"
+    expression: "has(this.copy_from) || this.availability_zone != ''"
+  };
+  // A fresh volume must know how big it is.
+  option (buf.validate.message).cel = {
+    id: "spec.create_requires_size_or_snapshot"
+    message: "a fresh volume needs size_gb, snapshot_id, or both (a snapshot fixes the minimum size); only copy_from volumes inherit size"
+    expression: "has(this.copy_from) || this.size_gb > 0 || has(this.snapshot_id)"
+  };
+  // The copy arm inherits placement and encryption from the source -
+  // AWS offers no override, so the spec refuses one.
+  option (buf.validate.message).cel = {
+    id: "spec.copy_forbids_create_arm_fields"
+    message: "copy_from inherits the source volume's zone, encryption, and snapshot lineage - availability_zone, snapshot_id, encrypted, kms_key_id, multi_attach_enabled, final_snapshot, and volume_initialization_rate cannot be set on a copy"
+    expression: "!has(this.copy_from) || (this.availability_zone == '' && !has(this.snapshot_id) && !this.encrypted && !has(this.kms_key_id) && !this.multi_attach_enabled && !this.final_snapshot && this.volume_initialization_rate == 0)"
+  };
+  // Provisioned IOPS is a gp3/io1/io2 concept.
+  option (buf.validate.message).cel = {
+    id: "spec.iops_requires_iops_capable_type"
+    message: "iops is configurable only on gp3, io1, and io2 volumes"
+    expression: "this.iops == 0 || this.type in ['gp3', 'io1', 'io2']"
+  };
+  // io1/io2 have no default IOPS - AWS requires an explicit value.
+  option (buf.validate.message).cel = {
+    id: "spec.io_types_require_iops"
+    message: "io1 and io2 volumes require an explicit iops value"
+    expression: "!(this.type in ['io1', 'io2']) || this.iops > 0"
+  };
+  // Throughput is a gp3-only dial.
+  option (buf.validate.message).cel = {
+    id: "spec.throughput_is_gp3_only"
+    message: "throughput_mibps is configurable only on gp3 volumes"
+    expression: "this.throughput_mibps == 0 || this.type == 'gp3'"
+  };
+  // Multi-attach exists only on the io family.
+  option (buf.validate.message).cel = {
+    id: "spec.multi_attach_requires_io_type"
+    message: "multi_attach_enabled requires an io1 or io2 volume"
+    expression: "!this.multi_attach_enabled || this.type in ['io1', 'io2']"
+  };
+  // AWS rejects a second attachment on a single-attach volume.
+  option (buf.validate.message).cel = {
+    id: "spec.many_attachments_require_multi_attach"
+    message: "attaching to more than one instance requires multi_attach_enabled (io1/io2 only)"
+    expression: "this.attachments.size() <= 1 || this.multi_attach_enabled"
+  };
+  // Initialization rate only applies when hydrating from a snapshot.
+  option (buf.validate.message).cel = {
+    id: "spec.init_rate_requires_snapshot"
+    message: "volume_initialization_rate applies only to volumes created from a snapshot"
+    expression: "this.volume_initialization_rate == 0 || has(this.snapshot_id)"
+  };
+
+  // The AWS region the volume lives in. Example: "us-east-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The availability zone for a FRESH volume. Example: "us-east-1a".
+  // Fixed for life - a volume never moves zones (snapshot + restore
+  // is the move). Forbidden with copy_from (the copy lands in the
+  // source's zone).
+  string availability_zone = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // The volume type. gp3 is the current-generation default and the
+  // only type with a throughput dial; io1/io2 are provisioned-IOPS
+  // (and the only multi-attach-capable types); sc1/st1 are throughput
+  // HDDs; standard is previous-generation magnetic.
+  string type = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "gp2",
+        "gp3",
+        "io1",
+        "io2",
+        "sc1",
+        "st1",
+        "standard"
+      ]
+    }
+  ];
+
+  // The volume size in GiB. Optional when snapshot_id or copy_from
+  // sets the size floor - AWS uses the source size when unset, and a
+  // larger value grows the volume at create.
+  int64 size_gb = 4 [(buf.validate.field).int64.gte = 0];
+
+  // Restore the fresh volume from this snapshot. Reference an
+  // AwsEbsSnapshot snapshot_id output or pass a literal snap-... id.
+  // Forbidden with copy_from.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef snapshot_id = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsEbsSnapshot,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.snapshot_id"
+  ];
+
+  // Encrypt the fresh volume at rest. Fixed for life. Snapshots of an
+  // encrypted volume (and volumes restored from them) stay encrypted.
+  // Forbidden with copy_from (copies inherit the source posture).
+  bool encrypted = 6;
+
+  // The KMS key for encryption. Unset with encrypted=true means the
+  // AWS-managed aws/ebs key. Reference an AwsKmsKey key_arn output or
+  // pass a literal key ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Provisioned IOPS. Required for io1/io2 (no default exists);
+  // optional for gp3 (defaults to 3000); forbidden elsewhere.
+  int64 iops = 8 [(buf.validate.field).int64.gte = 0];
+
+  // Throughput in MiB/s - gp3 only. 0 means the gp3 default (125).
+  int64 throughput_mibps = 9 [(buf.validate.field).cel = {
+    id: "spec.throughput_range"
+    message: "throughput_mibps must be between 125 and 2000"
+    expression: "this == 0 || (this >= 125 && this <= 2000)"
+  }];
+
+  // Let the volume attach to multiple instances at once (io1/io2
+  // only). Fixed for life. Multi-attach volumes need a
+  // cluster-aware filesystem - a regular ext4/xfs mount on two
+  // instances corrupts data.
+  bool multi_attach_enabled = 10;
+
+  // Snapshot the volume automatically before destroy - the safety net
+  // for teardown-with-data. The snapshot is AWS-side only (not
+  // tracked by this resource) and is never visible in volume reads,
+  // so imports do not round-trip it.
+  bool final_snapshot = 11;
+
+  // The rate (MiB/s, 100-300) at which AWS eagerly hydrates the
+  // volume from its snapshot instead of lazy-loading blocks on first
+  // read. Only valid with snapshot_id.
+  int64 volume_initialization_rate = 12 [(buf.validate.field).cel = {
+    id: "spec.init_rate_range"
+    message: "volume_initialization_rate must be between 100 and 300 MiB/s"
+    expression: "this == 0 || (this >= 100 && this <= 300)"
+  }];
+
+  // The COPY arm: clone an existing volume instead of creating fresh.
+  AwsEbsVolumeCopyFrom copy_from = 13;
+
+  // Attach the volume to instances, in-line. Each entry is one
+  // instance + device name pair. More than one entry requires
+  // multi_attach_enabled.
+  repeated AwsEbsVolumeAttachment attachments = 14;
+}
+
+// AwsEbsVolumeCopyFrom clones an existing volume. The copy is created
+// in the source volume's availability zone with the source's
+// encryption posture and snapshot lineage.
+message AwsEbsVolumeCopyFrom {
+  // The volume to copy. Reference another AwsEbsVolume's volume_id
+  // output or pass a literal vol-... id. Fixed for life.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_volume_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsEbsVolume,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.volume_id"
+  ];
+}
+
+// AwsEbsVolumeAttachment attaches the volume to one instance at one
+// device name. The attachment lives and dies with this spec entry -
+// removing it detaches the volume (respecting the flags below).
+message AwsEbsVolumeAttachment {
+  // The device name the instance sees. Example: "/dev/sdf" (Linux
+  // exposes it as /dev/xvdf on Xen instances; Nitro instances get an
+  // NVMe name regardless). Fixed for life of the attachment.
+  string device_name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^/dev/[a-z0-9/]+$"
+  }];
+
+  // The instance to attach to. Reference an AwsEc2Instance
+  // instance_id output or pass a literal i-... id. Fixed for life of
+  // the attachment.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef instance_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsEc2Instance,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.instance_id"
+  ];
+
+  // Force the detach on removal - the filesystem gets no chance to
+  // flush. A last resort for hung instances; data loss is possible.
+  bool force_detach = 3;
+
+  // Leave the volume attached at AWS when this entry (or the whole
+  // resource) is destroyed - the attachment merely leaves
+  // management. The volume itself cannot be deleted while attached.
+  bool skip_destroy = 4;
+
+  // Stop the instance before detaching, then leave it stopped. The
+  // clean-detach option for root-adjacent data volumes that cannot be
+  // unmounted live.
+  bool stop_instance_before_detaching = 5;
+}

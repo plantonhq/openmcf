@@ -1,0 +1,43 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRoute53ResolverEndpoint
+metadata:
+  name: onprem-outbound
+spec:
+  region: us-east-1
+  direction: OUTBOUND
+  ipAddresses:
+    - subnetId:
+        valueFrom:
+          kind: AwsSubnet
+          name: private-a
+          fieldPath: status.outputs.subnet_id
+    - subnetId:
+        valueFrom:
+          kind: AwsSubnet
+          name: private-b
+          fieldPath: status.outputs.subnet_id
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: dns-to-onprem
+        fieldPath: status.outputs.security_group_id
+  rules:
+    - name: corp-domain
+      domainName: corp.example.com
+      ruleType: FORWARD
+      targetIps:
+        - ip: 10.20.0.53
+        - ip: 10.20.1.53
+      vpcIds:
+        - valueFrom:
+            kind: AwsVpc
+            name: app-vpc
+            fieldPath: status.outputs.vpc_id
+    - name: aws-hosted-subdomain
+      domainName: aws.corp.example.com
+      ruleType: SYSTEM
+      vpcIds:
+        - valueFrom:
+            kind: AwsVpc
+            name: app-vpc
+            fieldPath: status.outputs.vpc_id

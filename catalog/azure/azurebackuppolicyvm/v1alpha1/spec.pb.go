@@ -65,6 +65,12 @@ type AzureBackupPolicyVmSpec struct {
 	// VM (fast restores without vault round-trips): 1-30. On V1
 	// policies the cap is 5 (the provider's own contract). Unspecified
 	// applies the service default (2 for V1, 7 for V2).
+	//
+	// Azure requires vaulted daily retention to be STRICTLY greater
+	// than this value (BMSUserErrorInstantRPRetentionExceedsVaultedRetention
+	// -- live-proven). A V2 policy that leaves this unset therefore
+	// cannot use retention_daily.count of 7: set this field to 1-6, or
+	// raise daily count above 7.
 	InstantRestoreRetentionDays *int32 `protobuf:"varint,6,opt,name=instant_restore_retention_days,json=instantRestoreRetentionDays,proto3,oneof" json:"instant_restore_retention_days,omitempty"`
 	// Names the resource group Azure creates instant-restore snapshot
 	// collections in (default: an AzureBackupRG_* group per region).
@@ -773,7 +779,7 @@ var File_catalog_azure_azurebackuppolicyvm_v1alpha1_spec_proto protoreflect.File
 
 const file_catalog_azure_azurebackuppolicyvm_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"5catalog/azure/azurebackuppolicyvm/v1alpha1/spec.proto\x12.dev.planton.azure.azurebackuppolicyvm.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x82\x16\n" +
+	"5catalog/azure/azurebackuppolicyvm/v1alpha1/spec.proto\x12.dev.planton.azure.azurebackuppolicyvm.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xba\x1a\n" +
 	"\x17AzureBackupPolicyVmSpec\x12\x8c\x01\n" +
 	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x9e\x01\n" +
 	"\x13recovery_vault_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB:\xbaH\x03\xc8\x01\x01\x88\xd4a\xff\x10\x92\xd4a+status.outputs.recovery_services_vault_nameR\x11recoveryVaultName\x12=\n" +
@@ -791,12 +797,13 @@ const file_catalog_azure_azurebackuppolicyvm_v1alpha1_spec_proto_rawDesc = "" +
 	"\x0fretention_daily\x18\v \x01(\v2Q.dev.planton.azure.azurebackuppolicyvm.v1alpha1.AzureBackupPolicyVmRetentionDailyR\x0eretentionDaily\x12}\n" +
 	"\x10retention_weekly\x18\f \x01(\v2R.dev.planton.azure.azurebackuppolicyvm.v1alpha1.AzureBackupPolicyVmRetentionWeeklyR\x0fretentionWeekly\x12\x80\x01\n" +
 	"\x11retention_monthly\x18\r \x01(\v2S.dev.planton.azure.azurebackuppolicyvm.v1alpha1.AzureBackupPolicyVmRetentionMonthlyR\x10retentionMonthly\x12}\n" +
-	"\x10retention_yearly\x18\x0e \x01(\v2R.dev.planton.azure.azurebackuppolicyvm.v1alpha1.AzureBackupPolicyVmRetentionYearlyR\x0fretentionYearly:\xaa\t\xbaH\xa6\t\x1a\xd2\x01\n" +
+	"\x10retention_yearly\x18\x0e \x01(\v2R.dev.planton.azure.azurebackuppolicyvm.v1alpha1.AzureBackupPolicyVmRetentionYearlyR\x0fretentionYearly:\xe2\r\xbaH\xde\r\x1a\xd2\x01\n" +
 	"$bpv_daily_retention_for_hourly_daily\x12Dretention_daily is required when backup.frequency is Hourly or Daily\x1ad(this.backup.frequency != 'Hourly' && this.backup.frequency != 'Daily') || has(this.retention_daily)\x1a\xf5\x01\n" +
 	"\x1fbpv_weekly_retention_for_weekly\x12qa Weekly schedule requires retention_weekly and must not set retention_daily (weekly backups have no daily layer)\x1a_this.backup.frequency != 'Weekly' || (has(this.retention_weekly) && !has(this.retention_daily))\x1a\xda\x01\n" +
 	"\x16bpv_hourly_requires_v2\x12fan Hourly schedule requires policy_type V2 (enhanced policy) -- V1 policies back up at most once a day\x1aXthis.backup.frequency != 'Hourly' || (has(this.policy_type) && this.policy_type == 'V2')\x1a\xe5\x01\n" +
 	" bpv_crash_consistent_requires_v2\x12Zconsistency_type OnlyCrashConsistent requires policy_type V2 (the provider's own contract)\x1aethis.consistency_type != 'OnlyCrashConsistent' || (has(this.policy_type) && this.policy_type == 'V2')\x1a\x91\x02\n" +
-	"\x1abpv_instant_restore_v1_cap\x12dinstant_restore_retention_days is capped at 5 on V1 policies -- use policy_type V2 for up to 30 days\x1a\x8c\x01!has(this.instant_restore_retention_days) || (has(this.policy_type) && this.policy_type == 'V2') || this.instant_restore_retention_days <= 5B\x0e\n" +
+	"\x1abpv_instant_restore_v1_cap\x12dinstant_restore_retention_days is capped at 5 on V1 policies -- use policy_type V2 for up to 30 days\x1a\x8c\x01!has(this.instant_restore_retention_days) || (has(this.policy_type) && this.policy_type == 'V2') || this.instant_restore_retention_days <= 5\x1a\xb5\x04\n" +
+	"\x14bpv_instant_lt_daily\x12\xb4\x02instant_restore_retention_days must be less than retention_daily.count -- Azure rejects Instant RP that meets or exceeds vaulted daily retention (BMSUserErrorInstantRPRetentionExceedsVaultedRetention). V2 defaults Instant RP to 7 days when unset, so a daily count of 7 needs an explicit smaller instant value\x1a\xe5\x01!has(this.retention_daily) || (has(this.instant_restore_retention_days) ? this.instant_restore_retention_days < this.retention_daily.count : !(has(this.policy_type) && this.policy_type == 'V2' && this.retention_daily.count <= 7))B\x0e\n" +
 	"\f_policy_typeB!\n" +
 	"\x1f_instant_restore_retention_daysB\v\n" +
 	"\t_timezone\"\x80\t\n" +

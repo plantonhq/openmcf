@@ -4812,6 +4812,7 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | AwsAlb | `spec.webAclArn` | `status.outputs.web_acl_arn` |
 | AwsAppRunnerService | `spec.webAclArn` | `status.outputs.web_acl_arn` |
+| AwsAppSyncApi | `spec.graphql.webAclArn` | `status.outputs.web_acl_arn` |
 | AwsCloudFront | `spec.webAclArn` | `status.outputs.web_acl_arn` |
 
 ## See Also

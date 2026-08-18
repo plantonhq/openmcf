@@ -14,6 +14,10 @@
 //     falls back to the SDK's ambient credential chain (e.g. a self-hosted runner's managed
 //     identity or `az` CLI login).
 //
+// Modules that need a non-default azurerm `features` flag (soft-delete purge behaviors and the
+// like) use GetWithFeatures -- the flags are module-design decisions carried by the calling
+// module, never by AzureProviderConfig.
+//
 // Why NO builder-side token exchange (deliberate contrast with the AWS builders): the AWS
 // builders exchange the web-identity token themselves only because pulumi-aws's provider-native
 // path is broken upstream (pulumi-aws#6228). The pulumi-azure providers consume the inline token
@@ -53,7 +57,27 @@ import (
 // nameSuffixes disambiguate the provider resource name when a module needs more than one provider.
 func Get(ctx *pulumi.Context, azureProviderConfig *azureprovider.AzureProviderConfig,
 	nameSuffixes ...string) (*azure.Provider, error) {
-	providerArgs, err := buildProviderArgs(azureProviderConfig)
+	return get(ctx, azureProviderConfig, nil, nameSuffixes)
+}
+
+// GetWithFeatures is Get with an azurerm `features` block (mirrors the sibling
+// pulumigoogleprovider's Get/GetWithUserProjectOverride pair). The features flags are
+// module-design decisions, not credentials, so they arrive from the calling module rather than
+// from AzureProviderConfig: a kind whose resource class needs a non-default provider behavior
+// declares it at its own provider-construction site, where the resource's lifecycle contract
+// lives. First consumer: the ML workspace family sets
+// machineLearning.purgeSoftDeletedWorkspaceOnDestroy so destroy purges the name-holding
+// soft-delete ghost (the provider default leaves it squatting on the workspace name).
+// Credential dispatch is identical to Get.
+func GetWithFeatures(ctx *pulumi.Context, azureProviderConfig *azureprovider.AzureProviderConfig,
+	features azure.ProviderFeaturesPtrInput, nameSuffixes ...string) (*azure.Provider, error) {
+	return get(ctx, azureProviderConfig, features, nameSuffixes)
+}
+
+// get is the single construction path both public entry points delegate to.
+func get(ctx *pulumi.Context, azureProviderConfig *azureprovider.AzureProviderConfig,
+	features azure.ProviderFeaturesPtrInput, nameSuffixes []string) (*azure.Provider, error) {
+	providerArgs, err := buildProviderArgs(azureProviderConfig, features)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build azure provider args")
 	}
@@ -67,11 +91,16 @@ func Get(ctx *pulumi.Context, azureProviderConfig *azureprovider.AzureProviderCo
 }
 
 // buildProviderArgs is the pure, side-effect-free core of the builder: it maps an
-// AzureProviderConfig to azure.ProviderArgs. It is split out from Get so the credential dispatch
-// (the security-critical part) is unit-testable without a Pulumi context. Unlike the AWS builders
-// it needs no injectable exchange seam -- the provider plugin does the token exchange itself.
-func buildProviderArgs(azureProviderConfig *azureprovider.AzureProviderConfig) (*azure.ProviderArgs, error) {
+// AzureProviderConfig (plus an optional module-supplied features block) to azure.ProviderArgs.
+// It is split out from the public entry points so the credential dispatch (the security-critical
+// part) is unit-testable without a Pulumi context. Unlike the AWS builders it needs no injectable
+// exchange seam -- the provider plugin does the token exchange itself.
+func buildProviderArgs(azureProviderConfig *azureprovider.AzureProviderConfig,
+	features azure.ProviderFeaturesPtrInput) (*azure.ProviderArgs, error) {
 	providerArgs := &azure.ProviderArgs{}
+	if features != nil {
+		providerArgs.Features = features
+	}
 
 	// No config -> ambient credential chain.
 	if azureProviderConfig == nil {

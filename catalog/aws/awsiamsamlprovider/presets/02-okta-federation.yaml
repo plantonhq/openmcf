@@ -1,0 +1,10 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamSamlProvider
+metadata:
+  name: okta
+spec:
+  region: us-east-1
+  samlMetadataDocument: |
+    <paste the XML from Okta Admin -> Applications -> your AWS app ->
+    Sign On -> "Identity Provider metadata" (a public URL of the form
+    https://<org>.okta.com/app/<app-id>/sso/saml/metadata)>

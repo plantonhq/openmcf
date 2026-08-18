@@ -1,0 +1,36 @@
+# Canonical AwsRoute53ResolverEndpoint example (hack/dev manifest and
+# refgen Example source): an outbound endpoint forwarding corp.example.com
+# queries to two on-prem name servers, with the rule associated to one VPC
+# and a SYSTEM override keeping a subdomain on recursive resolution.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRoute53ResolverEndpoint
+metadata:
+  name: corp-outbound
+  id: corp-outbound
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  direction: OUTBOUND
+  ipAddresses:
+    - subnetId:
+        value: subnet-0123456789abcdef0
+    - subnetId:
+        value: subnet-0fedcba9876543210
+  securityGroupIds:
+    - value: sg-0123456789abcdef0
+  rules:
+    - name: corp-forward
+      domainName: corp.example.com
+      ruleType: FORWARD
+      targetIps:
+        - ip: 10.20.0.53
+        - ip: 10.20.1.53
+          port: 8053
+      vpcIds:
+        - value: vpc-0123456789abcdef0
+    - name: cloud-native-subdomain
+      domainName: aws.corp.example.com
+      ruleType: SYSTEM
+      vpcIds:
+        - value: vpc-0123456789abcdef0

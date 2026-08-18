@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsorganizationpolicy.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsOrganizationPolicySpec defines the desired configuration for one
+// AWS Organizations policy (a service control policy or any of its
+// twelve sibling types) together with its attachments to roots,
+// organizational units, and member accounts.
+//
+// The policy's display name is an explicit spec field - AWS allows
+// names with spaces metadata.name cannot carry. AWS identifies the
+// policy as "p-..." (the import ID); each attachment imports as
+// "{target_id}:{policy_id}".
+//
+// Managing policies requires the ORGANIZATION'S MANAGEMENT account,
+// an organization with ALL features enabled, and the policy's type
+// enabled on the organization (AwsOrganization's
+// enabled_policy_types). AWS-managed policies (like FullAWSAccess)
+// cannot be adopted by this resource - the provider refuses to import
+// them.
+message AwsOrganizationPolicySpec {
+  // A literal attachment target must be the organization root
+  // ("r-..."), an OU ("ou-..."), or a 12-digit member account ID -
+  // the provider's own patterns.
+  option (buf.validate.message).cel = {
+    id: "spec.attachment_target_literal_format"
+    message: "a literal attachment target_id must be an organization root (r-...), an organizational unit (ou-...), or a 12-digit account ID"
+    expression: "this.attachments.all(a, !has(a.target_id.value) || a.target_id.value.matches('^(r-[0-9a-z]{4,32}|ou-[0-9a-z]{4,32}-[0-9a-z]{8,32}|[0-9]{12})$'))"
+  };
+  // Attachments are for_each entries on both engines - duplicate
+  // literal targets would silently collapse.
+  option (buf.validate.message).cel = {
+    id: "spec.attachment_targets_unique"
+    message: "attachments entries must have unique targets"
+    expression: "this.attachments.filter(a, has(a.target_id.value)).map(a, a.target_id.value).unique()"
+  };
+
+  // The AWS region used by the provider while managing the policy.
+  // Organizations is a global service - the policy is the same
+  // everywhere - but every AWS API call is still made against a
+  // regional endpoint, so a region is required.
+  // Example: "us-west-2", "eu-west-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The policy's display name (1-128 characters; spaces are legal -
+  // which is why this is an explicit field rather than
+  // metadata.name). Renames apply in place.
+  string policy_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+
+  // The policy type. Unset = SERVICE_CONTROL_POLICY (the provider
+  // default). IMMUTABLE - changing the type forces replacement. The
+  // type must be enabled on the organization before attachments
+  // anywhere will succeed.
+  string type = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "SERVICE_CONTROL_POLICY",
+        "RESOURCE_CONTROL_POLICY",
+        "TAG_POLICY",
+        "BACKUP_POLICY",
+        "AISERVICES_OPT_OUT_POLICY",
+        "CHATBOT_POLICY",
+        "DECLARATIVE_POLICY_EC2",
+        "SECURITYHUB_POLICY",
+        "INSPECTOR_POLICY",
+        "UPGRADE_ROLLOUT_POLICY",
+        "BEDROCK_POLICY",
+        "S3_POLICY",
+        "NETWORK_SECURITY_DIRECTOR_POLICY"
+      ]
+    }
+  ];
+
+  // The policy document as free-form JSON in the syntax of the
+  // policy's type (an SCP/RCP statement document, a tag policy
+  // document, ...). Content updates apply in place.
+  google.protobuf.Struct content = 4 [(buf.validate.field).required = true];
+
+  // Human description of the policy, up to 512 characters.
+  string description = 5 [(buf.validate.field).string.max_len = 512];
+
+  // Where the policy attaches: each entry binds the policy to one
+  // root, OU, or member account. Both leaves of an attachment are
+  // immutable - changing a target re-attaches (detach + attach).
+  repeated AwsOrganizationPolicyAttachment attachments = 6;
+}
+
+// AwsOrganizationPolicyAttachment binds the policy to one target.
+message AwsOrganizationPolicyAttachment {
+  // The attachment target: an AwsOrganizationalUnit reference (the
+  // default wiring - SCPs typically govern OUs), a literal "r-..."
+  // root ID, a literal "ou-..." ID, a literal 12-digit account ID, or
+  // an AwsOrganizationAccount/AwsOrganization reference by field
+  // path. IMMUTABLE.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsOrganizationalUnit,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.ou_id"
+  ];
+}

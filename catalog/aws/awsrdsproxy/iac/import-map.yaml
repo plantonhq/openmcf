@@ -1,0 +1,41 @@
+# Where each placeholder in this component's import-ID formats comes
+# from (the formats themselves live in aa_import/catalog.yaml).
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsrdsproxy
+spec:
+  # The proxy and its default target group import by the proxy name;
+  # endpoints compose the proxy name with each endpoint's own name
+  # (the modules' for_each key); the target composes all four of its
+  # parts from outputs.
+  values:
+    - name: db_proxy_name
+      derivations:
+        - from_stack_output: proxy_name
+      where_to_find: >-
+        RDS console -> Proxies (the name column), or
+        `aws rds describe-db-proxies` (DBProxyName).
+    - name: db_proxy_endpoint_name
+      derivations:
+        - from_address_key_segment: 0
+      where_to_find: >-
+        `aws rds describe-db-proxy-endpoints --db-proxy-name <name>`
+        (DBProxyEndpointName) - the spec.endpoints entry's name.
+    - name: target_group_name
+      derivations:
+        - from_stack_output: default_target_group_name
+      where_to_find: >-
+        Always "default" - a proxy has exactly one target group.
+    - name: target_type
+      derivations:
+        - from_stack_output: target_type
+      where_to_find: >-
+        `aws rds describe-db-proxy-targets --db-proxy-name <name>`
+        (Type - RDS_INSTANCE or TRACKED_CLUSTER).
+    - name: target_rds_resource_id
+      derivations:
+        - from_stack_output: target_rds_resource_id
+      where_to_find: >-
+        `aws rds describe-db-proxy-targets --db-proxy-name <name>`
+        (RdsResourceId).

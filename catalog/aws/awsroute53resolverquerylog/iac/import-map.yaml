@@ -1,0 +1,24 @@
+# Where each placeholder in this component's import-ID formats comes
+# from (the formats themselves live in aa_import/catalog.yaml).
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsroute53resolverquerylog
+spec:
+  # The configuration imports by its AWS-generated id; the folded VPC
+  # associations derive blind from the association_ids output map keyed
+  # by the resolved VPC id (the modules' for_each key).
+  values:
+    - name: query_log_config_id
+      derivations:
+        - from_stack_output: query_log_config_id
+      where_to_find: >-
+        Route 53 console -> Resolver -> Query logging (the ID column),
+        or `aws route53resolver list-resolver-query-log-configs` (Id).
+    - name: query_log_association_id
+      derivations:
+        - from_stack_output_keyed_by_address: association_ids
+      where_to_find: >-
+        `aws route53resolver list-resolver-query-log-config-associations`
+        lists associations with Id ("rqlca-..."); match by ResourceId
+        (the VPC id).

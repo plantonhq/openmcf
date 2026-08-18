@@ -1,0 +1,3 @@
+name: awscloudwatchlogaccountpolicy
+runtime: go
+description: Pulumi module to manage an AWS CloudWatch Logs account-level policy

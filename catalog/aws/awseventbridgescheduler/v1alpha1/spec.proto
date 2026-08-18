@@ -1,0 +1,472 @@
+syntax = "proto3";
+
+package dev.planton.aws.awseventbridgescheduler.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsEventBridgeSchedulerSpec defines one EventBridge Scheduler
+// schedule: cron for the cloud - a cron, rate, or one-time expression
+// invoking one target under an execution role, with optional flexible
+// time windows, retries, and a dead-letter queue.
+//
+// The schedule's name in AWS is metadata.name. Its GROUP is a
+// name-and-tags container (the provider's own update path is
+// tags-only): create one here (group) or join one that exists
+// elsewhere by name (group_name); unset means AWS's "default" group.
+// The group is fixed for life - changing it replaces the schedule.
+//
+// The execution role is assumed by the Scheduler service - its trust
+// policy must allow scheduler.amazonaws.com, and IAM propagation makes
+// a first deploy with a fresh role eventually consistent (the provider
+// retries for up to two minutes).
+message AwsEventBridgeSchedulerSpec {
+  // The group is owned or referenced, never both.
+  option (buf.validate.message).cel = {
+    id: "spec.group_own_xor_existing"
+    message: "set at most one of group (create the group here) and group_name (join an existing group) - unset both for AWS's default group"
+    expression: "!(has(this.group) && this.group_name != '')"
+  };
+
+  // The AWS region the schedule lives in. Example: "us-east-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // What this schedule triggers and why.
+  string description = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 512
+  ];
+
+  // An owned schedule group, created by this instance (carrying the
+  // standard identity tags). One group serves many schedules - other
+  // instances join it via group_name.
+  AwsEventBridgeScheduleGroup group = 3;
+
+  // An existing group to join by name (another instance's owned group,
+  // or any pre-existing one). Unset (with no owned group) uses AWS's
+  // "default" group. Fixed for life.
+  string group_name = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 64
+  ];
+
+  // When the schedule fires: "cron(0 12 * * ? *)" (noon daily),
+  // "rate(5 minutes)", or "at(2026-12-31T23:59:00)" (one-time).
+  string schedule_expression = 5 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+  }];
+
+  // The IANA timezone the cron expression evaluates in. Example:
+  // "America/Los_Angeles". Unset keeps AWS's default (UTC).
+  string schedule_expression_timezone = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 50
+  ];
+
+  // Don't fire before this instant (RFC3339). Example:
+  // "2026-09-01T00:00:00Z". Unset starts immediately.
+  string start_date = 7 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Don't fire after this instant (RFC3339). Unset never expires.
+  string end_date = 8 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Pause the schedule without deleting it. Unset keeps AWS's default
+  // (ENABLED).
+  string state = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "ENABLED",
+        "DISABLED"
+      ]
+    }
+  ];
+
+  // What happens after a one-time ("at(...)") schedule completes:
+  // DELETE removes the schedule itself. Unset keeps AWS's default
+  // (NONE). NOTE with DELETE, AWS deletes the schedule out from under
+  // IaC state - the next deploy recreates it; use DELETE only for
+  // fire-and-forget schedules.
+  string action_after_completion = 10 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "NONE",
+        "DELETE"
+      ]
+    }
+  ];
+
+  // Customer-managed KMS key that encrypts the schedule's target input
+  // (unset uses AWS-owned keys). Reference an AwsKmsKey key_arn output
+  // or pass a literal key ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 11 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // The invocation-time flexibility window. AWS requires an explicit
+  // choice: OFF fires exactly on schedule, FLEXIBLE lets AWS spread
+  // invocations within a window (smoothing load spikes across a fleet
+  // of schedules).
+  AwsEventBridgeScheduleFlexibleTimeWindow flexible_time_window = 12 [(buf.validate.field).required = true];
+
+  // What the schedule invokes.
+  AwsEventBridgeScheduleTarget target = 13 [(buf.validate.field).required = true];
+}
+
+// AwsEventBridgeScheduleGroup is an owned schedule group - a
+// name-and-tags container.
+message AwsEventBridgeScheduleGroup {
+  // The group's name in AWS (its identity - renaming replaces it, and
+  // with it the schedule). Up to 64 characters: letters, digits, dot,
+  // dash, underscore.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+    pattern: "^[0-9A-Za-z_.-]+$"
+  }];
+}
+
+// AwsEventBridgeScheduleFlexibleTimeWindow controls invocation-time
+// flexibility.
+message AwsEventBridgeScheduleFlexibleTimeWindow {
+  // FLEXIBLE needs a window; OFF forbids one.
+  option (buf.validate.message).cel = {
+    id: "flexible_time_window.mode_matches_window"
+    message: "mode FLEXIBLE requires maximum_window_in_minutes; mode OFF forbids it"
+    expression: "(this.mode == 'FLEXIBLE') == has(this.maximum_window_in_minutes)"
+  };
+
+  // OFF fires exactly on schedule; FLEXIBLE fires anywhere inside the
+  // window starting at the scheduled time.
+  string mode = 1 [(buf.validate.field).string = {
+    in: [
+      "OFF",
+      "FLEXIBLE"
+    ]
+  }];
+
+  // The window size in minutes (1-1440). Only with mode FLEXIBLE.
+  optional int32 maximum_window_in_minutes = 2 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 1440
+  }];
+}
+
+// AwsEventBridgeScheduleTarget is what the schedule invokes: a target
+// ARN + execution role, an optional static input payload, retry/DLQ
+// behavior, and at most one service-specific parameter block.
+message AwsEventBridgeScheduleTarget {
+  // The service parameter blocks are alternatives - AWS accepts at
+  // most one, matching the target service.
+  option (buf.validate.message).cel = {
+    id: "target.at_most_one_parameter_block"
+    message: "configure at most one service parameter block (ecs, eventbridge, kinesis, sagemaker_pipeline, sqs) - it must match the target arn's service"
+    expression: "[has(this.ecs_parameters), has(this.eventbridge_parameters), has(this.kinesis_parameters), has(this.sagemaker_pipeline_parameters), has(this.sqs_parameters)].filter(x, x).size() <= 1"
+  };
+
+  // The target's ARN: a Lambda function, SQS queue, ECS cluster,
+  // Kinesis stream, Step Functions state machine, EventBridge bus,
+  // SageMaker pipeline, API destination, or any of the universal-
+  // target API ARNs. No single kind dominates, so references here
+  // carry NO default kind - in manifests, a valueFrom on this field
+  // must state its kind explicitly.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef arn = 1 [(buf.validate.field).required = true];
+
+  // The role Scheduler assumes to invoke the target. Its trust policy
+  // must allow scheduler.amazonaws.com. Reference an AwsIamRole
+  // role_arn output or pass a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // The static payload delivered on every invocation (for most
+  // targets, a JSON document; templating placeholders like
+  // <aws.scheduler.scheduled-time> are substituted by AWS). Unset
+  // sends the target service's default event.
+  string input = 3 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // The SQS queue that receives events Scheduler could not deliver
+  // after exhausting retries. Reference an AwsSqsQueue queue_arn
+  // output or pass a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef dead_letter_queue_arn = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSqsQueue,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.queue_arn"
+  ];
+
+  // How long and how often Scheduler retries failed invocations.
+  // Unset keeps AWS's defaults (24h event age, 185 attempts).
+  AwsEventBridgeScheduleRetryPolicy retry_policy = 5;
+
+  // ECS RunTask parameters (target arn: the ECS cluster).
+  AwsEventBridgeScheduleEcsParameters ecs_parameters = 6;
+
+  // EventBridge PutEvents parameters (target arn: the event bus).
+  AwsEventBridgeScheduleEventBridgeParameters eventbridge_parameters = 7;
+
+  // Kinesis PutRecord parameters (target arn: the stream).
+  AwsEventBridgeScheduleKinesisParameters kinesis_parameters = 8;
+
+  // SageMaker StartPipelineExecution parameters (target arn: the
+  // pipeline).
+  AwsEventBridgeScheduleSageMakerPipelineParameters sagemaker_pipeline_parameters = 9;
+
+  // SQS SendMessage parameters (target arn: the queue).
+  AwsEventBridgeScheduleSqsParameters sqs_parameters = 10;
+}
+
+// AwsEventBridgeScheduleRetryPolicy bounds redelivery of failed
+// invocations.
+message AwsEventBridgeScheduleRetryPolicy {
+  // Give up on events older than this (60-86400 seconds). Unset keeps
+  // AWS's default (86400). Presence-typed so boundaries are
+  // expressible.
+  optional int32 maximum_event_age_in_seconds = 1 [(buf.validate.field).int32 = {
+    gte: 60
+    lte: 86400
+  }];
+
+  // Retry at most this many times (0-185). Unset keeps AWS's default
+  // (185). Presence-typed so 0 (no retries) is expressible.
+  optional int32 maximum_retry_attempts = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 185
+  }];
+}
+
+// AwsEventBridgeScheduleEcsParameters shapes the RunTask call when the
+// target is an ECS cluster.
+message AwsEventBridgeScheduleEcsParameters {
+  // The task definition to run (with or without revision - without
+  // pins to the latest ACTIVE). Reference an AwsEcsTaskDefinition
+  // task_definition_arn output or pass a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef task_definition_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsEcsTaskDefinition,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.task_definition_arn"
+  ];
+
+  // How many tasks each invocation launches (0-10). Unset keeps AWS's
+  // default (1). Presence-typed so 0 is expressible.
+  optional int32 task_count = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 10
+  }];
+
+  // FARGATE, EC2, or EXTERNAL. Unset lets the cluster's default
+  // capacity providers decide (mutually exclusive with
+  // capacity_provider_strategy at AWS).
+  string launch_type = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "EC2",
+        "FARGATE",
+        "EXTERNAL"
+      ]
+    }
+  ];
+
+  // Capacity provider strategy entries (at most 6). Mutually exclusive
+  // with launch_type at AWS.
+  repeated AwsEventBridgeScheduleCapacityProviderStrategy capacity_provider_strategy = 4 [(buf.validate.field).repeated.max_items = 6];
+
+  // VPC networking for awsvpc-mode tasks (required for Fargate).
+  AwsEventBridgeScheduleNetworkConfiguration network_configuration = 5;
+
+  // The ECS task group name (up to 255 characters).
+  string group = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 255
+  ];
+
+  // The Fargate platform version (e.g. "LATEST", "1.4.0"). Fargate
+  // only.
+  string platform_version = 7 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Placement constraints (at most 10). EC2 launch type only.
+  repeated AwsEventBridgeSchedulePlacementConstraint placement_constraints = 8 [(buf.validate.field).repeated.max_items = 10];
+
+  // Placement strategies (at most 5). EC2 launch type only.
+  repeated AwsEventBridgeSchedulePlacementStrategy placement_strategy = 9 [(buf.validate.field).repeated.max_items = 5];
+
+  // Propagate tags from the task definition to launched tasks. The
+  // only value AWS accepts is "TASK_DEFINITION"; unset propagates
+  // nothing.
+  string propagate_tags = 10 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: ["TASK_DEFINITION"]
+    }
+  ];
+
+  // Tags applied to every launched task (in addition to propagated
+  // ones).
+  map<string, string> tags = 11;
+
+  // Use ECS managed tags on launched tasks.
+  bool enable_ecs_managed_tags = 12;
+
+  // Enable ECS Exec on launched tasks (interactive debugging).
+  bool enable_execute_command = 13;
+
+  // The reference id attached to each RunTask call.
+  string reference_id = 14 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+}
+
+// AwsEventBridgeScheduleCapacityProviderStrategy is one capacity
+// provider strategy entry.
+message AwsEventBridgeScheduleCapacityProviderStrategy {
+  // The capacity provider's name (e.g. "FARGATE", "FARGATE_SPOT", or a
+  // custom provider).
+  string capacity_provider = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 255
+  }];
+
+  // How many tasks run on this provider before the weights apply
+  // (0-100000).
+  int32 base = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100000
+  }];
+
+  // The relative share of remaining tasks on this provider (0-1000).
+  int32 weight = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 1000
+  }];
+}
+
+// AwsEventBridgeScheduleNetworkConfiguration is the awsvpc networking
+// for launched tasks.
+message AwsEventBridgeScheduleNetworkConfiguration {
+  // The subnets tasks launch into. Reference AwsSubnet subnet_id
+  // outputs or pass literal subnet-... ids.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnets = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // The security groups attached to tasks. Unset uses the VPC's
+  // default. Reference AwsSecurityGroup security_group_id outputs or
+  // pass literal sg-... ids.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_groups = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+
+  // Assign public IPs to tasks (public-subnet Fargate tasks that pull
+  // images over the internet need this).
+  bool assign_public_ip = 3;
+}
+
+// AwsEventBridgeSchedulePlacementConstraint is one task placement
+// constraint.
+message AwsEventBridgeSchedulePlacementConstraint {
+  // "distinctInstance" (spread tasks across instances) or "memberOf"
+  // (cluster-query-language expression).
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "distinctInstance",
+      "memberOf"
+    ]
+  }];
+
+  // The cluster query language expression, for type memberOf.
+  string expression = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 2000
+  ];
+}
+
+// AwsEventBridgeSchedulePlacementStrategy is one task placement
+// strategy.
+message AwsEventBridgeSchedulePlacementStrategy {
+  // "random", "spread", or "binpack".
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "random",
+      "spread",
+      "binpack"
+    ]
+  }];
+
+  // The field the strategy applies to (e.g. "instanceId" or
+  // "attribute:ecs.availability-zone" for spread, "cpu"/"memory" for
+  // binpack).
+  string field = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+}
+
+// AwsEventBridgeScheduleEventBridgeParameters shapes the PutEvents
+// call when the target is an event bus.
+message AwsEventBridgeScheduleEventBridgeParameters {
+  // The event's detail-type (what rules match on).
+  string detail_type = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+
+  // The event's source (e.g. "com.acme.billing").
+  string source = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+  }];
+}
+
+// AwsEventBridgeScheduleKinesisParameters shapes the PutRecord call
+// when the target is a Kinesis stream.
+message AwsEventBridgeScheduleKinesisParameters {
+  // The partition key (decides the shard; up to 256 characters).
+  string partition_key = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+  }];
+}
+
+// AwsEventBridgeScheduleSageMakerPipelineParameters shapes the
+// StartPipelineExecution call when the target is a SageMaker pipeline.
+message AwsEventBridgeScheduleSageMakerPipelineParameters {
+  // Pipeline parameters must have unique names.
+  option (buf.validate.message).cel = {
+    id: "sagemaker.parameter_names_unique"
+    message: "pipeline_parameters entries must have unique names"
+    expression: "this.pipeline_parameters.map(p, p.name).unique()"
+  };
+
+  // Name/value parameters passed to the pipeline execution (at most
+  // 200).
+  repeated AwsEventBridgeScheduleSageMakerPipelineParameter pipeline_parameters = 1 [(buf.validate.field).repeated.max_items = 200];
+}
+
+// AwsEventBridgeScheduleSageMakerPipelineParameter is one pipeline
+// parameter.
+message AwsEventBridgeScheduleSageMakerPipelineParameter {
+  // The parameter's name.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+  }];
+
+  // The parameter's value.
+  string value = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 1024
+  }];
+}
+
+// AwsEventBridgeScheduleSqsParameters shapes the SendMessage call when
+// the target is an SQS queue.
+message AwsEventBridgeScheduleSqsParameters {
+  // The message group id - REQUIRED by AWS for FIFO queues, forbidden
+  // for standard queues.
+  string message_group_id = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 128
+  ];
+}

@@ -1,0 +1,128 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_s3tables_table_bucket:
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The provider leaves encryption_configuration and
+      # maintenance_configuration UNTYPED (ObjectAttributes awaiting
+      # plugin protocol v6) - each is one opaque leaf at the pin,
+      # typed by the spec.
+      - arg: encryption_configuration
+        spec: spec.encryption.sse_algorithm
+      - arg: encryption_configuration
+        spec: spec.encryption.kms_key_arn
+      - arg: maintenance_configuration
+        spec: spec.unreferenced_file_removal.disabled
+      - arg: maintenance_configuration
+        spec: spec.unreferenced_file_removal.non_current_days
+      - arg: maintenance_configuration
+        spec: spec.unreferenced_file_removal.unreferenced_days
+    exclusions:
+      - arg: name
+        reason: metadata.name is the bucket name on both engines -- never free-form spec surface
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+  aws_s3tables_table_bucket_policy:
+    mappings:
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: table_bucket_arn
+        reason: wired by the module to the folded bucket's own AWS-generated ARN -- the policy always governs THIS bucket, never a foreign one
+  aws_s3tables_table_bucket_replication:
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: role
+        spec: spec.replication.role
+      - arg: rule.destination.destination_table_bucket_arn
+        spec: spec.replication.destination_table_bucket_arns
+    exclusions:
+      - arg: table_bucket_arn
+        reason: wired by the module to the folded bucket's own AWS-generated ARN -- replication always replicates THIS bucket, never a foreign one
+  aws_s3tables_namespace:
+    mappings:
+      - arg: region
+        spec: spec.region
+      # Namespaces fold in as the name-keyed spec.namespaces list.
+      - arg: namespace
+        spec: spec.namespaces.name
+    exclusions:
+      - arg: table_bucket_arn
+        reason: wired by the module to the folded bucket's own AWS-generated ARN -- a namespace always lives in THIS bucket, never a foreign one
+  aws_s3tables_table:
+    mappings:
+      - arg: region
+        spec: spec.region
+      # Tables fold in as the name-keyed list under their namespace.
+      - arg: name
+        spec: spec.namespaces.tables.name
+      # The provider leaves encryption_configuration and
+      # maintenance_configuration UNTYPED (ObjectAttributes awaiting
+      # plugin protocol v6) - each is one opaque leaf at the pin,
+      # typed by the spec.
+      - arg: encryption_configuration
+        spec: spec.namespaces.tables.encryption.sse_algorithm
+      - arg: encryption_configuration
+        spec: spec.namespaces.tables.encryption.kms_key_arn
+      - arg: maintenance_configuration
+        spec: spec.namespaces.tables.compaction.disabled
+      - arg: maintenance_configuration
+        spec: spec.namespaces.tables.compaction.target_file_size_mb
+      - arg: maintenance_configuration
+        spec: spec.namespaces.tables.snapshot_management.disabled
+      - arg: maintenance_configuration
+        spec: spec.namespaces.tables.snapshot_management.max_snapshot_age_hours
+      - arg: maintenance_configuration
+        spec: spec.namespaces.tables.snapshot_management.min_snapshots_to_keep
+      - arg: metadata.iceberg.properties
+        spec: spec.namespaces.tables.properties
+      - arg: metadata.iceberg.schema.field.name
+        spec: spec.namespaces.tables.iceberg_schema.fields.name
+      - arg: metadata.iceberg.schema.field.type
+        spec: spec.namespaces.tables.iceberg_schema.fields.type
+      - arg: metadata.iceberg.schema.field.required
+        spec: spec.namespaces.tables.iceberg_schema.fields.required
+    exclusions:
+      - arg: namespace
+        reason: wired by the module to the parent namespace satellite the table is declared under -- a table always lives in ITS namespace, never a foreign one
+      - arg: table_bucket_arn
+        reason: wired by the module to the folded bucket's own AWS-generated ARN -- a table always lives in THIS bucket, never a foreign one
+      - arg: format
+        reason: module-pinned to ICEBERG -- the provider's OpenTableFormat enum holds exactly that one value
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+  aws_s3tables_table_policy:
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: resource_policy
+        spec: spec.namespaces.tables.resource_policy
+    exclusions:
+      - arg: name
+        reason: wired by the module to the folded table's own name -- the policy always governs THIS table, never a foreign one
+      - arg: namespace
+        reason: wired by the module to the parent namespace satellite -- the policy always governs THIS table, never a foreign one
+      - arg: table_bucket_arn
+        reason: wired by the module to the folded bucket's own AWS-generated ARN -- the policy always governs THIS bucket's table, never a foreign one
+  aws_s3tables_table_replication:
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: role
+        spec: spec.namespaces.tables.replication.role
+      - arg: rule.destination.destination_table_bucket_arn
+        spec: spec.namespaces.tables.replication.destination_table_bucket_arns
+    exclusions:
+      - arg: table_arn
+        reason: wired by the module to the folded table's own AWS-generated ARN -- replication always replicates THIS table, never a foreign one

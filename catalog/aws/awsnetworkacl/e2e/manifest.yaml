@@ -1,0 +1,40 @@
+# Canonical AwsNetworkAcl example (hack/dev manifest and refgen Example
+# source): a web-tier subnet firewall - HTTPS in, ephemeral replies
+# out, ICMP diagnostics, and a deny for a known-bad range.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsNetworkAcl
+metadata:
+  name: web-tier-acl
+  id: web-tier-acl
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  vpcId:
+    value: vpc-0123456789abcdef0
+  ingress:
+    - ruleNo: 90
+      action: deny
+      protocol: "-1"
+      cidrBlock: 198.51.100.0/24
+    - ruleNo: 100
+      action: allow
+      protocol: tcp
+      cidrBlock: 0.0.0.0/0
+      fromPort: 443
+      toPort: 443
+    - ruleNo: 110
+      action: allow
+      protocol: icmp
+      cidrBlock: 10.0.0.0/16
+      icmpType: 8
+      icmpCode: 0
+  egress:
+    - ruleNo: 100
+      action: allow
+      protocol: "6"
+      cidrBlock: 0.0.0.0/0
+      fromPort: 1024
+      toPort: 65535
+  subnetIds:
+    - value: subnet-0123456789abcdef0

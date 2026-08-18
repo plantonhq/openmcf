@@ -1,0 +1,3 @@
+name: awscostcategory
+runtime: go
+description: Pulumi module to manage a Cost Explorer cost category
