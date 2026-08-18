@@ -70,10 +70,14 @@ jobs:
 
       # The publish deliberately bypasses the workspace Yarn toolchain: plain
       # npm on Node 24 carries the OIDC-aware CLI that mints the credential.
+      # --loglevel http keeps the OIDC token exchange visible in the run log:
+      # a mismatch between this workflow's identity and the trusted-publisher
+      # registration otherwise fails SILENTLY and surfaces as a misleading
+      # ENEEDAUTH.
       - name: Publish to npm (trusted publishing)
         if: ${{ github.event.inputs.dry_run != 'true' }}
         working-directory: site/packages/website-shell
-        run: npm publish
+        run: npm publish --loglevel http
 
       - name: Dry run (pack only)
         if: ${{ github.event.inputs.dry_run == 'true' }}
