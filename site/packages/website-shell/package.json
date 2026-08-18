@@ -8,6 +8,11 @@
     "build": "tsup && tsc --emitDeclarationOnly",
     "typecheck": "tsc --noEmit"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/plantonhq/planton.git",
+    "directory": "site/packages/website-shell"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

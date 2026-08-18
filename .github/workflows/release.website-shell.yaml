@@ -12,8 +12,11 @@
 # publisher on npmjs.com; each run authenticates with a short-lived,
 # package-scoped credential minted from the job's OIDC identity
 # (id-token: write), and the publish carries a provenance attestation.
-# Trusted publishing requires npm CLI >= 11.5.1; Node 22 bundles npm 10.x,
-# hence the explicit npm upgrade before publishing.
+# Node 24 (per site/.nvmrc) is REQUIRED, not merely nice: its bundled npm
+# does the OIDC detection natively, whereas npm 11 hand-installed onto an
+# older Node skips the OIDC exchange and dies with ENEEDAUTH -- a widely
+# reported failure mode. The package.json repository field must also match
+# this repository, or provenance validation rejects the publish.
 #
 # Triggered by website-shell-v* tags (the package's own release cadence,
 # independent of the repo's semver product releases) or manually with
@@ -49,7 +52,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: site/.nvmrc
 
       - name: Install dependencies
         working-directory: site
@@ -65,14 +68,12 @@ jobs:
         working-directory: site/packages/website-shell
         run: yarn typecheck
 
-      # Trusted publishing needs npm >= 11.5.1 (OIDC detection lives in the
-      # CLI); the publish deliberately bypasses the workspace Yarn toolchain.
+      # The publish deliberately bypasses the workspace Yarn toolchain: plain
+      # npm on Node 24 carries the OIDC-aware CLI that mints the credential.
       - name: Publish to npm (trusted publishing)
         if: ${{ github.event.inputs.dry_run != 'true' }}
         working-directory: site/packages/website-shell
-        run: |
-          npm install -g npm@11
-          npm publish
+        run: npm publish
 
       - name: Dry run (pack only)
         if: ${{ github.event.inputs.dry_run == 'true' }}
