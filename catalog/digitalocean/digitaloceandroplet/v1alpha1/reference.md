@@ -345,6 +345,9 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| DigitalOceanFirewall | `spec.inboundRules[].sourceDropletIds` | `status.outputs.droplet_id` |
+| DigitalOceanFirewall | `spec.outboundRules[].destinationDropletIds` | `status.outputs.droplet_id` |
+| DigitalOceanFirewall | `spec.dropletIds` | `status.outputs.droplet_id` |
 | DigitalOceanLoadBalancer | `spec.dropletIds` | `status.outputs.droplet_id` |
 
 ## See Also

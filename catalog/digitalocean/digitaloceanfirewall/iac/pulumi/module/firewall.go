@@ -1,7 +1,10 @@
 package module
 
 import (
+	"strconv"
+
 	"github.com/pkg/errors"
+	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
 	"github.com/pulumi/pulumi-digitalocean/sdk/v4/go/digitalocean"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -12,66 +15,113 @@ func firewall(
 	locals *Locals,
 	digitalOceanProvider *digitalocean.Provider,
 ) (*digitalocean.Firewall, error) {
+	spec := locals.DigitalOceanFirewall.Spec
 
-	// 1. Translate inbound rules.
-	inboundRules := make(digitalocean.FirewallInboundRuleArray, 0, len(locals.DigitalOceanFirewall.Spec.InboundRules))
-	for _, rule := range locals.DigitalOceanFirewall.Spec.InboundRules {
-		inboundRules = append(inboundRules, digitalocean.FirewallInboundRuleArgs{
+	inboundRules := make(digitalocean.FirewallInboundRuleArray, 0, len(spec.InboundRules))
+	for _, rule := range spec.InboundRules {
+		sourceDropletIds, err := refsToIntArray(rule.SourceDropletIds)
+		if err != nil {
+			return nil, errors.Wrap(err, "inbound rule source_droplet_ids")
+		}
+		args := digitalocean.FirewallInboundRuleArgs{
 			Protocol:               pulumi.String(rule.Protocol),
-			PortRange:              pulumi.String(rule.PortRange),
-			SourceAddresses:        pulumi.ToStringArray(rule.SourceAddresses),
-			SourceDropletIds:       int64SliceToIntArray(rule.SourceDropletIds),
-			SourceTags:             pulumi.ToStringArray(rule.SourceTags),
-			SourceKubernetesIds:    pulumi.ToStringArray(rule.SourceKubernetesIds),
-			SourceLoadBalancerUids: pulumi.ToStringArray(rule.SourceLoadBalancerUids),
-		})
+			SourceAddresses:        stringArrayOrNil(rule.SourceAddresses),
+			SourceDropletIds:       sourceDropletIds,
+			SourceTags:             stringArrayOrNil(rule.SourceTags),
+			SourceKubernetesIds:    refsToStringArray(rule.SourceKubernetesIds),
+			SourceLoadBalancerUids: refsToStringArray(rule.SourceLoadBalancerUids),
+		}
+		// port_range stays unset for icmp rules: the provider drops any icmp
+		// port_range on read-back, so sending one only creates rule diffs.
+		if rule.PortRange != "" {
+			args.PortRange = pulumi.StringPtr(rule.PortRange)
+		}
+		inboundRules = append(inboundRules, args)
 	}
 
-	// 2. Translate outbound rules.
-	outboundRules := make(digitalocean.FirewallOutboundRuleArray, 0, len(locals.DigitalOceanFirewall.Spec.OutboundRules))
-	for _, rule := range locals.DigitalOceanFirewall.Spec.OutboundRules {
-		outboundRules = append(outboundRules, digitalocean.FirewallOutboundRuleArgs{
+	outboundRules := make(digitalocean.FirewallOutboundRuleArray, 0, len(spec.OutboundRules))
+	for _, rule := range spec.OutboundRules {
+		destinationDropletIds, err := refsToIntArray(rule.DestinationDropletIds)
+		if err != nil {
+			return nil, errors.Wrap(err, "outbound rule destination_droplet_ids")
+		}
+		args := digitalocean.FirewallOutboundRuleArgs{
 			Protocol:                    pulumi.String(rule.Protocol),
-			PortRange:                   pulumi.String(rule.PortRange),
-			DestinationAddresses:        pulumi.ToStringArray(rule.DestinationAddresses),
-			DestinationDropletIds:       int64SliceToIntArray(rule.DestinationDropletIds),
-			DestinationTags:             pulumi.ToStringArray(rule.DestinationTags),
-			DestinationKubernetesIds:    pulumi.ToStringArray(rule.DestinationKubernetesIds),
-			DestinationLoadBalancerUids: pulumi.ToStringArray(rule.DestinationLoadBalancerUids),
-		})
+			DestinationAddresses:        stringArrayOrNil(rule.DestinationAddresses),
+			DestinationDropletIds:       destinationDropletIds,
+			DestinationTags:             stringArrayOrNil(rule.DestinationTags),
+			DestinationKubernetesIds:    refsToStringArray(rule.DestinationKubernetesIds),
+			DestinationLoadBalancerUids: refsToStringArray(rule.DestinationLoadBalancerUids),
+		}
+		if rule.PortRange != "" {
+			args.PortRange = pulumi.StringPtr(rule.PortRange)
+		}
+		outboundRules = append(outboundRules, args)
 	}
 
-	// 3. Build firewall args.
-	firewallArgs := &digitalocean.FirewallArgs{
-		Name:          pulumi.String(locals.DigitalOceanFirewall.Spec.Name),
-		InboundRules:  inboundRules,
-		OutboundRules: outboundRules,
-		DropletIds:    int64SliceToIntArray(locals.DigitalOceanFirewall.Spec.DropletIds),
-		Tags:          pulumi.ToStringArray(locals.DigitalOceanFirewall.Spec.Tags),
+	dropletIds, err := refsToIntArray(spec.DropletIds)
+	if err != nil {
+		return nil, errors.Wrap(err, "droplet_ids")
 	}
 
-	// 4. Create the firewall using the provider.
 	createdFirewall, err := digitalocean.NewFirewall(
 		ctx,
 		"firewall",
-		firewallArgs,
+		&digitalocean.FirewallArgs{
+			Name:          pulumi.String(spec.FirewallName),
+			InboundRules:  inboundRules,
+			OutboundRules: outboundRules,
+			DropletIds:    dropletIds,
+			Tags:          stringArrayOrNil(spec.Tags),
+		},
 		pulumi.Provider(digitalOceanProvider),
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create digitalocean firewall")
 	}
 
-	// 5. Export output.
 	ctx.Export(OpFirewallId, createdFirewall.ID())
 
 	return createdFirewall, nil
 }
 
-// int64SliceToIntArray converts []int64 → pulumi.IntArrayInput.
-func int64SliceToIntArray(values []int64) pulumi.IntArray {
-	intInputs := make(pulumi.IntArray, 0, len(values))
-	for _, v := range values {
-		intInputs = append(intInputs, pulumi.Int(int(v)))
+// refsToIntArray resolves reference fields carrying numeric Droplet IDs. The
+// orchestrator resolves valueFrom references to literal values before the
+// module runs, so GetValue() always carries the final string here.
+func refsToIntArray(refs []*foreignkeyv1.StringValueOrRef) (pulumi.IntArray, error) {
+	if len(refs) == 0 {
+		return nil, nil
 	}
-	return intInputs
+	ids := make(pulumi.IntArray, 0, len(refs))
+	for _, ref := range refs {
+		id, err := strconv.Atoi(ref.GetValue())
+		if err != nil {
+			return nil, errors.Wrapf(err, "entry %q is not a numeric Droplet ID", ref.GetValue())
+		}
+		ids = append(ids, pulumi.Int(id))
+	}
+	return ids, nil
+}
+
+// refsToStringArray resolves reference fields carrying string IDs (Kubernetes
+// cluster UUIDs, load balancer UIDs).
+func refsToStringArray(refs []*foreignkeyv1.StringValueOrRef) pulumi.StringArray {
+	if len(refs) == 0 {
+		return nil
+	}
+	values := make(pulumi.StringArray, 0, len(refs))
+	for _, ref := range refs {
+		values = append(values, pulumi.String(ref.GetValue()))
+	}
+	return values
+}
+
+// stringArrayOrNil keeps empty collections unset (nil, not []): the provider
+// omits absent collections when it reads state back, so sending [] would
+// create permanent diffs on the set-hashed rule blocks.
+func stringArrayOrNil(values []string) pulumi.StringArray {
+	if len(values) == 0 {
+		return nil
+	}
+	return pulumi.ToStringArray(values)
 }

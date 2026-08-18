@@ -1,150 +1,74 @@
 # DigitalOcean DNS Zone
 
-## Overview
+A DigitalOcean-hosted DNS zone described once in a Planton manifest: the domain itself, an inline list of managed records covering every type the DigitalOcean API accepts (A, AAAA, CNAME, MX, TXT, SRV, NS, CAA, SOA), and the create-only apex-A convenience. Adding a domain does not require owning it — the zone serves on DigitalOcean's name servers immediately and resolves publicly once the registrar delegates.
 
-The **DigitalOcean DNS Zone API Resource** provides a consistent, declarative interface for creating and managing DNS zones (domains) on DigitalOcean. This resource simplifies DNS management by enabling Infrastructure as Code (IaC) workflows for domain configuration, allowing you to version control your DNS records alongside your application infrastructure.
+## What this component models
 
-## Purpose
+The spec maps onto DigitalOcean's `digitalocean_domain` plus one `digitalocean_record` per managed record value:
 
-We developed this API resource to streamline DNS management on DigitalOcean. By offering a protobuf-based, declarative interface, it reduces the complexity of DNS provisioning and enables teams to:
+| Spec field | What it controls |
+|---|---|
+| `domainName` | The zone's domain (unique across ALL DigitalOcean accounts); changing it recreates the zone |
+| `records` | The zone's managed records — each entry's `values` list fans out to one DigitalOcean record per value |
+| `ipAddress` | Create-only convenience: seeds an apex A record DigitalOcean never tracks afterwards; prefer `records` |
 
-- **Manage DNS as Code**: Define DNS zones and records in YAML manifests that can be version-controlled in Git
-- **Simplify Zone Creation**: Provision DigitalOcean domains with their initial DNS records in a single atomic operation
-- **Standardize Configuration**: Use a consistent API that aligns with other Planton components
-- **Enable Automation**: Integrate DNS management into CI/CD pipelines with declarative manifests
-- **Cross-Reference Resources**: Reference values from other infrastructure resources using `StringValueOrRef`
+Each record entry carries `name` (`@` for the apex), `type` (the shared record-type enum, restricted to what DigitalOcean accepts — ALIAS and PTR are rejected at validation time), one or more `values` (literals or references to other resources' outputs), an optional `ttlSeconds` (DigitalOcean defaults to 1800), and the per-type fields with the same validation floor as the standalone `DigitalOceanDnsRecord` kind: MX needs `priority`, SRV needs `priority`+`weight`+`port`, CAA needs `flags`+`tag`.
 
-## Key Features
+## Quick start
 
-- **Declarative DNS Management**: Define DNS zones and records in YAML with full validation and type safety
-- **Comprehensive Record Type Support**: Supports A, AAAA, CNAME, MX, TXT, SRV, CAA, and NS records
-- **Advanced Record Configuration**: Full support for MX priorities, SRV weight/port, and CAA flags/tags
-- **Infrastructure Integration**: Seamlessly integrates with DigitalOcean Droplets, Load Balancers, and Spaces
-- **Dual IaC Backend**: Deploy using either Pulumi (Go) or Terraform with identical specifications
-- **Flexible Value References**: Use literal values or cross-resource references for dynamic DNS configuration
+The smallest real zone:
 
-## Use Cases
+```yaml
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDnsZone
+metadata:
+  name: my-zone
+spec:
+  domainName: example.com
+```
 
-### Simple Website Deployment
+A website zone with records:
 
-Create a DNS zone for a website with apex and www records pointing to a DigitalOcean Droplet or Load Balancer.
+```yaml
+spec:
+  domainName: example.com
+  records:
+    - name: "@"
+      type: A
+      values:
+        - value: 203.0.113.10
+      ttlSeconds: 3600
+    - name: www
+      type: CNAME
+      values:
+        - value: example.com.
+    - name: "@"
+      type: MX
+      values:
+        - value: aspmx.l.google.com.
+      priority: 1
+```
 
-### Email Configuration
+## Behavior worth knowing
 
-Configure MX records for email services (Google Workspace, Office 365) along with SPF, DKIM, and DMARC TXT records for email authentication.
+- **Delegation is the registrar's half** — the zone works inside DigitalOcean immediately, but public resolution starts when the registrar points at `ns1`/`ns2`/`ns3.digitalocean.com` (the `name_servers` output).
+- **Domain names are globally unique across DigitalOcean** — adding a domain another account already holds fails at create.
+- **Multi-value fan-out** — an entry with two `values` creates two records of the same name and type (e.g. round-robin A records).
+- **Hostname values read back with a trailing dot** — author CNAME/MX/NS/SRV/CAA targets fully qualified (`mail.example.com.`).
+- **`ipAddress` is a footgun by design** — the A record it seeds is invisible to later `records` edits; it exists for migrating configurations that already use it.
+- **Zones import by name** — the domain name IS the resource ID.
 
-### Multi-Environment Applications
+## Outputs
 
-Manage DNS for development, staging, and production environments with environment-specific subdomains.
+| Output | Meaning |
+|---|---|
+| `zone_name` | The domain name — what DNS records reference (`status.outputs.zone_name`) |
+| `zone_id` | The zone's resource identifier — the domain name itself, not a UUID |
+| `name_servers` | DigitalOcean's fixed authoritative set — what the registrar must delegate to |
+| `urn` | The uniform resource name (`do:domain:example.com`) |
 
-### CDN and Static Assets
+## See also
 
-Point subdomains to DigitalOcean Spaces CDN endpoints for optimized static asset delivery.
-
-### Certificate Authority Authorization
-
-Use CAA records to authorize specific certificate authorities (like Let's Encrypt) for enhanced security.
-
-## Important Considerations
-
-### DNS Delegation
-
-To use DigitalOcean DNS for a domain:
-
-1. Register the domain with a third-party registrar (Namecheap, Google Domains, etc.)
-2. Create the DNS zone using this API resource
-3. Update the domain's nameservers at the registrar to:
-   - `ns1.digitalocean.com`
-   - `ns2.digitalocean.com`
-   - `ns3.digitalocean.com`
-
-**Critical**: If your domain has DNSSEC enabled, you **must disable it** at the registrar before delegating to DigitalOcean. DigitalOcean DNS does not support DNSSEC, and failure to disable it will cause DNS resolution failures.
-
-### Platform Limitations
-
-DigitalOcean DNS is designed for simplicity, not advanced features:
-
-- **No DNSSEC**: DNSSEC is not supported. For domains requiring DNSSEC, use Cloudflare or AWS Route 53 instead
-- **No Zone Import**: There is no API to import BIND-style zone files. Migrations require recreating all records via the API
-- **No Traffic Routing**: Geo-routing, weighted routing, latency-based routing, and failover policies are not available
-- **API Rate Limits**: The API is limited to 250 requests per minute, which may impact automation at scale
-
-### When to Choose DigitalOcean DNS
-
-DigitalOcean DNS is ideal when:
-
-- Your infrastructure is primarily hosted on DigitalOcean
-- You value simplicity and cost predictability (DigitalOcean DNS is currently free)
-- You don't require advanced DNS features like DNSSEC or traffic routing
-- You want tight integration with Droplets, Load Balancers, and Spaces
-
-For teams requiring DNSSEC, global Anycast performance, or advanced routing, consider using Cloudflare or AWS Route 53 instead. A hybrid approach (Cloudflare for DNS, DigitalOcean for compute) is also common.
-
-## Getting Started
-
-See the `e2e/manifest.yaml` file in this directory for practical configuration examples, including:
-
-- Simple website (apex + www)
-- Email configuration (MX + SPF + DMARC)
-- Load balancer integration
-- CDN endpoints
-- CAA records for Let's Encrypt
-
-For detailed implementation guidance, refer to:
-
-- `GUIDE.md` - Comprehensive research and design decisions
-- `iac/pulumi/README.md` - Pulumi-specific usage instructions
-- `iac/tf/README.md` - Terraform-specific usage instructions
-
-## DNS Record Types Reference
-
-This API resource supports the following DNS record types:
-
-| Type | Purpose | Example Use Case |
-|------|---------|-----------------|
-| A | IPv4 address mapping | Point domain to Droplet IP |
-| AAAA | IPv6 address mapping | IPv6-enabled services |
-| CNAME | Canonical name (alias) | www → apex, or subdomain → Load Balancer |
-| MX | Mail exchange | Google Workspace, Office 365 |
-| TXT | Text records | SPF, DKIM, DMARC, domain verification |
-| SRV | Service locator | SIP, XMPP, Minecraft servers |
-| CAA | Certificate authority authorization | Restrict certificate issuance to Let's Encrypt |
-| NS | Nameserver delegation | Delegate subdomain to another DNS provider |
-
-## Production Best Practices
-
-### TTL Strategy
-
-- **Standard (3600s)**: Default for most records
-- **Low TTL (300s)**: Use during migrations or cutover events for fast rollback
-- **High TTL (86400s)**: Use for static records like CDN CNAMEs or SPF records
-
-Lower TTLs *before* making critical changes, then raise them after confirming success.
-
-### Monitoring
-
-DigitalOcean's native monitoring doesn't cover DNS health. Use external monitoring services like:
-
-- **UptimeRobot**: Track specific DNS records and alert on changes
-- **Pingdom**: Monitor DNS resolution time and availability
-- **DNSPerf**: Benchmark global DNS propagation
-
-### Backup and Recovery
-
-Your YAML manifests *are* your backup. Store them in Git for version control and disaster recovery. If you need to recreate DNS zones in a new account, simply apply the manifests with the Planton CLI.
-
-For manual backups, use DigitalOcean's control panel to export a BIND-style zone file (note: restore is manual as there's no import function).
-
-## Next Steps
-
-1. Review `e2e/manifest.yaml` for practical DNS zone configurations
-2. Read `GUIDE.md` for in-depth platform analysis and design rationale
-3. Choose your deployment method:
-   - **Pulumi**: See `iac/pulumi/README.md`
-   - **Terraform**: See `iac/tf/README.md`
-4. Deploy a test domain and verify delegation at your registrar
-5. Configure monitoring for production domains
-
----
-
-© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).
+- `GUIDE.md` — operational judgment calls (inline vs. standalone records, delegation, apex rules)
+- `presets/` — simple-website and production-with-email starting points
+- `v1alpha1/reference.md` — the generated field-by-field contract

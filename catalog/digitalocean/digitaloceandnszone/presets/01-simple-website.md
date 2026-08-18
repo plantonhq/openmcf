@@ -1,27 +1,24 @@
 # Simple Website Zone
 
-This preset creates a DNS zone with a single A record pointing the root domain to your web server or load balancer IP. Minimal configuration for getting a domain live quickly. TTL is set to 1 hour for reasonable cache behavior.
+This preset creates a DNS zone with the two records a basic website needs: the apex pointing at the web server's IPv4 address and `www` following the apex. The zone starts serving on DigitalOcean's name servers immediately; the domain resolves publicly once the registrar delegates to `ns1`/`ns2`/`ns3.digitalocean.com` (the zone's `name_servers` output).
 
 ## When to Use
 
-- Simple website or single-page app with one backend IP
-- Quick domain setup for demos or staging
-- Root domain (apex) pointing directly to a Droplet or load balancer
+- A single-server website or landing page
+- The starting point for any new domain hosted on DigitalOcean DNS
 
 ## Key Configuration Choices
 
-- **Root A record** (`name: "@"`, `type: A`) -- apex domain points to the specified IP.
-- **TTL 3600** (`ttlSeconds: 3600`) -- 1-hour cache; balance between propagation speed and lookup latency.
-- **Single value** (`values`) -- one IP; add more for round-robin if needed (same record type).
-- **Domain name** (`domainName`) -- your registered domain; DigitalOcean will host DNS for it.
+- **Apex A record** (`name: "@"`) — the bare domain resolves to the server. The value can also reference another resource's output (e.g. a Droplet's `ipv4_address`) for chart composition.
+- **`www` as CNAME to the apex** — one address to maintain; `www` follows automatically. The trailing dot on the target matches how DigitalOcean stores it.
+- **One-hour TTLs** — a sensible production default; omit `ttlSeconds` to take DigitalOcean's 1800-second default.
 
 ## Placeholders to Replace
 
-| Placeholder | Description | Where to Find |
-|-------------|-------------|---------------|
-| `<your-domain.com>` | Your registered domain name | Domain registrar |
-| `<web-server-ip>` | IPv4 address of Droplet, load balancer, or CDN | DigitalOcean dashboard or resource outputs |
+- `metadata.name` — your zone resource's name.
+- `domainName` (`example.com` is a documentation example) — your domain.
+- The A record's `values` (`203.0.113.10` is a documentation example) — your server's public IPv4 address.
 
 ## Related Presets
 
-- **02-production-with-email** -- Use when you need MX and TXT records for email (SPF, etc.)
+- **02-production-with-email** — adds mail routing (MX), SPF, and certificate authority pinning (CAA).

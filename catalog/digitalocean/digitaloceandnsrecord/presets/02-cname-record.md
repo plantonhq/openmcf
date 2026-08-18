@@ -1,30 +1,24 @@
-# CNAME Record
+# WWW CNAME Record
 
-This preset creates a CNAME record that aliases a subdomain to another hostname. Common for `www` pointing to the root domain or a CDN, or for subdomains pointing to external services. The target must be a hostname (FQDN), not an IP.
+This preset aliases `www` to the zone's apex hostname — the standard "www.example.com follows example.com" record. The zone is referenced as a `DigitalOceanDnsZone` resource so the record composes in infra charts.
 
 ## When to Use
 
-- `www.example.com` → `example.com` or a CDN/origin hostname
-- Subdomain alias to another domain (e.g., `blog` → `blog.platform.com`)
-- Pointing to third-party services (e.g., `mail` → `mail.provider.com`)
-- Cannot use CNAME on root domain (`@`) on DigitalOcean—use ALIAS or A record instead
+- Making `www` (or any subdomain) follow another hostname
+- Pointing a subdomain at a platform-provided hostname (an App Platform default hostname, a load balancer's DNS name, a CDN endpoint)
 
 ## Key Configuration Choices
 
-- **Type CNAME** (`type: CNAME`) -- canonical name alias; target must be hostname.
-- **Subdomain** (`name: www`) -- `www` is common; use any subdomain (e.g., `api`, `app`).
-- **Target hostname** (`value`) -- FQDN of target (e.g., `example.com`, `lb-12345.nyc3.digitaloceanspaces.com`).
-- **TTL 3600** (`ttlSeconds: 3600`) -- 1-hour cache.
-- **Domain** (`domain`) -- DNS zone where the record is created.
+- **CNAME semantics** — the target is a hostname, never an IP. A CNAME cannot exist at the zone apex; use an A record (preset `01-a-record`) there.
+- **Trailing dot on the target** (`example.com.`) — DigitalOcean stores CNAME/MX/NS/SRV targets fully qualified and reads them back with a trailing dot; authoring the dot avoids a permanent diff.
+- **One-hour TTL** (`ttlSeconds: 3600`) — DigitalOcean's API default is 1800 when omitted.
 
 ## Placeholders to Replace
 
-| Placeholder | Description | Where to Find |
-|-------------|-------------|---------------|
-| `<zone-domain>` | DNS zone domain (e.g., `example.com`) | `DigitalOceanDnsZone` status or domain name |
-| `<target-hostname>` | Target hostname (FQDN) for the alias | Your origin, CDN, or third-party service |
-| `www` | Subdomain name | Your desired subdomain (cannot be `@` for CNAME on DigitalOcean) |
+- `metadata.name` — your record's name.
+- `domain.valueFrom.name` — the name of your `DigitalOceanDnsZone` resource (or replace the block with `value: example.com`).
+- `value.value` (`example.com.` is a documentation example) — the target hostname, fully qualified.
 
 ## Related Presets
 
-- **01-a-record** -- Use when target is an IP or for root domain (`@`)
+- **01-a-record** — point the zone apex (or any name) at an IPv4 address instead.

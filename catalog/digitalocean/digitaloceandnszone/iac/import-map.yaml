@@ -1,0 +1,27 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: digitaloceandnszone
+spec:
+  # The module manages two resource types: the domain (imports by NAME --
+  # DigitalOcean addresses domains by name, exported as zone_name) and the
+  # inline records (each imports as "{domain},{record_id}"). The domain part
+  # derives from the same output; the numeric record ids are per-record and
+  # not exported (a zone manages many), so they must be looked up.
+  values:
+    - name: domain_name
+      derivations:
+        - from_stack_output: zone_name
+      where_to_find: >-
+        DigitalOcean control panel -> Networking -> Domains (the domain name
+        itself), or `doctl compute domain list`.
+    - name: domain
+      derivations:
+        - from_stack_output: zone_name
+      where_to_find: >-
+        The zone's own domain name -- identical to the zone_name output.
+    - name: record_id
+      where_to_find: >-
+        The numeric id of each inline record: `doctl compute domain records
+        list <domain>` (the ID column) -- the control panel does not display
+        record ids. One import per managed record.

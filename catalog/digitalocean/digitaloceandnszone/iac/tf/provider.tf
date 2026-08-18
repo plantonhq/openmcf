@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.0"
+  required_version = ">= 1.5"
 
   required_providers {
     digitalocean = {
@@ -12,4 +12,3 @@ terraform {
 provider "digitalocean" {
   token = var.digitalocean_token
 }
-

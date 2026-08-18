@@ -25,6 +25,11 @@ spec:
     - terraform_type: digitalocean_firewall
       pulumi_type: digitalocean:index/firewall:Firewall
       id_format: "{firewall_id}"
+      # The API reports "all ports" as port 0, which the provider writes back
+      # as the literal string "all" (and drops port_range entirely on icmp
+      # rules) -- an authored "1-65535" imports as "all". Rule blocks are
+      # set-hashed, so the whole rule shows as replaced, not modified.
+      write_normalized_attributes: [inbound_rule.port_range, outbound_rule.port_range]
     - terraform_type: digitalocean_loadbalancer
       pulumi_type: digitalocean:index/loadBalancer:LoadBalancer
       id_format: "{load_balancer_id}"

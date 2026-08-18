@@ -13,12 +13,17 @@ type firewallVerifier struct{}
 func (*firewallVerifier) IDOutputKey() string { return "firewall_id" }
 
 func (*firewallVerifier) VerifyExists(ctx context.Context, client *godo.Client, id string) error {
-	exists, err := firewallExists(ctx, client, id)
+	firewall, _, err := client.Firewalls.Get(ctx, id)
 	if err != nil {
+		if isNotFound(err) {
+			return pkgerrors.Errorf("digitaloceanfirewall %q not found after deploy", id)
+		}
 		return pkgerrors.Wrapf(err, "digitaloceanfirewall verify-exists failed for %q", id)
 	}
-	if !exists {
-		return pkgerrors.Errorf("digitaloceanfirewall %q not found after deploy", id)
+	// "waiting" is a legal transient while rules propagate to targets;
+	// "failed" is never legal.
+	if firewall.Status == "failed" {
+		return pkgerrors.Errorf("digitaloceanfirewall %q exists but its live status is failed", id)
 	}
 	return nil
 }

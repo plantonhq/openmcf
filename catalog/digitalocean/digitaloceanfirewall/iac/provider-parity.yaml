@@ -8,6 +8,9 @@
 resources:
   digitalocean_firewall:
     mappings:
+      # The spec qualifies the bare provider argument with the kind noun.
+      - spec: spec.firewall_name
+        arg: name
       # The spec pluralizes the provider's repeated rule blocks; the leaves
       # under each subtree mirror the provider exactly.
       - spec: spec.inbound_rules

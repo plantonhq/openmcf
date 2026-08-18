@@ -2,15 +2,21 @@ syntax = "proto3";
 
 package dev.planton.digitalocean.digitaloceandnszone.v1alpha1;
 
-// DigitalOceanDnsZoneStackOutputs captures the output information after provisioning a DNS zone on DigitalOcean.
+// DigitalOceanDnsZoneStackOutputs captures the identifiers exported after a
+// DNS zone (domain) is provisioned on DigitalOcean.
 message DigitalOceanDnsZoneStackOutputs {
-  // name of the DNS zone (domain) created on DigitalOcean.
+  // The domain name of the DNS zone (e.g. "example.com").
   string zone_name = 1;
 
-  // The unique identifier of the created DNS zone (typically the domain name or ID assigned by DigitalOcean).
+  // The zone's resource identifier. DigitalOcean addresses domains by NAME —
+  // this is the domain name itself, not a UUID.
   string zone_id = 2;
 
-  // The list of nameserver addresses for the DNS zone.
-  // These are the nameservers that need to be set at the domain registrar for this zone.
+  // DigitalOcean's authoritative name servers for every hosted zone
+  // (ns1/ns2/ns3.digitalocean.com — a fixed platform-wide set the API does
+  // not return per zone). Set these at the domain's registrar to delegate.
   repeated string name_servers = 3;
+
+  // The uniform resource name of the domain (e.g. "do:domain:example.com").
+  string urn = 4;
 }

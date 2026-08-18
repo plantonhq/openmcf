@@ -1,0 +1,46 @@
+# Minimal DigitalOceanFirewall: a rules-rich firewall with NO targeting
+# (droplet_ids and tags empty -- a memberless firewall is valid). Proves the
+# full create/verify/destroy lifecycle, both rule directions, the icmp
+# no-port_range arm, the "all" shorthand, a port range, and IPv4+IPv6 CIDR
+# sources. The name carries the run token because firewall names are unique
+# per account and both engine lanes may overlap.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanFirewall
+metadata:
+  name: planton-oss-e2e-digitaloceanfirewall-min
+  id: planton-oss-e2e-digitaloceanfirewall-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanfirewall
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  firewallName: pltn-e2e-dofw-min-${E2E_RUN_ID}
+  inboundRules:
+    - protocol: tcp
+      portRange: "22"
+      sourceAddresses:
+        - 192.0.2.0/24
+    - protocol: tcp
+      portRange: 8000-9000
+      sourceAddresses:
+        - 0.0.0.0/0
+        - ::/0
+    - protocol: icmp
+      sourceAddresses:
+        - 0.0.0.0/0
+        - ::/0
+  outboundRules:
+    - protocol: tcp
+      portRange: all
+      destinationAddresses:
+        - 0.0.0.0/0
+        - ::/0
+    - protocol: udp
+      portRange: "53"
+      destinationAddresses:
+        - 0.0.0.0/0

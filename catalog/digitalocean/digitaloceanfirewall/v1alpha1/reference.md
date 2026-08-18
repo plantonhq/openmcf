@@ -6,183 +6,302 @@
 
 **apiVersion**: `digital-ocean.planton.dev/v1alpha1`
 
-DigitalOceanFirewallSpec defines the user configuration for a DigitalOcean Cloud Firewall.
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
+DigitalOceanFirewallSpec models the full `digitalocean_firewall` surface: a
+named rule set (inbound and/or outbound) applied to Droplets directly by ID
+or indirectly by Droplet tag. Every argument the provider accepts is
+representable here; rule sources and destinations can name other Planton
+resources (Droplets, load balancers, Kubernetes clusters) as references
+instead of hand-copied IDs, so firewalls compose in infra charts.
 
 ## Example
 
 ```yaml
+# Example DigitalOceanFirewall manifests. Deploy with:
+#   planton apply -f manifest.yaml
+#
+# Document 1 -- a web-tier firewall: HTTPS from everywhere, SSH from a
+# management network only, ping allowed, all outbound open. No targeting
+# (attach Droplets later by tag or by reference).
+#
+# Document 2 -- a database-tier firewall targeting Droplets by literal ID
+# and by tag: inbound only from the app tier's tag and a private CIDR,
+# outbound restricted to DNS and package mirrors over HTTPS.
 apiVersion: digital-ocean.planton.dev/v1alpha1
 kind: DigitalOceanFirewall
 metadata:
-  name: first-firewall                 # Kubernetes object name
+  name: example-dofw-web
 spec:
-  name: first-firewall                 # DigitalOcean firewall name
+  firewallName: web-tier-firewall
   inboundRules:
-    - protocol: tcp
-      portRange: "80"
-      sourceAddresses:
-        - "0.0.0.0/0"                # allow HTTP from anywhere
     - protocol: tcp
       portRange: "443"
       sourceAddresses:
-        - "0.0.0.0/0"                # allow HTTPS from anywhere
+        - 0.0.0.0/0
+        - ::/0
+    - protocol: tcp
+      portRange: "22"
+      sourceAddresses:
+        - 203.0.113.0/24
+    - protocol: icmp
+      sourceAddresses:
+        - 0.0.0.0/0
   outboundRules:
     - protocol: tcp
-      portRange: "1-65535"
+      portRange: all
       destinationAddresses:
-        - "0.0.0.0/0"                # allow all outbound traffic
-  dropletIds: []
+        - 0.0.0.0/0
+        - ::/0
+    - protocol: udp
+      portRange: all
+      destinationAddresses:
+        - 0.0.0.0/0
+        - ::/0
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanFirewall
+metadata:
+  name: example-dofw-db
+spec:
+  firewallName: db-tier-firewall
+  dropletIds:
+    - value: "123456789"
   tags:
-    - planton
+    - db-tier
+  inboundRules:
+    - protocol: tcp
+      portRange: "5432"
+      sourceTags:
+        - app-tier
+    - protocol: tcp
+      portRange: "5432"
+      sourceAddresses:
+        - 10.10.0.0/16
+  outboundRules:
+    - protocol: udp
+      portRange: "53"
+      destinationAddresses:
+        - 0.0.0.0/0
+    - protocol: tcp
+      portRange: "443"
+      destinationAddresses:
+        - 0.0.0.0/0
 ```
 
 ## Spec Fields
 
 | Path | Type | Required | Default | References |
 |---|---|---|---|---|
-| `spec.name` | `string` | yes |  |  |
+| `spec.firewallName` | `string` | yes |  |  |
 | `spec.inboundRules` | `[]DigitalOceanFirewallInboundRule` |  |  |  |
 | `spec.inboundRules[].protocol` | `string` | yes |  |  |
 | `spec.inboundRules[].portRange` | `string` |  |  |  |
 | `spec.inboundRules[].sourceAddresses` | `[]string` |  |  |  |
-| `spec.inboundRules[].sourceDropletIds` | `[]int64` |  |  |  |
 | `spec.inboundRules[].sourceTags` | `[]string` |  |  |  |
-| `spec.inboundRules[].sourceKubernetesIds` | `[]string` |  |  |  |
-| `spec.inboundRules[].sourceLoadBalancerUids` | `[]string` |  |  |  |
+| `spec.inboundRules[].sourceDropletIds` | `[]string \| valueFrom` |  |  | DigitalOceanDroplet (`status.outputs.droplet_id`) |
+| `spec.inboundRules[].sourceKubernetesIds` | `[]string \| valueFrom` |  |  | DigitalOceanKubernetesCluster (`status.outputs.cluster_id`) |
+| `spec.inboundRules[].sourceLoadBalancerUids` | `[]string \| valueFrom` |  |  | DigitalOceanLoadBalancer (`status.outputs.load_balancer_id`) |
 | `spec.outboundRules` | `[]DigitalOceanFirewallOutboundRule` |  |  |  |
 | `spec.outboundRules[].protocol` | `string` | yes |  |  |
 | `spec.outboundRules[].portRange` | `string` |  |  |  |
 | `spec.outboundRules[].destinationAddresses` | `[]string` |  |  |  |
-| `spec.outboundRules[].destinationDropletIds` | `[]int64` |  |  |  |
 | `spec.outboundRules[].destinationTags` | `[]string` |  |  |  |
-| `spec.outboundRules[].destinationKubernetesIds` | `[]string` |  |  |  |
-| `spec.outboundRules[].destinationLoadBalancerUids` | `[]string` |  |  |  |
-| `spec.dropletIds` | `[]int64` |  |  |  |
+| `spec.outboundRules[].destinationDropletIds` | `[]string \| valueFrom` |  |  | DigitalOceanDroplet (`status.outputs.droplet_id`) |
+| `spec.outboundRules[].destinationKubernetesIds` | `[]string \| valueFrom` |  |  | DigitalOceanKubernetesCluster (`status.outputs.cluster_id`) |
+| `spec.outboundRules[].destinationLoadBalancerUids` | `[]string \| valueFrom` |  |  | DigitalOceanLoadBalancer (`status.outputs.load_balancer_id`) |
 | `spec.tags` | `[]string` |  |  |  |
+| `spec.dropletIds` | `[]string \| valueFrom` |  |  | DigitalOceanDroplet (`status.outputs.droplet_id`) |
 
 ## Field Details
 
-### spec.name
+### spec.firewallName
 
 `string` · required
 
-Name of the firewall for identification (must be unique per account/project).
+Name of the firewall. Must be unique per account. The API accepts up to
+255 characters of letters, numbers, colons, dashes, and underscores.
 
-- rule: {"string":{"minLen":"1","maxLen":"255"}}
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"255"}}
 
 ### spec.inboundRules
 
 `[]DigitalOceanFirewallInboundRule`
 
-Inbound rules: traffic allowed *to* Droplets on specific ports from specified sources.
+Inbound rules: traffic allowed *to* the protected Droplets. Traffic not
+matched by any inbound rule is dropped (DigitalOcean firewalls are
+default-deny for configured directions).
+
+- rule: port_range is required when protocol is tcp or udp
 
 ### spec.inboundRules[].protocol
 
 `string` · required
 
-"tcp", "udp", or "icmp". Required.
+The traffic protocol this rule matches.
 
-- rule: {"string":{"minLen":"1"}}
+- rule: {"required":true,"string":{"in":["tcp","udp","icmp"]}}
 
 ### spec.inboundRules[].portRange
 
 `string`
 
-Ports to allow (e.g., "80", "8000-9000", or "1-65535"; empty or "1-65535" means all ports for tcp/udp).
+Ports to allow: a single port ("80"), a range ("8000-9000"), or "all".
+Required for tcp/udp; omit for icmp (the provider drops any port_range
+set on an icmp rule when it reads state back). Note the read-back
+normalization: the API reports "all ports" as port 0, which the provider
+writes back as the literal string "all" — so "1-65535" reads back as
+"all" after apply. Prefer writing "all" to avoid a permanent diff.
 
 ### spec.inboundRules[].sourceAddresses
 
 `[]string`
 
-IPv4 or IPv6 addresses or CIDR ranges (e.g., "192.0.2.0/24", "0.0.0.0/0").
+IPv4/IPv6 addresses or CIDR ranges traffic is allowed from
+(e.g. "192.0.2.0/24", "0.0.0.0/0", "::/0").
 
-### spec.inboundRules[].sourceDropletIds
-
-`[]int64`
-
-IDs of Droplets from which traffic is allowed.
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.inboundRules[].sourceTags
 
 `[]string`
 
-Names of Droplet tags; any Droplet with these tags is allowed.
+Droplet tag names; traffic from any Droplet carrying one of these tags
+is allowed. Tag values are case-insensitive for set membership.
+
+- rule: {"repeated":{"items":{"string":{"pattern":"^[a-zA-Z0-9:\\-_]{1,255}$"}}}}
+
+### spec.inboundRules[].sourceDropletIds
+
+`[]string | valueFrom`
+
+Droplets traffic is allowed from, as literal numeric Droplet IDs or
+references to DigitalOceanDroplet resources.
+
+- references: DigitalOceanDroplet (`status.outputs.droplet_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: DigitalOceanDroplet, name: <that resource's name>, fieldPath: status.outputs.droplet_id}} -- a bare string does not parse
 
 ### spec.inboundRules[].sourceKubernetesIds
 
-`[]string`
+`[]string | valueFrom`
 
-IDs of Kubernetes clusters from which traffic is allowed.
+Kubernetes cluster IDs traffic is allowed from, as literal UUIDs or
+references to DigitalOceanKubernetesCluster resources.
+
+- references: DigitalOceanKubernetesCluster (`status.outputs.cluster_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: DigitalOceanKubernetesCluster, name: <that resource's name>, fieldPath: status.outputs.cluster_id}} -- a bare string does not parse
 
 ### spec.inboundRules[].sourceLoadBalancerUids
 
-`[]string`
+`[]string | valueFrom`
 
-IDs of Load Balancers from which traffic is allowed.
+Load balancer UIDs traffic is allowed from, as literal UUIDs or
+references to DigitalOceanLoadBalancer resources.
+
+- references: DigitalOceanLoadBalancer (`status.outputs.load_balancer_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: DigitalOceanLoadBalancer, name: <that resource's name>, fieldPath: status.outputs.load_balancer_id}} -- a bare string does not parse
 
 ### spec.outboundRules
 
 `[]DigitalOceanFirewallOutboundRule`
 
-Outbound rules: traffic allowed *from* Droplets on specific ports to specified destinations.
+Outbound rules: traffic allowed *from* the protected Droplets to the
+configured destinations.
+
+- rule: port_range is required when protocol is tcp or udp
 
 ### spec.outboundRules[].protocol
 
 `string` · required
 
-"tcp", "udp", or "icmp". Required.
+The traffic protocol this rule matches.
 
-- rule: {"string":{"minLen":"1"}}
+- rule: {"required":true,"string":{"in":["tcp","udp","icmp"]}}
 
 ### spec.outboundRules[].portRange
 
 `string`
 
-Ports to allow (format as in inbound rules; required for tcp/udp).
+Ports to allow: a single port ("80"), a range ("8000-9000"), or "all".
+Required for tcp/udp; omit for icmp. The same read-back normalization as
+inbound rules applies: the API reports "all ports" as "all".
 
 ### spec.outboundRules[].destinationAddresses
 
 `[]string`
 
-IPv4/IPv6 addresses or CIDRs to which traffic is allowed.
+IPv4/IPv6 addresses or CIDR ranges traffic is allowed to
+(e.g. "0.0.0.0/0", "::/0").
 
-### spec.outboundRules[].destinationDropletIds
-
-`[]int64`
-
-IDs of Droplets to which traffic is allowed.
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.outboundRules[].destinationTags
 
 `[]string`
 
-Names of Droplet tags whose members are allowed destinations.
+Droplet tag names; traffic to any Droplet carrying one of these tags is
+allowed. Tag values are case-insensitive for set membership.
+
+- rule: {"repeated":{"items":{"string":{"pattern":"^[a-zA-Z0-9:\\-_]{1,255}$"}}}}
+
+### spec.outboundRules[].destinationDropletIds
+
+`[]string | valueFrom`
+
+Droplets traffic is allowed to, as literal numeric Droplet IDs or
+references to DigitalOceanDroplet resources.
+
+- references: DigitalOceanDroplet (`status.outputs.droplet_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: DigitalOceanDroplet, name: <that resource's name>, fieldPath: status.outputs.droplet_id}} -- a bare string does not parse
 
 ### spec.outboundRules[].destinationKubernetesIds
 
-`[]string`
+`[]string | valueFrom`
 
-IDs of Kubernetes clusters to which traffic is allowed.
+Kubernetes cluster IDs traffic is allowed to, as literal UUIDs or
+references to DigitalOceanKubernetesCluster resources.
+
+- references: DigitalOceanKubernetesCluster (`status.outputs.cluster_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: DigitalOceanKubernetesCluster, name: <that resource's name>, fieldPath: status.outputs.cluster_id}} -- a bare string does not parse
 
 ### spec.outboundRules[].destinationLoadBalancerUids
 
-`[]string`
+`[]string | valueFrom`
 
-IDs of Load Balancers which are allowed as destinations.
+Load balancer UIDs traffic is allowed to, as literal UUIDs or references
+to DigitalOceanLoadBalancer resources.
 
-### spec.dropletIds
-
-`[]int64`
-
-The Droplet IDs to which this firewall is applied (max 10).
-These Droplets will have the firewall's rules enforced.
+- references: DigitalOceanLoadBalancer (`status.outputs.load_balancer_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: DigitalOceanLoadBalancer, name: <that resource's name>, fieldPath: status.outputs.load_balancer_id}} -- a bare string does not parse
 
 ### spec.tags
 
 `[]string`
 
-The names of Droplet tags to which this firewall is applied (max 5).
-Any Droplet with these tags will be protected by this firewall.
+(Optional) Droplet tag names this firewall applies to: any Droplet
+carrying one of these tags is protected, and membership follows the tag
+automatically as Droplets come and go. DigitalOcean creates tags
+implicitly when first referenced. The API documents a maximum of 5 tags
+per firewall (enforced server-side, not by the provider). Tag values are
+case-insensitive for set membership.
+
+- rule: {"repeated":{"items":{"string":{"pattern":"^[a-zA-Z0-9:\\-_]{1,255}$"}}}}
+
+### spec.dropletIds
+
+`[]string | valueFrom`
+
+(Optional) Droplets this firewall applies to, as literal numeric Droplet
+IDs or references to DigitalOceanDroplet resources. The API documents a
+maximum of 10 Droplets per firewall (enforced server-side). For dynamic
+membership prefer tags, which track Droplets automatically.
+
+- references: DigitalOceanDroplet (`status.outputs.droplet_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: DigitalOceanDroplet, name: <that resource's name>, fieldPath: status.outputs.droplet_id}} -- a bare string does not parse
+
+## Validation Rules
+
+- `spec.at_least_one_rule`: at least one inbound_rule or outbound_rule must be specified
 
 ## Outputs
 
@@ -190,7 +309,21 @@ Reference an output from another manifest as `valueFrom: {kind: DigitalOceanFire
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.firewall_id` | `string` |  |
+| `status.outputs.firewall_id` | `string` | The unique ID of the firewall (a UUID assigned by DigitalOcean). |
+
+## References
+
+Fields that can point at another resource's outputs:
+
+| Field | Kind | Output |
+|---|---|---|
+| `spec.inboundRules[].sourceDropletIds` | DigitalOceanDroplet | `status.outputs.droplet_id` |
+| `spec.inboundRules[].sourceKubernetesIds` | DigitalOceanKubernetesCluster | `status.outputs.cluster_id` |
+| `spec.inboundRules[].sourceLoadBalancerUids` | DigitalOceanLoadBalancer | `status.outputs.load_balancer_id` |
+| `spec.outboundRules[].destinationDropletIds` | DigitalOceanDroplet | `status.outputs.droplet_id` |
+| `spec.outboundRules[].destinationKubernetesIds` | DigitalOceanKubernetesCluster | `status.outputs.cluster_id` |
+| `spec.outboundRules[].destinationLoadBalancerUids` | DigitalOceanLoadBalancer | `status.outputs.load_balancer_id` |
+| `spec.dropletIds` | DigitalOceanDroplet | `status.outputs.droplet_id` |
 
 ## See Also
 

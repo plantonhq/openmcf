@@ -30,7 +30,7 @@ that has progressed.
 | Provider schema (parity baseline) | `digitalocean@2.99.1` |
 | Kinds in the catalog | 15 |
 | Distinct provider resources consumed | 18 |
-| Spec fields authored across all kinds | 554 |
+| Spec fields authored across all kinds | 555 |
 | Module pins on `digitalocean` | `~> 2.99` × 15 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**10 of 15 kinds are at total accounting; 0 proven live.**
+**11 of 15 kinds are at total accounting; 0 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -55,9 +55,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | DigitalOceanContainerRegistry | 6 | 2 | 1 | 1 | 3 | ❌ | — |
 | DigitalOceanDatabaseCluster | 19 | 14 | 5 | 0 | 0 | ✅ | — |
 | DigitalOceanDnsRecord | 10 | 9 | 1 | 0 | 0 | ✅ | — |
-| DigitalOceanDnsZone | 12 | 7 | 3 | 1 | 1 | ❌ | — |
+| DigitalOceanDnsZone | 12 | 8 | 3 | 1 | 0 | ✅ | — |
 | DigitalOceanDroplet | 21 | 16 | 4 | 1 | 0 | ✅ | — |
-| DigitalOceanFirewall | 17 | 3 | 14 | 0 | 0 | ✅ | — |
+| DigitalOceanFirewall | 17 | 2 | 15 | 0 | 0 | ✅ | — |
 | DigitalOceanFunction | 292 | 0 | 36 | 256 | 0 | ✅ | — |
 | DigitalOceanKubernetesCluster | 47 | 31 | 15 | 1 | 0 | ✅ | — |
 | DigitalOceanKubernetesNodePool | 13 | 8 | 5 | 0 | 0 | ✅ | — |
