@@ -1,0 +1,47 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuredataprotectionbackupinstance
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Backup
+      sku_meter: AKS protected instance fee
+      pricing_unit: namespace-months
+      description: "A kubernetes_cluster instance bills a protected-instance fee the moment it deploys, scaled by the number of namespaces selected for backup -- 12.0 USD per namespace per month in eastus at list (Retail API meter 'AKS Namespace'; the pricing page's own rule: 'The protected instance fees is determined by number of Namespaces within AKS cluster selected to be backed up'). With included_namespaces empty the fee follows the cluster's LIVE namespace count, so one namespace-month is the committed floor, never the ceiling."
+    - service_name: Backup
+      sku_meter: vaulted blob protected instance fee
+      pricing_unit: instance-months
+      description: "A blob_storage instance whose policy has a VAULT tier (the spec's own contract: storage_account_container_names set) bills a protected-instance fee per protected storage account -- 10.0 USD/month in eastus at list for accounts holding 1 TB or more, prorated to 10% below 10 GB, 30% at 10-100 GB, and 60% at 100 GB-1 TB of protected data. Operational-only blob protection (container list empty) carries NO instance fee."
+  cost_drivers:
+    - field_path: kubernetes_cluster.backup_datasource_parameters.included_namespaces
+      sku_meter: AKS protected instance fee
+      pricing_unit: namespace-months
+      impact: "Each namespace selected for backup bills its own 12.0 USD/month protected-instance unit in eastus. Naming namespaces here makes the committed spend exact; leaving the list empty backs up every namespace (minus exclusions) and the fee follows the cluster's live namespace count."
+    - field_path: blob_storage.storage_account_container_names
+      sku_meter: vaulted blob protected instance fee
+      pricing_unit: instance-months
+      impact: "The vault-tier flip: setting container names is the spec's documented VAULT-tier shape and pins the 10.0 USD/month protected-instance fee plus vaulted write transactions and Backup Storage GB; leaving it empty keeps operational-only protection with no instance fee (the source account's soft-delete, change-feed, point-in-time-restore, and versioning features carry the cost instead). ONE-WAY once set: the list can change but never be removed entirely."
+    - field_path: kubernetes_cluster.backup_datasource_parameters.volume_snapshot_enabled
+      sku_meter: disk snapshot storage
+      pricing_unit: GB-months
+      impact: "When true, every backup run takes persistent-volume snapshots that bill as incremental disk snapshots at standard-storage rates in the snapshot resource group, following volume churn. False (the default) backs up configuration only."
+    - field_path: disk
+      sku_meter: disk snapshot storage
+      pricing_unit: GB-months
+      impact: "The disk variant carries NO protected-instance fee and no Backup Storage -- the pricing page verbatim: 'Because the snapshots aren't copied to the Backup Vault, Azure Backup doesn't charge a Protected Instance fee and Backup Storage cost doesn't apply.' The spend is incremental snapshot storage (delta GiB since the last snapshot) at standard-storage rates, billed in the snapshot resource group in the customer's subscription."
+    - field_path: backup_policy_id
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: "The referenced policy's schedule and retention decide how many recovery points exist and how long they live -- the multiplier on every storage meter this instance drives, on the vault tier (Backup Storage at the vault's redundancy) and the operational tier (snapshots and blob artifacts in the customer's own resources) alike."
+  free_tier: "Azure Backup publishes no free grant for protected instances. Two variants are fee-free by design, verified on the pricing page 2026-08-18: disk backup ('Azure Backup doesn't charge a Protected Instance fee and Backup Storage cost doesn't apply' -- the money rides snapshot storage in the customer's snapshot resource group) and operational-only blob backup ('You won't incur any instance fee or backup storage charges' -- the money rides the source account's soft-delete, change-feed, point-in-time-restore, and versioning meters)."
+  estimate_exclusions:
+    - "Backup Storage GB in the vault bills separately from instance fees at the vault's redundancy (eastus Standard tier: 0.0224 USD/GB-month LRS, 0.028 ZRS, 0.0448 GRS via the Retail API), following recovery-point count, retention, and data churn -- unknowable from any manifest"
+    - "disk and AKS volume snapshots bill incremental snapshot storage at standard-storage rates in the customer's snapshot resource group, following delta churn between backups"
+    - "AKS backup data staged in the customer's storage account bills that account's blob meters; vaulted blob backup additionally bills write transactions (eastus: 0.05 USD per 10K LRS, 0.0625 ZRS, 0.1 GRS) plus change-feed and blob-versioning charges on the protected account"
+    - "the vaulted-blob instance fee is prorated by protected data size (10% below 10 GB, 30% at 10-100 GB, 60% at 100 GB-1 TB, full rate at 1 TB or more) -- the data size is invisible in this manifest"
+    - "restores from the Standard tier of Backup Storage are free; soft-deleted backup data continues to occupy paid Backup Storage for the vault's retention window after a destroy"
+  notes: "The variant block IS the billing switch: exactly one of six datasource blocks is set, and each carries a different fee reality. AKS bills 12.0 USD per backed-up namespace per month; vaulted blob bills a tiered 10.0 USD/month per protected account; disk bills NO instance fee at all; PostgreSQL flexible server carries a real per-250-GB instance fee (7.5 USD/month in eastus, verified but not pinned -- no committed preset deploys it); Data Lake mirrors vaulted blob at 10.0 USD/month (verified, not pinned); MySQL flexible server has NO published meter in the Retail API and no section on the pricing page -- published absence, not zero. All rates read from the Azure Retail Prices API (serviceName Backup, eastus) and Microsoft's Azure Backup pricing page (azure.microsoft.com/en-us/pricing/details/backup/) on 2026-08-18. Destroying the instance stops protection and deletes the backup data, subject to the vault's soft-delete window."

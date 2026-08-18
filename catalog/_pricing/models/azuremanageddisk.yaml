@@ -1,0 +1,57 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. A hand model rather than a derivation for two reasons the
+# derivation grammar cannot express: fixed-tier SKUs map disk_size_gb to a
+# tier meter through Azure's size BANDS (256 GiB -> P15), and Premium SSD v2
+# performance meters bill excess-over-baseline (IOPS above the free 3,000,
+# MBps above the free 125) -- both banded lookups and subtractions, so each
+# preset's quantities are computed here and defended in their bases. The
+# 03-snapshot-clone preset deliberately has NO entry: its committed spend is
+# real (a Premium SSD tier fee) but its size -- and therefore its tier -- is
+# inherited from the source snapshot and invisible in the manifest, so any
+# figure would be a guess; absence is the honest state.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: azuremanageddisk
+spec:
+  presets:
+    - preset: 01-premium-data-disk
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: disk tier fee
+          price: managed-disk-p15-eastus
+          pricing_quantity: "1"
+          quantity_basis: PREMIUM_LRS at 256 GiB lands exactly on the P15 tier band, whose flat monthly fee covers the capacity and the tier's fixed 1,100 IOPS / 125 MBps -- one disk-month
+      exclusions:
+        - the fee accrues from creation until deletion, attached or not -- an orphaned disk bills at full rate forever
+        - snapshots taken of this disk bill their own snapshot storage per GB-month
+        - outbound data transfer follows attachment traffic and bills on network meters
+      notes: Premium SSD fixed tiers bill by size band -- anything from 129 to 256 GiB pays this same P15 fee, so the preset's 256 GiB uses its band fully.
+    - preset: 02-premium-v2-dialed-performance
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: provisioned capacity
+          price: managed-disk-premium-v2-capacity-eastus
+          pricing_quantity: "93440"
+          quantity_basis: 128 GiB billed per GiB-hour around the clock -- 128 x 730 hours
+        - sku_meter: provisioned IOPS
+          price: managed-disk-premium-v2-iops-eastus
+          pricing_quantity: "3650000"
+          quantity_basis: 8,000 dialed IOPS minus the free 3,000 baseline every v2 disk includes leaves 5,000 billable IOPS -- 5,000 x 730 hours (the retail meter's paid tier starts at 3,000 units, verified 2026-08-18)
+        - sku_meter: provisioned throughput
+          price: managed-disk-premium-v2-throughput-eastus
+          pricing_quantity: "127750"
+          quantity_basis: 300 dialed MBps minus the free 125 MBps baseline leaves 175 billable MBps -- 175 x 730 hours (the retail meter's paid tier starts at 125 units, verified 2026-08-18)
+      exclusions:
+        - the meters accrue from creation until deletion, attached or not
+        - snapshots taken of this disk bill their own snapshot storage per GB-month
+        - outbound data transfer follows attachment traffic and bills on network meters
+      notes: Premium SSD v2 decouples the three dials -- this preset pays for capacity plus exactly the performance dialed above the free baseline, which is the SKU's whole economic argument over fixed tiers.

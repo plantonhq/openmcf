@@ -1,0 +1,35 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremachinelearningcomputecluster
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: vm_size
+      sku_meter: dedicated node VM hours
+      pricing_unit: hours
+      impact: The per-node hourly rate is the VM size's plain Linux pay-as-you-go rate -- Azure Machine Learning adds no surcharge (the service's own pricing page publishes the ML surcharge column at zero). A GPU size costs an order of magnitude more per node-hour than a general-purpose one, and the size is fixed at creation.
+    - field_path: vm_priority
+      sku_meter: low-priority node VM hours
+      pricing_unit: hours
+      impact: LOW_PRIORITY switches every node-hour from the dedicated meter to the VM size's Low Priority meter at a deep discount -- roughly 80 percent off list for common sizes -- in exchange for eviction risk that takes running work with it. Fixed at creation; suits checkpointed, fault-tolerant training only.
+    - field_path: scale_settings.min_node_count
+      sku_meter: dedicated node VM hours
+      pricing_unit: hours
+      impact: The committed floor. At 0 (every preset) an idle cluster runs no nodes and bills nothing between jobs; any value above 0 keeps that many nodes running around the clock, which turns the floor into always-on VM spend of min_node_count times the hourly rate.
+    - field_path: scale_settings.max_node_count
+      sku_meter: dedicated node VM hours
+      pricing_unit: hours
+      impact: The ceiling on concurrent node-hours -- the worst busy hour costs max_node_count times the node rate. Regional vCPU quota for the VM family gates what actually provisions, so the effective ceiling is the lower of the two.
+    - field_path: scale_settings.scale_down_nodes_after_idle_duration
+      sku_meter: dedicated node VM hours
+      pricing_unit: hours
+      impact: The idle tail on every scale-up -- each node bills through this window after its last job before releasing. Shorter durations save money between sparse jobs; longer ones keep warm nodes (and their meter) running to absorb closely-spaced work without spin-up latency.
+  estimate_exclusions:
+    - node VM hours (dedicated or low-priority) follow the job schedule -- how many nodes, for how long, at what cadence -- which no manifest can predict; with min_node_count 0 the committed figure is genuinely zero
+    - the workspace's companion resources (storage account, container registry, Key Vault, Application Insights) bill on their own components, and training jobs read and write them
+    - network egress follows what jobs move, and a cluster whose region differs from its workspace or data adds inter-region data-transfer rates on those flows
+  notes: "A scale-to-zero VM pool read literally: the cluster object is free to hold, and money moves only while nodes exist. Azure Machine Learning charges nothing on top of the VMs -- Microsoft's pricing page states there is no additional charge for the service (retrieved 2026-08-18) -- so the whole bill is node-hours times the VM size's rate. At list in eastus (Retail Prices API, retrieved 2026-08-18): Standard_DS3_v2 is 0.293 per hour dedicated and 0.0585 low-priority; Standard_NC6S_V3 (one V100) is 3.06 dedicated and 0.612 low-priority. The three levers are the size (fixed), the priority arm (fixed, the 80-percent lever for evictable work), and the scale settings (the one block that updates in place -- tune the idle window and bounds on a live cluster). The cliff to know: min_node_count above 0 quietly converts this usage-based component into committed always-on spend."

@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremonitoractiongroup
+spec:
+  azure:
+    groups:
+      - purpose: ManageActionGroup
+        actions:
+          - Microsoft.Insights/ActionGroups/Read
+          - Microsoft.Insights/ActionGroups/Write
+          - Microsoft.Insights/ActionGroups/Delete
+        provenance: derived
+        notes: Covers azurerm_monitor_action_group / monitoring.NewActionGroup -- the module is a single resource carrying all eleven receiver lists in one payload, so create, read/refresh, in-place update of any receiver, and destroy are the same three operations. Receiver references (a Function App's ARM ID, an Event Hub's name, a role definition GUID, webhook URLs) travel as payload strings the module resolves client-side -- no read on any referenced resource, and Azure Monitor's own service delivers notifications at run time with no standing grant from the deployer. Held at the resource group's scope; Monitoring Contributor carries them (ARM spells this type's segments capitalized -- ActionGroups -- in its operations inventory).

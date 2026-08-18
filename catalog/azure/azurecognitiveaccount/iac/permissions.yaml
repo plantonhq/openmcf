@@ -1,0 +1,52 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurecognitiveaccount
+spec:
+  azure:
+    groups:
+      - purpose: ManageCognitiveAccount
+        actions:
+          - Microsoft.CognitiveServices/accounts/read
+          - Microsoft.CognitiveServices/accounts/write
+          - Microsoft.CognitiveServices/accounts/delete
+          - Microsoft.CognitiveServices/accounts/listKeys/action
+          - Microsoft.CognitiveServices/locations/resourceGroups/deletedAccounts/delete
+        provenance: derived
+        notes: Covers azurerm_cognitive_account / cognitive.NewAccount -- create, refresh, in-place updates, and destroy. listKeys rides every refresh to populate the exported primary/secondary key outputs (dead surface once local_auth_enabled is false -- the outputs are then empty). Deletion is a soft delete, and both engines run with the provider's purge_soft_delete_on_destroy default, so destroy is delete-then-PURGE -- the purge is the location-scoped deletedAccounts delete action, without which the account name stays held by the ghost. Typically held via Cognitive Services Contributor on the resource group.
+      - purpose: ManageRaiBlocklists
+        actions:
+          - Microsoft.CognitiveServices/accounts/raiBlocklists/read
+          - Microsoft.CognitiveServices/accounts/raiBlocklists/write
+          - Microsoft.CognitiveServices/accounts/raiBlocklists/delete
+        provenance: derived
+        notes: One ARM child per rai_blocklists entry (keyed by name) -- azurerm_cognitive_account_rai_blocklist and its Pulumi twin create, refresh, update and destroy them. Blocklist ITEMS are data-plane and outside the modules entirely.
+      - purpose: ManageRaiPolicies
+        actions:
+          - Microsoft.CognitiveServices/accounts/raiPolicies/read
+          - Microsoft.CognitiveServices/accounts/raiPolicies/write
+          - Microsoft.CognitiveServices/accounts/raiPolicies/delete
+        provenance: derived
+        notes: One ARM child per rai_policies entry (keyed by name) -- created after the blocklists (a policy's content filter may reference a sibling blocklist by name, hence the modules' explicit dependency). Model deployments select a policy by name; that read happens on the deployment's side.
+      - purpose: JoinPerimeterSubnets
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/read
+          - Microsoft.Network/virtualNetworks/subnets/joinViaServiceEndpoint/action
+        provenance: derived
+        notes: Required only when network_acls.virtual_network_rules allow VNet subnets through the perimeter. A SERVICE-side need -- the modules only carry the subnet IDs, and ARM authorizes each service-endpoint rule with joinViaServiceEndpoint on the SUBNET's own scope at write time.
+      - purpose: JoinAgentInjectionSubnet
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/read
+          - Microsoft.Network/virtualNetworks/subnets/join/action
+        provenance: derived
+        notes: Required only when network_injection places AI Foundry agent workloads in your delegated subnet (AIServices kind). A SERVICE-side need -- Azure checks join on the subnet's scope when the service creates its association link; note the link is removed ASYNCHRONOUSLY after account deletion and the provider waits for it during destroy.
+      - purpose: AttachUserAssignedIdentities
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: Required only when identity.identity_ids attaches user-assigned identities. A SERVICE-side need -- Azure checks assign on each referenced identity's own scope when the account write attaches it.

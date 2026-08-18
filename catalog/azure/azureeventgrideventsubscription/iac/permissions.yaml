@@ -1,0 +1,35 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureeventgrideventsubscription
+spec:
+  azure:
+    groups:
+      - purpose: ManageScopedSubscription
+        actions:
+          - Microsoft.EventGrid/eventSubscriptions/read
+          - Microsoft.EventGrid/eventSubscriptions/write
+          - Microsoft.EventGrid/eventSubscriptions/delete
+          - Microsoft.EventGrid/eventSubscriptions/getFullUrl/action
+          - Microsoft.EventGrid/eventSubscriptions/getDeliveryAttributes/action
+        provenance: derived
+        notes: "Covers azurerm_eventgrid_event_subscription (the scope-addressed arm) -- an ARM EXTENSION resource, so these actions are authorized on the SOURCE scope (custom topic, domain, domain topic, resource group, or subscription named by spec.scope): create, refresh, in-place filter/destination updates, and destroy. The two action verbs ride the provider's read path: Azure echoes webhook URLs MASKED on GET, so refresh calls getFullUrl to see the real endpoint, and delivery properties (which may carry secrets) are read back through getDeliveryAttributes. Typically held via EventGrid Contributor on the source. Migrated from the Pulumi module README, which stated the requirement as Microsoft.EventGrid/eventSubscriptions/* on the source scope."
+      - purpose: ManageSystemTopicSubscription
+        actions:
+          - Microsoft.EventGrid/systemTopics/eventSubscriptions/read
+          - Microsoft.EventGrid/systemTopics/eventSubscriptions/write
+          - Microsoft.EventGrid/systemTopics/eventSubscriptions/delete
+          - Microsoft.EventGrid/systemTopics/eventSubscriptions/getFullUrl/action
+          - Microsoft.EventGrid/systemTopics/eventSubscriptions/getDeliveryAttributes/action
+        provenance: derived
+        notes: "Covers azurerm_eventgrid_system_topic_event_subscription (the system_topic_id-addressed arm) -- Azure models these as CHILDREN of the system topic rather than scoped attachments, so the child-resource actions on the topic's scope authorize the same lifecycle, with the same masked-webhook and delivery-attribute read-backs. Exactly one of the two groups is exercised per deployment; the addressing choice in the manifest decides which."
+      - purpose: ReadDestinationContext
+        actions:
+          - Microsoft.Storage/storageAccounts/read
+        provenance: derived
+        notes: "Storage-addressed arms carry the destination as an account ID plus a queue or container name (destination.storage_queue, dead_letter), and ARM validates the referenced account when the subscription payload lands -- the Pulumi README's Required Permissions stated this as 'enough read access on the destination to validate it (e.g. Microsoft.Storage/storageAccounts/read for storage-queue destinations)', migrated here lossless. The analogous read applies to whichever destination kind an arm references (Event Hub, Service Bus, Function); the storage action is listed because both committed presets use storage-queue delivery and blob dead-lettering. Data-plane WRITE access for actual delivery belongs to Event Grid's own principal or the named delivery identity -- never to the runner."

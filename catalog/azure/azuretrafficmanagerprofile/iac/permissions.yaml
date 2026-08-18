@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuretrafficmanagerprofile
+spec:
+  azure:
+    groups:
+      - purpose: ManageTrafficManagerProfile
+        actions:
+          - Microsoft.Network/trafficManagerProfiles/read
+          - Microsoft.Network/trafficManagerProfiles/write
+          - Microsoft.Network/trafficManagerProfiles/delete
+        provenance: derived
+        notes: "Covers azurerm_traffic_manager_profile / network.TrafficManagerProfile end to end -- the provider's whole surface is Get, CreateOrUpdate, Update, and Delete on the profile resource (traffic_manager_profile_resource.go); everything except name, resource group, and the DNS relative name updates in place. No name-availability call precedes the create -- a taken trafficmanager.net name simply fails the write. Typically held via Network Contributor, Contributor, or Owner on the resource group (the module READMEs' original recommendation -- Microsoft.Network/trafficManagerProfiles/* under Network Contributor -- is contained in exactly these three actions). Endpoints are separate AzureTrafficManagerEndpoint components with their own manifest; their typed child-collection actions are not needed here."

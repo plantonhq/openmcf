@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremachinelearningbatchdeployment
+spec:
+  azure:
+    groups:
+      - purpose: ManageBatchDeployment
+        actions:
+          - Microsoft.MachineLearningServices/workspaces/batchEndpoints/deployments/read
+          - Microsoft.MachineLearningServices/workspaces/batchEndpoints/deployments/write
+          - Microsoft.MachineLearningServices/workspaces/batchEndpoints/deployments/delete
+        provenance: derived
+        notes: Covers the azapi_resource at Microsoft.MachineLearningServices/workspaces/batchEndpoints/deployments@2025-06-01 and the Pulumi module's azure-native machinelearningservices/v3 BatchDeployment -- create and every update travel as a full PUT (write), refresh reads the deployment, destroy deletes it. The parent endpoint is addressed by the ARM ID resolved from endpoint_id (azapi's parent_id; the Pulumi module parses the same ID into resource group, workspace and endpoint names) and is never read; azapi's schema validation runs locally against its embedded ARM schemas, adding no API call. The referenced compute pool, model, code and environment assets ride the payload as resolved IDs -- the ML service validates their existence workspace-side at PUT time under these same deployment actions, with no documented RBAC check on the referenced scopes. Held via Contributor on the workspace's resource group or an AzureML custom role carrying these verbs.

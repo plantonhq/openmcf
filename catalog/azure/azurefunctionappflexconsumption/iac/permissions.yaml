@@ -1,0 +1,42 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurefunctionappflexconsumption
+spec:
+  azure:
+    groups:
+      - purpose: ManageFunctionApp
+        actions:
+          - Microsoft.Web/sites/Read
+          - Microsoft.Web/sites/Write
+          - Microsoft.Web/sites/Delete
+          - Microsoft.Web/sites/config/Read
+          - Microsoft.Web/sites/config/Write
+        provenance: derived
+        notes: "Covers azurerm_function_app_flex_consumption / appservice.NewAppFlexConsumption (pulumi-azure is bridged from azurerm) -- create, refresh, in-place updates, and destroy of the site and its config sub-resources (siteConfig, appSettings, authSettingsV2 all write through sites/config). Action names verified against the committed inventory (Microsoft.Web, inventory casing sites/Read etc.)."
+      - purpose: ReadSensitiveSiteSettings
+        actions:
+          - Microsoft.Web/sites/config/list/Action
+        provenance: derived
+        notes: "The provider's Read path lists security-sensitive settings on every refresh: ListApplicationSettings (function_app_flex_consumption_resource.go line 622), ListConnectionStrings (line 627), ListPublishingCredentials (line 637), and GetAuthSettings (line 642) -- all POST .../list operations covered by config/list/Action ('List Web App's security sensitive settings, such as publishing credentials, app settings and connection strings'). The site_credential outputs ride this. Present in the committed inventory."
+      - purpose: ValidateServicePlanSku
+        actions:
+          - Microsoft.Web/serverfarms/Read
+        provenance: derived
+        notes: "Create fetches the referenced App Service Plan to enforce the FLEX_CONSUMPTION_FC1 SKU before creating the site (function_app_flex_consumption_resource.go line 391, servicePlanClient.Get); Read re-parses the plan id from the site's serverFarmId. Present in the committed inventory (casing serverfarms/Read)."
+      - purpose: JoinVnetIntegrationSubnet
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/read
+          - Microsoft.Network/virtualNetworks/subnets/join/action
+        provenance: derived
+        notes: "Required only when virtual_network_subnet_id is set -- ARM authorizes the site's VNet integration against the referenced subnet service-side (the standard join/action pattern); the modules only pass the resolved subnet id. Both actions present in the committed inventory."
+      - purpose: AssignUserManagedIdentities
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: "Required only when identity carries USER_ASSIGNED identities (or storage_user_assigned_identity_id is set) -- ARM checks assign/action on each identity referenced in the site payload, service-side. Present in the committed inventory."

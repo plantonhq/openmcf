@@ -1,0 +1,42 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. A trigger definition is free to hold --
+# stopped, it evaluates nothing and bills nothing; started, every firing
+# bills a trigger execution (Azure counts those as orchestration runs)
+# plus the full cost of the pipeline run it starts, and the event-driven
+# types additionally ride Azure Event Grid's per-operation meters.
+# Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuredatafactorytrigger
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: activated
+      sku_meter: orchestration activity runs
+      pricing_unit: ""
+      impact: "The master switch: false deploys the trigger stopped -- it evaluates nothing and bills nothing. True starts it, and from then on every firing bills a trigger execution (counted on the factory's orchestration meter, per 1,000 runs) plus everything the fired pipeline run costs."
+    - field_path: schedule.interval
+      sku_meter: orchestration activity runs
+      pricing_unit: 1,000 runs
+      impact: "With schedule.frequency, sets the firing cadence -- every minute is ~43,800 firings a month, each one a billed trigger execution AND a billed pipeline run with all its activity meters; daily is 30. The cadence is the multiplier on everything downstream."
+    - field_path: tumbling_window.start_time
+      sku_meter: orchestration activity runs
+      pricing_unit: 1,000 runs
+      impact: "The backfill lever: when a tumbling-window trigger STARTS, Azure fires one run per window from start_time to now -- a start_time a year back on an hourly window queues ~8,760 billed pipeline runs immediately (throttled by max_concurrency, retried per the retry policy, every attempt billed)."
+    - field_path: blob_event.blob_path_begins_with
+      sku_meter: Event Grid standard event operations
+      pricing_unit: 1M operations
+      impact: "Filter breadth is the bill: every blob create/delete matching the path filters fires a billed pipeline run, and the events themselves ride Azure Event Grid (\"0.60\" USD per million operations at East US after the monthly free grant) against the storage account's system topic. An over-broad filter on a busy account turns routine writes into a run stampede."
+    - field_path: custom_event.eventgrid_topic_id
+      sku_meter: Event Grid standard event operations
+      pricing_unit: 1M operations
+      impact: "The events this trigger listens for are published to YOUR Event Grid custom topic, which bills its own per-operation meters as its own component; each matching event fires a billed pipeline run here."
+  estimate_exclusions:
+    - every firing of a STARTED trigger bills a trigger execution on the factory's orchestration meter ("1.0" USD per 1,000 runs at East US cloud rates -- Azure's pricing page counts activity runs, trigger executions, and debug runs together)
+    - each firing starts a pipeline run that carries its own full meter set -- activity runs, data movement DIU-hours, pipeline/external activity hours, data flow vCore-hours -- on the factory
+    - blob_event and custom_event triggers ride Azure Event Grid -- standard event operations bill "0.60" USD per million (East US) after the monthly free grant, on the storage account's system topic or the custom topic respectively
+    - tumbling-window retries bill every attempt, and a past start_time backfills one billed run per window the moment the trigger starts
+    - Data Factory operations bill on the factory -- read/write per 50,000 entity operations (authoring this trigger included) and monitoring per 50,000 run records
+  notes: "The definition itself never appears on the invoice, and every preset deploys with activated false -- stopped triggers are pure configuration. The honest asymmetry is that STARTING one is the single cheapest action with the largest billing consequence in Data Factory: the trigger execution meter is pennies, but each firing's pipeline run carries the real meters, and a tumbling window pointed at history bills its entire backfill at start. One quiet credit: a pipeline ASSOCIATED with any trigger is exempt from Azure's inactive-pipeline fee even in months with zero runs. Rates verified live from Microsoft's Data Factory data-pipeline pricing page and the Retail Prices API (serviceName 'Azure Data Factory v2' and 'Event Grid', eastus) on 2026-08-18."

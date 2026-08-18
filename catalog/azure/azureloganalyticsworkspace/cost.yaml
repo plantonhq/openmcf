@@ -1,0 +1,38 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureloganalyticsworkspace
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Azure Monitor
+      sku_meter: commitment tier capacity reservation
+      pricing_unit: days
+      description: "A CAPACITY_RESERVATION workspace bills its commitment tier's flat fee every day regardless of what actually arrives -- the 100 GB/day tier is 196.0 USD/day in eastus at list (an effective 1.96 USD/GB, about 15% under pay-as-you-go). A PER_GB_2018 workspace has no baseline: the empty workspace object itself is free and every charge follows ingested volume."
+  cost_drivers:
+    - field_path: sku
+      sku_meter: log data ingestion
+      impact: "The pricing-model switch: PER_GB_2018 (and unspecified) bills 2.30 USD per GB ingested in eastus with zero standing cost; CAPACITY_RESERVATION converts the workspace to a fixed daily fee for reserved capacity -- cheaper per GB at sustained volume, committed spend at any volume. PER_NODE and STANDALONE are legacy pre-2018 models kept for existing estates."
+    - field_path: reservation_capacity_in_gb_per_day
+      sku_meter: commitment tier capacity reservation
+      pricing_unit: days
+      impact: "Picks the commitment tier's daily fee (Azure sells 100 through 50000 GB/day). Ingestion ABOVE the reserved capacity bills fractional units of the same tier meter at the tier's effective per-GB rate -- Microsoft's cost documentation: a 200 GB/day workspace ingesting 300 GB bills 1.5 units of the 200 GB/day meter. Raising the tier restarts the 31-day commitment period."
+    - field_path: retention_in_days
+      sku_meter: log data retention
+      pricing_unit: GB-months
+      impact: "Every GB kept past the included interactive window (31 days for Analytics tables; 90 days for Application Insights tables and Sentinel-enabled workspaces) bills 0.10 USD per GB per month in eastus, computed at daily granularity -- at 365 days the retention line can rival the ingestion line for stable estates."
+    - field_path: daily_quota_gb
+      sku_meter: log data ingestion
+      pricing_unit: GB
+      impact: "The cost ceiling AND a data-loss dial: when the cap is hit, ingestion stops until the next UTC day. Worst-day spend is bounded by cap x the per-GB rate; what does not get billed also does not get stored. -1 (the default) is unlimited."
+  free_tier: "Pay-as-you-go Analytics Logs ingestion includes 5 GB per billing account per month free (the Retail API's tier rows show 0-5 GB at 0.0); the first 31 days of retention are included (90 days for Application Insights tables and Sentinel-enabled workspaces). Commitment tiers have no free grant -- the daily fee is the deal."
+  estimate_exclusions:
+    - "pay-as-you-go ingestion volume follows what the estate's agents, diagnostic settings, and applications write -- 2.30 USD/GB in eastus past the 5 GB monthly grant, unknowable from any manifest"
+    - "commitment-tier overage above the reserved daily capacity bills fractional units of the same tier meter, following actual volume"
+    - "retention charges follow stored GB beyond the included window (0.10 USD/GB-month in eastus); long-term (archive) retention and search jobs against it bill their own meters"
+    - "Basic and Auxiliary table plans are per-table choices made outside this spec and bill reduced ingestion rates plus per-GB-scanned query meters"
+    - "enabling Microsoft Sentinel on the workspace adds Sentinel's own meters on top; data export from the workspace bills the export meter per GB"
+  notes: "The workspace is the estate's log bank: the object is free, the deposits are the bill. sku is the flip that turns it from pure usage (per-GB ingestion) into committed spend (a commitment tier's fixed daily fee, minimum commitment 31 days, lowerable only in the first 6 hours after configuration per Microsoft's cost documentation). Switching PER_GB_2018 <-> CAPACITY_RESERVATION updates in place. All rates read from the Azure Retail Prices API (eastus) and Microsoft's Azure Monitor pricing page + cost documentation (learn.microsoft.com/azure/azure-monitor/logs/cost-logs) on 2026-08-18."

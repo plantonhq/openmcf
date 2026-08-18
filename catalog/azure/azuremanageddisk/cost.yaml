@@ -1,0 +1,71 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremanageddisk
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Storage
+      sku_meter: disk tier fee
+      pricing_unit: disk-months
+      description: Fixed-tier SKUs (Standard HDD, Standard SSD, Premium SSD -- LRS or ZRS) bill the size band's flat monthly tier fee (P15 for a 256 GiB premium disk, E10 for a 128 GiB standard SSD) from creation until deletion, attached or idle. The tier fee includes the tier's fixed IOPS and throughput.
+    - service_name: Storage
+      sku_meter: provisioned capacity
+      pricing_unit: GiB-hours
+      description: PREMIUM_V2_LRS and ULTRA_SSD_LRS abandon size bands -- every provisioned GiB bills by the hour, so a 128 GiB disk bills exactly 128 GiB-hours each hour it exists.
+    - service_name: Storage
+      sku_meter: provisioned IOPS
+      pricing_unit: IOPS-hours
+      description: PREMIUM_V2_LRS and ULTRA_SSD_LRS bill dialed IOPS by the hour. Premium SSD v2 includes the first 3,000 IOPS free on every disk -- only IOPS provisioned above the baseline bill (the retail meter's paid tier starts at 3,000 units).
+    - service_name: Storage
+      sku_meter: provisioned throughput
+      pricing_unit: MBps-hours
+      description: PREMIUM_V2_LRS and ULTRA_SSD_LRS bill dialed throughput by the hour. Premium SSD v2 includes the first 125 MBps free on every disk -- only MBps provisioned above the baseline bill (the retail meter's paid tier starts at 125 units).
+  cost_drivers:
+    - field_path: storage_account_type
+      sku_meter: disk tier fee
+      pricing_unit: disk-months
+      impact: The SKU picks the meter family and the rate class -- Standard HDD is the cheapest per GiB, Premium SSD roughly quadruples it for fixed performance tiers, and PREMIUM_V2_LRS/ULTRA_SSD_LRS switch to per-hour capacity plus independently dialed performance meters. ZRS variants of the fixed tiers carry a premium over LRS for zone redundancy.
+    - field_path: disk_size_gb
+      sku_meter: disk tier fee
+      pricing_unit: disk-months
+      impact: On fixed-tier SKUs the size lands in a tier band and the band sets the whole fee -- 129 GiB bills the same P15 fee as 256 GiB, so sizing to band boundaries is free capacity. On PREMIUM_V2_LRS/ULTRA_SSD_LRS the size bills linearly per GiB-hour with no bands.
+    - field_path: disk_iops_read_write
+      sku_meter: provisioned IOPS
+      pricing_unit: IOPS-hours
+      impact: On PREMIUM_V2_LRS every IOPS dialed above the free 3,000 baseline bills hourly, independent of size -- 8,000 IOPS means 5,000 billable IOPS around the clock. On ULTRA_SSD_LRS every provisioned IOPS bills (no free baseline).
+    - field_path: disk_mbps_read_write
+      sku_meter: provisioned throughput
+      pricing_unit: MBps-hours
+      impact: On PREMIUM_V2_LRS every MBps dialed above the free 125 MBps baseline bills hourly -- 300 MBps means 175 billable MBps around the clock. On ULTRA_SSD_LRS every provisioned MBps bills.
+    - field_path: disk_iops_read_only
+      sku_meter: provisioned IOPS
+      pricing_unit: IOPS-hours
+      impact: The shared-disk read-only IOPS budget bills on the same hourly IOPS meter as the read-write dial -- capacity granted to read-only mounts is provisioned capacity like any other.
+    - field_path: disk_mbps_read_only
+      sku_meter: provisioned throughput
+      pricing_unit: MBps-hours
+      impact: The shared-disk read-only throughput budget bills on the same hourly MBps meter as the read-write dial.
+    - field_path: tier
+      sku_meter: disk tier fee
+      pricing_unit: disk-months
+      impact: Buying a bigger performance tier than the size requires (a 256 GiB disk on the P30 tier) bills the BOUGHT tier's monthly fee -- performance decoupled from capacity, paid at the performance tier's price.
+    - field_path: max_shares
+      sku_meter: disk tier fee
+      pricing_unit: disk-months
+      impact: On Premium SSD and Standard SSD, each additional mount of a shared disk bills a monthly per-mount fee based on the disk's size band (Microsoft's pricing page states it plainly). Ultra Disks charge no per-mount fee -- only the capacity and total dialed performance bill.
+    - field_path: on_demand_bursting_enabled
+      sku_meter: disk tier fee
+      pricing_unit: disk-months
+      impact: On P30-and-larger premium disks this adds a monthly burst enablement fee plus a per-10,000-IO burst transaction fee for every IO above the provisioned target. P20 and smaller get credit-based bursting free and cannot enable this.
+  free_tier: "Every Premium SSD v2 disk includes 3,000 IOPS and 125 MBps at no charge -- the retail price list publishes the sub-baseline meter tiers at 0.00, so a v2 disk that keeps Azure's default performance pays only for capacity."
+  estimate_exclusions:
+    - Standard HDD and Standard SSD disks add a per-10,000-transaction charge that follows I/O volume -- reads, writes, and deletes all count
+    - burst transaction fees on on-demand-bursting premium disks follow actual burst behavior
+    - snapshots and images taken of this disk bill their own snapshot storage per GB-month, outside this component
+    - a COPY or RESTORE disk inherits its size (and therefore its tier fee) from the source when disk_size_gb is unset -- invisible in this manifest
+    - outbound data transfer follows attachment traffic and bills on network meters
+  notes: "A managed disk is the textbook always-on resource: the meter starts when the disk is created and stops when it is deleted -- attachment is irrelevant, so an orphaned disk left behind by a deleted VM bills at full rate forever. The cost model splits by SKU family. Fixed-tier SKUs (Standard HDD/SSD, Premium SSD) bill a flat monthly fee per size band: capacity between band boundaries is free, and the band also fixes the performance. PREMIUM_V2_LRS and ULTRA_SSD_LRS invert this -- capacity bills linearly per GiB-hour and performance is dialed and billed separately per IOPS-hour and MBps-hour (v2 with a free 3,000 IOPS / 125 MBps baseline per disk, Ultra with none), which is why a v2 disk at default performance often undercuts the premium tier fee for the same capacity. Prices verified from Microsoft's Retail Prices API and the managed-disks pricing page on 2026-08-18."

@@ -1,0 +1,34 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azurenetworkwatcherflowlog
+spec:
+  presets:
+    - preset: 01-vnet-flow-log
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - collection bills "0.50" USD per GB of flow logs written after the first 5 GB each month (East US, meter "Standard VNet Flow Logs Collected") -- the vnet-wide target records EVERY flow in the network, so volume follows the network's traffic shape
+        - the raw files bill the storage account's blob capacity and transactions on the AzureStorageAccount component, with the 30-day retention pruning the accumulation window (and OVERWRITING the account's own lifecycle rules at create time)
+        - reading or exporting the stored logs bills the storage account's read and egress meters
+      notes: Zero committed cost -- a recorder on a silent network writes nothing and bills nothing; every dollar tracks gigabytes of actual traffic metadata.
+    - preset: 02-traffic-analytics
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - collection bills "0.50" USD per GB written after the first 5 GB each month (East US)
+        - Traffic Analytics processes everything collected at "2.30" USD per GB on the preset's 60-minute cadence (the 10-minute option reprices to "3.50") -- Microsoft's pricing absorbs the Log Analytics workspace cost for the enriched records in this meter, so the workspace does not bill separately for them
+        - the raw files bill the storage account's blob capacity and transactions, pruned by the 30-day retention
+        - Traffic Analytics creates NWTA-prefixed data collection rule and endpoint resources beside the workspace -- Azure Monitor plumbing with no standing meter
+      notes: Zero committed cost -- enrichment multiplies the per-GB price (roughly 0.50 collected plus 2.30 processed per gigabyte), never adds a standing one; zero traffic is zero spend either way.

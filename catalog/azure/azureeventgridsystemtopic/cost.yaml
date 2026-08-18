@@ -1,0 +1,31 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. This component deliberately ships no
+# estimate quantities: a system topic is free at rest -- Microsoft's Event
+# Grid pricing has no meter for the topic resource itself; the Basic tier's
+# single operations meter bills the published events, delivery attempts,
+# and advanced filtering that flow THROUGH it, at volumes only the source
+# resource's activity determines.
+# Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureeventgridsystemtopic
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: source_resource_id
+      sku_meter: Event Grid Basic operations
+      pricing_unit: 1M operations
+      impact: "The source's activity IS the publish volume: every event the bound Azure resource emits (each blob upload, each resource write) is one billed operation at 0.60 USD per million past the monthly free grant -- a chatty storage account can push millions of operations through a topic whose manifest never changed."
+    - field_path: topic_type
+      sku_meter: Event Grid Basic operations
+      pricing_unit: 1M operations
+      impact: "Selects WHICH event stream the source emits and therefore its cadence -- storage-account blob events fire per object operation while resource-group lifecycle events fire per deployment action; the type shapes the volume, never the rate."
+  free_tier: "The Event Grid Basic tier's first 100,000 operations per month are free (published on the Event Grid pricing page and visible as the zero-priced first tier of the Standard Operations meter in the Retail Prices API); beyond the grant, operations bill 0.60 USD per million."
+  estimate_exclusions:
+    - "Microsoft's Basic-tier operations meter explicitly covers system topics: published events, advanced filtering, and delivery attempts all bill 0.60 USD per million operations past the monthly 100,000-operation free grant, counted in 64 KB units"
+    - "every delivery attempt an event subscription makes from this topic is a billed operation, retries included -- fan-out multiplies the count"
+    - "advanced filtering (data-payload conditions) and subject-ends-with filtering bill one operation per evaluation on the subscriptions attached to this topic; event-type matching and subject-begins-with are free"
+    - "rejected events that require dead-lettering bill as delivery operations, and the dead-letter blobs land storage charges on the destination storage account's own component"
+  notes: "Verified against Microsoft's own pricing page: the system topic RESOURCE carries no meter -- creating one against a storage account changes nothing on the invoice -- and the Basic tier's operations meter names system topics alongside custom topics and domains as where published events, filtering, and delivery attempts bill. The practical difference from a custom topic is who controls volume: here Azure publishes on the source's behalf, so the bill follows the SOURCE's activity, not any field of this manifest -- subscribe to a busy source and the operations arrive whether or not anyone reads them. Rates are eastus retail, retrieved 2026-08-18 from the Azure Retail Prices API and the Event Grid pricing page."

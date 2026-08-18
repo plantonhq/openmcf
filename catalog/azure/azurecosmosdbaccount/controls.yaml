@@ -1,0 +1,100 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurecosmosdbaccount
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Azure Cosmos DB encrypts all databases, media attachments, and backups at rest with AES-256 using service-managed keys -- encryption is on by default in every region with no control to turn it off (Microsoft's encryption-at-rest documentation)."
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: key_vault_key_id
+      evidence:
+        type: spec_default
+        reference: "Unset means Microsoft's platform-managed keys; setting the versionless Key Vault key identifier adds a customer-managed encryption layer, unwrapped by the identity default_identity names. Fixed at creation -- the vault needs purge protection, and the unwrapping identity needs get/wrapKey/unwrapKey on the key."
+      notes: "No preset enables CMK. Composed deployments pair it with a USER_ASSIGNED default_identity so the key is unwrappable before the account exists."
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: "Every Cosmos DB endpoint speaks HTTPS/TLS only, and minimal_tls_version unset materializes Tls12 -- Azure's own floor since April 2023 and the only floor still provisionable (the spec permanently reserves the retired 1.0/1.1 values)."
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_network_access_enabled
+      evidence:
+        type: spec_default
+        reference: "Defaults to true -- the account answers on its public endpoint, gated by authentication. Setting it false removes public reachability entirely; data-plane access then rides private endpoints (AzurePrivateEndpoint components)."
+      notes: "The 03-serverless preset sets it false alongside disabled local authentication -- the locked-down posture."
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: ip_range_filter
+      evidence:
+        type: spec_default
+        reference: "Empty means no IP filtering on the public endpoint. Declaring CIDR ranges restricts callers to the listed addresses, and is_virtual_network_filter_enabled with virtual_network_rules restricts access to declared subnets (each needing the Microsoft.AzureCosmosDB service endpoint); the two filters apply alongside each other."
+      notes: "No preset declares network rules; the 03-serverless preset skips filtering by removing the public endpoint outright. network_acl_bypass_for_azure_services and network_acl_bypass_ids punch deliberate holes for trusted Azure services -- worth reviewing wherever rules are in force."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: "A database endpoint speaking the Cosmos DB wire protocols offers no WAF attachment point -- request filtering belongs to the HTTP tiers (Front Door, Application Gateway) in front of the applications that call the account, not to the database itself."
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Azure RBAC governs the management plane on every account, and Cosmos DB's own data-plane RBAC (role definitions and assignments, Entra-authenticated) is always available -- first-class in this catalog as AzureCosmosdbSqlRoleDefinition and AzureCosmosdbSqlRoleAssignment."
+      notes: "Account keys are the coexisting non-RBAC path until local_authentication_enabled is set false (see no-legacy-auth). access_key_metadata_writes_enabled: false additionally stops keys from creating or altering databases, containers, and throughput through the data plane."
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Workloads holding managed identities authenticate to the account with short-lived Entra tokens through Cosmos DB's data-plane RBAC -- the identity path is always available on the SQL API; the identity block adds the account's OWN managed identity for reaching into Key Vault (CMK)."
+      notes: "MONGO_DB accounts need the ENABLE_MONGO_ROLE_BASED_ACCESS_CONTROL capability for Entra data-plane auth -- without it, Mongo clients authenticate with keys. local_authentication_enabled: false makes the identity path the only path."
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: local_authentication_enabled
+      evidence:
+        type: spec_default
+        reference: "Defaults to true -- account keys and connection strings (static shared secrets) authenticate the data plane. Setting it false disables key-based authentication entirely, forcing every caller through Entra ID; the keys in the stack outputs stop authenticating."
+      notes: "The 03-serverless preset disables it (with access_key_metadata_writes_enabled: false) -- the fully Entra-governed posture. Disabling breaks key-dependent tooling, which is why it stays a choice."
+    - control_id: audit-logging
+      status: not_applicable
+      notes: "Data-plane request auditing (DataPlaneRequests, query, and control-plane log categories) requires an Azure Monitor diagnostic setting routing the account's resource logs -- a separate resource, not a field of this spec. Administrative changes always land in the Azure Activity Log as subscription-level posture."
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Azure Monitor collects Cosmos DB platform metrics -- throughput, storage, availability, latency, consistency, and system metrics -- by default with no configuration, at one-minute granularity (Microsoft's Cosmos DB monitoring documentation)."
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every account is backed up automatically: Azure activates periodic backup (every 4 hours, two copies retained) on all accounts by default, and no configuration can disable backups. The spec's backup block tunes the mode -- CONTINUOUS upgrades in place to point-in-time restore, and create_mode RESTORE provisions a new account from a continuous-backup restore point."
+      notes: "Periodic restores are a Microsoft support request; continuous backup makes restore self-service. Switching CONTINUOUS back to PERIODIC recreates the account."
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: backup.retention_in_hours
+      evidence:
+        type: spec_default
+        reference: "Periodic retention is 8-720 hours (Azure defaults to 8, two copies always free); on CONTINUOUS the retention window is backup.tier -- a 7-day or 30-day rolling restore window, defaulting to 30 days when unset."
+      notes: "The 01-sql-api preset pins CONTINUOUS with the 30-day tier."
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: geo_locations.zone_redundant
+      evidence:
+        type: spec_default
+        reference: "Defaults to false per region; setting it true replicates that region's data across availability zones. Cross-REGION resilience is separate: multiple geo_locations entries plus automatic_failover_enabled promote the next region by failover priority when the write region fails."
+      notes: "No preset enables zone redundancy; the 01-sql-api preset carries two regions with automatic failover -- region-level HA without zone redundancy."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither the Cosmos DB resource API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. Continuous backup is the recovery net -- a deleted account's data can be restored into a new account within the retention window via create_mode RESTORE."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Fully managed platform service -- Microsoft operates, patches, and upgrades the Cosmos DB fleet with no customer-visible patch surface; the closest customer dial is the MongoDB wire-protocol version, a compatibility choice rather than a patch level."

@@ -25,4 +25,4 @@ Creates a Traffic Manager profile -- Azure's DNS-based traffic director. The pro
 
 ## Required Permissions
 
-The deploying principal needs `Microsoft.Network/trafficManagerProfiles/*` (Network Contributor on the resource group covers it).
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege actions the deploying principal needs.

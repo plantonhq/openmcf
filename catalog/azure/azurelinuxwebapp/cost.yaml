@@ -1,0 +1,57 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. This component deliberately ships no
+# estimate model: the web app's compute rides the REFERENCED App Service
+# plan (service_plan_id), whose SKU -- invisible in this manifest -- sets
+# the instance-hour rate, and the plan bills those instances the same
+# whether one app or ten run on them. The app object itself adds no meter
+# of its own, so a dollar figure here would be a guess wearing a dollar
+# sign. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurelinuxwebapp
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Azure App Service
+      sku_meter: plan instance hours
+      pricing_unit: hours
+      description: "Every instance of the referenced AzureServicePlan bills hourly at its SKU's rate from the moment the plan exists -- and Microsoft's pricing FAQ is explicit that those instances are charged the same regardless of how many apps run on them, and that the rates apply even to apps in a STOPPED state. The plan is the billing anchor; this app is a tenant on capacity already being paid for."
+  cost_drivers:
+    - field_path: service_plan_id
+      sku_meter: plan instance hours
+      pricing_unit: hours
+      impact: "The entire compute bill hangs on the referenced plan's SKU, which this manifest never sees: Free F1 is unbilled shared capacity with hard limits, Basic through Premium v4 bill dedicated instances hourly, and Isolated tiers add App Service Environment charges. Unlike the function app, this reference is not ForceNew -- moving the app to a cheaper or dearer plan in the same region and resource group is an in-place cost decision."
+    - field_path: site_config.worker_count
+      sku_meter: plan instance hours
+      pricing_unit: hours
+      impact: "Carries no meter of its own -- the plan bills ITS instance count regardless -- but sizing this app's workers is what forces the plan's capacity decisions: an app asking for 3 workers needs a plan scaled to at least 3 billed instances. The enterprise preset's 3 workers are 3 plan instances of standing spend."
+    - field_path: enabled
+      sku_meter: plan instance hours
+      pricing_unit: hours
+      impact: "false stops the app from serving traffic but changes NOTHING on the bill -- Microsoft's pricing FAQ states rates apply to apps in a stopped state, because the plan's instances keep running. Shrinking spend means scaling or deleting the PLAN, not stopping the app."
+    - field_path: logs
+      sku_meter: storage transactions
+      pricing_unit: transactions
+      impact: "File-system logging is bounded free-of-meter disk on the instance (quota and retention dials); routing application or HTTP logs to blob storage instead writes continuously to the SAS-referenced container -- stored GB and transactions billed on that storage account's own component, scaling with traffic."
+    - field_path: backup
+      sku_meter: storage capacity
+      pricing_unit: GB-months
+      impact: "Scheduled backups write snapshots to the SAS-referenced storage container -- stored GB billed on that storage account. The feature also requires a Standard-or-above plan, so enabling it can force a plan tier with a higher hourly rate."
+    - field_path: storage_mounts
+      sku_meter: storage capacity
+      pricing_unit: GB-months
+      impact: "Each mounted file share or blob container bills its stored GB and transactions on its own storage account -- the mount adds reachability, not a meter."
+    - field_path: application_insights_connection_string
+      sku_meter: telemetry data ingestion
+      pricing_unit: GB
+      impact: "Wiring APM sends requests, dependencies, exceptions, and traces to the referenced Application Insights resource -- ingestion bills per GB on that component, scaling with traffic and sampling, never here."
+  estimate_exclusions:
+    - "the instance-hour rate is set by the referenced AzureServicePlan's SKU and OS -- this manifest holds the tenant, the plan holds the meter, which is why no estimate document exists for this component"
+    - "custom domains and their certificates carry real conditional charges on Microsoft's App Service price list (App Service Domains at 11.99 per year, Standard SSL certificates at 69.99 per year, IP-based SSL bindings at 39 per month beyond the plan's included one -- SNI SSL is free), but NO field of this spec can incur them: hostname bindings and certificates are separate resources outside this kind"
+    - "blob-routed logs, scheduled backups, and storage mounts bill on their own storage accounts"
+    - "Application Insights ingestion and retention bill on the referenced AzureApplicationInsights component"
+    - "outbound bandwidth follows traffic at Azure's data-transfer rates"
+    - "Red Hat JBoss EAP application stacks carry Microsoft's per-vCPU-hour JBoss surcharge on the plan's instances"
+  notes: "This is the cleanest rate-delegation in the App Service family: the app object was verified against Microsoft's App Service on Linux pricing page (retrieved 2026-08-18) to add no meter at all -- compute is the plan's instance-hours, charged identically however many apps share them and even while an app is stopped. The conditional charges a web app CAN attract (custom-domain purchases, paid SSL certificates, IP-SSL bindings) were checked one by one against this spec and none has a field here -- they belong to the separate hostname-binding and certificate resources, so this manifest cannot create them. What this manifest does move is composition-side spend: the plan tier its features demand (backup needs Standard+, VNet integration excludes Free/Shared), the worker count the plan must be scaled to, and the storage and telemetry meters its logging, backup, and APM wiring point at -- each billed on the referenced component that owns it."

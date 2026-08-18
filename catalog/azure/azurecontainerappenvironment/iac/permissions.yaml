@@ -1,0 +1,36 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurecontainerappenvironment
+spec:
+  azure:
+    groups:
+      - purpose: ManageEnvironment
+        actions:
+          - Microsoft.App/managedEnvironments/read
+          - Microsoft.App/managedEnvironments/write
+          - Microsoft.App/managedEnvironments/delete
+        provenance: derived
+        notes: "Covers azurerm_container_app_environment / containerapp.NewEnvironment -- create with logging, VNet, workload-profile, and identity payload, refresh, in-place updates (profiles within a non-empty set, mTLS, tags), and destroy. The custom-domain association (azurerm_container_app_environment_custom_domain) patches the environment's own CustomDomainConfiguration, so it rides these same actions. The Microsoft.App namespace is absent from the committed action inventory snapshot; operation names verified against Microsoft's provider-operations documentation (learn.microsoft.com/azure/role-based-access-control/permissions/compute, microsoft.app section, retrieved 2026-08-18)."
+      - purpose: ReadLogAnalyticsSharedKeys
+        actions:
+          - Microsoft.OperationalInsights/workspaces/read
+          - Microsoft.OperationalInsights/workspaces/sharedKeys/action
+        provenance: derived
+        notes: "When logs land in Log Analytics, the environment's appLogsConfiguration needs the workspace's customer id AND primary shared key -- azurerm's Create and Update paths call the workspace Get plus SharedKeysGetSharedKeys on the REFERENCED workspace (container_app_environment_resource.go getSharedKeyForWorkspace, verified in provider source); pulumi-azure is bridged from azurerm and shares the behavior. The provider's Read path additionally LISTS the subscription's workspaces to map the stored customer id back to a workspace ARM id, so workspaces/read is exercised at subscription scope on refresh. Microsoft.OperationalInsights is absent from the committed inventory snapshot; both action names verified against Microsoft's built-in-roles reference (Log Analytics Contributor carries sharedKeys/action, retrieved 2026-08-18)."
+      - purpose: JoinInfrastructureSubnet
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/read
+          - Microsoft.Network/virtualNetworks/subnets/join/action
+        provenance: derived
+        notes: "Required only for VNet-injected environments (infrastructure_subnet_id set) -- the modules never call the network API (the resolved subnet id rides the environment payload), but ARM authorizes occupying the REFERENCED subnet with subnets/join/action on the subnet's scope at create time, service-side. Both actions present in the committed inventory (Microsoft.Network)."
+      - purpose: AssignUserManagedIdentities
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: "Required only when identity carries USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED identities -- ARM checks assign/action on every identity referenced in the environment payload, service-side; the modules only pass the resolved identity IDs. Present in the committed inventory (Microsoft.ManagedIdentity)."

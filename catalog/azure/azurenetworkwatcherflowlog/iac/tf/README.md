@@ -36,4 +36,4 @@ The module is executed by the Planton platform with a tfvars file converted from
 
 ## Required Permissions
 
-The deploying principal needs `Microsoft.Network/networkWatchers/configureFlowLog/action` and read on the target, plus `Microsoft.Storage/storageAccounts/*` on the flow-log account (Network Contributor + Storage Account Contributor cover it; Traffic Analytics additionally needs Log Analytics Contributor on the workspace).
+The deploying principal's least-privilege action set lives in the component's permissions manifest, `../permissions.yaml`.

@@ -1,0 +1,24 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureeventgridtopic
+spec:
+  azure:
+    groups:
+      - purpose: ManageTopic
+        actions:
+          - Microsoft.EventGrid/topics/read
+          - Microsoft.EventGrid/topics/write
+          - Microsoft.EventGrid/topics/delete
+        provenance: derived
+        notes: "Covers azurerm_eventgrid_topic / eventgrid.NewTopic -- create (schema, input mappings, network posture, identity, tags ride the topic payload), refresh, in-place updates of the mutable fields (network access, local auth, IP rules, identity, tags), and destroy. Typically held via EventGrid Contributor, Contributor, or Owner on the resource group. Migrated from the module READMEs, which stated the requirement as Microsoft.EventGrid/topics/* -- the three CRUD verbs are the actual footprint."
+      - purpose: ReadAccessKeys
+        actions:
+          - Microsoft.EventGrid/topics/listKeys/action
+        provenance: derived
+        notes: "Both modules export primary_access_key / secondary_access_key as stack outputs, so every refresh calls the topic's listKeys API -- a separate action from topics/read by Azure's design, and the reason read-only observers cannot see keys. Migrated from the module READMEs."

@@ -33,4 +33,4 @@ The module is executed by the Planton platform with a tfvars file converted from
 
 ## Required Permissions
 
-The deploying principal needs `Microsoft.CognitiveServices/accounts/deployments/*` on the account's resource group (Cognitive Services Contributor).
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege action manifest the deploying principal needs.

@@ -1,0 +1,32 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. This component deliberately ships a
+# zero-committed estimate: the account object carries no meter of its own
+# -- Azure's retail price family for AI services (published under "Foundry
+# Tools", formerly Cognitive Services) has NO account- or endpoint-hour
+# unit anywhere; every meter is usage-shaped -- so an idle account bills
+# nothing, and everything it does cost follows the calls.
+# Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurecognitiveaccount
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: kind
+      sku_meter: service usage meters
+      impact: Decides WHICH price family the account's traffic bills -- per-1K transactions for Vision, Language and Personalizer, per-token for OpenAI model calls, per-audio-hour for Speech, per-page for Document Intelligence. The account is the billing container; the kind picks the menu its calls are priced from.
+    - field_path: sku_name
+      sku_meter: service usage meters
+      impact: S0 is the standard pay-as-you-go tier -- every call bills the kind's usage meters with no floor. F0, where a kind offers it, caps usage inside a monthly free allowance instead of billing. Nothing in this vocabulary buys committed capacity; commitment tiers are separate commitment-plan purchases outside this spec.
+    - field_path: rai_policies
+      sku_meter: service usage meters
+      impact: Free posture -- responsible-AI policies and blocklists are configuration children with no meter of their own; the content filtering they configure runs inside the priced model calls. They move WHAT gets through, not what a call costs.
+  free_tier: Some kinds offer an F0 SKU with a monthly free allowance (quota-limited, one F0 account per kind per subscription in most services); every preset here pins S0, the paid pay-as-you-go tier.
+  estimate_exclusions:
+    - every API call bills the kind's own usage meters -- per-1K-transaction, per-token, per-audio-hour, per-page rates by service and feature -- following traffic no manifest can predict; with zero calls the account bills exactly zero
+    - model deployments hosted on OpenAI and AIServices accounts bill through the AzureCognitiveDeployment component, including any provisioned-throughput (PTU) SKUs deployed there
+    - commitment tiers (the monthly commitment-plan meters some kinds publish, e.g. Speech and Language) are purchased as commitment plans -- an ARM surface this spec does not model, so no manifest of this kind can create committed spend
+    - a public-access-disabled account is reached through private endpoints, which bill hourly on their own component
+  notes: "The container is free; the calls are the product. Azure's retail price family for these services publishes NO meter keyed to an account's existence -- verified against the Retail Prices API (prices.azure.com, serviceName 'Foundry Tools', eastus, retrieved 2026-08-18): 560 meters, all usage-shaped (per-1K transactions, per-1M characters, per-hour audio and training, monthly commitment-tier units), zero account- or endpoint-hour units. Representative S0 rate: Personalizer S0 Transactions at 1.0 per 1K (same retrieval). The commitment-tier meters that DO exist (97 monthly units, e.g. Commitment Tier Speech to Text Azure 2K at 1600.0 per month) attach through commitment plans, a separate ARM surface this spec deliberately omits -- so the account a manifest of this kind creates is pay-as-you-go by construction, and the honest committed figure is zero. One lifecycle note: deletion is a soft delete, and the ghost holds the NAME, not a meter -- a soft-deleted account bills nothing while it waits to be purged."

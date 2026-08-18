@@ -1,0 +1,43 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurecontainerappenvironment
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Azure Container Apps
+      sku_meter: dedicated vCPU hours
+      pricing_unit: vCPU-hours
+      description: "Each running instance of a Dedicated workload profile bills every provisioned vCPU by the hour (0.057077 USD/vCPU-hour in eastus at list) whether apps are busy or not -- a profile with minimum_count 1 or more commits that many instances' vCPUs around the clock. A Consumption-only environment (no workload_profiles) has no baseline: the environment object itself carries no meter."
+    - service_name: Azure Container Apps
+      sku_meter: dedicated memory GiB hours
+      pricing_unit: GiB-hours
+      description: "The memory half of each Dedicated profile instance: every provisioned GiB bills hourly (0.004978 USD/GiB-hour in eastus at list). A D4 instance is 4 vCPU and 16 GiB per node (Microsoft's workload-profiles documentation)."
+    - service_name: Azure Container Apps
+      sku_meter: Dedicated plan management
+      pricing_unit: hours
+      description: "An environment using the Dedicated plan bills a flat hourly management base price (0.1 USD/hour in eastus at list) on top of the instances -- Microsoft's Container Apps pricing page: billing for the Dedicated plan is the vCPU-seconds and GiB-seconds allocated across instances plus a base price for Dedicated plan management."
+  cost_drivers:
+    - field_path: workload_profiles
+      sku_meter: dedicated vCPU hours
+      pricing_unit: vCPU-hours
+      impact: "The commitment dial: each entry with a Dedicated type (D/E/NC families) and minimum_count of 1 or more keeps that many pre-warmed instances billing their full vCPU and memory every hour, and maximum_count caps the scale-out spend ceiling. An empty list is the serverless Consumption plan -- the environment costs nothing to hold and apps pay per use on their own components."
+    - field_path: log_analytics_workspace_id
+      sku_meter: log data ingestion
+      pricing_unit: GB
+      impact: "Wiring a workspace makes every app's console and system logs billable ingestion on the AzureLogAnalyticsWorkspace component (per-GB at the workspace's tier) -- the environment adds no meter of its own for it, but this field decides whether log volume becomes spend at all (unset without a destination is streaming-only, never stored)."
+    - field_path: zone_redundancy_enabled
+      sku_meter: dedicated vCPU hours
+      pricing_unit: vCPU-hours
+      impact: "Zone redundancy itself carries no meter, but running it meaningfully means capacity in more than one zone -- for Dedicated profiles that is a reason minimum_count rises above 1, multiplying the committed instance-hours."
+  free_tier: "None for the environment or the Dedicated plan. The Consumption plan's monthly per-subscription free grant (180,000 vCPU-seconds, 360,000 GiB-seconds, 2 million requests) applies to the apps' meters on their own components, not to anything billed here."
+  estimate_exclusions:
+    - "apps and jobs on the Consumption plan bill their own per-second vCPU/memory and request meters on the AzureContainerApp / AzureContainerAppJob components -- the environment carries none of that"
+    - "Dedicated profile instances between minimum_count and maximum_count scale with demand and bill the same per-vCPU-hour and per-GiB-hour rates entirely on load"
+    - "log ingestion and retention bill per GB on the linked AzureLogAnalyticsWorkspace component and follow what the workloads write"
+    - "the Dedicated plan management meter also applies per feature to a private endpoint and to planned maintenance when those are enabled -- Microsoft's pricing page states the charges are additive per feature"
+    - "serverless GPU (Consumption-GPU profiles) bills per-second GPU meters on the apps that use it; dedicated GPU profiles (NC*-A100) bill their own instance rates not priced here"
+  notes: "The environment is a boundary object with a split personality: Consumption-only it is free to hold (the money rides the apps), while any Dedicated workload profile turns it into a standing charge -- instances bill their full provisioned vCPU and memory hourly from the moment they run, plus the flat plan-management meter. More apps on one profile do not bill more until demand grows the instance count; that sharing is the Dedicated plan's economy. All rates read from Microsoft's Container Apps pricing page and the Retail Prices API (eastus) on 2026-08-18; D4 sizing (4 vCPU, 16 GiB per node) from Microsoft's workload-profiles documentation, same date."

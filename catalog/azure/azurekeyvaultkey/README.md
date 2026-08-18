@@ -105,9 +105,8 @@ spec:
   at creation; changing any of them replaces the key and every consumer
   re-encrypts through the new key on its next unwrap
 - **The deploying credential needs data-plane key permissions on the
-  vault** ("Key Vault Administrator" or "Key Vault Crypto Officer" RBAC
-  role, or key permissions in a legacy access policy) -- subscription
-  Owner alone is not enough
+  vault** -- subscription Owner alone is not enough; the full deployer
+  grant set is cataloged in [`iac/permissions.yaml`](iac/permissions.yaml)
 - A deleted key's name stays reserved for the vault's soft-delete
   retention window unless purged (the IaC engines purge on destroy by
   default)

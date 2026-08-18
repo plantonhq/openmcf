@@ -1,0 +1,32 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureexpressroutecircuit
+spec:
+  azure:
+    groups:
+      - purpose: ManageCircuit
+        actions:
+          - Microsoft.Network/expressRouteCircuits/read
+          - Microsoft.Network/expressRouteCircuits/write
+          - Microsoft.Network/expressRouteCircuits/delete
+        provenance: derived
+        notes: Covers azurerm_express_route_circuit / network.NewExpressRouteCircuit -- create in either provisioning mode, refresh (the service key is read back as a sensitive output), in-place updates (bandwidth increases, SKU family to unlimited, tags), and destroy. Typically held via Network Contributor, Contributor, or Owner on the resource group.
+      - purpose: ManageAuthorizations
+        actions:
+          - Microsoft.Network/expressRouteCircuits/authorizations/read
+          - Microsoft.Network/expressRouteCircuits/authorizations/write
+          - Microsoft.Network/expressRouteCircuits/authorizations/delete
+        provenance: derived
+        notes: One ARM child resource per authorizations entry (keyed by name) -- azurerm_express_route_circuit_authorization and its Pulumi twin create each named authorization after the circuit exists (an ARM sequencing quirk the modules honor), read back the generated keys as sensitive outputs, and revoke by delete. Only needed when the manifest issues authorizations.
+      - purpose: JoinExpressRoutePort
+        actions:
+          - Microsoft.Network/expressRoutePorts/read
+          - Microsoft.Network/expressRoutePorts/join/action
+        provenance: derived
+        notes: Only in ExpressRoute Direct mode -- the modules never call the ports API (the resolved express_route_port_id rides the circuit payload), but ARM authorizes carving the circuit from the REFERENCED port with join/action on the PORT's scope at create time (service-side). Ports in other subscriptions are instead consumed by redeeming an authorization_key, which needs no grant here.

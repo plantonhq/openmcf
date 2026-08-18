@@ -37,4 +37,4 @@ The module is executed by the Planton platform with a tfvars file converted from
 
 ## Required Permissions
 
-The deploying principal needs the "Key Vault Administrator" or "Key Vault Secrets Officer" RBAC role on the vault (or secret permissions in a legacy access policy), plus ARM read on the vault.
+The deployer permissions this module needs are cataloged in [`../permissions.yaml`](../permissions.yaml).

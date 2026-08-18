@@ -1,0 +1,81 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azurecontainerapp
+spec:
+  presets:
+    - preset: 01-web-service
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Container Apps
+          sku_meter: idle memory GiB seconds
+          pricing_unit: GiB-seconds
+          pricing_quantity: "2628000"
+          quantity_basis: "the memory half of the same floor: 1 replica x 1 GiB x 2,628,000 seconds a month"
+          list_unit_price: "0.000003"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Container Apps' and armRegionName eq 'eastus' and meterName eq 'Standard Memory Idle Usage' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "7.8840"
+        - service_name: Azure Container Apps
+          sku_meter: idle vCPU seconds
+          pricing_unit: vCPU-seconds
+          pricing_quantity: "1314000"
+          quantity_basis: minReplicas 1 keeps one replica always running; its single container allocates 0.5 vCPU, so the committed idle floor is 1 x 0.5 x 2,628,000 seconds a month (730 hours x 3,600)
+          list_unit_price: "0.000003"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Container Apps' and armRegionName eq 'eastus' and meterName eq 'Standard vCPU Idle Usage' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "3.9420"
+      total_list_cost: "11.8260"
+      exclusions:
+        - active usage above the idle floor -- a replica bills vCPU at the active rate (0.000024 USD/vCPU-second in eastus, 8x idle) while starting, processing requests, or above the 0.01-core / 1,000-bytes-per-second activity thresholds, and scale-out replicas between minReplicas 1 and maxReplicas 10 bill entirely on demand
+        - HTTP requests through the external ingress bill 0.40 USD per million in eastus past the subscription's 2-million monthly free grant
+        - the environment's own meters (Dedicated plan management, zone-redundancy prerequisites) bill on the AzureContainerAppEnvironment component
+      notes: The floor prices idle-mode seconds -- Microsoft's Container Apps pricing page bills always-running minimum replicas at the reduced idle rate when not processing requests. The subscription's monthly free grant (180,000 vCPU-seconds, 360,000 GiB-seconds, 2 million requests) is not netted out; estimates price list rates.
+    - preset: 02-background-worker
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - replicas woken by the azure-servicebus queue scale rule bill active vCPU-seconds (0.000024 USD in eastus) and memory GiB-seconds (0.000003 USD) from wake to cooldown, following queue traffic up to maxReplicas 5
+        - no requests meter applies while ingress stays unconfigured; the Service Bus namespace being drained bills on its own component
+        - the environment's own meters bill on the AzureContainerAppEnvironment component
+      notes: "Zero-committed is real but zero is not free-forever: minReplicas 0 scales the worker to nothing between queue events (Microsoft's pricing page: no usage charges apply when an application is scaled to zero), and every processed message wakes replicas that bill active-rate seconds until the queue drains and the 300-second cooldown returns them to zero."
+    - preset: 03-enterprise-api
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Container Apps
+          sku_meter: idle memory GiB seconds
+          pricing_unit: GiB-seconds
+          pricing_quantity: "10512000"
+          quantity_basis: "the memory half: 2 replicas x 2 GiB x 2,628,000 seconds a month"
+          list_unit_price: "0.000003"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Container Apps' and armRegionName eq 'eastus' and meterName eq 'Standard Memory Idle Usage' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "31.5360"
+        - service_name: Azure Container Apps
+          sku_meter: idle vCPU seconds
+          pricing_unit: vCPU-seconds
+          pricing_quantity: "5256000"
+          quantity_basis: minReplicas 2 keeps two replicas always running; each allocates 1.0 vCPU, so the committed idle floor is 2 x 1.0 x 2,628,000 seconds a month
+          list_unit_price: "0.000003"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Container Apps' and armRegionName eq 'eastus' and meterName eq 'Standard vCPU Idle Usage' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "15.7680"
+      total_list_cost: "47.3040"
+      exclusions:
+        - active usage above the idle floor -- replicas bill vCPU at the active rate (0.000024 USD/vCPU-second in eastus, 8x idle) while starting or serving traffic, and scale-out between minReplicas 2 and maxReplicas 20 bills entirely on demand
+        - HTTP requests through the external ingress bill 0.40 USD per million in eastus past the subscription's 2-million monthly free grant (the office-CIDR allowlist filters who reaches the app, not what a served request costs)
+        - the referenced Key Vault, container registry, and user-assigned identity bill (or not) on their own components; the environment's own meters bill on the AzureContainerAppEnvironment component
+      notes: The floor prices idle-mode seconds for the two always-on replicas; the subscription's monthly free grant (180,000 vCPU-seconds, 360,000 GiB-seconds, 2 million requests) is not netted out.

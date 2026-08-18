@@ -1,0 +1,75 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuretrafficmanagerprofile
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: "The profile is DNS routing configuration -- it stores no customer data. Its state (routing method, DNS identity, probe settings) is ARM metadata on Microsoft's control plane, not a data store this manifest could encrypt."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "With nothing stored, there is no store to key (see enc-at-rest)."
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: monitor_config.protocol
+      evidence:
+        type: spec_default
+        reference: "The only connections this component originates are its health probes, and the protocol choice decides their transport: HTTPS probes ride TLS, HTTP probes are plaintext, TCP probes are a bare handshake. Client traffic never flows through Traffic Manager -- clients receive an address in a DNS answer and connect to the destination directly, so the data path's encryption is decided on the destination's component."
+      notes: "Both presets probe HTTPS. The DNS answers themselves travel classic unencrypted DNS, as all of trafficmanager.net does."
+    - control_id: no-public-access
+      status: not_applicable
+      notes: "Public reachability IS the product: the profile exists to answer DNS queries from any resolver on the internet at {relative_name}.trafficmanager.net. What it exposes is only addresses -- never the workloads' data planes, whose exposure is governed on the destination components. enabled false parks the name (it stops resolving to endpoints) without deleting the configuration."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: "DNS answers go to whoever asks -- there is no source filtering on the trafficmanager.net name servers. Geographic and Subnet routing scope which ANSWER a caller receives by geography or source IP, but that is steering, not enforcement: a client addressing a destination directly bypasses Traffic Manager entirely. Real ingress restriction lives on the destinations' own network controls."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: "A DNS answer offers no WAF attachment point -- request filtering is composed on the request-serving tiers the profile steers toward (Application Gateway, Front Door), never on the director."
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every management operation on the profile -- re-steering the routing method, changing probe settings, parking it, deleting it -- is an ARM write authorized by Azure RBAC unconditionally. The profile's data plane is public DNS, unauthenticated by design for every resolver on the internet."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: "The profile runs no workloads and calls no APIs on the customer's behalf -- there is no identity to attach. Its probes originate from Microsoft's own monitoring infrastructure."
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "The only authenticated surface is the ARM management plane, authenticated by Entra ID -- there is no local-credential or legacy-protocol path to disable. The DNS protocol it serves is unauthenticated by design."
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every management-plane action on the profile lands in the Azure Activity Log unconditionally -- who changed the routing method, who re-pointed the probes, who parked or deleted it."
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Azure Monitor publishes the profile's platform metrics without configuration -- queries answered by returned endpoint and per-endpoint probe status (Microsoft's operations inventory defines the trafficManagerProfiles metricDefinitions surface). This is also where each endpoint's health is observed: endpoints emit no metrics of their own."
+      notes: "traffic_view_enabled adds per-region latency and query-volume analytics on top, billed per million data points."
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "There is no data to back up -- the profile is declarative in this manifest and re-creatable by a fresh deploy. The one recreation caveat: dns_config.relative_name must still be available in the shared trafficmanager.net namespace, so deleting a profile releases a globally unique name others can claim."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: "No backups exist to retain (see backup-recovery)."
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Traffic Manager is a GLOBAL service -- the profile lives in no region (the provider pins the ARM location to global), and DNS answers are served from Microsoft's worldwide name-server fleet with no zone or region choice to configure or get wrong."
+      notes: "The profile is itself the HA instrument for what it fronts: probes evict unhealthy endpoints from answers, failing traffic over between regions."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither the Traffic Manager API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. enabled false is the safer operational move -- park the profile without releasing its globally unique DNS name. Deleting the profile deletes its endpoints with it."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Fully managed global service -- Microsoft operates and patches the name-server fleet and probing infrastructure behind the profile; no customer-visible patch surface exists."

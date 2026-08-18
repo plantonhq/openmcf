@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurecosmosdbaccount
+spec:
+  azure:
+    groups:
+      - purpose: ManageCosmosdbAccount
+        actions:
+          - Microsoft.DocumentDB/databaseAccounts/read
+          - Microsoft.DocumentDB/databaseAccounts/write
+          - Microsoft.DocumentDB/databaseAccounts/delete
+        provenance: derived
+        notes: "Covers azurerm_cosmosdb_account / cosmosdb.NewAccount -- both modules create exactly one resource: the account, with its regions, consistency, capabilities, network posture, identity, CMK, backup, and restore configuration all riding the account payload. Account creation and updates are long-running; both providers poll the account itself until provisioning settles, so read persists through creates, updates, and destroys. Typically held via DocumentDB Account Contributor, Contributor, or Owner on the resource group."
+      - purpose: ReadAccountCredentials
+        actions:
+          - Microsoft.DocumentDB/databaseAccounts/listKeys/action
+          - Microsoft.DocumentDB/databaseAccounts/listConnectionStrings/action
+        provenance: derived
+        notes: "Both modules export the account keys and ready-made connection strings as (sensitive) stack outputs -- the provider fetches them on every refresh. ListKeys returns all four keys (primary/secondary read-write AND read-only), and ListConnectionStrings returns the SQL and MongoDB connection-string families, so these two POST actions cover every credential output without the separate readonlykeys action. When the spec disables local authentication the fetched keys stop authenticating but the API calls still succeed."
+      - purpose: JoinSubnetsViaServiceEndpoint
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/read
+          - Microsoft.Network/virtualNetworks/subnets/joinViaServiceEndpoint/action
+        provenance: derived
+        notes: "The modules never call the network API -- resolved subnet IDs ride the account payload as virtual_network_rules -- but ARM authorizes the caller against joinViaServiceEndpoint/action on every configured subnet's scope, service-side. Microsoft documents that once service endpoints are configured, ANY account settings change revalidates this action for all configured VNets (the control plane sets the account's complete state), so the grant must persist for the account's lifetime, not just the create. Needed only when the spec declares virtual_network_rules; the CMK grants (get/wrapKey/unwrapKey on the Key Vault key) belong to the account's default identity, not the runner."

@@ -1,0 +1,29 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremachinelearningcomputecluster
+spec:
+  azure:
+    groups:
+      - purpose: ManageComputeCluster
+        actions:
+          - Microsoft.MachineLearningServices/workspaces/computes/read
+          - Microsoft.MachineLearningServices/workspaces/computes/write
+          - Microsoft.MachineLearningServices/workspaces/computes/delete
+        provenance: derived
+        notes: Covers azurerm_machine_learning_compute_cluster (and the Pulumi module's machinelearning.ComputeCluster) -- create, read/refresh, the in-place updates the provider allows (identity, scale_settings, tags) travel as compute writes, and everything else is delete-and-recreate under these same actions. Unlike the compute instance, the cluster carries its own location argument, so the modules never resolve the parent workspace -- no workspaces/read is needed. Provisioning also consumes regional dedicated (or low-priority) vCPU quota for the chosen VM family, a subscription capacity concern rather than an RBAC action. Typically held via Contributor on the workspace's resource group or an AzureML custom role carrying these verbs.
+      - purpose: AttachUserAssignedIdentities
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: Required only when identity.identity_ids attaches user-assigned identities. A SERVICE-side need -- the modules only carry the identity IDs in the compute payload, and Azure checks assign on each referenced identity's own scope when the compute write attaches it.
+      - purpose: JoinSubnet
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/join/action
+        provenance: derived
+        notes: Required only when subnet_id places the cluster's nodes in a subnet. A SERVICE-side need -- the modules only carry the subnet ID (subnet_resource_id), and Azure checks join on the subnet's own scope when the service wires the nodes into it.

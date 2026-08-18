@@ -1,0 +1,45 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. All three presets are genuinely zero-committed: Azure's
+# Data Lake Storage price list has no meter for the filesystem object
+# itself -- capacity (plus hierarchical-namespace metadata) and size-scaled
+# operations bill on the parent storage account as data lands and jobs run
+# -- so every preset estimates to a commitment-absence zero, stated in
+# exclusions, never padded into fabricated dollars.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: azurestoragedatalakegen2filesystem
+spec:
+  presets:
+    - preset: 01-data-lake-zone
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - "data lake capacity bills per GB-month on the parent account at its tier-and-redundancy rate, plus billed metadata capacity for the hierarchical folder structure -- volumes no manifest can know"
+        - "write and read operations bill per 10,000 in 4 MB increments (size-scaled); iterative reads (listings) bill per 10,000; iterative writes (renames) bill per 100; all-other operations bill per 10,000 with delete free"
+        - "cool, cold, and archive data adds per-GB retrieval and early-deletion penalties; query acceleration bills per GB scanned and returned; geo-replication transfer and internet egress bill on the account"
+        - "the root-path POSIX ACL entries are free posture -- Azure has no meter for ACLs"
+      notes: "Zero committed cost -- a declared, empty zone bills exactly nothing; the medallion posture (owner rwx, group r-x, other ---) is free access control over meters that only move when data and jobs arrive."
+    - preset: 02-team-scoped-workspace
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - "the owning Entra group and its rwx ACL entries are free -- team membership changes bill nothing; the workspace's data bills data lake capacity per GB-month (plus hierarchical-namespace metadata) on the account"
+        - "team workloads bill the size-scaled write and read operation meters per 10,000 (4 MB increments), listings as iterative reads per 10,000, renames as iterative writes per 100"
+        - "retrieval, query acceleration, geo-replication transfer, and egress meters apply on the account as on every preset"
+      notes: "Zero committed cost -- handing a team a workspace is a free act; what the team stores and computes drives every future dollar, on the account's meters."
+    - preset: 03-regulated-zone-cmk
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - "the referenced AzureStorageEncryptionScope bills a flat monthly per-scope fee (with a 30-day minimum per enablement) on ITS component from the moment it is enabled -- binding it here adds nothing to the filesystem's bill"
+        - "a Key Vault-keyed scope adds per-transaction wrap/unwrap operations on the key's vault, billed to the vault"
+        - "data lake capacity per GB-month (plus metadata), size-scaled read/write operations, iterative operations, retrieval, geo-replication transfer, and egress bill on the account exactly as in the other presets"
+      notes: "Zero committed cost FOR THIS COMPONENT -- the regulated zone's committed spend (the scope's monthly fee) rides the referenced encryption-scope component; the filesystem remains a free boundary binding key custody to one zone."

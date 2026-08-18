@@ -1,0 +1,84 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureLogAnalyticsWorkspace manifest's spec values into metered
+# quantities and price choices -- the sku is the committed-spend flip.
+# PER_GB_2018 (and unspecified, which deploys it) emits no lines: the
+# workspace object is free and every charge follows ingested volume,
+# excluded honestly. CAPACITY_RESERVATION bills its tier's flat daily
+# fee on existence; only the 100 GB/day tier's rate is pinned (the one
+# committed preset uses it), so other tiers refuse rather than guess,
+# and the legacy PER_NODE / STANDALONE models refuse outright. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/azureloganalyticsworkspace.yaml; a server-side
+# estimator evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azureloganalyticsworkspace
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  refusals:
+    - when:
+        - field_path: sku
+          op: equals
+          value: CAPACITY_RESERVATION
+        - field_path: reservation_capacity_in_gb_per_day
+          op: not_equals
+          value: "100"
+      reason: only the 100 GB/day commitment tier's daily rate is pinned in the price book -- Azure sells tiers from 200 to 50000 GB/day whose rates are not pinned (no committed preset deploys them), and stating a committed figure from an unpinned rate would misstate the bill
+    - when:
+        - field_path: sku
+          op: equals
+          value: PER_NODE
+      reason: the legacy per-node (OMS) model bills per monitored node with a per-node data allowance -- its rate is not pinned in the price book and the billed node count is invisible in this manifest; legacy tiers exist only for pre-2018 estates
+    - when:
+        - field_path: sku
+          op: equals
+          value: STANDALONE
+      reason: the legacy standalone per-GB rate is not pinned in the price book (no committed preset deploys it) -- a figure from an unpinned rate would misstate the bill
+  lines:
+    - sku_meter: commitment tier capacity reservation
+      applies_when:
+        - field_path: sku
+          op: equals
+          value: CAPACITY_RESERVATION
+        - field_path: reservation_capacity_in_gb_per_day
+          op: equals
+          value: "100"
+      quantity:
+        - constant: "30.416667"
+      price_slug: monitor-100gb-commitment-tier-day-eastus
+      basis: the commitment tier bills its flat fee once per day regardless of ingested volume -- 730 hours / 24 = 30.416667 days a month at the 100 GB/day tier's daily rate, accruing from the moment the tier is selected
+  exclusions:
+    - applies_when:
+        - field_path: sku
+          op: equals
+          value: CAPACITY_RESERVATION
+      text: ingestion above the reserved 100 GB/day bills fractional units of the SAME tier meter at the tier's effective per-GB rate (Microsoft's cost documentation's own example -- 300 GB into a 200 GB/day tier bills 1.5 units), following actual volume
+    - applies_when:
+        - field_path: sku
+          op: not_equals
+          value: CAPACITY_RESERVATION
+        - field_path: sku
+          op: not_equals
+          value: PER_NODE
+        - field_path: sku
+          op: not_equals
+          value: STANDALONE
+      text: pay-as-you-go ingestion bills 2.30 USD per GB in eastus past the billing account's 5 GB monthly free grant, following what the estate's agents, diagnostic settings, and applications write
+    - text: every GB retained past the included interactive window (31 days for Analytics tables, 90 for Application Insights tables and Sentinel-enabled workspaces) bills 0.10 USD per GB per month in eastus at daily granularity; long-term retention and search jobs against it bill their own meters
+    - text: Basic and Auxiliary table plans (chosen per table outside this spec) bill reduced ingestion rates plus per-GB-scanned query meters; data export bills per GB; enabling Microsoft Sentinel adds Sentinel's meters on top
+  notes:
+    - applies_when:
+        - field_path: sku
+          op: equals
+          value: CAPACITY_RESERVATION
+      text: "The commitment carries Azure's 31-day minimum period from selection or change (lowerable only within the first 6 hours); the daily fee is an effective 1.96 USD/GB at full utilization, about 15% under the 2.30 pay-as-you-go rate -- the deal only pays at sustained volume."
+    - applies_when:
+        - field_path: daily_quota_gb
+          op: is_set
+      text: "daily_quota_gb caps what a day can bill AND what a day can store -- ingestion stops at the cap until the next UTC day, so the ceiling is also a data-loss dial (-1 means unlimited)."

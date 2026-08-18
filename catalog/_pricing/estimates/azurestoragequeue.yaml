@@ -1,0 +1,43 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azurestoragequeue
+spec:
+  presets:
+    - preset: 01-work-queue
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - queue data stored bills per GB-month on the parent account at its redundancy rate -- depth and dwell time no manifest can know
+        - class-1 operations (PutMessage, UpdateMessage, DeleteMessage, queue management) bill per 10,000 on the account -- roughly three operations per processed message in the classic enqueue/lease/complete pattern
+        - class-2 operations (GetMessage, PeekMessage, metadata reads) bill per 10,000 -- including polls that find the queue empty, so worker polling discipline sets the idle cost
+        - geo-redundant accounts add geo-replication data transfer per GB; consumers outside Azure add bandwidth egress
+      notes: Zero committed cost -- a declared work queue with no messages and no pollers bills exactly nothing; every future dollar follows throughput and polling on the account's meters.
+    - preset: 02-poison-companion
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - a dead-letter companion bills the same account meters as any queue -- capacity per GB-month for stranded messages, class-1 operations when Functions moves a poison message in, class-2 operations when operators inspect it
+        - a healthy system keeps this queue near-empty, so its cost rounds to the inspection traffic; geo-replication transfer and egress apply as on the work queue
+      notes: Zero committed cost -- declaring the -poison companion makes the dead-letter destination owned infrastructure instead of an implicitly-created accident, and ownership itself carries no meter.
+    - preset: 03-ingest-buffer
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - an ingest buffer's cost is almost entirely class-1 operations (one PutMessage per event, plus the consumer's get/delete pair) and class-2 polling on the account, per 10,000 each
+        - burst absorption raises queue depth and with it capacity per GB-month until consumers drain it -- transient by design
+        - geo-redundant accounts add geo-replication data transfer per GB; consumers outside Azure add bandwidth egress
+      notes: Zero committed cost -- the buffer bills nothing until producers write; at high event volume the per-10,000 operation meters dominate, which is the Storage-queue-versus-Service-Bus economics working as intended.
