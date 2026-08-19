@@ -210,11 +210,29 @@ rules:
       - rbac.authorization.k8s.io
     resources:
       - clusterrolebindings
-      - clusterroles
       - rolebindings
-      - roles
     verbs:
       - create
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      # bind + escalate: Kubernetes refuses to let a caller grant permissions
+      # it does not hold; the operator renders the control plane's
+      # token-reviewer ClusterRole (TokenReview / SelfSubjectAccessReview
+      # create), so it needs the escalation verbs the generated manager RBAC
+      # (config/rbac/role.yaml) already carries -- this block is its
+      # hand-synced chart copy.
+      - clusterroles
+      - roles
+    verbs:
+      - bind
+      - create
+      - escalate
       - get
       - list
       - patch
