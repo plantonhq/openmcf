@@ -46,7 +46,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**205 of 205 kinds are at total accounting; 113 proven live.**
+**205 of 205 kinds are at total accounting; 112 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -196,7 +196,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsOrganizationAccount | 31 | 20 | 5 | 6 | 0 | ✅ | — |
 | AwsOrganizationPolicy | 10 | 3 | 2 | 5 | 0 | ✅ | — |
 | AwsOrganizationalUnit | 4 | 1 | 1 | 2 | 0 | ✅ | — |
-| AwsPlantonRunner | 0 | 0 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsPlantonRunner | 0 | 0 | 0 | 0 | 0 | ✅ | — |
 | AwsPrivateCa | 51 | 10 | 23 | 18 | 0 | ✅ | — |
 | AwsRdsCluster | 143 | 84 | 19 | 40 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRdsInstance | 119 | 65 | 20 | 34 | 0 | ✅ | ✅ pulumi, terraform |

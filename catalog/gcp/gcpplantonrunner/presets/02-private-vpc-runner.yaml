@@ -1,0 +1,31 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpPlantonRunner
+metadata:
+  name: <runner-name>
+spec:
+  region: us-central1
+  # The runner token gates JOINING, never identity: the runner registers
+  # itself on first boot and receives its own individually revocable
+  # identity. On Planton the platform mints the token and writes it at
+  # exactly this managed-secret reference before the infrastructure
+  # applies.
+  token: $secret/runner-token
+  # Direct VPC egress: only traffic to PRIVATE ranges rides the VPC --
+  # this is what lets the runner reach a private GKE control plane or a
+  # private-IP database. The control-plane dial-out keeps its normal
+  # internet path.
+  vpcAccess:
+    network:
+      valueFrom:
+        kind: GcpVpcNetwork
+        name: my-vpc # replace with your GcpVpcNetwork resource name
+        fieldPath: status.outputs.network_name
+    subnetwork:
+      valueFrom:
+        kind: GcpSubnetwork
+        name: my-subnet # replace with your GcpSubnetwork resource name (must be in the runner's region)
+        fieldPath: status.outputs.subnetwork_name
+    # VPC firewall rules select the runner's egress by this tag -- e.g.
+    # a rule admitting it to a private GKE control plane.
+    tags:
+      - planton-runner

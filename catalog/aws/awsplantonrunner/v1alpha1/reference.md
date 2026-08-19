@@ -23,20 +23,30 @@ makes teardown orderly: in-cluster workloads are destroyed through the
 runner, the cluster is destroyed by the AWS path, and the runner itself
 is destroyed last.
 
+ENROLLMENT IS TOKEN-FIRST: the runner is born with a runner TOKEN, never
+an identity. On first boot it presents the token to the control plane,
+registers ITSELF, and receives its own individually revocable identity.
+Task replacement re-joins with the same token (the token's lineage
+re-admits the runner it originally admitted -- no other token can). The
+token lives in a module-created Secrets Manager secret; the ECS agent
+injects it at task start, never as plaintext in any task definition.
+
 The spec models intent -- where the runner lives (subnets), how big it is
-(cpu/memory), which build it runs (runner_version), how it executes work
-(execution_mode), and who it is (credentials). The compute substrate is
-an implementation detail of the IaC modules (see the component README);
-it deliberately has no representation here.
+(cpu/memory), which build it runs (runner_version), and the token it
+joins with. The compute substrate is an implementation detail of the IaC
+modules (see the component README); it deliberately has no
+representation here.
 
 ## Example
 
 ```yaml
-# Minimal AwsPlantonRunner manifest for local module testing. The
-# credentials value below is an obviously-fake placeholder document with
-# the right shape -- real deployments supply a managed-secret reference
-# ($secret/<slug>) that the platform fills with the runner's identity
-# document when it enrolls the appliance.
+# Minimal AwsPlantonRunner manifest for local module testing. The token
+# value below is an obviously-fake placeholder with the right shape --
+# real deployments supply a managed-secret reference ($secret/<slug>)
+# that the platform fills with a runner token before the infrastructure
+# applies. The token authorizes joining and is never the runner's
+# identity: the runner registers itself on first boot and receives its
+# own individually revocable identity.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsPlantonRunner
 metadata:
@@ -46,7 +56,7 @@ spec:
   subnets:
     - value: subnet-0a1b2c3d4e5f60001
     - value: subnet-0a1b2c3d4e5f60002
-  credentials: '{"type":"planton_runner","org":"demo-org","runner":"awsplantonrunner-demo","channel_identifier":"org.demo-org.runner.awsplantonrunner-demo","api_key":"pak_FAKE_PLACEHOLDER_VALUE","planton_api_endpoint":"api.example.invalid:443"}'
+  token: prt_FAKE_PLACEHOLDER_VALUE
 ```
 
 ## Spec Fields
@@ -61,8 +71,8 @@ spec:
 | `spec.memory` | `int32` |  | `1024` |  |
 | `spec.runnerVersion` | `string` |  | `latest` |  |
 | `spec.imageRepository` | `string` |  | `ghcr.io/plantonhq/planton/runner` |  |
-| `spec.executionMode` | `string` |  | `temporal` |  |
-| `spec.credentials` | `string` (sensitive) | yes |  |  |
+| `spec.controlPlaneEndpoint` | `string` |  |  |  |
+| `spec.token` | `string` (sensitive) | yes |  |  |
 | `spec.taskRole` | `string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
 | `spec.logRetentionDays` | `int32` |  | `30` |  |
 
@@ -168,40 +178,37 @@ official image; the digest-identical mirror is your responsibility.
 
 - default: `ghcr.io/plantonhq/planton/runner`
 
-### spec.executionMode
+### spec.controlPlaneEndpoint
 
-`string` · optional (explicit presence)
+`string`
 
-How the runner executes work:
+The control-plane endpoint the runner joins, as host:port. Leave
+unset for Planton's hosted control plane (the runner's built-in
+default); set it for a self-hosted instance (e.g.
+"planton.example.com:443"). This is the one bootstrap coordinate the
+join cannot deliver -- everything else (work queue, execution mode,
+tunnel, API endpoints) arrives in the join response, so the runner
+self-configures on arrival and no mode knob exists here.
 
-  - "temporal" (the default): a pull-based worker -- the runner polls
-    its queue for deploy operations and needs NO inbound path at all.
-    The right mode for private-endpoint deployments.
-  - "dual": temporal PLUS the real-time CloudOps channel (live
-    resource browsing through the runner). The CloudOps channel
-    reaches the runner through an outbound-initiated tunnel, so the
-    network posture stays outbound-only; the runner's credentials
-    must carry tunnel material (they do when the registration was
-    created for a tunneled runner).
-  - "grpc": CloudOps only, no deploy operations. Rarely what you want
-    for a standing appliance; prefer dual.
+- rule: control plane endpoint must be host:port, e.g. "planton.example.com:443" -- no scheme prefix
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
 
-- default: `temporal`
-
-### spec.credentials
+### spec.token
 
 `string` · required · sensitive
 
-The runner's identity document: the JSON the control plane mints when
-it enrolls this appliance. The platform creates the runner
-registration and writes the document at exactly the managed-secret
+The runner token that authorizes this runner to JOIN the control
+plane. Create one with `planton runner token create` (or in the
+console under Organization Settings -> Runner Tokens); on Planton, the
+platform mints a token and writes it at exactly the managed-secret
 reference this field names, before the infrastructure applies -- there
-is no manual credential step. It carries the runner's identity, its
-API key, and the connectivity endpoints -- everything the runner needs
-to introduce itself to the control plane. This is a secret: supply it
-as a managed-secret reference, never inline plaintext; it reaches the
-runner through the platform's secret store, not through any launch
-configuration.
+is no manual credential step. The token only gates joining and is
+never the runner's identity: the runner receives its own individually
+revocable identity when it registers itself on arrival, and revoking
+this token never touches runners it already admitted. This is a
+secret: supply it as a managed-secret reference, never inline
+plaintext; it reaches the runner through Secrets Manager, not through
+any launch configuration.
 
 - rule: {"required":true}
 
@@ -237,7 +244,6 @@ retention periods CloudWatch supports (1, 3, 5, 7, 14, 30, 60, 90,
 
 - `cpu_valid`: cpu must be one of the serverless compute sizes: 256, 512, 1024, 2048, 4096, 8192, or 16384 CPU units (1024 = 1 vCPU)
 - `cpu_memory_combination`: cpu and memory must form a valid serverless compute pairing -- cpu 256 pairs with memory 512, 1024, or 2048; cpu 512 with 1024-4096 in steps of 1024; cpu 1024 with 2048-8192 in steps of 1024; cpu 2048 with 4096-16384 in steps of 1024; cpu 4096 with 8192-30720 in steps of 1024; cpu 8192 with 16384-61440 in steps of 4096; cpu 16384 with 32768-122880 in steps of 8192
-- `execution_mode_valid`: execution_mode must be 'temporal' (pull-based deploy worker, the default), 'dual' (deploy worker plus the real-time CloudOps channel), or 'grpc' (CloudOps only)
 - `log_retention_valid`: log_retention_days must be one of the retention periods CloudWatch supports: 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, or 3653 days
 
 ## Outputs
@@ -254,8 +260,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsPlantonRunner
 | `status.outputs.security_group_id` | `string` | The id of the outbound-only security group created for the runner. Private targets that admit traffic by source security group (a cluster API endpoint, a database) reference this id to trust the runner. |
 | `status.outputs.execution_role_arn` | `string` | The ARN of the execution role -- the setup identity that pulls the runner image, writes its logs, and reads its credentials secret. |
 | `status.outputs.task_role_arn` | `string` | The ARN of the runner's runtime IAM role -- the identity the runner holds while executing work. Grant this role permissions to let keyless cloud operations run through the runner (it is the referenced task_role when one was supplied, else the permissionless role created with the appliance). |
-| `status.outputs.credentials_secret_arn` | `string` | The ARN of the secret holding the runner's credentials document. |
+| `status.outputs.token_secret_arn` | `string` | The ARN of the Secrets Manager secret holding the runner token. The ECS agent injects it at task start; the token authorizes joining and is never the runner's identity. |
 | `status.outputs.region` | `string` | The AWS region the runner was deployed in. Echoed so downstream tooling and verifiers can target the correct region. |
+| `status.outputs.runner_name` | `string` | The name the runner registers itself under with the control plane -- the value shown by `planton runner list` the moment it joins. |
 
 ## References
 

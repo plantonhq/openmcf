@@ -23,25 +23,32 @@ destroyed last.
 The compute substrate is **ECS Fargate**: serverless containers, no hosts
 to patch, restarted automatically if the runner ever exits. The spec
 deliberately does not model the substrate -- it models intent (placement,
-sizing, version, execution mode, identity), so the API stays stable however
-the implementation evolves.
+sizing, version, identity, and the token the runner joins with), so the
+API stays stable however the implementation evolves.
 
 ## Key Features
 
 - **Outbound-only networking** -- the runner initiates every connection
   (control plane, its work queue, image pulls). The security group created
   for it allows no inbound traffic at all.
-- **Pull-based execution** -- in the default `temporal` mode the runner
-  polls its own queue for deploy operations; work waits in the queue while
-  the runner boots, so ordering never depends on timing.
+- **Token-first enrollment** -- the runner is born with a runner TOKEN,
+  never an identity. On first boot it presents the token, registers
+  ITSELF, and receives its own individually revocable identity; revoking
+  the token never touches runners it already admitted, and task
+  replacement re-joins with the same token (the token's lineage re-admits
+  the runner it originally admitted).
+- **Pull-based execution** -- the runner polls its own queue for deploy
+  operations; work waits in the queue while the runner boots, so ordering
+  never depends on timing. There is no mode knob: the runner
+  self-configures its execution mode from the join response.
 - **First-class runtime identity** -- the runner holds an IAM role at
   runtime (reference your own `AwsIamRole`, or a permissionless one is
   created), the seam that lets keyless cloud access run through the
   runner without long-lived keys.
-- **Credentials handled as a secret end to end** -- the registration's
-  credentials document is stored in AWS Secrets Manager and injected into
-  the container at start by AWS itself; it never appears in any launch
-  configuration or task definition.
+- **The token handled as a secret end to end** -- the runner token is
+  stored in AWS Secrets Manager and injected into the container at start
+  by AWS itself; it never appears in any launch configuration or task
+  definition.
 - **Auditable by design** -- every operation the runner executes lands in
   its CloudWatch log group, with retention you control.
 
@@ -57,14 +64,14 @@ spec:
   subnets:
     - valueFrom: { kind: AwsSubnet, name: private-a, fieldPath: status.outputs.subnet_id }
     - valueFrom: { kind: AwsSubnet, name: private-b, fieldPath: status.outputs.subnet_id }
-  credentials: $secret/vpc-runner-credentials
+  token: $secret/vpc-runner-token
 ```
 
 There is no manual credential step: before the infrastructure applies, the
-platform enrolls the runner itself -- it creates the runner registration,
-mints the runner's identity document, and writes it at exactly the
-managed-secret reference the manifest declares. Pick any secret slug and
-deploy with:
+platform mints a runner token and writes it at exactly the managed-secret
+reference the manifest declares. The token only authorizes the runner to
+join -- the runner registers itself on first boot and receives its own
+individually revocable identity. Pick any secret slug and deploy with:
 
 ```shell
 planton apply -f runner.yaml

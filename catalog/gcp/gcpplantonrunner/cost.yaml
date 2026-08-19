@@ -1,0 +1,40 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. The spec deliberately hides the compute
+# substrate; the official modules provision it on Cloud Run -- one
+# always-on instance (min = max = 1, CPU always allocated) plus a Secret
+# Manager secret holding the runner token. Schema:
+# finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpplantonrunner
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Cloud Run
+      sku_meter: instance-based CPU allocation
+      pricing_unit: vCPU-seconds
+      description: The runner is standing infrastructure -- the modules pin the service to exactly one instance (min = max = 1) with cpu_idle false, so its CPU is always allocated and bills every second at the region's Cloud Run instance-based vCPU rate from creation to destroy.
+    - service_name: Cloud Run
+      sku_meter: instance-based memory allocation
+      pricing_unit: GiB-seconds
+      description: The same always-on instance bills its memory allocation every second at the region's Cloud Run instance-based per-GiB rate.
+    - service_name: Secret Manager
+      sku_meter: runner token secret
+      pricing_unit: version-location-months
+      description: The deployment stores the runner token as one Secret Manager secret version with automatic replication, billed the flat per-version-per-location monthly fee for the runner's lifetime.
+  cost_drivers:
+    - field_path: cpu
+      sku_meter: instance-based CPU allocation
+      pricing_unit: vCPU-seconds
+      impact: Sizes the always-on vCPU bill directly -- the default 1 vCPU is the floor (Cloud Run admits 1, 2, 4, 6, or 8); each step up multiplies this line accordingly. Size up for large stacks or high operation concurrency.
+    - field_path: memory
+      sku_meter: instance-based memory allocation
+      pricing_unit: GiB-seconds
+      impact: Sizes the always-on memory bill directly -- the default 512Mi is the floor. Memory is the cheaper lever, and the spec's own guidance is to size memory up before cpu when IaC operations fail mid-apply.
+  estimate_exclusions:
+    - egress data transfer -- image pulls, control-plane traffic, and any private-range traffic through Direct VPC egress follow Google Cloud networking pricing
+    - Cloud Logging ingestion and storage bill per GiB past the monthly free allotment and follow how many operations the runner executes
+  free_tier: The service account the modules create, the secret's IAM accessor binding, and the run.googleapis.com API enablement are free resources.
+  notes: "The compute substrate is an implementation detail of the modules, confirmed from their sources: one Cloud Run v2 service pinned to exactly one instance (scaling execution capacity means more runners, never more copies of this one) with cpu_idle false -- the runner is a pull-based worker that must keep computing between requests, so it bills at Cloud Run's instance-based (always-allocated) rates rather than the request-based rates, and Cloud Run's request-based free tier does not offset it. startup_cpu_boost briefly bills the boosted CPU during the rare instance replacement. The token secret uses automatic replication, so the per-version monthly fee is charged per replication location Google selects."

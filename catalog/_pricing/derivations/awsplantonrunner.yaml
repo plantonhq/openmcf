@@ -3,8 +3,8 @@
 # price choices. The spec hides the compute substrate; the official
 # modules provision one always-on ECS Fargate task (desired count fixed
 # at one -- the registration's work queue serializes operations), a
-# Secrets Manager secret for the credentials document, and a CloudWatch
-# log group. The spec's cpu/memory are Fargate serverless units (1024
+# Secrets Manager secret for the runner token, and a CloudWatch log
+# group. The spec's cpu/memory are Fargate serverless units (1024
 # CPU units = 1 vCPU; memory in MiB), while Fargate rates are quoted per
 # vCPU-hour and per GB-hour, so each quantity carries the exact
 # unit-conversion factor 0.0009765625 (precisely 1/1024, a terminating
@@ -41,11 +41,11 @@ spec:
         - hours_in_month: true
       price_slug: fargate-memory-gb-hours-us-east-1
       basis: one always-on task x memory MiB (the spec default 1024 when unset) x 1/1024 GB per MiB (0.0009765625 exactly) x 730 hours at the us-east-1 Fargate memory rate
-    - sku_meter: credentials secret
+    - sku_meter: runner token secret
       quantity:
         - constant: "1"
       price_slug: secretsmanager-secret-us-east-1
-      basis: the modules store the credentials document as exactly one Secrets Manager secret, billed the flat per-secret monthly fee for the runner's lifetime -- priced at the us-east-1 rate under the same stated region assumption as the compute lines (the per-secret fee is region-uniform on AWS's published sheet)
+      basis: the modules store the runner token as exactly one Secrets Manager secret, billed the flat per-secret monthly fee for the runner's lifetime -- priced at the us-east-1 rate under the same stated region assumption as the compute lines (the per-secret fee is region-uniform on AWS's published sheet)
     - sku_meter: public IPv4 address usage
       applies_when:
         - field_path: assign_public_ip
@@ -66,4 +66,4 @@ spec:
   notes:
     - text: The modules fix the task count at one -- scaling execution capacity means more runners (more registrations), never more copies of this one -- so the estimate never multiplies by a replica count.
     - text: The task's 20 GB of Fargate ephemeral storage is included at no charge (the modules request no more), and the ECS cluster, task definition, security group, and IAM roles are free resources.
-    - text: The credentials secret is created with a zero-day recovery window, so destroying the runner stops the secret's meter immediately.
+    - text: The token secret is created with a zero-day recovery window, so destroying the runner stops the secret's meter immediately.

@@ -1679,6 +1679,11 @@ const (
 	// number -- enum numbers are pinned by the registry snapshot; never
 	// renumber.
 	CloudResourceKind_AzureMongoClusterUser CloudResourceKind = 2219
+	// AzureContainerAppEnvironment is a prerequisite because the runner
+	// appliance is a Container App, and every Container App runs inside an
+	// environment -- the environment reference must resolve before the
+	// appliance can deploy.
+	CloudResourceKind_AzurePlantonRunner CloudResourceKind = 2220
 	// 3000–3999: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo CloudResourceKind = 3000
 	// The URL map is the parent a proxy cannot exist without; the classic
@@ -1823,6 +1828,7 @@ const (
 	// destination story the kind exists to model.
 	CloudResourceKind_GcpEventarcTrigger    CloudResourceKind = 3162
 	CloudResourceKind_GcpEventarcMessageBus CloudResourceKind = 3163
+	CloudResourceKind_GcpPlantonRunner      CloudResourceKind = 3164
 	// 4000–4999: Kubernetes resources, organized in family sub-bands
 	// (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts
 	// analytics & ML; 4190–4199 reserved for growth)
@@ -2037,9 +2043,10 @@ const (
 	// KubernetesPostgres is a prerequisite because the recommended (and
 	// E2E-proven) database composition backs Temporal's default and
 	// visibility stores with a CloudNativePG cluster.
-	CloudResourceKind_KubernetesTemporal CloudResourceKind = 4170
-	CloudResourceKind_KubernetesNats     CloudResourceKind = 4171
-	CloudResourceKind_KubernetesLocust   CloudResourceKind = 4172
+	CloudResourceKind_KubernetesTemporal      CloudResourceKind = 4170
+	CloudResourceKind_KubernetesNats          CloudResourceKind = 4171
+	CloudResourceKind_KubernetesLocust        CloudResourceKind = 4172
+	CloudResourceKind_KubernetesPlantonRunner CloudResourceKind = 4173
 	// 5000–5999: DigitalOcean resources
 	CloudResourceKind_DigitalOceanAppPlatformService CloudResourceKind = 5000
 	CloudResourceKind_DigitalOceanBucket             CloudResourceKind = 5001
@@ -2497,6 +2504,7 @@ var (
 		2217: "AzureEventgridDomainTopic",
 		2218: "AzureEventgridNamespaceTopic",
 		2219: "AzureMongoClusterUser",
+		2220: "AzurePlantonRunner",
 		3000: "GcpArtifactRegistryRepo",
 		3001: "GcpTargetHttpsProxy",
 		3002: "GcpCloudFunction",
@@ -2595,6 +2603,7 @@ var (
 		3161: "GcpWorkflow",
 		3162: "GcpEventarcTrigger",
 		3163: "GcpEventarcMessageBus",
+		3164: "GcpPlantonRunner",
 		4000: "KubernetesNamespace",
 		4001: "KubernetesDeployment",
 		4002: "KubernetesStatefulSet",
@@ -2715,6 +2724,7 @@ var (
 		4170: "KubernetesTemporal",
 		4171: "KubernetesNats",
 		4172: "KubernetesLocust",
+		4173: "KubernetesPlantonRunner",
 		5000: "DigitalOceanAppPlatformService",
 		5001: "DigitalOceanBucket",
 		5002: "DigitalOceanContainerRegistry",
@@ -3163,6 +3173,7 @@ var (
 		"AzureEventgridDomainTopic":                      2217,
 		"AzureEventgridNamespaceTopic":                   2218,
 		"AzureMongoClusterUser":                          2219,
+		"AzurePlantonRunner":                             2220,
 		"GcpArtifactRegistryRepo":                        3000,
 		"GcpTargetHttpsProxy":                            3001,
 		"GcpCloudFunction":                               3002,
@@ -3261,6 +3272,7 @@ var (
 		"GcpWorkflow":                                    3161,
 		"GcpEventarcTrigger":                             3162,
 		"GcpEventarcMessageBus":                          3163,
+		"GcpPlantonRunner":                               3164,
 		"KubernetesNamespace":                            4000,
 		"KubernetesDeployment":                           4001,
 		"KubernetesStatefulSet":                          4002,
@@ -3381,6 +3393,7 @@ var (
 		"KubernetesTemporal":                             4170,
 		"KubernetesNats":                                 4171,
 		"KubernetesLocust":                               4172,
+		"KubernetesPlantonRunner":                        4173,
 		"DigitalOceanAppPlatformService":                 5000,
 		"DigitalOceanBucket":                             5001,
 		"DigitalOceanContainerRegistry":                  5002,
@@ -3815,7 +3828,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*ǰ\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xe7\xb1\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4260,7 +4273,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	")AzureMonitorDataCollectionRuleAssociation\x10\xa8\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azdcra:\x04\x90\x11\xd8\x0f\x12<\n" +
 	"\x19AzureEventgridDomainTopic\x10\xa9\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azegdt:\x02\x92\x11\x12@\n" +
 	"\x1cAzureEventgridNamespaceTopic\x10\xaa\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazegnst:\x02\x95\x11\x12:\n" +
-	"\x15AzureMongoClusterUser\x10\xab\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazmongou:\x02\xa3\x11\x12:\n" +
+	"\x15AzureMongoClusterUser\x10\xab\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazmongou:\x02\xa3\x11\x124\n" +
+	"\x12AzurePlantonRunner\x10\xac\x11\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azrun:\x02\xf8\x0f\x12:\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xb8\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpart:\x02\xc6\x17\x12=\n" +
 	"\x13GcpTargetHttpsProxy\x10\xb9\x17\x1a#\xa2\xf7\x04\x1f\b\x12\x12\bv1alpha1\"\agcpthsp:\b\xd3\x17\xd4\x17\xa7\x18\xa8\x18\x122\n" +
 	"\x10GcpCloudFunction\x10\xba\x17\x1a\x1b\xa2\xf7\x04\x17\b\x12\x12\bv1alpha1\"\x05gcpfn:\x02\xb1\x18\x12*\n" +
@@ -4362,7 +4376,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x18GcpCloudRunDomainMapping\x10\xd8\x18\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\bgcprundm:\x02\xbb\x17\x12,\n" +
 	"\vGcpWorkflow\x10\xd9\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcpwflow\x127\n" +
 	"\x12GcpEventarcTrigger\x10\xda\x18\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\bgcpevtrg:\x02\xbb\x17\x126\n" +
-	"\x15GcpEventarcMessageBus\x10\xdb\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcpevbus\x123\n" +
+	"\x15GcpEventarcMessageBus\x10\xdb\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcpevbus\x120\n" +
+	"\x10GcpPlantonRunner\x10\xdc\x18\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\bv1alpha1\"\agcprunr\x123\n" +
 	"\x13KubernetesNamespace\x10\xa0\x1f\x1a\x19\xa2\xf7\x04\x15\b\x13\x12\bv1alpha1\"\x05k8sns0\x01\x125\n" +
 	"\x14KubernetesDeployment\x10\xa1\x1f\x1a\x1a\xa2\xf7\x04\x16\b\x13\x12\bv1alpha1\"\x06k8sdpl(\x01\x126\n" +
 	"\x15KubernetesStatefulSet\x10\xa2\x1f\x1a\x1a\xa2\xf7\x04\x16\b\x13\x12\bv1alpha1\"\x06k8ssts(\x01\x121\n" +
@@ -4504,7 +4519,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x11KubernetesJenkins\x10\xbd \x1a\x18\xa2\xf7\x04\x14\b\x13\x12\bv1alpha1\"\x06k8sjkn\x126\n" +
 	"\x12KubernetesTemporal\x10\xca \x1a\x1d\xa2\xf7\x04\x19\b\x13\x12\bv1alpha1\"\ak8stprl:\x02\x85 \x12.\n" +
 	"\x0eKubernetesNats\x10\xcb \x1a\x19\xa2\xf7\x04\x15\b\x13\x12\bv1alpha1\"\ak8snats\x12/\n" +
-	"\x10KubernetesLocust\x10\xcc \x1a\x18\xa2\xf7\x04\x14\b\x13\x12\bv1alpha1\"\x06k8sloc\x12<\n" +
+	"\x10KubernetesLocust\x10\xcc \x1a\x18\xa2\xf7\x04\x14\b\x13\x12\bv1alpha1\"\x06k8sloc\x126\n" +
+	"\x17KubernetesPlantonRunner\x10\xcd \x1a\x18\xa2\xf7\x04\x14\b\x13\x12\bv1alpha1\"\x06k8srun\x12<\n" +
 	"\x1eDigitalOceanAppPlatformService\x10\x88'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05doapp\x120\n" +
 	"\x12DigitalOceanBucket\x10\x89'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05dobkt\x12:\n" +
 	"\x1dDigitalOceanContainerRegistry\x10\x8a'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04docr\x128\n" +

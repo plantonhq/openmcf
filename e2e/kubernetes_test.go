@@ -665,6 +665,9 @@ func TestKubernetesSuperset_Pulumi(t *testing.T) {
 func TestKubernetesGhaRunnerScaleSet_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesgharunnerscaleset", "pulumi")
 }
+func TestKubernetesPlantonRunner_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesplantonrunner", "pulumi")
+}
 
 // ─── Tier 3 Terraform (operator-dependent) ──────────────────────────────────
 
@@ -736,6 +739,9 @@ func TestKubernetesSuperset_Terraform(t *testing.T) {
 }
 func TestKubernetesGhaRunnerScaleSet_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesgharunnerscaleset", "terraform")
+}
+func TestKubernetesPlantonRunner_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesplantonrunner", "terraform")
 }
 
 // ─── Tier 4 Pulumi (operators, addons) ──────────────────────────────────────

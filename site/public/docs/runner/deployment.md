@@ -141,6 +141,31 @@ Deploys the runner as an always-on Container App. Similar to Cloud Run, minimum 
 - You want a managed container runtime with Azure-native identity integration
 - You need the runner to use Managed Identity for authentication
 
+## Declarative Deployment from the Catalog
+
+Every deployment target above also exists as a first-class catalog component, so a runner can be declared in a manifest, composed into an infra-chart beside the network it serves, and managed through the same deploy pipeline as everything else:
+
+| Catalog Kind | Substrate |
+|--------------|-----------|
+| `AwsPlantonRunner` | AWS ECS (Fargate) |
+| `GcpPlantonRunner` | GCP Cloud Run |
+| `AzurePlantonRunner` | Azure Container Apps |
+| `KubernetesPlantonRunner` | Any Kubernetes cluster (the official Helm chart) |
+
+Each kind's spec carries the runner token as a managed-secret reference — on Planton, the platform mints a token and writes it at exactly that reference before the infrastructure applies, so declaring a runner is genuinely one step:
+
+```yaml
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpPlantonRunner
+metadata:
+  name: vpc-runner
+spec:
+  region: us-central1
+  token: $secret/vpc-runner-token
+```
+
+The deployed runner enrolls itself on first boot and appears in your Runners list the moment it joins — exactly the same arrival story as a CLI deploy. Each kind models its substrate's real placement surface (subnets and task roles on AWS, direct VPC egress and service accounts on GCP, the Container App Environment on Azure, the namespace and chart values on Kubernetes); see each component's catalog page for the full specification.
+
 ## Default Runner Binding
 
 Once a runner is deployed, you can set it as the default for your organization. When a [connection](/docs/connections) does not specify an explicit runner, Planton automatically routes requests to the default runner.

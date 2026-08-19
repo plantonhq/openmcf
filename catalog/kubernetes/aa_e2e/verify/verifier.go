@@ -1514,6 +1514,17 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			RegistrationProof: strings.Contains(manifestPath, "behavioral-github"),
 		}, nil
 
+	// A Planton runner from the official chart: the module-created token
+	// Secret present, the Deployment pinned to one replica with the
+	// Recreate strategy, and the enrollment env wiring on the pod
+	// template. Deliberately no pod-readiness assertion — the kind lanes
+	// run with a fake token whose refused join is designed behavior.
+	case "kubernetesplantonrunner":
+		return &PlantonRunnerVerifier{
+			Namespace: info.Namespace,
+			Name:      info.Name,
+		}, nil
+
 	default:
 		if crdNames, ok := crdInstallKinds[component]; ok {
 			return &CRDInstallVerifier{

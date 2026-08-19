@@ -4033,6 +4033,17 @@ enum CloudResourceKind {
     prerequisites: [AzureMongoCluster]
   }];
 
+  // AzureContainerAppEnvironment is a prerequisite because the runner
+  // appliance is a Container App, and every Container App runs inside an
+  // environment -- the environment reference must resolve before the
+  // appliance can deploy.
+  AzurePlantonRunner = 2220 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azrun"
+    prerequisites: [AzureContainerAppEnvironment]
+  }];
+
   // 3000–3999: GCP resources
   GcpArtifactRegistryRepo = 3000 [(kind_meta) = {
     provider: gcp
@@ -4734,6 +4745,12 @@ enum CloudResourceKind {
     provider: gcp
     version: "v1alpha1"
     id_prefix: "gcpevbus"
+  }];
+
+  GcpPlantonRunner = 3164 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcprunr"
   }];
 
   // 4000–4999: Kubernetes resources, organized in family sub-bands
@@ -5579,6 +5596,12 @@ enum CloudResourceKind {
     provider: kubernetes
     version: "v1alpha1"
     id_prefix: "k8sloc"
+  }];
+
+  KubernetesPlantonRunner = 4173 [(kind_meta) = {
+    provider: kubernetes
+    version: "v1alpha1"
+    id_prefix: "k8srun"
   }];
 
   // 5000–5999: DigitalOcean resources

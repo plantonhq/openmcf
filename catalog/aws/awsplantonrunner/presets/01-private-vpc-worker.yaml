@@ -13,7 +13,9 @@ spec:
         kind: AwsSubnet
         name: <private-subnet-b-resource-name>
         fieldPath: status.outputs.subnet_id
-  credentials: $secret/<runner-credentials-secret-slug>
-  # temporal is the default execution mode: a pull-based worker that
-  # polls its queue and needs no inbound path at all.
-  executionMode: temporal
+  # The runner token gates JOINING, never identity: the runner registers
+  # itself on first boot and receives its own individually revocable
+  # identity. On Planton the platform mints the token and writes it at
+  # exactly this managed-secret reference before the infrastructure
+  # applies -- there is no manual credential step.
+  token: $secret/runner-token

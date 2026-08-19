@@ -1,0 +1,28 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePlantonRunner
+metadata:
+  name: <runner-name>
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: <resource-group-resource-name>
+      fieldPath: status.outputs.resource_group_name
+  containerAppEnvironmentId:
+    valueFrom:
+      kind: AzureContainerAppEnvironment
+      name: <container-app-environment-resource-name>
+      fieldPath: status.outputs.environment_id
+  # The runner token gates JOINING, never identity: the runner registers
+  # itself on first boot and receives its own individually revocable
+  # identity. On Planton the platform mints the token and writes it at
+  # exactly this managed-secret reference before the infrastructure
+  # applies.
+  token: $secret/runner-token
+  # The Consumption plan fixes memory at cpu x 2 -- 2 vCPUs pairs with
+  # 4Gi, the largest pairing. IaC operations are memory-hungry (provider
+  # plugins, plans held in memory).
+  cpu: 2
+  memory: 4Gi
+  # Pin the runner build for change control; bump deliberately.
+  runnerVersion: v0.4.0

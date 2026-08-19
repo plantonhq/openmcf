@@ -1,0 +1,3 @@
+name: gcpplantonrunner-pulumi-project
+description: pulumi project for gcp-planton-runner cloud resource
+runtime: go

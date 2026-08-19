@@ -23,11 +23,19 @@ import "shared/options/options.proto";
 // runner, the cluster is destroyed by the AWS path, and the runner itself
 // is destroyed last.
 //
+// ENROLLMENT IS TOKEN-FIRST: the runner is born with a runner TOKEN, never
+// an identity. On first boot it presents the token to the control plane,
+// registers ITSELF, and receives its own individually revocable identity.
+// Task replacement re-joins with the same token (the token's lineage
+// re-admits the runner it originally admitted -- no other token can). The
+// token lives in a module-created Secrets Manager secret; the ECS agent
+// injects it at task start, never as plaintext in any task definition.
+//
 // The spec models intent -- where the runner lives (subnets), how big it is
-// (cpu/memory), which build it runs (runner_version), how it executes work
-// (execution_mode), and who it is (credentials). The compute substrate is
-// an implementation detail of the IaC modules (see the component README);
-// it deliberately has no representation here.
+// (cpu/memory), which build it runs (runner_version), and the token it
+// joins with. The compute substrate is an implementation detail of the IaC
+// modules (see the component README); it deliberately has no
+// representation here.
 message AwsPlantonRunnerSpec {
   // The AWS region the runner is deployed in. Deploy the runner in the
   // same region as the private endpoints it needs to reach.
@@ -95,32 +103,35 @@ message AwsPlantonRunnerSpec {
   // official image; the digest-identical mirror is your responsibility.
   optional string image_repository = 8 [(dev.planton.shared.options.default) = "ghcr.io/plantonhq/planton/runner"];
 
-  // How the runner executes work:
-  //
-  //   - "temporal" (the default): a pull-based worker -- the runner polls
-  //     its queue for deploy operations and needs NO inbound path at all.
-  //     The right mode for private-endpoint deployments.
-  //   - "dual": temporal PLUS the real-time CloudOps channel (live
-  //     resource browsing through the runner). The CloudOps channel
-  //     reaches the runner through an outbound-initiated tunnel, so the
-  //     network posture stays outbound-only; the runner's credentials
-  //     must carry tunnel material (they do when the registration was
-  //     created for a tunneled runner).
-  //   - "grpc": CloudOps only, no deploy operations. Rarely what you want
-  //     for a standing appliance; prefer dual.
-  optional string execution_mode = 9 [(dev.planton.shared.options.default) = "temporal"];
+  // The control-plane endpoint the runner joins, as host:port. Leave
+  // unset for Planton's hosted control plane (the runner's built-in
+  // default); set it for a self-hosted instance (e.g.
+  // "planton.example.com:443"). This is the one bootstrap coordinate the
+  // join cannot deliver -- everything else (work queue, execution mode,
+  // tunnel, API endpoints) arrives in the join response, so the runner
+  // self-configures on arrival and no mode knob exists here.
+  string control_plane_endpoint = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "control_plane_endpoint_format"
+      message: "control plane endpoint must be host:port, e.g. \"planton.example.com:443\" -- no scheme prefix"
+      expression: "this.matches('^[a-zA-Z0-9.-]+:[0-9]+$')"
+    }
+  ];
 
-  // The runner's identity document: the JSON the control plane mints when
-  // it enrolls this appliance. The platform creates the runner
-  // registration and writes the document at exactly the managed-secret
+  // The runner token that authorizes this runner to JOIN the control
+  // plane. Create one with `planton runner token create` (or in the
+  // console under Organization Settings -> Runner Tokens); on Planton, the
+  // platform mints a token and writes it at exactly the managed-secret
   // reference this field names, before the infrastructure applies -- there
-  // is no manual credential step. It carries the runner's identity, its
-  // API key, and the connectivity endpoints -- everything the runner needs
-  // to introduce itself to the control plane. This is a secret: supply it
-  // as a managed-secret reference, never inline plaintext; it reaches the
-  // runner through the platform's secret store, not through any launch
-  // configuration.
-  string credentials = 10 [
+  // is no manual credential step. The token only gates joining and is
+  // never the runner's identity: the runner receives its own individually
+  // revocable identity when it registers itself on arrival, and revoking
+  // this token never touches runners it already admitted. This is a
+  // secret: supply it as a managed-secret reference, never inline
+  // plaintext; it reaches the runner through Secrets Manager, not through
+  // any launch configuration.
+  string token = 10 [
     (buf.validate.field).required = true,
     (dev.planton.shared.options.sensitive) = true
   ];
@@ -169,12 +180,6 @@ message AwsPlantonRunnerSpec {
       " || (this.cpu == 4096 && this.memory >= 8192 && this.memory <= 30720 && this.memory % 1024 == 0)"
       " || (this.cpu == 8192 && this.memory >= 16384 && this.memory <= 61440 && this.memory % 4096 == 0)"
       " || (this.cpu == 16384 && this.memory >= 32768 && this.memory <= 122880 && this.memory % 8192 == 0)"
-  };
-
-  option (buf.validate.message).cel = {
-    id: "execution_mode_valid"
-    message: "execution_mode must be 'temporal' (pull-based deploy worker, the default), 'dual' (deploy worker plus the real-time CloudOps channel), or 'grpc' (CloudOps only)"
-    expression: "!has(this.execution_mode) || this.execution_mode in ['temporal', 'dual', 'grpc']"
   };
 
   option (buf.validate.message).cel = {

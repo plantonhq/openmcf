@@ -1274,6 +1274,13 @@ func TestAzureContainerApp_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurecontainerapp", "terraform")
 }
 
+func TestAzurePlantonRunner_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureplantonrunner", "pulumi")
+}
+func TestAzurePlantonRunner_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureplantonrunner", "terraform")
+}
+
 // --- Azure Container App Job (composed: fixture RG -> fixture environment -> schedule-triggered job) ---
 
 func TestAzureContainerAppJob_Pulumi(t *testing.T) {

@@ -3479,26 +3479,84 @@ func TestStackOutputsConformance(t *testing.T) {
 			// AwsPlantonRunner: flat scalar outputs -- the compute handles
 			// (service/cluster/task-definition ARNs, the E2E verifier keys on
 			// service_arn), the security-group id private targets trust, the
-			// two IAM identities, the credentials secret, and the log group
-			// carrying the runner's operation audit trail.
+			// two IAM identities, the token secret, the log group carrying
+			// the runner's operation audit trail, and the name the runner
+			// registers itself under.
 			name: "AwsPlantonRunner",
 			kind: cloudresourcekind.CloudResourceKind_AwsPlantonRunner,
 			rawOutputs: map[string]interface{}{
-				"service_arn":            "arn:aws:ecs:us-west-2:123456789012:service/vpc-runner/vpc-runner",
-				"service_name":           "vpc-runner",
-				"cluster_arn":            "arn:aws:ecs:us-west-2:123456789012:cluster/vpc-runner",
-				"task_definition_arn":    "arn:aws:ecs:us-west-2:123456789012:task-definition/vpc-runner:1",
-				"log_group_name":         "/ecs/vpc-runner",
-				"security_group_id":      "sg-0abc123",
-				"execution_role_arn":     "arn:aws:iam::123456789012:role/vpc-runner-exec",
-				"task_role_arn":          "arn:aws:iam::123456789012:role/vpc-runner-runtime",
-				"credentials_secret_arn": "arn:aws:secretsmanager:us-west-2:123456789012:secret:vpc-runner-credentials-AbCdEf",
-				"region":                 "us-west-2",
+				"service_arn":         "arn:aws:ecs:us-west-2:123456789012:service/vpc-runner/vpc-runner",
+				"service_name":        "vpc-runner",
+				"cluster_arn":         "arn:aws:ecs:us-west-2:123456789012:cluster/vpc-runner",
+				"task_definition_arn": "arn:aws:ecs:us-west-2:123456789012:task-definition/vpc-runner:1",
+				"log_group_name":      "/ecs/vpc-runner",
+				"security_group_id":   "sg-0abc123",
+				"execution_role_arn":  "arn:aws:iam::123456789012:role/vpc-runner-exec",
+				"task_role_arn":       "arn:aws:iam::123456789012:role/vpc-runner-runtime",
+				"token_secret_arn":    "arn:aws:secretsmanager:us-west-2:123456789012:secret:vpc-runner-token-AbCdEf",
+				"region":              "us-west-2",
+				"runner_name":         "prod-vpc-runner",
 			},
 			mustPopulate: []string{
 				"service_arn", "service_name", "cluster_arn", "task_definition_arn",
 				"log_group_name", "security_group_id", "execution_role_arn",
-				"task_role_arn", "credentials_secret_arn", "region",
+				"task_role_arn", "token_secret_arn", "region", "runner_name",
+			},
+		},
+		{
+			// GcpPlantonRunner: flat scalar outputs -- the Cloud Run service
+			// handles (the E2E verifier keys on service_short_name plus
+			// region/project_id), the runtime service account, the token
+			// secret, and the name the runner registers itself under.
+			name: "GcpPlantonRunner",
+			kind: cloudresourcekind.CloudResourceKind_GcpPlantonRunner,
+			rawOutputs: map[string]interface{}{
+				"service_name":          "projects/my-project/locations/us-central1/services/vpc-runner",
+				"service_short_name":    "vpc-runner",
+				"service_account_email": "vpc-runner@my-project.iam.gserviceaccount.com",
+				"token_secret_id":       "projects/my-project/secrets/vpc-runner-token",
+				"runner_name":           "prod-vpc-runner",
+				"project_id":            "my-project",
+				"region":                "us-central1",
+			},
+			mustPopulate: []string{
+				"service_name", "service_short_name", "service_account_email",
+				"token_secret_id", "runner_name", "project_id", "region",
+			},
+		},
+		{
+			// AzurePlantonRunner: flat scalar outputs -- the Container App
+			// handles (the E2E verifier keys on container_app_id), the app's
+			// token secret name, the registration name, and the resource
+			// group.
+			name: "AzurePlantonRunner",
+			kind: cloudresourcekind.CloudResourceKind_AzurePlantonRunner,
+			rawOutputs: map[string]interface{}{
+				"container_app_id":    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/my-rg/providers/Microsoft.App/containerApps/vnet-runner",
+				"container_app_name":  "vnet-runner",
+				"token_secret_name":   "runner-token",
+				"runner_name":         "prod-vnet-runner",
+				"resource_group_name": "my-rg",
+			},
+			mustPopulate: []string{
+				"container_app_id", "container_app_name", "token_secret_name",
+				"runner_name", "resource_group_name",
+			},
+		},
+		{
+			// KubernetesPlantonRunner: flat scalar outputs -- the release
+			// handles (namespace + release name), the module-created token
+			// Secret, and the name the runner registers itself under.
+			name: "KubernetesPlantonRunner",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesPlantonRunner,
+			rawOutputs: map[string]interface{}{
+				"namespace":         "planton-runner",
+				"release_name":      "cluster-runner",
+				"token_secret_name": "cluster-runner-token",
+				"runner_name":       "prod-cluster-runner",
+			},
+			mustPopulate: []string{
+				"namespace", "release_name", "token_secret_name", "runner_name",
 			},
 		},
 		{

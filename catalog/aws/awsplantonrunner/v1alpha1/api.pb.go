@@ -27,7 +27,9 @@ const (
 // AWS network: an always-on worker that executes deploy operations and
 // cloud operations from inside the VPC, making private endpoints (most
 // notably private Kubernetes cluster APIs) deployable and operable with an
-// outbound-only network posture.
+// outbound-only network posture. It is born with a runner token, registers
+// itself with the control plane on first boot, and receives its own
+// individually revocable identity.
 type AwsPlantonRunner struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// api-version must be set to "aws.planton.dev/v1alpha1".
@@ -38,7 +40,7 @@ type AwsPlantonRunner struct {
 	// and must pass standard validations for resource naming.
 	Metadata *shared.CloudResourceMetadata `protobuf:"bytes,3,opt,name=metadata,proto3" json:"metadata,omitempty"`
 	// spec holds the core configuration defining where the runner lives,
-	// how big it is, which build it runs, and who it is.
+	// how big it is, which build it runs, and the token it joins with.
 	Spec *AwsPlantonRunnerSpec `protobuf:"bytes,4,opt,name=spec,proto3" json:"spec,omitempty"`
 	// status holds runtime or post-deployment information.
 	Status        *AwsPlantonRunnerStatus `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`

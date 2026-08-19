@@ -19,13 +19,13 @@ import (
 // operators tailing logs always find the same stream prefix.
 const containerName = "planton-runner"
 
-// The runner's listening ports: the gRPC/CloudOps server and the webhook
+// The runner's listening ports: the gRPC/CloudOps server and the health
 // server. Both are private to the task ENI -- the security group admits no
-// inbound traffic; the CloudOps channel (dual/grpc modes) reaches the
-// runner through its own outbound-initiated tunnel.
+// inbound traffic; the CloudOps channel reaches the runner through its own
+// outbound-initiated tunnel.
 const (
-	grpcPort    = 50051
-	webhookPort = 8093
+	grpcPort   = 50051
+	healthPort = 8093
 )
 
 // runnerCompute provisions the compute stack of the appliance -- log
@@ -153,8 +153,9 @@ func runnerCompute(
 	ctx.Export(OpSecurityGroupId, createdSecurityGroup.ID())
 	ctx.Export(OpExecutionRoleArn, createdExecutionRole.Arn)
 	ctx.Export(OpTaskRoleArn, taskRoleArn)
-	ctx.Export(OpCredentialsSecretArn, createdSecret.Arn)
+	ctx.Export(OpTokenSecretArn, createdSecret.Arn)
 	ctx.Export(OpRegion, pulumi.String(spec.Region))
+	ctx.Export(OpRunnerName, pulumi.String(locals.RegistrationName))
 
 	return nil
 }
@@ -166,19 +167,21 @@ func runnerCompute(
 func buildContainerDefinitions(locals *Locals, logGroupName string, secretArn string) (string, error) {
 	spec := locals.AwsPlantonRunner.Spec
 
-	// The runner's environment contract. The tunnel exists for the
-	// real-time CloudOps channel: dual/grpc modes join it (outbound-
-	// initiated, using the tunnel material in the credentials document);
-	// a temporal-only worker polls its queue and needs no tunnel at all.
-	tunnelEnabled := "true"
-	if spec.GetExecutionMode() == "temporal" {
-		tunnelEnabled = "false"
-	}
+	// The runner's environment contract: the name it registers itself
+	// under, the control-plane endpoint when one is declared (omitted,
+	// the runner's built-in hosted default applies), and the base process
+	// settings. No EXECUTION_MODE: only the control plane knows whether
+	// its work queue is reachable, so the runner derives its mode from
+	// the identity the join returns -- a mode knob here would silently
+	// strip capability.
 	environment := []map[string]string{
+		{"name": "PLANTON_RUNNER_NAME", "value": locals.RegistrationName},
 		{"name": "PORT", "value": fmt.Sprintf("%d", grpcPort)},
-		{"name": "EXECUTION_MODE", "value": spec.GetExecutionMode()},
 		{"name": "LOG_LEVEL", "value": "info"},
-		{"name": "TUNNEL_ENABLED", "value": tunnelEnabled},
+	}
+	if spec.GetControlPlaneEndpoint() != "" {
+		environment = append(environment,
+			map[string]string{"name": "PLANTON_RUNNER_ENDPOINT", "value": spec.GetControlPlaneEndpoint()})
 	}
 
 	definition := []map[string]interface{}{
@@ -189,14 +192,17 @@ func buildContainerDefinitions(locals *Locals, logGroupName string, secretArn st
 			"essential": true,
 			"portMappings": []map[string]interface{}{
 				{"containerPort": grpcPort, "protocol": "tcp"},
-				{"containerPort": webhookPort, "protocol": "tcp"},
+				{"containerPort": healthPort, "protocol": "tcp"},
 			},
 			"environment": environment,
-			// The credentials document arrives as an env var resolved by
-			// the ECS agent at task start via the execution role -- never
-			// as plaintext in this document.
+			// The runner token arrives as an env var resolved by the ECS
+			// agent at task start via the execution role -- never as
+			// plaintext in this document. The token is only read at join,
+			// so rotating the secret needs no task restart: running tasks
+			// keep serving on their minted identity, and the next task
+			// replacement joins with the new value.
 			"secrets": []map[string]string{
-				{"name": "PLANTON_RUNNER_CREDENTIALS", "valueFrom": secretArn},
+				{"name": "PLANTON_RUNNER_TOKEN", "valueFrom": secretArn},
 			},
 			"logConfiguration": map[string]interface{}{
 				"logDriver": "awslogs",

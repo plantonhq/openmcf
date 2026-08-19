@@ -1,0 +1,35 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureplantonrunner
+spec:
+  azure:
+    groups:
+      - purpose: ManageContainerApp
+        actions:
+          - Microsoft.App/containerApps/read
+          - Microsoft.App/containerApps/write
+          - Microsoft.App/containerApps/delete
+        provenance: derived
+        notes: "Covers azurerm_container_app -- the one single-revision app pinned to one replica: create with the full template and secret payload, refresh, in-place updates (image tag, sizing, env, tags), and destroy. The resource group and the Container App Environment are referenced, never created, so no write permissions on them are needed."
+      - purpose: ReadAppSecrets
+        actions:
+          - Microsoft.App/containerApps/listsecrets/action
+        provenance: derived
+        notes: The app carries the runner token in its own secret store (the runner-token secret block), and the containerApps GET omits secret values -- azurerm's Read and Update paths call ListSecrets to reconcile the secret block, so this is needed on every refresh, not just when the token changes.
+      - purpose: JoinManagedEnvironment
+        actions:
+          - Microsoft.App/managedEnvironments/read
+          - Microsoft.App/managedEnvironments/join/action
+        provenance: derived
+        notes: The modules never call the environment API -- the resolved container_app_environment_id rides the app payload -- but ARM authorizes placing the app into the REFERENCED environment with join/action on the environment's scope at create time (service-side; Microsoft's built-in Container Apps Contributor role carries exactly this grant for the same reason).
+      - purpose: ReadResourceGroup
+        actions:
+          - Microsoft.Resources/subscriptions/resourceGroups/read
+        provenance: derived
+        notes: The app is created into the REFERENCED resource group named by spec.resource_group -- the provider resolves the group during plan/refresh; the modules never create or mutate it.

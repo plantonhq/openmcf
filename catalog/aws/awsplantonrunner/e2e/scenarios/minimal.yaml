@@ -1,9 +1,8 @@
 # Minimal AwsPlantonRunner scenario: the appliance on the two-AZ subnet
-# pair with a synthetic credentials document (obviously-fake placeholder
-# values -- the container never authenticates anywhere; see
-# ../profile.yaml for why service-level verification makes that the
-# right lane shape). Full metadata is supplied for tagging/orphan
-# cleanup.
+# pair with an obviously-fake runner token (the container never joins any
+# control plane; see ../profile.yaml for why service-level verification
+# makes that the right lane shape). Full metadata is supplied for
+# tagging/orphan cleanup.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsPlantonRunner
 metadata:
@@ -29,4 +28,4 @@ spec:
         kind: AwsSubnet
         name: planton-oss-e2e-awssubnet-prereq-b
         fieldPath: status.outputs.subnet_id
-  credentials: '{"type":"planton_runner","org":"planton-oss","runner":"planton-oss-e2e-planton-runner","channel_identifier":"org.planton-oss.runner.planton-oss-e2e-planton-runner","api_key":"pak_FAKE_E2E_PLACEHOLDER","planton_api_endpoint":"api.example.invalid:443"}'
+  token: prt_FAKE_E2E_PLACEHOLDER

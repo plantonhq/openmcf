@@ -1,0 +1,19 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpPlantonRunner
+metadata:
+  name: <runner-name>
+spec:
+  region: us-central1
+  # The runner token gates JOINING, never identity: the runner registers
+  # itself on first boot and receives its own individually revocable
+  # identity. On Planton the platform mints the token and writes it at
+  # exactly this managed-secret reference before the infrastructure
+  # applies.
+  token: $secret/runner-token
+  # 4 vCPUs with 4Gi: IaC operations are memory-hungry (provider
+  # plugins, plans held in memory) -- size memory before cpu. Cloud Run
+  # requires at least 2Gi at 4 vCPUs.
+  cpu: "4"
+  memory: 4Gi
+  # Pin the runner build for change control; bump deliberately.
+  runnerVersion: v0.4.0

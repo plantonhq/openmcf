@@ -44,10 +44,16 @@ message AwsPlantonRunnerStackOutputs {
   // permissionless role created with the appliance).
   string task_role_arn = 8;
 
-  // The ARN of the secret holding the runner's credentials document.
-  string credentials_secret_arn = 9;
+  // The ARN of the Secrets Manager secret holding the runner token. The
+  // ECS agent injects it at task start; the token authorizes joining and
+  // is never the runner's identity.
+  string token_secret_arn = 9;
 
   // The AWS region the runner was deployed in. Echoed so downstream
   // tooling and verifiers can target the correct region.
   string region = 10;
+
+  // The name the runner registers itself under with the control plane --
+  // the value shown by `planton runner list` the moment it joins.
+  string runner_name = 11;
 }
