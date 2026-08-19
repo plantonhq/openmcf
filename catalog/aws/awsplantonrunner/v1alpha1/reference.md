@@ -46,7 +46,7 @@ spec:
   subnets:
     - value: subnet-0a1b2c3d4e5f60001
     - value: subnet-0a1b2c3d4e5f60002
-  credentials: '{"type":"planton_runner","org":"demo-org","runner":"awsplantonrunner-demo","channel_identifier":"org.demo-org.runner.awsplantonrunner-demo","api_key":"pck_FAKE_PLACEHOLDER_VALUE","planton_api_endpoint":"api.example.invalid:443"}'
+  credentials: '{"type":"planton_runner","org":"demo-org","runner":"awsplantonrunner-demo","channel_identifier":"org.demo-org.runner.awsplantonrunner-demo","api_key":"pak_FAKE_PLACEHOLDER_VALUE","planton_api_endpoint":"api.example.invalid:443"}'
 ```
 
 ## Spec Fields

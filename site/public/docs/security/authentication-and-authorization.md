@@ -155,7 +155,7 @@ Both user API keys and service account API keys can be used to authenticate the 
 
 ```bash
 # Authenticate with an API key (user or service account)
-planton auth login --api-key pck_abc123...
+planton auth login --api-key pak_abc123...
 
 # Verify the authenticated identity
 planton auth who

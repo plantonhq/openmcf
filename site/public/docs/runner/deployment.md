@@ -18,7 +18,7 @@ Getting a runner operational involves two phases: creating a runner token once, 
 
 ## Enrollment: the Runner Token
 
-A runner token is a named, revocable secret that authorizes runners to join your organization. You create it once (from the console's Runners area); every runner started with it registers ITSELF with Planton on arrival and receives its own identity — a dedicated [service account](/docs/security/authentication-and-authorization#service-accounts), an API key, and mTLS certificates for the secure tunnel connection, delivered together in the runner's identity document.
+A runner token is a named, revocable secret that authorizes runners to join your organization. You create it once (in the console: Organization Settings → Runner Tokens, or `planton runner token create`); every runner started with it registers ITSELF with Planton on arrival and receives its own identity — a dedicated [service account](/docs/security/authentication-and-authorization#service-accounts), an API key, and mTLS certificates for the secure tunnel connection, delivered together in the runner's identity document.
 
 Three properties define the model:
 

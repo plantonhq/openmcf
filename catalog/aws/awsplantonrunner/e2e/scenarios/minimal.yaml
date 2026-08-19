@@ -29,4 +29,4 @@ spec:
         kind: AwsSubnet
         name: planton-oss-e2e-awssubnet-prereq-b
         fieldPath: status.outputs.subnet_id
-  credentials: '{"type":"planton_runner","org":"planton-oss","runner":"planton-oss-e2e-planton-runner","channel_identifier":"org.planton-oss.runner.planton-oss-e2e-planton-runner","api_key":"pck_FAKE_E2E_PLACEHOLDER","planton_api_endpoint":"api.example.invalid:443"}'
+  credentials: '{"type":"planton_runner","org":"planton-oss","runner":"planton-oss-e2e-planton-runner","channel_identifier":"org.planton-oss.runner.planton-oss-e2e-planton-runner","api_key":"pak_FAKE_E2E_PLACEHOLDER","planton_api_endpoint":"api.example.invalid:443"}'
