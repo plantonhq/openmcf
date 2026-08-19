@@ -7,24 +7,27 @@ metadata:
   labels:
     {{- include "planton-runner.labels" . | nindent 4 }}
 spec:
-  # Always exactly 1 replica: the runner maintains a stateful tunnel
-  # connection, and when builds are enabled the build log streamer is a
-  # singleton per watched Tekton namespace -- a second replica would ship
-  # duplicate log entries.
+  # Always exactly 1 replica: a runner's identity is individually minted for
+  # ONE live instance -- a second pod joining under the same name would
+  # revoke the first pod's key (token lineage: re-admission re-mints and
+  # revokes). The runner also maintains a stateful tunnel connection, and
+  # when builds are enabled the build log streamer is a singleton per
+  # watched Tekton namespace.
   replicas: 1
+  # Recreate, not RollingUpdate: a rolling surge would briefly run two pods
+  # under one runner name, and the surged pod's join revokes the old pod's
+  # key while it still serves. Terminate first, then start fresh -- the new
+  # pod re-joins with the token and receives a fresh identity.
   strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxUnavailable: 0
-      maxSurge: 1
+    type: Recreate
   selector:
     matchLabels:
       {{- include "planton-runner.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
-        {{- if not .Values.credentials.existingSecret }}
-        checksum/credentials: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- if not .Values.enrollment.existingSecret }}
+        checksum/token: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
         {{- end }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
@@ -45,8 +48,25 @@ spec:
           args:
             - "start"
           env:
+            # Enrollment contract: the runner joins with the token on first
+            # boot and persists the identity document it receives at the
+            # configured path (the writable identity volume below). Container
+            # restarts find it there and skip the join; a pod recreated
+            # without its volume simply re-joins -- the same token re-admits
+            # its own runner with a fresh key.
+            - name: PLANTON_RUNNER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "planton-runner.tokenSecretName" . }}
+                  key: {{ include "planton-runner.tokenSecretKey" . }}
+            - name: PLANTON_RUNNER_NAME
+              value: {{ include "planton-runner.runnerName" . | quote }}
+            {{- if .Values.enrollment.endpoint }}
+            - name: PLANTON_RUNNER_ENDPOINT
+              value: {{ .Values.enrollment.endpoint | quote }}
+            {{- end }}
             - name: PLANTON_RUNNER_CREDENTIALS_FILE
-              value: "/etc/planton/credentials/credentials.json"
+              value: "/var/lib/planton-runner/credentials.json"
             - name: PORT
               value: {{ .Values.runner.port | quote }}
             - name: LOG_LEVEL
@@ -114,17 +134,14 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
-            - name: credentials
-              mountPath: /etc/planton/credentials
-              readOnly: true
+            # Writable identity volume: the runner persists the identity
+            # document it receives at enrollment here, so container restarts
+            # within the pod's lifetime reuse it instead of re-joining.
+            - name: identity
+              mountPath: /var/lib/planton-runner
       volumes:
-        - name: credentials
-          secret:
-            secretName: {{ include "planton-runner.credentialsSecretName" . }}
-            defaultMode: 0400
-            items:
-              - key: {{ include "planton-runner.credentialsSecretKey" . }}
-                path: credentials.json
+        - name: identity
+          emptyDir: {}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

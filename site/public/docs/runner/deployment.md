@@ -34,14 +34,14 @@ The identity document contains sensitive material: the runner's private key and 
 
 There is no separate credential-rotation ceremony: **re-enrolling IS rotating**. When a runner re-enrolls, it receives a fresh identity and every prior API key for that runner is revoked in the same act — a runner can never accumulate multiple live keys. If both a runner's identity and its admitting token are compromised, revoke the token, reset the runner's enrollment from its detail page (an audited action that clears its lineage), and let it re-enroll with a new token.
 
-When the deployment target needs the identity document stored (the appliance and chart deployment shapes below), keep it in your platform's secrets management:
+The deployment targets below store only the runner TOKEN in the target's secret store — the identity document is born where the runner runs (minted at enrollment, persisted on the runner's own writable storage) and never moves between machines:
 
-| Deployment Target | Recommended Storage |
+| Deployment Target | Where the token lives |
 |-------------------|-------------------|
-| Kubernetes | Kubernetes Secret with a `credentials.json` key |
+| Kubernetes | Kubernetes Secret |
 | AWS ECS | AWS Secrets Manager |
 | GCP Cloud Run | GCP Secret Manager |
-| Azure Container Apps | Azure Key Vault |
+| Azure Container Apps | Container App built-in secret |
 
 ## Installation
 
@@ -78,10 +78,10 @@ The runner loads its identity, establishes the secure tunnel, authenticates with
 For production use, deploy the runner as a long-running container. The CLI supports four deployment targets through `planton runner deploy`:
 
 ```bash
-planton runner deploy prod-runner
+planton runner deploy prod-runner --token prt_...
 ```
 
-This command prompts you to select a deployment target and walks through the target-specific configuration. You can also specify `--image-tag` to pin a specific runner version.
+This command ships the runner token into the target's secret store and deploys the runner container — the runner enrolls itself on first boot and appears in your Runners list the moment it joins. The runner does not need to exist yet: deploying a new name registers it on arrival. The command prompts you to select a deployment target and walks through the target-specific configuration; you can also specify `--image-tag` to pin a specific runner version. Re-deploys (image bumps) never re-ask for the token — they reuse the secret already sitting in the target.
 
 ### Kubernetes
 
@@ -90,11 +90,11 @@ Deploys the runner using a Helm chart. This is the most common deployment target
 **Prerequisites:**
 - `kubectl` configured with access to the target cluster
 - Helm 3 installed
-- The runner's identity document (minted at enrollment)
+- A runner token
 
 **What gets deployed:**
-- A Deployment running the runner container
-- A Secret containing the `credentials.json` file
+- A Deployment running the runner container, with a writable volume where the runner persists the identity document it receives at enrollment
+- A Secret containing the runner token
 - A Kubernetes ServiceAccount (if using runner-delegated auth with Workload Identity or IRSA)
 
 **When to use Kubernetes:**
