@@ -5402,6 +5402,36 @@ enum CloudResourceKind {
     version: "v1alpha1"
     id_prefix: "cfztst"
   }];
+  // No prerequisites: the organization is an account-scoped configuration
+  // singleton (the optional zone scope is a per-manifest choice, not a
+  // structural dependency).
+  CloudflareZeroTrustOrganization = 7032 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfztorg"
+  }];
+  // No prerequisites: targets are account-scoped, and the virtual-network
+  // reference is an optional per-manifest edge (omitted = the account's
+  // default virtual network).
+  CloudflareZeroTrustAccessInfrastructureTarget = 7033 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfztit"
+  }];
+  // No prerequisites: portals are account-scoped, and the servers[] rows'
+  // MCP-server references are optional per-manifest edges.
+  CloudflareZeroTrustMcpPortal = 7034 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfmcpp"
+  }];
+  // No prerequisites: MCP server registrations are account-scoped and
+  // self-contained -- portals reference them, not the reverse.
+  CloudflareZeroTrustMcpServer = 7035 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfmcps"
+  }];
 
   // --- 7060-7079: Cloudflare Zero Trust Gateway sub-band ---
 
@@ -5417,6 +5447,20 @@ enum CloudResourceKind {
     provider: cloudflare
     version: "v1alpha1"
     id_prefix: "cfztl"
+  }];
+  // No prerequisites: the Gateway configuration is an account-scoped
+  // singleton, and its certificate reference is an optional per-manifest
+  // edge.
+  CloudflareZeroTrustGatewaySettings = 7062 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfztgs"
+  }];
+  // No prerequisites: DNS locations are account-scoped and self-contained.
+  CloudflareZeroTrustDnsLocation = 7063 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfztdl"
   }];
 
   // --- 7150-7179: Cloudflare zone TLS-posture sub-band ---

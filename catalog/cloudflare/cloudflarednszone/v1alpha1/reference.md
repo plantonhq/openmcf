@@ -1233,6 +1233,7 @@ Fields on other kinds that can point at this resource:
 | CloudflareZeroTrustAccessGroup | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareZeroTrustAccessIdentityProvider | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareZeroTrustAccessServiceToken | `spec.zoneId` | `status.outputs.zone_id` |
+| CloudflareZeroTrustOrganization | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareZoneSettings | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareZoneTlsSettings | `spec.zoneId` | `status.outputs.zone_id` |
 | KubernetesExternalDns | `spec.cloudflare.zoneIdFilters` | `status.outputs.zone_id` |

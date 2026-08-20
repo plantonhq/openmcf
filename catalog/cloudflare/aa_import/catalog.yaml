@@ -233,6 +233,34 @@ spec:
     - terraform_type: cloudflare_zero_trust_access_service_token
       pulumi_type: cloudflare:index/zeroTrustAccessServiceToken:ZeroTrustAccessServiceToken
       id_format: "accounts/{account_id}/{service_token_id}"
+    # The organization is a singleton upsert: import adopts whatever the
+    # account carries. ACCOUNT SCOPE ONLY -- the provider's importer never
+    # populates zone_id, so a zone-scoped organization cannot be imported
+    # (its docs page claims no import support at all; the code ships an
+    # account-scoped ImportState, exercised by the provider's own tests).
+    # The provider also records an import gap on deny_unmatched_requests
+    # (the API returns false where config carried null) -- re-assert from
+    # configuration after import.
+    - terraform_type: cloudflare_zero_trust_organization
+      pulumi_type: cloudflare:index/zeroTrustOrganization:ZeroTrustOrganization
+      id_format: "{account_id}"
+    # The key-rotation cadence is an account singleton like the org itself.
+    - terraform_type: cloudflare_zero_trust_access_key_configuration
+      pulumi_type: cloudflare:index/zeroTrustAccessKeyConfiguration:ZeroTrustAccessKeyConfiguration
+      id_format: "{account_id}"
+    - terraform_type: cloudflare_zero_trust_access_infrastructure_target
+      pulumi_type: cloudflare:index/zeroTrustAccessInfrastructureTarget:ZeroTrustAccessInfrastructureTarget
+      id_format: "{account_id}/{target_id}"
+    # MCP portals and servers import by their user-chosen ids (slugs).
+    # The server's auth_credentials and client_secret are write-only and
+    # never round-trip; last_synced moves server-side between apply and
+    # import (the provider's own test ignores it on verify).
+    - terraform_type: cloudflare_zero_trust_access_ai_controls_mcp_portal
+      pulumi_type: cloudflare:index/zeroTrustAccessAiControlsMcpPortal:ZeroTrustAccessAiControlsMcpPortal
+      id_format: "{account_id}/{portal_id}"
+    - terraform_type: cloudflare_zero_trust_access_ai_controls_mcp_server
+      pulumi_type: cloudflare:index/zeroTrustAccessAiControlsMcpServer:ZeroTrustAccessAiControlsMcpServer
+      id_format: "{account_id}/{server_id}"
     # --- Zero Trust: Gateway ------------------------------------------------------
     # Gateway policies and Zero Trust lists are account-scoped by API design
     # -- no scope prefix. Policy import is "{account_id}/{rule_id}"; list
@@ -243,6 +271,21 @@ spec:
     - terraform_type: cloudflare_zero_trust_list
       pulumi_type: cloudflare:index/zeroTrustList:ZeroTrustList
       id_format: "{account_id}/{list_id}"
+    # The Gateway configuration and logging surfaces are account singletons
+    # (no-op destroy class): import adopts whatever the account carries as
+    # the bare account id.
+    - terraform_type: cloudflare_zero_trust_gateway_settings
+      pulumi_type: cloudflare:index/zeroTrustGatewaySettings:ZeroTrustGatewaySettings
+      id_format: "{account_id}"
+    - terraform_type: cloudflare_zero_trust_gateway_logging
+      pulumi_type: cloudflare:index/zeroTrustGatewayLogging:ZeroTrustGatewayLogging
+      id_format: "{account_id}"
+    - terraform_type: cloudflare_zero_trust_gateway_pacfile
+      pulumi_type: cloudflare:index/zeroTrustGatewayPacfile:ZeroTrustGatewayPacfile
+      id_format: "{account_id}/{pacfile_id}"
+    - terraform_type: cloudflare_zero_trust_dns_location
+      pulumi_type: cloudflare:index/zeroTrustDnsLocation:ZeroTrustDnsLocation
+      id_format: "{account_id}/{location_id}"
     # --- Zero Trust: Tunnels ------------------------------------------------------
     # The tunnel and its remote-ingress config are separate provider resources
     # sharing ONE identity: the config is a tunnel-singleton, so both import as

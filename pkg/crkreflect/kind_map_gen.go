@@ -409,10 +409,16 @@ import (
 	cloudflarezerotrustaccessapplicationv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessapplication/v1alpha1"
 	cloudflarezerotrustaccessgroupv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessgroup/v1alpha1"
 	cloudflarezerotrustaccessidentityproviderv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessidentityprovider/v1alpha1"
+	cloudflarezerotrustaccessinfrastructuretargetv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessinfrastructuretarget/v1alpha1"
 	cloudflarezerotrustaccesspolicyv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccesspolicy/v1alpha1"
 	cloudflarezerotrustaccessservicetokenv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessservicetoken/v1alpha1"
+	cloudflarezerotrustdnslocationv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustdnslocation/v1alpha1"
 	cloudflarezerotrustgatewaypolicyv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustgatewaypolicy/v1alpha1"
+	cloudflarezerotrustgatewaysettingsv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustgatewaysettings/v1alpha1"
 	cloudflarezerotrustlistv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustlist/v1alpha1"
+	cloudflarezerotrustmcpportalv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustmcpportal/v1alpha1"
+	cloudflarezerotrustmcpserverv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustmcpserver/v1alpha1"
+	cloudflarezerotrustorganizationv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustorganization/v1alpha1"
 	cloudflarezerotrusttunnelv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrusttunnel/v1alpha1"
 	cloudflarezerotrusttunnelroutev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrusttunnelroute/v1alpha1"
 	cloudflarezerotrusttunnelvirtualnetworkv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/v1alpha1"
@@ -1081,10 +1087,16 @@ var ProviderCloudflareMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessApplication:          &cloudflarezerotrustaccessapplicationv1alpha1.CloudflareZeroTrustAccessApplication{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessGroup:                &cloudflarezerotrustaccessgroupv1alpha1.CloudflareZeroTrustAccessGroup{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessIdentityProvider:     &cloudflarezerotrustaccessidentityproviderv1alpha1.CloudflareZeroTrustAccessIdentityProvider{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessInfrastructureTarget: &cloudflarezerotrustaccessinfrastructuretargetv1alpha1.CloudflareZeroTrustAccessInfrastructureTarget{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessPolicy:               &cloudflarezerotrustaccesspolicyv1alpha1.CloudflareZeroTrustAccessPolicy{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessServiceToken:         &cloudflarezerotrustaccessservicetokenv1alpha1.CloudflareZeroTrustAccessServiceToken{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustDnsLocation:                &cloudflarezerotrustdnslocationv1alpha1.CloudflareZeroTrustDnsLocation{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustGatewayPolicy:              &cloudflarezerotrustgatewaypolicyv1alpha1.CloudflareZeroTrustGatewayPolicy{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustGatewaySettings:            &cloudflarezerotrustgatewaysettingsv1alpha1.CloudflareZeroTrustGatewaySettings{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustList:                       &cloudflarezerotrustlistv1alpha1.CloudflareZeroTrustList{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustMcpPortal:                  &cloudflarezerotrustmcpportalv1alpha1.CloudflareZeroTrustMcpPortal{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustMcpServer:                  &cloudflarezerotrustmcpserverv1alpha1.CloudflareZeroTrustMcpServer{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustOrganization:               &cloudflarezerotrustorganizationv1alpha1.CloudflareZeroTrustOrganization{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustTunnel:                     &cloudflarezerotrusttunnelv1alpha1.CloudflareZeroTrustTunnel{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustTunnelRoute:                &cloudflarezerotrusttunnelroutev1alpha1.CloudflareZeroTrustTunnelRoute{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustTunnelVirtualNetwork:       &cloudflarezerotrusttunnelvirtualnetworkv1alpha1.CloudflareZeroTrustTunnelVirtualNetwork{},

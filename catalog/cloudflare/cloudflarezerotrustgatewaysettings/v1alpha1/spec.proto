@@ -1,0 +1,320 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustgatewaysettings.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// CloudflareZeroTrustGatewaySettingsSpec configures the account's Secure Web
+// Gateway: the settings panel behind every Gateway policy (TLS inspection,
+// antivirus scanning, block-page branding, browser isolation, sandboxing),
+// the activity-logging controls, and the account's proxy auto-config (PAC)
+// files.
+//
+// The spec folds three Cloudflare surfaces with different lifecycles into
+// one component:
+//   - settings: the account configuration SINGLETON. Create and update are
+//     the same PUT; destroy is a NO-OP that abandons the live configuration
+//     exactly as last applied. An UNSET sub-object is NOT MANAGED -- it is
+//     never sent, and the live value (dashboard-set or default) stays
+//     untouched.
+//   - logging: the logging SINGLETON, same upsert/no-op-destroy behavior.
+//     Unlike settings, the modules always send the COMPLETE logging tree
+//     when this field is set (unset leaves logging unmanaged): Cloudflare
+//     reports drift on omitted logging fields, so partial sends would never
+//     converge.
+//   - pac_files: a real per-file collection -- each row is created,
+//     updated, and DELETED like a normal resource.
+message CloudflareZeroTrustGatewaySettingsSpec {
+  // The Cloudflare account whose Gateway is configured.
+  string account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "account_id.hex32"
+      message: "account_id must be a 32-character hex string"
+      expression: "this.matches('^[0-9a-fA-F]{32}$')"
+    }
+  ];
+
+  // The Gateway configuration surfaces to manage. Each unset sub-object is
+  // left untouched at Cloudflare.
+  CloudflareZeroTrustGatewayConfig settings = 2;
+
+  // The Gateway activity-logging configuration. Unset leaves logging
+  // unmanaged.
+  CloudflareZeroTrustGatewayLogging logging = 3;
+
+  // Proxy auto-config (PAC) files served by Gateway. Each row is one file
+  // with its own lifecycle (removing a row deletes the file).
+  repeated CloudflareZeroTrustGatewayPacFile pac_files = 4;
+}
+
+// CloudflareZeroTrustGatewayConfig is the account configuration singleton's
+// settings tree. Every sub-object is independently optional: set what you
+// manage, omit what you don't.
+message CloudflareZeroTrustGatewayConfig {
+  // Activity logging of Gateway traffic (the master switch; per-rule-type
+  // detail lives in the spec's logging field).
+  CloudflareZeroTrustGatewayToggle activity_log = 1;
+
+  // Anti-virus scanning of proxied traffic.
+  CloudflareZeroTrustGatewayAntivirus antivirus = 2;
+
+  // The branded page Gateway shows on blocked requests.
+  CloudflareZeroTrustGatewayBlockPage block_page = 3;
+
+  // Deep inspection of uploaded/downloaded file bodies.
+  CloudflareZeroTrustGatewayBodyScanning body_scanning = 4;
+
+  // Remote browser isolation behavior.
+  CloudflareZeroTrustGatewayBrowserIsolation browser_isolation = 5;
+
+  // The certificate Gateway presents when inspecting TLS.
+  CloudflareZeroTrustGatewayCertificate certificate = 6;
+
+  // Matching of email aliases (e.g. user+tag@domain) to the canonical
+  // identity in policies.
+  CloudflareZeroTrustGatewayToggle extended_email_matching = 7;
+
+  // FIPS-compliant TLS enforcement.
+  CloudflareZeroTrustGatewayFips fips = 8;
+
+  // Host selectors in HTTP policies (matching on host across both DNS and
+  // HTTP filtering).
+  CloudflareZeroTrustGatewayToggle host_selector = 9;
+
+  // How Gateway decides whether to inspect traffic: static (by
+  // configuration) or dynamic (by learned signals).
+  CloudflareZeroTrustGatewayInspection inspection = 10;
+
+  // The maximum TTL, in seconds (60-36000), Gateway's DNS resolver returns
+  // for cached responses. Unset leaves responses uncapped (or managed
+  // elsewhere).
+  optional int64 max_ttl_secs = 11 [
+    (buf.validate.field).int64.gte = 60,
+    (buf.validate.field).int64.lte = 36000
+  ];
+
+  // Detection of protocols tunneled over non-standard ports.
+  CloudflareZeroTrustGatewayToggle protocol_detection = 12;
+
+  // Sandboxed execution of downloaded files before delivery.
+  CloudflareZeroTrustGatewaySandbox sandbox = 13;
+
+  // TLS decryption -- the switch that lets Gateway inspect HTTPS traffic.
+  // Cloudflare REJECTS enabling this (error 2211) until a Gateway
+  // certificate exists and is activated on the account.
+  CloudflareZeroTrustGatewayToggle tls_decrypt = 14;
+}
+
+// CloudflareZeroTrustGatewayToggle is a single enable/disable surface.
+message CloudflareZeroTrustGatewayToggle {
+  // Whether the surface is enabled.
+  optional bool enabled = 1;
+}
+
+// CloudflareZeroTrustGatewayAntivirus scans proxied file transfers.
+message CloudflareZeroTrustGatewayAntivirus {
+  // Scan files being downloaded through Gateway.
+  optional bool enabled_download_phase = 1;
+
+  // Scan files being uploaded through Gateway.
+  optional bool enabled_upload_phase = 2;
+
+  // When a file cannot be scanned (encrypted archives, oversize), block it
+  // instead of letting it through.
+  optional bool fail_closed = 3;
+
+  // What users see when a scan blocks their transfer.
+  CloudflareZeroTrustGatewayNotificationSettings notification_settings = 4;
+}
+
+// CloudflareZeroTrustGatewayNotificationSettings shapes the user-facing
+// notification on antivirus blocks.
+message CloudflareZeroTrustGatewayNotificationSettings {
+  // Whether to show a notification at all.
+  optional bool enabled = 1;
+
+  // The notification message text.
+  string msg = 2;
+
+  // A support URL included in the notification.
+  string support_url = 3;
+
+  // Include context (rule and category detail) in the notification.
+  optional bool include_context = 4;
+}
+
+// CloudflareZeroTrustGatewayBlockPage brands the page Gateway serves on
+// blocked requests -- or redirects to a page you host.
+message CloudflareZeroTrustGatewayBlockPage {
+  // mode selects Cloudflare's hosted page shapes; target_uri is the
+  // redirect_uri mode's destination.
+  option (buf.validate.message).cel = {
+    id: "block_page.redirect_needs_target"
+    message: "mode redirect_uri needs target_uri set to the page to redirect to"
+    expression: "this.mode != 'redirect_uri' || this.target_uri != ''"
+  };
+
+  // Whether the custom block page is enabled (false serves Cloudflare's
+  // plain default).
+  optional bool enabled = 1;
+
+  // How blocks are presented: customized_block_page (Cloudflare hosts the
+  // branded page below) or redirect_uri (redirect to target_uri). Unset
+  // keeps Cloudflare's default presentation.
+  string mode = 2 [(buf.validate.field).cel = {
+    id: "mode.values"
+    message: "mode must be customized_block_page or redirect_uri (or unset for the default presentation)"
+    expression: "this == '' || this in ['customized_block_page', 'redirect_uri']"
+  }];
+
+  // The URL to redirect blocked requests to (redirect_uri mode).
+  string target_uri = 3;
+
+  // Include the block context (rule, category) as query parameters on the
+  // redirect / page.
+  optional bool include_context = 4;
+
+  // The page name shown in the dashboard.
+  string name = 5;
+
+  // The page heading text.
+  string header_text = 6;
+
+  // The page footer text.
+  string footer_text = 7;
+
+  // Hide the default Gateway footer entirely.
+  optional bool suppress_footer = 8;
+
+  // The page background color, as a CSS color (e.g. "#1e293b").
+  string background_color = 9;
+
+  // The path to the logo shown on the page.
+  string logo_path = 10;
+
+  // A mailto: address users can report false positives to.
+  string mailto_address = 11;
+
+  // The subject line pre-filled on the report email.
+  string mailto_subject = 12;
+}
+
+// CloudflareZeroTrustGatewayBodyScanning inspects transferred file bodies.
+message CloudflareZeroTrustGatewayBodyScanning {
+  // deep waits for the whole file before verdict (thorough, slower);
+  // shallow scans the stream as it passes (faster, first bytes only).
+  string inspection_mode = 1 [(buf.validate.field).cel = {
+    id: "inspection_mode.values"
+    message: "inspection_mode must be deep or shallow"
+    expression: "this == '' || this in ['deep', 'shallow']"
+  }];
+}
+
+// CloudflareZeroTrustGatewayBrowserIsolation controls remote browser
+// isolation.
+message CloudflareZeroTrustGatewayBrowserIsolation {
+  // Isolate browsing for traffic without a user identity (e.g. anonymous
+  // DNS-over-HTTPS locations).
+  optional bool non_identity_enabled = 1;
+
+  // Enable URL-triggered isolation (policies with the isolate action).
+  optional bool url_browser_isolation_enabled = 2;
+}
+
+// CloudflareZeroTrustGatewayCertificate selects the certificate Gateway
+// presents for TLS inspection.
+message CloudflareZeroTrustGatewayCertificate {
+  // The Gateway certificate to present: a certificate UUID from the
+  // account's Zero Trust certificates (the nil UUID selects the Cloudflare
+  // Root CA). The certificate must be ACTIVATED on the account before TLS
+  // decryption will turn on. Accepts a literal UUID or a reference; no
+  // catalog kind manages Gateway certificates yet, so a literal UUID is the
+  // common form today.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef id = 1 [(buf.validate.field).required = true];
+}
+
+// CloudflareZeroTrustGatewayFips enforces FIPS-compliant TLS.
+message CloudflareZeroTrustGatewayFips {
+  // Restrict TLS to FIPS-approved ciphers and versions.
+  optional bool tls = 1;
+}
+
+// CloudflareZeroTrustGatewayInspection selects Gateway's inspection mode.
+message CloudflareZeroTrustGatewayInspection {
+  // static inspects what configuration says to inspect; dynamic learns from
+  // traffic signals.
+  string mode = 1 [(buf.validate.field).cel = {
+    id: "mode.values"
+    message: "mode must be static or dynamic"
+    expression: "this == '' || this in ['static', 'dynamic']"
+  }];
+}
+
+// CloudflareZeroTrustGatewaySandbox detonates downloads in a sandbox before
+// delivering them.
+message CloudflareZeroTrustGatewaySandbox {
+  // Whether sandboxing is enabled.
+  optional bool enabled = 1;
+
+  // What happens to a file while its sandbox verdict is pending: allow or
+  // block.
+  string fallback_action = 2 [(buf.validate.field).cel = {
+    id: "fallback_action.values"
+    message: "fallback_action must be allow or block"
+    expression: "this == '' || this in ['allow', 'block']"
+  }];
+}
+
+// CloudflareZeroTrustGatewayLogging is the logging singleton: what Gateway
+// records per rule type. When this surface is managed, the modules send the
+// COMPLETE tree (unset leaves default false at Cloudflare).
+message CloudflareZeroTrustGatewayLogging {
+  // Redact personally identifiable information from activity logs.
+  optional bool redact_pii = 1;
+
+  // Per-rule-type logging detail.
+  CloudflareZeroTrustGatewayLoggingByRuleType settings_by_rule_type = 2;
+}
+
+// CloudflareZeroTrustGatewayLoggingByRuleType sets logging per firewall
+// type.
+message CloudflareZeroTrustGatewayLoggingByRuleType {
+  // Logging for DNS firewall rules.
+  CloudflareZeroTrustGatewayLoggingRule dns = 1;
+
+  // Logging for HTTP/HTTPS firewall rules.
+  CloudflareZeroTrustGatewayLoggingRule http = 2;
+
+  // Logging for network (L4) firewall rules.
+  CloudflareZeroTrustGatewayLoggingRule l4 = 3;
+}
+
+// CloudflareZeroTrustGatewayLoggingRule is one rule type's logging switches.
+message CloudflareZeroTrustGatewayLoggingRule {
+  // Log every request evaluated by this rule type.
+  optional bool log_all = 1;
+
+  // Log only requests that a rule blocked.
+  optional bool log_blocks = 2;
+}
+
+// CloudflareZeroTrustGatewayPacFile is one proxy auto-config file served by
+// Gateway.
+message CloudflareZeroTrustGatewayPacFile {
+  // The file's name, shown in the dashboard.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The PAC file body (JavaScript with a FindProxyForURL function).
+  string contents = 2 [(buf.validate.field).required = true];
+
+  // The URL-friendly slug the file is served under. IMMUTABLE: the slug is
+  // baked into the file's public URL, so changing it replaces the file
+  // (clients configured with the old URL break). Omit to let Cloudflare
+  // derive it from the name.
+  string slug = 3;
+
+  // A free-form description of the file.
+  string description = 4;
+}

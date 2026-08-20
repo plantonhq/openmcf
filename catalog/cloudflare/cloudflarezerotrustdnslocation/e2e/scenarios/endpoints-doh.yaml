@@ -1,0 +1,35 @@
+# Endpoints scenario: the full four-type endpoint tree with token-gated DoH
+# plus a TTL override -- proves the all-four-at-once endpoint write and the
+# max_ttl pairing live. max_ttl stays declared so the idempotency re-plan
+# is honest (update is a full replace; omitting it resets to inherit).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustDnsLocation
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustdnslocation-endpoints-doh
+  id: planton-oss-e2e-cloudflarezerotrustdnslocation-endpoints-doh
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustdnslocation
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: e2e-location-doh-${E2E_RUN_ID}
+  ecs_support: true
+  endpoints:
+    doh:
+      enabled: true
+      require_token: true
+    dot:
+      enabled: false
+    ipv4:
+      enabled: false
+    ipv6:
+      enabled: false
+  max_ttl:
+    mode: override
+    ttl_secs: 300

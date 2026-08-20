@@ -1,0 +1,34 @@
+# With-server scenario: publishes a scenario-declared MCP server fixture
+# through the portal (a portal does not REQUIRE servers, so the edge is
+# per-scenario). Proves the servers[].server_id FK live, plus a per-portal
+# tool override.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustMcpPortal
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustmcpportal-with-server
+  id: planton-oss-e2e-cloudflarezerotrustmcpportal-with-server
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustmcpportal
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: CloudflareZeroTrustMcpServer
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  portal_id: e2e-portal-srv-${E2E_RUN_ID}
+  hostname: mcp-e2e-srv-${E2E_RUN_ID}.example.com
+  name: Planton E2E Portal with server ${E2E_RUN_ID}
+  servers:
+    - server_id:
+        valueFrom:
+          kind: CloudflareZeroTrustMcpServer
+          name: planton-oss-e2e-cloudflarezerotrustmcpserver-prereq
+          fieldPath: status.outputs.server_id
+      on_behalf: true
+      updated_tools:
+        - name: example_tool
+          enabled: false

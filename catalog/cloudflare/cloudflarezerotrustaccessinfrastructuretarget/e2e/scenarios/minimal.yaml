@@ -1,0 +1,23 @@
+# Minimal scenario: one IPv4 target in the account's DEFAULT virtual
+# network (virtual_network_id omitted -- proves the omit-for-default path;
+# the provider-computed assignment must not drift the re-plan).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustAccessInfrastructureTarget
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustaccessinfrastructuretarget-minimal
+  id: planton-oss-e2e-cloudflarezerotrustaccessinfrastructuretarget-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustaccessinfrastructuretarget
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  hostname: e2e-target-min-${E2E_RUN_ID}
+  ip:
+    ipv4:
+      ip_addr: 10.255.255.10

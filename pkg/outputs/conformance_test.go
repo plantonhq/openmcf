@@ -5724,6 +5724,64 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"gateway_id", "dynamic_route_ids"},
 		},
 		{
+			// CloudflareZeroTrustOrganization: a settings singleton -- the
+			// account id is the identity the harness and import recipes key
+			// on; auth_domain is the semantic output consumers reference.
+			name: "CloudflareZeroTrustOrganization",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustOrganization,
+			rawOutputs: map[string]interface{}{
+				"auth_domain": "acme",
+				"account_id":  "0da42c8d2132a9ddaf714f9e7c920711",
+			},
+			mustPopulate: []string{"auth_domain", "account_id"},
+		},
+		{
+			name: "CloudflareZeroTrustAccessInfrastructureTarget",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessInfrastructureTarget,
+			rawOutputs: map[string]interface{}{
+				"target_id": "f70ff985-a4ef-4643-bbbc-4a0ed4fc8415",
+			},
+			mustPopulate: []string{"target_id"},
+		},
+		{
+			name: "CloudflareZeroTrustMcpPortal",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustMcpPortal,
+			rawOutputs: map[string]interface{}{
+				"portal_id": "eng-tools",
+				"hostname":  "mcp.example.com",
+			},
+			mustPopulate: []string{"portal_id", "hostname"},
+		},
+		{
+			name: "CloudflareZeroTrustMcpServer",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustMcpServer,
+			rawOutputs: map[string]interface{}{
+				"server_id": "docs-search",
+			},
+			mustPopulate: []string{"server_id"},
+		},
+		{
+			// CloudflareZeroTrustGatewaySettings: a settings singleton --
+			// the account id is the only identity (the fold has no resource
+			// id of its own).
+			name: "CloudflareZeroTrustGatewaySettings",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustGatewaySettings,
+			rawOutputs: map[string]interface{}{
+				"account_id": "0da42c8d2132a9ddaf714f9e7c920711",
+			},
+			mustPopulate: []string{"account_id"},
+		},
+		{
+			name: "CloudflareZeroTrustDnsLocation",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustDnsLocation,
+			rawOutputs: map[string]interface{}{
+				"location_id":   "5f9c1e2a3b4d5e6f708192a3b4c5d6e7",
+				"doh_subdomain": "q7x2p9r4m1",
+				"ip":            "172.64.36.5",
+			},
+			mustPopulate: []string{"location_id", "doh_subdomain", "ip"},
+		},
+		{
 			// AzureResourceGroup: flat scalar outputs from both engines (ARM id,
 			// name, region) must each land on the StackOutputs proto --
 			// resource_group_name is the FK target every other Azure kind

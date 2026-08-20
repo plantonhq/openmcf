@@ -1152,12 +1152,18 @@ violations:
   - catalog/cloudflare/cloudflarezerotrustaccessgroup:missing-control-profile
   - catalog/cloudflare/cloudflarezerotrustaccessgroup:missing-cost-profile
   - catalog/cloudflare/cloudflarezerotrustaccessidentityprovider/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustaccessinfrastructuretarget/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrustaccesspolicy/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrustaccesspolicy:missing-control-profile
   - catalog/cloudflare/cloudflarezerotrustaccesspolicy:missing-cost-profile
   - catalog/cloudflare/cloudflarezerotrustaccessservicetoken/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustdnslocation/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrustgatewaypolicy/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustgatewaysettings/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrustlist/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustmcpportal/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustmcpserver/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustorganization/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrusttunnel/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrusttunnel:missing-control-profile
   - catalog/cloudflare/cloudflarezerotrusttunnel:missing-cost-profile

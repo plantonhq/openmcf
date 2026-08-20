@@ -618,6 +618,57 @@ var verifiers = map[string]Verifier{
 		outputKeys:    []string{"gateway_id"},
 		accountScoped: true,
 	},
+	// The Zero Trust organization is an ACCOUNT-scoped settings singleton:
+	// create==update (PUT upsert) and destroy is a literal no-op at the
+	// provider -- verify-absent asserts the organization surface still
+	// answers. The folded key-rotation cadence rides the same account.
+	"cloudflarezerotrustorganization": &settingsSingletonVerifier{
+		component:  "cloudflarezerotrustorganization",
+		pathFormat: "accounts/%s/access/organizations",
+		idKey:      "account_id",
+	},
+	// Infrastructure targets delete for real and 404 honestly (the
+	// generated Read removes on 404; no tombstone fields exist).
+	"cloudflarezerotrustaccessinfrastructuretarget": &apiPathVerifier{
+		component:     "cloudflarezerotrustaccessinfrastructuretarget",
+		pathFormat:    "accounts/%s/infrastructure/targets/%s",
+		outputKeys:    []string{"target_id"},
+		accountScoped: true,
+	},
+	// MCP portals delete for real and 404 honestly. Identity is the
+	// user-chosen portal id (slug).
+	"cloudflarezerotrustmcpportal": &apiPathVerifier{
+		component:     "cloudflarezerotrustmcpportal",
+		pathFormat:    "accounts/%s/access/ai-controls/mcp/portals/%s",
+		outputKeys:    []string{"portal_id"},
+		accountScoped: true,
+	},
+	// MCP servers delete for real and 404 honestly. Identity is the
+	// user-chosen server id; the status enum on the object is sync state,
+	// never a deletion tombstone.
+	"cloudflarezerotrustmcpserver": &apiPathVerifier{
+		component:     "cloudflarezerotrustmcpserver",
+		pathFormat:    "accounts/%s/access/ai-controls/mcp/servers/%s",
+		outputKeys:    []string{"server_id"},
+		accountScoped: true,
+	},
+	// The Gateway configuration is an ACCOUNT-scoped settings singleton
+	// (both the settings and logging folds have literal no-op deletes);
+	// the PAC-file rows delete for real and ride the same lane. The
+	// configuration surface is the honest single handle.
+	"cloudflarezerotrustgatewaysettings": &settingsSingletonVerifier{
+		component:  "cloudflarezerotrustgatewaysettings",
+		pathFormat: "accounts/%s/gateway/configuration",
+		idKey:      "account_id",
+	},
+	// Gateway DNS locations delete for real and 404 honestly (no
+	// tombstone fields in the SDK's Location struct).
+	"cloudflarezerotrustdnslocation": &apiPathVerifier{
+		component:     "cloudflarezerotrustdnslocation",
+		pathFormat:    "accounts/%s/gateway/locations/%s",
+		outputKeys:    []string{"location_id"},
+		accountScoped: true,
+	},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is

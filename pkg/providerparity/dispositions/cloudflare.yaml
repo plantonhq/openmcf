@@ -214,9 +214,6 @@ resources:
     disposition: deferred
     reason: "Enterprise add-on entitlement: cloud email security"
   # ---- Zero Trust Access ------------------------------------------------------------
-  - resource: cloudflare_zero_trust_organization
-    disposition: model-planned
-    reason: "judged as a planned CloudflareZeroTrustOrganization kind (team-domain singleton: login design, session defaults)"
   - resource: cloudflare_zero_trust_access_custom_page
     disposition: model-planned
     reason: "judged as a planned CloudflareZeroTrustAccessCustomPage kind (branded block and login pages referenced by applications)"
@@ -232,37 +229,13 @@ resources:
   - resource: cloudflare_zero_trust_access_mtls_hostname_settings
     disposition: model-planned
     reason: "folds into the planned CloudflareZeroTrustAccessMtlsCertificate kind (hostname settings exist in service of the mTLS certificates)"
-  - resource: cloudflare_zero_trust_access_key_configuration
-    disposition: model-planned
-    reason: "folds into the planned CloudflareZeroTrustOrganization kind (key rotation settings are organization-singleton configuration)"
-  - resource: cloudflare_zero_trust_access_infrastructure_target
-    disposition: model-planned
-    reason: "judged as a planned CloudflareZeroTrustAccessInfrastructureTarget kind (SSH infrastructure targets referenced by infrastructure applications)"
-  - resource: cloudflare_zero_trust_access_ai_controls_mcp_portal
-    disposition: model-planned
-    reason: "judged as a planned CloudflareZeroTrustMcpPortal kind (MCP server portals behind Access)"
-  - resource: cloudflare_zero_trust_access_ai_controls_mcp_server
-    disposition: model-planned
-    reason: "judged as a planned CloudflareZeroTrustMcpServer kind (registered MCP servers behind Access, pairing with the portal)"
   # ---- Zero Trust Gateway ------------------------------------------------------------
-  - resource: cloudflare_zero_trust_gateway_settings
-    disposition: model-planned
-    reason: "judged as a planned CloudflareZeroTrustGatewaySettings kind (account-level Gateway configuration singleton)"
-  - resource: cloudflare_zero_trust_dns_location
-    disposition: model-planned
-    reason: "judged as a planned CloudflareZeroTrustDnsLocation kind (DNS filtering locations with their own endpoints and lifecycle)"
   - resource: cloudflare_zero_trust_gateway_proxy_endpoint
     disposition: model-planned
     reason: "judged as a planned CloudflareZeroTrustGatewayProxyEndpoint kind (proxy endpoints with allowed-IP configuration)"
-  - resource: cloudflare_zero_trust_gateway_logging
-    disposition: model-planned
-    reason: "folds into the planned CloudflareZeroTrustGatewaySettings kind (logging redaction toggles are Gateway settings)"
   - resource: cloudflare_zero_trust_gateway_certificate
     disposition: model-planned
     reason: "judged as a planned CloudflareZeroTrustGatewayCertificate kind (TLS inspection certificates with activation lifecycle)"
-  - resource: cloudflare_zero_trust_gateway_pacfile
-    disposition: model-planned
-    reason: "folds into the planned CloudflareZeroTrustGatewaySettings kind (PAC file content is Gateway proxy configuration)"
   # ---- Zero Trust Devices & DEX ------------------------------------------------------------
   - resource: cloudflare_zero_trust_device_default_profile
     disposition: model-planned

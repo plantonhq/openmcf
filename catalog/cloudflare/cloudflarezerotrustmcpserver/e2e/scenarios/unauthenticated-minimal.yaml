@@ -1,0 +1,28 @@
+# Minimal scenario: an unauthenticated MCP server registration with a
+# run-scoped throwaway hostname. The background prompt/tool sync will land
+# in status "error" (nothing answers at the hostname) -- the registration
+# object itself is what the lane proves; sync state is server-reported and
+# never asserted.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustMcpServer
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustmcpserver-unauthenticated-minimal
+  id: planton-oss-e2e-cloudflarezerotrustmcpserver-unauthenticated-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustmcpserver
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  server_id: e2e-mcp-${E2E_RUN_ID}
+  name: Planton E2E MCP ${E2E_RUN_ID}
+  hostname: https://mcp-e2e-${E2E_RUN_ID}.example.com
+  auth_type: unauthenticated
+  updated_tools:
+    - name: example_tool
+      enabled: false

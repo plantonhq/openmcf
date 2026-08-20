@@ -1,0 +1,106 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustmcpportal.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// CloudflareZeroTrustMcpPortalSpec publishes an MCP portal: the single
+// Access-protected endpoint users (and their AI clients) connect to for a
+// curated collection of MCP servers. The portal aggregates registered
+// servers (CloudflareZeroTrustMcpServer), applies per-server and
+// per-prompt/tool overrides, and fronts everything with Access policies on
+// its hostname.
+//
+// The portal's id is user-supplied and IMMUTABLE (it keys the portal);
+// hostname and name update in place. Cloudflare returns the servers
+// collection in its own canonical order, so rows are declared as an
+// unordered set -- reordering them is never a change.
+message CloudflareZeroTrustMcpPortalSpec {
+  // The Cloudflare account the portal belongs to.
+  string account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "account_id.hex32"
+      message: "account_id must be a 32-character hex string"
+      expression: "this.matches('^[0-9a-fA-F]{32}$')"
+    }
+  ];
+
+  // The portal's identifier, chosen by you (a URL-friendly slug, e.g.
+  // "eng-tools"). IMMUTABLE: changing it replaces the portal.
+  string portal_id = 2 [(buf.validate.field).required = true];
+
+  // The hostname the portal is served on. Mutable, unlike the MCP server's
+  // hostname -- moving a portal keeps its id and server rows.
+  string hostname = 3 [(buf.validate.field).required = true];
+
+  // The portal's display name, shown to users.
+  string name = 4 [(buf.validate.field).required = true];
+
+  // A free-form description of the portal.
+  string description = 5;
+
+  // Whether users may connect coding agents in code mode (the portal
+  // feature that lets clients execute code against portal tools).
+  // Cloudflare's default is enabled; set false to disable.
+  optional bool allow_code_mode = 6 [(dev.planton.shared.options.default) = "true"];
+
+  // When true, portal traffic is additionally filtered by Secure Web
+  // Gateway policies.
+  optional bool secure_web_gateway = 7;
+
+  // The MCP servers published through this portal. An UNORDERED set: the
+  // backend ignores declaration order and returns its own canonical order.
+  repeated CloudflareZeroTrustMcpPortalServer servers = 8;
+}
+
+// CloudflareZeroTrustMcpPortalServer publishes one registered MCP server
+// through the portal, with optional per-portal overrides.
+message CloudflareZeroTrustMcpPortalServer {
+  // The registered server to publish: a literal server id, or a reference
+  // to a CloudflareZeroTrustMcpServer resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef server_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareZeroTrustMcpServer,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.server_id"
+  ];
+
+  // When true, the server starts disabled for portal users (it is listed
+  // but not usable until enabled).
+  optional bool default_disabled = 2;
+
+  // Whether Cloudflare authenticates to the upstream server on behalf of
+  // the connecting user. Cloudflare's default is enabled; set false to make
+  // users bring their own upstream session.
+  optional bool on_behalf = 3 [(dev.planton.shared.options.default) = "true"];
+
+  // Per-prompt overrides applied for THIS portal, on top of the server's
+  // own overrides. Cloudflare refreshes only name and enabled from the API
+  // for these rows -- alias and description are write-only per portal.
+  repeated CloudflareZeroTrustMcpPortalItemOverride updated_prompts = 4;
+
+  // Per-tool overrides applied for THIS portal, on top of the server's own
+  // overrides. Same write-only behavior as updated_prompts.
+  repeated CloudflareZeroTrustMcpPortalItemOverride updated_tools = 5;
+}
+
+// CloudflareZeroTrustMcpPortalItemOverride adjusts one prompt or tool as it
+// appears in this portal.
+message CloudflareZeroTrustMcpPortalItemOverride {
+  // The prompt/tool name as the upstream server exposes it -- the key the
+  // override matches on.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The name shown to portal users instead of the upstream name.
+  string alias = 2;
+
+  // The description shown to portal users instead of the upstream
+  // description.
+  string description = 3;
+
+  // Whether the prompt/tool is available in this portal. Cloudflare's
+  // default is enabled; set false to hide it.
+  optional bool enabled = 4 [(dev.planton.shared.options.default) = "true"];
+}

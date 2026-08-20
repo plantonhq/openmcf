@@ -1,0 +1,24 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarezerotrustorganization
+spec:
+  # Zero Trust organization under live E2E: an ACCOUNT-SCOPED SINGLETON
+  # UPSERT with a NO-OP destroy -- the lane MUTATES THE ACCOUNT'S REAL
+  # ORGANIZATION (the one Phase-2 account setup created with the team name).
+  # Watch items for the proving session: (1) capture the organization's
+  # prior values (GET accounts/{a}/access/organizations) BEFORE the lane and
+  # restore them in VERIFY-CLN -- destroy reverts nothing; (2) the scenario
+  # deliberately avoids auth_domain -- changing the team domain mid-proof
+  # would break every Access login on the account; (3) the folded
+  # key-rotation cadence rides the same lane (also singleton, also no-op
+  # destroy) -- capture and restore it the same way; (4) the Access family's
+  # API-token defect class (the key-configuration upstream test blanks
+  # CLOUDFLARE_API_TOKEN): a 403 on the PUT under our token credential is
+  # the expected ambush, and a recorded deferral is the honest outcome.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes pass.
+  status: pending_proof
+  timeout_minutes: 10

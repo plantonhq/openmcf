@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustmcpserver.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// CloudflareZeroTrustMcpServerSpec registers an MCP (Model Context Protocol)
+// server with Access AI Controls: an upstream tool server whose prompts and
+// tools Cloudflare proxies, audits, and gates behind Access. Registered
+// servers are then published to users through one or more MCP portals
+// (CloudflareZeroTrustMcpPortal) that reference them.
+//
+// Identity is user-supplied and immutable: server_id, hostname, and
+// auth_type all force replacement when changed. Cloudflare syncs the
+// server's prompt/tool inventory in the background after registration --
+// the status of that sync lives on the API object, not in this spec.
+message CloudflareZeroTrustMcpServerSpec {
+  // The Cloudflare account the server is registered in.
+  string account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "account_id.hex32"
+      message: "account_id must be a 32-character hex string"
+      expression: "this.matches('^[0-9a-fA-F]{32}$')"
+    }
+  ];
+
+  // The server's identifier, chosen by you. IMMUTABLE: changing it replaces
+  // the registration, and portals referencing the old id must be re-pointed.
+  string server_id = 2 [(buf.validate.field).required = true];
+
+  // The server's display name, shown in portals and the dashboard.
+  string name = 3 [(buf.validate.field).required = true];
+
+  // The URL of the upstream MCP server Cloudflare proxies to. IMMUTABLE:
+  // changing it replaces the registration.
+  string hostname = 4 [(buf.validate.field).required = true];
+
+  // How Cloudflare authenticates to the upstream server: oauth (Cloudflare
+  // completes an OAuth flow against the server), bearer (a static token sent
+  // on every request), or unauthenticated. IMMUTABLE: changing it replaces
+  // the registration.
+  string auth_type = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "auth_type.values"
+      message: "auth_type must be one of oauth, bearer, unauthenticated"
+      expression: "this in ['oauth', 'bearer', 'unauthenticated']"
+    }
+  ];
+
+  // The upstream credential for the bearer auth type (the token value).
+  // WRITE-ONLY: Cloudflare stores it encrypted and never returns it -- it
+  // cannot be read back, imported, or drift-detected. Provide a
+  // managed-secret reference; the platform resolves it just-in-time at
+  // deploy.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef auth_credentials = 6 [
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // The OAuth client secret for manually-configured OAuth (Cloudflare's
+  // auth_config auth_mode "manual" -- a server-reported mode; with dynamic
+  // client registration the secret is minted by the flow instead).
+  // WRITE-ONLY: stored encrypted, never returned by any read. Provide a
+  // managed-secret reference.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef client_secret = 7 [
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // A free-form description shown in portals and the dashboard.
+  string description = 8;
+
+  // Per-prompt overrides applied on top of the synced inventory: rename,
+  // re-describe, or disable individual prompts the upstream server exposes.
+  repeated CloudflareZeroTrustMcpServerItemOverride updated_prompts = 9;
+
+  // Per-tool overrides applied on top of the synced inventory: rename,
+  // re-describe, or disable individual tools the upstream server exposes.
+  repeated CloudflareZeroTrustMcpServerItemOverride updated_tools = 10;
+
+  // When true, OAuth flows use Cloudflare's shared callback URL instead of a
+  // per-server one -- some upstream providers allow only one registered
+  // redirect URI.
+  optional bool is_shared_oauth_callback_enabled = 11;
+
+  // When true, traffic to the upstream server is additionally filtered by
+  // Secure Web Gateway policies.
+  optional bool secure_web_gateway = 12;
+}
+
+// CloudflareZeroTrustMcpServerItemOverride adjusts one prompt or tool from
+// the server's synced inventory.
+message CloudflareZeroTrustMcpServerItemOverride {
+  // The prompt/tool name as the upstream server exposes it -- the key the
+  // override matches on.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The name shown to users instead of the upstream name.
+  string alias = 2;
+
+  // The description shown to users instead of the upstream description.
+  string description = 3;
+
+  // Whether the prompt/tool is available to users. Cloudflare's default is
+  // enabled; set false to hide it.
+  optional bool enabled = 4 [(dev.planton.shared.options.default) = "true"];
+}

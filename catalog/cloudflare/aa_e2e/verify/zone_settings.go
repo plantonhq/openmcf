@@ -31,17 +31,32 @@ import (
 	"github.com/pkg/errors"
 )
 
-// settingsSingletonVerifier verifies a zone-scoped settings surface whose
-// object always exists while the zone does (no-op destroy class).
+// settingsSingletonVerifier verifies a scoped settings surface whose object
+// always exists while its scope does (no-op destroy class). The scope is a
+// zone in the common case; account-scoped singletons (the Zero Trust
+// organization, the Gateway configuration) set idKey to "account_id".
 type settingsSingletonVerifier struct {
 	component string
-	// pathFormat is the settings surface's GET path with one %s for zone_id.
+	// pathFormat is the settings surface's GET path with one %s for the
+	// scope id.
 	pathFormat string
+	// idKey names the stack output carrying the scope id. Empty means
+	// "zone_id" (the original zone-singleton class -- existing
+	// registrations stay untouched).
+	idKey string
 }
 
-// IDOutputKey: settings singletons have no resource id -- the zone IS the
+// identityKey resolves the scope-id output key, defaulting to zone_id.
+func (v *settingsSingletonVerifier) identityKey() string {
+	if v.idKey != "" {
+		return v.idKey
+	}
+	return "zone_id"
+}
+
+// IDOutputKey: settings singletons have no resource id -- the scope IS the
 // identity (the fallback-origin precedent).
-func (v *settingsSingletonVerifier) IDOutputKey() string { return "zone_id" }
+func (v *settingsSingletonVerifier) IDOutputKey() string { return v.identityKey() }
 
 func (v *settingsSingletonVerifier) VerifyExists(ctx context.Context, api API, outputs map[string]string) error {
 	return v.assertSurfaceAnswers(ctx, api, outputs, "after deploy")
@@ -55,18 +70,18 @@ func (v *settingsSingletonVerifier) VerifyAbsent(ctx context.Context, api API, o
 }
 
 func (v *settingsSingletonVerifier) assertSurfaceAnswers(ctx context.Context, api API, outputs map[string]string, when string) error {
-	zoneID := outputs["zone_id"]
-	if zoneID == "" {
-		return errors.Errorf("%s outputs carry no zone_id -- cannot verify", v.component)
+	scopeID := outputs[v.identityKey()]
+	if scopeID == "" {
+		return errors.Errorf("%s outputs carry no %s -- cannot verify", v.component, v.identityKey())
 	}
-	path := fmt.Sprintf(v.pathFormat, zoneID)
+	path := fmt.Sprintf(v.pathFormat, scopeID)
 	exists, err := api.ResourceExists(ctx, path)
 	if err != nil {
 		return errors.Wrapf(err, "%s settings-surface probe failed %s", v.component, when)
 	}
 	if !exists {
-		return errors.Errorf("%s settings surface for zone %s does not answer %s (GET %s)",
-			v.component, zoneID, when, path)
+		return errors.Errorf("%s settings surface for scope %s does not answer %s (GET %s)",
+			v.component, scopeID, when, path)
 	}
 	return nil
 }

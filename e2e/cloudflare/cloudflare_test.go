@@ -378,6 +378,48 @@ func TestCloudflareZeroTrustAccessIdentityProvider_Terraform(t *testing.T) {
 func TestCloudflareZeroTrustAccessServiceToken_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "cloudflarezerotrustaccessservicetoken", "pulumi")
 }
+
+func TestCloudflareZeroTrustOrganization_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustorganization", "pulumi")
+}
+func TestCloudflareZeroTrustOrganization_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustorganization", "terraform")
+}
+
+func TestCloudflareZeroTrustAccessInfrastructureTarget_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustaccessinfrastructuretarget", "pulumi")
+}
+func TestCloudflareZeroTrustAccessInfrastructureTarget_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustaccessinfrastructuretarget", "terraform")
+}
+
+func TestCloudflareZeroTrustMcpPortal_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustmcpportal", "pulumi")
+}
+func TestCloudflareZeroTrustMcpPortal_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustmcpportal", "terraform")
+}
+
+func TestCloudflareZeroTrustMcpServer_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustmcpserver", "pulumi")
+}
+func TestCloudflareZeroTrustMcpServer_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustmcpserver", "terraform")
+}
+
+func TestCloudflareZeroTrustGatewaySettings_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustgatewaysettings", "pulumi")
+}
+func TestCloudflareZeroTrustGatewaySettings_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustgatewaysettings", "terraform")
+}
+
+func TestCloudflareZeroTrustDnsLocation_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustdnslocation", "pulumi")
+}
+func TestCloudflareZeroTrustDnsLocation_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustdnslocation", "terraform")
+}
 func TestCloudflareZeroTrustAccessServiceToken_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "cloudflarezerotrustaccessservicetoken", "terraform")
 }

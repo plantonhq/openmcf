@@ -1,0 +1,30 @@
+# Isolated-vnet scenario: the target's IPv4 address lives in a
+# scenario-declared virtual network (a target does not REQUIRE a vnet, so
+# the edge is per-scenario, never a registry prerequisite). Proves the
+# optional virtual_network_id FK live, collision-free by construction.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustAccessInfrastructureTarget
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustaccessinfrastructuretarget-isolated-vnet
+  id: planton-oss-e2e-cloudflarezerotrustaccessinfrastructuretarget-isolated-vnet
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustaccessinfrastructuretarget
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: CloudflareZeroTrustTunnelVirtualNetwork
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  hostname: e2e-target-vnet-${E2E_RUN_ID}
+  ip:
+    ipv4:
+      ip_addr: 10.255.255.11
+      virtual_network_id:
+        valueFrom:
+          kind: CloudflareZeroTrustTunnelVirtualNetwork
+          name: planton-oss-e2e-cloudflarezerotrusttunnelvirtualnetwork-prereq
+          fieldPath: status.outputs.virtual_network_id

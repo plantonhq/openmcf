@@ -1,0 +1,111 @@
+# Provider-parity manifest for CloudflareZeroTrustGatewaySettings.
+# Records only divergences from exact-name matching against
+# cloudflare_zero_trust_gateway_settings and the folded
+# cloudflare_zero_trust_gateway_logging + cloudflare_zero_trust_gateway_pacfile
+# at the pinned provider version. Unlisted arguments (account_id on all
+# three resources) match spec fields by exact name.
+#
+# The settings tree deliberately does NOT model custom_certificate: the
+# provider marks that sub-attribute deprecated at v5.23.0 ("use certificate
+# instead"), so the spec carries only the living certificate selector.
+resources:
+  cloudflare_zero_trust_gateway_settings:
+    mappings:
+      # settings is one nested attribute at the provider; fan-in of every
+      # spec leaf of the managed tree.
+      - spec: spec.settings.activity_log.enabled
+        arg: settings
+      - spec: spec.settings.antivirus.enabled_download_phase
+        arg: settings
+      - spec: spec.settings.antivirus.enabled_upload_phase
+        arg: settings
+      - spec: spec.settings.antivirus.fail_closed
+        arg: settings
+      - spec: spec.settings.antivirus.notification_settings.enabled
+        arg: settings
+      - spec: spec.settings.antivirus.notification_settings.msg
+        arg: settings
+      - spec: spec.settings.antivirus.notification_settings.support_url
+        arg: settings
+      - spec: spec.settings.antivirus.notification_settings.include_context
+        arg: settings
+      - spec: spec.settings.block_page.enabled
+        arg: settings
+      - spec: spec.settings.block_page.mode
+        arg: settings
+      - spec: spec.settings.block_page.target_uri
+        arg: settings
+      - spec: spec.settings.block_page.include_context
+        arg: settings
+      - spec: spec.settings.block_page.name
+        arg: settings
+      - spec: spec.settings.block_page.header_text
+        arg: settings
+      - spec: spec.settings.block_page.footer_text
+        arg: settings
+      - spec: spec.settings.block_page.suppress_footer
+        arg: settings
+      - spec: spec.settings.block_page.background_color
+        arg: settings
+      - spec: spec.settings.block_page.logo_path
+        arg: settings
+      - spec: spec.settings.block_page.mailto_address
+        arg: settings
+      - spec: spec.settings.block_page.mailto_subject
+        arg: settings
+      - spec: spec.settings.body_scanning.inspection_mode
+        arg: settings
+      - spec: spec.settings.browser_isolation.non_identity_enabled
+        arg: settings
+      - spec: spec.settings.browser_isolation.url_browser_isolation_enabled
+        arg: settings
+      - spec: spec.settings.certificate.id
+        arg: settings
+      - spec: spec.settings.extended_email_matching.enabled
+        arg: settings
+      - spec: spec.settings.fips.tls
+        arg: settings
+      - spec: spec.settings.host_selector.enabled
+        arg: settings
+      - spec: spec.settings.inspection.mode
+        arg: settings
+      - spec: spec.settings.max_ttl_secs
+        arg: settings
+      - spec: spec.settings.protocol_detection.enabled
+        arg: settings
+      - spec: spec.settings.sandbox.enabled
+        arg: settings
+      - spec: spec.settings.sandbox.fallback_action
+        arg: settings
+      - spec: spec.settings.tls_decrypt.enabled
+        arg: settings
+  # The logging singleton folds into the spec's logging field.
+  cloudflare_zero_trust_gateway_logging:
+    mappings:
+      - spec: spec.logging.redact_pii
+        arg: redact_pii
+      # settings_by_rule_type is a nested attribute; fan-in of every leaf.
+      - spec: spec.logging.settings_by_rule_type.dns.log_all
+        arg: settings_by_rule_type
+      - spec: spec.logging.settings_by_rule_type.dns.log_blocks
+        arg: settings_by_rule_type
+      - spec: spec.logging.settings_by_rule_type.http.log_all
+        arg: settings_by_rule_type
+      - spec: spec.logging.settings_by_rule_type.http.log_blocks
+        arg: settings_by_rule_type
+      - spec: spec.logging.settings_by_rule_type.l4.log_all
+        arg: settings_by_rule_type
+      - spec: spec.logging.settings_by_rule_type.l4.log_blocks
+        arg: settings_by_rule_type
+  # The PAC-file collection folds into the spec's pac_files[] list: one
+  # provider resource per row, keyed by name.
+  cloudflare_zero_trust_gateway_pacfile:
+    mappings:
+      - spec: spec.pac_files.name
+        arg: name
+      - spec: spec.pac_files.contents
+        arg: contents
+      - spec: spec.pac_files.slug
+        arg: slug
+      - spec: spec.pac_files.description
+        arg: description

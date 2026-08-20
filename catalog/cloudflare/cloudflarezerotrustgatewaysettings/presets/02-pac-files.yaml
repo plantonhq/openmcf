@@ -1,0 +1,15 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustGatewaySettings
+metadata:
+  name: acme-gateway-pac
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  pac_files:
+    - name: office-proxy
+      slug: office-proxy
+      description: Route office traffic through Gateway; internal nets direct
+      contents: |
+        function FindProxyForURL(url, host) {
+          if (isInNet(host, "10.0.0.0", "255.0.0.0")) return "DIRECT";
+          return "HTTPS 3ele0ss56t.proxy.cloudflare-gateway.com:443";
+        }

@@ -1870,11 +1870,31 @@ const (
 	// (the optional zone scope is a per-manifest choice, not a structural
 	// dependency).
 	CloudResourceKind_CloudflareZeroTrustAccessServiceToken CloudResourceKind = 7031
+	// No prerequisites: the organization is an account-scoped configuration
+	// singleton (the optional zone scope is a per-manifest choice, not a
+	// structural dependency).
+	CloudResourceKind_CloudflareZeroTrustOrganization CloudResourceKind = 7032
+	// No prerequisites: targets are account-scoped, and the virtual-network
+	// reference is an optional per-manifest edge (omitted = the account's
+	// default virtual network).
+	CloudResourceKind_CloudflareZeroTrustAccessInfrastructureTarget CloudResourceKind = 7033
+	// No prerequisites: portals are account-scoped, and the servers[] rows'
+	// MCP-server references are optional per-manifest edges.
+	CloudResourceKind_CloudflareZeroTrustMcpPortal CloudResourceKind = 7034
+	// No prerequisites: MCP server registrations are account-scoped and
+	// self-contained -- portals reference them, not the reverse.
+	CloudResourceKind_CloudflareZeroTrustMcpServer CloudResourceKind = 7035
 	// No prerequisites: Gateway policies are account-scoped, and their list /
 	// virtual-network references are optional per-manifest edges.
 	CloudResourceKind_CloudflareZeroTrustGatewayPolicy CloudResourceKind = 7060
 	// No prerequisites: Zero Trust lists are account-scoped and self-contained.
 	CloudResourceKind_CloudflareZeroTrustList CloudResourceKind = 7061
+	// No prerequisites: the Gateway configuration is an account-scoped
+	// singleton, and its certificate reference is an optional per-manifest
+	// edge.
+	CloudResourceKind_CloudflareZeroTrustGatewaySettings CloudResourceKind = 7062
+	// No prerequisites: DNS locations are account-scoped and self-contained.
+	CloudResourceKind_CloudflareZeroTrustDnsLocation CloudResourceKind = 7063
 	// CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped
 	// configuration -- the spec's zone_id reference must resolve first.
 	CloudResourceKind_CloudflareZoneTlsSettings CloudResourceKind = 7150
@@ -2573,8 +2593,14 @@ var (
 		7029: "CloudflareCustomHostnameFallbackOrigin",
 		7030: "CloudflareZeroTrustAccessIdentityProvider",
 		7031: "CloudflareZeroTrustAccessServiceToken",
+		7032: "CloudflareZeroTrustOrganization",
+		7033: "CloudflareZeroTrustAccessInfrastructureTarget",
+		7034: "CloudflareZeroTrustMcpPortal",
+		7035: "CloudflareZeroTrustMcpServer",
 		7060: "CloudflareZeroTrustGatewayPolicy",
 		7061: "CloudflareZeroTrustList",
+		7062: "CloudflareZeroTrustGatewaySettings",
+		7063: "CloudflareZeroTrustDnsLocation",
 		7150: "CloudflareZoneTlsSettings",
 		7151: "CloudflareCustomSslCertificate",
 		7152: "CloudflareMtlsCertificate",
@@ -3221,8 +3247,14 @@ var (
 		"CloudflareCustomHostnameFallbackOrigin":         7029,
 		"CloudflareZeroTrustAccessIdentityProvider":      7030,
 		"CloudflareZeroTrustAccessServiceToken":          7031,
+		"CloudflareZeroTrustOrganization":                7032,
+		"CloudflareZeroTrustAccessInfrastructureTarget":  7033,
+		"CloudflareZeroTrustMcpPortal":                   7034,
+		"CloudflareZeroTrustMcpServer":                   7035,
 		"CloudflareZeroTrustGatewayPolicy":               7060,
 		"CloudflareZeroTrustList":                        7061,
+		"CloudflareZeroTrustGatewaySettings":             7062,
+		"CloudflareZeroTrustDnsLocation":                 7063,
 		"CloudflareZoneTlsSettings":                      7150,
 		"CloudflareCustomSslCertificate":                 7151,
 		"CloudflareMtlsCertificate":                      7152,
@@ -3630,7 +3662,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x97\xaa\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xa2\xad\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4289,8 +4321,14 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"&CloudflareCustomHostnameFallbackOrigin\x10\xf56\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x06cfchfo:\x02\xd86\x12I\n" +
 	")CloudflareZeroTrustAccessIdentityProvider\x10\xf66\x1a\x19\xa2\xf7\x04\x15\b\x0f\x12\bv1alpha1\"\acfztidp\x12D\n" +
 	"%CloudflareZeroTrustAccessServiceToken\x10\xf76\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfztst\x12?\n" +
+	"\x1fCloudflareZeroTrustOrganization\x10\xf86\x1a\x19\xa2\xf7\x04\x15\b\x0f\x12\bv1alpha1\"\acfztorg\x12L\n" +
+	"-CloudflareZeroTrustAccessInfrastructureTarget\x10\xf96\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfztit\x12;\n" +
+	"\x1cCloudflareZeroTrustMcpPortal\x10\xfa6\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfmcpp\x12;\n" +
+	"\x1cCloudflareZeroTrustMcpServer\x10\xfb6\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfmcps\x12?\n" +
 	" CloudflareZeroTrustGatewayPolicy\x10\x947\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfztgp\x125\n" +
-	"\x17CloudflareZeroTrustList\x10\x957\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfztl\x12;\n" +
+	"\x17CloudflareZeroTrustList\x10\x957\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfztl\x12A\n" +
+	"\"CloudflareZeroTrustGatewaySettings\x10\x967\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfztgs\x12=\n" +
+	"\x1eCloudflareZeroTrustDnsLocation\x10\x977\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfztdl\x12;\n" +
 	"\x19CloudflareZoneTlsSettings\x10\xee7\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x05cftls:\x02\xd86\x12A\n" +
 	"\x1eCloudflareCustomSslCertificate\x10\xef7\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x06cfcssl:\x02\xd86\x128\n" +
 	"\x19CloudflareMtlsCertificate\x10\xf07\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfmtls\x12D\n" +

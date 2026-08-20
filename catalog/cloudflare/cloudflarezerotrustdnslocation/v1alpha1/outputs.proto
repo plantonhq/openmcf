@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustdnslocation.v1alpha1;
+
+// CloudflareZeroTrustDnsLocationStackOutputs captures the observable outputs
+// after creating the DNS location.
+message CloudflareZeroTrustDnsLocationStackOutputs {
+  // The Cloudflare-assigned UUID of the location.
+  string location_id = 1;
+
+  // The location's unique DNS-over-HTTPS subdomain (the value clients embed
+  // in https://<doh_subdomain>.cloudflare-gateway.com/dns-query).
+  string doh_subdomain = 2;
+
+  // The IPv4 destination assigned to the location's plain-DNS endpoint.
+  string ip = 3;
+}
