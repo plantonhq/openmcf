@@ -1,25 +1,17 @@
 import { Metadata } from 'next';
-import { Box } from '@mui/material';
-import {
-  EnterpriseHero,
-  EnterpriseHowItWorks,
-  EnterpriseRateCards,
-} from '@/components/enterprise';
-import { PricingCta } from '@/components/pricing';
+import { EnterpriseRedirect } from './redirect';
 
+/**
+ * The enterprise page lives at /pricing/enterprise — the website's routed
+ * path prefixes cover /pricing, while a bare /enterprise falls through to
+ * the console as an organization slug on the apex domain. This stub only
+ * forwards old links on origins that serve the static site directly.
+ */
 export const metadata: Metadata = {
   title: 'Enterprise | Planton',
-  description:
-    'Enterprise at Planton: published rate cards for the US and India, enterprise identity, air-gap, compliance reporting, and real SLAs. Self-serve below 25 seats — no sales call required.',
+  robots: { index: false },
 };
 
-export default function EnterprisePage() {
-  return (
-    <Box>
-      <EnterpriseHero />
-      <EnterpriseRateCards />
-      <EnterpriseHowItWorks />
-      <PricingCta />
-    </Box>
-  );
+export default function EnterpriseMovedPage() {
+  return <EnterpriseRedirect />;
 }

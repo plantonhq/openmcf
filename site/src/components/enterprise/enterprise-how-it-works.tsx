@@ -28,7 +28,7 @@ const steps = [
   },
   {
     title: 'Your Key Arrives',
-    body: 'The license key is emailed the moment payment lands — same machinery as the self-serve rungs, bigger bounds. It verifies offline, works air-gapped, and never breaks a running deployment.',
+    body: 'The license key is emailed the moment payment lands — same machinery as the self-serve licenses, bigger bounds. It verifies offline, works air-gapped, and never breaks a running deployment.',
   },
 ];
 

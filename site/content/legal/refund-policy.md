@@ -1,8 +1,8 @@
 # Refund Policy
 
-*Effective date: [PENDING FOUNDER APPROVAL]*
+*Effective date: August 20, 2026*
 
-*Last updated: [PENDING FOUNDER APPROVAL]*
+*Last updated: August 20, 2026*
 
 This Refund Policy explains how refunds work for everything Planton Cloud, Inc. ("**Planton**", "**we**", or "**us**") sells: team subscriptions, self-hosted licenses, and prepaid AI credits. It supplements our [Terms of Service](/terms). Where this policy is more generous than the Terms, this policy applies.
 

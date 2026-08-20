@@ -18,16 +18,16 @@ import {
   EVALUATION_DAYS,
   COMMUNITY_SEAT_LIMIT,
   FREE_TIER_SEATS,
-  SELF_HOSTED_LICENSE_RUNGS,
+  SELF_HOSTED_LICENSE_SIZES,
 } from '@/data/pricing';
 
 /**
  * The unified plan grid: the whole self-serve story in one view — both
- * homes (Planton.ai runs it, or your own infrastructure), four plans, AI
- * inside every card. Card bullets are the value matrix's headline rows;
- * the matrix below is the complete reference. Prices come from the
- * market-aware pricing-truth module, so a card can never disagree with
- * the catalog-authored charge.
+ * homes (Planton.ai runs it, or your own infrastructure), four plans, each
+ * card carrying its own truthful AI line. Card bullets are the value
+ * matrix's headline rows; the matrix below is the complete reference.
+ * Prices come from the market-aware pricing-truth module, so a card can
+ * never disagree with the catalog-authored charge.
  */
 
 interface PlanCardData {
@@ -38,6 +38,14 @@ interface PlanCardData {
   priceSub?: string;
   tagline: string;
   bullets: string[];
+  /**
+   * The card's AI story — per-plan data, never a shared constant. The
+   * assistant is deployment-capability-gated: Planton.ai plans include it
+   * today on prepaid credits; self-hosted deployments do not have it yet
+   * (it will run in-cluster with the customer's own LLM provider key), so
+   * their cards say Coming Soon and make no credits claim.
+   */
+  ai: { title: string; sub: string };
   cta: { label: string; href: string; primary: boolean; external?: boolean };
   highlighted?: boolean;
 }
@@ -56,17 +64,17 @@ const GroupHeader: FC<{ icon: ReactNode; title: string; sublabel: string }> = ({
   </Box>
 );
 
-const AiLine: FC = () => (
+const AiLine: FC<{ ai: PlanCardData['ai'] }> = ({ ai }) => (
   <Box className="flex items-start gap-2 border-t border-[#2a2a2a] pt-3 mt-1">
     <Box className="text-[#a0a0a0] mt-0.5 [&_svg]:w-4 [&_svg]:h-4">
       <CpuIcon />
     </Box>
     <Box>
       <Typography className="text-xs font-semibold text-white">
-        AI Assistant Included
+        {ai.title}
       </Typography>
       <Typography className="text-xs text-[#8a8a8a]">
-        Prepaid credits — spend protection on by default
+        {ai.sub}
       </Typography>
     </Box>
   </Box>
@@ -80,6 +88,7 @@ const PlanCard: FC<PlanCardData> = ({
   priceSub,
   tagline,
   bullets,
+  ai,
   cta,
   highlighted,
 }) => (
@@ -128,7 +137,7 @@ const PlanCard: FC<PlanCardData> = ({
           </Box>
         ))}
       </Stack>
-      <AiLine />
+      <AiLine ai={ai} />
       <Link href={cta.href} target={cta.external ? '_blank' : '_self'} className="mt-2">
         {cta.primary ? (
           <PrimaryButton className="w-full">{cta.label}</PrimaryButton>
@@ -140,11 +149,24 @@ const PlanCard: FC<PlanCardData> = ({
   </Box>
 );
 
+// The two truthful AI stories. Hosted plans include the credit-funded
+// assistant today; self-hosted installs do not ship an assistant engine yet,
+// so their line is Coming Soon and names the bring-your-own-key model that
+// will serve them — never a Planton-credits claim.
+const AI_INCLUDED: PlanCardData['ai'] = {
+  title: 'AI Assistant Included',
+  sub: 'Prepaid credits — spend protection on by default',
+};
+const AI_COMING_SELF_HOSTED: PlanCardData['ai'] = {
+  title: 'AI Assistant — Coming Soon',
+  sub: 'Runs in your cluster with your own LLM provider key',
+};
+
 export const PlanGrid: FC = () => {
   const { market, marketId } = useMarket();
 
-  const rungLow = SELF_HOSTED_LICENSE_RUNGS[0];
-  const rungHigh = SELF_HOSTED_LICENSE_RUNGS[SELF_HOSTED_LICENSE_RUNGS.length - 1];
+  const sizeLow = SELF_HOSTED_LICENSE_SIZES[0];
+  const sizeHigh = SELF_HOSTED_LICENSE_SIZES[SELF_HOSTED_LICENSE_SIZES.length - 1];
 
   const plantonAiPlans: PlanCardData[] = [
     {
@@ -156,6 +178,7 @@ export const PlanGrid: FC = () => {
         `Up to ${FREE_TIER_SEATS} seats — everything else unlimited`,
         'Pauses at its limit — never bills, never deletes',
       ],
+      ai: AI_INCLUDED,
       cta: { label: 'Start Free', href: 'https://planton.ai', primary: false, external: true },
     },
     {
@@ -170,6 +193,7 @@ export const PlanGrid: FC = () => {
         'Unlimited environments, resources & automation',
         'Cancel anytime, no forms, no calls',
       ],
+      ai: AI_INCLUDED,
       cta: { label: 'Get Started', href: 'https://planton.ai', primary: true, external: true },
       highlighted: true,
     },
@@ -186,15 +210,16 @@ export const PlanGrid: FC = () => {
         'Runs fully offline; nothing ever expires',
         `${EVALUATION_DAYS}-day full-experience evaluation key — no card, no call`,
       ],
+      ai: AI_COMING_SELF_HOSTED,
       cta: { label: 'Run It Yourself', href: '/features/open-source', primary: false },
     },
     {
       name: 'Licensed',
-      priceMain: `From $${rungLow.usdPerYear.toLocaleString()}`,
+      priceMain: `From $${sizeLow.usdPerYear.toLocaleString()}`,
       priceUnit: '/year',
       priceSub:
-        `$${rungLow.usdPerYear.toLocaleString()} — ${rungLow.seatCeiling} seats · ` +
-        `$${rungHigh.usdPerYear.toLocaleString()} — ${rungHigh.seatCeiling} seats` +
+        `$${sizeLow.usdPerYear.toLocaleString()} — ${sizeLow.seatCeiling} seats · ` +
+        `$${sizeHigh.usdPerYear.toLocaleString()} — ${sizeHigh.seatCeiling} seats` +
         (marketId === 'us' ? '' : ' · billed in USD'),
       tagline: 'Org-scale capabilities on your install.',
       bullets: [
@@ -202,6 +227,7 @@ export const PlanGrid: FC = () => {
         'Key arrives by email the moment payment completes',
         'No sales call, no account required',
       ],
+      ai: AI_COMING_SELF_HOSTED,
       cta: { label: 'Buy a License', href: BUY_LICENSE_URL, primary: true },
     },
   ];
@@ -211,23 +237,27 @@ export const PlanGrid: FC = () => {
       <Box className="max-w-7xl mx-auto">
         {/* Two labeled groups with a subtle hairline between them: vertical
             when side by side at desktop, horizontal when stacked. */}
+        {/* The two groups are flex siblings, so they already stretch to one
+            shared height; each group is a column whose grid fills the space
+            below the header (flex-1), so all FOUR cards equalize — the row
+            reads as one story, never two mismatched pairs. */}
         <Box className="flex flex-col lg:flex-row">
-          <Box className="flex-1 lg:pr-6">
+          <Box className="flex-1 lg:pr-6 flex flex-col">
             <GroupHeader icon={<CloudIcon />} title="Planton.ai" sublabel="we run it" />
-            <Box className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-3 items-stretch">
+            <Box className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-3 items-stretch flex-1">
               <PlanCard {...plantonAiPlans[0]} />
               <PlanCard {...plantonAiPlans[1]} />
             </Box>
           </Box>
           <Box className="hidden lg:block w-px self-stretch bg-gradient-to-b from-transparent via-[#2f2f2f] to-transparent" />
           <Box className="lg:hidden my-6 w-full h-px bg-gradient-to-r from-transparent via-[#2f2f2f] to-transparent" />
-          <Box className="flex-1 lg:pl-6">
+          <Box className="flex-1 lg:pl-6 flex flex-col">
             <GroupHeader
               icon={<CodeIcon />}
               title="Your Infrastructure"
               sublabel="your cluster, your control"
             />
-            <Box className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-3 items-stretch">
+            <Box className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-3 items-stretch flex-1">
               <PlanCard {...yourInfraPlans[0]} />
               <PlanCard {...yourInfraPlans[1]} />
             </Box>

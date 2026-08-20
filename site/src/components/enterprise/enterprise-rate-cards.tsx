@@ -8,13 +8,18 @@ import {
   FeatureTitle,
   PrimaryButton,
 } from '@/components/landing-page/v3-2026-01-02-1000/shared';
+import { useMarket } from '@/components/market';
 import { MARKETS } from '@/data/pricing';
 
 /**
- * Published rate anchors, BOTH markets printed side by side — deliberately,
- * unlike the pricing page's market toggle: against quote-only competitors,
- * a printed number is the trust move, and enterprise buyers compare
- * regions. India prices are set India numbers, never an FX conversion.
+ * Published rate anchors in the VISITOR'S market (founder direction
+ * 2026-08-20): the headline price is always the market the visitor is in —
+ * an Indian buyer reads ₹ first, never as a subtitle under a dollar figure.
+ * India additionally gets a subtle USD line for comparability (the USD
+ * anchor is the price for every market outside India); non-India visitors
+ * see no INR anywhere, matching the sitewide India gate. A printed number
+ * remains the trust move, and India prices are set India numbers, never an
+ * FX conversion.
  */
 
 const tierBullets: Record<string, string[]> = {
@@ -33,11 +38,12 @@ const tierBullets: Record<string, string[]> = {
 };
 
 export const EnterpriseRateCards: FC = () => {
+  const { market, marketId } = useMarket();
   return (
     <Stack className="items-center px-4 md:px-8 py-8 gap-4 bg-[#0a0a0a]">
       <Grid2 container spacing={4} className="w-full max-w-5xl items-stretch">
-        {MARKETS.us.enterprise.map((tier, tierIndex) => {
-          const indiaTier = MARKETS.in.enterprise[tierIndex];
+        {market.enterprise.map((tier, tierIndex) => {
+          const usTier = MARKETS.us.enterprise[tierIndex];
           return (
             <Grid2 size={{ xs: 12, md: 6 }} key={tier.name} className="flex">
               <Box className="w-full rounded-xl border border-[#2a2a2a] bg-[#151515] hover:border-[#3a3a3a] transition-all duration-300 p-6 md:p-8">
@@ -51,9 +57,11 @@ export const EnterpriseRateCards: FC = () => {
                         </Typography>
                         <Typography className="text-sm text-[#a0a0a0]">/year</Typography>
                       </Box>
-                      <Typography className="text-sm text-[#a0a0a0] mt-1">
-                        {indiaTier.perYear}/year in India
-                      </Typography>
+                      {marketId === 'in' && (
+                        <Typography className="text-sm text-[#a0a0a0] mt-1">
+                          {usTier.perYear}/year — US and other markets
+                        </Typography>
+                      )}
                     </Box>
                     <Typography className="text-sm font-medium text-[#c0c0c0]">
                       Up to {tier.seatCeiling} seats

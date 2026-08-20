@@ -16,7 +16,7 @@ import { useMarket } from '@/components/market';
  * a printed number filters unqualified conversations and lets a buyer
  * qualify themselves before any call. Identity capabilities that are still
  * shipping are never claimed as live (the chips name the package;
- * /enterprise words the Coming Soon plainly).
+ * /pricing/enterprise words the Coming Soon plainly).
  */
 
 const chips = ['Up to 250 Seats', 'SSO/SCIM', 'Air-Gap', 'Compliance Reporting', '24×7 SLA'];
@@ -54,7 +54,7 @@ export const EnterpriseBand: FC = () => {
               </Box>
             </Box>
           </Box>
-          <Link href="/enterprise" className="flex-shrink-0">
+          <Link href="/pricing/enterprise" className="flex-shrink-0">
             <PrimaryButton>See Enterprise Plans</PrimaryButton>
           </Link>
         </Stack>

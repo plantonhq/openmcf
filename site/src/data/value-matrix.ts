@@ -16,7 +16,7 @@ import {
   FREE_TIER_SEATS,
   COMMUNITY_SEAT_LIMIT,
   MARKETS,
-  SELF_HOSTED_LICENSE_RUNGS,
+  SELF_HOSTED_LICENSE_SIZES,
 } from './pricing';
 
 export type PlanColumnId = 'free' | 'team' | 'community' | 'license' | 'enterprise';
@@ -75,7 +75,7 @@ export interface MatrixCategory {
   rows: MatrixRow[];
 }
 
-const licenseSeatText = SELF_HOSTED_LICENSE_RUNGS.map((r) => r.seatCeiling).join(' or ');
+const licenseSeatText = SELF_HOSTED_LICENSE_SIZES.map((r) => r.seatCeiling).join(' or ');
 // Seat ceilings are market-independent; any market's tier list carries them.
 const enterpriseSeatText = MARKETS.us.enterprise.map((t) => t.seatCeiling).join(' — ');
 
@@ -91,7 +91,7 @@ export const VALUE_MATRIX: MatrixCategory[] = [
           free: text(`Up to ${FREE_TIER_SEATS}`),
           team: text('Per seat — grow as you go'),
           community: text(`Up to ${COMMUNITY_SEAT_LIMIT}`),
-          license: text(`${licenseSeatText} by rung`),
+          license: text(`${licenseSeatText} by license size`),
           enterprise: text(enterpriseSeatText),
         },
       },
@@ -133,6 +133,35 @@ export const VALUE_MATRIX: MatrixCategory[] = [
         description: 'Protected environments and two-person deployment approvals',
         entitlementKey: 'deployment_safety',
         cells: { free: NO, team: YES, community: NO, license: YES, enterprise: YES },
+      },
+    ],
+  },
+  {
+    // Second deliberately (founder-directed 2026-08-20): the assistant is a
+    // flagship capability AND a genuine by-plan difference — hosted plans
+    // include it on prepaid credits today, self-hosted installs do not have
+    // it yet — so it sits with the differences at the top, right after the
+    // purchase-decision facts, never buried among the included-everywhere
+    // domains. AI is deployment-capability-gated, never packaging-gated:
+    // no entitlement key exists or is reserved for it. When self-hosted
+    // deployments gain the in-cluster engine (bring-your-own-LLM-key), the
+    // SOON cells flip to a truthful included form in the same change; if
+    // packaging ever gates AI, these rows must gain that key so the
+    // displayed-vs-enforced guard covers them. Credits are a Planton.ai
+    // construct — a self-hosted install has no wallet, so its credits cells
+    // are simply not included, never SOON.
+    category: 'AI Assistant',
+    rows: [
+      {
+        feature: 'Built-in AI Assistant',
+        description:
+          'On Planton.ai today; self-hosted installs will run it in-cluster with your own LLM provider key',
+        cells: { free: YES, team: YES, community: SOON, license: SOON, enterprise: SOON },
+      },
+      {
+        feature: 'Prepaid AI Credits with Spend Protection',
+        description: 'Transparent balance; auto-reload only within a ceiling you set',
+        cells: { free: YES, team: YES, community: NO, license: NO, enterprise: NO },
       },
     ],
   },
@@ -223,17 +252,6 @@ export const VALUE_MATRIX: MatrixCategory[] = [
         description: 'Provision and deprovision users from your directory',
         entitlementKey: 'scim',
         cells: { free: NO, team: NO, community: NO, license: NO, enterprise: SOON },
-      },
-    ],
-  },
-  {
-    category: 'AI Assistant',
-    rows: [
-      { feature: 'Built-in AI Assistant', cells: everywhere },
-      {
-        feature: 'Prepaid AI Credits with Spend Protection',
-        description: 'Transparent balance; auto-reload only within a ceiling you set',
-        cells: everywhere,
       },
     ],
   },

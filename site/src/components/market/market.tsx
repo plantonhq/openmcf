@@ -20,43 +20,57 @@ import {
 /**
  * Market awareness for price display on a static site.
  *
- * The site is a static export -- no server sees the request, so the browser
- * locale picks the DEFAULT market (an India visitor lands on ₹
- * automatically) and an explicit control lets anyone view any market. This
- * mirrors the product's own buy-page posture: locale prefill, user control.
+ * The site is a static export -- no server sees the request, so detection
+ * is client-side from the browser's two locality signals (locale region +
+ * IANA timezone; see detectMarket). The detected market is a GATE, not
+ * just a default (founder direction 2026-08-20):
+ *
+ * - Detected outside India: prices pin to USD and NO market control
+ *   renders -- INR is unreachable.
+ * - Detected in India: INR is the default, and the control offers ₹ INR
+ *   (left, pre-selected) and $ USD (right).
  *
  * Display truth vs charge truth: this is presentation only. The actual
  * charge is always fixed server-side from the catalog's regional prices at
  * checkout.
  */
 
-// The browser locale never changes within a page's lifetime; reading it
-// through useSyncExternalStore keeps hydration honest (server snapshot =
-// the default market) without effect-driven state.
+// The browser's locale and timezone never change within a page's lifetime;
+// reading them through useSyncExternalStore keeps hydration honest (server
+// snapshot = the default market) without effect-driven state.
 const emptySubscribe = () => () => {};
-const clientSnapshot = () => detectMarket(navigator.language);
+const clientSnapshot = () =>
+  detectMarket(navigator.language, Intl.DateTimeFormat().resolvedOptions().timeZone);
 const serverSnapshot = () => DEFAULT_MARKET_ID;
 
-/** Locale-detected market id + an explicit override the visitor controls. */
-const useMarketChoice = (): [MarketId, (id: MarketId) => void] => {
+/**
+ * The gated market choice: outside India the market is pinned to USD (an
+ * override cannot reach INR because the computed id ignores it); in India
+ * the default is INR and the visitor may switch.
+ */
+const useMarketChoice = (): [MarketId, (id: MarketId) => void, boolean] => {
   const detected = useSyncExternalStore(emptySubscribe, clientSnapshot, serverSnapshot);
   const [chosen, setChosen] = useState<MarketId | null>(null);
-  return [chosen ?? detected, setChosen];
+  const switchable = detected === 'in';
+  const marketId = switchable ? (chosen ?? 'in') : 'us';
+  return [marketId, setChosen, switchable];
 };
 
 interface MarketContextValue {
   market: Market;
   marketId: MarketId;
   setMarketId: (id: MarketId) => void;
+  /** True only for visitors detected in India — the market control's render condition. */
+  switchable: boolean;
 }
 
 const MarketContext = createContext<MarketContextValue | null>(null);
 
 export const MarketProvider: FC<{ children: ReactNode }> = ({ children }) => {
-  const [marketId, setMarketId] = useMarketChoice();
+  const [marketId, setMarketId, switchable] = useMarketChoice();
   return (
     <MarketContext.Provider
-      value={{ market: MARKETS[marketId], marketId, setMarketId }}
+      value={{ market: MARKETS[marketId], marketId, setMarketId, switchable }}
     >
       {children}
     </MarketContext.Provider>
@@ -66,26 +80,37 @@ export const MarketProvider: FC<{ children: ReactNode }> = ({ children }) => {
 /**
  * The shared market fact. Outside a provider (e.g. the landing page's
  * pricing section, which carries no selector) it falls back to a local
- * locale-detected value.
+ * detected value — the India gate applies identically on both paths.
  */
 export const useMarket = (): MarketContextValue => {
   const ctx = useContext(MarketContext);
-  const [fallbackId, setFallbackId] = useMarketChoice();
+  const [fallbackId, setFallbackId, fallbackSwitchable] = useMarketChoice();
   if (ctx) return ctx;
   return {
     market: MARKETS[fallbackId],
     marketId: fallbackId,
     setMarketId: setFallbackId,
+    switchable: fallbackSwitchable,
   };
 };
 
-/** Compact segmented control for choosing the displayed market. */
+// India-first order (founder direction 2026-08-20): the control renders only
+// for visitors detected in India, so INR sits left and pre-selected, USD
+// right as the comparison view.
+const SELECTOR_ORDER: Market[] = [MARKETS.in, MARKETS.us];
+
+/**
+ * Compact segmented control for choosing the displayed market. Renders
+ * NOTHING outside India — non-India visitors see USD only, with no path to
+ * INR (the gate in useMarketChoice makes that structural, not cosmetic).
+ */
 export const MarketSelector: FC<{ className?: string }> = ({ className = '' }) => {
-  const { marketId, setMarketId } = useMarket();
+  const { marketId, setMarketId, switchable } = useMarket();
+  if (!switchable) return null;
   return (
     <Box className={`inline-flex items-center gap-2 ${className}`}>
       <Box className="inline-flex rounded-full border border-[#2a2a2a] bg-[#111] p-0.5">
-        {Object.values(MARKETS).map((market) => (
+        {SELECTOR_ORDER.map((market) => (
           <button
             key={market.id}
             type="button"
