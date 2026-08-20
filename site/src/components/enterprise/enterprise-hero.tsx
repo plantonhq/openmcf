@@ -3,7 +3,7 @@
 import { FC } from 'react';
 import { Stack, Typography } from '@mui/material';
 import { Badge } from '@/components/landing-page/v3-2026-01-02-1000/shared';
-import { useMarket } from '@/components/market';
+import { MarketSelector, useMarket } from '@/components/market';
 import { SELF_SERVE_SEAT_CEILING } from '@/data/pricing';
 
 /**
@@ -28,6 +28,9 @@ export const EnterpriseHero: FC = () => {
       <Typography className="text-sm md:text-base text-[#a0a0a0] max-w-[720px]">
         {`Under ${SELF_SERVE_SEAT_CEILING} seats, you don't need to talk to us at all — the self-serve license is ${sizeLow}–${sizeHigh} a year, card and email, running today. Enterprise adds the things procurement actually needs: your identity provider, air-gap, compliance reporting, and a real SLA — at a published price.`}
       </Typography>
+      {/* Renders only for India-detected visitors (the sitewide gate) —
+          same chip, same placement as the pricing page's hero. */}
+      <MarketSelector className="mt-1" />
     </Stack>
   );
 };

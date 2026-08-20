@@ -6,6 +6,7 @@ import {
   EnterpriseRateCards,
 } from '@/components/enterprise';
 import { PricingCta } from '@/components/pricing';
+import { MarketProvider } from '@/components/market';
 
 export const metadata: Metadata = {
   title: 'Enterprise | Planton',
@@ -16,10 +17,16 @@ export const metadata: Metadata = {
 export default function EnterprisePage() {
   return (
     <Box>
-      <EnterpriseHero />
-      <EnterpriseRateCards />
-      <EnterpriseHowItWorks />
-      <PricingCta />
+      {/* One shared market fact for the whole page: the hero's selector,
+          the rate cards, and the buying steps flip together — without the
+          provider each component would hold its own fallback market state
+          and a switch would flip only the hero. */}
+      <MarketProvider>
+        <EnterpriseHero />
+        <EnterpriseRateCards />
+        <EnterpriseHowItWorks />
+        <PricingCta />
+      </MarketProvider>
     </Box>
   );
 }
