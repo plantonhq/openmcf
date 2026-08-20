@@ -669,6 +669,33 @@ var verifiers = map[string]Verifier{
 		outputKeys:    []string{"location_id"},
 		accountScoped: true,
 	},
+	// The default device profile is an ACCOUNT-scoped settings singleton:
+	// create==update (PATCH upsert) and destroy is a literal no-op at the
+	// provider -- verify-absent asserts the profile surface still answers.
+	// The folded fallback-domain list and zone-certificate toggle are also
+	// no-op-destroy surfaces riding the same lane.
+	"cloudflarezerotrustdevicedefaultprofile": &settingsSingletonVerifier{
+		component:  "cloudflarezerotrustdevicedefaultprofile",
+		pathFormat: "accounts/%s/devices/policy",
+		idKey:      "account_id",
+	},
+	// Custom device profiles delete for real and 404 honestly (no
+	// tombstone fields; the folded per-profile fallback list rides the
+	// profile and retires with it).
+	"cloudflarezerotrustdevicecustomprofile": &apiPathVerifier{
+		component:     "cloudflarezerotrustdevicecustomprofile",
+		pathFormat:    "accounts/%s/devices/policy/%s",
+		outputKeys:    []string{"policy_id"},
+		accountScoped: true,
+	},
+	// Posture rules delete for real and 404 honestly (the rule's enabled
+	// flag is server-computed sync state, never a deletion tombstone).
+	"cloudflarezerotrustdeviceposturerule": &apiPathVerifier{
+		component:     "cloudflarezerotrustdeviceposturerule",
+		pathFormat:    "accounts/%s/devices/posture/%s",
+		outputKeys:    []string{"rule_id"},
+		accountScoped: true,
+	},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is

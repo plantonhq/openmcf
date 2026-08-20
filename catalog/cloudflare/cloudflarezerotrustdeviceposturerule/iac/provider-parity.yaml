@@ -1,0 +1,101 @@
+# Provider-parity manifest for CloudflareZeroTrustDevicePostureRule.
+# Records only divergences from exact-name matching against
+# cloudflare_zero_trust_device_posture_rule at the pinned provider version.
+# Unlisted arguments (account_id, name, type, description, expiration,
+# schedule) match spec fields by exact name.
+resources:
+  cloudflare_zero_trust_device_posture_rule:
+    mappings:
+      # match is a nested-attribute list; fan-in of its one spec leaf.
+      - spec: spec.match.platform
+        arg: match
+      # input is one nested attribute carrying every check family's
+      # parameters; fan-in of every spec leaf.
+      - spec: spec.input.operating_system
+        arg: input
+      - spec: spec.input.path
+        arg: input
+      - spec: spec.input.exists
+        arg: input
+      - spec: spec.input.sha256
+        arg: input
+      - spec: spec.input.thumbprint
+        arg: input
+      - spec: spec.input.id
+        arg: input
+      - spec: spec.input.domain
+        arg: input
+      - spec: spec.input.operator
+        arg: input
+      - spec: spec.input.version
+        arg: input
+      - spec: spec.input.os_distro_name
+        arg: input
+      - spec: spec.input.os_distro_revision
+        arg: input
+      - spec: spec.input.os_version_extra
+        arg: input
+      - spec: spec.input.enabled
+        arg: input
+      - spec: spec.input.check_disks
+        arg: input
+      - spec: spec.input.require_all
+        arg: input
+      - spec: spec.input.certificate_id
+        arg: input
+      - spec: spec.input.cn
+        arg: input
+      - spec: spec.input.check_private_key
+        arg: input
+      - spec: spec.input.extended_key_usage
+        arg: input
+      - spec: spec.input.locations.paths
+        arg: input
+      - spec: spec.input.locations.trust_stores
+        arg: input
+      - spec: spec.input.subject_alternative_names
+        arg: input
+      - spec: spec.input.update_window_days
+        arg: input
+      - spec: spec.input.compliance_status
+        arg: input
+      - spec: spec.input.connection_id
+        arg: input
+      - spec: spec.input.last_seen
+        arg: input
+      - spec: spec.input.os
+        arg: input
+      - spec: spec.input.overall
+        arg: input
+      - spec: spec.input.sensor_config
+        arg: input
+      - spec: spec.input.state
+        arg: input
+      - spec: spec.input.version_operator
+        arg: input
+      - spec: spec.input.auth_state
+        arg: input
+      - spec: spec.input.count_operator
+        arg: input
+      - spec: spec.input.issue_count
+        arg: input
+      - spec: spec.input.eid_last_seen
+        arg: input
+      - spec: spec.input.risk_level
+        arg: input
+      - spec: spec.input.score_operator
+        arg: input
+      - spec: spec.input.total_score
+        arg: input
+      - spec: spec.input.active_threats
+        arg: input
+      - spec: spec.input.infected
+        arg: input
+      - spec: spec.input.is_active
+        arg: input
+      - spec: spec.input.network_status
+        arg: input
+      - spec: spec.input.operational_state
+        arg: input
+      - spec: spec.input.score
+        arg: input

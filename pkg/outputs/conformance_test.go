@@ -5782,6 +5782,37 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"location_id", "doh_subdomain", "ip"},
 		},
 		{
+			// CloudflareZeroTrustDeviceDefaultProfile: a settings singleton
+			// -- the account id is the identity the harness and import
+			// recipes key on; the Gateway-side id and policy id are the
+			// semantic outputs consumers reference.
+			name: "CloudflareZeroTrustDeviceDefaultProfile",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustDeviceDefaultProfile,
+			rawOutputs: map[string]interface{}{
+				"account_id":        "0da42c8d2132a9ddaf714f9e7c920711",
+				"gateway_unique_id": "e9f42c68d1a2b3c4d5e6f707b0a3d5c1",
+				"policy_id":         "default",
+			},
+			mustPopulate: []string{"account_id", "gateway_unique_id", "policy_id"},
+		},
+		{
+			name: "CloudflareZeroTrustDeviceCustomProfile",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustDeviceCustomProfile,
+			rawOutputs: map[string]interface{}{
+				"policy_id":         "f70ff985-a4ef-4643-bbbc-4a0ed4fc8415",
+				"gateway_unique_id": "e9f42c68d1a2b3c4d5e6f707b0a3d5c1",
+			},
+			mustPopulate: []string{"policy_id", "gateway_unique_id"},
+		},
+		{
+			name: "CloudflareZeroTrustDevicePostureRule",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZeroTrustDevicePostureRule,
+			rawOutputs: map[string]interface{}{
+				"rule_id": "f70ff985-a4ef-4643-bbbc-4a0ed4fc8415",
+			},
+			mustPopulate: []string{"rule_id"},
+		},
+		{
 			// AzureResourceGroup: flat scalar outputs from both engines (ARM id,
 			// name, region) must each land on the StackOutputs proto --
 			// resource_group_name is the FK target every other Azure kind

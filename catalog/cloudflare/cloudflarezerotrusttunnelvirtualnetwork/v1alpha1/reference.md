@@ -93,6 +93,10 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | CloudflareZeroTrustAccessInfrastructureTarget | `spec.ip.ipv4.virtualNetworkId` | `status.outputs.virtual_network_id` |
 | CloudflareZeroTrustAccessInfrastructureTarget | `spec.ip.ipv6.virtualNetworkId` | `status.outputs.virtual_network_id` |
+| CloudflareZeroTrustDeviceCustomProfile | `spec.virtualNetworks.allowed` | `status.outputs.virtual_network_id` |
+| CloudflareZeroTrustDeviceCustomProfile | `spec.virtualNetworks.defaultVirtualNetworkId` | `status.outputs.virtual_network_id` |
+| CloudflareZeroTrustDeviceDefaultProfile | `spec.virtualNetworks.allowed` | `status.outputs.virtual_network_id` |
+| CloudflareZeroTrustDeviceDefaultProfile | `spec.virtualNetworks.defaultVirtualNetworkId` | `status.outputs.virtual_network_id` |
 | CloudflareZeroTrustGatewayPolicy | `spec.ruleSettings.dnsResolvers.ipv4[].vnetId` | `status.outputs.virtual_network_id` |
 | CloudflareZeroTrustGatewayPolicy | `spec.ruleSettings.dnsResolvers.ipv6[].vnetId` | `status.outputs.virtual_network_id` |
 | CloudflareZeroTrustTunnelRoute | `spec.virtualNetworkId` | `status.outputs.virtual_network_id` |

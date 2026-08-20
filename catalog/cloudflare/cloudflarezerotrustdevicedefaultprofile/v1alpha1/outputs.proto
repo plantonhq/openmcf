@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustdevicedefaultprofile.v1alpha1;
+
+// CloudflareZeroTrustDeviceDefaultProfileStackOutputs captures the
+// observable outputs after applying the default device profile.
+message CloudflareZeroTrustDeviceDefaultProfileStackOutputs {
+  // The Cloudflare account the profile belongs to -- the profile is an
+  // account singleton, so the account IS its identity.
+  string account_id = 1;
+
+  // The Gateway-side identifier Cloudflare assigns the profile (used when
+  // Gateway policies reference device profiles).
+  string gateway_unique_id = 2;
+
+  // The profile's policy identifier as reported by the device policy API.
+  string policy_id = 3;
+}

@@ -1895,6 +1895,16 @@ const (
 	CloudResourceKind_CloudflareZeroTrustGatewaySettings CloudResourceKind = 7062
 	// No prerequisites: DNS locations are account-scoped and self-contained.
 	CloudResourceKind_CloudflareZeroTrustDnsLocation CloudResourceKind = 7063
+	// No prerequisites: the default device profile is an account-scoped
+	// configuration singleton; its virtual-network and zone-certificate
+	// references are optional per-manifest edges.
+	CloudResourceKind_CloudflareZeroTrustDeviceDefaultProfile CloudResourceKind = 7080
+	// No prerequisites: custom device profiles are account-scoped, and the
+	// virtual-network reference is an optional per-manifest edge.
+	CloudResourceKind_CloudflareZeroTrustDeviceCustomProfile CloudResourceKind = 7081
+	// No prerequisites: posture rules are account-scoped and self-contained
+	// (list and integration references are literal UUIDs today).
+	CloudResourceKind_CloudflareZeroTrustDevicePostureRule CloudResourceKind = 7082
 	// CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped
 	// configuration -- the spec's zone_id reference must resolve first.
 	CloudResourceKind_CloudflareZoneTlsSettings CloudResourceKind = 7150
@@ -2601,6 +2611,9 @@ var (
 		7061: "CloudflareZeroTrustList",
 		7062: "CloudflareZeroTrustGatewaySettings",
 		7063: "CloudflareZeroTrustDnsLocation",
+		7080: "CloudflareZeroTrustDeviceDefaultProfile",
+		7081: "CloudflareZeroTrustDeviceCustomProfile",
+		7082: "CloudflareZeroTrustDevicePostureRule",
 		7150: "CloudflareZoneTlsSettings",
 		7151: "CloudflareCustomSslCertificate",
 		7152: "CloudflareMtlsCertificate",
@@ -3255,6 +3268,9 @@ var (
 		"CloudflareZeroTrustList":                        7061,
 		"CloudflareZeroTrustGatewaySettings":             7062,
 		"CloudflareZeroTrustDnsLocation":                 7063,
+		"CloudflareZeroTrustDeviceDefaultProfile":        7080,
+		"CloudflareZeroTrustDeviceCustomProfile":         7081,
+		"CloudflareZeroTrustDevicePostureRule":           7082,
 		"CloudflareZoneTlsSettings":                      7150,
 		"CloudflareCustomSslCertificate":                 7151,
 		"CloudflareMtlsCertificate":                      7152,
@@ -3662,7 +3678,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xa2\xad\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xf9\xae\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4328,7 +4344,10 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	" CloudflareZeroTrustGatewayPolicy\x10\x947\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfztgp\x125\n" +
 	"\x17CloudflareZeroTrustList\x10\x957\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfztl\x12A\n" +
 	"\"CloudflareZeroTrustGatewaySettings\x10\x967\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfztgs\x12=\n" +
-	"\x1eCloudflareZeroTrustDnsLocation\x10\x977\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfztdl\x12;\n" +
+	"\x1eCloudflareZeroTrustDnsLocation\x10\x977\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfztdl\x12G\n" +
+	"'CloudflareZeroTrustDeviceDefaultProfile\x10\xa87\x1a\x19\xa2\xf7\x04\x15\b\x0f\x12\bv1alpha1\"\acfztddp\x12F\n" +
+	"&CloudflareZeroTrustDeviceCustomProfile\x10\xa97\x1a\x19\xa2\xf7\x04\x15\b\x0f\x12\bv1alpha1\"\acfztdcp\x12D\n" +
+	"$CloudflareZeroTrustDevicePostureRule\x10\xaa7\x1a\x19\xa2\xf7\x04\x15\b\x0f\x12\bv1alpha1\"\acfztdpr\x12;\n" +
 	"\x19CloudflareZoneTlsSettings\x10\xee7\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x05cftls:\x02\xd86\x12A\n" +
 	"\x1eCloudflareCustomSslCertificate\x10\xef7\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x06cfcssl:\x02\xd86\x128\n" +
 	"\x19CloudflareMtlsCertificate\x10\xf07\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfmtls\x12D\n" +

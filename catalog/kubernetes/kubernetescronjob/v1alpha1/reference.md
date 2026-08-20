@@ -1922,6 +1922,9 @@ Allowed values (use exactly as shown):
 - `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
 - `CloudflareZeroTrustGatewaySettings` -- No prerequisites: the Gateway configuration is an account-scoped singleton, and its certificate reference is an optional per-manifest edge.
 - `CloudflareZeroTrustDnsLocation` -- No prerequisites: DNS locations are account-scoped and self-contained.
+- `CloudflareZeroTrustDeviceDefaultProfile` -- No prerequisites: the default device profile is an account-scoped configuration singleton; its virtual-network and zone-certificate references are optional per-manifest edges.
+- `CloudflareZeroTrustDeviceCustomProfile` -- No prerequisites: custom device profiles are account-scoped, and the virtual-network reference is an optional per-manifest edge.
+- `CloudflareZeroTrustDevicePostureRule` -- No prerequisites: posture rules are account-scoped and self-contained (list and integration references are literal UUIDs today).
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
 - `CloudflareCustomSslCertificate` -- CloudflareDnsZone is a prerequisite because a custom certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareMtlsCertificate` -- No prerequisites: mTLS certificates are account-scoped uploads and self-contained -- consumers (zone TLS CA associations, Authenticated Origin Pulls rows, Workers mTLS bindings) reference them, not the reverse.
@@ -2739,6 +2742,9 @@ Allowed values (use exactly as shown):
 - `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
 - `CloudflareZeroTrustGatewaySettings` -- No prerequisites: the Gateway configuration is an account-scoped singleton, and its certificate reference is an optional per-manifest edge.
 - `CloudflareZeroTrustDnsLocation` -- No prerequisites: DNS locations are account-scoped and self-contained.
+- `CloudflareZeroTrustDeviceDefaultProfile` -- No prerequisites: the default device profile is an account-scoped configuration singleton; its virtual-network and zone-certificate references are optional per-manifest edges.
+- `CloudflareZeroTrustDeviceCustomProfile` -- No prerequisites: custom device profiles are account-scoped, and the virtual-network reference is an optional per-manifest edge.
+- `CloudflareZeroTrustDevicePostureRule` -- No prerequisites: posture rules are account-scoped and self-contained (list and integration references are literal UUIDs today).
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
 - `CloudflareCustomSslCertificate` -- CloudflareDnsZone is a prerequisite because a custom certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareMtlsCertificate` -- No prerequisites: mTLS certificates are account-scoped uploads and self-contained -- consumers (zone TLS CA associations, Authenticated Origin Pulls rows, Workers mTLS bindings) reference them, not the reverse.
@@ -4709,6 +4715,9 @@ Allowed values (use exactly as shown):
 - `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
 - `CloudflareZeroTrustGatewaySettings` -- No prerequisites: the Gateway configuration is an account-scoped singleton, and its certificate reference is an optional per-manifest edge.
 - `CloudflareZeroTrustDnsLocation` -- No prerequisites: DNS locations are account-scoped and self-contained.
+- `CloudflareZeroTrustDeviceDefaultProfile` -- No prerequisites: the default device profile is an account-scoped configuration singleton; its virtual-network and zone-certificate references are optional per-manifest edges.
+- `CloudflareZeroTrustDeviceCustomProfile` -- No prerequisites: custom device profiles are account-scoped, and the virtual-network reference is an optional per-manifest edge.
+- `CloudflareZeroTrustDevicePostureRule` -- No prerequisites: posture rules are account-scoped and self-contained (list and integration references are literal UUIDs today).
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
 - `CloudflareCustomSslCertificate` -- CloudflareDnsZone is a prerequisite because a custom certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareMtlsCertificate` -- No prerequisites: mTLS certificates are account-scoped uploads and self-contained -- consumers (zone TLS CA associations, Authenticated Origin Pulls rows, Workers mTLS bindings) reference them, not the reverse.
@@ -5526,6 +5535,9 @@ Allowed values (use exactly as shown):
 - `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
 - `CloudflareZeroTrustGatewaySettings` -- No prerequisites: the Gateway configuration is an account-scoped singleton, and its certificate reference is an optional per-manifest edge.
 - `CloudflareZeroTrustDnsLocation` -- No prerequisites: DNS locations are account-scoped and self-contained.
+- `CloudflareZeroTrustDeviceDefaultProfile` -- No prerequisites: the default device profile is an account-scoped configuration singleton; its virtual-network and zone-certificate references are optional per-manifest edges.
+- `CloudflareZeroTrustDeviceCustomProfile` -- No prerequisites: custom device profiles are account-scoped, and the virtual-network reference is an optional per-manifest edge.
+- `CloudflareZeroTrustDevicePostureRule` -- No prerequisites: posture rules are account-scoped and self-contained (list and integration references are literal UUIDs today).
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
 - `CloudflareCustomSslCertificate` -- CloudflareDnsZone is a prerequisite because a custom certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareMtlsCertificate` -- No prerequisites: mTLS certificates are account-scoped uploads and self-contained -- consumers (zone TLS CA associations, Authenticated Origin Pulls rows, Workers mTLS bindings) reference them, not the reverse.
@@ -7532,6 +7544,9 @@ Allowed values (use exactly as shown):
 - `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
 - `CloudflareZeroTrustGatewaySettings` -- No prerequisites: the Gateway configuration is an account-scoped singleton, and its certificate reference is an optional per-manifest edge.
 - `CloudflareZeroTrustDnsLocation` -- No prerequisites: DNS locations are account-scoped and self-contained.
+- `CloudflareZeroTrustDeviceDefaultProfile` -- No prerequisites: the default device profile is an account-scoped configuration singleton; its virtual-network and zone-certificate references are optional per-manifest edges.
+- `CloudflareZeroTrustDeviceCustomProfile` -- No prerequisites: custom device profiles are account-scoped, and the virtual-network reference is an optional per-manifest edge.
+- `CloudflareZeroTrustDevicePostureRule` -- No prerequisites: posture rules are account-scoped and self-contained (list and integration references are literal UUIDs today).
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
 - `CloudflareCustomSslCertificate` -- CloudflareDnsZone is a prerequisite because a custom certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareMtlsCertificate` -- No prerequisites: mTLS certificates are account-scoped uploads and self-contained -- consumers (zone TLS CA associations, Authenticated Origin Pulls rows, Workers mTLS bindings) reference them, not the reverse.
@@ -8349,6 +8364,9 @@ Allowed values (use exactly as shown):
 - `CloudflareZeroTrustList` -- No prerequisites: Zero Trust lists are account-scoped and self-contained.
 - `CloudflareZeroTrustGatewaySettings` -- No prerequisites: the Gateway configuration is an account-scoped singleton, and its certificate reference is an optional per-manifest edge.
 - `CloudflareZeroTrustDnsLocation` -- No prerequisites: DNS locations are account-scoped and self-contained.
+- `CloudflareZeroTrustDeviceDefaultProfile` -- No prerequisites: the default device profile is an account-scoped configuration singleton; its virtual-network and zone-certificate references are optional per-manifest edges.
+- `CloudflareZeroTrustDeviceCustomProfile` -- No prerequisites: custom device profiles are account-scoped, and the virtual-network reference is an optional per-manifest edge.
+- `CloudflareZeroTrustDevicePostureRule` -- No prerequisites: posture rules are account-scoped and self-contained (list and integration references are literal UUIDs today).
 - `CloudflareZoneTlsSettings` -- CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped configuration -- the spec's zone_id reference must resolve first.
 - `CloudflareCustomSslCertificate` -- CloudflareDnsZone is a prerequisite because a custom certificate is uploaded to an existing zone -- the spec's zone_id reference must resolve first.
 - `CloudflareMtlsCertificate` -- No prerequisites: mTLS certificates are account-scoped uploads and self-contained -- consumers (zone TLS CA associations, Authenticated Origin Pulls rows, Workers mTLS bindings) reference them, not the reverse.

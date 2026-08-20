@@ -1,0 +1,45 @@
+# Complete example manifest for CloudflareZeroTrustDeviceDefaultProfile.
+# Applies the account's default WARP profile with the toggle body, an
+# exclude-mode split tunnel, proxy service mode, DNS search suffixes, the
+# folded local-DNS fallback list, and the folded per-zone certificate
+# provisioning toggle (3 resources to add).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustDeviceDefaultProfile
+metadata:
+  name: default-device-profile
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  allow_mode_switch: false
+  allow_updates: true
+  allowed_to_leave: false
+  auto_connect: 600
+  captive_portal: 180
+  disable_auto_fallback: false
+  exclude_office_ips: true
+  register_interface_ip_with_dns: true
+  sccm_vpn_boundary_support: false
+  support_url: https://support.example.com/warp
+  switch_locked: true
+  tunnel_protocol: wireguard
+  lan_allow_minutes: 30
+  lan_allow_subnet_size: 24
+  exclude:
+    - address: 192.0.2.0/24
+      description: lab network stays local
+    - host: printers.example.com
+      description: local printer discovery
+  service_mode_v2:
+    mode: warp
+  dns_search_suffixes:
+    - suffix: corp.example.com
+      description: short hostnames resolve in the corp domain
+  fallback_domains:
+    - suffix: corp.internal
+      description: resolved by the on-prem resolver
+      dns_server:
+        - 10.0.0.53
+    - suffix: localdomain
+  zone_certificates:
+    zone_id:
+      value: "REPLACE_WITH_ZONE_ID"
+    enabled: true

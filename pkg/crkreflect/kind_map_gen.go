@@ -412,6 +412,9 @@ import (
 	cloudflarezerotrustaccessinfrastructuretargetv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessinfrastructuretarget/v1alpha1"
 	cloudflarezerotrustaccesspolicyv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccesspolicy/v1alpha1"
 	cloudflarezerotrustaccessservicetokenv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustaccessservicetoken/v1alpha1"
+	cloudflarezerotrustdevicecustomprofilev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustdevicecustomprofile/v1alpha1"
+	cloudflarezerotrustdevicedefaultprofilev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustdevicedefaultprofile/v1alpha1"
+	cloudflarezerotrustdeviceposturerulev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustdeviceposturerule/v1alpha1"
 	cloudflarezerotrustdnslocationv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustdnslocation/v1alpha1"
 	cloudflarezerotrustgatewaypolicyv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustgatewaypolicy/v1alpha1"
 	cloudflarezerotrustgatewaysettingsv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrustgatewaysettings/v1alpha1"
@@ -1090,6 +1093,9 @@ var ProviderCloudflareMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessInfrastructureTarget: &cloudflarezerotrustaccessinfrastructuretargetv1alpha1.CloudflareZeroTrustAccessInfrastructureTarget{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessPolicy:               &cloudflarezerotrustaccesspolicyv1alpha1.CloudflareZeroTrustAccessPolicy{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustAccessServiceToken:         &cloudflarezerotrustaccessservicetokenv1alpha1.CloudflareZeroTrustAccessServiceToken{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustDeviceCustomProfile:        &cloudflarezerotrustdevicecustomprofilev1alpha1.CloudflareZeroTrustDeviceCustomProfile{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustDeviceDefaultProfile:       &cloudflarezerotrustdevicedefaultprofilev1alpha1.CloudflareZeroTrustDeviceDefaultProfile{},
+	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustDevicePostureRule:          &cloudflarezerotrustdeviceposturerulev1alpha1.CloudflareZeroTrustDevicePostureRule{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustDnsLocation:                &cloudflarezerotrustdnslocationv1alpha1.CloudflareZeroTrustDnsLocation{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustGatewayPolicy:              &cloudflarezerotrustgatewaypolicyv1alpha1.CloudflareZeroTrustGatewayPolicy{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustGatewaySettings:            &cloudflarezerotrustgatewaysettingsv1alpha1.CloudflareZeroTrustGatewaySettings{},

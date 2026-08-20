@@ -1,0 +1,24 @@
+# Minimal scenario: name + match + precedence -- the three required fields
+# -- targeting a run-scoped identity that matches no real user. Precedence
+# is a fixed high value shared with nothing else in this repo; two
+# concurrent runs of this same scenario would collide on it (recorded on the
+# queue watch-list, same class as the tunnel route's fixed CIDR).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustDeviceCustomProfile
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustdevicecustomprofile-minimal
+  id: planton-oss-e2e-cloudflarezerotrustdevicecustomprofile-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustdevicecustomprofile
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: e2e-profile-min-${E2E_RUN_ID}
+  match: identity.email == "e2e-${E2E_RUN_ID}@invalid.planton.test"
+  precedence: 8500

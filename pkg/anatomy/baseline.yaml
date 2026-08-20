@@ -1157,6 +1157,9 @@ violations:
   - catalog/cloudflare/cloudflarezerotrustaccesspolicy:missing-control-profile
   - catalog/cloudflare/cloudflarezerotrustaccesspolicy:missing-cost-profile
   - catalog/cloudflare/cloudflarezerotrustaccessservicetoken/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustdevicecustomprofile/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustdevicedefaultprofile/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustdeviceposturerule/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrustdnslocation/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrustgatewaypolicy/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrustgatewaysettings/iac:missing-permissions

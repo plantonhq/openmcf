@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustdevicecustomprofile.v1alpha1;
+
+// CloudflareZeroTrustDeviceCustomProfileStackOutputs captures the
+// observable outputs after creating the custom device profile.
+message CloudflareZeroTrustDeviceCustomProfileStackOutputs {
+  // The Cloudflare-assigned identifier of the profile (its policy ID).
+  string policy_id = 1;
+
+  // The Gateway-side identifier Cloudflare assigns the profile (used when
+  // Gateway policies reference device profiles).
+  string gateway_unique_id = 2;
+}

@@ -420,6 +420,27 @@ func TestCloudflareZeroTrustDnsLocation_Pulumi(t *testing.T) {
 func TestCloudflareZeroTrustDnsLocation_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "cloudflarezerotrustdnslocation", "terraform")
 }
+
+func TestCloudflareZeroTrustDeviceDefaultProfile_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustdevicedefaultprofile", "pulumi")
+}
+func TestCloudflareZeroTrustDeviceDefaultProfile_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustdevicedefaultprofile", "terraform")
+}
+
+func TestCloudflareZeroTrustDeviceCustomProfile_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustdevicecustomprofile", "pulumi")
+}
+func TestCloudflareZeroTrustDeviceCustomProfile_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustdevicecustomprofile", "terraform")
+}
+
+func TestCloudflareZeroTrustDevicePostureRule_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustdeviceposturerule", "pulumi")
+}
+func TestCloudflareZeroTrustDevicePostureRule_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezerotrustdeviceposturerule", "terraform")
+}
 func TestCloudflareZeroTrustAccessServiceToken_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "cloudflarezerotrustaccessservicetoken", "terraform")
 }

@@ -29,11 +29,11 @@ that has progressed.
 |---|---|
 | Provider schema | `aws@6.58.0` |
 | Provider schema (parity baseline) | `cloudflare@5.23.0` |
-| Kinds in the catalog | 58 |
-| Distinct provider resources consumed | 100 |
-| Spec fields authored across all kinds | 1871 |
+| Kinds in the catalog | 61 |
+| Distinct provider resources consumed | 106 |
+| Spec fields authored across all kinds | 1989 |
 | Module pins on `aws` | `~> 5.0` × 1 |
-| Module pins on `cloudflare` | `~> 5.23` × 58 |
+| Module pins on `cloudflare` | `~> 5.23` × 61 |
 | Module pins on `tls` | `~> 4.0` × 1 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -48,7 +48,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**58 of 58 kinds are at total accounting; 0 proven live.**
+**61 of 61 kinds are at total accounting; 0 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -98,6 +98,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | CloudflareZeroTrustAccessInfrastructureTarget | 3 | 2 | 1 | 0 | 0 | ✅ | — |
 | CloudflareZeroTrustAccessPolicy | 14 | 8 | 6 | 0 | 0 | ✅ | — |
 | CloudflareZeroTrustAccessServiceToken | 6 | 6 | 0 | 0 | 0 | ✅ | — |
+| CloudflareZeroTrustDeviceCustomProfile | 29 | 21 | 6 | 2 | 0 | ✅ | — |
+| CloudflareZeroTrustDeviceDefaultProfile | 25 | 16 | 8 | 1 | 0 | ✅ | — |
+| CloudflareZeroTrustDevicePostureRule | 8 | 6 | 2 | 0 | 0 | ✅ | — |
 | CloudflareZeroTrustDnsLocation | 8 | 5 | 3 | 0 | 0 | ✅ | — |
 | CloudflareZeroTrustGatewayPolicy | 13 | 9 | 4 | 0 | 0 | ✅ | — |
 | CloudflareZeroTrustGatewaySettings | 10 | 3 | 7 | 0 | 0 | ✅ | — |
@@ -117,10 +120,10 @@ All resources of `cloudflare@5.23.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 98 | consumed by a kind's Terraform module today |
+| Modeled | 104 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 0 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 107 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 101 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 45 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 7 | deprecated or superseded provider surface |
 | **Total** | **257** | |
@@ -130,7 +133,7 @@ All resources of `cloudflare@5.23.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (98)
+### Modeled (104)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -212,6 +215,12 @@ rather than trusted.
 | `cloudflare_zero_trust_access_key_configuration` | consumed by CloudflareZeroTrustOrganization |
 | `cloudflare_zero_trust_access_policy` | consumed by CloudflareZeroTrustAccessPolicy |
 | `cloudflare_zero_trust_access_service_token` | consumed by CloudflareZeroTrustAccessServiceToken |
+| `cloudflare_zero_trust_device_custom_profile` | consumed by CloudflareZeroTrustDeviceCustomProfile |
+| `cloudflare_zero_trust_device_custom_profile_local_domain_fallback` | consumed by CloudflareZeroTrustDeviceCustomProfile |
+| `cloudflare_zero_trust_device_default_profile` | consumed by CloudflareZeroTrustDeviceDefaultProfile |
+| `cloudflare_zero_trust_device_default_profile_certificates` | consumed by CloudflareZeroTrustDeviceDefaultProfile |
+| `cloudflare_zero_trust_device_default_profile_local_domain_fallback` | consumed by CloudflareZeroTrustDeviceDefaultProfile |
+| `cloudflare_zero_trust_device_posture_rule` | consumed by CloudflareZeroTrustDevicePostureRule |
 | `cloudflare_zero_trust_dns_location` | consumed by CloudflareZeroTrustDnsLocation |
 | `cloudflare_zero_trust_gateway_logging` | consumed by CloudflareZeroTrustGatewaySettings |
 | `cloudflare_zero_trust_gateway_pacfile` | consumed by CloudflareZeroTrustGatewaySettings |
@@ -233,7 +242,7 @@ rather than trusted.
 | `cloudflare_zone_setting` | consumed by CloudflareZoneSettings |
 | `cloudflare_zone_subscription` | consumed by CloudflareDnsZone |
 
-### Planned (107)
+### Planned (101)
 
 | Resource | Recorded reason |
 |---|---|
@@ -308,16 +317,10 @@ rather than trusted.
 | `cloudflare_zero_trust_access_mtls_hostname_settings` | folds into the planned CloudflareZeroTrustAccessMtlsCertificate kind (hostname settings exist in service of the mTLS certificates) |
 | `cloudflare_zero_trust_access_short_lived_certificate` | folds into the existing CloudflareZeroTrustAccessApplication kind's planned depth expansion (SSH short-lived certificate issuance is a per-application toggle) |
 | `cloudflare_zero_trust_access_tag` | judged as a planned CloudflareZeroTrustAccessTag kind (label referenced by name across applications) |
-| `cloudflare_zero_trust_device_custom_profile` | judged as a planned CloudflareZeroTrustDeviceCustomProfile kind (targeted WARP profiles, many per account) |
-| `cloudflare_zero_trust_device_custom_profile_local_domain_fallback` | folds into the planned CloudflareZeroTrustDeviceCustomProfile kind (fallback-domain rows of the profile) |
-| `cloudflare_zero_trust_device_default_profile` | judged as a planned CloudflareZeroTrustDeviceDefaultProfile kind (account-singleton default WARP profile) |
-| `cloudflare_zero_trust_device_default_profile_certificates` | folds into the planned CloudflareZeroTrustDeviceDefaultProfile kind (certificate enablement of the profile) |
-| `cloudflare_zero_trust_device_default_profile_local_domain_fallback` | folds into the planned CloudflareZeroTrustDeviceDefaultProfile kind (fallback-domain rows of the profile) |
 | `cloudflare_zero_trust_device_deployment_groups` | judged as a planned CloudflareZeroTrustDeviceDeploymentGroup kind (WARP client rollout rings with independent membership lifecycle) |
 | `cloudflare_zero_trust_device_ip_profile` | judged as a planned CloudflareZeroTrustDeviceIpProfile kind (IP-scoped WARP profile variant) |
 | `cloudflare_zero_trust_device_managed_networks` | judged as a planned CloudflareZeroTrustDeviceManagedNetwork kind (network fingerprints referenced by profile targeting) |
 | `cloudflare_zero_trust_device_posture_integration` | judged as a planned CloudflareZeroTrustDevicePostureIntegration kind (third-party posture providers with credentials and lifecycle) |
-| `cloudflare_zero_trust_device_posture_rule` | judged as a planned CloudflareZeroTrustDevicePostureRule kind (posture checks referenced by Access and Gateway policies) |
 | `cloudflare_zero_trust_device_settings` | judged as a planned CloudflareZeroTrustDeviceSettings kind (account-wide device enrollment settings singleton) |
 | `cloudflare_zero_trust_device_subnet` | judged as a planned CloudflareZeroTrustDeviceSubnet kind (virtual device subnets referencing virtual networks) |
 | `cloudflare_zero_trust_dex_rule` | folds into the planned CloudflareZeroTrustDexTest kind (targeting rules exist in service of the tests) |

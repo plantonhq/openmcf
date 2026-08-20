@@ -1,0 +1,29 @@
+# File-check scenario: proves a second check family (file existence on
+# Windows) with a multi-platform match list and the expiration knob --
+# exercising the input tree on different fields than the os-version lane.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustDevicePostureRule
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustdeviceposturerule-file-check
+  id: planton-oss-e2e-cloudflarezerotrustdeviceposturerule-file-check
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustdeviceposturerule
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: e2e-file-check-${E2E_RUN_ID}
+  type: file
+  description: planton e2e file presence check
+  schedule: 10m
+  expiration: 1h
+  match:
+    - platform: windows
+  input:
+    path: C:\Program Files\Planton\e2e-agent.exe
+    exists: true

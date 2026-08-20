@@ -1,0 +1,30 @@
+# Fallback-domains scenario: proves the folded local-DNS fallback list --
+# the profile's one FULL-REPLACEMENT companion. Cloudflare seeds every
+# account's list with defaults, and this apply REPLACES the whole list, so
+# the proof lane captures the prior list (GET
+# accounts/{a}/devices/policy/fallback_domains) before this runs and
+# restores it afterward (the companion's destroy is a no-op). The upstream
+# tests for this companion blank CLOUDFLARE_API_TOKEN -- a 403 here under
+# our token credential is the expected ambush.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustDeviceDefaultProfile
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustdevicedefaultprofile-fallback-domains
+  id: planton-oss-e2e-cloudflarezerotrustdevicedefaultprofile-fallback-domains
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustdevicedefaultprofile
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  fallback_domains:
+    - suffix: corp-${E2E_RUN_ID}.internal
+      description: planton e2e resolver row
+      dns_server:
+        - 10.255.255.53
+    - suffix: localdomain

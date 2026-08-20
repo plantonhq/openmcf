@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarezerotrustdevicedefaultprofile.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarezerotrustdevicedefaultprofile/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarezerotrustdevicedefaultprofile/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareZeroTrustDeviceDefaultProfile is a KRM-style resource for
+// managing the account's default WARP device profile: the settings every
+// enrolled device receives unless a custom profile matches it first.
+message CloudflareZeroTrustDeviceDefaultProfile {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareZeroTrustDeviceDefaultProfile'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareZeroTrustDeviceDefaultProfileSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareZeroTrustDeviceDefaultProfileStatus status = 5;
+}
+
+// CloudflareZeroTrustDeviceDefaultProfileStatus represents the observed
+// state of the default device profile.
+message CloudflareZeroTrustDeviceDefaultProfileStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareZeroTrustDeviceDefaultProfileStackOutputs outputs = 1;
+}

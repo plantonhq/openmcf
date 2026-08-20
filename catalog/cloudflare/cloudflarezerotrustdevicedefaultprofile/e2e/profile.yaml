@@ -1,0 +1,26 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarezerotrustdevicedefaultprofile
+spec:
+  # The default device profile under live E2E: an ACCOUNT-SCOPED SINGLETON
+  # (PATCH upsert) with a NO-OP destroy -- the lane MUTATES THE ACCOUNT'S
+  # REAL DEFAULT WARP PROFILE. Watch items for the proving session:
+  # (1) capture the profile's prior values (GET accounts/{a}/devices/policy)
+  # BEFORE the lane and restore them in VERIFY-CLN -- destroy reverts
+  # nothing; (2) the fallback-domains scenario FULL-REPLACES the account's
+  # local-DNS fallback list, which Cloudflare seeds with defaults on every
+  # account -- capture the prior list (GET
+  # accounts/{a}/devices/policy/fallback_domains) and restore it the same
+  # way; (3) the API-token defect class covers the fallback and certificate
+  # companions (their upstream tests blank CLOUDFLARE_API_TOKEN): a 403 on
+  # those writes under our token credential is the expected ambush, and a
+  # recorded deferral is the honest outcome; (4) the zone-certificates
+  # scenario toggles certificate provisioning on the run-scoped zone fixture
+  # only -- never on a real zone.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes pass.
+  status: pending_proof
+  timeout_minutes: 10

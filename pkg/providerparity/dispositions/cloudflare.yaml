@@ -237,24 +237,6 @@ resources:
     disposition: model-planned
     reason: "judged as a planned CloudflareZeroTrustGatewayCertificate kind (TLS inspection certificates with activation lifecycle)"
   # ---- Zero Trust Devices & DEX ------------------------------------------------------------
-  - resource: cloudflare_zero_trust_device_default_profile
-    disposition: model-planned
-    reason: "judged as a planned CloudflareZeroTrustDeviceDefaultProfile kind (account-singleton default WARP profile)"
-  - resource: cloudflare_zero_trust_device_custom_profile
-    disposition: model-planned
-    reason: "judged as a planned CloudflareZeroTrustDeviceCustomProfile kind (targeted WARP profiles, many per account)"
-  - resource: cloudflare_zero_trust_device_default_profile_local_domain_fallback
-    disposition: model-planned
-    reason: "folds into the planned CloudflareZeroTrustDeviceDefaultProfile kind (fallback-domain rows of the profile)"
-  - resource: cloudflare_zero_trust_device_default_profile_certificates
-    disposition: model-planned
-    reason: "folds into the planned CloudflareZeroTrustDeviceDefaultProfile kind (certificate enablement of the profile)"
-  - resource: cloudflare_zero_trust_device_custom_profile_local_domain_fallback
-    disposition: model-planned
-    reason: "folds into the planned CloudflareZeroTrustDeviceCustomProfile kind (fallback-domain rows of the profile)"
-  - resource: cloudflare_zero_trust_device_posture_rule
-    disposition: model-planned
-    reason: "judged as a planned CloudflareZeroTrustDevicePostureRule kind (posture checks referenced by Access and Gateway policies)"
   - resource: cloudflare_zero_trust_device_posture_integration
     disposition: model-planned
     reason: "judged as a planned CloudflareZeroTrustDevicePostureIntegration kind (third-party posture providers with credentials and lifecycle)"
