@@ -57,4 +57,10 @@ enum CloudResourceProvider {
     group: "openfga.planton.dev"
     display_name: "OpenFGA"
   }];
+  // Credential broker family: one provider serves both HashiCorp Vault and
+  // OpenBAO (the API-compatible fork) -- one wire protocol, one client.
+  vault = 28 [(provider_meta) = {
+    group: "vault.planton.dev"
+    display_name: "Vault"
+  }];
 }
