@@ -1,0 +1,30 @@
+# Kafka cluster fixture -- the shared Kafka fixture for BOTH B-wave Kafka
+# kinds (this topic kind and DigitalOceanDatabaseKafkaSchema reference this
+# same file), deployed as a manifest-path prerequisite because the kinds'
+# registry prerequisite installs a PostgreSQL cluster and Kafka needs its
+# own engine. Kafka is the catalog's most expensive fixture class: a
+# 3-node minimum (API-enforced) at the smallest Kafka-eligible size,
+# ~10 minutes to provision. Because both Kafka kinds deploy THIS instance
+# (same name), their proof lanes must run SERIALLY, never in parallel --
+# recorded in both kinds' profiles.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseCluster
+metadata:
+  name: planton-oss-e2e-digitalocean-kafka-fixture
+  id: planton-oss-e2e-digitalocean-kafka-fixture
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceandatabasekafkatopic
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  clusterName: pltn-e2e-do-kafka-fx
+  engine: kafka
+  engineVersion: "3.8"
+  region: nyc3
+  sizeSlug: db-s-2vcpu-2gb
+  nodeCount: 3

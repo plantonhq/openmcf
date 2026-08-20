@@ -28,10 +28,10 @@ that has progressed.
 | | |
 |---|---|
 | Provider schema (parity baseline) | `digitalocean@2.99.1` |
-| Kinds in the catalog | 24 |
-| Distinct provider resources consumed | 28 |
-| Spec fields authored across all kinds | 614 |
-| Module pins on `digitalocean` | `~> 2.99` × 24 |
+| Kinds in the catalog | 28 |
+| Distinct provider resources consumed | 34 |
+| Spec fields authored across all kinds | 651 |
+| Module pins on `digitalocean` | `~> 2.99` × 28 |
 
 The GA provider is the parity baseline. Capability that exists only in a
 secondary channel (for Google, the `google-beta` provider) enters per kind
@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**24 of 24 kinds are at total accounting; 0 proven live.**
+**28 of 28 kinds are at total accounting; 0 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -57,6 +57,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | DigitalOceanDatabaseConnectionPool | 6 | 4 | 2 | 0 | 0 | ✅ | — |
 | DigitalOceanDatabaseDb | 2 | 0 | 2 | 0 | 0 | ✅ | — |
 | DigitalOceanDatabaseFirewall | 3 | 0 | 2 | 1 | 0 | ✅ | — |
+| DigitalOceanDatabaseKafkaSchema | 4 | 3 | 1 | 0 | 0 | ✅ | — |
+| DigitalOceanDatabaseKafkaTopic | 27 | 25 | 2 | 0 | 0 | ✅ | — |
 | DigitalOceanDatabaseReplica | 7 | 4 | 3 | 0 | 0 | ✅ | — |
 | DigitalOceanDatabaseUser | 7 | 1 | 6 | 0 | 0 | ✅ | — |
 | DigitalOceanDnsRecord | 10 | 9 | 1 | 0 | 0 | ✅ | — |
@@ -69,10 +71,12 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | DigitalOceanLoadBalancer | 46 | 31 | 15 | 0 | 0 | ✅ | — |
 | DigitalOceanMonitorAlert | 11 | 8 | 3 | 0 | 0 | ✅ | — |
 | DigitalOceanProject | 6 | 5 | 1 | 0 | 0 | ✅ | — |
+| DigitalOceanReservedIp | 8 | 1 | 3 | 4 | 0 | ✅ | — |
 | DigitalOceanSshKey | 2 | 1 | 1 | 0 | 0 | ✅ | — |
 | DigitalOceanUptimeCheck | 14 | 10 | 3 | 1 | 0 | ✅ | — |
 | DigitalOceanVolume | 8 | 5 | 3 | 0 | 0 | ✅ | — |
 | DigitalOceanVpc | 4 | 2 | 1 | 1 | 0 | ✅ | — |
+| DigitalOceanVpcPeering | 2 | 0 | 2 | 0 | 0 | ✅ | — |
 
 ## Breadth: every GA resource, one disposition
 
@@ -80,10 +84,10 @@ All resources of `digitalocean@2.99.1` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 28 | consumed by a kind's Terraform module today |
+| Modeled | 34 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
-| Composed | 19 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 13 | judged to be covered by a planned kind or planned composition, not built yet |
+| Composed | 17 | capability covered through an existing kind's surface rather than a kind of its own |
+| Planned | 9 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 17 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 2 | deprecated or superseded provider surface |
 | **Total** | **79** | |
@@ -93,7 +97,7 @@ All resources of `digitalocean@2.99.1` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (28)
+### Modeled (34)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -105,6 +109,8 @@ rather than trusted.
 | `digitalocean_database_connection_pool` | consumed by DigitalOceanDatabaseConnectionPool |
 | `digitalocean_database_db` | consumed by DigitalOceanDatabaseDb |
 | `digitalocean_database_firewall` | consumed by DigitalOceanDatabaseFirewall |
+| `digitalocean_database_kafka_schema_registry` | consumed by DigitalOceanDatabaseKafkaSchema |
+| `digitalocean_database_kafka_topic` | consumed by DigitalOceanDatabaseKafkaTopic |
 | `digitalocean_database_replica` | consumed by DigitalOceanDatabaseReplica |
 | `digitalocean_database_user` | consumed by DigitalOceanDatabaseUser |
 | `digitalocean_domain` | consumed by DigitalOceanDnsZone |
@@ -116,6 +122,9 @@ rather than trusted.
 | `digitalocean_monitor_alert` | consumed by DigitalOceanMonitorAlert |
 | `digitalocean_project` | consumed by DigitalOceanProject |
 | `digitalocean_record` | consumed by DigitalOceanDnsRecord, DigitalOceanDnsZone |
+| `digitalocean_reserved_ip` | consumed by DigitalOceanReservedIp |
+| `digitalocean_reserved_ipv6` | consumed by DigitalOceanReservedIp |
+| `digitalocean_reserved_ipv6_assignment` | consumed by DigitalOceanReservedIp |
 | `digitalocean_spaces_bucket` | consumed by DigitalOceanBucket |
 | `digitalocean_spaces_bucket_cors_configuration` | consumed by DigitalOceanBucket |
 | `digitalocean_spaces_bucket_logging` | consumed by DigitalOceanBucket |
@@ -125,8 +134,9 @@ rather than trusted.
 | `digitalocean_uptime_check` | consumed by DigitalOceanUptimeCheck |
 | `digitalocean_volume` | consumed by DigitalOceanVolume |
 | `digitalocean_vpc` | consumed by DigitalOceanVpc |
+| `digitalocean_vpc_peering` | consumed by DigitalOceanVpcPeering |
 
-### Composed (19)
+### Composed (17)
 
 | Resource | Recorded reason |
 |---|---|
@@ -145,28 +155,22 @@ rather than trusted.
 | `digitalocean_nfs_access_point` | export paths and access policies are many-per-share config rows, meaningless without the share; folds into the planned DigitalOceanNfs kind |
 | `digitalocean_nfs_attachment` | additional-VPC attachments are membership rows on the share; folds into the planned DigitalOceanNfs kind |
 | `digitalocean_project_resources` | membership assignment rows (URN lists) with no meaning outside the project; the DigitalOceanProject kind carries the full membership list on the project resource itself (its resources argument), and this non-authoritative partial-ownership variant conflicts with that whole-list read-back by design -- deliberately not created by the modules |
-| `digitalocean_reserved_ip_assignment` | attach/detach is a nullable droplet FK on the planned DigitalOceanReservedIp kind, not a separate object |
-| `digitalocean_reserved_ipv6` | same reserved-IP concept, v6 flavor; a separate kind would be a bundled duplicate -- folds into the planned DigitalOceanReservedIp kind |
-| `digitalocean_reserved_ipv6_assignment` | same reasoning as the v4 assignment -- a nullable droplet FK on the planned DigitalOceanReservedIp kind |
+| `digitalocean_reserved_ip_assignment` | attach/detach is the droplet FK on the DigitalOceanReservedIp kind, which assigns v4 addresses through the reservation's own genuinely mutable droplet_id argument (assign/re-point/unassign all in place) -- this standalone resource is all-ForceNew with a synthetic timestamped id that can never round-trip an import, so it is deliberately never created by the modules |
 | `digitalocean_volume_attachment` | attachment is a nullable droplet FK on DigitalOceanVolume (the droplet kind's volume_ids covers it today); attach/detach is a field change, not a separate object lifecycle worth a kind |
 
-### Planned (13)
+### Planned (9)
 
 | Resource | Recorded reason |
 |---|---|
 | `digitalocean_cdn` | judged as a planned DigitalOceanCdn kind (CDN endpoint fronting a Spaces bucket origin, certificate reference for custom domains) |
 | `digitalocean_custom_image` | judged as a planned DigitalOceanCustomImage kind (imported images are first-class and referenced by droplets and autoscale pools) |
-| `digitalocean_database_kafka_schema_registry` | judged as a planned DigitalOceanDatabaseKafkaSchema kind (despite the resource name, each instance manages one registered schema -- many-per-cluster rows managed independently, like topics; FK cluster) |
-| `digitalocean_database_kafka_topic` | judged as a planned DigitalOceanDatabaseKafkaTopic kind (topics are many-per-cluster with independent lifecycle and per-topic config; FK cluster) |
 | `digitalocean_database_logsink_opensearch` | anchor of a planned DigitalOceanDatabaseLogsink kind modeling ship-cluster-logs-somewhere with a oneof destination config (FK cluster; optionally a Planton-managed OpenSearch cluster) |
 | `digitalocean_dedicated_inference` | judged as a planned DigitalOceanDedicatedInference kind (GPU-backed inference endpoints with model deployments and accelerator scaling -- first-class, referenceable infrastructure; FK project) |
 | `digitalocean_droplet_autoscale` | judged as a planned DigitalOceanDropletAutoscalePool kind (a pool with its own scaling config and lifecycle -- the closest thing DigitalOcean has to a managed instance group; FK vpc, ssh keys, project) |
 | `digitalocean_nfs` | anchor of a planned DigitalOceanNfs kind (the share is the parent object with size, performance tier, and primary VPC; FK vpc) |
 | `digitalocean_partner_attachment` | judged as a planned DigitalOceanPartnerAttachment kind (GA but specialist private connectivity via Megaport-class providers with BGP config; first-class because nothing else could honestly absorb it; FK VPCs) |
-| `digitalocean_reserved_ip` | anchor of a planned DigitalOceanReservedIp kind carrying an IP version field and an optional droplet attachment (the v4/v6 and create/assign splits are provider-API artifacts, not distinct product concepts; FK droplet, project) |
 | `digitalocean_spaces_key` | judged as a planned DigitalOceanSpacesKey kind (access keys have independent create/rotate lifecycles and are the credential workloads actually reference; FK buckets via per-bucket grants) |
 | `digitalocean_vector_database` | judged as a planned DigitalOceanVectorDatabase kind (Weaviate-powered managed cluster, managed independently from standard database clusters; FK project, vpc) |
-| `digitalocean_vpc_peering` | judged as a planned DigitalOceanVpcPeering kind (peerings connect two first-class VPCs and have their own lifecycle; FK two VPCs) |
 
 ### Deferred (17)
 

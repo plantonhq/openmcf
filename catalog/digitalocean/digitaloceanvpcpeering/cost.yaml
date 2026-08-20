@@ -1,0 +1,10 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceanvpcpeering
+spec:
+  billing_model: free
+  notes: VPC peering connections are free, and traffic crossing a peering between VPCs is free as well (it stays on DigitalOcean's private network). DigitalOcean meters nothing on this resource.

@@ -46,12 +46,6 @@ resources:
   - resource: digitalocean_database_kafka_config
     disposition: composed
     reason: "per-cluster Kafka broker settings singleton -- exactly one per cluster, lifecycle identical to the parent; folds into DigitalOceanDatabaseCluster as per-engine settings"
-  - resource: digitalocean_database_kafka_schema_registry
-    disposition: model-planned
-    reason: "judged as a planned DigitalOceanDatabaseKafkaSchema kind (despite the resource name, each instance manages one registered schema -- many-per-cluster rows managed independently, like topics; FK cluster)"
-  - resource: digitalocean_database_kafka_topic
-    disposition: model-planned
-    reason: "judged as a planned DigitalOceanDatabaseKafkaTopic kind (topics are many-per-cluster with independent lifecycle and per-topic config; FK cluster)"
   - resource: digitalocean_database_logsink_opensearch
     disposition: model-planned
     reason: "anchor of a planned DigitalOceanDatabaseLogsink kind modeling ship-cluster-logs-somewhere with a oneof destination config (FK cluster; optionally a Planton-managed OpenSearch cluster)"
@@ -142,18 +136,9 @@ resources:
   - resource: digitalocean_project_resources
     disposition: composed
     reason: "membership assignment rows (URN lists) with no meaning outside the project; the DigitalOceanProject kind carries the full membership list on the project resource itself (its resources argument), and this non-authoritative partial-ownership variant conflicts with that whole-list read-back by design -- deliberately not created by the modules"
-  - resource: digitalocean_reserved_ip
-    disposition: model-planned
-    reason: "anchor of a planned DigitalOceanReservedIp kind carrying an IP version field and an optional droplet attachment (the v4/v6 and create/assign splits are provider-API artifacts, not distinct product concepts; FK droplet, project)"
   - resource: digitalocean_reserved_ip_assignment
     disposition: composed
-    reason: "attach/detach is a nullable droplet FK on the planned DigitalOceanReservedIp kind, not a separate object"
-  - resource: digitalocean_reserved_ipv6
-    disposition: composed
-    reason: "same reserved-IP concept, v6 flavor; a separate kind would be a bundled duplicate -- folds into the planned DigitalOceanReservedIp kind"
-  - resource: digitalocean_reserved_ipv6_assignment
-    disposition: composed
-    reason: "same reasoning as the v4 assignment -- a nullable droplet FK on the planned DigitalOceanReservedIp kind"
+    reason: "attach/detach is the droplet FK on the DigitalOceanReservedIp kind, which assigns v4 addresses through the reservation's own genuinely mutable droplet_id argument (assign/re-point/unassign all in place) -- this standalone resource is all-ForceNew with a synthetic timestamped id that can never round-trip an import, so it is deliberately never created by the modules"
   - resource: digitalocean_spaces_bucket_object
     disposition: deferred
     reason: "uploading object content is data-plane work, not infrastructure; a declarative kind for file contents is marginal and invites abuse as a deployment mechanism"
@@ -175,6 +160,3 @@ resources:
   - resource: digitalocean_vpc_nat_gateway
     disposition: deferred
     reason: "the provider docs mark it currently in Private Preview -- gated on GA; product value is high, promote to P1 the moment the gate lifts"
-  - resource: digitalocean_vpc_peering
-    disposition: model-planned
-    reason: "judged as a planned DigitalOceanVpcPeering kind (peerings connect two first-class VPCs and have their own lifecycle; FK two VPCs)"

@@ -1559,6 +1559,12 @@ const (
 	// A read-only replica of a managed database cluster: the primary
 	// cluster reference is required.
 	CloudResourceKind_DigitalOceanDatabaseReplica CloudResourceKind = 5019
+	// A topic on a managed Kafka cluster with the full per-topic
+	// configuration block; the owning cluster reference is required.
+	CloudResourceKind_DigitalOceanDatabaseKafkaTopic CloudResourceKind = 5020
+	// One schema subject registered in a managed Kafka cluster's schema
+	// registry; the owning cluster reference is required.
+	CloudResourceKind_DigitalOceanDatabaseKafkaSchema CloudResourceKind = 5021
 	// The account-level organizational container; membership is carried on
 	// the project itself as resource URNs.
 	CloudResourceKind_DigitalOceanProject CloudResourceKind = 5030
@@ -1573,6 +1579,13 @@ const (
 	// alert rules; the target is outside the account, so there is no
 	// registry prerequisite.
 	CloudResourceKind_DigitalOceanUptimeCheck CloudResourceKind = 5041
+	// A static public IP address (IPv4 or IPv6) reserved in a region and
+	// optionally assigned to a droplet. The droplet attachment is an
+	// optional composition seam, so there is no registry prerequisite.
+	CloudResourceKind_DigitalOceanReservedIp CloudResourceKind = 5050
+	// A private-network peering connection between exactly two VPCs; both
+	// VPC references are required.
+	CloudResourceKind_DigitalOceanVpcPeering CloudResourceKind = 5051
 	// 6000–6999: Civo resources
 	CloudResourceKind_CivoBucket             CloudResourceKind = 6000
 	CloudResourceKind_CivoCertificate        CloudResourceKind = 6001
@@ -2298,10 +2311,14 @@ var (
 		5017:  "DigitalOceanDatabaseConnectionPool",
 		5018:  "DigitalOceanDatabaseFirewall",
 		5019:  "DigitalOceanDatabaseReplica",
+		5020:  "DigitalOceanDatabaseKafkaTopic",
+		5021:  "DigitalOceanDatabaseKafkaSchema",
 		5030:  "DigitalOceanProject",
 		5031:  "DigitalOceanSshKey",
 		5040:  "DigitalOceanMonitorAlert",
 		5041:  "DigitalOceanUptimeCheck",
+		5050:  "DigitalOceanReservedIp",
+		5051:  "DigitalOceanVpcPeering",
 		6000:  "CivoBucket",
 		6001:  "CivoCertificate",
 		6002:  "CivoComputeInstance",
@@ -3017,10 +3034,14 @@ var (
 		"DigitalOceanDatabaseConnectionPool":             5017,
 		"DigitalOceanDatabaseFirewall":                   5018,
 		"DigitalOceanDatabaseReplica":                    5019,
+		"DigitalOceanDatabaseKafkaTopic":                 5020,
+		"DigitalOceanDatabaseKafkaSchema":                5021,
 		"DigitalOceanProject":                            5030,
 		"DigitalOceanSshKey":                             5031,
 		"DigitalOceanMonitorAlert":                       5040,
 		"DigitalOceanUptimeCheck":                        5041,
+		"DigitalOceanReservedIp":                         5050,
+		"DigitalOceanVpcPeering":                         5051,
 		"CivoBucket":                                     6000,
 		"CivoCertificate":                                6001,
 		"CivoComputeInstance":                            6002,
@@ -3574,7 +3595,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xa2\xc2\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\x98\xc4\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4154,11 +4175,15 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x16DigitalOceanDatabaseDb\x10\x98'\x1a\x1c\xa2\xf7\x04\x18\b\x11\x12\bv1alpha1\"\x06dodbdb:\x02\x8b'\x12E\n" +
 	"\"DigitalOceanDatabaseConnectionPool\x10\x99'\x1a\x1c\xa2\xf7\x04\x18\b\x11\x12\bv1alpha1\"\x06dodbcp:\x02\x8b'\x12?\n" +
 	"\x1cDigitalOceanDatabaseFirewall\x10\x9a'\x1a\x1c\xa2\xf7\x04\x18\b\x11\x12\bv1alpha1\"\x06dodbfw:\x02\x8b'\x12?\n" +
-	"\x1bDigitalOceanDatabaseReplica\x10\x9b'\x1a\x1d\xa2\xf7\x04\x19\b\x11\x12\bv1alpha1\"\adodbrep:\x02\x8b'\x121\n" +
+	"\x1bDigitalOceanDatabaseReplica\x10\x9b'\x1a\x1d\xa2\xf7\x04\x19\b\x11\x12\bv1alpha1\"\adodbrep:\x02\x8b'\x12@\n" +
+	"\x1eDigitalOceanDatabaseKafkaTopic\x10\x9c'\x1a\x1b\xa2\xf7\x04\x17\b\x11\x12\bv1alpha1\"\x05dokft:\x02\x8b'\x12A\n" +
+	"\x1fDigitalOceanDatabaseKafkaSchema\x10\x9d'\x1a\x1b\xa2\xf7\x04\x17\b\x11\x12\bv1alpha1\"\x05dokfs:\x02\x8b'\x121\n" +
 	"\x13DigitalOceanProject\x10\xa6'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05doprj\x121\n" +
 	"\x12DigitalOceanSshKey\x10\xa7'\x1a\x18\xa2\xf7\x04\x14\b\x11\x12\bv1alpha1\"\x06dosshk\x126\n" +
 	"\x18DigitalOceanMonitorAlert\x10\xb0'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05domal\x126\n" +
-	"\x17DigitalOceanUptimeCheck\x10\xb1'\x1a\x18\xa2\xf7\x04\x14\b\x11\x12\bv1alpha1\"\x06douptc\x12(\n" +
+	"\x17DigitalOceanUptimeCheck\x10\xb1'\x1a\x18\xa2\xf7\x04\x14\b\x11\x12\bv1alpha1\"\x06douptc\x124\n" +
+	"\x16DigitalOceanReservedIp\x10\xba'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05dorip\x129\n" +
+	"\x16DigitalOceanVpcPeering\x10\xbb'\x1a\x1c\xa2\xf7\x04\x18\b\x11\x12\bv1alpha1\"\x06dovpcp:\x02\x94'\x12(\n" +
 	"\n" +
 	"CivoBucket\x10\xf0.\x1a\x17\xa2\xf7\x04\x13\b\x0e\x12\bv1alpha1\"\x05cibkt\x12.\n" +
 	"\x0fCivoCertificate\x10\xf1.\x1a\x18\xa2\xf7\x04\x14\b\x0e\x12\bv1alpha1\"\x06cicert\x122\n" +

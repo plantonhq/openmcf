@@ -395,6 +395,8 @@ import (
 	digitaloceandatabaseconnectionpoolv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabaseconnectionpool/v1alpha1"
 	digitaloceandatabasedbv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasedb/v1alpha1"
 	digitaloceandatabasefirewallv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasefirewall/v1alpha1"
+	digitaloceandatabasekafkaschemav1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasekafkaschema/v1alpha1"
+	digitaloceandatabasekafkatopicv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasekafkatopic/v1alpha1"
 	digitaloceandatabasereplicav1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabasereplica/v1alpha1"
 	digitaloceandatabaseuserv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandatabaseuser/v1alpha1"
 	digitaloceandnsrecordv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceandnsrecord/v1alpha1"
@@ -407,10 +409,12 @@ import (
 	digitaloceanloadbalancerv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanloadbalancer/v1alpha1"
 	digitaloceanmonitoralertv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanmonitoralert/v1alpha1"
 	digitaloceanprojectv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanproject/v1alpha1"
+	digitaloceanreservedipv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanreservedip/v1alpha1"
 	digitaloceansshkeyv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceansshkey/v1alpha1"
 	digitaloceanuptimecheckv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanuptimecheck/v1alpha1"
 	digitaloceanvolumev1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanvolume/v1alpha1"
 	digitaloceanvpcv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanvpc/v1alpha1"
+	digitaloceanvpcpeeringv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanvpcpeering/v1alpha1"
 	gcpaddressv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpaddress/v1alpha1"
 	gcpalloydbclusterv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpalloydbcluster/v1alpha1"
 	gcpalloydbinstancev1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpalloydbinstance/v1alpha1"
@@ -1153,6 +1157,8 @@ var ProviderDigitalOceanMap = map[cloudresourcekind.CloudResourceKind]proto.Mess
 	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseConnectionPool: &digitaloceandatabaseconnectionpoolv1alpha1.DigitalOceanDatabaseConnectionPool{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseDb:             &digitaloceandatabasedbv1alpha1.DigitalOceanDatabaseDb{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseFirewall:       &digitaloceandatabasefirewallv1alpha1.DigitalOceanDatabaseFirewall{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseKafkaSchema:    &digitaloceandatabasekafkaschemav1alpha1.DigitalOceanDatabaseKafkaSchema{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseKafkaTopic:     &digitaloceandatabasekafkatopicv1alpha1.DigitalOceanDatabaseKafkaTopic{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseReplica:        &digitaloceandatabasereplicav1alpha1.DigitalOceanDatabaseReplica{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanDatabaseUser:           &digitaloceandatabaseuserv1alpha1.DigitalOceanDatabaseUser{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanDnsRecord:              &digitaloceandnsrecordv1alpha1.DigitalOceanDnsRecord{},
@@ -1165,10 +1171,12 @@ var ProviderDigitalOceanMap = map[cloudresourcekind.CloudResourceKind]proto.Mess
 	cloudresourcekind.CloudResourceKind_DigitalOceanLoadBalancer:           &digitaloceanloadbalancerv1alpha1.DigitalOceanLoadBalancer{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanMonitorAlert:           &digitaloceanmonitoralertv1alpha1.DigitalOceanMonitorAlert{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanProject:                &digitaloceanprojectv1alpha1.DigitalOceanProject{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanReservedIp:             &digitaloceanreservedipv1alpha1.DigitalOceanReservedIp{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanSshKey:                 &digitaloceansshkeyv1alpha1.DigitalOceanSshKey{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanUptimeCheck:            &digitaloceanuptimecheckv1alpha1.DigitalOceanUptimeCheck{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanVolume:                 &digitaloceanvolumev1alpha1.DigitalOceanVolume{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanVpc:                    &digitaloceanvpcv1alpha1.DigitalOceanVpc{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanVpcPeering:             &digitaloceanvpcpeeringv1alpha1.DigitalOceanVpcPeering{},
 }
 
 var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{

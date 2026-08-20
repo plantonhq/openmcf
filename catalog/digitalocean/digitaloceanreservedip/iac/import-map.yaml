@@ -1,0 +1,30 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: digitaloceanreservedip
+spec:
+  # Both address families import by the BARE ADDRESS (the resource id IS
+  # the address; the importer restores region, urn, and -- when attached --
+  # the droplet). The assignment resources are never imported separately:
+  # their ids are synthetic timestamped values that can never match
+  # (recorded in aa_import/catalog.yaml), and assignment state is fully
+  # recoverable from the reservation itself.
+  values:
+    - name: reserved_ip_address
+      derivations:
+        - from_stack_output: reserved_ip_address
+      where_to_find: >-
+        DigitalOcean control panel -> Networking -> Reserved IPs (the
+        address column), or `doctl compute reserved-ip list` /
+        `doctl compute reserved-ipv6 list`.
+    # Placeholder for the v6 assignment resource's composite id -- resolvable
+    # only when the spec carries a literal droplet id (a reference resolves
+    # at deploy time, outside this map's reach), which is fine: the
+    # assignment can never round-trip anyway (see the catalog notes).
+    - name: droplet_id
+      derivations:
+        - from_spec_field: droplet.value
+      where_to_find: >-
+        The assigned droplet's numeric id: DigitalOcean control panel ->
+        Droplets (the id in the droplet's URL), or `doctl compute droplet
+        list` (the ID column).

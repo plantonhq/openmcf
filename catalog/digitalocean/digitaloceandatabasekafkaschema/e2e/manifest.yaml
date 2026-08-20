@@ -1,0 +1,27 @@
+# Reference manifests for DigitalOceanDatabaseKafkaSchema --
+# protovalidate-valid, embedded as the reference page's Example block, and
+# the documents the offline tofu plans render. Two documents: an Avro
+# record subject and a JSON-schema subject.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseKafkaSchema
+metadata:
+  name: orders-value-schema
+spec:
+  # Literal cluster UUID; use valueFrom to reference a
+  # DigitalOceanDatabaseCluster resource instead.
+  cluster:
+    value: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+  subjectName: orders-value
+  schemaType: avro
+  schema: '{"type":"record","name":"Order","fields":[{"name":"id","type":"string"},{"name":"amountCents","type":"long"}]}'
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseKafkaSchema
+metadata:
+  name: shipment-events-schema
+spec:
+  cluster:
+    value: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+  subjectName: shipment-events-value
+  schemaType: json
+  schema: '{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"shipmentId":{"type":"string"},"status":{"type":"string"}},"required":["shipmentId","status"]}'

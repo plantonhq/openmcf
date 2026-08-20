@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceanvpcpeering.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/digitalocean/digitaloceanvpcpeering/v1alpha1/outputs.proto";
+import "catalog/digitalocean/digitaloceanvpcpeering/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// digital-ocean-vpc-peering
+message DigitalOceanVpcPeering {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'digital-ocean.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'DigitalOceanVpcPeering'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  DigitalOceanVpcPeeringSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  DigitalOceanVpcPeeringStatus status = 5;
+}
+
+// digital-ocean-vpc-peering status
+message DigitalOceanVpcPeeringStatus {
+  //stack-outputs
+  //  digital-ocean-vpc-peering stack-outputs
+  DigitalOceanVpcPeeringStackOutputs outputs = 1;
+}

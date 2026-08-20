@@ -1,0 +1,34 @@
+# Reference manifests for DigitalOceanDatabaseKafkaTopic --
+# protovalidate-valid, embedded as the reference page's Example block, and
+# the documents the offline tofu plans render. Two documents: a minimal
+# topic on API defaults, and a tuned compacted topic exercising the config
+# block's leaf classes.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseKafkaTopic
+metadata:
+  name: orders-events
+spec:
+  # Literal cluster UUID; use valueFrom to reference a
+  # DigitalOceanDatabaseCluster resource instead.
+  cluster:
+    value: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+  topicName: orders-events
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseKafkaTopic
+metadata:
+  name: customer-snapshots
+spec:
+  cluster:
+    value: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+  topicName: customer-snapshots
+  partitionCount: 12
+  replicationFactor: 3
+  config:
+    cleanupPolicy: compact
+    compressionType: zstd
+    minInsyncReplicas: 2
+    minCleanableDirtyRatio: 0.4
+    maxCompactionLagMs: 604800000
+    segmentBytes: 209715200
+    messageTimestampType: log_append_time

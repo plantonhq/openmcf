@@ -351,6 +351,7 @@ Fields on other kinds that can point at this resource:
 | DigitalOceanFirewall | `spec.dropletIds` | `status.outputs.droplet_id` |
 | DigitalOceanLoadBalancer | `spec.dropletIds` | `status.outputs.droplet_id` |
 | DigitalOceanMonitorAlert | `spec.dropletIds` | `status.outputs.droplet_id` |
+| DigitalOceanReservedIp | `spec.droplet` | `status.outputs.droplet_id` |
 
 ## See Also
 

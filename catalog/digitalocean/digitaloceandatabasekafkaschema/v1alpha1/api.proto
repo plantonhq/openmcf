@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean.digitaloceandatabasekafkaschema.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/digitalocean/digitaloceandatabasekafkaschema/v1alpha1/outputs.proto";
+import "catalog/digitalocean/digitaloceandatabasekafkaschema/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// digital-ocean-database-kafka-schema
+message DigitalOceanDatabaseKafkaSchema {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'digital-ocean.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'DigitalOceanDatabaseKafkaSchema'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  DigitalOceanDatabaseKafkaSchemaSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  DigitalOceanDatabaseKafkaSchemaStatus status = 5;
+}
+
+// digital-ocean-database-kafka-schema status
+message DigitalOceanDatabaseKafkaSchemaStatus {
+  //stack-outputs
+  //  digital-ocean-database-kafka-schema stack-outputs
+  DigitalOceanDatabaseKafkaSchemaStackOutputs outputs = 1;
+}

@@ -1,0 +1,16 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanVpcPeering
+metadata:
+  name: nyc-to-sfo-peering
+spec:
+  peeringName: nyc-to-sfo
+  vpc_1:
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: vpc-nyc3
+      fieldPath: status.outputs.vpc_id
+  vpc_2:
+    valueFrom:
+      kind: DigitalOceanVpc
+      name: vpc-sfo3
+      fieldPath: status.outputs.vpc_id

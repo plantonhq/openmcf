@@ -367,6 +367,8 @@ Fields on other kinds that can point at this resource:
 | DigitalOceanDatabaseConnectionPool | `spec.cluster` | `status.outputs.cluster_id` |
 | DigitalOceanDatabaseDb | `spec.cluster` | `status.outputs.cluster_id` |
 | DigitalOceanDatabaseFirewall | `spec.cluster` | `status.outputs.cluster_id` |
+| DigitalOceanDatabaseKafkaSchema | `spec.cluster` | `status.outputs.cluster_id` |
+| DigitalOceanDatabaseKafkaTopic | `spec.cluster` | `status.outputs.cluster_id` |
 | DigitalOceanDatabaseReplica | `spec.cluster` | `status.outputs.cluster_id` |
 | DigitalOceanDatabaseUser | `spec.cluster` | `status.outputs.cluster_id` |
 | DigitalOceanMonitorAlert | `spec.databaseClusterIds` | `status.outputs.cluster_id` |

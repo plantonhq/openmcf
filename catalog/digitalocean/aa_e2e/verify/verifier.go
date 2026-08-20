@@ -59,6 +59,8 @@ var verifiers = map[string]Verifier{
 	"digitaloceandatabaseconnectionpool": &databaseConnectionPoolVerifier{},
 	"digitaloceandatabasedb":             &databaseDbVerifier{},
 	"digitaloceandatabasefirewall":       &databaseFirewallVerifier{},
+	"digitaloceandatabasekafkaschema":    &kafkaSchemaVerifier{},
+	"digitaloceandatabasekafkatopic":     &kafkaTopicVerifier{},
 	"digitaloceandatabasereplica":        &databaseReplicaVerifier{},
 	"digitaloceandatabaseuser":           &databaseUserVerifier{},
 	"digitaloceandnsrecord":              &dnsRecordVerifier{},
@@ -71,10 +73,12 @@ var verifiers = map[string]Verifier{
 	"digitaloceanloadbalancer":       &loadBalancerVerifier{},
 	"digitaloceanmonitoralert":       &monitorAlertVerifier{},
 	"digitaloceanproject":            &projectVerifier{},
+	"digitaloceanreservedip":         &reservedIpVerifier{},
 	"digitaloceansshkey":             &sshKeyVerifier{},
 	"digitaloceanuptimecheck":        &uptimeCheckVerifier{},
 	"digitaloceanvolume":             &volumeVerifier{},
 	"digitaloceanvpc":                &vpcVerifier{},
+	"digitaloceanvpcpeering":         &vpcPeeringVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

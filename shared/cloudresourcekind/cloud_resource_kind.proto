@@ -4701,6 +4701,24 @@ enum CloudResourceKind {
     prerequisites: [DigitalOceanDatabaseCluster]
   }];
 
+  // A topic on a managed Kafka cluster with the full per-topic
+  // configuration block; the owning cluster reference is required.
+  DigitalOceanDatabaseKafkaTopic = 5020 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dokft"
+    prerequisites: [DigitalOceanDatabaseCluster]
+  }];
+
+  // One schema subject registered in a managed Kafka cluster's schema
+  // registry; the owning cluster reference is required.
+  DigitalOceanDatabaseKafkaSchema = 5021 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dokfs"
+    prerequisites: [DigitalOceanDatabaseCluster]
+  }];
+
   // The account-level organizational container; membership is carried on
   // the project itself as resource URNs.
   DigitalOceanProject = 5030 [(kind_meta) = {
@@ -4733,6 +4751,24 @@ enum CloudResourceKind {
     provider: digital_ocean
     version: "v1alpha1"
     id_prefix: "douptc"
+  }];
+
+  // A static public IP address (IPv4 or IPv6) reserved in a region and
+  // optionally assigned to a droplet. The droplet attachment is an
+  // optional composition seam, so there is no registry prerequisite.
+  DigitalOceanReservedIp = 5050 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dorip"
+  }];
+
+  // A private-network peering connection between exactly two VPCs; both
+  // VPC references are required.
+  DigitalOceanVpcPeering = 5051 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dovpcp"
+    prerequisites: [DigitalOceanVpc]
   }];
 
   // 6000–6999: Civo resources

@@ -1,0 +1,18 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanDatabaseKafkaTopic
+metadata:
+  name: orders-events
+spec:
+  cluster:
+    valueFrom:
+      kind: DigitalOceanDatabaseCluster
+      name: my-kafka-cluster
+      fieldPath: status.outputs.cluster_id
+  topicName: orders-events
+  partitionCount: 6
+  replicationFactor: 3
+  config:
+    cleanupPolicy: delete
+    retentionMs: 604800000
+    minInsyncReplicas: 2
+    compressionType: producer

@@ -287,6 +287,42 @@ func TestDigitalOceanUptimeCheck_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "digitaloceanuptimecheck", "terraform")
 }
 
+// --- DigitalOcean Database Kafka Topic (shared Kafka fixture; run serially with the schema kind) ---
+
+func TestDigitalOceanDatabaseKafkaTopic_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceandatabasekafkatopic", "pulumi")
+}
+func TestDigitalOceanDatabaseKafkaTopic_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceandatabasekafkatopic", "terraform")
+}
+
+// --- DigitalOcean Database Kafka Schema (shared Kafka fixture; run serially with the topic kind) ---
+
+func TestDigitalOceanDatabaseKafkaSchema_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceandatabasekafkaschema", "pulumi")
+}
+func TestDigitalOceanDatabaseKafkaSchema_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceandatabasekafkaschema", "terraform")
+}
+
+// --- DigitalOcean Reserved IP (unassigned IPv4 BILLS -- zero-orphan sweep is doubly binding) ---
+
+func TestDigitalOceanReservedIp_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceanreservedip", "pulumi")
+}
+func TestDigitalOceanReservedIp_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceanreservedip", "terraform")
+}
+
+// --- DigitalOcean VPC Peering (dual VPC fixtures via the scenario's e2e-prerequisites annotation) ---
+
+func TestDigitalOceanVpcPeering_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceanvpcpeering", "pulumi")
+}
+func TestDigitalOceanVpcPeering_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceanvpcpeering", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a
 // DigitalOcean component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
