@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbatchjobqueue
+spec:
+  billing_model: free
+  free_tier: AWS Batch itself carries no charge -- AWS's own pricing statement is that there is no additional charge for Batch and you pay only for the resources that run your workloads. A job queue is the routing layer of that free control plane; creating it, holding a million jobs in it, or leaving it ENABLED forever meters nothing anywhere.
+  notes: "No field of this spec buys anything, but compute_environment_order is the single biggest cost ROUTING decision in the Batch graph: the scheduler tries the lowest order first, so Spot-first-overflow-to-On-Demand (or the reverse) is expressed entirely here, steering every submitted job toward cheaper or pricier capacity. The real spend lives on the mapped AwsBatchComputeEnvironment components -- their EC2 instances or Fargate vCPU-seconds and GB-seconds bill from the moment the scheduler places jobs (and, for environments with min_vcpus above zero, even while idle). The queue's state switch stops NEW work from reaching that capacity but bills nothing either way, and job_state_time_limit_actions is a cost fuse -- it cancels jobs stuck in RUNNABLE so a mis-sized job cannot pin a queue while capacity sits allocated."

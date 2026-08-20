@@ -1,0 +1,59 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awstransitgatewayroutetable
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A Transit Gateway route table stores nothing -- routes, associations, and propagations are control-plane configuration held inside AWS's own service infrastructure.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A routing table forwards nothing itself and terminates no connections -- transport encryption is negotiated by the workloads whose traffic the gateway carries, outside this spec.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The table has no endpoint to expose, and the Transit Gateway hub it segments is private connectivity between VPCs and on-premises networks -- internet exposure, if any, happens inside whichever egress VPC a default route points at, on that VPC's own components.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The table is the hub's SEGMENTATION surface, not a source filter -- associations decide whose traffic is looked up here, propagations and static routes decide what is reachable, and a blackhole makes a destination unreachable from this domain regardless of propagations. That gates domain-to-domain reachability at the routing layer; restricting inbound access to declared per-source rules remains the workloads' security groups (AwsSecurityGroup).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No web ACL or request filter attaches to a Transit Gateway route table -- the closest pattern is steering inter-spoke traffic through an inspection VPC's firewall via a static route here, and that firewall is its own component.
+    - control_id: rbac
+      status: not_applicable
+      notes: The table has no management or data plane of its own to gate -- managing it is the EC2 API, governed by the account's IAM posture, and cross-account reach happens through RAM-shared gateways whose sharing policy lives on the gateway side.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The table runs no workloads and holds no credentials of any kind.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The table exposes no authentication path at all -- there is nothing to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Route and membership changes land in AWS CloudTrail as account-level posture, and traffic-level visibility is Transit Gateway Flow Logs, enabled on the gateway or its attachments -- none of it per-table configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A Transit Gateway route table publishes no CloudWatch metrics of its own -- the gateway and each attachment publish theirs (bytes in/out, packet drops), owned by those components.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The table is declarative configuration fully re-creatable from the manifest -- its folded associations, propagations, static routes, and prefix-list references re-create with it; propagated routes repopulate from the attachments automatically. There is no data to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Availability is inherited from the Transit Gateway itself -- an AWS-managed regional service that operates across availability zones wherever its attachments live. The table is a routing domain inside it with no zonal placement of its own to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag. AWS does refuse to delete a route table that still has attachments associated with it -- a dependency guard that surfaces live routing domains, not a configurable protection. The default-table designations also restore the gateway's original default tables on destroy rather than leaving the pointer dangling.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The table is a pure configuration object with no software to patch; the Transit Gateway's own software is AWS-operated and invisible.

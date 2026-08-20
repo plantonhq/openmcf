@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurefirewallpolicyrulecollectiongroup
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A rule document held by Azure's network control plane; it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The group carries no traffic of its own; management flows through ARM's TLS-only API. (An application rule's terminate_tls decrypts OTHER workloads' traffic for inspection -- a filtering capability recorded under edge-protection.)
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A rule document has no network endpoint -- nothing exists to reach from the internet; the firewall's public IPs, whose inbound traffic DNAT rules translate, are the firewall kind's surface.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: nat_rule_collections
+      evidence:
+        type: spec_default
+        reference: Ingress through the firewall exists ONLY where this document declares it -- Azure Firewall is deny-by-default, and a DNAT rule is the sole way inbound traffic at the firewall's public IP reaches an internal address, each rule naming its allowed sources (source_addresses or source_ip_groups), protocols (TCP/UDP only), arrival port, and translation target. Network rule collections carry the same explicit source/destination contract for routed flows -- ARM rejects a rule without at least one source and one destination.
+      notes: Lower priority numbers run first (100 is highest precedence) and Azure always evaluates DNAT before network before application rules regardless of priorities; IP Groups (AzureIpGroup references) keep source lists reusable instead of copy-pasted CIDRs.
+    - control_id: edge-protection
+      status: configurable
+      field_path: application_rule_collections
+      evidence:
+        type: spec_default
+        reference: Application rule collections are the L7 filter the firewall enforces -- allow/deny by destination FQDN (SNI-matched, or decrypted under terminate_tls), by URL path and web category (Premium), and by Azure-curated FQDN tags that track Microsoft's endpoint lists -- each rule bound to explicit sources and protocols with ALLOW or DENY as the collection's action.
+      notes: The inspection engines the rules feed (threat intelligence, IDPS, the TLS certificate) live on the parent policy; the group is where the request-level allow/deny logic is written. Premium-only destinations (destination_urls, web_categories) are rejected on non-Premium policies at apply time.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the group exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The group runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Group creation, rule changes, and deletion land in the Azure Activity Log automatically as subscription-level posture -- a meaningful audit trail, since every rule change is a security-boundary change; rule-hit and traffic logs are the enforcing firewalls' diagnostic posture.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A rule document emits no metrics of its own; rule-usage analysis is the parent policy's insights (Policy Analytics) posture, and traffic metrics ride the firewalls.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless declarative configuration -- nothing to back up; the manifest recreates the group and its rules as one ordered document.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A configuration object with no runtime footprint -- the enforcing firewalls carry the zonal posture; the rules apply wherever the policy's firewalls run.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a rule collection group (Azure resource locks are subscription-side governance outside the manifest). Deleting a group removes its allow rules -- traffic they permitted starts being DENIED by the firewall's default stance, a fail-closed but service-affecting change to govern through review.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The rule engine that compiles and enforces the group's document is Microsoft-operated Azure Firewall infrastructure; no customer-visible patch surface exists.

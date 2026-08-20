@@ -1,0 +1,75 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpmonitoringnotificationchannel
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The one sensitive thing a channel holds -- credentials in sensitive_labels (a Slack auth token, a PagerDuty service key, a webhook password) -- is stored API-side by Cloud Monitoring, encrypted at rest like all Google-held data, and redacted on every read.
+      notes: The spec's validation additionally refuses credential keys in the plain channel_labels map, so a token can never sit in state or the control plane as plaintext.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: The Monitoring API exposes no CMEK surface for notification channels; the stored configuration is Google-managed-key territory only.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: channel_labels
+      evidence:
+        type: spec_default
+        reference: For webhook_tokenauth and webhook_basicauth channel types, the url key in channel_labels decides delivery transport -- an https URL encrypts notification delivery, an http URL does not. Google-side channel types (email, sms, slack, pagerduty, pubsub) deliver over provider-managed encrypted paths with nothing to configure.
+      notes: The API accepts http webhook URLs, so the control is the operator's URL choice.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A channel has no network endpoint to expose -- it is an outbound delivery description reachable only through the IAM-governed Monitoring API. The external endpoint it delivers TO is the receiving system's surface, not this resource's.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; a channel is a configuration object with no addresses or ports.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A channel receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Creating, modifying, and deleting channels is governed by Cloud Monitoring IAM roles on the owning project (the monitoring.notificationChannels.* permission family); no anonymous or non-IAM management path exists.
+      notes: The spec exposes no per-channel access surface -- access scoping is the project's IAM posture.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The credentials a channel may hold (sensitive_labels) authenticate Cloud Monitoring to THIRD-PARTY services (Slack, PagerDuty), where no platform-issued short-lived identity exists to use -- the platform mitigates by handling them as managed secrets end to end.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Management access is IAM-authenticated Monitoring API access with no weaker alternative; the delivery-side credential forms are fixed by each external service's integration contract, not selectable here.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every create, update, and delete on a notification channel is recorded in Cloud Audit Logs' Admin Activity log, which is always on and cannot be disabled.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A channel is delivery plumbing for the monitoring system itself -- it emits no runtime telemetry of its own to export.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A channel holds no data to back up -- it is declarative configuration re-creatable from the manifest (credential values re-resolve from the platform's managed secrets).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Channels live in Cloud Monitoring's regional-redundant control plane with no zonal placement to configure; availability is Google's service posture, not per-channel configuration.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE (the provider default); PREVENT makes any destroying plan fail until the value is lifted, and ABANDON removes the channel from management while it keeps delivering in GCP.
+      notes: Independently, with force_delete at its default (false) the GCP API itself refuses to delete a channel while alert policies still reference it -- a dependency guard that protects the paging path even when deletion_policy allows the delete.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A channel is a pure configuration object with no software to patch; delivery infrastructure is Google-operated.

@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package dev.planton.aws.awscloudwatchdashboard.v1alpha1;
+
+// AwsCloudwatchDashboardStackOutputs captures the observable state of
+// the dashboard after apply.
+message AwsCloudwatchDashboardStackOutputs {
+  // The dashboard's name (the provider's import ID).
+  string dashboard_name = 1;
+
+  // The dashboard's ARN.
+  string dashboard_arn = 2;
+}

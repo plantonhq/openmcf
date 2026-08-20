@@ -1,0 +1,37 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesJob manifest's spec values into the capacity footprint its run
+# reserves from the target cluster. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/kubernetesjob.yaml; a server-side estimator can evaluate the
+# same rules against live manifests. The footprint is the PEAK while the
+# Job runs: up to parallelism pods carry the app container's declared
+# resources, and the reservation is released when the Job completes -- the
+# ephemeral nature is stated in the exclusions on every estimate. The
+# derivation grammar cannot traverse the repeated sidecars list, so
+# declared sidecar reservations are named in the exclusions instead of
+# silently ignored. Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetesjob
+spec:
+  workloads:
+    - label: concurrent pod
+      resources_path: container.app.resources
+      instances:
+        field_value:
+          field_path: parallelism
+          default_when_unset: "1"
+  exclusions:
+    - text: capacity is reserved only while the Job's pods execute -- a run-to-completion workload releases its reservation when it finishes, so wall-clock share depends on the run's duration
+    - text: the dollar value of this capacity is the target cluster's node economics
+    - applies_when:
+        - field_path: container.sidecars
+          op: is_set
+      text: declared sidecar containers add their own reservations in every Job pod; this footprint states the app container's
+  notes:
+    - applies_when:
+        - field_path: suspend
+          op: equals
+          value: "true"
+      text: the manifest suspends the Job -- no pods (and no reservation) exist until it is unsuspended

@@ -1,0 +1,45 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpcomputedisk
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Compute Engine
+      sku_meter: provisioned disk capacity
+      pricing_unit: GiB-months
+      description: Every provisioned GiB bills monthly from the moment the disk exists -- full or empty, attached or orphaned, and regardless of whether any VM using it is running.
+  cost_drivers:
+    - field_path: type
+      sku_meter: provisioned disk capacity
+      pricing_unit: GiB-months
+      impact: The per-GiB rate -- pd-standard is cheapest, pd-balanced the default middle, pd-ssd the premium, and the hyperdisk family adds separately-billed performance meters on top of its capacity rate. pd-extreme and hyperdisk-extreme carry the highest rates plus mandatory provisioned IOPS.
+    - field_path: size_gb
+      sku_meter: provisioned disk capacity
+      pricing_unit: GiB-months
+      impact: The capacity multiplier. Grows in place (never shrinks), so every resize is a permanent bill increase. On classic PD types, performance also scales with size -- oversizing for speed is a common and legitimate cost pattern.
+    - field_path: provisioned_iops
+      sku_meter: provisioned IOPS
+      pricing_unit: IOPS-months
+      impact: Hyperdisk bills IOPS provisioned ABOVE the included baseline (3,000 for hyperdisk-balanced) monthly, independent of capacity; required outright on pd-extreme and hyperdisk-extreme. Retunes in place at most every 4 hours -- performance spend can ratchet without a disk replacement.
+    - field_path: provisioned_throughput
+      sku_meter: provisioned throughput
+      pricing_unit: MBps-months
+      impact: Hyperdisk bills throughput provisioned above the included baseline (140 MBps for hyperdisk-balanced) monthly, per MBps.
+    - field_path: create_snapshot_before_destroy
+      sku_meter: snapshot storage
+      pricing_unit: GiB-months
+      impact: The destroy-time safety snapshot outlives the disk and bills snapshot storage indefinitely until someone deletes it -- a small recurring charge that survives the resource it protected.
+    - field_path: storage_pool
+      sku_meter: provisioned disk capacity
+      impact: Placing the disk in a hyperdisk storage pool moves capacity billing to the pool's pre-provisioned (and thin-provisioned) capacity -- the pool bills, not this disk directly.
+    - field_path: licenses
+      sku_meter: OS license premium
+      impact: Explicit license URIs (Windows Server, SQL Server) bill their premium hourly while the disk boots a running VM -- usually inherited from the image rather than set here.
+  estimate_exclusions:
+    - snapshot storage -- scheduled snapshots, instant snapshots, and the create_snapshot_before_destroy final snapshot bill per GiB-month by data actually stored, unknowable from the manifest
+    - OS license premiums bill through the VM the disk boots, not the disk resource itself
+  notes: "A disk is the canonical always-on charge: it bills its full provisioned capacity from creation, keeps billing while its VM is stopped, and keeps billing as an orphan after the VM is deleted. Deleting the disk is the only off switch -- and deletion_policy PREVENT deliberately makes that harder."

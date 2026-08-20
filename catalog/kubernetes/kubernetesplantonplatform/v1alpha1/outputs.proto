@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesplantonplatform.v1alpha1;
+
+/**
+ * **KubernetesPlantonPlatformStackOutputs** — the handles a deployed
+ * Planton platform exports: everything a person (or the Planton desktop
+ * app's connect-existing flow) needs to reach the platform's front door
+ * and complete first-run setup. All values derive from the declaration
+ * itself (the operator's naming is deterministic per platform name), so
+ * they are stable from the first apply.
+ */
+message KubernetesPlantonPlatformStackOutputs {
+  // Namespace the platform lives in.
+  string namespace = 1;
+
+  // The platform name (the PlantonPlatform CR name — the prefix of every
+  // object the operator creates for this platform).
+  string platform_name = 2;
+
+  // The built-in front-door gateway Service ("{platform_name}-gateway")
+  // — console, API, and sign-in on one origin.
+  string gateway_service = 3;
+
+  // The Secret holding the first-run setup code
+  // ("{platform_name}-identity-setup-code") — the console's setup page
+  // asks for this code when the first visitor becomes the admin.
+  string setup_code_secret = 4;
+
+  // The exact command that opens the platform's door on this machine.
+  string port_forward_command = 5;
+
+  // The exact command that reads the first-run setup code.
+  string setup_code_command = 6;
+}

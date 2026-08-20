@@ -1,0 +1,107 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awss3bucket
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: S3 encrypts every new object at rest with SSE-S3 (AES256) by default; an unencrypted object is no longer representable, and the module's encryption block only ever strengthens this.
+      notes: encryption.blocked_encryption_types can additionally reject SSE-C or unencrypted upload attempts at the request level.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: encryption.kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset means provider-managed keys; setting sse_algorithm=aws:kms with kms_key_id encrypts objects under the referenced customer-managed key.
+      notes: The 01-private-encrypted preset enables it with bucket_key_enabled to bound KMS request cost.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: policy
+      evidence:
+        type: spec_default
+        reference: S3 serves both HTTPS and plain HTTP by default; a bucket policy denying requests where aws:SecureTransport is false is the standard way to require TLS, and the policy field carries it.
+      notes: None of the presets pin a TLS-only policy today -- callers within AWS SDKs default to HTTPS.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The module ALWAYS materializes the public access block, and an absent spec block means all four guards on (block_public_acls, block_public_policy, ignore_public_acls, restrict_public_buckets) -- a bucket is provably private unless the manifest says otherwise.
+      notes: The 02-public-static-website preset deliberately relaxes the two policy guards to serve a public site; the relaxation is explicit in the manifest, never ambient.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: policy
+      evidence:
+        type: spec_default
+        reference: With no bucket policy, access flows only through the account's own IAM policies; a bucket policy narrows or widens access to exactly the declared principals and conditions.
+      notes: Network-level restriction (VPC endpoints, source-IP conditions) is expressed through the same policy surface.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A bucket has no WAF attachment point; request filtering belongs to the distribution or load balancer placed in front (CloudFront components), where S3 origins are normally published.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The module always materializes ownership controls, defaulting to BucketOwnerEnforced -- ACLs are disabled and every grant flows through IAM and bucket policies, AWS's role-based model.
+      notes: The acl field is only usable after explicitly relaxing object_ownership (CEL-enforced), so legacy grants require a deliberate manifest change.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A bucket holds no credentials and runs no workloads; callers authenticate with their own identities.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: BucketOwnerEnforced ownership -- the always-materialized default -- disables ACLs, S3's legacy authorization mechanism, leaving policy-based access as the only path.
+    - control_id: audit-logging
+      status: configurable
+      field_path: logging
+      evidence:
+        type: spec_default
+        reference: Unset means no server access logging; configuring logging delivers one log record per request to the target bucket (self-logging is CEL-forbidden -- logging loops amplify storage).
+      notes: Object-level API auditing (CloudTrail data events) is account-level posture outside this spec.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: metrics_configurations
+      evidence:
+        type: spec_default
+        reference: S3 publishes daily storage metrics to CloudWatch automatically and free; per-request metrics are opt-in per filter through metrics_configurations at CloudWatch's standard rate.
+      notes: The 04-governed-data-lake preset enables request metrics for its curated prefix.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: versioning_status
+      evidence:
+        type: spec_default
+        reference: Unset means unversioned (overwrites and deletes are final); Enabled preserves every prior version for point-in-time object recovery, and replication can add a full cross-region copy.
+      notes: Presets 01 and 04 enable versioning; object storage has no snapshot concept -- versions and replicas are its recovery story.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: lifecycle_rules
+      evidence:
+        type: spec_default
+        reference: noncurrent_version_expiration sets exactly how many days superseded versions are retained (with newer_noncurrent_versions keeping a floor count), making version retention a declared policy rather than an accident of growth.
+      notes: Presets 01 and 04 retain noncurrent versions for 30 days.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: S3 redundantly stores objects across at least three Availability Zones for the standard storage classes -- zone-level durability is structural, not configured.
+      notes: Lifecycle transitions to ONEZONE_IA deliberately trade this away for price; none of the presets do.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: force_destroy
+      evidence:
+        type: spec_default
+        reference: Defaults to false, which refuses to destroy a bucket that still contains objects; force_destroy=true lets teardown purge all objects and versions first.
+      notes: object_lock_enabled with COMPLIANCE retention goes further -- locked versions cannot be deleted by anyone until retention lapses.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the storage fleet; no customer-visible patch surface exists.

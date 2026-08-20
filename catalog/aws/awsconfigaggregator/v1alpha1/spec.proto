@@ -1,0 +1,165 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsconfigaggregator.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsConfigAggregatorSpec defines the desired configuration for AWS
+// Config aggregation - the cross-account, cross-region rollup of
+// Config data into one queryable view.
+//
+// Aggregation has two sides, and this component models both as arms:
+//
+//   - aggregation: the AGGREGATOR itself, deployed in the account
+//     that collects. It references no Config recorder - aggregation
+//     works in an account with zero recorders (the collected data
+//     comes from the SOURCE accounts' recorders).
+//   - authorizations: the reciprocal GRANTS, deployed in each SOURCE
+//     account, naming the aggregator account+region allowed to
+//     collect from it. Organization-sourced aggregators need no
+//     grants; account-list aggregators need one in every source
+//     account outside the deployer's own.
+//
+// A same-account rollup needs only the aggregation arm. A
+// cross-account topology deploys this component twice: once in the
+// aggregator account (aggregation arm) and once per source account
+// (authorizations arm). The aggregator's name is metadata.name.
+//
+// Destroying this component is a real delete of whichever arms it
+// manages; aggregated data disappears from the view but source
+// accounts' Config data is untouched.
+message AwsConfigAggregatorSpec {
+  // The AWS region the managed resources live in: the aggregator's
+  // home region, and the region the grants are created in (a grant
+  // lives in the source account's region of the GRANTING side; the
+  // aggregator region it authorizes is named per grant).
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The aggregator arm - deploy in the account that collects.
+  AwsConfigAggregatorAggregation aggregation = 2;
+
+  // The grant arm - deploy in each source account, one entry per
+  // aggregator allowed to collect from it. Duplicate
+  // account+region pairs configure nothing and AWS rejects them.
+  repeated AwsConfigAggregatorAuthorization authorizations = 3;
+
+  // An instance that manages neither arm configures nothing.
+  option (buf.validate.message).cel = {
+    id: "at_least_one_arm"
+    message: "set aggregation (the collector) or authorizations (the source-account grants) - or both for an account playing both roles"
+    expression: "has(this.aggregation) || size(this.authorizations) > 0"
+  };
+}
+
+// AwsConfigAggregatorAggregation is the aggregator itself: WHAT it
+// collects from - an explicit account list or the whole organization,
+// exactly one.
+message AwsConfigAggregatorAggregation {
+  // Collect from an explicit list of accounts. Mutually exclusive
+  // with organization_source.
+  AwsConfigAggregatorAccountSource account_source = 1;
+
+  // Collect from every account in the AWS Organization. Requires
+  // running in the management account or a delegated administrator
+  // for Config. Mutually exclusive with account_source.
+  AwsConfigAggregatorOrganizationSource organization_source = 2;
+
+  // AWS accepts exactly one source shape per aggregator.
+  option (buf.validate.message).cel = {
+    id: "exactly_one_source"
+    message: "set exactly one of account_source and organization_source"
+    expression: "has(this.account_source) != has(this.organization_source)"
+  };
+}
+
+// AwsConfigAggregatorAccountSource collects from an explicit account
+// list.
+message AwsConfigAggregatorAccountSource {
+  // The 12-digit source account IDs. The deployer's own account may
+  // appear (no grant needed for it); every OTHER account needs an
+  // authorizations-arm deployment on its side before data flows.
+  repeated string account_ids = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    unique: true
+    items: {
+      string: {pattern: "^[0-9]{12}$"}
+    }
+  }];
+
+  // Collect from every AWS region. Unset = false: list the regions
+  // explicitly instead. AWS wants one of the two shapes - regions
+  // listed, or all_regions true.
+  bool all_regions = 2;
+
+  // The regions to collect from (used when all_regions is false).
+  repeated string regions = 3 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // AWS needs to know WHERE to collect from - a region list or the
+  // all-regions posture.
+  option (buf.validate.message).cel = {
+    id: "regions_or_all_regions"
+    message: "list regions or set all_regions true"
+    expression: "this.all_regions || size(this.regions) > 0"
+  };
+}
+
+// AwsConfigAggregatorOrganizationSource collects from the whole AWS
+// Organization.
+message AwsConfigAggregatorOrganizationSource {
+  // The IAM role Config assumes to read the organization structure.
+  // It needs the AWSConfigRoleForOrganizations managed policy (or
+  // equivalent organizations:List*/Describe* permissions) and a trust
+  // policy for "config.amazonaws.com".
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Collect from every AWS region. Unset = false: list the regions
+  // explicitly instead.
+  bool all_regions = 2;
+
+  // The regions to collect from (used when all_regions is false).
+  repeated string regions = 3 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // AWS needs to know WHERE to collect from - a region list or the
+  // all-regions posture.
+  option (buf.validate.message).cel = {
+    id: "regions_or_all_regions"
+    message: "list regions or set all_regions true"
+    expression: "this.all_regions || size(this.regions) > 0"
+  };
+}
+
+// AwsConfigAggregatorAuthorization is one reciprocal grant: created
+// in a SOURCE account, it allows the named aggregator account+region
+// to collect this account's Config data.
+message AwsConfigAggregatorAuthorization {
+  // The 12-digit account ID of the AGGREGATOR (the collector, not
+  // this account). Changing it replaces the grant.
+  string account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[0-9]{12}$"
+  ];
+
+  // The region the aggregator lives in (the aggregator's home
+  // region, not necessarily this deployment's region). Changing it
+  // replaces the grant.
+  string authorized_aws_region = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}

@@ -1,0 +1,91 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesstrimzikafkaoperator
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.strimzi_kafka_operator -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces. Namespaces listed in watch.namespaces are NOT created by the module or the chart -- they must pre-exist (the install fails otherwise, verified live per the spec).
+      - api_groups:
+          - ""
+        resources:
+          - serviceaccounts
+          - configmaps
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Chart-rendered objects applied by helm_release.strimzi_kafka_operator -- the strimzi-cluster-operator ServiceAccount that every RBAC binding targets, and the chart's operator configuration objects in the installation namespace.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The cluster-operator Deployment (replicas from spec.replicas) applied by helm_release.strimzi_kafka_operator.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart's fixed-name ClusterRoles (the operator's global, namespaced, watched, entity-operator, and broker role families) rendered while create_global_resources is true (the default) -- an operator chart's RBAC is among the widest in the catalog, since the operator provisions StatefulSets, Services, Secrets, ConfigMaps, PVCs, NetworkPolicies, and PodDisruptionBudgets for every managed Kafka cluster. ClusterRoleBindings render for the cluster-wide watch posture (watch.any_namespace). A SECOND install in the same cluster conflicts on the fixed-name ClusterRoles unless create_global_resources is false.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart templates RoleBindings into the installation namespace and into EVERY namespace listed in watch.namespaces (each must already exist) -- the namespace-scoped watch posture, the chart default.
+      - api_groups:
+          - apiextensions.k8s.io
+        resources:
+          - customresourcedefinitions
+        verbs:
+          - get
+          - create
+        cluster_scoped: true
+        provenance: derived
+        notes: "The Strimzi CRDs (Kafka, KafkaNodePool, KafkaTopic, KafkaUser, ...) ship in the chart's Helm-native crds/ directory: installed on FIRST install only, never upgraded or deleted by Helm -- hence no update/patch/delete. CRD schema updates across chart upgrades are a deliberate manual apply outside this module, per the pinned release's notes."

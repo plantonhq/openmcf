@@ -1,0 +1,154 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesargocd
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.argocd -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - serviceaccounts
+          - configmaps
+          - secrets
+          - services
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Chart-rendered objects applied by helm_release.argocd -- per-component ServiceAccounts and Services (all ClusterIP), the argocd-cm/argocd-rbac-cm/argocd-cmd-params-cm configuration ConfigMaps the typed fields render into, the argocd-secret, the public-repository Secrets from spec.repositories, and the Redis auth Secret. The initial admin password Secret (argocd-initial-admin-secret) is created by ARGO CD at first start, not the runner; SSO client secrets and private-repo credentials are composed separately and only referenced.
+      - api_groups:
+          - batch
+        resources:
+          - jobs
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's redis-secret-init hook Job (named in both modules' wait rationale) -- a Helm hook that generates the Redis auth Secret before the components start.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+          - statefulsets
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's workloads -- the application controller runs as a StatefulSet (the chart's shape), the server/repo-server/ApplicationSet/notifications/Dex/commit-server and bundled Redis as Deployments; the redis.ha arm adds the redis-ha subchart's StatefulSet and HAProxy Deployment.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart grants the application controller and server cluster-wide access by default -- Argo CD manages Applications across every namespace of its home cluster by design; the runner creates and owns those grants through the release.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Namespaced RBAC the chart renders in the install namespace (per-component housekeeping -- e.g. the server and notifications controllers' access to their ConfigMaps and Secrets).
+      - api_groups:
+          - apiextensions.k8s.io
+        resources:
+          - customresourcedefinitions
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart TEMPLATES the Application/AppProject/ApplicationSet CRDs (unlike crds/-directory charts they upgrade with the release when spec.crds.install is true, the default). With spec.crds.keep true (the default) they carry helm.sh/resource-policy keep and survive destroy -- the delete verb is exercised only when keep is deliberately disabled on throwaway clusters.
+      - api_groups:
+          - autoscaling
+        resources:
+          - horizontalpodautoscalers
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Rendered when spec.server.autoscaling.enabled or spec.repo_server.autoscaling.enabled is true -- the chart-managed HPAs that own those components' replica counts.
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Rendered only when spec.service_monitors_enabled is true -- one per component's /metrics (requires the Prometheus Operator CRDs on the cluster).
+      - api_groups:
+          - policy
+          - networking.k8s.io
+        resources:
+          - poddisruptionbudgets
+          - networkpolicies
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: "NetworkPolicies render on EVERY install: the pinned chart (10.2.1) defaults global.networkPolicy.create to true and templates six component-scoped policies (application controller, server, repo server, notifications, Dex, Redis). PodDisruptionBudgets stay chart-default-off and render only through spec.helm_values; installs that never enable them simply never exercise the policy-group verbs."

@@ -1,0 +1,29 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awssagemakermlflowserver
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Amazon SageMaker
+      sku_meter: MLflow tracking server hours
+      pricing_unit: hours
+      description: The server bills its size's hourly rate from Created onward, every hour -- there is no stop control, so deleting it is the only way to pause the charge.
+  cost_drivers:
+    - field_path: size
+      sku_meter: MLflow tracking server hours
+      pricing_unit: hours
+      impact: The only cost lever the spec holds -- Small (the AWS default, ~25 users), Medium (~50), and Large (~100) each carry their own hourly rate, roughly tripling from Small to Large. Resizes apply in place.
+    - field_path: size
+      sku_meter: MLflow tracking server storage
+      pricing_unit: GB-months
+      impact: Experiment METADATA stored on the server itself (runs, params, metrics -- not the S3 artifacts) bills $0.10 per GB-month (us-east-1, the offer's TrackingServerStorage meter). Volume follows tracking activity, not any spec field; it starts near zero and grows with logged runs.
+  estimate_exclusions:
+    - metadata stored on the tracking server bills $0.10 per GB-month as tracking activity accumulates -- workload-driven, near zero at creation
+    - MLflow artifacts (model files, run outputs) live in the artifact_store_uri S3 location, which bills its storage and requests on the bucket's own component
+    - models auto-registered into the SageMaker Model Registry (automatic_model_registration) add no registry charge -- the registry is free
+    - data transfer out of the region follows client traffic
+  notes: This is dedicated hourly capacity, not serverless -- creation takes ~25 minutes and the meter runs from Created until deletion, including nights and weekends. For experiment tracking without the hourly meter, the serverless successor (AwsSagemakerMlflowApp, offered by AWS at no additional cost) is the different-shaped alternative, not a setting on this component.

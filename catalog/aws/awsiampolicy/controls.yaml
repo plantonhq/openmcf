@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsiampolicy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A managed policy stores no customer data -- the permission document is IAM control-plane metadata held inside AWS's own service infrastructure, not a data store this component owns.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); IAM exposes no KMS surface for policies.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A policy terminates no connections. The only wire traffic involving it is IAM management calls, which happen on AWS API endpoints served exclusively over TLS as account-wide provider behavior, not per-policy configuration.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A policy has no network endpoint to expose; it is a permission document that only takes effect through the principals it attaches to.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; a policy is a document, not an addressable resource.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A policy receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: configurable
+      field_path: policy_document
+      evidence:
+        type: spec_default
+        reference: The policy IS the grant half of AWS role-based access control -- the required policy_document declares exactly what actions, on what resources, under what conditions the attached principals may perform. One definition attaches to many roles and users by ARN, and the same ARN can serve as a permissions boundary that caps a principal's maximum permissions.
+      notes: A document is mandatory, but its least-privilege quality is the operator's -- Action "*" on Resource "*" validates just as well as a scoped grant, so the control is configurable rather than enforced. Document updates version in place; both modules prune the oldest non-default version so AWS's five-version cap never blocks an update.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A policy holds no credentials and authenticates nothing -- it defines what an already-authenticated principal may do. Keyless workload identity is wired on the role side (AwsIamRole's oidc_trust against an AwsIamOidcProvider).
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: A policy carries no authentication path at all, legacy or otherwise -- there is nothing to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. IAM management calls against the policy (creation, version updates, attachments) are recorded by AWS CloudTrail as account-level posture, not per-policy configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: IAM publishes no CloudWatch metrics per policy; usage signals (last-accessed data, Access Analyzer findings) are account-level IAM features outside this spec and the modules.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A policy holds no data to back up -- it is declarative configuration fully re-creatable from the manifest. AWS's retained policy versions are an update mechanism the modules actively prune, not a backup.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: IAM is a global control-plane service -- AWS replicates policy definitions across its own infrastructure, and the policy is attachable in every region with no zonal placement to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for managed policies. AWS does refuse to delete a policy still attached to any role, user, or group -- a dependency guard that surfaces live consumers, not a configurable protection.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A policy is a pure configuration object with no software to patch.

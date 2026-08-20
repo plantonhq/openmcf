@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetessecretstore
+spec:
+  billing_model: free
+  free_tier: A SecretStore is a namespaced External Secrets Operator connection description -- which backend holds the secrets (AWS Secrets Manager, GCP Secret Manager, Azure Key Vault, Vault/OpenBao, another cluster, or the fake test backend) and how ESO authenticates to it. The custom resource, and the credential Secret the module materializes alongside it, consume no compute and bill nothing.
+  notes: "No field of config buys anything here: the backend arms select where reads go, and refresh_interval/retry only pace them. The real spend sits on the other side of the connection -- whatever the chosen backend's provider meters for the secrets it holds and the reads ESO makes bills in THAT provider's account, and the controller doing the syncing is the External Secrets Operator component's compute, not this object's."

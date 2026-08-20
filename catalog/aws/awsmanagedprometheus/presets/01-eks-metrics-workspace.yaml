@@ -1,0 +1,32 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsManagedPrometheus
+metadata:
+  name: platform-metrics
+spec:
+  region: us-east-1
+  alias: platform-metrics
+  configuration:
+    retentionPeriodInDays: 90
+  ruleGroupNamespaces:
+    - name: platform-slos
+      data: |
+        groups:
+          - name: request-rates
+            rules:
+              - record: job:http_requests:rate5m
+                expr: sum(rate(http_requests_total[5m])) by (job)
+          - name: alerts
+            rules:
+              - alert: HighErrorRate
+                expr: sum(rate(http_requests_total{code=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.05
+                for: 10m
+  alertManagerDefinition: |
+    alertmanager_config: |
+      route:
+        receiver: platform-alerts
+      receivers:
+        - name: platform-alerts
+          sns_configs:
+            - topic_arn: arn:aws:sns:us-east-1:123456789012:platform-alerts
+              sigv4:
+                region: us-east-1

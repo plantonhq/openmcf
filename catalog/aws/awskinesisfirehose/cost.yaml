@@ -1,0 +1,58 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awskinesisfirehose
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: kinesis_stream_source
+      sku_meter: data ingested
+      pricing_unit: GB
+      impact: Direct PUT and Kinesis-stream sources bill per GB ingested with every record rounded UP to the next 5 KB -- a stream of 0.5 KB events bills ten times its true volume, which makes record batching the single biggest lever on small-record workloads.
+    - field_path: msk_source
+      sku_meter: data ingested
+      pricing_unit: GB
+      impact: An MSK source switches to per-GB billing with NO 5 KB rounding, metered on the higher of ingested and delivered bytes -- a different rate and a different rounding rule than Direct PUT.
+    - field_path: extended_s3.data_format_conversion.enabled
+      sku_meter: format conversion
+      pricing_unit: GB
+      impact: JSON-to-Parquet/ORC conversion adds a per-GB charge on top of ingestion, computed on the same 5 KB-rounded ingested volume.
+    - field_path: extended_s3.dynamic_partitioning.enabled
+      sku_meter: dynamic partitioning data processed
+      pricing_unit: GB
+      impact: Dynamic partitioning bills per GB processed PLUS per 1,000 S3 objects delivered -- and small buffer hints multiply the object count -- plus per-hour JQ processing when the metadata-extraction parser runs.
+    - field_path: opensearch.vpc_config
+      sku_meter: VPC delivery
+      pricing_unit: AZ-hours
+      impact: VPC delivery bills per GB delivered AND per AZ-hour for every hour the stream exists across its subnets' availability zones -- the hourly arm runs around the clock from create to delete, traffic or none. Configuring this block converts an otherwise usage-only stream into a committed hourly spend (the opensearch_serverless destination's vpc_config behaves identically).
+    - field_path: extended_s3.processing
+      sku_meter: Lambda transform invocations
+      pricing_unit: requests
+      impact: A Lambda processor invokes (and bills) the referenced function per buffered batch on that AwsLambda component; a decompression processor adds a per-GB decompression charge for CloudWatch Logs sources.
+    - field_path: snowflake
+      sku_meter: data processed to Snowflake
+      pricing_unit: GB
+      impact: Snowflake delivery bills per GB processed with no 5 KB rounding, on the higher of ingested and delivered bytes -- Snowpipe Streaming's own costs bill on the Snowflake side.
+    - field_path: iceberg
+      sku_meter: data processed to Iceberg tables
+      pricing_unit: GB
+      impact: Iceberg delivery bills per GB with no 5 KB rounding -- and when Lambda processing inflates the byte count before delivery, the extra bytes bill at the same rate.
+    - field_path: sse_kms_key_arn
+      sku_meter: KMS requests
+      pricing_unit: requests
+      impact: A customer-managed key makes Firehose call KMS for data keys as buffers cycle -- each call bills at KMS request rates.
+    - field_path: extended_s3.logging.enabled
+      sku_meter: error log ingestion
+      pricing_unit: GB
+      impact: Delivery-error logging writes failure records to CloudWatch Logs at standard ingestion rates -- cheap insurance, priced by failure volume.
+  free_tier: Amazon Data Firehose has no free allotment -- the first ingested byte bills at the tiered per-GB rate.
+  estimate_exclusions:
+    - ingestion volume is entirely producer-driven -- an idle stream with no VPC delivery bills nothing
+    - the VPC-delivery AZ-hour meter, once vpc_config is set, bills continuously regardless of traffic and is the profile's one existence-shaped arm
+    - destination-side spend -- S3 storage and requests, the OpenSearch domain, the Redshift cluster, Splunk and Snowflake capacity -- bills on the referenced components or external platforms
+    - Lambda transform compute bills on the referenced AwsLambda component
+    - data transfer between regions or out of AWS bills per GB
+  notes: "A delivery stream's existence is free -- until vpc_config appears. Ingestion is the core meter, and its rounding rule is the trap: Direct PUT and Kinesis-stream sources round every record up to 5 KB, so small-event workloads pay a multiple of their true bytes (MSK, vended-logs, Snowflake, and Iceberg shapes bill unrounded GB at their own rates). The opt-in meters -- format conversion, dynamic partitioning, Lambda processing, decompression -- each stack per GB on top. VPC delivery is the shape-changer: its per-AZ-hour charge runs every hour the stream is active, making a VPC-configured manifest a committed spend that deserves hybrid-style attention even though no shipped preset commits it. The heavy money in most pipelines is the destination itself, billing on its own component."

@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsconfigaggregator.v1alpha1;
+
+// AwsConfigAggregatorStackOutputs captures the observable state of
+// the aggregation arms after apply.
+message AwsConfigAggregatorStackOutputs {
+  // The aggregator's name (also the provider's import ID). Set only
+  // when spec.aggregation is configured.
+  string aggregator_name = 1;
+
+  // The aggregator's ARN. Set only when spec.aggregation is
+  // configured.
+  string aggregator_arn = 2;
+
+  // The grants' ARNs, keyed "{account_id}:{authorized_aws_region}"
+  // (each key is also that grant's provider import ID). One entry per
+  // spec.authorizations element.
+  map<string, string> authorization_arns = 3;
+}

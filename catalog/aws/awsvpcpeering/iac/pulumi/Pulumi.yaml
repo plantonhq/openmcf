@@ -1,0 +1,3 @@
+name: awsvpcpeering
+runtime: go
+description: Pulumi module to manage one side of an AWS VPC peering connection

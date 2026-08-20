@@ -1,0 +1,40 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRdsProxy
+metadata:
+  name: orders-db-proxy
+spec:
+  region: us-east-1
+  engineFamily: POSTGRESQL
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: orders-proxy-secrets-role
+      fieldPath: status.outputs.role_arn
+  vpcSubnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: private-subnet-a
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: private-subnet-b
+        fieldPath: status.outputs.subnet_id
+  vpcSecurityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: orders-db-clients
+        fieldPath: status.outputs.security_group_id
+  auth:
+    - secretArn:
+        valueFrom:
+          kind: AwsSecretsManagerSecret
+          name: orders-db-credentials
+          fieldPath: status.outputs.secret_arn
+      iamAuth: REQUIRED
+  requireTls: true
+  target:
+    dbInstanceIdentifier:
+      valueFrom:
+        kind: AwsRdsInstance
+        name: orders-db
+        fieldPath: status.outputs.instance_identifier

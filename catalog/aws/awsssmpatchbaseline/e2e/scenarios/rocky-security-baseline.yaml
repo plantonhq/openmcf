@@ -1,0 +1,49 @@
+# A full-surface baseline live on ROCKY_LINUX - an OS with no managed
+# nodes in the lane account, so the governed patch group and the
+# DEFAULT DESIGNATION touch nothing real, and destroy exercises the
+# provider's restore-AWS-default revert. Baselines, groups, and the
+# designation are free. ~$0.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSsmPatchBaseline
+metadata:
+  name: planton-oss-e2e-awsssmpb
+  id: planton-oss-e2e-awsssmpb
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsssmpatchbaseline
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  operatingSystem: ROCKY_LINUX
+  description: Planton E2E Rocky Linux baseline
+  approvalRules:
+    - patchFilters:
+        - key: CLASSIFICATION
+          values:
+            - Security
+      approveAfterDays: 0
+      complianceLevel: CRITICAL
+    - patchFilters:
+        - key: CLASSIFICATION
+          values:
+            - Bugfix
+      approveUntilDate: "2026-12-31"
+      complianceLevel: LOW
+  globalFilters:
+    - key: PRODUCT
+      values:
+        - "*"
+  approvedPatches:
+    - kernel-5.14.0
+  approvedPatchesComplianceLevel: HIGH
+  rejectedPatches:
+    - nginx-1.25.0
+  rejectedPatchesAction: BLOCK
+  patchGroups:
+    - planton-e2e-rocky
+  setAsDefaultBaseline: true

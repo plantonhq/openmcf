@@ -1,0 +1,49 @@
+# Estimate model: hand-computed capacity footprints for this
+# cluster-capacity component's presets. The derivation grammar cannot
+# traverse this kind's shards x replicas host multiplication or the
+# managed Keeper the module auto-provisions whenever replicas > 1 or
+# shards > 1 (or coordination says managed_keeper explicitly), so each
+# preset's totals are computed by hand from its manifest and the spec
+# defaults: (shards x replicas) hosts x (resources + disk_size volume),
+# plus the Keeper ensemble's resources and volumes when the preset
+# triggers one. Cluster-capacity components carry no priced lines -- the
+# dollar value of the reservation is the target cluster's node and
+# storage-class economics, which this catalog cannot know.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: kubernetesclickhouse
+spec:
+  presets:
+    - preset: 01-dev-minimal
+      capacity_footprint:
+        cpu_requests: 500m
+        memory_requests: 1Gi
+        cpu_limits: "2"
+        memory_limits: 4Gi
+        persistent_storage: 20Gi
+        basis: 1 host (1 shard x 1 replica, the spec defaults) x (500m CPU / 1Gi memory requests, 2 CPU / 4Gi limits) + 1 x 20Gi data volume; no Keeper -- a single-host topology triggers no coordination
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+    - preset: 02-production-replicated
+      capacity_footprint:
+        cpu_requests: 6300m
+        memory_requests: 25344Mi
+        cpu_limits: 13500m
+        memory_limits: 51Gi
+        persistent_storage: 630Gi
+        basis: 3 hosts (1 shard x 3 replicas) x (2 CPU / 8Gi memory requests, 4 CPU / 16Gi limits) + 3 x 200Gi data volumes, plus the managed Keeper's 3 nodes x (100m CPU / 256Mi memory requests, 500m CPU / 1Gi limits) + 3 x 10Gi volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+    - preset: 03-sharded-analytics
+      capacity_footprint:
+        cpu_requests: "32"
+        memory_requests: 128Gi
+        cpu_limits: "64"
+        memory_limits: 256Gi
+        persistent_storage: 4030Gi
+        basis: 8 hosts (4 shards x 2 replicas) x (4 CPU / 16Gi memory requests, 8 CPU / 32Gi limits) + 8 x 500Gi data volumes, plus the managed Keeper's 3 x 10Gi volumes -- the preset's Keeper declares no CPU or memory resources, so its pods run on operator defaults and add storage only to this footprint
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - the Keeper pods carry no declared CPU or memory requests in this preset -- their runtime consumption is real but unreserved

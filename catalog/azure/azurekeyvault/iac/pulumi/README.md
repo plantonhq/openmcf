@@ -60,5 +60,6 @@ Terraform module.
   becomes a scheduled deletion at the end of the retention window.
 - **A name-colliding create against a soft-deleted vault auto-recovers it**
   (provider default) rather than failing.
-- Switching authorization modes on a live vault requires
-  Microsoft.Authorization write permission on the vault.
+- The deployer permissions this module needs (including the extra grant
+  required to switch authorization modes on a live vault) are cataloged in
+  [`../permissions.yaml`](../permissions.yaml).

@@ -1,0 +1,42 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureservicebusauthorizationrule
+spec:
+  azure:
+    groups:
+      - purpose: ManageNamespaceScopedRule
+        actions:
+          - Microsoft.ServiceBus/namespaces/authorizationRules/read
+          - Microsoft.ServiceBus/namespaces/authorizationRules/write
+          - Microsoft.ServiceBus/namespaces/authorizationRules/delete
+          - Microsoft.ServiceBus/namespaces/authorizationRules/listkeys/action
+        provenance: derived
+        notes: Covers azurerm_servicebus_namespace_authorization_rule, created when the spec sets namespace_id -- create, read/refresh, rights updates, and destroy; the provider calls listkeys on every read to surface the keys and connection strings (including the geo-DR alias faces) as sensitive outputs. listkeys returns data-plane credentials but is itself a management-plane POST action. Only exercised for namespace-scoped rules.
+      - purpose: ManageQueueScopedRule
+        actions:
+          - Microsoft.ServiceBus/namespaces/queues/authorizationRules/read
+          - Microsoft.ServiceBus/namespaces/queues/authorizationRules/write
+          - Microsoft.ServiceBus/namespaces/queues/authorizationRules/delete
+          - Microsoft.ServiceBus/namespaces/queues/authorizationRules/listkeys/action
+        provenance: derived
+        notes: Covers azurerm_servicebus_queue_authorization_rule, created when the spec sets queue_id -- the same CRUD-plus-listkeys shape at single-queue scope. Only exercised for queue-scoped rules.
+      - purpose: ManageTopicScopedRule
+        actions:
+          - Microsoft.ServiceBus/namespaces/topics/authorizationRules/read
+          - Microsoft.ServiceBus/namespaces/topics/authorizationRules/write
+          - Microsoft.ServiceBus/namespaces/topics/authorizationRules/delete
+          - Microsoft.ServiceBus/namespaces/topics/authorizationRules/listkeys/action
+        provenance: derived
+        notes: Covers azurerm_servicebus_topic_authorization_rule, created when the spec sets topic_id. The spec's exactly-one-scope XOR means one manifest ever touches one of these three rule groups.
+      - purpose: WaitForGeoDrReplication
+        actions:
+          - Microsoft.ServiceBus/namespaces/read
+          - Microsoft.ServiceBus/namespaces/disasterRecoveryConfigs/read
+        provenance: derived
+        notes: The provider's post-write choreography at ALL three scopes -- after every rule create, update, and delete it Gets the namespace at the root of the scope to check the SKU, and on a PREMIUM namespace lists the namespace's disasterRecoveryConfigs and polls the pairing until replication of the rule change reaches Succeeded (waitForPairedNamespaceReplication in the azurerm servicebus package). Exercised even when no pairing exists (the list simply comes back empty).

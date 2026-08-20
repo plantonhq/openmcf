@@ -1,0 +1,26 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsmemorydbacl
+spec:
+  aws:
+    statements:
+      - sid: ManageAcl
+        actions:
+          - memorydb:CreateAcl
+          - memorydb:UpdateAcl
+          - memorydb:DeleteAcl
+          - memorydb:DescribeAcls
+          - memorydb:TagResource
+          - memorydb:UntagResource
+          - memorydb:ListTags
+        resources:
+          - arn:aws:memorydb:*:*:acl/*
+          - arn:aws:memorydb:*:*:user/*
+        provenance: derived
+        notes: Covers aws_memorydb_acl -- creation with tags, in-place membership updates (UpdateAcl), reads during plan/refresh, tagging, and deletion. The user ARN format is required alongside acl because the MemoryDB service reference scopes CreateAcl to the USER resource type (authorizing an ACL's creation means authorizing against its member users' ARNs) and UpdateAcl to BOTH formats -- omitting user/* denies provisioning any non-empty ACL. DeleteAcl, DescribeAcls, and the tag actions scope to the acl format; everything here is resource-scoped, so no wildcard statement is needed.

@@ -1,0 +1,36 @@
+# AwsSagemakerMlflowServer full-surface scenario: ONE lane carries
+# every cheap arm on the smallest size - Small (~$0.6/hour for the
+# lane's ~50 minutes), auto-registration ON (the un-disable trap means
+# the lane never needs to turn it off), and an explicit maintenance
+# window. ONE scenario deliberately: creation takes ~25 minutes and
+# deletion similar, so a second lane would double an already
+# hour-scale run for no additional surface. Deliberately not live:
+# size Medium/Large (pure billing) and the mlflow_version pin (AWS
+# picks the latest when omitted; pinning is ForceNew) - offline-proven
+# via e2e/manifest.yaml.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerMlflowServer
+metadata:
+  name: planton-oss-e2e-awssgmmf-full
+  id: planton-oss-e2e-awssgmmf-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssagemakermlflowserver
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole,AwsS3Bucket"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  artifactStoreUri: s3://planton-oss-e2e-awss3bucket-prereq/mlflow-artifacts
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-sagemaker-execution-role
+      fieldPath: status.outputs.role_arn
+  size: Small
+  automaticModelRegistration: true
+  weeklyMaintenanceWindowStart: TUE:03:30

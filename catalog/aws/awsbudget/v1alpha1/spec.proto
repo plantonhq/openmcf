@@ -1,0 +1,753 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbudget.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsBudgetSpec defines one AWS Budgets budget - a spend or usage
+// threshold AWS evaluates continuously - together with its alert
+// notifications and its folded budget ACTIONS (each action exists only
+// on its budget and fires an IAM-policy application, an SCP
+// attachment, or SSM instance stops when its threshold breaches).
+//
+// Budgets is an account-global service served from us-east-1; the
+// spec's region is the provider endpoint region, never the budget's
+// location. The budget's scope is chosen by exactly ONE funding shape:
+// a fixed limit, per-period planned limits, or auto-adjustment from
+// history/forecast.
+//
+// Filtering has two generations: the legacy cost_filters name/values
+// pairs, and the modern filter_expression tree paired with a metric.
+// AWS accepts one generation per budget, never both.
+message AwsBudgetSpec {
+  // AWS requires exactly one funding shape: a fixed limit, a set of
+  // planned per-period limits, or auto-adjustment.
+  option (buf.validate.message).cel = {
+    id: "spec.exactly_one_funding_shape"
+    message: "configure exactly one of limit, planned_limits, and auto_adjust - AWS budgets carry one funding shape"
+    expression: "(has(this.limit) ? 1 : 0) + (this.planned_limits.size() > 0 ? 1 : 0) + (has(this.auto_adjust) ? 1 : 0) == 1"
+  };
+  // The two filter generations are mutually exclusive on the AWS API.
+  option (buf.validate.message).cel = {
+    id: "spec.one_filter_generation"
+    message: "cost_filters (legacy) and filter_expression (modern) are mutually exclusive - pick one filtering generation"
+    expression: "!(this.cost_filters.size() > 0 && has(this.filter_expression))"
+  };
+  // The modern generation is a PAIR: metric and filter_expression
+  // require each other on the provider.
+  option (buf.validate.message).cel = {
+    id: "spec.metric_pairs_with_filter_expression"
+    message: "metric and filter_expression must be set together - the modern filtering generation is a pair"
+    expression: "(this.metric != '') == has(this.filter_expression)"
+  };
+  // cost_types belongs to the legacy generation; the modern metric
+  // replaces it.
+  option (buf.validate.message).cel = {
+    id: "spec.metric_conflicts_with_cost_types"
+    message: "metric and cost_types are mutually exclusive - the modern metric already selects what the budget measures"
+    expression: "this.metric == '' || !has(this.cost_types)"
+  };
+  // Action names key the folded satellites - duplicates would
+  // silently collapse for_each entries in both engines.
+  option (buf.validate.message).cel = {
+    id: "spec.action_names_unique"
+    message: "actions entries must have unique names"
+    expression: "this.actions.map(a, a.name).unique()"
+  };
+
+  // The AWS region used by the provider while managing the budget.
+  // Budgets is account-global (served from us-east-1) - every API call
+  // still needs a regional endpoint. Example: "us-east-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The budget's name in AWS - an explicit field because budget names
+  // legally carry spaces and mixed case metadata.name cannot
+  // ("Monthly AWS Spend"). Any character except ":" and "\", up to
+  // 100. Changing the name replaces the budget.
+  string budget_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+    pattern: "^[^:\\\\]+$"
+  }];
+
+  // What the budget tracks. COST tracks spend in a currency; USAGE
+  // tracks usage quantities; the RI_* and SAVINGS_PLANS_* types track
+  // reservation/Savings Plans utilization or coverage as a PERCENTAGE
+  // (their limit unit). Changing the type replaces the budget.
+  string budget_type = 3 [(buf.validate.field).string = {
+    in: [
+      "COST",
+      "USAGE",
+      "RI_UTILIZATION",
+      "RI_COVERAGE",
+      "SAVINGS_PLANS_UTILIZATION",
+      "SAVINGS_PLANS_COVERAGE"
+    ]
+  }];
+
+  // The budget's reset period. CUSTOM budgets run once between
+  // time_period_start and time_period_end without resetting.
+  string time_unit = 4 [(buf.validate.field).string = {
+    in: [
+      "DAILY",
+      "MONTHLY",
+      "QUARTERLY",
+      "ANNUALLY",
+      "CUSTOM"
+    ]
+  }];
+
+  // The 12-digit account the budget belongs to. Unset = the deploying
+  // account. Set it from a management/payer account to manage a member
+  // account's budget. Changing it replaces the budget.
+  string account_id = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[0-9]{12}$"
+  ];
+
+  // ARN of a billing view to scope the budget to (AWS Billing
+  // Conductor / custom billing views). Unset = the account's primary
+  // billing view.
+  string billing_view_arn = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^arn:aws[a-zA-Z-]*:billing::[0-9]{12}:billingview/.+$"
+  ];
+
+  // The fixed spend/usage ceiling - the common funding shape. Mutually
+  // exclusive with planned_limits and auto_adjust.
+  AwsBudgetLimit limit = 7;
+
+  // Per-period planned limits (a growth plan: each period gets its own
+  // ceiling). AWS keys them by period start time; periods must align
+  // with time_unit. Mutually exclusive with limit and auto_adjust.
+  repeated AwsBudgetPlannedLimit planned_limits = 8;
+
+  // Auto-adjustment: AWS recomputes the limit from history or
+  // forecast. When set, AWS owns the limit - fixed and planned limits
+  // are mutually exclusive with it.
+  AwsBudgetAutoAdjust auto_adjust = 9;
+
+  // When the budget starts tracking, as "YYYY-MM-DD_HH:MM" (AWS's
+  // budgets timestamp format, UTC). Unset = AWS starts at the current
+  // period's beginning.
+  string time_period_start = 10 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}:[0-9]{2}$"
+  ];
+
+  // When the budget stops tracking, same format. Unset = the
+  // provider's far-future default (2087-06-15_00:00) - effectively
+  // "never".
+  string time_period_end = 11 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}:[0-9]{2}$"
+  ];
+
+  // Which cost components count toward a COST budget (legacy
+  // generation - mutually exclusive with metric). Unset leaves every
+  // AWS default in place: all include_* toggles default TRUE except
+  // use_blended/use_amortized which default FALSE.
+  AwsBudgetCostTypes cost_types = 12;
+
+  // Legacy name/values filters (e.g. name "Service", values
+  // ["Amazon Elastic Compute Cloud - Compute"]). Multiple entries AND
+  // together. Mutually exclusive with filter_expression.
+  repeated AwsBudgetCostFilter cost_filters = 13;
+
+  // The modern generation's measure. Must be paired with
+  // filter_expression; mutually exclusive with cost_types.
+  string metric = 14 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "BlendedCost",
+        "UnblendedCost",
+        "AmortizedCost",
+        "NetUnblendedCost",
+        "NetAmortizedCost",
+        "UsageQuantity",
+        "NormalizedUsageAmount",
+        "Hours"
+      ]
+    }
+  ];
+
+  // The modern filter tree: dimensions, tag keys, and cost categories
+  // composed with and/or/not. The leveled shape (root -> node -> leaf)
+  // is exactly the nesting AWS accepts - two composition levels below
+  // the root. Must be paired with metric.
+  AwsBudgetFilterExpression filter_expression = 15;
+
+  // Threshold alerts on the budget. Each notification compares actual
+  // or forecasted spend against a threshold and alerts its
+  // subscribers; AWS requires at least one subscriber per
+  // notification.
+  repeated AwsBudgetNotification notifications = 16;
+
+  // Budget ACTIONS - the folded satellites: each entry is one
+  // aws_budgets_budget_action keyed by its name. An action executes
+  // (or stages for approval) a response when its threshold breaches:
+  // applying a restrictive IAM policy, attaching an SCP, or stopping
+  // EC2/RDS instances via SSM.
+  repeated AwsBudgetAction actions = 17;
+}
+
+// AwsBudgetLimit is a fixed spend/usage ceiling.
+message AwsBudgetLimit {
+  // The ceiling as a decimal string (AWS compares budgets as
+  // decimals - "100.0" and "100" are the same limit).
+  string amount = 1 [(buf.validate.field).string.pattern = "^[0-9]+(\\.[0-9]+)?$"];
+
+  // The limit's unit: a currency code for COST budgets ("USD"), a
+  // usage unit for USAGE budgets ("GB", "Hrs"), or "PERCENTAGE" for
+  // the RI/Savings Plans types.
+  string unit = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsBudgetPlannedLimit is one period's ceiling in a planned-limits
+// budget.
+message AwsBudgetPlannedLimit {
+  // The period this limit applies to, as "YYYY-MM-DD_HH:MM" (UTC).
+  // Must align with the budget's time_unit period boundaries.
+  string start_time = 1 [(buf.validate.field).string.pattern = "^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}:[0-9]{2}$"];
+
+  // The period's ceiling as a decimal string.
+  string amount = 2 [(buf.validate.field).string.pattern = "^[0-9]+(\\.[0-9]+)?$"];
+
+  // The period's unit (see AwsBudgetLimit.unit).
+  string unit = 3 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsBudgetAutoAdjust makes AWS recompute the budget's limit.
+message AwsBudgetAutoAdjust {
+  // HISTORICAL adjusts from a lookback window of past periods;
+  // FORECAST adjusts from AWS's spend forecast.
+  string auto_adjust_type = 1 [(buf.validate.field).string = {
+    in: [
+      "HISTORICAL",
+      "FORECAST"
+    ]
+  }];
+
+  // For HISTORICAL: how many past periods (1-60) feed the
+  // adjustment. AWS ignores it for FORECAST.
+  int32 budget_adjustment_period = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 60
+    }
+  ];
+}
+
+// AwsBudgetCostTypes selects which cost components count toward a
+// COST budget. Every unset toggle keeps AWS's default (include_*
+// default TRUE; use_blended and use_amortized default FALSE).
+message AwsBudgetCostTypes {
+  // Count credits toward the budget. Unset = AWS default (true).
+  optional bool include_credit = 1;
+
+  // Count discounts. Unset = AWS default (true).
+  optional bool include_discount = 2;
+
+  // Count non-RI subscription costs. Unset = AWS default (true).
+  optional bool include_other_subscription = 3;
+
+  // Count recurring fees (e.g. monthly RI fees). Unset = AWS default
+  // (true).
+  optional bool include_recurring = 4;
+
+  // Count refunds. Unset = AWS default (true).
+  optional bool include_refund = 5;
+
+  // Count subscription costs. Unset = AWS default (true).
+  optional bool include_subscription = 6;
+
+  // Count support fees. Unset = AWS default (true).
+  optional bool include_support = 7;
+
+  // Count taxes. Unset = AWS default (true).
+  optional bool include_tax = 8;
+
+  // Count upfront RI costs. Unset = AWS default (true).
+  optional bool include_upfront = 9;
+
+  // Measure amortized costs instead of cash-basis. Unset = AWS
+  // default (false).
+  optional bool use_amortized = 10;
+
+  // Measure blended costs instead of unblended. Unset = AWS default
+  // (false).
+  optional bool use_blended = 11;
+}
+
+// AwsBudgetCostFilter is one legacy name/values filter pair.
+message AwsBudgetCostFilter {
+  // The filter dimension name (e.g. "Service", "LinkedAccount",
+  // "TagKeyValue" for "user:key$value" entries).
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The values the dimension must match.
+  repeated string values = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsBudgetFilterExpression is the root of the modern filter tree: a
+// leaf (dimension / tag / cost_category) or a composition (and / or /
+// not) of child nodes. The LEVELED shape (root -> node -> leaf)
+// mirrors the AWS API exactly - AWS accepts composition at most two
+// levels below the root, so the deepest legal tree is expressible and
+// nothing deeper can be written.
+message AwsBudgetFilterExpression {
+  // A dimension leaf (service, region, account, purchase type, ...).
+  AwsBudgetFilterDimension dimension = 1;
+
+  // A cost-allocation-tag leaf.
+  AwsBudgetFilterTag tag = 2;
+
+  // A cost-category leaf.
+  AwsBudgetFilterCostCategory cost_category = 3;
+
+  // Children that must ALL match.
+  repeated AwsBudgetFilterExpressionNode and = 4;
+
+  // Children of which AT LEAST ONE must match.
+  repeated AwsBudgetFilterExpressionNode or = 5;
+
+  // A child that must NOT match.
+  AwsBudgetFilterExpressionNode not = 6;
+}
+
+// AwsBudgetFilterExpressionNode is a mid-level node: a leaf or one
+// more composition level whose children are leaves (the deepest level
+// AWS accepts).
+message AwsBudgetFilterExpressionNode {
+  // A dimension leaf.
+  AwsBudgetFilterDimension dimension = 1;
+
+  // A cost-allocation-tag leaf.
+  AwsBudgetFilterTag tag = 2;
+
+  // A cost-category leaf.
+  AwsBudgetFilterCostCategory cost_category = 3;
+
+  // Leaf children that must ALL match.
+  repeated AwsBudgetFilterExpressionLeaf and = 4;
+
+  // Leaf children of which AT LEAST ONE must match.
+  repeated AwsBudgetFilterExpressionLeaf or = 5;
+
+  // A leaf child that must NOT match.
+  AwsBudgetFilterExpressionLeaf not = 6;
+}
+
+// AwsBudgetFilterExpressionLeaf is a terminal filter: exactly one of
+// the three leaf shapes, with no further composition (AWS rejects
+// deeper nesting).
+message AwsBudgetFilterExpressionLeaf {
+  // A dimension leaf.
+  AwsBudgetFilterDimension dimension = 1;
+
+  // A cost-allocation-tag leaf.
+  AwsBudgetFilterTag tag = 2;
+
+  // A cost-category leaf.
+  AwsBudgetFilterCostCategory cost_category = 3;
+}
+
+// AwsBudgetFilterDimension filters on one built-in dimension.
+message AwsBudgetFilterDimension {
+  // The dimension to filter on.
+  string key = 1 [(buf.validate.field).string = {
+    in: [
+      "AZ",
+      "INSTANCE_TYPE",
+      "LINKED_ACCOUNT",
+      "LINKED_ACCOUNT_NAME",
+      "OPERATION",
+      "PURCHASE_TYPE",
+      "REGION",
+      "SERVICE",
+      "SERVICE_CODE",
+      "USAGE_TYPE",
+      "USAGE_TYPE_GROUP",
+      "RECORD_TYPE",
+      "OPERATING_SYSTEM",
+      "TENANCY",
+      "SCOPE",
+      "PLATFORM",
+      "SUBSCRIPTION_ID",
+      "LEGAL_ENTITY_NAME",
+      "INVOICING_ENTITY",
+      "DEPLOYMENT_OPTION",
+      "DATABASE_ENGINE",
+      "CACHE_ENGINE",
+      "INSTANCE_TYPE_FAMILY",
+      "BILLING_ENTITY",
+      "RESERVATION_ID",
+      "RESOURCE_ID",
+      "RIGHTSIZING_TYPE",
+      "SAVINGS_PLANS_TYPE",
+      "SAVINGS_PLAN_ARN",
+      "PAYMENT_OPTION",
+      "RESERVATION_MODIFIED",
+      "TAG_KEY",
+      "COST_CATEGORY_NAME"
+    ]
+  }];
+
+  // How values match. Unset = EQUALS. ABSENT is deliberately not
+  // offered: the provider rejects it for budgets at plan time.
+  repeated string match_options = 2 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: [
+          "EQUALS",
+          "STARTS_WITH",
+          "ENDS_WITH",
+          "CONTAINS",
+          "GREATER_THAN_OR_EQUAL",
+          "CASE_SENSITIVE",
+          "CASE_INSENSITIVE"
+        ]
+      }
+    }
+  }];
+
+  // The values to match (each up to 1024 characters).
+  repeated string values = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {max_len: 1024}
+    }
+  }];
+}
+
+// AwsBudgetFilterTag filters on one cost-allocation tag key.
+message AwsBudgetFilterTag {
+  // The tag key (up to 1024 characters).
+  string key = 1 [(buf.validate.field).string.max_len = 1024];
+
+  // How values match (see AwsBudgetFilterDimension.match_options;
+  // ABSENT is rejected by the provider for budgets).
+  repeated string match_options = 2 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: [
+          "EQUALS",
+          "STARTS_WITH",
+          "ENDS_WITH",
+          "CONTAINS",
+          "GREATER_THAN_OR_EQUAL",
+          "CASE_SENSITIVE",
+          "CASE_INSENSITIVE"
+        ]
+      }
+    }
+  }];
+
+  // The tag values to match.
+  repeated string values = 3 [(buf.validate.field).repeated.items = {
+    string: {max_len: 1024}
+  }];
+}
+
+// AwsBudgetFilterCostCategory filters on one cost category's values.
+message AwsBudgetFilterCostCategory {
+  // The cost category's name.
+  string key = 1 [(buf.validate.field).string.max_len = 1024];
+
+  // How values match (see AwsBudgetFilterDimension.match_options;
+  // ABSENT is rejected by the provider for budgets).
+  repeated string match_options = 2 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: [
+          "EQUALS",
+          "STARTS_WITH",
+          "ENDS_WITH",
+          "CONTAINS",
+          "GREATER_THAN_OR_EQUAL",
+          "CASE_SENSITIVE",
+          "CASE_INSENSITIVE"
+        ]
+      }
+    }
+  }];
+
+  // The category values to match.
+  repeated string values = 3 [(buf.validate.field).repeated.items = {
+    string: {max_len: 1024}
+  }];
+}
+
+// AwsBudgetNotification is one threshold alert on the budget.
+message AwsBudgetNotification {
+  // Every notification must reach someone.
+  option (buf.validate.message).cel = {
+    id: "notification.at_least_one_subscriber"
+    message: "a notification needs at least one subscriber - add an email address or an SNS topic"
+    expression: "this.subscriber_email_addresses.size() > 0 || this.subscriber_sns_topic_arns.size() > 0"
+  };
+
+  // How spend compares against the threshold.
+  string comparison_operator = 1 [(buf.validate.field).string = {
+    in: [
+      "GREATER_THAN",
+      "LESS_THAN",
+      "EQUAL_TO"
+    ]
+  }];
+
+  // Alert on ACTUAL spend or AWS's FORECASTED spend.
+  string notification_type = 2 [(buf.validate.field).string = {
+    in: [
+      "ACTUAL",
+      "FORECASTED"
+    ]
+  }];
+
+  // The threshold value: a percentage of the budget limit
+  // (threshold_type PERCENTAGE, e.g. 80) or an absolute amount
+  // (ABSOLUTE_VALUE).
+  double threshold = 3 [(buf.validate.field).double.gte = 0];
+
+  // How the threshold is interpreted.
+  string threshold_type = 4 [(buf.validate.field).string = {
+    in: [
+      "PERCENTAGE",
+      "ABSOLUTE_VALUE"
+    ]
+  }];
+
+  // Email addresses to alert.
+  repeated string subscriber_email_addresses = 5 [(buf.validate.field).repeated.items = {
+    string: {email: true}
+  }];
+
+  // SNS topics to alert. Reference an AwsSnsTopic's topic_arn output
+  // or pass a literal topic ARN. The topic's policy must allow
+  // budgets.amazonaws.com to publish or alerts silently never arrive.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subscriber_sns_topic_arns = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSnsTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_arn"
+  ];
+}
+
+// AwsBudgetAction is one folded budget action: a response AWS executes
+// (or stages for approval) when the action's threshold breaches.
+message AwsBudgetAction {
+  // The definition arm must match the declared action_type - AWS
+  // validates the pairing server-side; mirroring it here keeps the
+  // failure at manifest time.
+  option (buf.validate.message).cel = {
+    id: "action.iam_arm_matches_type"
+    message: "iam_action_definition is set exactly when action_type is APPLY_IAM_POLICY"
+    expression: "(this.action_type == 'APPLY_IAM_POLICY') == has(this.iam_action_definition)"
+  };
+  option (buf.validate.message).cel = {
+    id: "action.scp_arm_matches_type"
+    message: "scp_action_definition is set exactly when action_type is APPLY_SCP_POLICY"
+    expression: "(this.action_type == 'APPLY_SCP_POLICY') == has(this.scp_action_definition)"
+  };
+  option (buf.validate.message).cel = {
+    id: "action.ssm_arm_matches_type"
+    message: "ssm_action_definition is set exactly when action_type is RUN_SSM_DOCUMENTS"
+    expression: "(this.action_type == 'RUN_SSM_DOCUMENTS') == has(this.ssm_action_definition)"
+  };
+
+  // The action's name within this budget - the key the modules use
+  // for the for_each entry and the outputs map. Planton-side only;
+  // AWS identifies actions by a generated action ID.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 63
+  }];
+
+  // What the action does when triggered: apply a restrictive IAM
+  // policy to groups/roles/users, attach an SCP to organization
+  // targets, or run SSM documents that stop EC2/RDS instances.
+  // Changing the type replaces the action.
+  string action_type = 2 [(buf.validate.field).string = {
+    in: [
+      "APPLY_IAM_POLICY",
+      "APPLY_SCP_POLICY",
+      "RUN_SSM_DOCUMENTS"
+    ]
+  }];
+
+  // AUTOMATIC executes the action on breach; MANUAL stages it for a
+  // human to approve in the console.
+  string approval_model = 3 [(buf.validate.field).string = {
+    in: [
+      "AUTOMATIC",
+      "MANUAL"
+    ]
+  }];
+
+  // Trigger on ACTUAL or FORECASTED spend.
+  string notification_type = 4 [(buf.validate.field).string = {
+    in: [
+      "ACTUAL",
+      "FORECASTED"
+    ]
+  }];
+
+  // The role Budgets assumes to execute the action. Its trust policy
+  // must allow budgets.amazonaws.com to assume it, and it needs the
+  // permissions the definition arm implies (iam:AttachGroupPolicy,
+  // organizations:AttachPolicy, ssm:StartAutomationExecution, ...).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef execution_role_arn = 5 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // The threshold that triggers the action.
+  AwsBudgetActionThreshold action_threshold = 6 [(buf.validate.field).required = true];
+
+  // Who is told when the action triggers/executes. AWS caps
+  // subscribers at 11 per action.
+  repeated AwsBudgetActionSubscriber subscribers = 7 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 11
+  }];
+
+  // The IAM arm: attach a restrictive policy to principals.
+  AwsBudgetIamActionDefinition iam_action_definition = 8;
+
+  // The SCP arm: attach a service control policy to org targets.
+  AwsBudgetScpActionDefinition scp_action_definition = 9;
+
+  // The SSM arm: stop EC2 or RDS instances.
+  AwsBudgetSsmActionDefinition ssm_action_definition = 10;
+}
+
+// AwsBudgetActionThreshold is the trigger threshold for one action.
+message AwsBudgetActionThreshold {
+  // PERCENTAGE of the budget limit, or ABSOLUTE_VALUE spend.
+  string action_threshold_type = 1 [(buf.validate.field).string = {
+    in: [
+      "PERCENTAGE",
+      "ABSOLUTE_VALUE"
+    ]
+  }];
+
+  // The threshold value.
+  double action_threshold_value = 2 [(buf.validate.field).double = {
+    gte: 0
+    lte: 40000000000
+  }];
+}
+
+// AwsBudgetActionSubscriber is one recipient of an action's
+// trigger/execution notices.
+message AwsBudgetActionSubscriber {
+  // An email address (subscription_type EMAIL) or an SNS topic ARN
+  // (subscription_type SNS - reference an AwsSnsTopic's topic_arn
+  // output or pass a literal ARN).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef address = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSnsTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_arn"
+  ];
+
+  // How the subscriber is reached.
+  string subscription_type = 2 [(buf.validate.field).string = {
+    in: [
+      "EMAIL",
+      "SNS"
+    ]
+  }];
+}
+
+// AwsBudgetIamActionDefinition attaches a restrictive IAM policy to
+// principals when the action executes. At least one principal list
+// must be non-empty (AWS rejects an empty application server-side).
+message AwsBudgetIamActionDefinition {
+  option (buf.validate.message).cel = {
+    id: "iam_action.at_least_one_principal"
+    message: "name at least one group, role, or user for the policy to attach to"
+    expression: "this.groups.size() + this.roles.size() + this.users.size() > 0"
+  };
+
+  // The managed policy to attach (typically a deny-heavy guardrail
+  // policy). Reference an AwsIamPolicy's policy_arn output or pass a
+  // literal ARN (AWS-managed policies included).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef policy_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamPolicy,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.policy_arn"
+  ];
+
+  // Group names the policy attaches to (up to 100). Reference an
+  // AwsIamGroup's group_name output or pass literal names.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef groups = 2 [
+    (buf.validate.field).repeated.max_items = 100,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.group_name"
+  ];
+
+  // Role names the policy attaches to (up to 100).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef roles = 3 [
+    (buf.validate.field).repeated.max_items = 100,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_name"
+  ];
+
+  // User names the policy attaches to (up to 100).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef users = 4 [
+    (buf.validate.field).repeated.max_items = 100,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamUser,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.user_name"
+  ];
+}
+
+// AwsBudgetScpActionDefinition attaches a service control policy to
+// organization targets when the action executes. Requires an
+// organization with SCPs enabled - a management-account capability.
+message AwsBudgetScpActionDefinition {
+  // The SCP to attach. Reference an AwsOrganizationPolicy's policy_id
+  // output or pass a literal policy ID ("p-...").
+  dev.planton.shared.foreignkey.v1.StringValueOrRef policy_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsOrganizationPolicy,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.policy_id"
+  ];
+
+  // The roots, OUs, or accounts the SCP attaches to (up to 100).
+  repeated string target_ids = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 100
+  }];
+}
+
+// AwsBudgetSsmActionDefinition stops EC2 or RDS instances via SSM
+// when the action executes.
+message AwsBudgetSsmActionDefinition {
+  // Stop EC2 or RDS instances.
+  string action_sub_type = 1 [(buf.validate.field).string = {
+    in: [
+      "STOP_EC2_INSTANCES",
+      "STOP_RDS_INSTANCES"
+    ]
+  }];
+
+  // The region the instances live in (SSM actions are regional even
+  // though the budget is global).
+  string region = 2 [(buf.validate.field).string.min_len = 1];
+
+  // The instances to stop (up to 100). For EC2, reference an
+  // AwsEc2Instance's instance_id output or pass literal IDs.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef instance_ids = 3 [
+    (buf.validate.field).repeated = {
+      min_items: 1
+      max_items: 100
+    },
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsEc2Instance,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.instance_id"
+  ];
+}

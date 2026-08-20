@@ -1,0 +1,34 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. This component deliberately ships no
+# estimate: an enabled encryption scope commits real spend (Microsoft
+# meters each named scope per month, with a 30-day minimum on every
+# enablement), but the per-scope RATE is keyed by the referenced storage
+# account's access tier and redundancy -- the retail price list quotes a
+# separate "Named Encryption Scopes" rate per tier-and-redundancy pair
+# per region -- and this manifest only names a reference to the account,
+# never its tier or redundancy, so a dollar figure here would be a guess
+# wearing a dollar sign.
+# Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurestorageencryptionscope
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Storage
+      sku_meter: named encryption scopes
+      pricing_unit: scope-months
+      description: Every enabled scope bills a flat monthly fee from the moment it exists, with a 30-day minimum per enablement (disabling inside the first 30 days still bills the full month; after that the charge prorates hourly). The rate is quoted per the account's access tier and redundancy pair -- list rates run from about $1.00 to $2.33 per scope per month across tiers, redundancy classes, and regions at verification -- and those account facts live on the referenced AzureStorageAccount.
+  cost_drivers:
+    - field_path: storage_account_id
+      sku_meter: named encryption scopes
+      pricing_unit: scope-months
+      impact: The rate lever -- the referenced account's access tier (hot, cool, archive) and redundancy (LRS through RA-GZRS) select which "Named Encryption Scopes" rate this scope bills, and its region sets the price level. This manifest names the account, never those facts.
+  estimate_exclusions:
+    - the per-scope monthly rate is keyed by the referenced storage account's access tier, redundancy, and region in Microsoft's own price list, and this manifest sees none of those facts -- which is why no estimate document exists for this component
+    - each enablement carries a 30-day minimum -- a scope enabled and disabled inside a month still bills the full month
+    - the data encrypted under the scope bills as blob capacity and operations on the storage account's own meters, key-scoped but account-billed
+    - a MICROSOFT_KEY_VAULT scope adds Key Vault key operations (wrap/unwrap on every access) that bill per transaction on the referenced key's vault
+  notes: "The honest estimate lives at composition time: the scope's existence from this manifest, the tier-and-redundancy identity from the referenced AzureStorageAccount, and the tier-keyed rate from the price list. Each piece is verified data -- only their join is deferred, to the surface that sees both components together. Disabling a scope is the cost kill switch (blobs already encrypted under it stay readable for their lifetime), but the 30-day minimum makes rapid create-and-drop cycles bill like full months."

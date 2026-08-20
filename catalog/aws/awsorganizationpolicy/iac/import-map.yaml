@@ -1,0 +1,23 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsorganizationpolicy
+spec:
+  # The policy imports by its AWS-generated "p-..." ID; each folded
+  # attachment composes its own target (the module's for_each key)
+  # with the policy ID -- target FIRST, colon-separated.
+  values:
+    - name: policy_id
+      derivations:
+        - from_stack_output: policy_id
+      where_to_find: >-
+        Organizations console -> Policies (the policy's ID), or `aws
+        organizations list-policies --filter <type>` (Id, "p-...").
+    - name: target_id
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The attached root ("r-..."), OU ("ou-..."), or 12-digit
+        account ID -- each spec.attachments entry is its own resource
+        (`aws organizations list-targets-for-policy --policy-id <id>`
+        shows TargetId).

@@ -1,0 +1,36 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesCronJob manifest's spec values into the capacity footprint its
+# scheduled runs reserve from the target cluster. The estimate generator
+# replays the catalog presets through these rules to emit
+# ../estimates/kubernetescronjob.yaml; a server-side estimator can evaluate
+# the same rules against live manifests. The footprint is the PER-RUN PEAK:
+# up to parallelism pods carry the app container's declared resources while
+# a run executes, and between runs the workload reserves nothing -- the
+# ephemeral nature is stated in the exclusions on every estimate. The
+# derivation grammar cannot traverse the repeated sidecars list, so
+# declared sidecar reservations are named in the exclusions instead of
+# silently ignored. Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetescronjob
+spec:
+  workloads:
+    - label: concurrent pod
+      resources_path: job_template.container.app.resources
+      instances:
+        field_value:
+          field_path: job_template.parallelism
+          default_when_unset: "1"
+  exclusions:
+    - text: capacity is reserved only while a scheduled run's pods execute -- between runs this workload reserves nothing, so wall-clock share depends on the schedule and each run's duration
+    - text: the dollar value of this capacity is the target cluster's node economics
+    - applies_when:
+        - field_path: job_template.container.sidecars
+          op: is_set
+      text: declared sidecar containers add their own reservations in every run pod; this footprint states the app container's
+    - applies_when:
+        - field_path: concurrency_policy
+          op: equals
+          value: "Allow"
+      text: the Allow concurrency policy lets a run overrun into the next slot -- overlapping runs stack their reservations beyond this single-run footprint

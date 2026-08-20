@@ -1,0 +1,29 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbedrockcustommodel
+spec:
+  # A Bedrock custom model under E2E: deploying STARTS a real fine-tuning
+  # job -- billed per token processed, running minutes to hours even on the
+  # smallest fine-tunable base model with a one-record dataset. The
+  # minimal scenario composes the consumer-scoped AwsIamRole fixture (the
+  # role must trust bedrock.amazonaws.com and reach the training/output S3
+  # locations) and stands offline-proven arm-for-arm on both engines.
+  #
+  # Verification design for the future live lane: GetModelCustomizationJob
+  # keyed on job_arn (job reaches Completed; custom_model_arn materializes)
+  # -- the lane must WAIT for job completion or verify the InProgress
+  # contract only, and the sweep must delete the custom model AND stop any
+  # still-running job.
+  tier: 1
+  status: deferred
+  deferred_reason: >-
+    Deferred by recorded decision (session plan, owner-approved): the
+    create IS a training run -- real per-token training spend plus
+    minutes-to-hours wall clock, with a permanent job-name history on the
+    account. Artifacts are complete and offline-proven (tofu plan + pulumi
+    preview arm-for-arm). Unblock: an owner-approved training budget plus
+    a seeded S3 fixture (train.jsonl in the harness bucket) and the
+    bedrock-trusting role fixture; the cheapest known shape is a Titan
+    Text Lite fine-tune with epochCount=1 on a minimal dataset.
+  timeout_minutes: 240

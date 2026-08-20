@@ -1,0 +1,132 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssagemakerimage.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsSagemakerImageSpec defines the desired configuration for an Amazon
+// SageMaker AI image - the named registry entry that makes YOUR
+// container images (custom kernels, training environments) selectable
+// in Studio and notebook surfaces - together with its folded VERSIONS
+// (each pointing at a concrete ECR image). The image's AWS name derives
+// from metadata.name.
+//
+// Versions are AWS-numbered sequentially (1, 2, 3, ...) as entries are
+// created - entry POSITION in `versions` is each version's stable
+// identity here (the modules key satellites by index), so append new
+// versions at the END and never reorder existing entries.
+message AwsSagemakerImageSpec {
+  // The AWS region where the image will be created.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // IAM role SageMaker assumes to pull the version images from ECR.
+  // Must trust sagemaker.amazonaws.com. Changing it replaces the image.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Display name shown in Studio (1-128 characters; unique within a
+  // domain when the image is attached to one). Updates in place.
+  string display_name = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // Free-form description (max 512 characters). Updates in place.
+  string description = 4 [(buf.validate.field).string.max_len = 512];
+
+  // The image's versions - each points at a concrete ECR image in the
+  // SAME account and region. Append-only by position (see the message
+  // comment above).
+  repeated AwsSagemakerImageVersion versions = 5;
+}
+
+// AwsSagemakerImageVersion registers one concrete ECR image as a
+// numbered version. The base image is the version's identity - changing
+// it replaces the version (AWS allocates a NEW version number; numbers
+// are never reused). The compatibility metadata (job types, processor,
+// framework) updates in place.
+message AwsSagemakerImageVersion {
+  // ECR registry path of the container image (max 255 characters, no
+  // whitespace; must live in the same account and region). Example:
+  // "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-kernels:pytorch-2.4"
+  string base_image = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 255
+    pattern: "^\\S+$"
+  }];
+
+  // Stable names for this version (e.g. "latest", "stable") - aliases
+  // move freely between versions and update in place.
+  repeated string aliases = 2 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // The image bundles Horovod (distributed training).
+  bool horovod = 3;
+
+  // SageMaker job type the version is compatible with: "TRAINING",
+  // "INFERENCE", or "NOTEBOOK_KERNEL".
+  string job_type = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "TRAINING",
+        "INFERENCE",
+        "NOTEBOOK_KERNEL"
+      ]
+    }
+  ];
+
+  // ML framework vended in the image, as "<name> <major.minor[.patch]>"
+  // (e.g. "PyTorch 2.4", "TensorFlow 2.16.1").
+  string ml_framework = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[a-zA-Z]+ ?\\d+\\.\\d+(\\.\\d+)?$"
+  ];
+
+  // Compute the image targets: "CPU" or "GPU".
+  string processor = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "CPU",
+        "GPU"
+      ]
+    }
+  ];
+
+  // Programming language vended in the image, as
+  // "<name> <major.minor[.patch]>" (e.g. "python 3.12").
+  string programming_lang = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[a-zA-Z]+ ?\\d+\\.\\d+(\\.\\d+)?$"
+  ];
+
+  // Maintainer release notes (max 255 characters).
+  string release_notes = 8 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 255
+  ];
+
+  // Maintainer stability signal: "NOT_PROVIDED", "STABLE",
+  // "TO_BE_ARCHIVED", or "ARCHIVED".
+  string vendor_guidance = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "NOT_PROVIDED",
+        "STABLE",
+        "TO_BE_ARCHIVED",
+        "ARCHIVED"
+      ]
+    }
+  ];
+}

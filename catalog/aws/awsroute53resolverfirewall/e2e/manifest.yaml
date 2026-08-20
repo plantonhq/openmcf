@@ -1,0 +1,36 @@
+# Canonical AwsRoute53ResolverFirewall example (hack/dev manifest and
+# refgen Example source): a rule group with an owned blocklist, a BLOCK
+# rule sinkholing matches, an ALERT rule on DNS tunneling detection, and
+# the group associated to one VPC.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRoute53ResolverFirewall
+metadata:
+  name: egress-dns-policy
+  id: egress-dns-policy
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  domainLists:
+    - name: blocked-domains
+      domains:
+        - malware.example.
+        - phishing.example.
+  rules:
+    - name: sinkhole-blocked
+      priority: 100
+      action: BLOCK
+      domainListName: blocked-domains
+      blockResponse: OVERRIDE
+      blockOverrideDomain: sinkhole.example.com
+      blockOverrideTtl: 300
+    - name: alert-tunneling
+      priority: 200
+      action: ALERT
+      dnsThreatProtection: DNS_TUNNELING
+      confidenceThreshold: HIGH
+  vpcAssociations:
+    - name: main-vpc
+      vpcId:
+        value: vpc-0123456789abcdef0
+      priority: 200

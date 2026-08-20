@@ -1,0 +1,22 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its capacity derivation
+# (../capacity/, the machine-executable value-to-capacity rules): each
+# preset states the CPU/memory requests and limits and the persistent
+# volume storage it reserves from its target cluster, with a basis sentence
+# tracing every total back to the manifest's values. Cluster-capacity
+# components carry no priced lines -- the dollar value of the reservation
+# is the target cluster's node and storage-class economics, which this
+# catalog cannot know. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetestempo
+spec:
+  presets:
+    - preset: 03-jaeger-compat
+      capacity_footprint:
+        persistent_storage: 20Gi
+        basis: "1 tempo: 1 x 20Gi data volume"
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+      notes: the chart applies no default requests or limits -- undeclared resources genuinely reserve nothing schedulable, so this footprint counts only what the manifest declares; set resources for any real deployment the tempo-query sidecar adds a container to every pod whose resources are not typed on this spec -- consumption this footprint cannot count

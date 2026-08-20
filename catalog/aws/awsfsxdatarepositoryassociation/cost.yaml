@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsfsxdatarepositoryassociation
+spec:
+  billing_model: free
+  free_tier: A data repository association is a control-plane link between a directory on an FSx for Lustre file system and an S3 bucket or prefix -- FSx carries no meter for the association itself. Creating it, holding it, and its sync policies bill nothing.
+  notes: "The real spend lives at the two ends of the link. Every import and export is S3 request traffic billed to the bucket at its own per-request rates -- auto_import_events and auto_export_events turn bucket and file-system churn into a continuous stream of those requests, and batch_import_meta_data_on_create fires a one-time burst of listing requests at creation. On the other end, imported files consume the Lustre file system's already-billed provisioned (or Intelligent-Tiering) storage, and sync traffic rides its provisioned throughput -- both metered on the AwsFsxLustreFileSystem, never here. Same-region transfer between FSx and S3 is free; a cross-region or cross-account repository adds S3 data-transfer charges on the bucket's side."

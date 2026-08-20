@@ -1,0 +1,30 @@
+# Consumer-scoped AwsSnsTopic install profile for the vault kind's
+# notifications arm: the topic's policy must allow backup.amazonaws.com
+# to publish or vault events silently never arrive. Scoping the fixture
+# here keeps the chain off the shared fixed-name set (the
+# concurrent-session collision class).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSnsTopic
+metadata:
+  name: planton-oss-e2e-awsbkv-events
+  id: planton-oss-e2e-awsbkv-events
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssnstopic
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  policy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: AllowBackupPublish
+        Effect: Allow
+        Principal:
+          Service: backup.amazonaws.com
+        Action: sns:Publish
+        Resource: "*"

@@ -1,0 +1,47 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurecosmosdbmongocollection
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Azure Cosmos DB
+      sku_meter: provisioned throughput RU/s
+      pricing_unit: 100-RU/s-hours
+      description: "A collection with dedicated fixed throughput bills every provisioned 100 RU/s by the hour from the moment it exists, traffic or none -- Cosmos DB's RU meters are API-agnostic, so a Mongo collection bills the same 100-RU/s meter a NoSQL container does. A collection that sets neither throughput field carries no meter of its own: it draws on the database's shared budget or, on serverless accounts, the account bills per request unit consumed."
+    - service_name: Azure Cosmos DB
+      sku_meter: autoscale throughput RU/s
+      pricing_unit: 100-RU/s-hours
+      description: "A collection with an autoscale ceiling bills each hour's highest scaled-to RU/s at the autoscale rate -- 1.5x the standard provisioned rate per 100 RU/s -- with a committed floor of 10% of the ceiling that bills even at zero traffic (Microsoft's Cosmos DB pricing page: a 1,000 RU/s maximum scales hourly between 100 and 1,000 RU/s)."
+  cost_drivers:
+    - field_path: throughput
+      sku_meter: provisioned throughput RU/s
+      pricing_unit: 100-RU/s-hours
+      impact: "The committed core when set: RU/s divided by 100, times 730 hours, at the standard rate -- 1,000 RU/s is about 58.40 USD/month in eastus at list. Dialing it down updates in place; the money stops only when the number does."
+    - field_path: autoscale_max_throughput
+      sku_meter: autoscale throughput RU/s
+      pricing_unit: 100-RU/s-hours
+      impact: "Sets both the committed floor (10% of this ceiling bills around the clock) and the worst-case ceiling, at the 1.5x autoscale rate. Autoscale beats fixed throughput on cost only when traffic runs below roughly 66% of peak most hours."
+    - field_path: indexes
+      sku_meter: consumed storage
+      pricing_unit: GB-months
+      impact: "Every declared index is stored, billed bytes and RU spent on each write to maintain it -- the required _id index is the floor, and each compound or unique index beyond it trades write RU and storage for query speed."
+    - field_path: default_ttl_seconds
+      sku_meter: consumed storage
+      pricing_unit: GB-months
+      impact: "Automatic document expiry keeps the stored-GB meter flat for session and event data -- deletion consumes no extra provisioned RU beyond a background allowance, so TTL is free garbage collection against a growing storage bill."
+    - field_path: analytical_storage_ttl
+      sku_meter: analytical storage
+      pricing_unit: GB-months
+      impact: "Setting it turns on the column-oriented analytical copy of this collection's data: analytical storage bills per GB-month plus analytical read/write operations per 10,000 -- meters that do not exist while this field is unset."
+  free_tier: "An account-level choice, not a collection one: a free-tier Cosmos DB account discounts its first 1,000 RU/s and 25 GB across all children for the account's lifetime (Microsoft's Cosmos DB pricing page, retrieved 2026-08-18). Estimates here price list rates without that discount."
+  estimate_exclusions:
+    - "consumed storage bills per GB-month (0.25 USD in eastus at list, verified 2026-08-18) on documents plus indexes, growing with what the application writes"
+    - "the account's region topology multiplies everything: N replicated regions bill this collection's throughput AND storage N times over, and the region list lives on the account manifest"
+    - "on serverless accounts (both throughput fields unset by requirement) the account bills consumed request units per million -- pure runtime behavior"
+    - "analytical-store read/write operations bill per 10,000 when analytical_storage_ttl enables the store"
+    - "backup storage beyond the account's free allowance bills on the account's backup posture"
+  notes: "The collection is where a Mongo-API account's committed money is dialed, and the meters are exactly the NoSQL container's: Cosmos DB prices Request Units identically across its RU-based APIs, so the same 100-RU/s hourly meters bill whether the wire protocol is MongoDB or SQL. Fixed throughput bills what you set; autoscale bills between 10% and 100% of the ceiling at a 1.5x rate. Leaving both fields unset moves the meter to the database's shared budget or the serverless account -- this collection then adds only storage. All rates read from Microsoft's Cosmos DB pricing pages and the Retail Prices API on 2026-08-18."

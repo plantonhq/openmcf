@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesraycluster
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A Ray cluster provisions no persistent volumes -- control state lives in head-pod memory, and with GCS fault tolerance in the composed external store (KubernetesValkey), whose at-rest posture rides that component. There is no data at rest here to encrypt.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest (see enc-at-rest), so no key to manage.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: This spec models no TLS surface for Ray's ports (GCS 6379, client 10001, dashboard 8265) -- traffic stays inside the cluster network by default (see no-public-access). Mesh-level mTLS composes externally where in-cluster encryption is required.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The modules render only the RayCluster CR and no exposure resources -- the operator's `<name>-head-svc` Service is in-cluster, and this spec has no listener, ingress, or LoadBalancer surface at all. Exposure would have to be composed deliberately from first-class kinds.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: There is no exposure surface to restrict (see no-public-access); in-cluster path restriction is Kubernetes NetworkPolicies, separate resources. The API gate is the bearer token (see no-legacy-auth).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No edge exists -- the modules create no ingress, and the dashboard/client surfaces are in-cluster only. When exposure is composed from ingress kinds, request filtering rides those components.
+    - control_id: rbac
+      status: not_applicable
+      notes: Ray has no role system in this spec -- authentication is a single cluster-wide bearer token (see no-legacy-auth), and every token holder has full cluster access, including arbitrary code execution by design. Management-plane access (the RayCluster CR) is governed by the target cluster's Kubernetes RBAC.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: This spec stores no cloud credentials to federate -- the only secret surfaces are the operator-generated bearer token and the GCS store password, both Kubernetes Secret references.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: auth empty means token mode ON (this catalog's secure default, available since Ray 2.52 / KubeRay 1.6) -- the operator provisions a bearer-token Secret named after the resource and the dashboard, job submission, and client surfaces all require it. mode disabled is the legacy open-cluster posture, an explicit opt-in the spec warns executes arbitrary code for anyone reaching port 8265.
+      notes: Both presets stay on the token default by omission.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Ray job and task activity logs stream through the head and workers to stdout for the cluster's log collector; no provider-style audit trail is modeled. Changes to the cluster's own configuration are Kubernetes API operations, captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: This spec models no metrics-export surface -- the Ray dashboard rides the head pod, and Prometheus scraping of Ray's metrics ports composes outside the typed contract.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A Ray cluster is compute, not a data store -- jobs, actors, and worker registrations are transient state, and no volume holds durable data. gcs_fault_tolerance makes that control state survive head loss (resilience, not backup); the external store's own durability rides the composed KubernetesValkey.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Nothing is backed up (see backup-recovery), so there is no retention to configure.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: gcs_fault_tolerance
+      evidence:
+        type: spec_default
+        reference: The head pod is the availability story -- without GCS fault tolerance, losing it loses every job, actor, and worker registration (the operator rebuilds an empty cluster). Enabling gcs_fault_tolerance moves the control state to an external Redis-protocol store so a replaced head RECOVERS the cluster; worker pods are always expendable.
+      notes: The 02-production-autoscaling preset enables it against a composed KubernetesValkey. Zone placement itself rides the head and per-group scheduling fields (node_selector, tolerations).
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor KubeRay offers a deletion-protection flag on the RayCluster; protection is operational (namespace RBAC, change review). suspend deletes the pods while keeping the declaration and external state -- a pause verb, not deletion protection.
+    - control_id: managed-patching
+      status: configurable
+      field_path: ray_version
+      evidence:
+        type: spec_default
+        reference: ray_version is required and pinned, and the image derives from it by construction so the version/image lockstep cannot drift -- upgrades are deliberate spec changes. A custom image must keep the Ray inside identical to ray_version; a mismatch fails at runtime, not at apply.

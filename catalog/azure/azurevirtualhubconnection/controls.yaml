@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurevirtualhubconnection
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The connection is a routing attachment -- it stores nothing. Its configuration is ARM metadata on Microsoft's control plane; data at rest lives in the spoke's workloads, on their own components.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With nothing stored, there is no store to key -- neither the connection API nor this spec carries any encryption surface.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Traffic between the spoke and the hub rides Azure's backbone as the endpoints send it -- the connection neither encrypts nor decrypts anything, and no field here changes what is on the wire. Flows needing encryption end-to-end encrypt at the workloads or ride encrypted tunnels on the gateway components.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The connection is private plumbing between two private address spaces -- it creates no public endpoint. internet_security_enabled concerns the spoke's OUTBOUND default route, not inbound exposure; internet-facing surface belongs to gateways and public IPs on their own components.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: routing
+      evidence:
+        type: spec_default
+        reference: Unset routing applies ARM's any-to-any default -- the connection associates with and propagates to the hub's default route table, so every connected network can reach this spoke. Associating with a custom isolated table and propagating selectively (labels or explicit tables) restricts which networks learn routes to this spoke at all.
+      notes: This is reachability control at the routing layer -- networks that never learn the spoke's prefixes cannot address it -- not stateful packet filtering, which stays NSG/firewall territory on the spoke's own subnets or the hub's firewall.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The connection fronts no web endpoint, so there is nothing for a WAF to filter. internet_security_enabled steers the spoke's egress through a hub firewall -- network-layer inspection on the firewall's component, not request-level edge protection here.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management operation on the connection is authorized by Azure RBAC unconditionally, and ARM cross-checks the referenced resources at write time -- peer/action on the spoke VNet, read on referenced hub route tables and route maps -- failing with LinkedAccessCheckFailed when the caller lacks rights on either side.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The connection runs no workloads and calls no APIs on the customer's behalf -- there is no identity to attach.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The connection's only surface is the ARM management plane, authenticated by Entra ID -- there is no local-credential or legacy-protocol path to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane action on the connection lands in the Azure Activity Log unconditionally -- who attached the spoke, who rewired its routing, who detached it.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The attachment emits no metrics of its own -- traffic through it is observed on the hub router's metrics (data processed, spoke utilization) and the spoke VNet's flow logs, each on its own component.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: There is no data to back up -- the connection is declarative in this manifest and re-creatable by a fresh deploy.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility, there is no retention to configure.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The connection is a control-plane binding, not a running instance -- there is nothing of it to replicate. The resilience of the path it enables is the hub's (whose services deploy across availability zones automatically) and the spoke's.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the connection API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. ARM does refuse to delete the HUB while this connection exists -- an ordering guard protecting the hub, not this resource.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The connection is pure configuration -- there is no software surface to patch. The hub router that carries its traffic is Microsoft-managed on the hub's own component.

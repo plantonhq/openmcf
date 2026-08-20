@@ -1,0 +1,50 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureloadbalancer
+spec:
+  azure:
+    groups:
+      - purpose: ManageLoadBalancer
+        actions:
+          - Microsoft.Network/loadBalancers/read
+          - Microsoft.Network/loadBalancers/write
+          - Microsoft.Network/loadBalancers/delete
+        provenance: derived
+        notes: Covers azurerm_lb / lb.NewLoadBalancer -- create with frontends, refresh, in-place updates, and destroy. Health probes, load-balancing rules, and outbound rules are properties of the parent resource, not ARM child resources with their own write operations (the provider inventory defines only read/join actions for them) -- so azurerm_lb_probe, azurerm_lb_rule, azurerm_lb_outbound_rule and their Pulumi twins all PUT the load balancer itself, landing every probe/rule change on loadBalancers/write. Typically held via Network Contributor, Contributor, or Owner. The GATEWAY SKU additionally requires the Microsoft.Network/AllowGatewayLoadBalancer feature registered on the subscription (via an Azure support ticket) -- a subscription capability, not an RBAC action.
+      - purpose: ManageBackendPools
+        actions:
+          - Microsoft.Network/loadBalancers/backendAddressPools/read
+          - Microsoft.Network/loadBalancers/backendAddressPools/write
+          - Microsoft.Network/loadBalancers/backendAddressPools/delete
+        provenance: derived
+        notes: Unlike probes and rules, backend address pools ARE addressable ARM child resources with their own operations -- azurerm_lb_backend_address_pool and azurerm_lb_backend_address_pool_address (inline IP-based members) both write through the pool's child API, so the parent-level loadBalancers/write does not cover them.
+      - purpose: ManageInboundNatRules
+        actions:
+          - Microsoft.Network/loadBalancers/inboundNatRules/read
+          - Microsoft.Network/loadBalancers/inboundNatRules/write
+          - Microsoft.Network/loadBalancers/inboundNatRules/delete
+        provenance: derived
+        notes: Inbound NAT rules are the other child type with first-class ARM operations -- azurerm_lb_nat_rule / lb.NewNatRule (both single-target and pool-style modes) write through this API rather than the parent PUT.
+      - purpose: JoinFrontendAddressSources
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/join/action
+          - Microsoft.Network/publicIPAddresses/join/action
+          - Microsoft.Network/publicIPPrefixes/join/action
+        provenance: derived
+        notes: The modules never call the subnet or address APIs -- they pass resolved ARM IDs in the frontend payload -- but ARM authorizes each cross-resource reference service-side on the REFERENCED resource's scope at create time. An internal frontend (subnet_id) demands subnets/join/action on the subnet; a public frontend demands join/action on the referenced public IP or prefix. Only the address sources a manifest actually references need granting.
+      - purpose: JoinBackendVirtualNetwork
+        actions:
+          - Microsoft.Network/virtualNetworks/joinLoadBalancer/action
+        provenance: derived
+        notes: Required only for vnet-scoped backend pools (virtual_network_id set, the IP-based membership shape) -- ARM's service-side check for associating a load balancer's pool with a virtual network is the vnet's dedicated joinLoadBalancer/action, not the generic join. NIC-membership pools reference nothing and need no grant here.
+      - purpose: JoinGatewayChainFrontends
+        actions:
+          - Microsoft.Network/loadBalancers/frontendIPConfigurations/join/action
+        provenance: derived
+        notes: Required only when a frontend chains behind a GATEWAY-SKU load balancer (gateway_load_balancer_frontend_ip_configuration_id) or a GLOBAL-tier pool declares regional load balancer frontends as members (addresses[].load_balancer_frontend_ip_configuration_id) -- ARM authorizes referencing another load balancer's frontend with join/action on that frontend's scope, service-side.

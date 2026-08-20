@@ -1,0 +1,292 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockagentcoretools.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsBedrockAgentCoreToolsSpec defines the desired configuration for a
+// bundle of Amazon Bedrock AgentCore built-in tools - managed, sandboxed
+// execution environments agents drive at runtime:
+//
+//   - `browsers`: cloud web browsers (page navigation, form filling,
+//     scraping) with optional session recording to S3;
+//   - `browser_profiles`: reusable saved browser state (cookies, logins)
+//     sessions can start from;
+//   - `code_interpreters`: sandboxes that run model-written code.
+//
+// Every arm is optional; author the ones this bundle owns (at least
+// one). AWS exposes NO update for these resources - every field change
+// recreates the tool (cheap: tools are configuration shells; AWS bills
+// only per session at runtime).
+message AwsBedrockAgentCoreToolsSpec {
+  // The AWS region where the tools will be created.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Managed cloud browsers.
+  repeated AwsBedrockAgentCoreBrowser browsers = 2;
+
+  // Reusable saved browser state (cookies, logins).
+  repeated AwsBedrockAgentCoreBrowserProfile browser_profiles = 3;
+
+  // Managed code-execution sandboxes.
+  repeated AwsBedrockAgentCoreCodeInterpreter code_interpreters = 4;
+
+  // An empty bundle configures nothing.
+  option (buf.validate.message).cel = {
+    id: "at_least_one_tool"
+    message: "set at least one of browsers, browser_profiles, or code_interpreters"
+    expression: "this.browsers.size() > 0 || this.browser_profiles.size() > 0 || this.code_interpreters.size() > 0"
+  };
+
+  // Entry names are for_each keys on both engines - duplicates would
+  // silently collapse entries.
+  option (buf.validate.message).cel = {
+    id: "browser_names_unique"
+    message: "browsers entries must have unique names"
+    expression: "this.browsers.map(b, b.name).unique()"
+  };
+  option (buf.validate.message).cel = {
+    id: "browser_profile_names_unique"
+    message: "browser_profiles entries must have unique names"
+    expression: "this.browser_profiles.map(p, p.name).unique()"
+  };
+  option (buf.validate.message).cel = {
+    id: "code_interpreter_names_unique"
+    message: "code_interpreters entries must have unique names"
+    expression: "this.code_interpreters.map(c, c.name).unique()"
+  };
+}
+
+// AwsBedrockAgentCoreBrowser is one managed cloud browser. Every field
+// change recreates it (AWS exposes no update).
+message AwsBedrockAgentCoreBrowser {
+  // Browser name in AWS (1-48 characters; letter first, then letters,
+  // digits, underscore - CreateBrowser rejects hyphens server-side,
+  // live-caught 2026-08-14). The for_each key on both engines and the
+  // key in the `browser_ids` output map.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^[a-zA-Z][a-zA-Z0-9_]{0,47}$"
+  }];
+
+  // Human-readable description.
+  string description = 2;
+
+  // IAM role the browser assumes for its AWS touchpoints (writing
+  // session recordings to S3, reading enterprise policies and
+  // certificates). Must trust bedrock-agentcore.amazonaws.com. Required
+  // in practice when `recording`, `enterprise_policies`, or
+  // `certificates` are set.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef execution_role_arn = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // How browser sessions reach the network. Required by AWS.
+  AwsBedrockAgentCoreBrowserNetwork network = 4 [(buf.validate.field).required = true];
+
+  // Cryptographically sign browser traffic so sites can verify it comes
+  // from an AWS-managed browser. Omitted = AWS default.
+  optional bool signing_enabled = 5;
+
+  // Record browser sessions to S3 for replay and audit.
+  AwsBedrockAgentCoreBrowserRecording recording = 6;
+
+  // Chrome enterprise policy files applied to every session (max 100).
+  repeated AwsBedrockAgentCoreBrowserEnterprisePolicy enterprise_policies = 7 [(buf.validate.field).repeated.max_items = 100];
+
+  // Client certificates (in Secrets Manager) the browser presents to
+  // mTLS-protected sites (max 200).
+  repeated AwsBedrockAgentCoreToolCertificate certificates = 8 [(buf.validate.field).repeated.max_items = 200];
+}
+
+// AwsBedrockAgentCoreBrowserNetwork controls browser session
+// networking.
+message AwsBedrockAgentCoreBrowserNetwork {
+  // PUBLIC gives sessions AWS-managed outbound internet; VPC attaches
+  // sessions to your subnets.
+  string mode = 1 [(buf.validate.field).string = {
+    in: [
+      "PUBLIC",
+      "VPC"
+    ]
+  }];
+
+  // VPC placement - required when mode is VPC.
+  AwsBedrockAgentCoreToolVpcConfig vpc_config = 2;
+
+  // AWS requires the placement exactly when mode is VPC.
+  option (buf.validate.message).cel = {
+    id: "vpc_mode_requires_config"
+    message: "vpc_config is required when mode is VPC and forbidden otherwise"
+    expression: "(this.mode == 'VPC') == has(this.vpc_config)"
+  };
+}
+
+// AwsBedrockAgentCoreToolVpcConfig places tool sessions into your VPC.
+message AwsBedrockAgentCoreToolVpcConfig {
+  // Subnets the session network interfaces attach to (at least one).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnets = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Security groups applied to the session network interfaces (at least
+  // one).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_groups = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+}
+
+// AwsBedrockAgentCoreBrowserRecording records browser sessions to S3.
+message AwsBedrockAgentCoreBrowserRecording {
+  // Whether recording is on. Omitted = AWS default.
+  optional bool enabled = 1;
+
+  // Where recordings land.
+  AwsBedrockAgentCoreToolS3Location s3_location = 2;
+}
+
+// AwsBedrockAgentCoreToolS3Location is an S3 destination.
+message AwsBedrockAgentCoreToolS3Location {
+  // The destination bucket. The tool's execution role must be allowed to
+  // write to it.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // Key prefix within the bucket (e.g. "browser-recordings/").
+  string prefix = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsBedrockAgentCoreBrowserEnterprisePolicy is one Chrome enterprise
+// policy file in S3.
+message AwsBedrockAgentCoreBrowserEnterprisePolicy {
+  // Policy class: MANAGED (enforced) or RECOMMENDED (defaults the user
+  // can change). Omitted = AWS default.
+  string type = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "MANAGED",
+        "RECOMMENDED"
+      ]
+    }
+  ];
+
+  // S3 object holding the policy JSON.
+  AwsBedrockAgentCoreToolS3Object s3 = 2 [(buf.validate.field).required = true];
+}
+
+// AwsBedrockAgentCoreToolS3Object locates one S3 object.
+message AwsBedrockAgentCoreToolS3Object {
+  // The bucket holding the object.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // Object key (1-1024 characters).
+  string prefix = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 1024
+  }];
+
+  // Pin an explicit object version on a versioned bucket. Omitted = the
+  // current version.
+  string version_id = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 1024
+  ];
+}
+
+// AwsBedrockAgentCoreToolCertificate is one client certificate in
+// Secrets Manager.
+message AwsBedrockAgentCoreToolCertificate {
+  // The Secrets Manager secret holding the certificate material.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecretsManagerSecret,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_arn"
+  ];
+}
+
+// AwsBedrockAgentCoreBrowserProfile is reusable saved browser state.
+// Every field change recreates it (AWS exposes no update).
+message AwsBedrockAgentCoreBrowserProfile {
+  // Profile name in AWS (1-48 characters; letter first, then letters,
+  // digits, underscore). The for_each key on both engines and the key in
+  // the `browser_profile_ids` output map.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^[a-zA-Z][a-zA-Z0-9_]{0,47}$"
+  }];
+
+  // Human-readable description (1-4096 characters when set).
+  string description = 2 [(buf.validate.field).string.max_len = 4096];
+}
+
+// AwsBedrockAgentCoreCodeInterpreter is one managed code-execution
+// sandbox. Every field change recreates it (AWS exposes no update).
+message AwsBedrockAgentCoreCodeInterpreter {
+  // Interpreter name in AWS (1-48 characters; letter first, then
+  // letters, digits, underscore). The for_each key on both engines and
+  // the key in the `code_interpreter_ids` output map.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^[a-zA-Z][a-zA-Z0-9_]{0,47}$"
+  }];
+
+  // Human-readable description (1-4096 characters when set).
+  string description = 2 [(buf.validate.field).string.max_len = 4096];
+
+  // IAM role the interpreter assumes for the AWS APIs the executed code
+  // calls. Must trust bedrock-agentcore.amazonaws.com. Omitted = the
+  // sandbox has no AWS credentials (the safest posture).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef execution_role_arn = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // How the sandbox reaches the network. Required by AWS.
+  AwsBedrockAgentCoreCodeInterpreterNetwork network = 4 [(buf.validate.field).required = true];
+
+  // Client certificates (in Secrets Manager) presented to
+  // mTLS-protected endpoints the code calls (max 200).
+  repeated AwsBedrockAgentCoreToolCertificate certificates = 5 [(buf.validate.field).repeated.max_items = 200];
+}
+
+// AwsBedrockAgentCoreCodeInterpreterNetwork controls sandbox
+// networking.
+message AwsBedrockAgentCoreCodeInterpreterNetwork {
+  // SANDBOX blocks all network access (the safest for untrusted code);
+  // PUBLIC gives AWS-managed outbound internet; VPC attaches the sandbox
+  // to your subnets.
+  string mode = 1 [(buf.validate.field).string = {
+    in: [
+      "SANDBOX",
+      "PUBLIC",
+      "VPC"
+    ]
+  }];
+
+  // VPC placement - required when mode is VPC.
+  AwsBedrockAgentCoreToolVpcConfig vpc_config = 2;
+
+  // AWS requires the placement exactly when mode is VPC.
+  option (buf.validate.message).cel = {
+    id: "vpc_mode_requires_config"
+    message: "vpc_config is required when mode is VPC and forbidden otherwise"
+    expression: "(this.mode == 'VPC') == has(this.vpc_config)"
+  };
+}

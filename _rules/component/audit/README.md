@@ -39,9 +39,9 @@ You can't improve what you don't measure. Audit provides:
 **Gap Identification:**
 ```bash
 # Check existing component
-@audit-planton-component AtlasMongodb  # Shows 65% complete
+@audit-planton-component CloudflareD1Database  # Shows 65% complete
 # Report lists missing items
-@update-planton-component AtlasMongodb --scenario fill-gaps
+@update-planton-component CloudflareD1Database --scenario fill-gaps
 ```
 
 **Progress Tracking:**
@@ -196,14 +196,14 @@ Where:
 ### Report Header
 
 ```markdown
-# Audit Report: AtlasMongodb
+# Audit Report: CloudflareD1Database
 
 **Audit Date:** 2025-11-13 14:30:22
-**Component Kind:** AtlasMongodb
-**Provider:** atlas
-**Component Path:** `catalog/atlas/atlasmongodb/`
-**Enum Value:** 51
-**ID Prefix:** mdbatl
+**Component Kind:** CloudflareD1Database
+**Provider:** cloudflare
+**Component Path:** `catalog/cloudflare/cloudflared1database/`
+**Enum Value:** 7005
+**ID Prefix:** cfd1db
 ```
 
 ### Overall Score
@@ -267,7 +267,7 @@ Blocking issues that prevent production readiness:
 
 1. **Missing Terraform Module** - 4.44% missing
    - **Why it matters:** Users need choice between Pulumi and Terraform
-   - **What to do:** Run `@update-planton-component AtlasMongodb --scenario fill-gaps`
+   - **What to do:** Run `@update-planton-component CloudflareD1Database --scenario fill-gaps`
    - **Forge rules:** 012-013
 
 2. **Missing Component Guide** - 13.34% missing
@@ -284,9 +284,9 @@ Blocking issues that prevent production readiness:
 ### 1. Cloud Resource Registry (4.44%)
 
 ✅ **Passed:**
-- Enum entry exists: AtlasMongodb = 51
-- Enum value in correct range (50-199 for SaaS)
-- Unique id_prefix: "mdbatl"
+- Enum entry exists: CloudflareD1Database = 7005
+- Enum value in correct range (7000-7999 for Cloudflare)
+- Unique id_prefix: "cfd1db"
 - Complete metadata (provider, version, id_prefix)
 
 **Score:** 4.44% / 4.44% ✅
@@ -296,7 +296,7 @@ Blocking issues that prevent production readiness:
 ### 2. Anatomy Conformance (4.44%)
 
 ✅ **Passed:**
-- `go test ./pkg/anatomy/...` reports no violation for catalog/atlas/atlasmongodb/
+- `go test ./pkg/anatomy/...` reports no violation for catalog/cloudflare/cloudflared1database/
 - No baseline.yaml entries for this component
 
 **Score:** 4.44% / 4.44% ✅
@@ -308,8 +308,8 @@ Blocking issues that prevent production readiness:
 ✅ **Passed:**
 - api.proto substantial (1.2 KB) ✅
 - spec.proto substantial (2.5 KB) ✅
-- input.proto carries AtlasMongodbStackInput (800 bytes) ✅
-- outputs.proto carries AtlasMongodbStackOutputs (600 bytes) ✅
+- input.proto carries CloudflareD1DatabaseStackInput (800 bytes) ✅
+- outputs.proto carries CloudflareD1DatabaseStackOutputs (600 bytes) ✅
 - All .pb.go stubs current (4 files) ✅
 - spec_test.go exists (1.8 KB) ✅
 
@@ -341,7 +341,7 @@ Blocking issues that prevent production readiness:
 
 **Score:** 0.00% / 4.44% ❌
 
-**Fix:** Run `@update-planton-component AtlasMongodb --scenario fill-gaps`
+**Fix:** Run `@update-planton-component CloudflareD1Database --scenario fill-gaps`
 
 ---
 
@@ -369,7 +369,7 @@ Blocking issues that prevent production readiness:
 1. **Create Terraform Module**
    - **File:** `iac/tf/` (multiple files)
    - **Why:** Critical for feature parity between IaC tools
-   - **How:** `@update-planton-component AtlasMongodb --scenario fill-gaps`
+   - **How:** `@update-planton-component CloudflareD1Database --scenario fill-gaps`
    - **Impact:** +4.44% (65% → 69.44%)
 
 2. **Write Component Guide**
@@ -402,7 +402,7 @@ Blocking issues that prevent production readiness:
 
 **Most Similar Complete Component:** GcpCertManagerCert (98% complete)
 
-**What it has that AtlasMongodb lacks:**
+**What it has that CloudflareD1Database lacks:**
 - Complete Terraform module (variables.tf, main.tf, outputs.tf, etc.)
 - A grounded component GUIDE.md
 - Multiple presets (distinct use cases)
@@ -421,11 +421,11 @@ Blocking issues that prevent production readiness:
 1. Address critical gaps (Terraform + guide)
 2. Run update to fill gaps:
    ```
-   @update-planton-component AtlasMongodb --scenario fill-gaps
+   @update-planton-component CloudflareD1Database --scenario fill-gaps
    ```
 3. Re-run audit to verify improvements:
    ```
-   @audit-planton-component AtlasMongodb
+   @audit-planton-component CloudflareD1Database
    ```
 4. Expected result: 95-100% complete
 
@@ -462,14 +462,14 @@ sessions, keep a ledger in a shared issue or a location outside the catalog.
 
 ```bash
 # Audit existing component
-@audit-planton-component AtlasMongodb
+@audit-planton-component CloudflareD1Database
 # Result: 65% complete (missing Terraform, docs)
 
 # Fill gaps
-@update-planton-component AtlasMongodb --scenario fill-gaps
+@update-planton-component CloudflareD1Database --scenario fill-gaps
 
 # Verify improvement
-@audit-planton-component AtlasMongodb
+@audit-planton-component CloudflareD1Database
 # Result: 98% complete
 ```
 
@@ -555,14 +555,14 @@ sessions, keep a ledger in a shared issue or a location outside the catalog.
 
 ```bash
 # 1. Initial audit
-@audit-planton-component AtlasMongodb
+@audit-planton-component CloudflareD1Database
 # Result: 65%
 
 # 2. Fill gaps
-@update-planton-component AtlasMongodb --scenario fill-gaps
+@update-planton-component CloudflareD1Database --scenario fill-gaps
 
 # 3. Verify improvement
-@audit-planton-component AtlasMongodb
+@audit-planton-component CloudflareD1Database
 # Result: 98%
 ```
 

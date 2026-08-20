@@ -1,0 +1,87 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcplogbucket
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloud Logging encrypts stored log entries at rest with Google-managed keys without configuration; cmek_kms_key only swaps WHICH key protects the bucket, never whether it is protected.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: cmek_kms_key
+      evidence:
+        type: spec_default
+        reference: Unset means Google-managed encryption; setting it re-keys the bucket to a customer-managed Cloud KMS key. ONE-WAY per the provider -- CMEK cannot be disabled once set, though rotating to a different key is allowed. The Logging service account needs roles/cloudkms.cryptoKeyEncrypterDecrypter on the key BEFORE create, or creation fails.
+      notes: On folder/organization scopes, scope_settings.kms_key additionally sets the default CMEK for every bucket later created under the scope -- the fleet-wide version of the same control.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Entries arrive and are read exclusively through the Cloud Logging API, which is TLS-only; the bucket exposes no plaintext path.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The bucket has no network endpoint and no public-exposure switch -- stored entries are reachable only by IAM-authorized principals through the Logging API; no anonymous path exists.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound network surface exists to scope by source. What LANDS in the bucket is a routing decision made by log sinks -- separate resources -- not a network-ingress choice on the bucket.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: There is no request surface to filter -- reads and writes ride Google's Logging API edge, with no load-balancer or WAF attachment point.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Managing the bucket authorizes against the logging.buckets IAM family, and reading entries requires logging view access -- both planes are IAM-gated with no anonymous path.
+      notes: log_views is the fine-grained arm -- each view is a filtered slice grantable independently (roles/logging.viewAccessor on a view shows a reader only the entries matching its filter), so on-call can see Cloud Run stderr without seeing everything else.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The bucket stores entries, runs no workload, and holds no credentials; writers and readers authenticate to the Logging API with their own IAM identities.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The only access path is the IAM-authenticated Logging API; no legacy or weaker protocol exists on the resource to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Bucket create, update, and delete (and view and linked-dataset changes) land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+      notes: The bucket is itself audit infrastructure -- the 01 preset is an audit archive -- but reads of stored entries are Data Access log configuration at the project level, outside this manifest.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Cloud Logging exports GA billing metrics to Cloud Monitoring automatically, labeled per bucket -- logging.googleapis.com/billing/log_bucket_bytes_ingested (bytes streamed in, by log_bucket_id) and billing/bytes_stored (volume retained past the default 30 days, the charged retention) -- with no configuration."
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The service exposes no backup facility -- entries are immutable once stored and age out per retention. The durable-archive pattern is routing a COPY of the same log flow to a second destination (a GCS-bound sink), which is sink and bucket resources outside this manifest.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: retention_days
+      evidence:
+        type: spec_default
+        reference: The default 30 keeps entries a month; anything from 1 to 3650 days is configurable to policy, and locked=true makes the period irrevocable -- on a locked bucket retention can never be changed again, and the bucket can only be deleted after every entry has aged out.
+      notes: The retained data here is the primary log record, which IS the recovery artifact for audit purposes -- the 01 preset pins 400 days under PREVENT.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The resource exposes no replication or failure-domain arm -- location ("global" by default, a region for data residency) is a placement choice, and durability within it is Google's affair as a fully managed service.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: "Empty means DELETE -- the bucket and its stored entries are deleted (the built-in _Default/_Required buckets are undeletable and are simply unmanaged). PREVENT makes destroy fail outright, protecting compliance-mandated log storage; ABANDON unmanages the bucket while it keeps storing. The policy fans out to the bucket's log views and linked dataset."
+      notes: locked=true is the stronger, one-way guard -- a locked bucket cannot be deleted at all until every entry has aged out of retention, regardless of deletion_policy.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Google operates and patches the Logging storage infrastructure; no version, image, or channel surface is exposed on the resource.

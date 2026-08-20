@@ -251,7 +251,6 @@ Infer appropriate labels based on affected files:
 - `shared/**`, `qa/**`, `iac/**` (proto surfaces) → `area/apis`
 - `tools/**` → `area/tooling`
 - `_rules/component/forge/**` → `area/forge`
-- `site/**` → `area/site`
 - `docs/**` → `area/docs`
 
 ### Type Labels

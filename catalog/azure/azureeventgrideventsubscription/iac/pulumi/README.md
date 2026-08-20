@@ -29,4 +29,4 @@ Exactly one of:
 
 ## Required Permissions
 
-The deploying principal needs `Microsoft.EventGrid/eventSubscriptions/*` on the source scope (EventGrid Contributor covers it) plus enough read access on the destination to validate it (e.g. `Microsoft.Storage/storageAccounts/read` for storage-queue destinations).
+The deployer permissions this module needs are cataloged in [`../permissions.yaml`](../permissions.yaml).

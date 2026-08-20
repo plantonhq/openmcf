@@ -1,0 +1,83 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbedrockagentcoreevaluation
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AgentCore encrypts evaluation data at rest by default -- with kms_key_arn unset, evaluator data (instructions, rating scales, results) rests under an AWS-owned key; an unencrypted evaluator is not representable.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: evaluators.kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Unset means the AWS-owned key; referencing a KMS key moves each evaluator's data under a customer-managed key you own and can revoke. The key grant is per evaluator -- harnesses and online configs expose no CMK field of their own.
+      notes: Revoking the key's grant makes the evaluator's stored data unreadable to the service, which is the point of holding the key.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The bedrock-agentcore control-plane and data-plane APIs are HTTPS-only SigV4 endpoints; evaluator instructions, harness prompts, and scoring payloads never travel a plaintext path.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every surface requires authentication: evaluator, harness, and config operations are IAM-authorized, and invoking a harness defaults to AWS IAM (SigV4). The optional custom_jwt_authorizer swaps SigV4 for validated JWTs -- it never opens an anonymous path."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing here listens in your network -- evaluation resources are managed-service endpoints AWS operates. The harness's VPC network mode places its OUTBOUND workload traffic into your subnets and security groups; there is no inbound surface to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Evaluators, harnesses, and online configs expose no request-serving surface a WAF could front -- AgentCore's WebACL attachment exists only on the gateway kind, not on evaluation resources.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation -- create, update, delete, run, tag -- is IAM-authorized, and Get/Update/Delete take resource-level scoping on the evaluator, harness, and online-evaluation-config ARNs per the bedrock-agentcore service reference.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Both run arms execute under an assumed IAM role with short-lived credentials -- the harness's required execution_role_arn runs the agent under test, and the online config's required execution_role_arn reads source logs and invokes evaluators; both must trust bedrock-agentcore.amazonaws.com. No static-credential path exists.
+      notes: Non-Bedrock vendor models (Gemini, OpenAI) authenticate with an API key the harness reads at run time from a referenced Secrets Manager secret -- the manifest carries the ARN, never the key.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The service has a single authentication generation -- SigV4-signed IAM requests, with optional JWT validation for harness invocation; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All bedrock-agentcore control-plane operations on evaluators, harnesses, and configs are management events CloudTrail records unconditionally in the account's event history -- who created, changed, disabled, or deleted an evaluation resource is always answerable.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: online_evaluation_configs
+      evidence:
+        type: spec_default
+        reference: Empty means no continuous monitoring -- evaluations run only when invoked. Configuring an online config wires production monitoring end to end -- it reads session traces from referenced CloudWatch log groups, scores a sampled percentage, and lands results in AgentCore Observability powered by CloudWatch for dashboards and alarms.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Evaluation resources store no unrecoverable state -- evaluators, harnesses, and configs are declarative definitions recreated from this manifest, and scoring results live in CloudWatch under that component's durability posture.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No retention field exists by design -- evaluation results and session traces persist under the referenced CloudWatch log groups' retention settings, decided on that component.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AgentCore is a regional managed service AWS operates across availability zones -- evaluation resources have no zonal footprint the manifest could configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Evaluation resources carry no deletion-protection flag. Deleting an evaluator or config stops future scoring; results already written to CloudWatch stay there. Note the identity-seed names (evaluator and config names derive the AWS ID with no rename) -- a name change is itself a replace.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the evaluation engines and the managed runtime environments harness runs execute in; only a harness pinned to your own container_image_uri makes image currency your responsibility.

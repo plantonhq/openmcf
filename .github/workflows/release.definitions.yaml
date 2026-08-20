@@ -75,9 +75,13 @@ jobs:
           go-version-file: 'go.mod'
 
       - name: Package definitions release
+        # -embed-catalog-pack ships the catalog skill self-contained (its
+        # components/ reference pack inside the archive). Artifacts above
+        # the engines' 10MB inline lane ride the capability-URL transfer
+        # lane; pushing them needs Stigmer SDK >= v3.12.3 (go.mod pins it).
         run: |
           TAG="${GITHUB_REF_NAME}"
-          go run ./pkg/skills/defspack -version "$TAG" -out build/definitions
+          go run ./pkg/skills/defspack -version "$TAG" -out build/definitions -embed-catalog-pack
 
       # The slug lists are derived from what defspack actually built, so a
       # new skill or agent gets its own upload job with zero workflow edits.

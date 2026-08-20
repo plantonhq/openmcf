@@ -9,6 +9,9 @@ exports_files([".bazelrc"])
 # gazelle:proto disable
 # gazelle:prefix github.com/plantonhq/planton
 # gazelle:exclude generated
+# The public website: no Go, and its node_modules tree is enormous. Excluded
+# from the walk for the same reason buf.yaml excludes it from the proto module.
+# gazelle:exclude site
 
 gazelle(
     name = "gazelle",
@@ -35,9 +38,17 @@ go_binary(
     visibility = ["//visibility:public"],
 )
 
-# Static analysis configuration with all standard go vet analyzers
-# Explicit list ensures version compatibility and transparency
-# Includes all 29 standard analyzers for complete go vet parity
+# Static analysis configuration with the standard go vet analyzers.
+# Explicit list ensures version compatibility and transparency.
+#
+# loopclosure is deliberately absent. Its premise -- one variable shared
+# across loop iterations -- was removed from the language in Go 1.22; on
+# this module's Go 1.26 toolchain each iteration gets its own variable, so
+# the analyzer can never find a true positive here. nogo runs analyzers
+# without the module's language version, so it applies pre-1.22 semantics
+# to correct modern code that real `go vet` accepts. Removing it restores
+# the vet parity this block exists for; do not "fix" flagged code by
+# reintroducing the pre-1.22 pass-loop-vars-as-arguments idiom.
 nogo(
     name = "planton_nogo",
     visibility = ["//visibility:public"],
@@ -57,7 +68,6 @@ nogo(
         "@org_golang_x_tools//go/analysis/passes/framepointer:go_default_library",
         "@org_golang_x_tools//go/analysis/passes/httpresponse:go_default_library",
         "@org_golang_x_tools//go/analysis/passes/ifaceassert:go_default_library",
-        "@org_golang_x_tools//go/analysis/passes/loopclosure:go_default_library",
         "@org_golang_x_tools//go/analysis/passes/lostcancel:go_default_library",
         "@org_golang_x_tools//go/analysis/passes/nilfunc:go_default_library",
         "@org_golang_x_tools//go/analysis/passes/printf:go_default_library",

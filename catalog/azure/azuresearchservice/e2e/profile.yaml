@@ -15,6 +15,6 @@ spec:
   # high-density (standard3 + quota request), and CMK-enforcement arms
   # are offline-proven only.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 40

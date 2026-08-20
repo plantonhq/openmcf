@@ -1,0 +1,24 @@
+# Canonical AwsBackupFramework example (hack/dev manifest and refgen
+# Example source): the coverage-and-retention audit pair.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupFramework
+metadata:
+  name: backup-coverage-audit
+  id: backup-coverage-audit
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  frameworkName: backup_coverage_audit
+  description: Are resources protected by a plan and retained long enough
+  controls:
+    - name: BACKUP_RESOURCES_PROTECTED_BY_BACKUP_PLAN
+    - name: BACKUP_RECOVERY_POINT_MINIMUM_RETENTION_CHECK
+      inputParameters:
+        - name: requiredRetentionDays
+          value: "35"
+      scope:
+        complianceResourceTypes:
+          - EBS
+        tags:
+          environment: prod

@@ -1,0 +1,16 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsssmassociation
+spec:
+  # The association imports by its AWS-generated UUID (the document
+  # name is NOT its identity at AWS) -- discoverable from a prior
+  # deploy's outputs or the State Manager console.
+  values:
+    - name: association_id
+      derivations:
+        - from_stack_output: association_id
+      where_to_find: >-
+        Systems Manager console -> State Manager (each association's
+        Association id), or `aws ssm list-associations`
+        (AssociationId).

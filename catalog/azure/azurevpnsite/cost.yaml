@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurevpnsite
+spec:
+  billing_model: free
+  free_tier: A VPN site is the Virtual WAN address-book entry for one branch -- its public links, the address space behind it, the device that terminates the tunnels. It deploys nothing at the branch and nothing in Azure's data path; Virtual WAN's meters never touch it, and describing any number of branches never bills.
+  notes: "No field of this spec buys anything: links, BGP speakers, address CIDRs, device metadata, and O365 breakout policy are description Azure stores for free. The real spend lives in what CONNECTS to the description -- per Virtual WAN pricing the hub's site-to-site VPN GATEWAY bills scale-unit hours, each established CONNECTION bills a connection-unit hour, the hub itself bills deployment hours, and traffic through the hub bills per GB; all separate catalog kinds. The branch's own VPN device and ISP links are your infrastructure outside Azure entirely."

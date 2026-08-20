@@ -1,0 +1,65 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureeventhubauthorizationrule
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The rule stores no customer data -- it is a credential definition; its generated keys are secrets Azure holds inside the encrypted Event Hubs control plane.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The rule's connection strings target the namespace endpoint, where TLS is enforced -- transport posture belongs to the parent AzureEventHubNamespace.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A rule has no endpoint; network exposure is the parent namespace's posture (public network access, private endpoints, IP rules).
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound restriction lives on the namespace's network rule sets -- the rule only shapes what an authenticated holder may do, not where connections come from.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No traffic terminates at a rule; there is no request-filtering attachment point.
+    - control_id: rbac
+      status: configurable
+      field_path: listen
+      evidence:
+        type: spec_default
+        reference: listen, send, and manage all default to false, and the spec requires at least one -- every rule is an explicit least-privilege grant. Scoping to event_hub_id confines the rights to one hub (a producer's rule is send-only on its stream, a consumer's listen-only); manage requires listen AND send, so the superset right is never minted by accident.
+      notes: This kind IS an access-rights object -- the listen/send/manage trio plus the namespace-or-hub scope is its entire posture. Regenerating or replacing the rule rotates every client holding its keys.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A SAS rule is by definition a static shared-key credential -- the opposite of this control. The keyless posture is to mint NO rules, disable the namespace's local_authentication_enabled, and grant Entra identities data-plane roles via AzureRoleAssignment instead.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The rule is itself the SAS authentication path; the switch that disables SAS namespace-wide (local_authentication_enabled) lives on the parent AzureEventHubNamespace.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Rule creation, key regeneration, and deletion land in the Azure Activity Log as subscription-level posture; runtime access logging is namespace diagnostic-settings territory.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A credential definition emits no metrics; traffic authenticated by the rule is measured in the namespace's metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless declarative configuration -- the manifest recreates the rule, though recreation generates NEW keys, so clients re-read connection strings from outputs rather than restoring old secrets.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Rules are namespace metadata stored in the service's replicated control plane; they also replicate to the geo-DR partner when an AzureEventHubDisasterRecoveryConfig pairing exists. No zonal knob exists here.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for an authorization rule (Azure resource locks are subscription-side governance outside the manifest). Deleting a rule immediately invalidates its keys -- which is the point.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed PaaS -- Microsoft operates and patches the Event Hubs control plane holding the rule; no customer-visible patch surface exists.

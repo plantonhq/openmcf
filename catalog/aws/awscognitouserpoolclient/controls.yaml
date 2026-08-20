@@ -1,0 +1,78 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awscognitouserpoolclient
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An app client stores no customer data -- its configuration, including the client secret AWS generates for confidential clients, is held inside Cognito's own service infrastructure. User records live in the parent pool.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data store here to key (see enc-at-rest); Cognito exposes no KMS surface on app clients.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every exchange this client participates in -- authorization, token, refresh, revocation -- happens on Cognito's pool endpoints, which serve HTTPS only with no opt-out.
+      notes: The redirect legs land on the operator's callback_urls and logout_urls; keeping those HTTPS is the operator's side of the contract (Cognito itself refuses plain-http callback URLs other than localhost loopback for development).
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The client has no endpoint of its own -- the client ID is a public identifier by OAuth design, and the sign-in endpoints it is used against belong to the pool, a public-facing authentication surface by design. What protects a public client is PKCE and the grant configuration, covered under no-legacy-auth.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter in the allowlist sense. The closest capability -- risk_configuration.risk_exception's blocked_ip_ranges (always-block CIDRs) and skipped_ip_ranges (skip risk evaluation) -- is a threat-protection exception list, not a restriction of access to declared sources.
+    - control_id: edge-protection
+      status: configurable
+      field_path: risk_configuration
+      evidence:
+        type: spec_default
+        reference: The client-scoped risk configuration is a request filter for this client's sign-in traffic -- automated responses to account-takeover risk (block, require MFA), blocking of known-compromised credentials, and always-block IP ranges. Omitted means the client follows the pool-wide risk configuration; set, it overrides the pool's responses for this client only.
+      notes: Requires the POOL's threat protection to be active (advanced_security_mode AUDIT or ENFORCED) -- AWS rejects the configuration otherwise, and responses only ACT in ENFORCED mode. WAF web ACL association for Cognito's hosted endpoints is a pool-level surface, outside this spec.
+    - control_id: rbac
+      status: configurable
+      field_path: allowed_oauth_scopes
+      evidence:
+        type: spec_default
+        reference: The client's scope grant is its permission ceiling -- it can only request the OAuth scopes listed here (built-ins plus custom "{resource-server-identifier}/{scope}" scopes), so splitting clients by scope grant is how least-privilege API access is expressed per application. read_attributes and write_attributes bound which user attributes this client may see and change -- omitted means AWS grants ALL (mutable) attributes, so declaring them is the tightening move.
+      notes: supported_identity_providers additionally gates WHICH sign-in paths this client offers -- omitted enables all of the pool's providers, another surface where explicit declaration is tighter than the default.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The client secret is OAuth trust material between one application and the pool, generated and held by Cognito -- not a cloud-API credential, and no workload authenticates to AWS APIs through it. Machine-to-machine clients exchange the secret for short-lived access tokens scoped by resource servers, which is the OAuth analogue but outside this control's cloud-API meaning.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: explicit_auth_flows
+      evidence:
+        type: spec_default
+        reference: This spec IS the client's authentication-path allowlist. explicit_auth_flows decides whether the weaker paths exist -- ALLOW_USER_PASSWORD_AUTH (password over the wire instead of SRP) and the legacy pre-ALLOW spellings are only enabled by listing them; the hardened posture lists ALLOW_USER_SRP_AUTH and ALLOW_REFRESH_TOKEN_AUTH only. In allowed_oauth_flows, the implicit grant (tokens leaking into browser history) is likewise opt-in, with the code grant the recommended path.
+      notes: Reinforcing dials -- prevent_user_existence_errors ENABLED closes the user-enumeration oracle (LEGACY reveals whether a user exists); refresh_token_rotation retires each refresh token at use; enable_token_revocation (AWS default true) keeps sign-out able to kill live tokens; generate_secret false plus PKCE is the correct public-client posture. The spec's validations refuse mixing legacy and ALLOW_* spellings and refuse client_credentials combined with user-facing grants.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Management calls are recorded by AWS CloudTrail as account-level posture; sign-in event history and exportable auth-event logs are pool-tier threat-protection capabilities, not per-client settings.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: analytics_configuration
+      evidence:
+        type: spec_default
+        reference: Omitted means no event export. Set, Cognito publishes this client's sign-in and sign-up events to an Amazon Pinpoint project for user-journey analytics -- either by application ARN (same-account, publish role derived) or by application ID with an explicit publish role and external ID.
+      notes: user_data_shared additionally controls whether endpoint attributes ride along with the events. Cognito's CloudWatch metrics remain pool-level service behavior either way.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: An app client holds no data to back up -- it is declarative configuration fully re-creatable from the manifest. The one caveat is the generated client secret of confidential clients, which changes on re-creation; downstream consumers reference it through outputs rather than copies.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Cognito user pools are a regional managed service AWS operates across multiple availability zones as its own posture; the app client is configuration inside that service with no placement of its own.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for app clients (the pool-level deletion_protection setting belongs to AwsCognitoUserPool). user_pool_id and generate_secret are ForceNew, so changes there replace the client -- and a replaced confidential client mints a NEW client ID and secret.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: An app client is a pure configuration object with no software to patch.

@@ -1,0 +1,44 @@
+# Consumer-scoped AwsIamRole install profile: the execution role the
+# pipe assumes to read the source queue and write the target queue.
+# The trust is pipes.amazonaws.com; the inline policy grants both
+# queue directions. Scoping the fixture here keeps the pipes-trust
+# shape off the shared fixed-name set (the concurrent-session
+# collision class).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-awsebp-exec
+  id: planton-oss-e2e-awsebp-exec
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E execution role for EventBridge Pipes
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: pipes.amazonaws.com
+        Action: sts:AssumeRole
+  inlinePolicies:
+    sqsPipeE2E:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+            - sqs:GetQueueAttributes
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - sqs:SendMessage
+          Resource: "*"

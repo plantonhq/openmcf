@@ -26,7 +26,7 @@ The spec covers the full instance lifecycle surface:
 
 ## Prerequisites
 
-- GCP credentials with Filestore admin permissions on the target project (the Filestore API is enabled automatically)
+- GCP credentials for the deploying principal — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set (the Filestore API is enabled automatically)
 - A VPC network for the instance to attach to (reference a `GcpVpcNetwork` or name one literally)
 - For CMEK: a `GcpKmsKey` the Filestore service agent can use
 - For `PRIVATE_SERVICE_ACCESS`: an existing service-networking connection on the VPC

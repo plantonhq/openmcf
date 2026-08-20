@@ -1,0 +1,38 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpbigquerydataset
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: storage_billing_model
+      sku_meter: dataset storage
+      pricing_unit: GiB-months
+      impact: LOGICAL (the GCP default) bills uncompressed bytes at $0.000031507/GiB-hour active in us-central1; PHYSICAL bills compressed bytes on disk at $0.000054795/GiB-hour active -- often cheaper overall for compressible data, but under PHYSICAL the time-travel and fail-safe copies bill too, which LOGICAL storage never charges for.
+    - field_path: location
+      sku_meter: dataset storage
+      pricing_unit: GiB-months
+      impact: Storage and on-demand query rates vary by region and multi-region -- the immutable location pins every contained table's rate card, and cross-location analysis requires copying data into another dataset at transfer cost.
+    - field_path: max_time_travel_hours
+      sku_meter: dataset storage
+      pricing_unit: GiB-months
+      impact: Under PHYSICAL billing, the time-travel window (48-168 hours, default 168) is billed storage -- shrinking it to 48 hours cuts the recovery copies a churn-heavy dataset pays for. Under LOGICAL billing this field costs nothing.
+    - field_path: default_table_expiration_ms
+      sku_meter: dataset storage
+      pricing_unit: GiB-months
+      impact: The cost brake -- new tables self-delete this long after creation, keeping scratch and staging datasets from billing forever. Unset means tables live (and bill) until someone remembers them.
+    - field_path: default_partition_expiration_ms
+      sku_meter: dataset storage
+      pricing_unit: GiB-months
+      impact: Ages out old partitions in new partitioned tables automatically -- the per-partition version of the expiration brake, and each unmodified partition independently drops to the ~50%-cheaper long-term rate after 90 days.
+    - field_path: kms_key_name
+      sku_meter: Cloud KMS key usage
+      impact: CMEK itself adds no BigQuery charge; the key's version storage and per-operation charges bill on the GcpKmsKey component protecting the data.
+  estimate_exclusions:
+    - an empty dataset stores nothing -- storage bills per GiB-month as tables load, active rate for data modified in the last 90 days, roughly half that once a table or partition sits unmodified past 90 days (first 10 GiB each month free)
+    - query compute bills to the project running the query, not to this container -- on-demand at $6.25/TiB scanned after the first free 1 TiB each month, or slot-based editions capacity
+    - streaming inserts, Storage Read/Write API traffic, and data extraction follow the pipelines using the dataset
+  notes: "A dataset is a container with a rate card: creation is free, and every charge follows bytes stored in its tables or scanned by queries against them. storage_billing_model and location set the rates; the expiration defaults and time-travel window decide how long bytes keep billing. Prices echoed from the BigQuery pricing page (us-central1)."

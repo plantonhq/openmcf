@@ -114,9 +114,8 @@ spec:
 ## Lifecycle Notes
 
 - **The deploying credential needs data-plane certificate permissions on
-  the vault** ("Key Vault Administrator" or "Key Vault Certificates
-  Officer" RBAC role, or certificate permissions in a legacy access
-  policy) -- subscription Owner alone is not enough
+  the vault** -- subscription Owner alone is not enough; the full deployer
+  grant set is cataloged in [`iac/permissions.yaml`](iac/permissions.yaml)
 - **Renewals and re-imports create new VERSIONS** -- consumers on the
   versionless references follow automatically
 - Changing any policy part except `lifetime_actions` creates a new

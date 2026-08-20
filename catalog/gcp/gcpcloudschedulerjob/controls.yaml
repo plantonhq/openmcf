@@ -1,0 +1,83 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpcloudschedulerjob
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The job definition -- schedule, target URI, headers, and body payload -- is stored by Cloud Scheduler encrypted at rest with Google-managed keys without configuration.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Cloud Scheduler exposes no customer-managed-key surface for job configuration -- there is no CMEK field in the API.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: http_target.uri
+      evidence:
+        type: spec_default
+        reference: The API accepts both http and https target URIs; an https URI makes every dispatch TLS. Pub/Sub and App Engine dispatches always ride Google's internal TLS channels.
+      notes: Both HTTP presets (01-basic-http-job, 03-secure-cloud-run-trigger) use https URIs.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A scheduler job has no inbound network surface -- it is a configuration object that makes outbound dispatches; there is nothing to reach from the internet.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress exists to restrict -- see no-public-access.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The job serves no inbound traffic for a WAF to filter; protecting the dispatched-to endpoint is that component's concern.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Creating, updating, pausing, running, and deleting jobs is governed by Cloud Scheduler IAM roles unconditionally.
+    - control_id: workload-identity
+      status: configurable
+      field_path: http_target.oidc_token
+      evidence:
+        type: spec_default
+        reference: Unset dispatches carry no identity; attaching an OIDC token (for Cloud Run, Cloud Functions, custom endpoints) or an OAuth token (for Google APIs) makes every dispatch carry a short-lived token minted for the named service account -- no static credential is ever stored.
+      notes: The 03-secure-cloud-run-trigger preset dispatches with an OIDC token. oauth_token and oidc_token are mutually exclusive.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: http_target.oidc_token
+      evidence:
+        type: spec_default
+        reference: The weak path is an anonymous, unauthenticated HTTP dispatch (the default); configuring OIDC or OAuth token generation retires it by making the target able to demand authenticated callers.
+      notes: Anonymous dispatch remains legitimate for endpoints that authenticate by other means (the 01-basic-http-job preset pings a public health endpoint).
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Job create, update, pause, resume, and delete land in Cloud Audit Logs unconditionally, and every execution attempt with its dispatch result is written to Cloud Logging.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloud Scheduler publishes per-job execution and error-count metrics to Cloud Monitoring for every job without configuration.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The job is a stateless configuration object holding no data to back up -- the manifest itself is the recovery path.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain -- see backup-recovery.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The job runs on Google's managed regional scheduling service; replication is not a configuration surface this API exposes, and no zonal placement choice exists.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: DELETE (the default) removes the job with the manifest; PREVENT makes the IaC engine refuse any destroying plan -- protecting a schedule whose missed runs would break downstream systems; ABANDON detaches the job while it keeps firing.
+      notes: An engine-side guard -- the Cloud Scheduler API has no deletion-protection flag of its own.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The job carries no software surface of its own to patch -- Cloud Scheduler is a fully managed service whose infrastructure Google maintains invisibly.

@@ -1,0 +1,29 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Presets with no quantity lines have no committed always-on
+# spend and estimate to zero. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: gcplogmetric
+spec:
+  presets:
+    - preset: 01-error-counter
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - matching checkout error entries write 8-byte counter points billed as Monitoring metric ingestion at $0.2580/MiB past the billing account's first free 150 MiB -- with no errors flowing, nothing ingests
+        - the status label multiplies time series by distinct status values, scaling ingestion with error diversity as well as volume
+        - the error log entries themselves bill under Cloud Logging on whichever buckets store them, with or without this metric
+      notes: Zero committed -- the definition is free and an error counter on a healthy service ingests almost nothing; the meter is proportional to the incidents it exists to catch.
+    - preset: 02-latency-distribution
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - every matching request entry writes an 80-byte DISTRIBUTION point (ten times a counter point), billed as Monitoring metric ingestion at $0.2580/MiB past the account's 150 MiB free allotment -- on a busy checkout service this meters steadily, in proportion to traffic
+        - the underlying access-log entries bill under Cloud Logging on their storing buckets regardless of this metric
+      notes: Zero committed because the manifest commits no traffic -- but unlike the error counter, this preset's meter runs with NORMAL traffic (every request is a point), so its steady-state cost tracks request volume, not incidents.

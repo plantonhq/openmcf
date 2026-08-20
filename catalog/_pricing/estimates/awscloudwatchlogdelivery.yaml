@@ -1,0 +1,33 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awscloudwatchlogdelivery
+spec:
+  presets:
+    - preset: 01-vended-to-s3
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - CloudFront ACCESS_LOGS delivery bills per GB vended on tiered rates ($0.50 per GB for the first 10 TB, down to $0.05 per GB past 50 TB in the pricing page's example) -- entirely traffic-driven, with the pricing page's permanent allowance of 750 bytes per CloudFront request delivered at no additional charge before overages bill
+        - the parquet output_format adds the per-GB Apache Parquet format-conversion meter on top of delivery, named in the pricing page's vended-logs notes for S3 destinations
+        - object storage and requests for the delivered files bill on the referenced AwsS3Bucket -- the standing spend of a log archive
+      notes: Zero committed cost -- source, destination, and delivery objects are all free at rest; every meter here starts with the referenced distribution's traffic, which the manifest cannot see. The zero is commitment-absence, not a free service.
+    - preset: 02-cross-account-sink
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the cross-account destination object and its access policy are free at any volume -- no CloudWatch Logs meter exists for the endpoint itself
+        - forwarded log events bill on the referenced AwsKinesisStream's own meters (shard hours or on-demand throughput, per that component's profile) at a volume controlled by the two allowed SENDER accounts' subscription filters, invisible to this manifest
+        - the delivery role is an AwsIamRole, which never bills
+      notes: Zero committed cost -- and the zero here is structural as well as commitment-shaped; the endpoint carries no meter, so this component's line stays $0 while the real spend rides the Kinesis stream behind it.

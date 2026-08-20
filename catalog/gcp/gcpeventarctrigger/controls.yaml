@@ -1,0 +1,82 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpeventarctrigger
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Events at rest in the delivery path -- the Pub/Sub transport topic and the channel conduits -- are encrypted with Google-managed keys without configuration; the crypto-key fields exist to REPLACE that default, not to enable encryption.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: google_channel_crypto_key
+      evidence:
+        type: spec_default
+        reference: Omitted (the default) keeps Google-managed encryption on the project/location's shared Google channel -- the conduit ALL non-partner triggers there deliver through; naming a Cloud KMS key encrypts it with the customer-managed key instead. Clearing the field reverts to Google-managed encryption.
+      notes: This manages a per-project-per-location SINGLETON -- set it from at most one trigger per project+location, or two managers fight over the same object. Partner events have their own key surface at partner_channel.crypto_key.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Deliveries to Cloud Run, GKE, and Workflows ride Google's internal TLS, and the http_endpoint destination arm supports only HTTPS URIs (the spec contract states the API accepts no plaintext endpoint). Publishing into the transport is TLS unconditionally.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A trigger has no inbound network surface -- it is a routing rule that consumes platform events and makes outbound deliveries; there is nothing for the public internet to reach.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress exists to restrict -- see no-public-access. The network_attachment on HTTP endpoint destinations governs OUTBOUND delivery reachability into a VPC.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The trigger serves no inbound web traffic for a WAF to filter; protecting the destination service is that component's concern.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every Eventarc method authorizes against IAM unconditionally, and the model separates planes -- managing triggers (eventarc.triggers.*) is distinct from the delivery identity, which must itself hold roles/eventarc.eventReceiver to receive events.
+    - control_id: workload-identity
+      status: configurable
+      field_path: service_account
+      evidence:
+        type: spec_default
+        reference: The trigger runs as the named service account -- for authenticated Cloud Run destinations, Eventarc mints short-lived identity tokens from it per delivery; no static credential exists. Audit-log triggers and workflow destinations REQUIRE the account (the workflow case is API-enforced at create, spec-validated earlier).
+      notes: Both presets name a dedicated eventarc-invoker identity. When unset (permitted only for some trigger shapes), deliveries fall back to the default compute service account.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No legacy authentication path exists to disable -- management is IAM-only and delivery authentication is exclusively short-lived identity tokens minted from the trigger's service account.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Trigger (and channel) create, update, and delete land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The delivery path is a real Pub/Sub topic and subscription whose Cloud Monitoring metrics -- publish counts, delivery attempts, backlog -- are recorded without configuration, giving every trigger transport-level observability by construction.
+      notes: The trigger resource itself exposes no logging dial (unlike the Eventarc Advanced bus's log_severity); deeper per-event visibility lives on the destination service's logs.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The trigger is a declarative routing rule fully re-creatable from the manifest; it stores no data of its own. In-flight events live in the Pub/Sub transport with Pub/Sub's delivery guarantees.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain -- see backup-recovery.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The trigger is configuration on Google's managed regional (or global) eventing service; replication is not a configuration surface this API exposes, and no zonal placement choice exists on the resource.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE -- the trigger (and any partner channel) is removed and events stop being delivered immediately; PREVENT makes destroy fail outright, the guard for a production event route; ABANDON unmanages the resources while they keep delivering.
+      notes: Deleting a partner channel also invalidates its activation handshake -- recreating one means redoing the partner exchange with a fresh token.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software surface here to patch -- Eventarc's routing and the Pub/Sub transport are Google's fully managed infrastructure, maintained invisibly with no version or channel exposed on the resource.

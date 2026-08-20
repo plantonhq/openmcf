@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsecrregistrysettings
+spec:
+  billing_model: free
+  free_tier: "The ECR pricing page names exactly two meters: 'You pay only for the amount of data you store in your public or private repositories and for data transferred to the internet.' Both attach to repositories and their images -- the AwsEcrRepo kind -- not to this registry-settings singleton. The registry policy, scanning configuration, replication rules, cache rules, creation templates, account settings, and pull-time exclusions carry no meter of their own."
+  notes: "Free on existence, but three arms are TRIGGERS for real meters on other objects, and naming them is the point. (1) scanning with scan_type ENHANCED hands scanning to Amazon Inspector, whose ECR meters bill per image -- the Inspector pricing page's us-east-1 examples show $0.09 per newly pushed image initially scanned and $0.01 per rescan, and CONTINUOUS_SCAN invokes those rescans every time the CVE database updates. Zero images pushed means zero scans and zero dollars; a busy registry under CONTINUOUS_SCAN pays Inspector monthly for the whole retained image set. (2) pull_through_cache_rules accrete ECR repository STORAGE ($0.10 per GB-month in the pricing page's examples) from the first pull -- every cached upstream image is stored as your own private-repository data, billed on the auto-created repositories; a lifecycle policy stamped through repository_creation_templates is the brake. (3) replication_rules copy images cross-region, and the pricing page's footnote is explicit that such copies 'incur ECR data transfer out charges based on the source repository's region', plus ordinary storage in every destination registry. All three meters live on other objects (Inspector, AwsEcrRepo storage, data transfer) -- this manifest only opens the doors they walk through. ECR's own free tier belongs to those repository meters too: 500 MB-month of private storage is a one-year new-customer trial, and the 50 GB-month public-repository allowance is always-free."

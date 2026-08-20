@@ -1,0 +1,78 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesoteloperator
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The operator stores no data of its own -- its desired state is the opentelemetry.io custom resources in the cluster's etcd, whose encryption at rest is the target cluster's control-plane posture. Telemetry data flows through the collector fleets, which ride their own resources.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No storage seam exists on this component (see enc-at-rest); customer-managed keys apply to the cluster's etcd encryption, owned by the cluster.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The admission and CRD-conversion webhooks serve TLS with a cert-manager-issued, cert-manager-ROTATED certificate -- the modules re-pin admissionWebhooks.certManager.enabled=true AFTER the helm_values merge, so the cert-manager arm cannot be disabled through the escape hatch (the retained CRDs' conversion trust rides cert-manager's CA injector). The operator's own calls to the Kubernetes API ride the API server's TLS.
+      notes: This is why KubernetesCertManager is a hard prerequisite -- a certificate embedded once at install time would go stale on rotation and silently break collector-CR conversion.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Nothing the modules render is exposed outside the cluster network -- the chart's Services (the webhook Service, the operator metrics Service) are in-cluster only, reachable by the API server and cluster-local scrapers.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: This operator watches every namespace by design (one operator per cluster -- no fencing field is modeled), and its only inbound surface is Kubernetes admission and conversion calls from the API server. There is no ingress seam to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The operator serves no HTTP edge traffic -- its inbound surface is API-server webhook calls. Web application firewalls do not apply.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart creates the operator's RBAC -- the cluster-scoped role it needs to reconcile collector fleets across namespaces, plus namespace-scoped leader-election RBAC. Management-plane access to this resource is the target cluster's Kubernetes RBAC.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The operator authenticates to the Kubernetes API through its ServiceAccount token -- it holds no cloud API credentials. Cloud credentials for telemetry export are configured on each collector, not here.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The operator ships no credentials and exposes no authentication surface of its own -- the webhook certificate is cert-manager-issued and rotated. There is no legacy path to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Every mutation the operator performs is a Kubernetes API operation, captured by the target cluster's audit policy. The operator emits reconcile logs to stdout for the cluster's log collector; a dedicated audit trail is not modeled in this spec.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: service_monitor_enabled
+      evidence:
+        type: spec_default
+        reference: False renders no ServiceMonitor (the operator's metrics Service still exists for manual scrape config). True renders a ServiceMonitor for Prometheus discovery of the operator's own metrics -- it requires the monitoring.coreos.com CRDs on the cluster (deploy KubernetesKubePrometheusStack first).
+      notes: The 02-private-mirror preset enables the ServiceMonitor.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The operator holds no data to back up -- desired state is the opentelemetry.io CRs (the cluster's etcd backup posture). The modules deliberately own the CRD lifecycle OUTSIDE the Helm release (apply-only, retained on destroy), so uninstalling the operator never cascade-deletes the fleet's collector declarations.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist on this component (see backup-recovery), so no retention policy applies.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replicas
+      evidence:
+        type: spec_default
+        reference: replicas defaults to 1 (no failover). 2 gives a warm standby -- leader election picks one active reconciler. Spreading the replicas across zones rides scheduling (node_selector, tolerations) and the cluster's topology.
+      notes: The 02-private-mirror preset runs 2 replicas.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the chart offers a deletion-protection flag on the operator install; protection is operational (namespace RBAC, change review). The module-owned, retained-on-destroy CRDs mean deleting this component strands but never destroys the cluster's collector declarations.
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: Unset installs the pinned default 0.120.0 (operator v0.156.0) -- versions must exist as served charts in the upstream repository index. Version changes are deliberate manifest edits, and a chart bump upgrades the module-owned opentelemetry.io CRDs with the files staged from the new pin.
+      notes: Unlike Helm crds/-directory operators, this component's CRDs DO upgrade with chart bumps -- the modules apply the staged CRD files server-side on every deploy.

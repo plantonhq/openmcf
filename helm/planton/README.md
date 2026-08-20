@@ -65,7 +65,7 @@ helm install planton oci://ghcr.io/plantonhq/charts/planton \
 
 ## Storage
 
-Planton's data services (PostgreSQL, Valkey, NATS JetStream, the runner's
+Planton's data services (PostgreSQL, Valkey, the runner's
 IaC-state volume, and any optional components you enable) all request
 persistent volumes. Two prerequisites decide whether an install works out of
 the box on your cluster:
@@ -93,7 +93,6 @@ platform:
     # database:
     #   postgresql: {storageSize: 2Ti, storageClassName: fast-ssd}
     #   redis:      {storageSize: 1Gi}
-    #   nats:       {storageSize: 10Gi}
     # runner:
     #   storageSize: 2Gi
     #   storageClassName: your-class
@@ -167,14 +166,16 @@ kubectl delete namespace planton
 
 `helm uninstall` removes the `PlantonPlatform` resource, the operator, and
 the platform's own workloads (control plane, console, front door, identity,
-runner). The data services (PostgreSQL, Valkey, NATS, Temporal) and their
-volumes deliberately do not vanish with it -- your data outlives an
-accidental uninstall -- so deleting the namespace is the step that reclaims
-them. To REINSTALL, always delete the namespace first: an uninstall removes
-the generated credential Secrets with the release, so a new install against
-the surviving volumes would mint new passwords that the old data refuses.
-The CRD is cluster-scoped; remove it last, after every PlantonPlatform in
-the cluster is gone:
+runner). The PostgreSQL database goes WITH the platform: CloudNativePG owns
+the database's volumes and credentials as one unit, so removing the platform
+removes the database cleanly -- credentials can never survive apart from the
+volumes they unlock. The remaining data-service volumes (the Valkey cache,
+Temporal's chart-rendered claims) linger until the namespace is deleted,
+which is why deleting the namespace is part of teardown. To REINSTALL,
+always delete the namespace first: a new install against leftover volumes
+would mint new credentials that the old data refuses. The CRD is
+cluster-scoped; remove it last, after every PlantonPlatform in the cluster
+is gone:
 
 ```bash
 kubectl delete crd plantonplatforms.planton.ai

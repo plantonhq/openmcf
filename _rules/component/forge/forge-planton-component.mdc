@@ -192,7 +192,7 @@ are the cheaper equivalent gate when no CLI invocation is needed.
 
 **Examples:**
 ```
-@forge-planton-component MongodbAtlas --provider atlas
+@forge-planton-component CloudflareD1Database --provider cloudflare
 @forge-planton-component GcpCertManagerCert --provider gcp
 @forge-planton-component PostgresKubernetes --provider kubernetes --category workload
 ```
@@ -401,6 +401,37 @@ NOT INSTRUMENTED there.
     - Creates ranked YAML manifests + companion markdown in the component-root `presets/`
     - Follows conventions from `architecture/presets.md`
 
+### Phase 7b: Catalog data sidecars (orchestrator step -- no flow-rule file)
+
+Every component ships three authored data files; the anatomy gate requires
+them and the `lint.catalog-data` lane holds their content to schema:
+
+1. **`cost.yaml`** (component root, schema `finops/componentcostprofile/v1`):
+   declare the billing model, the always-on baseline charges, and the spec
+   fields that drive the bill (field paths are spec-relative proto names --
+   the gate resolves each against the served contract). State the estimate
+   exclusions honestly: what no manifest can predict (traffic, storage
+   growth, data transfer).
+2. **`controls.yaml`** (component root, schema
+   `compliance/componentcontrolprofile/v1`): examine EVERY control in
+   `catalog/_compliance/controls-catalog.yaml` -- enforced_by_default /
+   configurable (with the field path) / not_applicable (with the reason).
+   Every enforced/configurable claim carries evidence a reviewer can verify
+   (provider guarantee, spec default, spec validation rule, or module
+   source). Never name compliance frameworks here; the central crosswalks
+   own that mapping.
+3. **`iac/permissions.yaml`** (schema `iac/componentpermissions/v1`): the
+   least-privilege permissions the runner's cloud principal needs, grouped
+   the way a policy author would group them. Derive from the module's
+   declared resources and mark every entry `derived` (notes cite the
+   terraform resource types it covers); the live capture lane upgrades
+   entries to `proven`. Defend every wildcard in notes.
+
+`catalog/aws/awsalb` and `catalog/aws/awsdynamodb` are the reference
+examples. Validate with `go test ./pkg/finops/... ./pkg/compliance/...
+./pkg/iac/permissions/...` -- file presence is enrollment, so the sidecars
+are gated from this commit on.
+
 ### Phase 8: Final Validation (Rules 016-017)
 
 17. **016-build-validation** - Verify component Go code compiles AND the Pulumi entrypoint
@@ -415,16 +446,10 @@ NOT INSTRUMENTED there.
 18. **017-test-validation** - Run `go test -v ./catalog/<provider>/<kind>/v1alpha1/` (verify component tests pass)
     - Validates spec_test.go tests all buf.validate rules
     - Ensures validation rules are syntactically and semantically correct
-19. **Site catalog regen** - Run `yarn copy-docs && yarn generate-structure` in `site/`
-    so the new component's public page materializes in the built site. The site builds each
-    component's public page from the KIND-ROOT `catalog.md`. The copy script self-cleans
-    provider directories, so stale pages disappear and new ones appear in the same pass.
-    Skipping this leaves the built catalog silently lagging the source -- the site build
-    does NOT pick up the source pages on its own.
 
 ### Phase 9: Guide + Reference Regeneration (Rule 019)
 
-20. **019-guide** - Seed the component's `GUIDE.md` (the authored wisdom layer at the
+19. **019-guide** - Seed the component's `GUIDE.md` (the authored wisdom layer at the
     component root) from what this forging session learned -- internal conventions,
     judgment calls, operational recipes, parity accounting, diagram impact -- following
     `_rules/docs/write-planton-component-guide.mdc`.
@@ -1037,6 +1062,38 @@ The class carries THREE corollaries, all verified live:
    silently on rotation, which is why such a kind models cert-manager
    as a REQUIRED posture rather than offering a one-shot
    self-signed arm.
+
+**A FIRST-PARTY chart's staged CRD comes from the PUBLISHED package at
+the pin, never from the source tree.** When the catalog models software
+this organization itself ships, the working tree's CRD routinely runs
+AHEAD of the last published chart (unreleased schema changes committed
+between cuts). A CRD staged from the tree then advertises fields the
+pinned chart's operator does not implement — the API server ACCEPTS what
+the controller silently ignores, the worst failure shape, behind every
+green offline gate. `helm pull <oci-ref> --version <pin> --untar` and
+stage from that package; re-stage from the NEW published package when
+the pin bumps. The same discipline decides which schema era the typed
+spec may claim LIVE proof for: diff the published CRD's field set
+against the spec, and keep any spec field the published schema would
+prune OUT of the live scenarios (offline hack manifests carry it) until
+a published line admits it.
+
+**An operator's DESTROY contract is read from its controller source,
+never assumed from a sibling kind's posture.** Operators split into two
+teardown classes: finalizer-processed (the controller holds the CR's
+deletion open and unwinds components itself — deletion HANGS without a
+running operator) and owner-reference garbage collection (children carry
+ownerReferences; Kubernetes GC completes teardown with or without the
+operator). The classes invert the destroy-ordering story, the delete
+timeout's meaning, the absence verifier's design (one-shot vs polled
+drain), and whether cluster-scoped satellites strand (a namespaced owner
+NEVER garbage-collects a cluster-scoped dependent — those need the
+operator's own janitor or an honest residue note). Grep the controller
+for `Finalizer`/`DeletionTimestamp` before writing any destroy prose,
+verifier, or ordering guidance; a sibling kind's posture is evidence
+about that sibling only (caught in review: destroy guidance authored on
+a finalizer-based sibling's contract against a GC-based operator — every
+claim inverted).
 
 **Two chart-audit probes that only fail LIVE — run them at the pin,
 before any design lands.** (1) HEAD every DEFAULT image reference's

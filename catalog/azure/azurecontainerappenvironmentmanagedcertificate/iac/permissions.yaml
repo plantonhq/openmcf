@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurecontainerappenvironmentmanagedcertificate
+spec:
+  azure:
+    groups:
+      - purpose: ManageManagedCertificate
+        actions:
+          - Microsoft.App/managedenvironments/managedcertificates/read
+          - Microsoft.App/managedenvironments/managedcertificates/write
+          - Microsoft.App/managedenvironments/managedcertificates/delete
+        provenance: derived
+        notes: Covers azurerm_container_app_environment_managed_certificate -- create (the write polls until Azure's domain validation succeeds, or fails around the 30-minute mark), in-place tag updates (every other change re-issues), read/refresh, and destroy. The parent environment is addressed by the ARM ID resolved from container_app_environment_id; the module performs no environment read and no other API calls. No key material ever crosses the API, so no secret-listing action exists for this collection. Verified against Microsoft.App's published operations; held via Contributor on the environment's resource group.

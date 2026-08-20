@@ -1,0 +1,20 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPlantonPlatform
+metadata:
+  name: planton
+spec:
+  namespace:
+    value: planton
+  create_namespace: true
+  version: v0.0.40-selfhosted-preview
+  ingress:
+    enabled: true
+    # One hostname serves console AND API. The identity server bakes this
+    # URL into its realm at first boot — set it before the first sign-in.
+    hostname: planton.example.com
+    tls:
+      # cert-manager issues and renews the certificate. Bring your own
+      # instead by replacing `issuer` with `secret_name`.
+      issuer:
+        name: letsencrypt
+        kind: ClusterIssuer

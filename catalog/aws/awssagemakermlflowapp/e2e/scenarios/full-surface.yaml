@@ -1,0 +1,33 @@
+# AwsSagemakerMlflowApp full-surface scenario: auto-registration and an
+# explicit maintenance window on the serverless app. Deliberately not
+# live: account_default_status ENABLED (an account-GLOBAL setting on
+# the shared test account - only one app per account may hold it) and
+# the domain-association arm (needs a SageMaker domain fixture, an
+# expensive standing resource - unblock: compose the AwsSagemakerDomain
+# install profile on an owner-approved fixture budget) - offline-proven
+# via e2e/manifest.yaml.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerMlflowApp
+metadata:
+  name: planton-oss-e2e-awssgmma-full
+  id: planton-oss-e2e-awssgmma-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssagemakermlflowapp
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole,AwsS3Bucket"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  artifactStoreUri: s3://planton-oss-e2e-awss3bucket-prereq/mlflow-app-full
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-sagemaker-execution-role
+      fieldPath: status.outputs.role_arn
+  modelRegistrationMode: AutoModelRegistrationEnabled
+  weeklyMaintenanceWindowStart: SUN:03:00

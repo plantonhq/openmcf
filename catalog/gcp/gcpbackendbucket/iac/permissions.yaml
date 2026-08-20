@@ -1,0 +1,45 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpbackendbucket
+spec:
+  gcp:
+    groups:
+      - purpose: EnableComputeApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling compute.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageBackendBucket
+        permissions:
+          - compute.backendBuckets.create
+          - compute.backendBuckets.get
+          - compute.backendBuckets.update
+          - compute.backendBuckets.delete
+          - compute.globalOperations.get
+        provenance: derived
+        notes: Covers google_compute_backend_bucket -- create, read/refresh, in-place updates (origin bucket swaps, CDN enablement and policy, compression, response headers are all mutable; name and project changes replace), and destroy. Backend buckets are global resources, so every mutation returns a global operation the provider polls.
+      - purpose: ManageSignedUrlKeys
+        permissions:
+          - compute.backendBuckets.addSignedUrlKey
+          - compute.backendBuckets.deleteSignedUrlKey
+        provenance: derived
+        notes: Required only when signed_url_keys is set -- covers google_compute_backend_bucket_signed_url_key. Keys are immutable in GCP (add/delete only), so rotation and key-value changes exercise both permissions; the key material itself never leaves the request. Not needed for backend buckets without signed URLs.
+      - purpose: AttachEdgeSecurityPolicy
+        permissions:
+          - compute.backendBuckets.setSecurityPolicy
+          - compute.securityPolicies.use
+        provenance: derived
+        notes: Required only when edge_security_policy references a CLOUD_ARMOR_EDGE policy -- the attachment authorizes on both sides, setting the policy on the backend bucket and using the referenced security policy. Not needed for backend buckets without an edge policy.
+      - purpose: ApplyResourceManagerTags
+        permissions:
+          - compute.backendBuckets.createTagBinding
+          - resourcemanager.tagValueBindings.create
+        provenance: derived
+        notes: Required only when resource_manager_tags is set -- attaching a tag at create time authorizes on both sides, the binding on the backend bucket and the use of each named tag value (tag values are org-level resources, so the tagValueBindings grant lives there). The module sends tags only through the create-only params block; tag changes replace the backend bucket, re-running these checks. Not needed for untagged backend buckets.

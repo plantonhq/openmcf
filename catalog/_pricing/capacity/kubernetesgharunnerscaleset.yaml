@@ -1,0 +1,49 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesGhaRunnerScaleSet manifest's spec values into the capacity
+# footprint it reserves from its target cluster. The estimate generator
+# replays the catalog presets through these rules to emit
+# ../estimates/kubernetesgharunnerscaleset.yaml; a server-side estimator
+# can evaluate the same rules against live manifests. Runner pods are
+# EPHEMERAL and demand-driven -- one pod per CI job, replaced after each
+# job -- so the only manifest-time commitment is the idle floor:
+# min_runners warm runners holding the declared resources (and, in
+# kubernetes container mode, a work volume each). Everything above the
+# floor scales with the job queue up to max_runners.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetesgharunnerscaleset
+spec:
+  workloads:
+    - label: idle runner
+      resources_path: runner.resources
+      instances:
+        field_value:
+          field_path: min_runners
+      volumes:
+        - label: work
+          size_path: container_mode.kubernetes_work_volume.size
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node and storage-class economics
+    - text: the fleet autoscales with CI demand -- runners are ephemeral (one pod per job), so actual capacity swings between this idle floor and max_runners with the job queue; only the floor is a manifest-time commitment
+    - text: the listener pod the controller runs for this fleet reserves its own chart-sized capacity, not declared in this spec
+    - applies_when:
+        - field_path: container_mode.mode
+          op: equals
+          value: dind
+      text: dind mode adds a privileged Docker-in-Docker sidecar to every runner pod with its own reservation beyond runner.resources
+    - applies_when:
+        - field_path: container_mode.mode
+          op: equals
+          value: kubernetes
+      text: every demand-driven runner beyond the idle floor also claims an ephemeral work volume of the declared size while its job runs
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: the helm_values overlay merges last over the typed rendering and can reshape the runner and listener pod templates beyond what this footprint states
+  notes:
+    - applies_when:
+        - field_path: runner.resources
+          op: is_unset
+      text: no runner resources are declared -- the chart applies no requests or limits of its own, so runner pods schedule unbounded and this footprint states zero reservation for the floor

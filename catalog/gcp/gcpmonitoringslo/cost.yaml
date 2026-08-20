@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpmonitoringslo
+spec:
+  billing_model: free
+  free_tier: "An SLO carries no meter, and neither does the Monitoring service it may create alongside -- both are Cloud Monitoring control-plane configuration. Google's Observability pricing page prices data volume (metric bytes and samples ingested, API reads, uptime and synthetic executions, and from September 2027 alerting policies) and states that all other product features are free; SLOs, custom services, and basic services appear on no meter, at any count, over any period."
+  notes: "No field of this spec buys anything: the service arm, goal, period, and SLI definition are configuration. The real spend lives in the telemetry the SLI is computed FROM -- the metrics named in sli.request_based_sli and sli.windows_based_sli filters bill on Cloud Monitoring's ingestion meters where chargeable ($0.2580/MiB first tier for byte-charged custom and workload metrics beyond the 150 MiB monthly allotment; the GCP system metrics behind basic_sli are non-chargeable), and that ingestion happens whether or not an SLO reads it. Two adjacencies to know: burn-rate alert policies built ON this SLO are separate GcpMonitoringAlertPolicy resources, and Google's scheduled alerting pricing (no sooner than September 1, 2027; $0.35/month per metric reference) will attach to those policies, not to the SLO; and programmatic reads of SLO health time series bill the Monitoring read API at $0.50 per million time series returned beyond the first million per month -- a caller-side meter."

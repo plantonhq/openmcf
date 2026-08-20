@@ -1,0 +1,95 @@
+# Cost derivation: the machine-executable rules turning any
+# GcpAlloydbInstance manifest's spec values into metered quantities and
+# price choices. A read pool is pure compute multiplication: node_count
+# nodes, each of cpu_count vCPUs at the N2 rate plus the N2 highmem
+# memory shape of 8 GiB per vCPU (Google's documented shape for
+# cpu_count-only instances). The spec carries no location field -- the
+# instance lives wherever its parent cluster does -- so the region is a
+# stated assumption. PRIMARY and SECONDARY standalone instances refuse
+# honestly rather than guess their node math. Schema:
+# finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: gcpalloydbinstance
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    assumption: us-central1
+  refusals:
+    - when:
+        - field_path: machine_type
+          op: is_set
+      reason: an explicit machine_type selects a machine family (Z3, C4, C4A) with its own vCPU and memory rates -- the price book pins only the default N2 rates, so this manifest's compute rate is not covered
+    - when:
+        - field_path: machine_type
+          op: is_unset
+        - field_path: cpu_count
+          op: equals
+          value: "0"
+      reason: the manifest names no machine shape -- AlloyDB requires cpu_count or machine_type, so there is no compute quantity to price
+    - when:
+        - field_path: cpu_count
+          op: equals
+          value: "128"
+      reason: "the 128-vCPU N2 shape carries 864 GB of RAM, not the 8-GiB-per-vCPU convention every other cpu_count shape follows -- pricing it with the convention would misstate the memory line"
+    - when:
+        - field_path: instance_type
+          op: equals
+          value: PRIMARY
+      reason: a standalone PRIMARY bills by availability_type (one node when ZONAL, two when REGIONAL), an advanced topology this derivation does not model -- the covered read-pool path bills by node_count instead
+    - when:
+        - field_path: instance_type
+          op: equals
+          value: SECONDARY
+      reason: a SECONDARY instance serves a cross-region DR cluster whose region and node math live outside this manifest -- its committed cost is not knowable here
+  lines:
+    - sku_meter: instance vCPU
+      applies_when:
+        - field_path: instance_type
+          op: not_equals
+          value: PRIMARY
+        - field_path: instance_type
+          op: not_equals
+          value: SECONDARY
+        - field_path: activation_policy
+          op: not_equals
+          value: NEVER
+      quantity:
+        - field_value:
+            field_path: read_pool_config.node_count
+        - field_value:
+            field_path: cpu_count
+        - hours_in_month: true
+      price_slug: alloydb-instance-vcpu-us-central1
+      basis: node_count read-pool nodes, each of cpu_count vCPUs, billed every hour of the month at the N2 rate; the region is assumed us-central1 because the instance lives in its parent cluster's region, which this manifest does not carry
+    - sku_meter: instance memory
+      applies_when:
+        - field_path: instance_type
+          op: not_equals
+          value: PRIMARY
+        - field_path: instance_type
+          op: not_equals
+          value: SECONDARY
+        - field_path: activation_policy
+          op: not_equals
+          value: NEVER
+      quantity:
+        - field_value:
+            field_path: read_pool_config.node_count
+        - field_value:
+            field_path: cpu_count
+        - constant: "8"
+        - hours_in_month: true
+      price_slug: alloydb-instance-ram-us-central1
+      basis: cpu_count-only manifests get the N2 highmem shape of 8 GiB per vCPU on every node (Google's documented mapping, e.g. 2 vCPUs carry 16 GB) -- node_count nodes' memory billed hourly
+  exclusions:
+    - text: the parent cluster bills separately -- its primary instance compute, cluster storage, and backups belong to the referenced GcpAlloydbCluster
+    - text: network egress follows client placement
+  notes:
+    - applies_when:
+        - field_path: activation_policy
+          op: equals
+          value: NEVER
+      text: "activation_policy NEVER keeps the instance stopped: compute bills nothing while stopped, so the committed compute total is zero until it is set back to ALWAYS."

@@ -1,0 +1,38 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awssagemakerpipeline
+spec:
+  aws:
+    statements:
+      - sid: ManagePipeline
+        actions:
+          - sagemaker:CreatePipeline
+          - sagemaker:DescribePipeline
+          - sagemaker:UpdatePipeline
+          - sagemaker:DeletePipeline
+        resources:
+          - arn:aws:sagemaker:*:*:pipeline/*
+        provenance: derived
+        notes: "Covers aws_sagemaker_pipeline / sagemaker.Pipeline. DescribePipeline serves every plan/refresh; UpdatePipeline reconciles everything except the name in place (definition, display name, description, role, parallelism). All four actions take resource-level scoping on the pipeline ARN format per the service reference. When definition_s3_location is used, the SERVICE retrieves the definition object at create/update time per the CreatePipeline API contract -- the modules issue no S3 calls of their own, so no s3 grants are derived here; the retrieval path is governed on the definition bucket."
+      - sid: TagPipeline
+        actions:
+          - sagemaker:AddTags
+          - sagemaker:DeleteTags
+          - sagemaker:ListTags
+        resources:
+          - arn:aws:sagemaker:*:*:pipeline/*
+        provenance: derived
+        notes: Tag-on-create plus later tag reconciliation and the tag read on every refresh. The service reference scopes the tagging trio to dozens of SageMaker resource formats; the pipeline format is the only one this component touches.
+      - sid: PassExecutionRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: CreatePipeline and UpdatePipeline pass the referenced role (role_arn, required by the spec) to SageMaker, which assumes it to launch and run every step job in the pipeline's executions. Add an iam:PassedToService=sagemaker.amazonaws.com condition and narrow to the actual role ARN in a hardened deployment. Note the permissions the step jobs THEMSELVES need (training, processing, S3 data access, ECR pulls, model registration) belong to that execution role, not to the runner principal.

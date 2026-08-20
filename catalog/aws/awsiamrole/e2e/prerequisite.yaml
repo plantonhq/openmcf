@@ -432,9 +432,14 @@ spec:
         Action: sts:AssumeRole
 ---
 # SageMaker execution role: trusts sagemaker.amazonaws.com. The domain's
-# default_user_settings.execution_role_arn is validated for assumability at
-# CreateDomain; the E2E lane never launches an app, so the trust policy is
-# the load-bearing part and no data-plane permissions are attached.
+# One execution role serves the whole SageMaker family's lanes (domain,
+# model, notebook, feature group, pipeline, image, MLflow) - the
+# one-role-per-family shape. Trust is the load-bearing part everywhere
+# (CreateDomain/CreateModel/CreateNotebookInstance validate
+# assumability); the S3 statement covers the data-plane writes the
+# feature group's offline store and the MLflow artifact stores perform
+# against the shared bucket fixture, and the ECR pulls image versions
+# would need.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamRole
 metadata:
@@ -451,13 +456,88 @@ metadata:
     - planton-e2e
 spec:
   region: us-west-2
-  description: Planton E2E prerequisite role for SageMaker Studio execution
+  description: Planton E2E prerequisite role for SageMaker execution (the family's shared role)
+  inlinePolicies:
+    sagemakerDataPlaneE2E:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - s3:AbortMultipartUpload
+            - s3:GetBucketLocation
+            - s3:GetObject
+            - s3:ListBucket
+            - s3:ListBucketMultipartUploads
+            - s3:PutObject
+            - s3:DeleteObject
+          Resource:
+            - arn:aws:s3:::planton-oss-e2e-awss3bucket-prereq
+            - arn:aws:s3:::planton-oss-e2e-awss3bucket-prereq/*
+        - Effect: Allow
+          Action:
+            - ecr:BatchGetImage
+            - ecr:GetDownloadUrlForLayer
+            - ecr:GetAuthorizationToken
+          Resource: "*"
   trustPolicy:
     Version: "2012-10-17"
     Statement:
       - Effect: Allow
         Principal:
           Service: sagemaker.amazonaws.com
+        Action: sts:AssumeRole
+---
+# Bedrock agents-family role: trusts bedrock.amazonaws.com and carries the
+# permission set the upstream provider's own agent/knowledge-base
+# acceptance fixtures grant -- model invocation (agent serving and
+# embedding), S3 read (knowledge-base data sources), and the S3 Vectors
+# data-plane verbs (the standing vector-store fixture). One role serves
+# the agent, knowledge base, and flow consumers; each references it by
+# name.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-bedrock-agents-role
+  id: planton-oss-e2e-bedrock-agents-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for the Bedrock agents family
+  inlinePolicies:
+    bedrockAgentsE2E:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - bedrock:InvokeModel
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - s3:ListBucket
+            - s3:GetObject
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - s3vectors:GetIndex
+            - s3vectors:QueryVectors
+            - s3vectors:PutVectors
+            - s3vectors:GetVectors
+            - s3vectors:DeleteVectors
+          Resource: "*"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: bedrock.amazonaws.com
         Action: sts:AssumeRole
 ---
 # ECS Managed Instances infrastructure role: trusts ecs.amazonaws.com and
@@ -490,4 +570,69 @@ spec:
       - Effect: Allow
         Principal:
           Service: ecs.amazonaws.com
+        Action: sts:AssumeRole
+---
+# Bedrock AgentCore family role: trusts bedrock-agentcore.amazonaws.com and
+# carries the permission set the upstream provider's own AgentCore
+# acceptance fixtures grant -- ECR image pull (container runtimes), S3 read
+# (code bundles, browser enterprise policies), S3 write (browser session
+# recordings), and CloudWatch Logs. One role serves the runtime, gateway,
+# memory, and tools consumers; each references it by name.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-agentcore-role
+  id: planton-oss-e2e-agentcore-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for the Bedrock AgentCore family
+  inlinePolicies:
+    agentCoreE2E:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - ecr:GetAuthorizationToken
+            - ecr:BatchGetImage
+            - ecr:GetDownloadUrlForLayer
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - s3:ListBucket
+            - s3:GetObject
+            - s3:PutObject
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - bedrock:InvokeModel
+          Resource: "*"
+        # Code-based evaluators (AwsBedrockAgentCoreEvaluation) invoke a
+        # Lambda at evaluation-run time. Create of the evaluator does
+        # not invoke it; the grant is here so a later live run against
+        # this role succeeds without a second IAM change.
+        - Effect: Allow
+          Action:
+            - lambda:InvokeFunction
+          Resource: "*"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: bedrock-agentcore.amazonaws.com
         Action: sts:AssumeRole

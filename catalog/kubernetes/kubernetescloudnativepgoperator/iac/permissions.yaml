@@ -1,0 +1,137 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetescloudnativepgoperator
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.cloudnative_pg -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - serviceaccounts
+          - configmaps
+          - secrets
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Chart-rendered objects applied by helm_release.cloudnative_pg and helm_release.barman_cloud_plugin -- the operator ServiceAccount, the cnpg-webhook-service (its name is baked into the webhook certificate), the operator-config ConfigMap (config.data plus maxConcurrentReconciles), the Grafana dashboard ConfigMap (when monitoring.grafana_dashboard), and the plugin's ServiceAccount and internal gRPC Service (when barman_cloud_plugin.enabled). Secret coverage is for chart-managed certificate material where the charts render it.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The operator Deployment (replicas from spec.replicas) applied by helm_release.cloudnative_pg, and the plugin Deployment applied by helm_release.barman_cloud_plugin when barman_cloud_plugin.enabled.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart's default RBAC posture (watch.cluster_wide true) grants the operator cluster-wide rights to reconcile Cluster resources and their children (StatefulSets, Services, Secrets, ConfigMaps, PVCs, Jobs) in every namespace -- an operator chart's RBAC is among the widest in the catalog. Rendered by helm_release.cloudnative_pg.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Namespaced RBAC the charts render -- the operator's leader-election Role in its own namespace, the namespace-fenced watch posture (watch.cluster_wide false), and the plugin's namespaced RBAC when barman_cloud_plugin.enabled.
+      - api_groups:
+          - apiextensions.k8s.io
+        resources:
+          - customresourcedefinitions
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+        cluster_scoped: true
+        provenance: derived
+        notes: "The CloudNativePG CRDs (Cluster, ScheduledBackup, Backup, Pooler, Database, ...) templated by the operator chart while crds.install is true (the default), plus the plugin's CRDs (ObjectStore) with the plugin release. No delete -- the chart stamps helm.sh/resource-policy: keep on every CRD unconditionally, so Helm never deletes them on uninstall."
+      - api_groups:
+          - admissionregistration.k8s.io
+        resources:
+          - mutatingwebhookconfigurations
+          - validatingwebhookconfigurations
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The operator's admission webhooks, rendered unconditionally by helm_release.cloudnative_pg -- their fixed service name (embedded in the webhook certificate) is why one installation per cluster is an upstream constraint and the release name is pinned to cnpg.
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - podmonitors
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The operator's PodMonitor -- rendered only when spec.monitoring.pod_monitor_enabled is true, and requires the Prometheus operator CRDs on the cluster (the release fails to install without them).
+      - api_groups:
+          - cert-manager.io
+        resources:
+          - issuers
+          - certificates
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The Barman Cloud plugin chart renders its cert-manager Issuer and Certificate UNCONDITIONALLY (the plugin's operator-to-sidecar TLS) -- applied by helm_release.barman_cloud_plugin when barman_cloud_plugin.enabled, and the reason the plugin arm requires cert-manager on the cluster.

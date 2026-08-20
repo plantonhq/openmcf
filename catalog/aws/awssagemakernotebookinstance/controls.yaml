@@ -1,0 +1,90 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awssagemakernotebookinstance
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: SageMaker encrypts the notebook's ML storage volume at rest by default with an AWS-managed key -- there is no unencrypted state; kms_key_arn only changes whose key.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Unset leaves the ML storage volume on the AWS-managed key; setting kms_key_arn encrypts it with a customer-managed KMS key instead.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Jupyter interface is reached over HTTPS through presigned URLs issued by the SageMaker API, and management calls ride the SageMaker API over TLS -- no plaintext path exists.
+    - control_id: no-public-access
+      status: configurable
+      field_path: direct_internet_access
+      evidence:
+        type: spec_default
+        reference: Omitted means the AWS default "Enabled" -- the notebook gets a direct internet route through SageMaker-managed networking; "Disabled" confines all traffic to your VPC (spec validation requires subnet_id and security_group_ids alongside it, and a NAT or endpoint path for SageMaker API calls).
+      notes: The Jupyter UI itself is never directly internet-reachable -- access always rides IAM-authorized presigned URLs; this field governs the instance's own network egress path. Changing it replaces the instance.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_validation
+        reference: Security groups attach to the notebook's VPC ENI and require subnet_id (spec-validated); without VPC placement no customer-controlled ENI exists and network filtering does not apply.
+      notes: The 02-locked-down-gpu-notebook preset stays out of a VPC and hardens the instance itself (root access, IMDSv2) instead -- VPC placement is the ingress-restriction path.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Not a web-facing surface -- the notebook serves its UI through SageMaker's presigned-URL front door and no web ACL can attach to it.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Opening the notebook requires IAM authorization to mint a presigned URL (sagemaker:CreatePresignedNotebookInstanceUrl), and every management action authorizes against the notebook-instance ARN -- no non-IAM access path exists.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: role_arn is required (spec-validated) -- every AWS API call made from the notebook rides the execution role's short-lived instance credentials; the component provisions no static keys.
+      notes: root_access "Disabled" (the 02 preset) keeps users from lifting instance credentials with root tooling, and imds_minimum_version "2" hardens the credential-serving metadata path.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: imds_minimum_version
+      evidence:
+        type: spec_default
+        reference: Omitted means the AWS default "1" -- IMDSv1 and v2 are both allowed on the instance metadata service; "2" enforces the session-oriented IMDSv2 only, closing the legacy request path credentials are served through.
+      notes: The 02-locked-down-gpu-notebook preset sets "2". The Jupyter front door itself has no legacy path -- presigned IAM URLs are the only way in.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management API call (create, update, start, stop, delete, presigned-URL issuance) is recorded by CloudTrail by default -- presigned-URL events are the access trail for who opened the notebook.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The notebook streams its Jupyter and lifecycle-script logs to CloudWatch Logs automatically (the /aws/sagemaker/NotebookInstances group) -- lifecycle failures and instance-side errors surface there without opt-in.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: No managed backup exists for the ML storage volume -- it persists across stop/start but nothing snapshots it, and deleting the instance deletes the volume. The durability lever the spec offers is keeping work in Git (default_code_repository, additional_code_repositories), not backups.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A notebook instance is a single managed EC2 instance in one Availability Zone by construction -- there is no replica or failover form; it is a development workstation, not a serving tier.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: SageMaker notebook instances expose no deletion-protection flag -- DeleteNotebookInstance succeeds whenever IAM allows it (the instance must be stopped first, which is choreography, not protection).
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AWS maintains the notebook platform and applies patched platform software when the instance stops and starts; platform_identifier picks the platform line (the spec steers away from the deprecated ones toward notebook-al2-v3 or notebook-al2023-v1).
+      notes: Packages the user installs inside the notebook are their own to patch -- lifecycle_config scripts are the repeatable place to pin and refresh them.

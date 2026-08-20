@@ -1,0 +1,60 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azurecontainerappenvironment
+spec:
+  presets:
+    - preset: 01-consumption
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - apps and jobs deployed into this environment bill their own per-second vCPU/memory and request meters on the AzureContainerApp / AzureContainerAppJob components
+        - log ingestion and retention bill per GB on the linked AzureLogAnalyticsWorkspace component and follow what the workloads write
+      notes: "Zero-committed is real but zero is not free-forever: a Consumption-only environment carries no meter of its own (Microsoft's pricing page bills the Consumption plan per replica-second and per request, both on the apps), yet every workload deployed into it starts the per-use meters, and the linked Log Analytics workspace bills every GB the apps log."
+    - preset: 02-workload-profiles-vnet
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Container Apps
+          sku_meter: dedicated vCPU hours
+          pricing_unit: vCPU-hours
+          pricing_quantity: "2920"
+          quantity_basis: the dedicated D4 profile pins minimumCount 1, keeping one pre-warmed instance always running; a D4 node is 4 vCPU (Microsoft's workload-profiles documentation), so 1 x 4 x 730 hours
+          list_unit_price: "0.057077"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Container Apps' and armRegionName eq 'eastus' and meterName eq 'Dedicated vCPU Usage' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "166.66484"
+        - service_name: Azure Container Apps
+          sku_meter: Dedicated plan management
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: "one flat plan-management meter bills every hour the environment uses the Dedicated plan (Microsoft's pricing page: instances plus a base price for Dedicated plan management)"
+          list_unit_price: "0.1"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Container Apps' and armRegionName eq 'eastus' and meterName eq 'Dedicated Plan Management' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "73.0000"
+        - service_name: Azure Container Apps
+          sku_meter: dedicated memory GiB hours
+          pricing_unit: GiB-hours
+          pricing_quantity: "11680"
+          quantity_basis: "the memory half of the same instance: a D4 node is 16 GiB, so 1 x 16 x 730 hours"
+          list_unit_price: "0.004978"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Container Apps' and armRegionName eq 'eastus' and meterName eq 'Dedicated Memory Usage' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "58.14304"
+      total_list_cost: "297.80788"
+      exclusions:
+        - demand can scale the profile from the 1-instance floor to maximumCount 5 -- each added instance bills another 4 vCPU x 16 GiB hourly, entirely on load
+        - apps that stay on the built-in Consumption profile still bill their own per-second meters on the AzureContainerApp component
+        - log ingestion and retention bill per GB on the linked AzureLogAnalyticsWorkspace component; zone redundancy and mTLS carry no meters of their own
+      notes: The floor prices one D4 instance around the clock plus the plan-management base. More apps sharing the profile do not raise the bill until demand grows the instance count -- that sharing is the Dedicated plan's economy.

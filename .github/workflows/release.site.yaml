@@ -1,0 +1,78 @@
+# =============================================================================
+# Website Deploy (planton.ai -> GitHub Pages)
+# =============================================================================
+# Builds the public website from the site/ tree (Next.js static export) and
+# deploys it to this repository's GitHub Pages. The Pages custom domain
+# decides where the deployment is served; DNS never changes with a deploy.
+#
+# The build step delegates to `make -C site build` so CI and a local build
+# are the same command - install, lint, static export (including the pagefind
+# search index), and the assetPrefix copy all live in site/Makefile, not here.
+# The entitlement-keys guard inside the site build needs a sibling
+# planton-platform checkout to fully run; in this repository's CI it skips
+# that half with a loud notice by design - the authoritative run is the local
+# `make build` where both checkouts exist.
+#
+# Path-filtered: only site/ changes (or this workflow) trigger a deploy, so
+# the catalog/CLI lanes never redeploy the website.
+# =============================================================================
+
+name: release.site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - ".github/workflows/release.site.yaml"
+  workflow_dispatch:
+
+# Required permissions for actions/deploy-pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Enables Pages and provides metadata; safe to run in all builds
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      # Corepack activates the Yarn version pinned by site/package.json's
+      # packageManager field; the Makefile owns everything after that.
+      - name: Build site
+        run: |
+          corepack enable
+          make -C site build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

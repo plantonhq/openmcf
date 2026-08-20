@@ -1,0 +1,73 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpcloudcomposerenvironment
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Cloud Composer
+      sku_meter: environment fee
+      pricing_unit: hours
+      description: Flat per-hour environment fee set by environment_size and resilience_mode, accruing from creation whether or not any DAG runs -- the price of the managed control plane, database, and web server plumbing.
+    - service_name: Cloud Composer
+      sku_meter: workload vCPU
+      pricing_unit: mCPU-hours
+      description: The scheduler and web server run around the clock; their allocated CPU bills per milli-vCPU-hour for the environment's whole life. Workers at the autoscaling floor and any always-on triggerer replicas bill the same meter.
+    - service_name: Cloud Composer
+      sku_meter: workload memory
+      pricing_unit: GiB-hours
+      description: Allocated memory for the always-on Airflow components, billed per GiB-hour.
+    - service_name: Cloud Composer
+      sku_meter: workload storage
+      pricing_unit: GiB-hours
+      description: Allocated ephemeral storage for scheduler, web server, and workers, billed per GiB-hour.
+  cost_drivers:
+    - field_path: workloads_config.worker.max_count
+      sku_meter: workload vCPU
+      pricing_unit: mCPU-hours
+      impact: The usage arm -- workers autoscale between min_count and max_count with queued task load, and every scaled-up worker bills its full CPU/memory/storage allocation while it runs. max_count bounds the worst-case burn.
+    - field_path: workloads_config.worker.min_count
+      sku_meter: workload vCPU
+      pricing_unit: mCPU-hours
+      impact: The committed floor -- this many workers run around the clock regardless of load.
+    - field_path: environment_size
+      sku_meter: environment fee
+      pricing_unit: hours
+      impact: SMALL, MEDIUM, and LARGE each carry their own flat hourly fee; the size also scales the managed database and web-server infrastructure behind the scenes.
+    - field_path: resilience_mode
+      sku_meter: environment fee
+      pricing_unit: hours
+      impact: HIGH_RESILIENCE (multi-zone redundancy) bills a higher hourly environment fee than standard resilience at the same size.
+    - field_path: workloads_config.scheduler.count
+      sku_meter: workload vCPU
+      pricing_unit: mCPU-hours
+      impact: Each scheduler replica is a full always-on copy of the scheduler's CPU, memory, and storage allocation.
+    - field_path: workloads_config.scheduler.cpu
+      sku_meter: workload vCPU
+      pricing_unit: mCPU-hours
+      impact: Allocated (not consumed) CPU is what Composer bills -- doubling the scheduler's vCPUs doubles its compute line whether or not DAG parsing needs it.
+    - field_path: workloads_config.triggerer.count
+      sku_meter: workload vCPU
+      pricing_unit: mCPU-hours
+      impact: Each triggerer replica bills its CPU and memory allocation around the clock; 0 disables the triggerer and its cost.
+    - field_path: software_config.image_version
+      sku_meter: environment fee
+      impact: "Composer 2 images bill per-component compute meters plus the environment fee; Composer 3 images bill Data Compute Units instead -- the image line decides which meter family the environment lives on."
+    - field_path: recovery_config.enabled
+      sku_meter: snapshot storage
+      pricing_unit: GiB-months
+      impact: Scheduled snapshots write recurring copies of the environment state into Cloud Storage, billed at storage rates by accumulated size.
+    - field_path: data_retention_config.airflow_metadata_retention_days
+      sku_meter: database storage
+      pricing_unit: GiB-months
+      impact: Airflow metadata (task history, XComs) accumulates in the managed database billed per GiB-month; a shorter retention window caps that growth.
+  free_tier: ""
+  estimate_exclusions:
+    - worker compute above the autoscaling floor follows queued task load
+    - managed database storage grows with task history and DAG count, billed per GiB-month
+    - the DAG bucket (auto-created or referenced) bills Cloud Storage rates by usage
+    - network egress and snapshot storage follow traffic and recovery cadence
+  notes: "Composer bills allocated capacity, not consumption: an idle environment with a sized scheduler and web server pays the full always-on compute plus the environment fee. There is no stop button -- the only way to stop the meter is deleting the environment (snapshots make that a real operational pattern)."

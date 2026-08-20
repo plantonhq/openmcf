@@ -1,0 +1,68 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsrediselasticache
+spec:
+  aws:
+    statements:
+      - sid: ManageReplicationGroup
+        actions:
+          - elasticache:CreateReplicationGroup
+          - elasticache:DeleteReplicationGroup
+          - elasticache:ModifyReplicationGroup
+          - elasticache:DescribeReplicationGroups
+          - elasticache:DescribeCacheClusters
+          - elasticache:AddTagsToResource
+          - elasticache:RemoveTagsFromResource
+          - elasticache:ListTagsForResource
+        resources:
+          - arn:aws:elasticache:*:*:replicationgroup:*
+          - arn:aws:elasticache:*:*:cluster:*
+        provenance: derived
+        notes: Covers aws_elasticache_replication_group -- creation (including joining a global datastore), layout and engine modifications, tagging, and teardown; the provider also describes the member cache clusters the group manages.
+      - sid: ManageSubnetAndParameterGroups
+        actions:
+          - elasticache:CreateCacheSubnetGroup
+          - elasticache:DeleteCacheSubnetGroup
+          - elasticache:ModifyCacheSubnetGroup
+          - elasticache:DescribeCacheSubnetGroups
+          - elasticache:CreateCacheParameterGroup
+          - elasticache:DeleteCacheParameterGroup
+          - elasticache:ModifyCacheParameterGroup
+          - elasticache:DescribeCacheParameterGroups
+          - elasticache:DescribeCacheParameters
+        resources:
+          - arn:aws:elasticache:*:*:subnetgroup:*
+          - arn:aws:elasticache:*:*:parametergroup:*
+        provenance: derived
+        notes: Covers the conditional aws_elasticache_subnet_group and aws_elasticache_parameter_group satellites -- each created only when the spec provides subnets or inline parameters.
+      - sid: DescribeVpcContext
+        actions:
+          - ec2:DescribeSubnets
+          - ec2:DescribeSecurityGroups
+        resources:
+          - "*"
+        provenance: derived
+        notes: Subnet-group creation and security-group attachment validate their references. EC2 Describe APIs support no resource-level scoping, so the wildcard is the narrowest possible scope.
+      - sid: UseCustomerManagedKey
+        actions:
+          - kms:DescribeKey
+          - kms:CreateGrant
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Required only when spec.kms_key_id selects a customer-managed at-rest key -- ElastiCache creates a grant against it during group creation.
+      - sid: DeliverLogsAndNotifications
+        actions:
+          - logs:DescribeLogGroups
+          - firehose:DescribeDeliveryStream
+          - sns:GetTopicAttributes
+        resources:
+          - "*"
+        provenance: derived
+        notes: Log delivery (spec.log_delivery_configurations) and the notification topic (spec.notification_topic_arn) validate their destinations at configure time; the destination-side resource policies are owned by those components.

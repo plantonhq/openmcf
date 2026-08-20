@@ -1,0 +1,130 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_pipes_pipe:
+    mappings:
+      # Source families: the provider's *_parameters suffixes drop to the
+      # spec's service names (exact matching resumes below each mapped
+      # subtree).
+      - arg: source_parameters.sqs_queue_parameters
+        spec: spec.source_parameters.sqs
+      - arg: source_parameters.kinesis_stream_parameters
+        spec: spec.source_parameters.kinesis
+      - arg: source_parameters.dynamodb_stream_parameters
+        spec: spec.source_parameters.dynamodb
+      - arg: source_parameters.managed_streaming_kafka_parameters
+        spec: spec.source_parameters.msk
+      - arg: source_parameters.self_managed_kafka_parameters
+        spec: spec.source_parameters.self_managed_kafka
+      - arg: source_parameters.activemq_broker_parameters
+        spec: spec.source_parameters.activemq
+      - arg: source_parameters.rabbitmq_broker_parameters
+        spec: spec.source_parameters.rabbitmq
+      # The filter list drops the provider's singular block name.
+      - arg: source_parameters.filter_criteria.filter
+        spec: spec.source_parameters.filter_criteria.filters
+      # Stream DLQ wrappers flatten onto chart-wireable named references.
+      - arg: source_parameters.kinesis_stream_parameters.dead_letter_config.arn
+        spec: spec.source_parameters.kinesis.dead_letter_queue_arn
+      - arg: source_parameters.dynamodb_stream_parameters.dead_letter_config.arn
+        spec: spec.source_parameters.dynamodb.dead_letter_queue_arn
+      # MQ credentials: the one-member credentials wrappers flatten onto
+      # intention-revealing Secrets-Manager-ARN fields.
+      - arg: source_parameters.activemq_broker_parameters.credentials.basic_auth
+        spec: spec.source_parameters.activemq.basic_auth_credentials
+      - arg: source_parameters.rabbitmq_broker_parameters.credentials.basic_auth
+        spec: spec.source_parameters.rabbitmq.basic_auth_credentials
+      # Target families: same suffix drop.
+      - arg: target_parameters.sqs_queue_parameters
+        spec: spec.target_parameters.sqs
+      - arg: target_parameters.kinesis_stream_parameters
+        spec: spec.target_parameters.kinesis
+      - arg: target_parameters.lambda_function_parameters
+        spec: spec.target_parameters.lambda
+      - arg: target_parameters.step_function_state_machine_parameters
+        spec: spec.target_parameters.step_function
+      - arg: target_parameters.ecs_task_parameters
+        spec: spec.target_parameters.ecs_task
+      - arg: target_parameters.batch_job_parameters
+        spec: spec.target_parameters.batch_job
+      - arg: target_parameters.redshift_data_parameters
+        spec: spec.target_parameters.redshift_data
+      - arg: target_parameters.sagemaker_pipeline_parameters
+        spec: spec.target_parameters.sagemaker_pipeline
+      # The provider's singular block name vs the spec's honest plural.
+      - arg: target_parameters.sagemaker_pipeline_parameters.pipeline_parameter
+        spec: spec.target_parameters.sagemaker_pipeline.pipeline_parameters
+      - arg: target_parameters.eventbridge_event_bus_parameters
+        spec: spec.target_parameters.eventbridge_event_bus
+      - arg: target_parameters.cloudwatch_logs_parameters
+        spec: spec.target_parameters.cloudwatch_logs
+      - arg: target_parameters.http_parameters
+        spec: spec.target_parameters.http
+      # The ECS awsvpc wrapper flattens one level; assign_public_ip's
+      # string enum renders from the spec's bool.
+      - arg: target_parameters.ecs_task_parameters.network_configuration.aws_vpc_configuration.subnets
+        spec: spec.target_parameters.ecs_task.network_configuration.subnets
+      - arg: target_parameters.ecs_task_parameters.network_configuration.aws_vpc_configuration.security_groups
+        spec: spec.target_parameters.ecs_task.network_configuration.security_groups
+      - arg: target_parameters.ecs_task_parameters.network_configuration.aws_vpc_configuration.assign_public_ip
+        spec: spec.target_parameters.ecs_task.network_configuration.assign_public_ip
+      # ECS overrides: singular provider block names vs the spec's honest
+      # plurals.
+      - arg: target_parameters.ecs_task_parameters.overrides.container_override
+        spec: spec.target_parameters.ecs_task.overrides.container_overrides
+      - arg: target_parameters.ecs_task_parameters.overrides.container_override.environment_file
+        spec: spec.target_parameters.ecs_task.overrides.container_overrides.environment_files
+      - arg: target_parameters.ecs_task_parameters.overrides.container_override.resource_requirement
+        spec: spec.target_parameters.ecs_task.overrides.container_overrides.resource_requirements
+      - arg: target_parameters.ecs_task_parameters.overrides.inference_accelerator_override
+        spec: spec.target_parameters.ecs_task.overrides.inference_accelerator_overrides
+      - arg: target_parameters.ecs_task_parameters.overrides.ephemeral_storage.size_in_gib
+        spec: spec.target_parameters.ecs_task.overrides.ephemeral_storage_size_in_gib
+      - arg: target_parameters.ecs_task_parameters.placement_constraint
+        spec: spec.target_parameters.ecs_task.placement_constraints
+      # Batch: value-bearing wrappers flatten onto named scalars.
+      - arg: target_parameters.batch_job_parameters.array_properties.size
+        spec: spec.target_parameters.batch_job.array_size
+      - arg: target_parameters.batch_job_parameters.retry_strategy.attempts
+        spec: spec.target_parameters.batch_job.retry_attempts
+      - arg: target_parameters.batch_job_parameters.depends_on
+        spec: spec.target_parameters.batch_job.depends_on
+      - arg: target_parameters.batch_job_parameters.container_overrides.environment
+        spec: spec.target_parameters.batch_job.container_overrides.environment
+      - arg: target_parameters.batch_job_parameters.container_overrides.resource_requirement
+        spec: spec.target_parameters.batch_job.container_overrides.resource_requirements
+      # HTTP path wildcards: AWS models a one-entry list; the spec is the
+      # honest single value (both homes).
+      - arg: enrichment_parameters.http_parameters.path_parameter_values
+        spec: spec.enrichment_parameters.http_parameters.path_parameter_value
+      - arg: target_parameters.http_parameters.path_parameter_values
+        spec: spec.target_parameters.http.path_parameter_value
+      # Log destinations: the provider's *_log_destination suffixes drop.
+      - arg: log_configuration.cloudwatch_logs_log_destination
+        spec: spec.log_configuration.cloudwatch_logs
+      - arg: log_configuration.firehose_log_destination
+        spec: spec.log_configuration.firehose
+      - arg: log_configuration.s3_log_destination
+        spec: spec.log_configuration.s3
+      - arg: log_configuration.cloudwatch_logs_log_destination.log_group_arn
+        spec: spec.log_configuration.cloudwatch_logs.log_group_arn
+      - arg: log_configuration.firehose_log_destination.delivery_stream_arn
+        spec: spec.log_configuration.firehose.delivery_stream_arn
+      # The one-value list renders from the spec's bool (["ALL"]).
+      - arg: log_configuration.include_execution_data
+        spec: spec.log_configuration.include_execution_data
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name (the pipe's identity is the component's name)
+      - arg: name_prefix
+        reason: covered alternative -- the catalog names deterministically from metadata.name; prefix-generated names defeat chart wiring
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

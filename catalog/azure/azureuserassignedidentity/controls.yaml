@@ -1,0 +1,66 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureuserassignedidentity
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A managed identity is a directory object operated by Azure; it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The identity carries no traffic of its own; token issuance flows through Azure AD's TLS-only endpoints, which is platform posture, not a component choice.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The identity has no network endpoint of its own -- nothing exists to reach from the internet.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: The identity is deliberately just the identity -- what it may do is granted through AzureRoleAssignment resources referencing its principal_id output, and who may act as it is declared through AzureFederatedIdentityCredential resources, both separate composable kinds with their own postures. The identity itself exposes no access-control toggle.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The resource IS the keyless platform identity this control asks for -- an Azure AD identity workloads authenticate as through short-lived Azure-issued tokens, with no client secret or certificate to store, rotate, or leak. Its independent lifecycle lets one identity back many workloads (AKS kubelets, Function Apps, VMs) while grants outlive any single consumer.
+      notes: The isolation_scope field optionally restricts token issuance to the identity's own region (REGIONAL) -- a data-residency refinement some regulated environments require.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A managed identity has no password, client secret, or uploadable certificate -- Azure mints and rotates its credentials internally, so no static-credential or password-style authentication path exists to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Lifecycle changes to the identity land in the Azure Activity Log and its sign-in activity in Azure AD's sign-in logs, both platform-level posture; no logging toggle exists on this resource.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The identity emits no metrics or runtime signals of its own.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless identity configuration -- nothing to back up; the manifest recreates the identity declaratively. Note a recreated identity mints a NEW principal and client ID, so composed environments re-resolve references while externally wired consumers must re-grant.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The identity is an ARM object with no customer-visible zonal runtime; token issuance is handled by Microsoft's Azure AD infrastructure, and by default the identity is usable by resources in any region (isolation_scope narrows that by choice, not by failure mode).
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a managed identity (Azure resource locks are subscription-side governance outside the manifest); deleting one invalidates its grants and trust rules, and the manifest recreates it declaratively.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The managed-identity service and its token infrastructure are Microsoft-operated; no customer-visible patch surface exists.

@@ -1,0 +1,45 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. All three presets are genuinely zero-committed: none sets
+# provisioned_throughput_in_mibps (the spec's only always-billing field),
+# bursting throughput is included with storage, elastic throughput scales
+# to zero when idle, and an empty file system bills nothing -- stated in
+# exclusions, never padded into fabricated dollars. Schema:
+# finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awselasticfilesystem
+spec:
+  presets:
+    - preset: 01-general-purpose-regional
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - Standard storage bills per GB-month as files are written; new accounts get 5 GB/month of Regional Standard storage free for the first year
+        - bursting throughput is included with the storage footprint for free -- no separate throughput meter exists on this preset
+        - backup_enabled starts AWS Backup's automatic daily backups the moment data exists; backup storage bills per GB-month and restores per GB on AWS Backup's meters, in proportion to the file system's contents
+        - mount targets are free, but a client mounting through the other AZ's target bills EC2's cross-AZ transfer rate in each direction
+      notes: Zero committed cost -- an empty Regional file system under bursting mode starts no meter; storage, backup, and transfer all follow the first written file.
+    - preset: 02-one-zone-dev
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - pinning availability_zone_name (us-east-1a) switches storage to the cheaper One Zone GB-month rate -- single-AZ redundancy at a discount, and the EFS free tier does NOT apply to One Zone file systems
+        - bursting throughput is included with storage for free
+        - the single mount target sits in the pinned AZ; clients mounting from another AZ bill cross-AZ data transfer per GB in each direction
+      notes: Zero committed cost -- One Zone is a rate and redundancy choice, not a commitment; the storage meter starts with the first written byte.
+    - preset: 03-production-elastic-tiered
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - elastic throughput bills every GB read and written at per-GB rates that scale to zero when idle -- unlike provisioned mode, nothing bills without workload
+        - storage bills per GB-month by class as the lifecycle policy moves files -- Standard, then IA after 30 days untouched, then Archive after 90; tiering transitions and every cold-class access bill per GB, and AFTER_1_ACCESS warms read files back to Standard for one more tiering charge
+        - replication to us-west-2 creates a second file system billing its own storage and access meters, and sync traffic bills inter-region data transfer out of the source region per GB
+        - backup storage and restore volume bill through AWS Backup in proportion to the file system's contents
+      notes: Zero committed cost -- elastic mode and the tiering trio are per-GB rate machinery that all waits for data; the replica and backups likewise bill nothing until there is something to copy.

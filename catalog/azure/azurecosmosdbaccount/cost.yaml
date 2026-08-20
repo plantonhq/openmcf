@@ -1,0 +1,77 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. This component deliberately ships no
+# estimate model: the account provisions no throughput and stores no data
+# itself -- RU/s and storage are declared on the child database and
+# container components (AzureCosmosdbSqlDatabase, AzureCosmosdbSqlContainer,
+# AzureCosmosdbMongoDatabase, AzureCosmosdbMongoCollection), so every
+# quantity the bill needs lives on other manifests. What THIS manifest holds
+# are the multipliers and mode switches (regions, multi-region writes,
+# serverless, free tier) that reshape the children's bill -- a dollar figure
+# here would be a guess wearing a dollar sign.
+# Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurecosmosdbaccount
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Azure Cosmos DB
+      sku_meter: provisioned throughput RU/s
+      pricing_unit: RU/s-hours
+      description: "Every RU/s provisioned on the account's child databases and containers bills by the hour from the moment it exists, in EVERY region the account replicates to -- the committed core of the bill, whose quantities live entirely on the child components. The account object itself carries no meter: an account with no databases bills nothing."
+    - service_name: Azure Cosmos DB
+      sku_meter: consumed storage
+      pricing_unit: GB-months
+      description: "Data and indexes the child containers store bill per GB-month, again in every replicated region. Like throughput, the quantity is invisible in this manifest -- it accrues on the data the child components hold."
+  cost_drivers:
+    - field_path: geo_locations
+      sku_meter: provisioned throughput RU/s
+      pricing_unit: RU/s-hours
+      impact: "The bill's biggest multiplier: with single-region writes, each additional region bills the children's provisioned throughput AND consumed storage again in full -- N regions is N times the throughput and storage bill, plus inter-region replication egress at Azure bandwidth rates. Microsoft's pricing page is explicit that throughput, storage, and dedicated gateway bill across every region associated with the account."
+    - field_path: multiple_write_locations_enabled
+      sku_meter: multi-region write throughput RU/s
+      pricing_unit: RU/s-hours
+      impact: "Switches every region's throughput to the multi-region-write rate (Microsoft now brands provisioned multi-write accounts the Business Critical service tier) -- a higher per-100-RU/s price applied to all N regions, buying active-active writes everywhere. Single-write accounts pay the base rate per region instead."
+    - field_path: capabilities
+      sku_meter: serverless request units
+      pricing_unit: million RUs
+      impact: "ENABLE_SERVERLESS replaces the children's provisioned RU/s meter entirely: databases and containers must not declare throughput, and the account instead bills per million request units actually consumed, plus consumed storage -- zero traffic is zero throughput cost. Serverless accounts with an availability zone bill consumed RUs at a 1.25 multiplier, and the free tier does not apply to serverless."
+    - field_path: capacity.total_throughput_limit
+      sku_meter: provisioned throughput RU/s
+      pricing_unit: RU/s-hours
+      impact: "The account-wide cap on total provisioned RU/s across all child databases and containers -- the spend guardrail. -1 removes the ceiling; any positive value bounds the worst-case hourly throughput bill regardless of what the children ask for."
+    - field_path: free_tier_enabled
+      sku_meter: provisioned throughput RU/s
+      pricing_unit: RU/s-hours
+      impact: "Discounts the account's first 1000 RU/s and 25 GB of storage to zero for the account's lifetime, applied at the account level. Azure allows exactly one free-tier account per subscription, the choice is fixed at creation, and it does not apply to serverless accounts."
+    - field_path: analytical_storage_enabled
+      sku_meter: analytical storage
+      pricing_unit: GB-months
+      impact: "Turns on the column-oriented analytical store the children can opt into: analytical data and indexes bill per GB-month in every region, plus analytical read and write operations billed per 10000 operations -- meters that do not exist while this is false. Transactional pricing is unaffected."
+    - field_path: backup.type
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: "PERIODIC (Azure's default) keeps two backup copies free and bills each copy beyond two per GB-month. CONTINUOUS bills backup storage per GB-month across all replicated regions -- free at the 7-day tier, paid at the 30-day tier -- and a point-in-time restore bills separately per GB restored to the write region."
+    - field_path: backup.tier
+      sku_meter: continuous backup storage
+      pricing_unit: GB-months
+      impact: "The continuous-backup price switch: CONTINUOUS_7_DAYS is free of backup-storage charges; CONTINUOUS_30_DAYS (Azure's default when unset) bills stored GB per month multiplied by the region count."
+    - field_path: backup.retention_in_hours
+      sku_meter: periodic backup storage
+      pricing_unit: GB-months
+      impact: "Longer periodic retention with a fixed interval means more retained copies -- every copy beyond the two free ones bills per GB-month. The copy count is retention divided by interval, so this dial and backup.interval_in_minutes together set how far past the free pair the account goes."
+    - field_path: geo_locations.zone_redundant
+      sku_meter: provisioned throughput RU/s
+      pricing_unit: RU/s-hours
+      impact: "Zone redundancy carries no separate charge on autoscale-provisioned throughput; on single-region serverless accounts it multiplies consumed RUs by 1.25. Standard provisioned single-write accounts historically billed a zone-redundancy uplift -- Microsoft's current pricing page states the multipliers only for autoscale (none) and serverless (1.25)."
+  free_tier: "One account per Azure subscription can enable free tier at creation: the first 1000 RU/s of provisioned throughput and 25 GB of storage are free for the account's lifetime, applied at the account level across regions. Not applicable to serverless accounts (Microsoft's Cosmos DB pricing page, retrieved 2026-08-18)."
+  estimate_exclusions:
+    - "the RU/s quantities and stored GB that anchor the bill are declared on the child components -- AzureCosmosdbSqlDatabase, AzureCosmosdbSqlContainer, AzureCosmosdbMongoDatabase, and AzureCosmosdbMongoCollection -- which is why no estimate document exists for this component"
+    - "serverless consumption (request units actually burned) is pure runtime behavior no manifest can predict"
+    - "inter-region replication traffic and internet egress bill at Azure bandwidth rates (first 5 GB per month free, then per-GB by source geography), driven by write volume and reader placement"
+    - "a point-in-time restore from continuous backup bills per GB restored, only when invoked"
+    - "the dedicated gateway (per-instance-hour, provisioned in every region) is enabled outside this spec and is not part of this component"
+    - "customer-managed-key operations bill on the referenced Key Vault, and the unwrapping identity is its own AzureUserAssignedIdentity component"
+  notes: "This account is the multiplier table for money that accrues elsewhere: real spend rides the child database and container components' provisioned RU/s (billed hourly, per region) and their consumed storage (billed per GB-month, per region). The two structural levers here are region count -- with single-region writes, N regions bill the children's throughput and storage N times over -- and the write mode, where multiple_write_locations_enabled reprices every region at the multi-region-write (Business Critical) rate. ENABLE_SERVERLESS rewrites the children's billing mode wholesale from provisioned RU/s-hours to consumed RUs per million. Autoscale-provisioned children bill their peak hourly RU/s at a 1.5 multiplier over the standard rate (billed between 10 and 100 percent of their ceiling). All claims read from Microsoft's Azure Cosmos DB pricing page on 2026-08-18; the page publishes rates per region -- none are echoed here because every quantity lives on other manifests."

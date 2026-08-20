@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureprivatednszonevirtualnetworklink
+spec:
+  billing_model: free
+  free_tier: The link is free -- an attachment record that makes a private DNS zone resolvable from one virtual network. Azure meters neither the link, nor VM auto-registration, nor the resolution policy choice.
+  notes: "No field of this spec buys anything: registration_enabled and resolution_policy shape resolution behavior, not billing. The real spend lives in the private zone the link is written on -- AzurePrivateDnsZone bills a fixed monthly fee per zone plus a per-million-queries rate, and the linked network's lookups count toward that zone's query volume."

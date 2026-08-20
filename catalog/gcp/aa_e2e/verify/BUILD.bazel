@@ -69,6 +69,7 @@ go_library(
         "monitoring_notification_channel.go",
         "monitoring_slo.go",
         "monitoring_uptime_check.go",
+        "planton_runner.go",
         "project.go",
         "project_iam_member.go",
         "pub_sub_schema.go",

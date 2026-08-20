@@ -19,7 +19,7 @@ oci://ghcr.io/plantonhq/charts/<chart>
 |---|---|
 | [`planton`](planton) | **Start here.** The batteries-included install: one `helm install` deploys the operator AND a `PlantonPlatform` resource with proven defaults. A few minutes later the full platform is running — console, API, sign-in, an in-cluster deploy runner — reachable over a single `kubectl port-forward` command the install prints for you. |
 | [`planton-operator`](planton-operator) | You want the operator alone and will manage the `PlantonPlatform` resource yourself (GitOps, custom manifests). The `planton` chart composes this one — same operator either way. |
-| [`planton-runner`](planton-runner) | Deploy a standalone Planton Runner into a remote cluster, connected back to a Planton control plane with a single credentials file. Normally driven by `planton runner deploy` rather than installed by hand. |
+| [`planton-runner`](planton-runner) | Deploy a standalone Planton Runner into a remote cluster with a runner token — the runner enrolls itself with the control plane on first boot and receives its own identity. Normally driven by `planton runner deploy` rather than installed by hand. |
 
 ## The one-command install
 

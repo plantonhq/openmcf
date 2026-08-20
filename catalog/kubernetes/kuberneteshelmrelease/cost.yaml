@@ -1,0 +1,28 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kuberneteshelmrelease
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: chart
+      sku_meter: cluster CPU and memory reservations
+      impact: WHICH product gets installed -- the chart decides what workloads, volumes, and cloud-touching Services exist at all. Everything downstream of this field is the chart's economics, not this spec's.
+    - field_path: values_yaml
+      sku_meter: cluster CPU and memory reservations
+      impact: The chart's values file -- replica counts, resource requests, persistence sizes, and autoscaling all typically live in here, in the CHART's vocabulary. An opaque YAML document to this catalog.
+    - field_path: set
+      sku_meter: cluster CPU and memory reservations
+      impact: Targeted --set overrides layered over values_yaml (then set_string, then set_sensitive) -- the same opaque, chart-defined cost surface, applied with higher precedence.
+    - field_path: version
+      sku_meter: cluster CPU and memory reservations
+      impact: The exact chart version (required -- unpinned installs are not reproducible). Different versions of the same chart can render materially different default footprints.
+  estimate_exclusions:
+    - "THE PASS-THROUGH REALITY: the reservation rides the packaged chart's content -- what workloads, replicas, resources, volumes, and cloud-billable Services the release renders is decided by the chart and its values, and is UNKNOWABLE from this spec"
+    - "values_yaml and the set/set_string/set_sensitive layers are opaque chart-values documents this catalog does not parse -- even resource requests declared inside them (as the 01-https-repo-chart preset's podinfo values do) are invisible to the catalog's derivation grammar"
+    - "the typed fields govern Helm MECHANICS only -- atomicity, waits, history depth, CRD handling -- none of them declares capacity"
+    - the price of whatever the release reserves is the target cluster's node and storage-class economics, which this catalog cannot know
+  notes: "This is the catalog's sole intentional passthrough -- a generic 'helm install' for charts the catalog has no first-class component for. A typed catalog component always wins where one exists: it validates configuration before deploy, exports composable outputs, and carries a real cost profile -- this component, by design, can promise none of that. Its own direct footprint is negligible (a Helm release record Secret per revision, bounded by max_history)."

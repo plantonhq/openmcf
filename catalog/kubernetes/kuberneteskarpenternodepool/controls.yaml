@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kuberneteskarpenternodepool
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The pool is a declaration and stores nothing. The launched nodes' disk encryption is declared on the referenced KubernetesKarpenterEc2NodeClass (its block device mappings), not here.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for node volumes ride the referenced node class (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The pool serves no traffic -- it is a cluster-scoped configuration object the Karpenter controller consumes over the Kubernetes API's TLS.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Whether launched nodes get public addresses is the referenced node class's subnet and network-interface declaration, not this pool's.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Node security groups ride the referenced node class; the pool declares scheduling constraints, taints, and lifetimes only.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The pool serves no HTTP traffic -- web application firewalls do not apply.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The rendered NodePool is a cluster-scoped karpenter.sh/v1 object -- creating or changing fleet shapes is governed by the target cluster's Kubernetes RBAC on karpenter.sh resources. The spec mirrors the CRD's own guardrails, refusing restricted label domains and controller-owned keys (karpenter.sh/nodepool, kubernetes.io/hostname) at validate time.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The pool holds no credential -- launched nodes assume the IAM identity declared on the referenced node class (instance profile), and the provisioning controller's cloud identity rides KubernetesKarpenter (IRSA).
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The pool exposes no authentication path of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the pool are Kubernetes API operations on a cluster-scoped object, captured by the target cluster's audit policy; node provisioning decisions are logged by the Karpenter controller.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The pool has no metrics seam -- Karpenter exposes per-pool provisioning and disruption metrics from the CONTROLLER, whose monitoring posture rides KubernetesKarpenter.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Nodes launched from the pool are disposable by design -- recycled by expire_after, consolidated when under-used, replaced on interruption. The pool declaration itself is a Kubernetes object that backs up with the cluster.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: template.requirements
+      evidence:
+        type: spec_default
+        reference: Zone spread is declared here -- a topology.kubernetes.io/zone requirement constrains (or deliberately spans) availability zones within the node class's subnets, and min_values forces launched fleets to span distinct values (the 02-spot-diversified preset requires at least 4 instance families so single-pool spot reclaims cannot drain the fleet).
+      notes: An unconstrained pool may launch into any zone the node class's subnets cover -- breadth is the availability posture; constraint is the placement one.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists on the CRD. Deleting the pool drains and terminates every node launched from it -- workloads reschedule onto other pools or go pending. template.termination_grace_period is the drain ceiling (it bypasses blocking PodDisruptionBudgets once reached); disruption budgets bound VOLUNTARY churn but do not guard deletion.
+    - control_id: managed-patching
+      status: configurable
+      field_path: template.expire_after
+      evidence:
+        type: spec_default
+        reference: Node recycling IS the patching mechanism -- every node is replaced no later than expire_after (CRD default 720h/30 days), landing on the node class's current AMI; Karpenter's drift detection replaces nodes sooner when the template changes. The 03-gpu-dedicated preset recycles expensive GPU nodes at 168h.
+      notes: disruption.budgets shape WHEN recycling may happen (the 02 preset freezes voluntary disruption during business hours).

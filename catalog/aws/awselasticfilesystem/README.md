@@ -28,7 +28,6 @@ This component bundles the file system with its mount targets (one per subnet/AZ
 
 ## Prerequisites
 
-- **AWS account** with permissions to create EFS file systems and mount targets.
 - **VPC with subnets** — one subnet per Availability Zone where you need mount targets. For regional EFS, use one private subnet per AZ.
 - **Security groups** — must allow inbound NFS traffic (TCP port 2049) from the clients that will mount the file system. When omitted, AWS attaches the VPC's default security group.
 

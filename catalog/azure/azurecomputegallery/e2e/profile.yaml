@@ -3,19 +3,22 @@ kind: ComponentE2EProfile
 metadata:
   name: azurecomputegallery
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, offline tofu plan green); live dual-engine
-  # proof has not yet run. ONE scenario runs: `minimal` (a private
-  # gallery -- free at rest; the cloud name carries the underscore
-  # run-id token because gallery names forbid dashes). The
-  # Community-sharing arm is offline-proven with reason: it publishes
-  # a PUBLIC community gallery under a generated name, which a test
-  # lane cannot honestly stand up and tear down as a private artifact;
-  # the canonical manifest exercises the whole sharing tree through
-  # the offline plan and the CELs carry the provider's expand-time
+  # PROVEN live on both engines: the `minimal` scenario (a private
+  # gallery on the fixture resource group) through the full lifecycle
+  # (deploy / ARM verify / destroy / verify-absent) with the apply-
+  # idempotency re-plan clean and the terraform lane's blind import
+  # round-trip zero-change (~3-4 min/engine; create <1 min, IMPORT-RT
+  # ~12s). The underscore run-id token (gallery names forbid dashes)
+  # expanded into the ARM name on BOTH engines. The Community-sharing
+  # arm stays offline-proven with reason: it publishes a PUBLIC
+  # community gallery under a generated name, which a test lane cannot
+  # honestly stand up and tear down as a private artifact; the
+  # canonical manifest exercises the whole sharing tree through the
+  # offline plan and the CELs carry the provider's expand-time
   # contract. The kind also publishes e2e/prerequisite.yaml (a
   # stable-named fixture gallery) for the image kind's chain.
+  # Galleries are free at rest -- measured lane spend ~= $0.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

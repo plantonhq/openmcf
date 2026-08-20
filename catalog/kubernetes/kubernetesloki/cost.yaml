@@ -1,0 +1,37 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesloki
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: monolithic
+      sku_meter: cluster CPU and memory reservations
+      impact: Monolithic mode runs every Loki target in one StatefulSet -- each replica carries the declared resources (empty means NO requests or limits, the chart default) and provisions its own persistent volume (disk_size, 10Gi when unset). One replica is the filesystem-storage ceiling; 2-3 with object storage give HA ingest and query.
+    - field_path: simple_scalable
+      sku_meter: cluster CPU and memory reservations
+      impact: Simple-scalable mode runs write/read/backend tiers that scale independently -- each undeclared tier count defaults to 3, every tier pod carries the shared resources block, and every write and backend replica provisions its own volume (disk_size, 10Gi when unset; chunks live in the object store, so the volumes hold only the WAL and compaction workspace).
+    - field_path: caching.chunks_cache_memory_mb
+      sku_meter: cluster memory reservations
+      impact: The chunks-cache memcached requests container memory at 1.2x this value. UNSET, the chart allocates its production-scale 8192MB -- a 9830Mi request that never schedules on a small node, rolling the whole atomic install back. The biggest memory consumer after Loki itself; size it down explicitly on any small cluster.
+    - field_path: storage
+      sku_meter: object storage
+      pricing_unit: GB-months
+      impact: An s3/gcs/azure backend moves chunks and indexes into object storage -- stored bytes and request counts are billed by that store (or reserved from an in-cluster KubernetesSeaweedFs), not by this cluster's capacity. Filesystem storage keeps everything on the monolithic replica's volume instead.
+    - field_path: retention_period
+      sku_meter: object storage
+      pricing_unit: GB-months
+      impact: How long logs live before the compactor deletes them. Empty keeps everything forever (Loki's own default) -- object-storage bytes grow unbounded with log volume; production installs should set this.
+    - field_path: canary_enabled
+      sku_meter: cluster CPU and memory reservations
+      impact: The canary is a DaemonSet, on by default -- one pod per node continuously writing and reading test log lines, so its total consumption multiplies with the cluster's node count.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - object-storage backends are billed by the external store (or an in-cluster KubernetesSeaweedFs with its own footprint), growing with log volume across the retention window
+    - the memcached caches are sized by the caching memory knobs, not by a typed resources block -- unset, the chunks cache alone renders a 9830Mi memory request
+    - the canary DaemonSet runs one pod per node -- its total consumption multiplies with the cluster's node count, which no manifest can know
+    - the helm_values overlay merges last over the typed rendering and can override modeled values, including resources and replica counts
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: per mode, replicas x (requests + volumes). Know the chart's grain: the Loki pods themselves carry NO default requests or limits, but the chunks cache defaults to production scale (9830Mi requested) and the canary rides every node -- an all-defaults manifest reserves far more for its caches than for Loki."

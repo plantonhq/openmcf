@@ -1,0 +1,55 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsguardduty
+spec:
+  # The detector id is the composition key for every satellite. The
+  # three feature resources (detector features, organization features,
+  # member features) have NO importer upstream -- they are patches onto
+  # the detector, re-assertable by a plain apply after an import.
+  values:
+    - name: detector_id
+      derivations:
+        - from_stack_output: detector_id
+      where_to_find: >-
+        GuardDuty console -> Settings (Detector ID), or
+        `aws guardduty list-detectors`.
+    - name: filter_name
+      derivations:
+        # Filter identity IS its name -- the spec entry's name.
+        - from_address_key: true
+      where_to_find: >-
+        Each spec.filters entry's name (`aws guardduty list-filters
+        --detector-id <id>`).
+    - name: ip_set_id
+      derivations:
+        - from_stack_output_keyed_by_address: ip_set_ids
+      where_to_find: >-
+        `aws guardduty list-ip-sets --detector-id <id>`, matched to
+        each spec.ip_sets entry by name.
+    - name: threat_intel_set_id
+      derivations:
+        - from_stack_output_keyed_by_address: threat_intel_set_ids
+      where_to_find: >-
+        `aws guardduty list-threat-intel-sets --detector-id <id>`,
+        matched to each spec.threat_intel_sets entry by name.
+    - name: destination_id
+      derivations:
+        - from_stack_output: publishing_destination_id
+      where_to_find: >-
+        `aws guardduty list-publishing-destinations --detector-id
+        <id>` (DestinationId).
+    - name: member_account_id
+      derivations:
+        # Member identity IS the account id -- the spec entry's key.
+        - from_address_key: true
+      where_to_find: >-
+        Each spec.members entry's account_id (`aws guardduty
+        list-members --detector-id <id>`).
+    - name: admin_account_id
+      derivations:
+        - from_spec_field: organization.admin_account_id
+      where_to_find: >-
+        The delegated administrator's 12-digit account id
+        (spec.organization.admin_account_id, or `aws guardduty
+        list-organization-admin-accounts`).

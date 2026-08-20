@@ -1,0 +1,61 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureresourcegroup
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A resource group is organizational metadata held by Azure Resource Manager; it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The group carries no traffic; all interaction with it flows through ARM's TLS-only management API, which is platform posture, not a component choice.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A container has no network endpoint -- nothing exists to reach from the internet; exposure belongs to the resources deployed into it.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: The group is the STANDARD SCOPE at which Azure RBAC is granted -- permissions assigned here inherit to everything inside, which is precisely why teams get a resource group rather than a subscription. But the scoping is a property of ARM's authorization model, and the grants themselves are role assignments (their own kind); this spec carries no access-control field.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The group runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Group creation, tag changes, and deletion land in the Azure Activity Log automatically as subscription-level posture; no logging toggle exists on this resource.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A container emits no metrics or runtime signals; it is, however, the standard aggregation dimension the contained resources' costs and metrics are reported against.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless organizational configuration -- nothing to back up; the manifest recreates the group declaratively. Recreating the group does NOT recreate its former contents -- those are the contained resources' own manifests.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The group has no runtime footprint with a zonal failure mode; its metadata store is Microsoft-replicated platform infrastructure, and its region does not constrain where contained resources run.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag -- and the stakes are the highest of any config object, because deleting a group deletes EVERYTHING inside it. Azure resource locks (CanNotDelete on the group) are the standard mitigation, but they are subscription-side governance outside this manifest.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure Resource Manager -- the engine that stores groups and evaluates every management call against them -- is Microsoft-operated platform infrastructure; no customer-visible patch surface exists.

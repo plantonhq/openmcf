@@ -1,0 +1,3 @@
+name: kubernetesplantonrunner-pulumi-project
+description: pulumi project for kubernetes-planton-runner cloud resource
+runtime: go

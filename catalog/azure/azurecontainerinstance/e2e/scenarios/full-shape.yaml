@@ -21,6 +21,17 @@ metadata:
   annotations:
     planton.dev/e2e: "true"
     planton.dev/e2e-prerequisites: "AzureStorageShare, AzureLogAnalyticsWorkspace"
+    # Write-only ForceNew secrets (the secure env var) make a
+    # zero-change round-trip structurally impossible: the blind import
+    # lacks the secret, the config supplies it, and the only plan is a
+    # replace -- which the oracle rightly refuses and ignore_changes
+    # must never paper over (rotating the secret SHOULD replace the
+    # group). The recipes prove on the secret-free minimal and
+    # private-subnet scenarios.
+    planton.dev/e2e-import-roundtrip-skip: >-
+      write-only ForceNew secrets (secure env vars) plan a one-time
+      replace after any import; recipes are proven by the secret-free
+      scenarios
   tags:
     - planton-e2e
 spec:
@@ -90,4 +101,15 @@ spec:
     workspaceKey:
       valueFrom:
         name: planton-oss-e2e-azure-fixture-law
-    logType: ContainerInstanceLogs
+    # ContainerInsights, never ContainerInstanceLogs: the provider
+    # always attaches a metadata object alongside a log type and ARM
+    # rejects metadata for ContainerInstanceLogs
+    # (LogAnalyticsMetadataNotAllowed, live-proven) -- a CEL now blocks
+    # that value. Insights allows metadata, so the entry below also
+    # proves the metadata wire path. Keys are a CLOSED ARM vocabulary
+    # (pod-uuid / cluster-resource-id / node-name -- live-proven,
+    # InvalidLogAnalyticsMetadataKeys); values are free.
+    logType: ContainerInsights
+    metadata:
+      node-name: planton-e2e
+

@@ -1,0 +1,51 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesmysql
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.namespace (Pulumi kubernetescorev1.NewNamespace) -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_secret_v1.user_password_secret and kubernetes_secret_v1.backup_credentials_secret (Pulumi kubernetescorev1.NewSecret) -- declared user passwords and backup-storage access keys, rendered only when spec.users declares passwords or spec.backup declares S3/Azure credentials. All are namespace-scoped to the database's namespace.
+      - api_groups:
+          - pxc.percona.com
+        resources:
+          - perconaxtradbclusters
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubectl_manifest.mysql (Pulumi apiextensions.NewCustomResource) applying the pxc.percona.com/v1 PerconaXtraDBCluster custom resource via server-side apply -- rendered unconditionally.

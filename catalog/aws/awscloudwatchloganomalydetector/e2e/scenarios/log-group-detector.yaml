@@ -1,0 +1,29 @@
+# A detector trained on the log-group fixture, live: enabled, on a
+# five-minute cadence, with the 7-day visibility boundary value.
+# Anomaly detection bills per GB analyzed - the fixture group carries
+# zero traffic, so the lane is ~$0.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchLogAnomalyDetector
+metadata:
+  name: planton-oss-e2e-awscwlad-min
+  id: planton-oss-e2e-awscwlad-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscloudwatchloganomalydetector
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  detectorName: planton-oss-e2e-awscwlad-min
+  logGroupArns:
+    - valueFrom:
+        kind: AwsCloudwatchLogGroup
+        name: planton-oss-e2e-awscwlad-lg
+        fieldPath: status.outputs.log_group_arn
+  enabled: true
+  evaluationFrequency: FIVE_MIN
+  anomalyVisibilityTime: 7

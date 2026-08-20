@@ -218,6 +218,8 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | AwsBatchJobDefinition | `spec.container.volumes[].efs.accessPointId` | `status.outputs.access_point_id` |
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].runtimeEnvironment.filesystems[].efsAccessPointArn` | `status.outputs.access_point_arn` |
+| AwsBedrockAgentCoreRuntime | `spec.filesystems[].efsAccessPointArn` | `status.outputs.access_point_arn` |
 | AwsEcsTaskDefinition | `spec.volumes[].efs.accessPointId` | `status.outputs.access_point_id` |
 | AwsLambda | `spec.fileSystemConfig.accessPointArn` | `status.outputs.access_point_arn` |
 

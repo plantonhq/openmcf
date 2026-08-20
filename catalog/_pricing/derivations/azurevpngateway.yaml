@@ -1,0 +1,38 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureVpnGateway manifest's spec values into metered quantities and
+# price choices -- the site-to-site scale-unit meter, multiplied by the
+# manifest's scale units, every hour of the month. Branch connection
+# units deliberately ride the AzureVpnGatewayConnection component (one
+# unit per connected branch), and the hub's deployment and data
+# processing meters ride the AzureVirtualHub -- Virtual WAN's own split.
+# The estimate generator replays the catalog presets through these
+# rules; a server-side estimator evaluates the same rules against live
+# manifests. Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azurevpngateway
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  lines:
+    - sku_meter: VPN S2S scale units
+      quantity:
+        - field_value:
+            field_path: scale_unit
+            default_when_unset: "1"
+        - hours_in_month: true
+      price_slug: vwan-vpn-s2s-scale-unit-eastus
+      basis: the gateway bills its scale units (500 Mbps each across the managed active-active pair; unset applies the provider's default of 1) x 730 hours at the flat per-unit rate -- unlike Virtual WAN's ExpressRoute gateway, the S2S rate has no tier break
+  exclusions:
+    - text: each connected branch bills a VPN S2S connection unit per hour on its own AzureVpnGatewayConnection component
+    - text: the hub's deployment hours and per-GB data processing bill on the AzureVirtualHub component
+    - text: data leaving Azure through the tunnels bills at standard data-transfer rates and follows traffic
+  notes:
+    - applies_when:
+        - field_path: nat_rules
+          op: is_set
+      text: NAT rules are free configuration -- the Virtual WAN price list carries no NAT meter, so the composed rules add nothing to the bill.

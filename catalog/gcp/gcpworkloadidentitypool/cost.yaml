@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpworkloadidentitypool
+spec:
+  billing_model: free
+  free_tier: "Google's IAM billing-questions page states Identity and Access Management is offered at no additional charge for all Google Cloud customers, and the IAM product page lists Workforce and Workload Identity Federation among what is included with no additional cost per user or identity. The pool -- the trust boundary external identities federate into -- costs nothing to create or hold, and the token exchanges it authorizes are free at any volume. For TRUST_DOMAIN pools, Google's managed-workload-identities documentation calls the default shared CA a fully managed, no-cost solution."
+  notes: "One field can route real spend: inline_certificate_issuance_config.ca_pools points mTLS certificate issuance at your OWN Certificate Authority Service pools, and CA Service bills independently -- $20 per CA per month (DevOps SKU) or $200 (Enterprise), plus tiered one-time certificate fees starting at $0.3 (DevOps) or $0.5 (Enterprise) per certificate for the first 50,000, per the CA Service pricing page. Those CA pools are sibling resources; the meter runs there, but this field is what points workload-certificate volume at it -- and short lifetime values multiply rotation volume. use_default_shared_ca is the no-cost alternative. Everything else is free trust configuration; whatever the federated identities then do in GCP bills on the services they touch under the roles granted to the pool's principals."

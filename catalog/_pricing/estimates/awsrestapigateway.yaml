@@ -1,0 +1,34 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsrestapigateway
+spec:
+  presets:
+    - preset: 01-mock-health
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - every matched request bills at the REST API per-million rate (about triple the HTTP API rate) -- MOCK integrations answer from mapping templates with no backend, but the request meter runs the same
+        - the first 1 million REST calls each month are free for a new account's first year (accounts created after July 15, 2025 receive a credit-based free tier instead)
+        - data transfer out bills per GB on responses
+      notes: Zero committed cost -- a mock health endpoint is the cheapest possible REST API, but not a free one; each health check probe is a billed request once traffic arrives.
+    - preset: 02-lambda-proxy
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - requests bill per million at the tiered REST API rate; api_key_required rejects unkeyed calls but rejected requests still traverse the gateway
+        - the proxied function's invocations and duration bill on its AwsLambda component
+        - no cache cluster, detailed metrics, execution logging, or X-Ray tracing is enabled -- none of those meters exists on this preset
+        - data transfer out bills per GB
+      notes: Zero committed cost -- one keyed route to one function, and the stage cache (the spec's only always-on meter) stays off; nothing bills until orders arrive.

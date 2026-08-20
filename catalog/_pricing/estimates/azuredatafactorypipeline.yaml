@@ -1,0 +1,26 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azuredatafactorypipeline
+spec:
+  presets:
+    - preset: 01-scheduled-copy
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - every triggered execution bills orchestration activity runs per 1,000 (one per activity per run, trigger executions and debug runs included) at the executing integration runtime class's rate, on the factory
+        - the copy activity this preset is built to carry bills data movement per DIU-hour (Azure and managed-VNet runtimes) or per hour (self-hosted) while it moves data
+        - pipeline activities (Lookup, Get Metadata, Delete) bill execution per hour, external activities (Databricks, stored procedure, HDInsight) bill managed-orchestration per hour, and Execute Data Flow activities bill vCore-hours on an 8-vCore-minimum cluster -- all on the factory
+        - Data Factory operations bill read/write per 50,000 entity operations (deploying this pipeline included) and monitoring per 50,000 run records retrieved
+        - a pipeline left a full month with no trigger association and zero runs bills Azure's inactive-pipeline fee, 0.80 USD/month at East US rates -- the one charge idleness itself can accrue; a single run or trigger binding clears it
+        - copies that egress an Azure datacenter add outbound data transfer at bandwidth rates
+      notes: Zero committed cost -- the definition never appears on the invoice; the meters spin per run against the parent AzureDataFactory. The preset's concurrency cap of 1 queues overlapping runs (a throttle on how fast run-driven charges accrue, not a meter), and the placeholder Wait activity bills as a pipeline-activity execution only when actually run.

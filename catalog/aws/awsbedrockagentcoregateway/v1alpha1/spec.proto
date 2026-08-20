@@ -1,0 +1,971 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockagentcoregateway.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsBedrockAgentCoreGatewaySpec defines the desired configuration for an
+// Amazon Bedrock AgentCore gateway - a managed MCP (Model Context
+// Protocol) front door that turns your existing APIs, Lambda functions,
+// and MCP servers into tools any MCP-speaking agent can discover and
+// call through ONE authenticated URL.
+//
+// The gateway's name is taken from `metadata.name` (letters and digits
+// with single hyphens, max 100 characters - AWS rejects underscores,
+// consecutive hyphens, and a leading/trailing hyphen).
+//
+// Each `targets` entry is one backend exposed through the gateway. AWS
+// deletes a gateway's targets automatically before the gateway itself at
+// destroy. Gateways are free to create; AWS bills per tool-call at
+// runtime.
+message AwsBedrockAgentCoreGatewaySpec {
+  // The AWS region where the gateway will be created.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Human-readable description shown in the AgentCore console (1-200
+  // characters when set). Updates in place.
+  string description = 2 [(buf.validate.field).string.max_len = 200];
+
+  // IAM role the gateway assumes to reach its targets (invoke Lambdas,
+  // call API Gateway stages, sign SigV4 requests). The role must trust
+  // bedrock-agentcore.amazonaws.com. Changing the role updates in place.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // How inbound callers authenticate to the gateway. AWS_IAM takes SigV4
+  // credentials; CUSTOM_JWT validates OIDC bearer tokens (requires
+  // `custom_jwt_authorizer`); NONE disables inbound auth; AUTHENTICATE_ONLY
+  // validates identity without authorization. Changing it replaces the
+  // gateway.
+  string authorizer_type = 4 [(buf.validate.field).string = {
+    in: [
+      "AWS_IAM",
+      "CUSTOM_JWT",
+      "NONE",
+      "AUTHENTICATE_ONLY"
+    ]
+  }];
+
+  // OIDC token validation rules - required when authorizer_type is
+  // CUSTOM_JWT.
+  AwsBedrockAgentCoreGatewayJwtAuthorizer custom_jwt_authorizer = 5;
+
+  // Customer-managed KMS key encrypting the gateway's data at rest.
+  // Without it, AWS uses a service-managed key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Return verbose exception detail (stack traces, backend errors) to
+  // callers - AWS's DEBUG exception level. Leave off in production; error
+  // detail can leak backend internals.
+  bool expose_debug_exceptions = 7;
+
+  // MCP protocol tuning for the gateway's single protocol (MCP - the
+  // modules send that constant).
+  AwsBedrockAgentCoreGatewayMcp mcp = 8;
+
+  // Lambda interceptors that rewrite requests and/or responses in flight
+  // (max 2 - typically one for REQUEST, one for RESPONSE).
+  repeated AwsBedrockAgentCoreGatewayInterceptor interceptors = 9 [(buf.validate.field).repeated.max_items = 2];
+
+  // Evaluate every tool call against a Cedar policy engine before it
+  // reaches the target.
+  AwsBedrockAgentCoreGatewayPolicyEngine policy_engine = 10;
+
+  // The backends this gateway exposes as MCP tools.
+  repeated AwsBedrockAgentCoreGatewayTarget targets = 11;
+
+  // AWS requires the JWT rules exactly when the authorizer type is
+  // CUSTOM_JWT.
+  option (buf.validate.message).cel = {
+    id: "custom_jwt_requires_authorizer"
+    message: "custom_jwt_authorizer is required when authorizer_type is CUSTOM_JWT"
+    expression: "this.authorizer_type != 'CUSTOM_JWT' || has(this.custom_jwt_authorizer)"
+  };
+
+  // Entry names are for_each keys on both engines - duplicates would
+  // silently collapse entries.
+  option (buf.validate.message).cel = {
+    id: "target_names_unique"
+    message: "targets entries must have unique names"
+    expression: "this.targets.map(t, t.name).unique()"
+  };
+}
+
+// AwsBedrockAgentCoreGatewayJwtAuthorizer validates inbound bearer
+// tokens against an OpenID Connect provider before requests reach the
+// gateway's tools.
+message AwsBedrockAgentCoreGatewayJwtAuthorizer {
+  // The provider's OIDC discovery URL (must serve
+  // /.well-known/openid-configuration).
+  string discovery_url = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Accepted "aud" claim values. A token must match at least one entry of
+  // at least one configured allow-list.
+  repeated string allowed_audience = 2 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Accepted OAuth client IDs (the "client_id"/"azp" claim).
+  repeated string allowed_clients = 3 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Accepted OAuth scopes.
+  repeated string allowed_scopes = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Restrict which AgentCore workload identities may present tokens.
+  AwsBedrockAgentCoreGatewayAllowedWorkloads allowed_workloads = 5;
+
+  // Additional claim-matching rules a token must satisfy beyond the
+  // standard audience/client/scope checks.
+  repeated AwsBedrockAgentCoreGatewayCustomClaim custom_claims = 6;
+
+  // Reach a PRIVATE OIDC provider through your VPC instead of the public
+  // internet.
+  AwsBedrockAgentCoreGatewayPrivateEndpoint private_endpoint = 7;
+
+  // Per-domain overrides of the private endpoint (max 5) - route specific
+  // issuer domains through different private paths.
+  repeated AwsBedrockAgentCoreGatewayPrivateEndpointOverride private_endpoint_overrides = 8 [(buf.validate.field).repeated.max_items = 5];
+}
+
+// AwsBedrockAgentCoreGatewayAllowedWorkloads restricts callers to named
+// AgentCore workload identities and/or hosting environments.
+message AwsBedrockAgentCoreGatewayAllowedWorkloads {
+  // Workload identity names allowed to call (1-10).
+  repeated string workload_identities = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 10
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // Hosting environment ARNs allowed to call (1-10).
+  repeated string hosting_environment_arns = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 10
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+}
+
+// AwsBedrockAgentCoreGatewayCustomClaim is one extra JWT claim check.
+message AwsBedrockAgentCoreGatewayCustomClaim {
+  // The inbound token claim to inspect (1-255 characters; letters,
+  // digits, and _ . - :).
+  string claim_name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 255
+    pattern: "^[A-Za-z0-9_.:-]+$"
+  }];
+
+  // Whether the claim's value is a single STRING or a STRING_ARRAY.
+  string value_type = 2 [(buf.validate.field).string = {
+    in: [
+      "STRING",
+      "STRING_ARRAY"
+    ]
+  }];
+
+  // How the claim value is compared: EQUALS (exact), CONTAINS (the value
+  // appears), or CONTAINS_ANY (any of the expected values appears).
+  string match_operator = 3 [(buf.validate.field).string = {
+    in: [
+      "EQUALS",
+      "CONTAINS",
+      "CONTAINS_ANY"
+    ]
+  }];
+
+  // Expected value when matching a single string.
+  string match_value = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 255
+      pattern: "^[A-Za-z0-9_.:-]+$"
+    }
+  ];
+
+  // Expected values when matching against a list.
+  repeated string match_values = 5 [(buf.validate.field).repeated.items.string = {
+    min_len: 1
+    max_len: 255
+    pattern: "^[A-Za-z0-9_.:-]+$"
+  }];
+
+  // AWS takes exactly one match-value shape.
+  option (buf.validate.message).cel = {
+    id: "claim_match_value_exactly_one"
+    message: "custom claim must set exactly one of match_value or match_values"
+    expression: "(this.match_value != '') != (this.match_values.size() > 0)"
+  };
+}
+
+// AwsBedrockAgentCoreGatewayPrivateEndpoint reaches a private resource -
+// exactly one arm.
+message AwsBedrockAgentCoreGatewayPrivateEndpoint {
+  // AWS manages VPC endpoints in your subnets.
+  AwsBedrockAgentCoreGatewayManagedVpcEndpoint managed_vpc = 1;
+
+  // You bring a VPC Lattice resource configuration.
+  AwsBedrockAgentCoreGatewayLatticeEndpoint self_managed_lattice = 2;
+
+  // Exactly one endpoint arm.
+  option (buf.validate.message).cel = {
+    id: "private_endpoint_exactly_one"
+    message: "private endpoint must set exactly one of managed_vpc or self_managed_lattice"
+    expression: "has(this.managed_vpc) != has(this.self_managed_lattice)"
+  };
+}
+
+// AwsBedrockAgentCoreGatewayManagedVpcEndpoint is an AWS-managed private
+// path through your VPC.
+message AwsBedrockAgentCoreGatewayManagedVpcEndpoint {
+  // The VPC to route through.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
+  ];
+
+  // Subnets for the managed endpoint's network interfaces (at least one).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Security groups on the endpoint interfaces (max 5).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 3 [
+    (buf.validate.field).repeated.max_items = 5,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+
+  // Whether the endpoint answers IPV4 or IPV6.
+  string endpoint_ip_address_type = 4 [(buf.validate.field).string = {
+    in: [
+      "IPV4",
+      "IPV6"
+    ]
+  }];
+
+  // Domain the endpoint routes (3-255 characters). Omitted = derived from
+  // the target.
+  string routing_domain = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 255
+  ];
+
+  // Tags applied to the AWS-managed endpoint resources (the module always
+  // adds the Planton identity tags).
+  map<string, string> tags = 6;
+}
+
+// AwsBedrockAgentCoreGatewayLatticeEndpoint routes through a VPC Lattice
+// resource configuration you manage.
+message AwsBedrockAgentCoreGatewayLatticeEndpoint {
+  // The Lattice resource-configuration identifier.
+  string resource_configuration_id = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsBedrockAgentCoreGatewayPrivateEndpointOverride routes one issuer
+// domain through a specific private endpoint.
+message AwsBedrockAgentCoreGatewayPrivateEndpointOverride {
+  // The domain this override captures (1-253 characters).
+  string domain = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 253
+  }];
+
+  // The private path for that domain.
+  AwsBedrockAgentCoreGatewayPrivateEndpoint private_endpoint = 2 [(buf.validate.field).required = true];
+}
+
+// AwsBedrockAgentCoreGatewayMcp tunes the gateway's MCP behavior.
+message AwsBedrockAgentCoreGatewayMcp {
+  // Instructions surfaced to agents describing what this gateway's tools
+  // do (1-2048 characters when set) - write them the way you would brief
+  // the model.
+  string instructions = 1 [(buf.validate.field).string.max_len = 2048];
+
+  // Let agents search tools semantically instead of listing all of them
+  // (AWS's SEMANTIC search type - the modules send that constant on
+  // enable).
+  bool enable_semantic_search = 2;
+
+  // MCP protocol versions the gateway accepts. Omitted = AWS defaults.
+  repeated string supported_versions = 3 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Seconds an MCP session survives between calls (900-28800). Omitted =
+  // AWS default.
+  int64 session_timeout_seconds = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int64 = {
+      gte: 900
+      lte: 28800
+    }
+  ];
+
+  // Stream tool responses to callers as they are produced. Explicit false
+  // and omitted both leave AWS's default off - set true to enable.
+  bool enable_response_streaming = 5;
+}
+
+// AwsBedrockAgentCoreGatewayInterceptor is one Lambda hook in the
+// request/response path.
+message AwsBedrockAgentCoreGatewayInterceptor {
+  // Where the interceptor runs: on the inbound REQUEST, the outbound
+  // RESPONSE, or both (at least one).
+  repeated string interception_points = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    unique: true
+    items: {
+      string: {
+        in: [
+          "REQUEST",
+          "RESPONSE"
+        ]
+      }
+    }
+  }];
+
+  // The Lambda function AWS invokes at the interception points.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef lambda_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // Whether the original client request headers are passed to the
+  // interceptor. Set it to configure the input explicitly; omitted = AWS
+  // default.
+  optional bool pass_request_headers = 3;
+}
+
+// AwsBedrockAgentCoreGatewayPolicyEngine attaches a Cedar policy engine
+// that evaluates every tool call.
+message AwsBedrockAgentCoreGatewayPolicyEngine {
+  // The policy engine to evaluate against.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef policy_engine_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsBedrockAgentCoreIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.policy_engine_arn"
+  ];
+
+  // LOG_ONLY records what policies WOULD decide without blocking calls
+  // (the safe rollout mode); ENFORCE blocks denied calls.
+  string mode = 2 [(buf.validate.field).string = {
+    in: [
+      "LOG_ONLY",
+      "ENFORCE"
+    ]
+  }];
+}
+
+// AwsBedrockAgentCoreGatewayTarget is one backend exposed through the
+// gateway as MCP tools.
+message AwsBedrockAgentCoreGatewayTarget {
+  // Target name (letters and digits with single hyphens, max 100
+  // characters). The for_each key on both engines and the key in the
+  // `target_ids` output map; also the target name in AWS. Changing it
+  // replaces the target.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+    pattern: "^([0-9a-zA-Z][-]?){1,100}$"
+  }];
+
+  // Human-readable description (1-200 characters when set).
+  string description = 2 [(buf.validate.field).string.max_len = 200];
+
+  // The backend this target fronts - exactly one arm.
+  AwsBedrockAgentCoreGatewayTargetBackend backend = 3 [(buf.validate.field).required = true];
+
+  // How the GATEWAY authenticates to this backend (outbound credentials).
+  // Omitted = the gateway's own IAM role without SigV4 service signing.
+  AwsBedrockAgentCoreGatewayTargetCredentials credentials = 4;
+
+  // Which caller metadata (headers, query parameters) propagates through
+  // the gateway to the backend and back.
+  AwsBedrockAgentCoreGatewayTargetMetadata metadata = 5;
+
+  // Reach a PRIVATE backend through your VPC instead of the public
+  // internet.
+  AwsBedrockAgentCoreGatewayPrivateEndpoint private_endpoint = 6;
+}
+
+// AwsBedrockAgentCoreGatewayTargetBackend selects the backend type -
+// exactly one arm.
+message AwsBedrockAgentCoreGatewayTargetBackend {
+  // Front an AgentCore agent runtime over plain HTTP.
+  AwsBedrockAgentCoreGatewayRuntimeTarget agentcore_runtime = 1;
+
+  // Front an API Gateway REST API - the gateway derives one MCP tool per
+  // route.
+  AwsBedrockAgentCoreGatewayApiGatewayTarget api_gateway = 2;
+
+  // Front a Lambda function - you define the tools and their JSON
+  // schemas; the gateway invokes the function with the tool call.
+  AwsBedrockAgentCoreGatewayLambdaTarget lambda = 3;
+
+  // Front an existing remote MCP server.
+  AwsBedrockAgentCoreGatewayMcpServerTarget mcp_server = 4;
+
+  // Derive tools from an OpenAPI 3 schema describing an HTTP API.
+  AwsBedrockAgentCoreGatewaySchemaTarget open_api_schema = 5;
+
+  // Derive tools from a Smithy model describing an API.
+  AwsBedrockAgentCoreGatewaySchemaTarget smithy_model = 6;
+
+  // Exactly one backend arm.
+  option (buf.validate.message).cel = {
+    id: "backend_exactly_one"
+    message: "backend must set exactly one of agentcore_runtime, api_gateway, lambda, mcp_server, open_api_schema, or smithy_model"
+    expression: "(has(this.agentcore_runtime) ? 1 : 0) + (has(this.api_gateway) ? 1 : 0) + (has(this.lambda) ? 1 : 0) + (has(this.mcp_server) ? 1 : 0) + (has(this.open_api_schema) ? 1 : 0) + (has(this.smithy_model) ? 1 : 0) == 1"
+  };
+}
+
+// AwsBedrockAgentCoreGatewayRuntimeTarget fronts an AgentCore agent
+// runtime.
+message AwsBedrockAgentCoreGatewayRuntimeTarget {
+  // The agent runtime to invoke.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef agent_runtime_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsBedrockAgentCoreRuntime,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.agent_runtime_arn"
+  ];
+
+  // Endpoint or version qualifier to invoke (e.g. "DEFAULT" or an
+  // endpoint name). Omitted = the runtime's default.
+  string qualifier = 2;
+}
+
+// AwsBedrockAgentCoreGatewayApiGatewayTarget fronts an API Gateway REST
+// API stage.
+message AwsBedrockAgentCoreGatewayApiGatewayTarget {
+  // The REST API's identifier.
+  string rest_api_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The deployed stage to call (e.g. "prod").
+  string stage = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Only expose routes matching these filters. Omitted = every route
+  // becomes a tool.
+  repeated AwsBedrockAgentCoreGatewayApiGatewayToolFilter tool_filters = 3;
+
+  // Rename or re-describe specific routes' derived tools.
+  repeated AwsBedrockAgentCoreGatewayApiGatewayToolOverride tool_overrides = 4;
+}
+
+// AwsBedrockAgentCoreGatewayApiGatewayToolFilter selects routes to
+// expose.
+message AwsBedrockAgentCoreGatewayApiGatewayToolFilter {
+  // Route path pattern to include (e.g. "/orders/*").
+  string filter_path = 1 [(buf.validate.field).string.min_len = 1];
+
+  // HTTP methods to include on the matched paths (at least one).
+  repeated string methods = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    unique: true
+    items: {
+      string: {
+        in: [
+          "GET",
+          "POST",
+          "PUT",
+          "PATCH",
+          "DELETE",
+          "HEAD",
+          "OPTIONS"
+        ]
+      }
+    }
+  }];
+}
+
+// AwsBedrockAgentCoreGatewayApiGatewayToolOverride customizes one derived
+// tool.
+message AwsBedrockAgentCoreGatewayApiGatewayToolOverride {
+  // The route path the override applies to.
+  string path = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The route method the override applies to.
+  string method = 2 [(buf.validate.field).string = {
+    in: [
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "HEAD",
+      "OPTIONS"
+    ]
+  }];
+
+  // The tool name the model sees.
+  string name = 3 [(buf.validate.field).string.min_len = 1];
+
+  // The tool description the model reads - the better the description,
+  // the better the model's tool use.
+  string description = 4;
+}
+
+// AwsBedrockAgentCoreGatewayLambdaTarget fronts a Lambda function with
+// explicitly-defined tools.
+message AwsBedrockAgentCoreGatewayLambdaTarget {
+  // The Lambda function that fulfills every tool in this target.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef lambda_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // The tools the function implements, defined inline (name, description,
+  // JSON-schema input/output).
+  repeated AwsBedrockAgentCoreGatewayToolDefinition tools = 2;
+
+  // Or point at an S3 object holding the tool definitions.
+  AwsBedrockAgentCoreGatewaySchemaS3 tools_s3 = 3;
+
+  // AWS takes the tool schema from exactly one source.
+  option (buf.validate.message).cel = {
+    id: "lambda_tools_exactly_one"
+    message: "lambda target must set exactly one of tools or tools_s3"
+    expression: "(this.tools.size() > 0) != has(this.tools_s3)"
+  };
+
+  // Tool names are identity within the target.
+  option (buf.validate.message).cel = {
+    id: "lambda_tool_names_unique"
+    message: "tool names must be unique"
+    expression: "this.tools.map(t, t.name).unique()"
+  };
+}
+
+// AwsBedrockAgentCoreGatewayToolDefinition is one tool the Lambda
+// implements.
+message AwsBedrockAgentCoreGatewayToolDefinition {
+  // Tool name the model calls.
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // What the tool does, shown to the model (required by AWS) - the better
+  // the description, the better the model's tool use.
+  string description = 2 [(buf.validate.field).string.min_len = 1];
+
+  // JSON schema of the tool's input (required by AWS).
+  AwsBedrockAgentCoreGatewaySchemaDefinition input_schema = 3 [(buf.validate.field).required = true];
+
+  // JSON schema of the tool's output. Omitted = unconstrained.
+  AwsBedrockAgentCoreGatewaySchemaDefinition output_schema = 4;
+}
+
+// AwsBedrockAgentCoreGatewaySchemaDefinition is the root of a tool's
+// JSON schema. Nested object/array shapes go through `properties` /
+// `items`; below three levels of nesting, drop to the raw-JSON leaves -
+// exactly where AWS's own configuration surface bottoms out.
+message AwsBedrockAgentCoreGatewaySchemaDefinition {
+  // JSON type at the schema root.
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "string",
+      "number",
+      "integer",
+      "boolean",
+      "object",
+      "array"
+    ]
+  }];
+
+  // What this value means, shown to the model.
+  string description = 2;
+
+  // Named properties when type is "object".
+  repeated AwsBedrockAgentCoreGatewaySchemaProperty properties = 3;
+
+  // Element schema when type is "array".
+  AwsBedrockAgentCoreGatewaySchemaItems items = 4;
+
+  // A schema node describes an object (properties) or an array (items),
+  // never both.
+  option (buf.validate.message).cel = {
+    id: "definition_properties_or_items"
+    message: "a schema node takes properties or items, not both"
+    expression: "!(this.properties.size() > 0 && has(this.items))"
+  };
+
+  // Property names are identity within the object.
+  option (buf.validate.message).cel = {
+    id: "definition_property_names_unique"
+    message: "property names must be unique"
+    expression: "this.properties.map(p, p.name).unique()"
+  };
+}
+
+// AwsBedrockAgentCoreGatewaySchemaProperty is one named property of an
+// object schema.
+message AwsBedrockAgentCoreGatewaySchemaProperty {
+  // Property name.
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // JSON type of the property.
+  string type = 2 [(buf.validate.field).string = {
+    in: [
+      "string",
+      "number",
+      "integer",
+      "boolean",
+      "object",
+      "array"
+    ]
+  }];
+
+  // What the property means, shown to the model.
+  string description = 3;
+
+  // Whether the model must supply this property.
+  bool required = 4;
+
+  // Element schema when type is "array".
+  AwsBedrockAgentCoreGatewaySchemaItems items = 5;
+
+  // Nested properties when type is "object" (leaf depth - deeper shapes
+  // go in each entry's raw-JSON fields).
+  repeated AwsBedrockAgentCoreGatewaySchemaPropertyLeaf properties = 6;
+
+  // A schema node describes an object (properties) or an array (items),
+  // never both.
+  option (buf.validate.message).cel = {
+    id: "property_properties_or_items"
+    message: "a schema node takes properties or items, not both"
+    expression: "!(this.properties.size() > 0 && has(this.items))"
+  };
+
+  // Property names are identity within the object.
+  option (buf.validate.message).cel = {
+    id: "property_names_unique"
+    message: "nested property names must be unique"
+    expression: "this.properties.map(p, p.name).unique()"
+  };
+}
+
+// AwsBedrockAgentCoreGatewaySchemaItems is an array's element schema.
+message AwsBedrockAgentCoreGatewaySchemaItems {
+  // JSON type of the elements.
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "string",
+      "number",
+      "integer",
+      "boolean",
+      "object",
+      "array"
+    ]
+  }];
+
+  // What the elements mean, shown to the model.
+  string description = 2;
+
+  // Element schema when the elements are arrays (leaf depth).
+  AwsBedrockAgentCoreGatewaySchemaItemsLeaf items = 3;
+
+  // Named properties when the elements are objects (leaf depth).
+  repeated AwsBedrockAgentCoreGatewaySchemaPropertyLeaf properties = 4;
+
+  // A schema node describes an object (properties) or an array (items),
+  // never both.
+  option (buf.validate.message).cel = {
+    id: "items_properties_or_items"
+    message: "a schema node takes properties or items, not both"
+    expression: "!(this.properties.size() > 0 && has(this.items))"
+  };
+
+  // Property names are identity within the object.
+  option (buf.validate.message).cel = {
+    id: "items_property_names_unique"
+    message: "nested property names must be unique"
+    expression: "this.properties.map(p, p.name).unique()"
+  };
+}
+
+// AwsBedrockAgentCoreGatewaySchemaItemsLeaf is the deepest typed array
+// node - shapes below it are raw JSON.
+message AwsBedrockAgentCoreGatewaySchemaItemsLeaf {
+  // JSON type of the elements.
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "string",
+      "number",
+      "integer",
+      "boolean",
+      "object",
+      "array"
+    ]
+  }];
+
+  // What the elements mean, shown to the model.
+  string description = 2;
+
+  // Deeper array-element schema as a raw JSON-schema object.
+  google.protobuf.Struct items_json = 3;
+
+  // Deeper object properties as a raw JSON-schema properties object.
+  google.protobuf.Struct properties_json = 4;
+
+  // One deeper shape at most.
+  option (buf.validate.message).cel = {
+    id: "items_leaf_json_at_most_one"
+    message: "set at most one of items_json or properties_json"
+    expression: "!(has(this.items_json) && has(this.properties_json))"
+  };
+}
+
+// AwsBedrockAgentCoreGatewaySchemaPropertyLeaf is the deepest typed
+// property node - shapes below it are raw JSON.
+message AwsBedrockAgentCoreGatewaySchemaPropertyLeaf {
+  // Property name.
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // JSON type of the property.
+  string type = 2 [(buf.validate.field).string = {
+    in: [
+      "string",
+      "number",
+      "integer",
+      "boolean",
+      "object",
+      "array"
+    ]
+  }];
+
+  // What the property means, shown to the model.
+  string description = 3;
+
+  // Whether the model must supply this property.
+  bool required = 4;
+
+  // Deeper array-element schema as a raw JSON-schema object.
+  google.protobuf.Struct items_json = 5;
+
+  // Deeper object properties as a raw JSON-schema properties object.
+  google.protobuf.Struct properties_json = 6;
+
+  // One deeper shape at most.
+  option (buf.validate.message).cel = {
+    id: "property_leaf_json_at_most_one"
+    message: "set at most one of items_json or properties_json"
+    expression: "!(has(this.items_json) && has(this.properties_json))"
+  };
+}
+
+// AwsBedrockAgentCoreGatewayMcpServerTarget fronts an existing remote
+// MCP server.
+message AwsBedrockAgentCoreGatewayMcpServerTarget {
+  // The server's HTTPS endpoint.
+  string endpoint = 1 [(buf.validate.field).string.pattern = "^https://.*"];
+
+  // How the gateway lists the server's tools: DEFAULT snapshots them at
+  // create/sync; DYNAMIC queries the server live on every list. Omitted =
+  // AWS default (DEFAULT).
+  string listing_mode = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "DEFAULT",
+        "DYNAMIC"
+      ]
+    }
+  ];
+}
+
+// AwsBedrockAgentCoreGatewaySchemaTarget derives tools from an API
+// schema document (OpenAPI 3 or Smithy) - exactly one source arm.
+message AwsBedrockAgentCoreGatewaySchemaTarget {
+  // The schema document inline (JSON or YAML for OpenAPI; Smithy IDL or
+  // JSON AST for Smithy). AWS validates OpenAPI content server-side when
+  // the target creates: the document must carry a non-empty `servers`
+  // array whose URL uses HTTPS, or the target lands FAILED with named
+  // validation errors (live-caught 2026-08-14; nothing calls the URL at
+  // create).
+  string inline_payload = 1;
+
+  // Or point at an S3 object holding the schema document.
+  AwsBedrockAgentCoreGatewaySchemaS3 s3 = 2;
+
+  // Exactly one source.
+  option (buf.validate.message).cel = {
+    id: "schema_source_exactly_one"
+    message: "set exactly one of inline_payload or s3"
+    expression: "(this.inline_payload != '') != has(this.s3)"
+  };
+}
+
+// AwsBedrockAgentCoreGatewaySchemaS3 locates a schema document in S3.
+message AwsBedrockAgentCoreGatewaySchemaS3 {
+  // S3 URI of the document (e.g. "s3://my-bucket/tools/schema.json").
+  string uri = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Expected bucket-owner account ID (cross-account safety check).
+  string bucket_owner_account_id = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[0-9]{12}$"
+  ];
+}
+
+// AwsBedrockAgentCoreGatewayTargetCredentials is how the gateway
+// authenticates to the backend - at most one arm (AWS's five credential
+// provider types).
+message AwsBedrockAgentCoreGatewayTargetCredentials {
+  // Send an API key from an AgentCore Identity api-key credential
+  // provider.
+  AwsBedrockAgentCoreGatewayApiKeyCredentials api_key = 1;
+
+  // Forward the CALLER's own IAM credentials to the backend (SigV4).
+  AwsBedrockAgentCoreGatewaySigv4Credentials caller_iam_credentials = 2;
+
+  // Sign requests with the GATEWAY's IAM role (SigV4).
+  AwsBedrockAgentCoreGatewaySigv4Credentials gateway_iam_role = 3;
+
+  // Pass the caller's inbound JWT straight through to the backend.
+  bool jwt_passthrough = 4;
+
+  // Obtain an OAuth token from an AgentCore Identity oauth2 credential
+  // provider.
+  AwsBedrockAgentCoreGatewayOauthCredentials oauth = 5;
+
+  // AWS takes at most one credential arm.
+  option (buf.validate.message).cel = {
+    id: "credentials_at_most_one"
+    message: "set at most one of api_key, caller_iam_credentials, gateway_iam_role, jwt_passthrough, or oauth"
+    expression: "(has(this.api_key) ? 1 : 0) + (has(this.caller_iam_credentials) ? 1 : 0) + (has(this.gateway_iam_role) ? 1 : 0) + (this.jwt_passthrough ? 1 : 0) + (has(this.oauth) ? 1 : 0) <= 1"
+  };
+}
+
+// AwsBedrockAgentCoreGatewayApiKeyCredentials sends an API key with each
+// backend request.
+message AwsBedrockAgentCoreGatewayApiKeyCredentials {
+  // The AgentCore Identity api-key credential provider holding the key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef provider_arn = 1 [(buf.validate.field).required = true];
+
+  // Where the key travels: HEADER or QUERY_PARAMETER. Omitted = AWS
+  // default.
+  string credential_location = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "HEADER",
+        "QUERY_PARAMETER"
+      ]
+    },
+    (dev.planton.shared.options.sensitive_exempt_reason) = "a transport-position enum (HEADER or QUERY_PARAMETER), never credential material -- the key itself lives in the referenced AgentCore Identity provider"
+  ];
+
+  // The header or query-parameter name carrying the key (e.g.
+  // "X-Api-Key").
+  string credential_parameter_name = 3;
+
+  // Prefix prepended to the key value (e.g. "Bearer ").
+  string credential_prefix = 4;
+}
+
+// AwsBedrockAgentCoreGatewaySigv4Credentials signs backend requests with
+// AWS SigV4.
+message AwsBedrockAgentCoreGatewaySigv4Credentials {
+  // The AWS service name to sign for (e.g. "bedrock-agentcore",
+  // "execute-api", "lambda"). Required when forwarding the caller's
+  // credentials; optional for the gateway role (omit for plain
+  // IAM-role-based auth without SigV4 signing).
+  string service = 1;
+
+  // Region used for signing. Omitted = the gateway's region. Only
+  // meaningful when `service` is set.
+  string region = 2;
+
+  // AWS requires the service whenever a signing region is pinned.
+  option (buf.validate.message).cel = {
+    id: "sigv4_region_requires_service"
+    message: "region requires service"
+    expression: "this.region == '' || this.service != ''"
+  };
+}
+
+// AwsBedrockAgentCoreGatewayOauthCredentials obtains an OAuth token for
+// each backend request.
+message AwsBedrockAgentCoreGatewayOauthCredentials {
+  // The AgentCore Identity oauth2 credential provider to obtain tokens
+  // from.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef provider_arn = 1 [(buf.validate.field).required = true];
+
+  // OAuth scopes to request (at least one).
+  repeated string scopes = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // The grant flow: CLIENT_CREDENTIALS (machine-to-machine, the common
+  // case) or AUTHORIZATION_CODE (user-delegated; requires
+  // default_return_url). Omitted = AWS default.
+  string grant_type = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "CLIENT_CREDENTIALS",
+        "AUTHORIZATION_CODE",
+        "TOKEN_EXCHANGE"
+      ]
+    }
+  ];
+
+  // Where the user's browser lands after authorizing - required by AWS
+  // when grant_type is AUTHORIZATION_CODE.
+  string default_return_url = 4;
+
+  // Extra provider-specific token-request parameters.
+  map<string, string> custom_parameters = 5;
+
+  // AWS requires the return URL for the user-delegated flow.
+  option (buf.validate.message).cel = {
+    id: "authorization_code_requires_return_url"
+    message: "default_return_url is required when grant_type is AUTHORIZATION_CODE"
+    expression: "this.grant_type != 'AUTHORIZATION_CODE' || this.default_return_url != ''"
+  };
+}
+
+// AwsBedrockAgentCoreGatewayTargetMetadata controls which caller
+// metadata propagates to the backend and back (max 10 entries each).
+message AwsBedrockAgentCoreGatewayTargetMetadata {
+  // URL query parameters propagated from the caller to the backend.
+  repeated string allowed_query_parameters = 1 [(buf.validate.field).repeated = {
+    max_items: 10
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // HTTP headers propagated from the caller to the backend.
+  repeated string allowed_request_headers = 2 [(buf.validate.field).repeated = {
+    max_items: 10
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // HTTP headers propagated from the backend response to the caller.
+  repeated string allowed_response_headers = 3 [(buf.validate.field).repeated = {
+    max_items: 10
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+}

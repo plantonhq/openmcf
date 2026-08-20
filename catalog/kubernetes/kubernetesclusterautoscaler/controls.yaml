@@ -1,0 +1,84 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesclusterautoscaler
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The autoscaler stores no data of its own -- its configuration lives in Kubernetes objects in etcd and its runtime state is rebuilt on every start; encryption at rest for etcd is the cluster control plane's property.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys apply to the cluster's etcd encryption (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Every connection the autoscaler makes is a TLS API call -- the Kubernetes API server and the cloud provider's node-group APIs (EC2 Auto Scaling, Azure ARM, GCE, Civo) are all HTTPS endpoints; there is no plaintext path to configure.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart renders no external exposure -- only a ClusterIP Service for the metrics endpoint, reachable solely inside the cluster network.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing accepts inbound traffic -- the autoscaler only makes outbound API calls and serves an in-cluster metrics endpoint. There is no ingress surface to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The autoscaler serves no HTTP edge traffic -- web application firewalls do not apply.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart creates a dedicated ServiceAccount bound to a purpose-scoped ClusterRole covering the node, pod, and eviction access the autoscaler's decisions need -- never broader than its function.
+      notes: cluster_api.namespace_scoped_rbac narrows the chart to a namespaced Role when the autoscaler only manages machines in one namespace -- the 02-cluster-api preset takes that least-privilege posture.
+    - control_id: workload-identity
+      status: configurable
+      field_path: aws.irsa_role_arn
+      evidence:
+        type: spec_default
+        reference: Unset means the AWS arm falls back to static access keys or ambient node credentials; irsa_role_arn annotates the autoscaler's service account for keyless Auto Scaling API access. The other arms carry the same choice -- azure.identity.use_workload_identity for federated Entra identity and gce.workload_identity_service_account_email for GKE Workload Identity.
+      notes: The 01-eks-autodiscovery preset uses IRSA and 03-azure-vmss uses Azure workload identity -- both keyless; no committed preset stores cloud keys.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: aws.access_keys
+      evidence:
+        type: spec_default
+        reference: Unset means no static cloud credential exists; access_keys is the deliberate opt-in for clusters without IRSA, and validation makes it mutually exclusive with the keyless posture. azure.identity.service_principal is the analogous static arm on Azure.
+      notes: The Civo arm authenticates only by API key -- static by provider necessity. All committed presets use keyless postures.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Scaling decisions stream to stdout for the cluster's log collector and surface as Kubernetes Events; administrative changes to the autoscaler are Kubernetes API operations, captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: prometheus.service_monitor
+      evidence:
+        type: spec_default
+        reference: The autoscaler always serves Prometheus metrics (scale decisions, unschedulable pod counts, node-group sizes); unset means no scrape discovery, and service_monitor creates a ServiceMonitor -- requiring the Prometheus operator CRDs on the cluster.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The autoscaler holds no data to back up -- its entire state is this manifest's declarative configuration, protected by the cluster's own etcd backup.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface exists (see backup-recovery), so retention does not apply.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: deployment.replicas
+      evidence:
+        type: spec_default
+        reference: replicas defaults to 1; extras leader-elect as warm standbys that take over the scaling decision on failure.
+      notes: For the WORKLOADS' zone resilience, scaling.balance_similar_node_groups keeps one-ASG-per-zone node groups balanced during scale-ups -- the multi-AZ pattern the 01-eks-autodiscovery preset enables.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the chart nor the modules offer a deletion-protection flag. Deleting the release stops autoscaling but changes no node -- existing capacity keeps serving; protection is operational (namespace RBAC, change review).
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: chart_version pins the installed release (default 9.59.0, shipping autoscaler 1.35); changing it re-runs the Helm release deliberately. Upstream guidance keeps the autoscaler's minor version aligned with the cluster's Kubernetes minor.

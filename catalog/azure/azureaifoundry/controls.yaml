@@ -1,0 +1,77 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureaifoundry
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The hub is an ML workspace at ARM and inherits that class's default -- hub data is encrypted at rest with Microsoft-managed keys, and artifacts rest in the required companion storage account, which Azure Storage encrypts unconditionally. No plaintext mode exists.
+      notes: The encryption block upgrades the default to customer-managed keys (see enc-at-rest-cmk), and every project in the hub inherits whichever posture the hub sets.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: encryption
+      evidence:
+        type: spec_default
+        reference: The encryption block swaps Microsoft-managed keys for your own Key Vault key. The hub's contract is stricter than the classic ML workspace's -- key_id must be a VERSIONED key URL (versionless is rejected), so rotation does NOT auto-propagate and re-pointing the field is the rotation act. Fixed at creation; the hub's identity needs wrap/unwrap access on the key beforehand, and enabling encryption may force high_business_impact_enabled true service-side.
+      notes: Projects inherit the hub's encryption -- there is no per-project CMK dial.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: All interaction with the hub -- Foundry portal, SDK, ARM -- rides Azure's TLS-only endpoints, platform posture rather than a component choice; the spec carries no transport toggle.
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_network_access_enabled
+      evidence:
+        type: spec_default
+        reference: Unspecified applies true (the provider's default, wire value "Enabled") -- the hub answers the public internet. Setting false makes the hub reachable only through private endpoints, and the posture flows down to every project in the hub. Updates in place.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound reachability is the binary public toggle plus private endpoints (separate kinds) -- no source-range filter exists here. The managed_network block governs the OUTBOUND side (ALLOW_ONLY_APPROVED_OUTBOUND; hub outbound rules are managed from the Foundry portal or API -- the provider models no rule children for hubs).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No WAF-class surface exists for a hub endpoint; model endpoints needing edge filtering front themselves with a gateway, separate kinds.
+    - control_id: rbac
+      status: not_applicable
+      notes: Access to the hub and its projects is governed by Azure RBAC (Azure AI roles assigned at hub or project scope) -- subscription-side posture; the spec carries no access-policy surface of its own.
+    - control_id: workload-identity
+      status: enforced_by_default
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: The identity block is spec-REQUIRED -- the hub reaches its companion key vault, storage, insights, and registry through this managed identity, never a stored credential, and projects inherit the access posture. USER_ASSIGNED lets vault/storage grants be composed before the hub exists (paired with primary_user_assigned_identity, which the provider requires for that flavor).
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The hub exposes no alternative authentication path to disable -- control-plane and portal access are Entra ID throughout; key-based access to attached AI services is those kinds' posture.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane operations land in the Azure Activity Log automatically as subscription-level posture; richer diagnostic logs are wired through diagnostic settings outside this spec. high_business_impact_enabled REDUCES the diagnostic data Microsoft itself collects -- the privacy dial for sensitive estates, fixed at creation.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: application_insights_id
+      evidence:
+        type: spec_default
+        reference: The Application Insights attachment is OPTIONAL on a hub (unlike the classic ML workspace, where it is required) and can be attached or re-pointed in place -- set it to give the hub and its projects a telemetry home.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The hub object is coordination metadata recreated declaratively; artifacts and secrets rest in the companion storage account and key vault, whose backup posture is their own kinds'. Deletion is a SOFT delete -- a purgeable ghost holds the name -- a recovery window for the metadata, not a backup system.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The hub control plane is a Microsoft-operated regional service with no customer zonal dial; availability of model deployments and compute is those kinds' posture.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag (Azure resource locks are subscription-side governance outside the manifest). Deletion IS soft -- the hub becomes a purgeable ghost holding its name, purged only when the provider's purge-on-destroy features flag is enabled -- a cushion against accidental loss, not a refusal gate.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Foundry hub service -- portal, API surface, managed network fabric -- is Microsoft-operated and patched; no customer-visible patch surface exists on the hub object itself.

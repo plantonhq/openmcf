@@ -1,0 +1,25 @@
+# The secret arm live: a hierarchical SecureString under the
+# account's default aws/ssm key. The value is a placeholder secret
+# (minutes-lived, deleted with the lane); parameter names free
+# immediately on delete, so the name is fixed. ~$0: Standard-tier
+# parameters are free.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSsmParameter
+metadata:
+  name: planton-oss-e2e-awsssmp-secure
+  id: planton-oss-e2e-awsssmp-secure
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsssmparameter
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  parameterName: /planton-oss/e2e/awsssmp/db-password
+  type: SecureString
+  secureValue: planton-e2e-example-secret
+  description: E2E secure-string parameter (placeholder secret)

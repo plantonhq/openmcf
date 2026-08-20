@@ -1,0 +1,42 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsconfigrule
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: scope
+      sku_meter: Config rule evaluations
+      pricing_unit: evaluations
+      impact: Every resource the rule examines is a billed evaluation on the tiered per-evaluation meter. Unset scope evaluates every recorded resource the rule's logic applies to; resource-type, tag, and single-resource scopes are the volume trims.
+    - field_path: maximum_execution_frequency
+      sku_meter: Config rule evaluations
+      pricing_unit: evaluations
+      impact: For periodic rules this is the clock on the meter -- One_Hour evaluates the in-scope fleet 24 times as often as the TwentyFour_Hours default. Change-triggered rules ignore it and bill per configuration change instead.
+    - field_path: evaluation_modes
+      sku_meter: Config rule evaluations
+      pricing_unit: evaluations
+      impact: PROACTIVE adds a second evaluation stream (pre-provisioning checks through the Config proactive APIs) on the same tiered meter -- but when DETECTIVE is enabled on the same rule, the proactive evaluations bill at zero; only proactive-ONLY rules pay for them.
+    - field_path: organization
+      sku_meter: Config rule evaluations
+      pricing_unit: evaluations
+      impact: An organization rule deploys into EVERY member account, and each account's evaluations bill there -- the org-wide compliance posture multiplies this manifest's meter by the whole organization's fleet, invisible from here.
+    - field_path: custom_lambda
+      sku_meter: Lambda function invocations
+      pricing_unit: requests
+      impact: A custom-lambda rule invokes (and bills) the referenced function once per evaluation trigger on top of the per-evaluation meter -- requests plus GB-seconds on the AwsLambda component. The custom_policy Guard engine does the same custom logic with NO compute bill.
+    - field_path: remediation.automatic
+      sku_meter: Config rule evaluations
+      pricing_unit: evaluations
+      impact: Automatic remediation closes the loop -- each fix changes the resource, which records a configuration item and re-evaluates the rule. A flapping remediation (fix, drift, fix) multiplies items and evaluations until the error_percentage circuit breaker stops it.
+  free_tier: AWS Config publishes no free tier -- every active-rule evaluation bills from the first one, on a tiered per-evaluation schedule that cheapens past 100,000 and again past 500,000 evaluations a month.
+  estimate_exclusions:
+    - evaluation volume follows fleet size and change rate (change-triggered rules) or the evaluation clock (periodic rules) -- neither is visible in the manifest
+    - the configuration items that FEED evaluations bill on the region's AwsConfigRecorder component
+    - custom-lambda evaluation compute bills on the referenced AwsLambda component
+    - remediation runs the configured SSM document -- any Systems Manager automation charges follow that service's pricing, outside this profile
+    - an organization rule multiplies evaluations by member-account fleets
+  notes: "The rule object is free -- billing starts with evaluations, and evaluations only happen where a configuration recorder is running (a rule in a recorder-less region evaluates nothing: no bill, and no compliance signal either). The tiered meter prices evaluations, not rules, so ten narrow rules can cost less than one broad one. Two verified subtleties: proactive evaluations are free on rules that also run detective mode (they bill only on proactive-only rules), and custom-policy Guard rules carry no compute charge at all -- the zero-infrastructure alternative to custom-lambda rules, whose function invocations bill on the Lambda component."

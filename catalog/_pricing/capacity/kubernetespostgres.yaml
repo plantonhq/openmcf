@@ -1,0 +1,39 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesPostgres manifest's spec values into the capacity footprint it
+# reserves from its target cluster. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/kubernetespostgres.yaml; a server-side estimator can
+# evaluate the same rules against live manifests. Every instance is a full
+# PostgreSQL pod carrying the declared resources plus its own PGDATA
+# volume (and a dedicated WAL volume when configured) -- the operator
+# provisions one PVC per instance from each declared size.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetespostgres
+spec:
+  workloads:
+    - label: instance
+      resources_path: resources
+      instances:
+        field_value:
+          field_path: instances
+          default_when_unset: "1"
+      volumes:
+        - label: data
+          size_path: storage.size
+        - label: WAL
+          size_path: wal_storage.size
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node and storage-class economics
+    - applies_when:
+        - field_path: backup
+          op: is_set
+        - field_path: backup.object_store.s3.endpoint_url
+          op: is_unset
+      text: object storage for the base backups and WAL archive grows with database churn across the retention window
+    - applies_when:
+        - field_path: backup.object_store.s3.endpoint_url
+          op: is_set
+      text: object storage on the configured S3-compatible endpoint for the base backups and WAL archive grows with database churn across the retention window

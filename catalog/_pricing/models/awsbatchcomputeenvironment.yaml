@@ -1,0 +1,43 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. All three presets are genuinely zero-committed: Batch is
+# free orchestration, every preset keeps min_vcpus at its 0 default so
+# capacity scales to zero between jobs, and the launched compute bills as
+# plain EC2 or Fargate usage only while jobs run -- stated in exclusions,
+# never padded into fabricated dollars.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awsbatchcomputeenvironment
+spec:
+  presets:
+    - preset: 01-fargate-batch
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - job compute bills as plain Fargate usage -- per vCPU-hour and per GB-hour for each job's duration, capped at 256 concurrent vCPUs by max_vcpus
+        - Batch itself adds no charge on top of the launched capacity
+        - job container logs bill CloudWatch Logs ingestion via the job definitions, and job-level spend attribution lives on the queue and job-definition components
+      notes: Zero committed cost -- with no vCPU floor, Fargate capacity exists only while jobs run; an environment with an empty queue bills nothing.
+    - preset: 02-ec2-managed-batch
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - job compute bills as ordinary EC2 instance-hours from the optimal C/M/R families, scaling between the explicit 0-vCPU floor and the 512-vCPU ceiling on queue demand; Reserved Instances and Savings Plans apply at billing time
+        - BEST_FIT_PROGRESSIVE falls forward to pricier instance types to keep jobs moving -- a reliability choice that can raise the effective rate under capacity pressure
+        - EBS volumes attached through launch templates bill on their own meters, and inter-AZ data transfer between the two subnets bills at EC2 rates
+      notes: Zero committed cost -- min_vcpus 0 is the whole usage-based claim; a non-zero floor would be a standing EC2 bill wearing Batch's clothes, and this preset deliberately keeps it at zero.
+    - preset: 03-spot-cost-optimized-batch
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - job compute bills as EC2 Spot instance-hours across the five pinned M/C/R types, up to roughly 90% below On-Demand, capped at 1024 concurrent vCPUs
+        - Spot interruptions re-run (and re-bill) unfinished jobs -- SPOT_PRICE_CAPACITY_OPTIMIZED and the three-AZ subnet spread exist to keep that tax down
+        - inter-AZ data transfer bills at EC2 rates -- the price of the capacity diversity the AZ spread buys
+      notes: Zero committed cost -- the Spot discount only applies to capacity that launches, and with a zero vCPU floor nothing launches until jobs arrive.

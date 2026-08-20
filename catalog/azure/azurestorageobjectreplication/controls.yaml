@@ -1,0 +1,61 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurestorageobjectreplication
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: "The policy stores no data of its own -- it is a rule set materialized on both accounts. The blobs it copies are encrypted at rest on BOTH sides by Azure Storage's always-on service-side encryption, under each account's own key posture (the destination copy encrypts under the DESTINATION account's keys, not the source's)."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "Key custody for the replicated data is each account's posture -- customer-managed keys on source and destination compose on the AzureStorageAccount components; the policy carries no key lever."
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: "The policy opens no client transport path; the replication channel is Microsoft-operated storage-to-storage infrastructure with no customer-configurable transport surface. Client access to either account rides that account's HTTPS/TLS posture."
+    - control_id: no-public-access
+      status: not_applicable
+      notes: "A replication rule set has no network endpoint. Exposure of the source and destination blobs is each account's and container's posture -- worth reviewing on the DESTINATION side, which now holds a full copy of the source data and deserves the same access discipline."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: "No network surface to restrict (see no-public-access)."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: "No inbound request path exists to filter."
+    - control_id: rbac
+      status: not_applicable
+      notes: "The policy is a management object -- creating and deleting it is ARM RBAC on both accounts (subscription/resource-group posture), and it grants nobody data access. Access to the replicated copies is governed on the destination account and containers."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: "The replication engine is Azure's own service identity; the policy holds no credentials and authenticates nobody."
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "No authentication paths of its own to strengthen or disable."
+    - control_id: audit-logging
+      status: not_applicable
+      notes: "Policy create/update/delete land in the Azure Activity Log on both accounts automatically. Per-blob replication auditing is data-plane: each destination blob carries its replication status, and source blobs record replication completion -- queryable surfaces, not configurable logs on this spec."
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: "Replication is asynchronous with NO default RPO guarantee or completion signal -- Microsoft's documented posture. Per-blob replication status is queryable on the data plane, and the account can opt into replication metrics on ITS side; this spec carries no monitoring toggle. Anyone treating this as DR should monitor lag deliberately rather than assume it."
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "The policy IS a data-protection mechanism (an asynchronous replica, not a backup): it protects against regional loss of the source, but a bad write or delete replicates to the destination too -- point-in-time protection is the accounts' versioning (a policy prerequisite, usefully) and soft-delete posture. The policy itself is declarative configuration recreated from the manifest."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: "No backups exist on this spec to retain; version retention on either account is lifecycle-management posture on the AzureStorageAccount components."
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: "The policy has no runtime footprint with a zonal failure mode. The RESILIENCE it builds is cross-account and typically cross-region -- the Cross-Region DR preset replicates to a paired-region account -- which is a composition fact, not a zonal replication lever on this spec."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither the objectReplicationPolicies API nor this spec offers a deletion-protection flag; ARM locks are subscription-side governance. Deleting the policy is non-destructive to data: replication stops, and every already-replicated blob remains on the destination."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "The replication engine is Microsoft-operated Azure Storage infrastructure; no customer-visible patch surface exists."

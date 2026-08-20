@@ -1,0 +1,53 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsekscluster
+spec:
+  aws:
+    statements:
+      - sid: ManageCluster
+        actions:
+          - eks:DeleteCluster
+          - eks:DescribeCluster
+          - eks:UpdateClusterConfig
+          - eks:UpdateClusterVersion
+          - eks:TagResource
+          - eks:UntagResource
+        resources:
+          - arn:aws:eks:*:*:cluster/*
+        provenance: derived
+        notes: Covers aws_eks_cluster -- the module's only resource. UpdateClusterConfig carries endpoint access, logging, Auto Mode, zonal shift, and deletion-protection changes; UpdateClusterVersion carries in-place upgrades.
+      - sid: CreateCluster
+        actions:
+          - eks:CreateCluster
+        resources:
+          - "*"
+        provenance: derived
+        notes: The service reference lists NO resource types for eks:CreateCluster (the cluster ARN does not exist until the call returns, and the EKS user guide states create actions must use the wildcard), while every other lifecycle action scopes to the cluster ARN -- so the create lives in its own wildcard statement and the scoped statement stays narrow.
+      - sid: PassClusterRoles
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: EKS assumes the referenced cluster role (cluster_role_arn) and, under Auto Mode, the node role (auto_mode.node_role_arn); creating or updating the cluster requires passing them. Narrow the resource to the actual role ARNs in a hardened deployment.
+      - sid: UseSecretsEncryptionKey
+        actions:
+          - kms:DescribeKey
+          - kms:CreateGrant
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Required only when spec.kms_key_arn selects a customer-managed key for secrets envelope encryption -- EKS creates a grant against the key during cluster create/update.
+      - sid: CreateEksServiceLinkedRole
+        actions:
+          - iam:CreateServiceLinkedRole
+        resources:
+          - arn:aws:iam::*:role/aws-service-role/eks.amazonaws.com/*
+        provenance: derived
+        notes: The first EKS cluster in an account creates the EKS service-linked role automatically; scoped to exactly that role path.

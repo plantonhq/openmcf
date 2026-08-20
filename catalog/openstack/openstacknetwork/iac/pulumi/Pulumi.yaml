@@ -1,3 +1,0 @@
-name: openstack-network
-runtime: go
-description: Pulumi module for OpenStackNetwork

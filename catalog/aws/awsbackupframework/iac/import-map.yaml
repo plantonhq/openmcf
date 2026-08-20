@@ -1,0 +1,16 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsbackupframework
+spec:
+  # The framework imports by its AWS name - the explicit spec field
+  # (AWS framework names forbid hyphens, so metadata.name never
+  # reaches AWS).
+  values:
+    - name: framework_name
+      derivations:
+        - from_spec_field: framework_name
+      where_to_find: >-
+        AWS Backup console -> Audit Manager -> Frameworks (the
+        framework's name), or `aws backup list-frameworks`
+        (FrameworkName).

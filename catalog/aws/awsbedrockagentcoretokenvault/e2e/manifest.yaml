@@ -1,0 +1,17 @@
+# Canonical AwsBedrockAgentCoreTokenVault example (hack/dev manifest
+# and refgen Example source): the region's default token vault
+# encrypted with a customer-managed KMS key. Literal ARN stands in for
+# the composed AwsKmsKey reference so the offline `tofu plan` renders
+# the resource.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreTokenVault
+metadata:
+  name: agentcore-vault-us-west-2
+  id: agentcore-vault-us-west-2
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  keyType: CustomerManagedKey
+  kmsKeyArn:
+    value: arn:aws:kms:us-west-2:123456789012:key/11111111-2222-3333-4444-555555555555

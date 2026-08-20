@@ -1,0 +1,57 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsfsxopenzfsfilesystem
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon FSx
+      sku_meter: provisioned SSD storage
+      pricing_unit: GB-months
+      description: Every provisioned GiB of SSD storage bills per GB-month from creation, full or empty; the rate steps with deployment_type (Multi-AZ carries the standby copy inside a doubled rate).
+    - service_name: Amazon FSx
+      sku_meter: provisioned throughput capacity
+      pricing_unit: MiBps-months
+      description: throughput_capacity bills per MBps-month from creation regardless of traffic -- typically the dominant term at higher tiers.
+  cost_drivers:
+    - field_path: storage_capacity_gib
+      sku_meter: provisioned SSD storage
+      pricing_unit: GB-months
+      impact: Every provisioned GiB bills monthly whether data fills it or not. Capacity can grow in place but never shrink -- oversizing is a one-way ratchet.
+    - field_path: throughput_capacity
+      sku_meter: provisioned throughput capacity
+      pricing_unit: MiBps-months
+      impact: The per-MBps rate makes this the largest lever at scale; unlike storage, throughput scales up AND down in place, so right-sizing after observing real load is free.
+    - field_path: deployment_type
+      sku_meter: provisioned throughput capacity
+      pricing_unit: MiBps-months
+      impact: The availability tier multiplies both committed meters -- the single-AZ HA variants double the throughput rate for an in-AZ standby, and MULTI_AZ_1 doubles the storage rate and more than triples the throughput rate for cross-AZ failover.
+    - field_path: storage_type
+      sku_meter: Intelligent-Tiering storage
+      pricing_unit: GB-months
+      impact: INTELLIGENT_TIERING replaces the provisioned-storage commitment with elastic pay-for-what-you-store billing by access tier, plus per-request charges and a provisioned SSD read cache -- cheaper per GB for cold data, but no longer a fixed bill.
+    - field_path: read_cache_configuration
+      sku_meter: provisioned SSD read cache
+      pricing_unit: GB-months
+      impact: The Intelligent-Tiering read cache is provisioned SSD billed per GB-month; USER_PROVISIONED pins the size (and the charge), PROPORTIONAL_TO_THROUGHPUT_CAPACITY lets AWS size it from throughput, and NO_CACHE removes the charge at the price of tiered-read latency.
+    - field_path: disk_iops_configuration
+      sku_meter: provisioned SSD IOPS
+      pricing_unit: IOPS-months
+      impact: AUTOMATIC mode includes 3 IOPS per GiB of storage at no extra charge; USER_PROVISIONED bills every IOPS above that included allowance per IOPS-month, at a rate that doubles for the HA variants and quadruples for MULTI_AZ_1.
+    - field_path: automatic_backup_retention_days
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: The default (0) keeps backups off. Any retention 1-90 accrues incremental backup storage per GB-month, growing with data churn across the retention window.
+    - field_path: skip_final_backup
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: The default (true) deletes cleanly. Setting false takes a final backup that outlives the file system and bills per GB-month until someone deletes it.
+  estimate_exclusions:
+    - backup storage bills per GB-month and grows with churn across the retention window
+    - Intelligent-Tiering data bills per GB-month by access tier plus monitoring and per-request charges -- entirely data-dependent
+    - user-provisioned SSD IOPS bill per IOPS-month only for the IOPS above the included 3 per GiB of storage
+    - data transfer to clients in other Availability Zones or out of AWS bills per GB outside FSx's meters
+  notes: "The committed floor is provisioned storage plus provisioned throughput -- both bill from creation with zero traffic. Compression (root_volume_configuration.data_compression_type) stretches how much data fits but never shrinks the bill: SSD capacity bills as provisioned, not as used. Child volumes and snapshots are free of their own meters; they consume this file system's already-billed capacity."

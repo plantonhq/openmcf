@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsroute53resolverquerylog.v1alpha1;
+
+// AwsRoute53ResolverQueryLogStackOutputs captures the observable state
+// of the resolver query logging configuration after apply.
+message AwsRoute53ResolverQueryLogStackOutputs {
+  // The configuration's id (rqlc-...) - the provider's import ID.
+  string query_log_config_id = 1;
+
+  // The configuration's ARN.
+  string query_log_config_arn = 2;
+
+  // Whether the configuration is shared via RAM (NOT_SHARED /
+  // SHARED_BY_ME / SHARED_WITH_ME).
+  string share_status = 3;
+
+  // AWS-generated association IDs (rqlca-...) keyed by the resolved
+  // VPC id.
+  map<string, string> association_ids = 4;
+}

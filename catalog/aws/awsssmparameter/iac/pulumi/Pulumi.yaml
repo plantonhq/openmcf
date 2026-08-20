@@ -1,0 +1,3 @@
+name: awsssmparameter
+runtime: go
+description: Pulumi module to manage an AWS SSM Parameter Store entry

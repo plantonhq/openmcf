@@ -1,0 +1,86 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsfsxontapfilesystem
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All FSx for ONTAP file systems are encrypted at rest -- when kms_key_id is omitted, AWS encrypts with the AWS-managed FSx key; there is no way to create an unencrypted file system.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: Omitted means the AWS-managed FSx key; setting kms_key_id upgrades encryption at rest to a customer-managed KMS key. ForceNew -- the key choice is fixed at creation.
+      notes: The 02-single-az-production, 03-multi-az-high-availability, and 04-single-az-scale-out presets pin a customer-managed key. The key's policy must allow FSx to use it; the IaC runner also needs to create a grant against it (see the permissions profile).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Transport encryption is negotiated per protocol -- SMB encryption, NFS with Kerberos privacy (krb5p), and IPsec are configured inside ONTAP on the Storage Virtual Machine and volume kinds (AwsFsxOntapStorageVirtualMachine, AwsFsxOntapVolume), which own the data-access endpoints. This file-system spec carries no data-path TLS surface of its own; the management endpoint (ONTAP REST API) is HTTPS.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The file system exists only as network interfaces inside the VPC subnets named by subnet_ids -- no public endpoint exists and none can be created. Multi-AZ floating endpoint IPs (endpoint_ip_address_range) are reachable only through the VPC route tables AWS manages in route_table_ids.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_default
+        reference: When security_group_ids is empty, AWS attaches the VPC's default security group; attaching explicit groups restricts inbound traffic to declared sources on the protocol ports the spec documents (NFS 111/635/2049/4045-4046, SMB 445, iSCSI 3260, ONTAP API 443, SSH 22). ForceNew.
+      notes: Every preset except 01-single-az-development attaches an explicit security group.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A multi-protocol (NFS/SMB/iSCSI) file system mounted inside the VPC -- there is no HTTP surface for a web application firewall to filter; the ONTAP REST management API is an administrative plane, not inbound application traffic.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is AWS-account IAM posture. The ONTAP administrative plane (SSH/REST as fsxadmin) opens only when fsx_admin_password is set and is governed by ONTAP's own role-scoped user model inside the appliance; data-plane access control (export policies, SMB ACLs) lives on the Storage Virtual Machine and volume kinds -- none of it is a component-level role choice here.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The file system runs no workloads and holds no cloud credentials; fsx_admin_password is an appliance-local administrative secret, not a cloud API credential.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Protocol authentication posture (SMB protocol versions, NFS Kerberos enforcement, iSCSI CHAP) is configured inside ONTAP on the Storage Virtual Machine and volume kinds -- this spec exposes no authentication path to harden or disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The file-system spec carries no access-logging surface -- ONTAP's native audit policies (file access auditing) are configured per Storage Virtual Machine and volume, and FSx management API calls land in CloudTrail as account-level posture.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: FSx publishes file system metrics (storage consumption, IOPS, throughput) to CloudWatch automatically -- there is no opt-in and no way to disable it.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: automatic_backup_retention_days
+      evidence:
+        type: spec_default
+        reference: Defaults to 0 (no automatic backups); any value 1-90 enables daily automatic backups of the file system's volumes, retained that many days.
+      notes: All presets except 01-single-az-development enable 7-day retention. ONTAP's built-in snapshots give point-in-time recovery independently of FSx backups, and per-volume backup decisions (including final backups) live on AwsFsxOntapVolume.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: automatic_backup_retention_days
+      evidence:
+        type: spec_validation
+        reference: Retention is directly configurable from 0 to 90 days (int32 gte=0 lte=90); 0 disables automatic backups entirely.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: deployment_type
+      evidence:
+        type: spec_default
+        reference: Defaults to SINGLE_AZ_2 (single-AZ). MULTI_AZ_1 and MULTI_AZ_2 place an active and a standby file server in two Availability Zones (subnet_ids then requires exactly two subnets) with automatic failover; the floating endpoint IPs survive failover with unchanged addresses.
+      notes: The 03-multi-az-high-availability preset deploys MULTI_AZ_2. ForceNew -- changing availability posture replaces the file system.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: AWS offers no deletion-protection flag for FSx file systems -- deletion cannot be refused at the resource. AWS does refuse to delete a file system that still contains Storage Virtual Machines or volumes, which in practice shields non-empty file systems, but that is a dependency check, not a protection toggle.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS patches the ONTAP file servers and operating software during the weekly maintenance window (schedulable via weekly_maintenance_start_time); no customer-visible patch surface exists.

@@ -1,0 +1,193 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbackupvault.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsBackupVaultSpec defines the desired configuration for an AWS
+// Backup vault - the encrypted container that recovery points live
+// in.
+//
+// A vault is EXACTLY ONE of two AWS vault types (AWS's own VaultType
+// discriminator): a standard backup vault, which carries the optional
+// lock/policy/notifications satellites, or a logically air-gapped
+// vault - an AWS-owned-key, immutably retained vault for ransomware
+// recovery that none of those satellites can attach to (the
+// provider's readers reject non-standard vaults by type). The vault
+// name is metadata.name on both arms (2-50 characters of letters,
+// digits, hyphens, and underscores).
+//
+// An empty vault costs nothing - AWS Backup bills recovery-point
+// storage, not vaults. Deleting a vault requires it to be EMPTY of
+// recovery points (the standard arm's force_destroy can drain them;
+// air-gapped recovery points cannot be manually deleted - they age
+// out by retention, so destroy an air-gapped vault only after its
+// points expire).
+message AwsBackupVaultSpec {
+  option (buf.validate.message).cel = {
+    id: "spec.exactly_one_vault_type"
+    message: "configure exactly one of standard / air_gapped - a vault is one AWS vault type"
+    expression: "has(this.standard) != has(this.air_gapped)"
+  };
+
+  // The AWS region the vault lives in.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The standard backup vault arm: the everyday vault type that
+  // backup plans target by name, with optional KMS encryption, vault
+  // lock, access policy, and event notifications.
+  AwsBackupVaultStandard standard = 2;
+
+  // The logically air-gapped vault arm: a hardened vault whose
+  // recovery points cannot be deleted or re-encrypted - retention is
+  // locked in at creation and EVERY field forces replacement.
+  // Recovery points reach it via a backup plan rule's
+  // target_logically_air_gapped_backup_vault_arn (rules always need a
+  // standard target vault too).
+  AwsBackupVaultAirGapped air_gapped = 3;
+}
+
+// AwsBackupVaultStandard configures a standard backup vault and its
+// attachable satellites.
+message AwsBackupVaultStandard {
+  // KMS key that encrypts the vault's recovery points. Changing this
+  // after creation forces a replacement, and once AWS fills in the
+  // default service key the field cannot be cleared back to empty.
+  // Unset = the AWS Backup service key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Delete ALL recovery points in the vault when this component is
+  // destroyed. This is deploy-side delete behavior, not an AWS
+  // attribute - AWS never reports it back, so it is invisible to
+  // imports and asserted only at destroy time. Leave false unless the
+  // vault is disposable: with it false, destroying a non-empty vault
+  // fails (AWS refuses to delete vaults holding recovery points).
+  bool force_destroy = 2;
+
+  // Vault Lock: write-once-read-many protection for every recovery
+  // point in the vault. Omit to leave the vault unlocked. A lock is
+  // all-or-replace: every lock field forces replacement of the lock
+  // configuration.
+  AwsBackupVaultLock lock = 3;
+
+  // Resource-based access policy on the vault (who may act on the
+  // vault and its recovery points), as an IAM policy document.
+  google.protobuf.Struct policy = 4;
+
+  // Vault event notifications fanned out to an SNS topic. Omit to
+  // leave notifications unconfigured.
+  AwsBackupVaultNotifications notifications = 5;
+}
+
+// AwsBackupVaultLock configures AWS Backup Vault Lock on a standard
+// vault. The lock MODE is decided by changeable_for_days alone:
+// unset = GOVERNANCE mode (privileged principals can remove the lock
+// later); set = COMPLIANCE mode (after the cooling-off window expires
+// the lock becomes IMMUTABLE - nobody, not even AWS root, can remove
+// it or delete the vault until every recovery point ages out). AWS
+// never reports changeable_for_days back, so it is invisible to
+// imports and the mode choice must be re-stated in config.
+message AwsBackupVaultLock {
+  // Days the compliance-mode lock stays removable after creation
+  // (minimum 3). SETTING THIS OPTS INTO COMPLIANCE MODE - once the
+  // window passes, the lock is permanent until retention expires.
+  // Leave unset for governance mode. AWS starts the countdown at
+  // creation; the value cannot be changed afterward.
+  optional int32 changeable_for_days = 1 [(buf.validate.field).int32.gte = 3];
+
+  // Minimum retention (days) the vault enforces on recovery points -
+  // backup plan rules that retain for less are rejected. Unset = no
+  // minimum.
+  optional int32 min_retention_days = 2 [(buf.validate.field).int32.gte = 1];
+
+  // Maximum retention (days) the vault enforces on recovery points.
+  // Unset = no maximum.
+  optional int32 max_retention_days = 3 [(buf.validate.field).int32.gte = 1];
+
+  // AWS rejects a lock whose maximum retention is below its minimum.
+  option (buf.validate.message).cel = {
+    id: "lock.retention_window_coherent"
+    message: "max_retention_days must be greater than or equal to min_retention_days"
+    expression: "!has(this.min_retention_days) || !has(this.max_retention_days) || this.max_retention_days >= this.min_retention_days"
+  };
+}
+
+// AwsBackupVaultNotifications wires vault events to an SNS topic.
+// Every field forces replacement of the notification configuration.
+message AwsBackupVaultNotifications {
+  // The SNS topic that receives the events. The topic's access policy
+  // must allow backup.amazonaws.com to publish.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef sns_topic_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSnsTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_arn"
+  ];
+
+  // Which vault events to publish (the AWS BackupVaultEvent
+  // vocabulary at the pinned provider).
+  repeated string events = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    unique: true
+    items: {
+      string: {
+        in: [
+          "BACKUP_JOB_STARTED",
+          "BACKUP_JOB_COMPLETED",
+          "BACKUP_JOB_SUCCESSFUL",
+          "BACKUP_JOB_FAILED",
+          "BACKUP_JOB_EXPIRED",
+          "RESTORE_JOB_STARTED",
+          "RESTORE_JOB_COMPLETED",
+          "RESTORE_JOB_SUCCESSFUL",
+          "RESTORE_JOB_FAILED",
+          "COPY_JOB_STARTED",
+          "COPY_JOB_SUCCESSFUL",
+          "COPY_JOB_FAILED",
+          "RECOVERY_POINT_MODIFIED",
+          "BACKUP_PLAN_CREATED",
+          "BACKUP_PLAN_MODIFIED",
+          "CONTINUOUS_BACKUP_INTERRUPTED",
+          "RECOVERY_POINT_INDEX_COMPLETED",
+          "RECOVERY_POINT_INDEX_DELETED",
+          "RECOVERY_POINT_INDEXING_FAILED",
+          "EKS_RESTORE_OBJECT_FAILED",
+          "EKS_RESTORE_OBJECT_SKIPPED",
+          "EKS_BACKUP_OBJECT_FAILED"
+        ]
+      }
+    }
+  }];
+}
+
+// AwsBackupVaultAirGapped configures a logically air-gapped vault.
+// The vault is immutable apart from tags: name, retention bounds, and
+// the encryption key all force replacement.
+message AwsBackupVaultAirGapped {
+  // Minimum retention (days) enforced on every recovery point,
+  // at least 7 (the AWS floor for air-gapped vaults). Required.
+  int32 min_retention_days = 1 [(buf.validate.field).int32.gte = 7];
+
+  // Maximum retention (days) enforced on every recovery point.
+  // Required; must be at least the minimum.
+  int32 max_retention_days = 2 [(buf.validate.field).int32.gte = 7];
+
+  // KMS key encrypting the vault. Fixed at creation; once AWS fills
+  // in its default the field cannot be cleared. Unset = the AWS-owned
+  // key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef encryption_key_arn = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "air_gapped.retention_window_coherent"
+    message: "max_retention_days must be greater than or equal to min_retention_days"
+    expression: "this.max_retention_days >= this.min_retention_days"
+  };
+}

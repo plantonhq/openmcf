@@ -1,0 +1,24 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureserviceplan
+spec:
+  azure:
+    groups:
+      - purpose: ManageServicePlan
+        actions:
+          - Microsoft.Web/serverfarms/Read
+          - Microsoft.Web/serverfarms/Write
+          - Microsoft.Web/serverfarms/Delete
+        provenance: derived
+        notes: Covers azurerm_service_plan (Terraform) and appservice.ServicePlan (Pulumi), the modules' single resource -- create, read/refresh, in-place updates (SKU, worker count, autoscale dials, tags), and destroy. Microsoft.Web operations use capitalized verbs (Read/Write/Delete) in the official operations list; Azure action matching is what the docs publish, so the official casing is carried verbatim.
+      - purpose: JoinAppServiceEnvironment
+        actions:
+          - Microsoft.Web/hostingEnvironments/Join/Action
+        provenance: derived
+        notes: Required only when app_service_environment_id places the plan inside an App Service Environment -- creating a plan in an ASE is a SERVICE-side check that demands Join on the environment in the ENVIRONMENT's scope, which may live in another resource group.

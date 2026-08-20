@@ -1,0 +1,77 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awscloudwatchloganomalydetector
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "AWS's anomaly-detection KMS guide states it directly: \"Anomaly detector data is always encrypted in CloudWatch Logs. By default, CloudWatch Logs uses server-side encryption for the data at rest.\" The trained model and surfaced anomalies cannot exist unencrypted."
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset keeps CloudWatch Logs' own server-side keys; referencing a symmetric KMS key encrypts the detector's findings under a key you own and can revoke. The key policy must grant logs.<region>.amazonaws.com encrypt/decrypt use with the anomaly-detector encryption context -- AWS's KMS guide publishes the exact statements.
+      notes: The key is settable only at birth -- AWS cannot re-encrypt a trained model in place, so changing kms_key_id replaces the detector (retraining from scratch). Revoking the service's key grant makes existing findings unretrievable, which is the point of holding the key.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The CloudWatch Logs API is HTTPS-only, and the analysis itself happens inside the service against already-ingested log data -- events reach the detector through the log groups' own TLS ingestion paths; no plaintext path to or from the detector exists.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A detector exposes no endpoint -- it is a service-side ML model over log groups. Anomalies it surfaces are readable only through IAM-authorized CloudWatch Logs APIs and console pages.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens on a detector; there is no inbound network surface to restrict. What it reads is fixed by log_group_arns, not by network reachability.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: With no request-serving surface there is no WAF attachment point; edge filtering has no meaning for a log-analysis model.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every detector operation is IAM-authorized with resource-level scoping -- creation authorizes against the log-group ARNs the detector will train over, and get/update/delete authorize against the detector's own anomaly-detector ARN (per the CloudWatch Logs service reference), so reading a detector's findings requires an explicit grant on that detector.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A detector runs no user workload and holds no credentials -- CloudWatch Logs' own service reads the referenced log groups internally as fixed provider plumbing.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: CloudWatch Logs has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface of its own. Detector management calls (create, update, pause, delete) are recorded by AWS CloudTrail as account-level posture, not per-detector configuration.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: enabled
+      evidence:
+        type: spec_default
+        reference: The detector IS a monitoring integration for the referenced log groups -- enabled true keeps the ML model continuously evaluating ingested events (at evaluation_frequency cadence) and surfacing anomalies on CloudWatch's Log Anomalies page; false pauses analysis without losing the trained model. AWS requires the value explicitly, and both modules always send it.
+      notes: filter_pattern narrows what trains the model (the 02 preset watches only ERROR/WARN lines), and anomaly_visibility_time (7-90 days, AWS default 21) controls how long a surfaced anomaly stays actionable.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The trained model is AWS-internal state that cannot be exported or restored -- recreating the detector from the manifest retrains from scratch (up to 24 hours on real traffic). The log data itself lives on the referenced AwsCloudwatchLogGroup components.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery). anomaly_visibility_time is a findings-visibility window, not a backup retention control.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The detector is a regional managed feature CloudWatch Logs operates across its own multi-AZ infrastructure -- analysis has no zonal footprint the manifest could configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for detectors. Deleting one discards the trained model irrecoverably -- and operators should know the provider treats an AccessDenied read as "detector gone", so a permissions regression can masquerade as deletion in state.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed feature -- AWS operates and evolves the ML models and evaluation pipeline; the detector exposes no runtime, version, or maintenance surface.

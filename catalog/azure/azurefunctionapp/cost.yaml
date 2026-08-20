@@ -1,0 +1,72 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. This component deliberately ships no
+# estimate model: compute rides the REFERENCED App Service plan
+# (service_plan_id), and the plan's SKU -- invisible in this manifest --
+# decides both the rate and the billing mode. On Dedicated and Elastic
+# Premium plans the money bills on the AzureServicePlan component; on a
+# Consumption (Y1) plan the plan provisions nothing and this app's
+# executions and GB-seconds are the meters, quantities no manifest can
+# predict. Either way a dollar figure here would be a guess wearing a
+# dollar sign. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurefunctionapp
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Azure App Service
+      sku_meter: plan instance hours
+      pricing_unit: hours
+      description: "On Dedicated (B*/S*/P*) plans every allocated instance bills hourly on the referenced AzureServicePlan at its SKU's rate, apps or no apps -- the plan is the billing anchor and this app shares its instances without a compute charge of its own. On Elastic Premium (EP*) plans the always-allocated instances bill per vCPU-second and GB-second on the plan, with no execution charge and at least one instance allocated at all times. On a Consumption (Y1) plan there is no baseline at all -- the app scales to zero and only the usage meters below bill."
+  cost_drivers:
+    - field_path: service_plan_id
+      sku_meter: plan instance hours
+      impact: "The whole billing mode hangs on the referenced plan's SKU, which this manifest never sees: Consumption (Y1) bills THIS app per execution and per GB-second after the monthly free grant; Elastic Premium bills the plan's allocated instances per vCPU-second and GB-second with no execution charge; Dedicated bills the plan's instances hourly at regular App Service rates. Moving between Consumption and any other tier also recreates the app. Flex Consumption (FC1) plans are a separate Azure resource type this kind does not admit."
+    - field_path: daily_memory_time_quota
+      sku_meter: function execution time
+      pricing_unit: GB-seconds
+      impact: "The Consumption-plan cost circuit breaker: when the app's aggregate compute crosses this many GB-seconds in a day, Azure stops it until the next day -- a hard daily ceiling on the usage bill. 0 (the default) means unlimited. Only meaningful on Consumption plans."
+    - field_path: site_config.app_scale_limit
+      sku_meter: function execution time
+      pricing_unit: GB-seconds
+      impact: "Caps how many instances the platform may scale the app to (Consumption auto-scales to 200 without it; Elastic Premium to the plan's elastic maximum) -- the concurrency-side bound on worst-case burn, complementing the daily quota's aggregate bound."
+    - field_path: site_config.elastic_instance_minimum
+      sku_meter: plan vCPU and memory duration
+      pricing_unit: vCPU-seconds
+      impact: "On Elastic Premium plans this raises the always-ready instance floor -- instances that bill on the referenced plan per vCPU-second and GB-second around the clock whether or not events arrive. The dial that trades standing plan spend for zero cold starts."
+    - field_path: site_config.pre_warmed_instance_count
+      sku_meter: plan vCPU and memory duration
+      pricing_unit: vCPU-seconds
+      impact: "Pre-warmed instances beyond the minimum also bill on the plan while allocated -- a smaller standing charge that buys scale-out speed. Elastic Premium only."
+    - field_path: enabled
+      sku_meter: function executions
+      pricing_unit: executions
+      impact: "false stops the app: on Consumption the usage meters stop with it, but on Dedicated and Elastic Premium plans the plan's instances keep billing regardless -- stopping an app never shrinks a dedicated plan's bill."
+    - field_path: builtin_logging_enabled
+      sku_meter: storage transactions
+      pricing_unit: transactions
+      impact: "Dashboard logging writes continuously to the linked storage account -- transactions and stored GB that bill on the referenced AzureStorageAccount, not here. Worth disabling (as the enterprise preset does) once Application Insights carries telemetry, to avoid paying for duplicate logging."
+    - field_path: backup
+      sku_meter: storage capacity
+      pricing_unit: GB-months
+      impact: "Scheduled backups write snapshots to the SAS-referenced storage container -- stored GB billed on that storage account by its own profile. The feature also requires a Standard-or-above plan, so turning it on can force a plan tier with a higher hourly rate."
+    - field_path: storage_mounts
+      sku_meter: storage capacity
+      pricing_unit: GB-months
+      impact: "Each mounted file share or blob container bills its stored GB and transactions on its own storage account -- the mount adds reachability, not a meter of its own."
+    - field_path: application_insights_connection_string
+      sku_meter: telemetry data ingestion
+      pricing_unit: GB
+      impact: "Wiring APM sends every request, dependency, exception, and trace to the referenced Application Insights resource -- ingestion bills per GB on that component, scaling with traffic and sampling settings, never here."
+  free_tier: "Consumption-plan pricing includes a monthly free grant of 1 million executions and 400000 GB-seconds of resource consumption per subscription (across all function apps in it), on paid subscriptions. The grant does not cover the required storage account, and does not apply to Elastic Premium or Dedicated hosting (Microsoft's Azure Functions pricing page, retrieved 2026-08-18)."
+  estimate_exclusions:
+    - "the compute rate lives on the referenced AzureServicePlan -- its SKU decides instance-hour rates (Dedicated), vCPU-second and GB-second rates (Elastic Premium), or that no instances bill at all (Consumption) -- which is why no estimate document exists for this component"
+    - "Consumption executions and GB-seconds are pure runtime behavior: billed per million executions and per GB-second after the free grant, with memory rounded up to the nearest 128 MB and duration to the nearest millisecond (100 ms / 128 MB minimums per execution)"
+    - "the required runtime-state storage account (triggers, logs, the Azure Files content share) bills standard storage rates on the referenced AzureStorageAccount -- Microsoft's pricing page states explicitly it is not in the free grant"
+    - "Application Insights ingestion and retention bill on the referenced AzureApplicationInsights component"
+    - "backup snapshots and storage mounts bill on their own storage accounts"
+    - "outbound bandwidth follows traffic at Azure's data-transfer rates"
+    - "the Durable Task Scheduler, if adopted by the app's code, is a separately metered Functions feature (per capacity unit or per dispatched action) outside this manifest"
+  notes: "The honest estimate lives at composition time: this manifest holds the scaling dials and quotas, the referenced AzureServicePlan holds the SKU that prices them -- each piece is verified data, and only their join is deferred to the surface that sees both components together. The Consumption story is the one worth stating precisely: on a Y1 plan the plan component's committed spend is zero and THIS app is where the money meters -- per-million-execution and per-GB-second charges that follow invocation volume, after the subscription-wide free grant (1 million executions + 400000 GB-s per month). On Elastic Premium the arithmetic inverts: no execution charge exists at all, and the bill is the plan's allocated vCPU-seconds and GB-seconds -- with this app's elastic_instance_minimum and pre_warmed_instance_count able to RAISE that plan-side floor. All billing-shape claims read from Microsoft's Azure Functions pricing page on 2026-08-18; no rates are echoed because every rate belongs to the plan's SKU or to runtime volume."

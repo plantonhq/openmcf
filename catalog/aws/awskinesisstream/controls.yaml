@@ -1,0 +1,87 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awskinesisstream
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: When kms_key_id is absent the modules set encryption_type=NONE -- the stream's records are stored unencrypted (Kinesis has no account-level encryption default). Setting any key flips the modules to encryption_type=KMS.
+      notes: The 02-provisioned-encrypted and 03-production-analytics presets both set "alias/aws/kinesis". Encryption can be enabled or disabled after creation (not ForceNew).
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: kms_key_id accepts a customer-managed key id, ARN, alias, or a reference to an AwsKmsKey resource; passing "alias/aws/kinesis" chooses the AWS-managed key instead of a customer-managed one.
+      notes: A customer-managed key adds key-policy control and rotation ownership; it bills on its own AwsKmsKey component.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The stream's only data plane is the AWS Kinesis API (PutRecord, GetRecords, SubscribeToShard) reached through the service's TLS endpoints -- no plaintext listener exists anywhere in the spec or modules to misconfigure.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The stream has no network placement -- it is not an addressable endpoint but an IAM-governed regional API resource. Reaching it privately (VPC endpoints) is account network posture outside this spec.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network ingress surface exists; access control is identity-based (see rbac), not source-based.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No web-facing request traffic exists to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every read and write against the stream is an IAM-authorized Kinesis API call -- no anonymous or network-trust path exists.
+      notes: resource_policy extends grants directly on the stream ARN, primarily for cross-account producers/consumers without role assumption -- review its principals with the same care as IAM policies.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The stream holds no credentials and runs no workloads; producers and consumers authenticate with their own identities.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No legacy authentication path exists to disable -- the IAM-signed Kinesis API is the only access path.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The stream has no audit-logging configuration of its own; administrative API calls are captured by account-level AWS CloudTrail, outside this component's choices.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Kinesis publishes stream-level CloudWatch metrics automatically for every stream; this cannot be disabled.
+      notes: shard_level_metrics deepens it to per-shard enhanced monitoring (hot-shard and consumer-lag visibility, including IteratorAgeMilliseconds) at extra CloudWatch cost -- the 03-production-analytics preset enables every shard-level metric.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: retention_period_hours
+      evidence:
+        type: spec_default
+        reference: Unset (0) leaves the AWS default of 24 hours; raising it keeps records re-readable for up to 8760 hours (365 days), the spec's own reprocessing and late-consumer use case.
+      notes: Retention is a replay window, not a snapshot -- records expire when it lapses, and a deleted stream cannot be restored. Durable copies belong to a consumer writing to S3 or another store.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: retention_period_hours
+      evidence:
+        type: spec_validation
+        reference: The retention window is the policy dial itself -- the spec validates it to 24-8760 hours (1 day to 1 year), so any declared value is an explicit, bounded retention policy.
+      notes: Retention beyond 24 hours bills an extended-retention surcharge; beyond 7 days, long-term storage bills per GB-month.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed regional service -- no zonal placement exists anywhere in the spec or modules for a manifest to get wrong; availability topology is AWS's responsibility, not a component choice.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kinesis offers no deletion-protection flag. The nearest guard is the default enforce_consumer_deletion=false, under which deleting a stream with registered enhanced fan-out consumers fails -- setting it true removes even that friction, so leave it unset unless teardown automation needs it.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the stream infrastructure; no customer-visible patch surface exists.

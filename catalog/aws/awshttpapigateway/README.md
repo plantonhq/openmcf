@@ -30,7 +30,7 @@ Use **AwsHttpApiGateway** when you need to:
 **When not to use:**
 
 - WebSocket APIs (a separate protocol surface with its own route/response model)
-- APIs requiring API keys and usage plans (a REST API feature; use JWT/IAM/Lambda authorizers instead)
+- APIs requiring API keys and usage plans (a REST API feature; use the AwsRestApiUsagePlan component, or JWT/IAM/Lambda authorizers on HTTP APIs)
 
 **Custom domains** are configured with the `AwsHttpApiDomain` component, which maps one or more APIs (by `api_id`) onto an owned domain with an ACM certificate. **Private backends** are reached through an `AwsHttpApiVpcLink` referenced from the integration's `connection_id`.
 

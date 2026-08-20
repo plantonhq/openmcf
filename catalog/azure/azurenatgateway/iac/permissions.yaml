@@ -1,0 +1,27 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurenatgateway
+spec:
+  azure:
+    groups:
+      - purpose: ManageNatGateway
+        actions:
+          - Microsoft.Network/natGateways/read
+          - Microsoft.Network/natGateways/write
+          - Microsoft.Network/natGateways/delete
+        provenance: derived
+        notes: Covers azurerm_nat_gateway -- create, read/refresh, in-place updates (idle timeout), and destroy. Held via Network Contributor, Contributor, or Owner, matching the module README's prose.
+      - purpose: AssociatePublicAddresses
+        actions:
+          - Microsoft.Network/publicIPAddresses/read
+          - Microsoft.Network/publicIPAddresses/join/action
+          - Microsoft.Network/publicIPPrefixes/read
+          - Microsoft.Network/publicIPPrefixes/join/action
+        provenance: derived
+        notes: Covers the public-IP and prefix association resources -- attaching an address or prefix the gateway does not own demands join on it; the provider also reads each referenced resource.

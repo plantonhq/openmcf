@@ -15,7 +15,7 @@ An SSL policy controls which TLS versions and cipher suites a load balancer acce
    ```bash
    gcloud auth application-default login
    ```
-5. **IAM permissions**: any role carrying `compute.sslPolicies.*` on the target project
+5. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Directory Structure
 

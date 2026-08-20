@@ -1,0 +1,33 @@
+# Consumer-scoped AwsIamRole install profile for the API Gateway
+# account-settings singleton: ONE role trusting apigateway.amazonaws.com
+# with CloudWatch Logs write (the content of AWS's managed
+# AmazonAPIGatewayPushToCloudWatchLogs policy). Scoping the fixture to
+# this role keeps the chain off the shared fixed-name set (the
+# concurrent-session collision class) and keeps DEPENDENCIES-UP to one
+# role create.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-apigw-account-role
+  id: planton-oss-e2e-apigw-account-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E role API Gateway assumes to push logs to CloudWatch
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: apigateway.amazonaws.com
+        Action: sts:AssumeRole

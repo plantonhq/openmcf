@@ -1,0 +1,62 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesMysql manifest's spec values into the capacity footprint it
+# reserves from its target cluster. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/kubernetesmysql.yaml; a server-side estimator can evaluate
+# the same rules against live manifests. Every database node is a full
+# Galera copy carrying the declared resources plus its own data volume;
+# the query-routing proxy (HAProxy or ProxySQL) runs its own replicas,
+# and ProxySQL adds a configuration-database volume per replica. The
+# fluent-bit log-collector sidecar rides inside every database node pod.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetesmysql
+spec:
+  workloads:
+    - label: node
+      resources_path: resources
+      instances:
+        field_value:
+          field_path: instances
+          default_when_unset: "3"
+      volumes:
+        - label: data
+          size_path: storage.size
+    - label: HAProxy replica
+      resources_path: proxy.haproxy.resources
+      instances:
+        field_value:
+          field_path: proxy.haproxy.replicas
+          default_when_unset: "3"
+    - label: ProxySQL replica
+      resources_path: proxy.proxysql.resources
+      instances:
+        field_value:
+          field_path: proxy.proxysql.replicas
+          default_when_unset: "3"
+      volumes:
+        - label: config
+          size_path: proxy.proxysql.storage.size
+    - label: log collector
+      resources_path: log_collector.resources
+      instances:
+        field_value:
+          field_path: instances
+          default_when_unset: "3"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node and storage-class economics
+    - applies_when:
+        - field_path: backup
+          op: is_set
+      text: object storage for XtraBackup base backups and PITR binlog uploads grows with database churn across the retention window; a PVC backup storage reserves an additional cluster volume instead
+  notes:
+    - applies_when:
+        - field_path: proxy
+          op: is_unset
+      text: when proxy is omitted the operator still runs HAProxy with 3 replicas at its upstream default reservations, which this manifest does not declare
+    - applies_when:
+        - field_path: log_collector
+          op: is_unset
+      text: the fluent-bit log-collector sidecar runs inside every database node pod by the operator's default with reservations this manifest does not declare

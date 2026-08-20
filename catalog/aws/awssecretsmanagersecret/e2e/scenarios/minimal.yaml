@@ -1,0 +1,28 @@
+# AwsSecretsManagerSecret minimal scenario: the smallest useful secret --
+# one string value, immediate permanent deletion on destroy
+# (recovery_window_in_days: 0) so the name frees for the next run (a
+# soft-deleted secret RESERVES its name for the recovery window; 0 is the
+# honest choice for ephemeral test secrets).
+#
+# Deliberately not exercised here: policy, replicas, custom staging
+# labels (the full-surface scenario), and rotation (offline-proven only --
+# see the profile).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSecretsManagerSecret
+metadata:
+  name: planton-oss-e2e-awssm-min
+  id: planton-oss-e2e-awssm-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssecretsmanagersecret
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E minimal secret
+  stringValue: '{"username":"e2e","password":"planton-e2e-example"}'
+  recoveryWindowInDays: 0

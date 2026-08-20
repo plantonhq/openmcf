@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsfsxontapstoragevirtualmachine
+spec:
+  billing_model: free
+  free_tier: A Storage Virtual Machine is a logical data server inside an FSx for ONTAP file system -- AWS meters the file system's provisioned storage, throughput, and IOPS, and none of those meters count SVMs. Creating one SVM or many on the same file system adds nothing to the bill, and the NFS, SMB, iSCSI, and management endpoints an SVM provides carry no meter of their own.
+  notes: "No field of this spec buys anything: the name, security style, vsadmin password, and the entire Active Directory join block are configuration stored and served by the file system's already-billed infrastructure. The real spend lives on either side of the SVM -- the parent AwsFsxOntapFileSystem bills its provisioned SSD capacity, throughput capacity, and IOPS from creation whether SVMs exist or not, and the volumes created under the SVM drive capacity-pool and backup usage as their own catalog kind. The Active Directory the SVM can join bills wherever the domain controllers run (self-managed AD is the only kind ONTAP SVMs support), never here."

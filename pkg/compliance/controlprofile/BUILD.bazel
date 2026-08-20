@@ -1,0 +1,27 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "controlprofile",
+    srcs = ["controlprofile.go"],
+    importpath = "github.com/plantonhq/planton/pkg/compliance/controlprofile",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//compliance/componentcontrolprofile/v1:componentcontrolprofile",
+        "//pkg/protobufyaml",
+        "@com_github_pkg_errors//:errors",
+    ],
+)
+
+go_test(
+    name = "controlprofile_test",
+    srcs = ["conformance_test.go"],
+    embed = [":controlprofile"],
+    deps = [
+        "//compliance/componentcontrolprofile/v1:componentcontrolprofile",
+        "//pkg/compliance/controlcatalog",
+        "//pkg/crkreflect",
+        "//pkg/specpath",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+    ],
+)

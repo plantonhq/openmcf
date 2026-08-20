@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuredataprotectionbackupvault
+spec:
+  billing_model: free
+  free_tier: The vault itself is free at rest -- an empty Data Protection backup vault bills nothing. Azure Backup charges begin only when backup instances protect datasources into it.
+  notes: "No field of this spec buys anything while the vault is empty, but two creation-time choices set the RATES its future contents pay: redundancy prices backup storage (GeoRedundant costs roughly double LocallyRedundant per GB; ZoneRedundant sits between), and datastore_type picks the storage tier (VaultStore standard, ArchiveStore cold, OperationalStore in-account). The meters themselves -- per-protected-instance fees and backup-storage GB for disks, blobs, AKS clusters, flexible servers, and Data Lake storage -- bill through AzureDataProtectionBackupInstance bindings. Soft delete, immutability, identity, and CMK encryption are free; soft-deleted data does continue to occupy paid backup storage for retention_duration_in_days after a deletion."

@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kuberneteslistenerset
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A ListenerSet stores no data -- it is a configuration object describing listeners merged into a Gateway. The TLS Secrets its listeners reference rest in etcd, whose encryption is owned by the target cluster.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With nothing stored (see enc-at-rest), there is no at-rest key to manage; etcd encryption keys belong to the cluster.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: listeners
+      evidence:
+        type: spec_default
+        reference: Each listener declares its protocol; HTTPS and TLS listeners must carry a tls block (validation rejects tls on HTTP/TCP/UDP and requires a mode for TLS protocol) whose certificate_refs name the Secrets used to terminate, while HTTP listeners serve plaintext -- so encrypted transit is a per-listener protocol choice.
+      notes: The 01-team-https-listeners preset terminates HTTPS with cert-manager-issued certificates; 02-tls-passthrough-listener passes TLS through end-to-end without terminating. A plaintext HTTP listener remains expressible.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The ListenerSet creates no service or address of its own -- its listeners merge into the parent Gateway, and it is the Gateway component that owns the data-plane endpoint and its exposure.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Listeners admit traffic by port, protocol, and hostname -- not by network source. allowed_routes restricts which Routes may attach to a listener (a route-delegation control), and network-source restriction for the data plane belongs to the parent Gateway and NetworkPolicies (separate kinds).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A ListenerSet defines listening endpoints only; it has no request-filtering seam. A WAF or equivalent filter would sit in the gateway implementation or in front of it, outside this spec.
+    - control_id: rbac
+      status: not_applicable
+      notes: Access to the ListenerSet object is governed by the target cluster's Kubernetes RBAC, not by this spec. Attachment itself is permissioned -- the parent Gateway must explicitly opt in through its allowed_listeners configuration (Gateways allow NO ListenerSet attachment by default), which is the Gateway component's control.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A ListenerSet authenticates to no cloud API -- it is configuration consumed by the in-cluster gateway controller.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The ListenerSet performs no authentication; there is no legacy authentication path to disable. TLS termination choices are covered under enc-in-transit.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the ListenerSet are Kubernetes API operations, captured by the target cluster's audit policy. The component emits no access log of its own; traffic logging belongs to the gateway data plane.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A configuration object emits no operational metrics. Listener and traffic metrics come from the gateway controller's data plane, outside this spec.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: There is no data to back up -- the ListenerSet is fully described by its declarative spec, which is re-appliable at any time.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backups (see backup-recovery), there is no retention length to configure.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The ListenerSet is an API object with no running replicas; availability of the listening endpoints is a property of the parent Gateway's data plane.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Kubernetes offers no deletion-protection flag on Gateway API objects. Deleting the ListenerSet removes its listeners from the parent Gateway; protection is operational (namespace RBAC, change review).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software to patch -- the ListenerSet is configuration served by the cluster's Gateway API CRDs; version lifecycle belongs to the cluster and its gateway controller.

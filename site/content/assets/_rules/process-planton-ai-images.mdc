@@ -1,0 +1,200 @@
+---
+description: Process images from the inbox, compress them, organize with proper naming, and upload to R2
+globs:
+alwaysApply: false
+---
+
+# Process Planton.ai Images
+
+Action rule to process images placed in the planton.ai inbox folder. Takes context about the images to determine appropriate naming and organization.
+
+## When to Use
+
+Invoke this rule when you have placed screenshots or images in `content/assets/_inbox/` and want to:
+- Compress them for optimal file size
+- Name them following the project convention
+- Organize them in the correct folder based on website URL structure
+- Upload to Cloudflare R2
+
+## Core Principle: URL-Mirrored Organization
+
+**The folder structure for images MUST mirror the website URL where they are used.**
+
+This is the most important organizational principle. It makes the system deterministic, predictable, and helps both humans and AI agents locate images correctly.
+
+### How It Works
+
+| Website URL | Image Folder | R2 URL |
+|-------------|--------------|--------|
+| `planton.ai/docs/service-hub/deployment-environments` | `images/docs/service-hub/deployment-environments/` | `assets.planton.ai/site/images/docs/service-hub/deployment-environments/` |
+| `planton.ai/docs/platform/connections` | `images/docs/platform/connections/` | `assets.planton.ai/site/images/docs/platform/connections/` |
+| `planton.ai/docs/service-hub/kubernetes-dashboard` | `images/docs/service-hub/kubernetes-dashboard/` | `assets.planton.ai/site/images/docs/service-hub/kubernetes-dashboard/` |
+| `planton.ai/blog/my-post` | `images/blog/my-post/` | `assets.planton.ai/site/images/blog/my-post/` |
+| `planton.ai/` (landing page) | `images/landing/` | `assets.planton.ai/site/images/landing/` |
+
+### Why This Matters
+
+1. **Deterministic**: Given a page URL, you know exactly where its images live
+2. **Self-documenting**: Folder structure explains image purpose
+3. **AI-friendly**: Cursor can infer destination from context without guessing
+4. **Maintenance**: Easy to find and update images for any page
+5. **Cleanup**: When a page is removed, its images folder can be deleted entirely
+
+## Workflow
+
+1. Drop images in `content/assets/_inbox/`
+2. Invoke this rule with context about what the images are and which page they're for
+3. AI determines appropriate naming and destination based on the target page URL
+4. Python tool compresses, renames, moves, and uploads
+
+## Context Requirements
+
+When invoking this rule, provide:
+- **Target page URL or path**: Which page these images are for (e.g., `/docs/service-hub/deployment-environments`)
+- **Purpose**: What the images show or document
+- **Individual descriptions**: If multiple images, what each one shows
+
+## Naming Convention
+
+Images are named following this pattern:
+```
+YYYY-MM-DD-HHMMSS-context-description.ext
+```
+
+Examples:
+- `2025-12-31-103045-deployment-pipeline-overview.png`
+- `2025-12-31-143500-pod-exec-terminal.png`
+- `2025-12-31-201530-hero-animation.gif`
+
+The context (feature area) is encoded in the folder path, not repeated in the filename.
+
+## Destination Folders
+
+All destinations follow the URL-mirrored structure:
+
+```
+content/assets/images/
+├── docs/                           # Documentation pages (planton.ai/docs/*)
+│   ├── platform/                   # /docs/platform/*
+│   │   ├── getting-started/
+│   │   ├── core-concepts/
+│   │   ├── connections/
+│   │   └── platform-tour/
+│   └── service-hub/                # /docs/service-hub/*
+│       ├── deployment-environments/
+│       └── kubernetes-dashboard/
+├── blog/                           # Blog posts (planton.ai/blog/*)
+│   └── 2025-12-31-my-post/
+└── landing/                        # Landing page (planton.ai/)
+```
+
+## Instructions
+
+<rule>
+name: process-planton-ai-images
+description: Process planton.ai inbox images with compression and URL-mirrored organization
+
+filters:
+  - type: manual
+    description: Triggered manually with context about images and target page
+
+actions:
+  - type: analyze
+    description: |
+      1. List images currently in inbox by running:
+         ```bash
+         cd /Users/swarup/scm/github.com/plantonhq/planton.ai
+         source .venv/bin/activate
+         python -m tools.image_processor inbox
+         ```
+
+      2. Based on the user's context, determine:
+         - **Target page URL**: Extract from context (e.g., "deployment-environments docs" → `/docs/service-hub/deployment-environments`)
+         - **Destination folder**: Mirror the URL structure (e.g., `images/docs/service-hub/deployment-environments/`)
+         - **Description suffix**: What each image shows
+
+      3. Key mapping rules:
+         - `/docs/*` pages → `images/docs/*`
+         - `/blog/*` posts → `images/blog/*`
+         - Landing page (`/`) → `images/landing/`
+         - Features page → `images/features/`
+
+  - type: execute
+    description: |
+      Run the image processor with determined parameters:
+      
+      ```bash
+      cd /Users/swarup/scm/github.com/plantonhq/planton.ai
+      source .venv/bin/activate
+      python -m tools.image_processor process \
+        --context "<URL_MIRRORED_PATH>" \
+        --description "<DESCRIPTION>"
+      ```
+
+      Replace:
+      - `<URL_MIRRORED_PATH>`: The URL-mirrored folder path (e.g., "docs/service-hub/deployment-environments")
+      - `<DESCRIPTION>`: Description of what the images show
+
+  - type: report
+    description: |
+      After processing, report:
+      - How many images were processed
+      - Compression savings achieved
+      - Final R2 URLs for use in docs/website
+      - Markdown snippets ready for embedding
+
+examples:
+  - trigger: "Process these screenshots for the deployment environments page"
+    context: "User dropped 3 screenshots for /docs/service-hub/deployment-environments"
+    action: |
+      python -m tools.image_processor process \
+        --context "docs/service-hub/deployment-environments" \
+        --description "pipeline-configuration"
+    result_url: "https://assets.planton.ai/site/images/docs/service-hub/deployment-environments/2025-12-31-103045-pipeline-configuration.png"
+    
+  - trigger: "Process the kubernetes dashboard pod exec screenshots"
+    context: "User dropped screenshots for the kubernetes dashboard docs page"
+    action: |
+      python -m tools.image_processor process \
+        --context "docs/service-hub/kubernetes-dashboard" \
+        --description "pod-exec-terminal"
+    result_url: "https://assets.planton.ai/site/images/docs/service-hub/kubernetes-dashboard/2025-12-31-143500-pod-exec-terminal.png"
+
+  - trigger: "Process screenshots for the connections docs"
+    context: "User dropped AWS credential screenshots for the platform connections page"
+    action: |
+      python -m tools.image_processor process \
+        --context "docs/platform/connections" \
+        --description "aws-credential-form"
+    result_url: "https://assets.planton.ai/site/images/docs/platform/connections/2025-12-31-200000-aws-credential-form.png"
+
+  - trigger: "Process landing page hero images"
+    context: "User dropped hero section images for the main landing page"
+    action: |
+      python -m tools.image_processor process \
+        --context "landing" \
+        --description "hero-animation"
+    result_url: "https://assets.planton.ai/site/images/landing/2025-12-31-201530-hero-animation.gif"
+</rule>
+
+## Troubleshooting
+
+If the tool fails, check:
+
+1. **Preflight errors**: Run `python -m tools.image_processor check` to verify all tools are installed
+2. **No images found**: Ensure images are in `content/assets/_inbox/` (not a subdirectory)
+3. **R2 access denied**: Verify AWS CLI is configured with the `r2` profile
+
+## R2 URLs
+
+After processing, images are available at:
+```
+https://assets.planton.ai/site/images/{url-mirrored-path}/{filename}
+```
+
+Examples:
+- Local: `content/assets/images/docs/service-hub/deployment-environments/screenshot.png`
+- R2: `https://assets.planton.ai/site/images/docs/service-hub/deployment-environments/screenshot.png`
+- Used on: `https://planton.ai/docs/service-hub/deployment-environments`
+
+The path structure is identical across local, R2, and the website URL it serves.

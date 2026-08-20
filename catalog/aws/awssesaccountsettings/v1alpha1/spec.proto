@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssesaccountsettings.v1alpha1;
+
+import "buf/validate/validate.proto";
+
+// AwsSesAccountSettingsSpec defines SES (SESv2) account-level
+// settings for one AWS region: the account suppression list and the
+// Virtual Deliverability Manager (VDM) posture.
+//
+// This is a SETTINGS SINGLETON: AWS keeps exactly one SES account
+// object per account+region, and this component manages its
+// account-wide attributes. Deploy at most one instance per region;
+// two instances targeting the same region fight over the same
+// account object. metadata.name never reaches AWS - it is
+// Planton-side identity only. These settings are deliberately NOT
+// fields on AwsSesConfigurationSet or AwsSesEmailIdentity - multiple
+// sets/identities would fight over the one account object.
+//
+// Destroy semantics DIFFER per arm (both taught on the arms below):
+// suppression settings PERSIST after destroy; the VDM arm is reset to
+// disabled.
+message AwsSesAccountSettingsSpec {
+  option (buf.validate.message).cel = {
+    id: "spec.at_least_one_arm"
+    message: "configure at least one of suppression / vdm - an instance managing neither is dead configuration"
+    expression: "has(this.suppression) || has(this.vdm)"
+  };
+
+  // The AWS region whose SES account settings this instance manages.
+  // The region IS the resource identity - one instance per region.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The account-level suppression list configuration. Omit the arm to
+  // leave the account's suppression settings untouched; set it with
+  // an empty reasons list to explicitly turn account-level
+  // auto-suppression OFF.
+  AwsSesAccountSettingsSuppression suppression = 2;
+
+  // The Virtual Deliverability Manager (VDM) posture - SES's
+  // deliverability analytics suite. Omit the arm to leave the
+  // account's VDM state untouched.
+  AwsSesAccountSettingsVdm vdm = 3;
+}
+
+// AwsSesAccountSettingsSuppression configures which bounce/complaint
+// events automatically add recipient addresses to the account-level
+// suppression list (suppressed addresses are skipped on every send
+// from the account).
+message AwsSesAccountSettingsSuppression {
+  // Which events auto-suppress a recipient:
+  //   - "BOUNCE": hard bounces add the address to the list.
+  //   - "COMPLAINT": spam complaints add the address to the list.
+  // Both together is the recommended reputation posture. An EMPTY
+  // list is meaningful: it explicitly disables account-level
+  // auto-suppression (configuration sets can still enable their own).
+  //
+  // Applying this arm overwrites whatever was previously set - and
+  // the setting PERSISTS after this component is destroyed (SES has
+  // no delete for it; the last-applied reasons stay in effect). To
+  // stop suppressing, apply an empty list before destroying.
+  repeated string reasons = 1 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: [
+          "BOUNCE",
+          "COMPLAINT"
+        ]
+      }
+    }
+  }];
+}
+
+// AwsSesAccountSettingsVdm configures the Virtual Deliverability
+// Manager: engagement dashboards and Guardian delivery optimization.
+message AwsSesAccountSettingsVdm {
+  // Master switch for VDM on the account. Destroying this component
+  // resets VDM to disabled (unlike the suppression arm, this one IS
+  // reverted on destroy). VDM carries its own AWS pricing - enabling
+  // it is a billing decision, not just a feature flag.
+  bool enabled = 1;
+
+  // Track open/click engagement metrics in the VDM dashboard. Unset
+  // leaves AWS's default for the account; only meaningful while
+  // enabled is true.
+  optional bool engagement_metrics = 2;
+
+  // Let Guardian optimize shared-delivery behavior (SES adjusts
+  // sending patterns to protect deliverability). Unset leaves AWS's
+  // default for the account; only meaningful while enabled is true.
+  optional bool optimized_shared_delivery = 3;
+}

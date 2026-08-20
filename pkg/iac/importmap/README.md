@@ -10,8 +10,8 @@ authored, in two tiers:
 
 | Tier | Kind | Location | Owns |
 |------|------|----------|------|
-| Provider | `ProviderImportCatalog` | `catalog/{provider}/aa_import/catalog.yaml` | Import-ID **format** per resource type (`"{bucket}"`, `"{vpc_id}"`), plus `config_only_attributes` — attributes that exist only in IaC configuration and can never round-trip through import |
-| Component | `ComponentImportMap` | `{component}/v1/iac/import-map.yaml` | The **value source** per `{placeholder}`: metadata.name (optionally with a literal suffix, for convention-named satellites like `<name>-hpa`), a spec field, a stack output, a pasted ARN's part, the enumerated address's instance key, or a module-hardcoded literal (a typed-CR module's apiVersion/kind) — with "where to find this" guidance for anything only the user can supply |
+| Provider | `ProviderImportCatalog` | `catalog/{provider}/aa_import/catalog.yaml` | Import-ID **format** per resource type (`"{bucket}"`, `"{vpc_id}"`) — or, for types whose upstream provider ships no importer, the recorded `not_importable_upstream_reason` — plus `config_only_attributes`, attributes that exist only in IaC configuration and can never round-trip through import |
+| Component | `ComponentImportMap` | `{component}/v1/iac/import-map.yaml` | The **value source** per `{placeholder}`: metadata.name (optionally with a literal suffix or prefix, for convention-named satellites like `<name>-hpa` and provider-composed IDs like `table/<name>`), a spec field, a stack output, a pasted ARN's part, the enumerated address's instance key, or a module-hardcoded literal (a typed-CR module's apiVersion/kind) — with "where to find this" guidance for anything only the user can supply |
 
 An id_format has two optionality forms, with deliberately different literal
 handling: `{name?}` renders as the empty string when unresolved and KEEPS its
@@ -96,6 +96,20 @@ profiles.
   sibling drift still fails. The destroy that follows runs through the
   re-imported state, proving it fully owns the resources.
 
+A resource type whose upstream provider ships NO importer at the pinned
+version declares `not_importable_upstream_reason` in the provider catalog
+instead of an `id_format` (mutually exclusive; the conformance guard
+enforces exactly one). The canonical case is
+`aws_appautoscaling_scheduled_action`: its target and policy siblings both
+carry an import handler, the scheduled action does not. The round-trip
+skips these addresses at import and proves the ADOPTER'S contract for them
+instead — the post-import plan proposes re-creating exactly those
+resources, and the reconcile-apply executes it. That is honest only when
+the type's create path CONVERGES on an existing cloud resource (an
+upsert-style Put, as PutScheduledAction is); a type whose create would
+conflict with its own survivor needs different treatment, and the live
+lane is what verifies the convergence.
+
 A component map may additionally declare `import_normalized` entries — the
 narrowest tolerance vocabulary, scoped to ONE of the module's own logical
 resources and ONE dotted sub-path each, with a mandatory reason. It exists
@@ -114,6 +128,24 @@ because a plain dotted path would walk `data → password → db` and never
 match the real key (Kubernetes Secret data keys like htpasswd file
 names are the canonical case; proven live on a blind round-trip that
 failed its declared tolerance until the grammar could express the key).
+
+**REPLACES are never tolerable — and one class of config can only plan a
+replace after import.** Every tolerance above covers in-place updates; a
+post-import plan proposing destroy+create always fails the oracle, because
+silently "passing" a plan that would destroy the adopted resource is worse
+than any recipe bug. A scenario whose config carries **write-only ForceNew
+SECRETS** (first live case: a container group's secure environment
+variables) sits exactly there: the blind import necessarily lacks the
+secret, the config supplies it, the attribute forces replacement — and
+`ignore_changes` must never paper it over, because rotating such a secret
+is SUPPOSED to replace the resource. Such a scenario opts out of the
+round-trip with the reason-carrying manifest annotation
+`planton.dev/e2e-import-roundtrip-skip: "<why>"` (an empty value does not
+skip; the runner prints the reason into the lane log), while the kind's
+recipes stay enrolled and prove on its secret-free scenarios. The kind's
+user docs must teach the adoption consequence: the first apply after
+importing a secret-bearing instance replaces it once, converging to the
+manifest's secrets.
 
 ## Enrollment is the file itself
 
@@ -149,7 +181,7 @@ only (noted per row); the lane proves exactly what the fixtures exercise.
 | `awsinternetgateway` | 2026-07-10, smoke | — |
 | `awsnatgateway` | 2026-07-10, minimal | — |
 | `awsiamrole` | 2026-07-10, smoke (role + inline `{role_name}:{inline_policy_name}` + attachment `{role_name}/{managed_policy_arn}`, both via `for_each` keys) | `aws_iam_role.force_detach_policies` declared (provider-documented config-only; scenario does not set it) |
-| `awsdynamodb` | 2026-07-10, on-demand-full-surface (table + resource policy + table- and GSI-level contributor insights incl. the optional `{index_name?}` segment and account id) | `aws_dynamodb_resource_policy.policy`/`revision_id` (write-normalized); `aws_dynamodb_kinesis_streaming_destination` not composed by the scenario, offline-validated only |
+| `awsdynamodb` | 2026-08-13, BOTH scenarios post-capacity-fold (on-demand-full-surface: table + resource policy + table- and GSI-level contributor insights incl. the optional `{index_name?}` segment and account id; provisioned-autoscaled: table + both `aws_appautoscaling_target`s and the read `aws_appautoscaling_policy` blind via the composed `{service_namespace}/{scaling_resource_id}/{scalable_dimension}` IDs — the `from_metadata_name_prefix` arm's and the scoped-literal declarations' first live proof — with the scheduled action's skip-and-recreate path the FIRST live exercise of `not_importable_upstream_reason`). Earlier: 2026-07-10, on-demand-full-surface | `aws_dynamodb_resource_policy.policy`/`revision_id` (write-normalized); `aws_dynamodb_kinesis_streaming_destination` not composed by the scenario, offline-validated only; `aws_appautoscaling_scheduled_action` not importable upstream (recorded reason; reconcile-apply re-puts it) |
 | `awssqsqueue` | 2026-07-10, fifo-full-surface (queue URL id) | — |
 | `awssnstopic` | 2026-07-10, standard-topic (topic ARN id) | `aws_sns_topic_data_protection_policy` not composed by the scenario, offline-validated only |
 | `awskmskey` | 2026-08-11, minimal re-proven post-depth-closure (key UUID + `alias/...` via `for_each` key + the NEW `{kms_key_id}:{grant_id}` composite — the cloud-generated grant id derives BLIND via `from_stack_output_keyed_by_address` over the grant_ids output) | `aws_kms_key.deletion_window_in_days` declared (provider-documented config-only; scenario does not set it) |
@@ -273,7 +305,8 @@ absence is never mistaken for an oversight):
 
 ## Adding a kind
 
-1. Add the component's resource types (with import-ID formats) to the
+1. Add the component's resource types (with import-ID formats, or
+   `not_importable_upstream_reason` for importer-less types) to the
    provider catalog if absent; declare any config-only attributes. When a
    type is listable via Cloud Control (`aws cloudcontrol list-resources
    --type-name ...` succeeds without extra parameters -- verify

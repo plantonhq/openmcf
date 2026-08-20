@@ -1,0 +1,33 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpeventarctrigger
+spec:
+  presets:
+    - preset: 01-pubsub-to-cloud-run
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - an idle trigger bills nothing, and even under load its Eventarc Standard meter stays at $0 -- Pub/Sub-source events publish at $0 per million, with the first 50,000 chargeable events each month free besides
+        - the bring-your-own transport topic bills standard Pub/Sub rates on the referenced GcpPubSubTopic as messages flow -- Google's own pricing examples show the transport as the entire real bill for busy triggers
+        - the order-processor Cloud Run service bills its request-time compute per delivered event
+      notes: Zero committed at creation -- the routing rule is free to hold, and the traffic cost lives in the Pub/Sub transport and the receiving service, not on the trigger.
+    - preset: 02-audit-log-to-workflow
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - audit-log events are Google-source events at $0 per million on Eventarc's meter (first 50,000 chargeable events monthly free) -- and per Google's pricing note, events using Cloud Audit Logs incur Cloud Logging charges on the audited project
+        - the Eventarc-created transport topic bills standard Pub/Sub rates as bucket-creation events flow; audit events are typically ~2 KiB, well under the 64 KiB chunking threshold
+        - each delivered event triggers a Cloud Workflows execution billed as steps on the bucket-onboarding workflow's component
+      notes: Zero committed at creation -- volume follows how often the watched API call (storage.buckets.create) actually happens, a rate no manifest can pin down; the trigger itself never becomes the bill.

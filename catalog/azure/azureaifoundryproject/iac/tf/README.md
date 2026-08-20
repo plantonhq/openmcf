@@ -45,9 +45,3 @@ and `spec` variables matching the generated `variables.tf`.
 - **high_business_impact_enabled is sent only when true**: the
   service flips it true when hub encryption applies; pinning false
   would fight the read-back (the flag is ForceNew).
-
-## Required Permissions
-
-The deploying principal needs
-`Microsoft.MachineLearningServices/workspaces/*` on the HUB's
-resource group (Contributor covers it).

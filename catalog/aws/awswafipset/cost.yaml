@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awswafipset
+spec:
+  billing_model: free
+  free_tier: An IP set is a named list of CIDR ranges, and AWS WAF has no meter for it -- WAF bills each web ACL monthly, each rule in a web ACL monthly, and the requests the web ACL inspects, with no per-set fee. A set of one address or ten thousand, referenced by no rule or by fifty, costs exactly nothing on its own.
+  notes: "No field of this spec buys anything: the addresses, scope, and IP version are configuration stored by the WAF control plane. The real spend lives on the web ACLs that reference this set -- each bills its monthly ACL fee, a monthly fee per rule (including the rule holding the ip_set_reference statement), and a per-million-requests rate. One capacity nuance worth knowing: an IP set match statement consumes 1 WCU (web ACL capacity unit) in the referencing web ACL -- cheap as statements go -- and only if an ACL's total rules push past the 1,500 WCUs included in its base request price does the per-request rate tier upward. Updating the set's addresses is free and propagates to every referencing rule with no redeploy."

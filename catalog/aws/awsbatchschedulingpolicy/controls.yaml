@@ -1,0 +1,59 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbatchschedulingpolicy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A scheduling policy stores no customer data -- its fairness dials are Batch control-plane metadata held inside AWS's own service infrastructure, not a data store this component owns.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest here to key (see enc-at-rest); Batch exposes no KMS surface on scheduling policies.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A scheduling policy terminates no connections of its own. The only wire traffic involving it is Batch management calls, which happen on AWS API endpoints serving exclusively over TLS as account-wide provider behavior, not per-policy configuration.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The policy has no network endpoint to expose -- it is a fairness rulebook that job queues reference by ARN. Network exposure belongs to the compute environments and jobs it never touches directly.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; a fairness rulebook carries no addresses, ports, or security groups.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A scheduling policy receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: not_applicable
+      notes: The spec carries no principal or access surface of its own -- who may create, tune, or attach the policy is governed by IAM permissions on the Batch API, account-level posture outside this spec and the modules. Share identifiers group jobs for fairness accounting; they are not identities and grant nothing.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The policy runs no workloads and holds no credentials of any kind -- it is a set of weights and windows.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The policy exposes no authentication path at all -- there is no protocol, credential, or client negotiation to harden.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Every management call against the policy is recorded by AWS CloudTrail as account-level posture, not per-policy settings.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Batch publishes no metrics per scheduling policy -- the dispatch behavior it shapes surfaces through the queues' job state-change events and the compute environments' metrics, which belong to those components.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The policy holds no data to back up -- it is declarative configuration fully re-creatable from the manifest, and every dial updates in place on a live policy.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A regional control-plane object with no zonal placement of its own; zone spread belongs to the compute environments behind the queues that reference it.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for scheduling policies. AWS does refuse to delete a policy still attached to a job queue -- a dependency guard that surfaces the queues' wiring, not a configurable protection (and note the queue-side quirk that a policy can be replaced on a live queue but never removed from it).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A scheduling policy is a pure configuration object with no software to patch.

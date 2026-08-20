@@ -21,7 +21,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** to host the trigger (directly or via a GcpProject reference).
-- **IAM**: the deploying identity needs `roles/eventarc.admin` (or narrower); the trigger's `serviceAccount` needs `roles/eventarc.eventReceiver`, plus `roles/run.invoker` for authenticated Cloud Run destinations.
+- **IAM**: see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying identity needs; the trigger's `serviceAccount` needs `roles/eventarc.eventReceiver`, plus `roles/run.invoker` for authenticated Cloud Run destinations.
 - **First trigger in a project**: Eventarc's service agent is provisioned on first use — expect a few minutes before the first delivery succeeds.
 
 ## Deploy

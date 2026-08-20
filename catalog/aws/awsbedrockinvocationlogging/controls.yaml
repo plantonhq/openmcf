@@ -1,0 +1,72 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbedrockinvocationlogging
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The configuration itself stores no data -- it is a settings singleton naming destinations and data types. The delivered logs rest in the referenced destinations under THEIR encryption postures (the log group's KMS association, the bucket's SSE configuration), decided on those components.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "There is no data at rest here to key (see enc-at-rest); the CMK choice for delivered logs lives on the destination components. One wiring note from AWS's setup docs: an SSE-KMS destination bucket needs a key-policy grant letting bedrock.amazonaws.com call kms:GenerateDataKey -- that grant belongs to the referenced AwsKmsKey's policy."
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The logging configuration APIs are HTTPS-only SigV4 endpoints, and Bedrock's delivery to CloudWatch Logs and S3 rides AWS's TLS service channels; no plaintext path exists for either the settings or the delivered log data.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The configuration exposes no endpoint -- it is control-plane settings that write into referenced destinations. Whether the delivered logs (which contain full prompts and responses) are reachable is the referenced AwsS3Bucket's and AwsCloudwatchLogGroup's posture, decided on those components.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens on a logging configuration; there is no inbound network surface to restrict. Access to the delivered logs is IAM- and bucket-policy territory on the destination components.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: With no request-serving surface there is no WAF attachment point; edge filtering has no meaning for a log-delivery settings object.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation on the configuration -- put, get, delete -- is an IAM-authorized SigV4 call. The three actions take no resource-level scoping (the bedrock service reference lists no resource types for them), so authorization granularity is per-principal per-account -- whoever holds PutModelInvocationLoggingConfiguration controls the region's logging posture, which argues for granting it narrowly.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The configuration runs no user workload. Bedrock's CloudWatch delivery assumes the referenced role_arn (which must trust bedrock.amazonaws.com) with short-lived credentials, and its S3 delivery writes as the bedrock.amazonaws.com service principal against the bucket policy -- service plumbing fixed by AWS's design, not a workload-identity choice this manifest carries.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The service has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: This component IS Bedrock's audit backbone -- it captures every model invocation in the region with full request/response data. And operations on the configuration itself (who enabled it, who narrowed the data types, who deleted it) are management events CloudTrail records unconditionally, so tampering with the recorder is itself recorded.
+      notes: Each log entry carries the caller's assumed-role identity ARN automatically, so per-principal token usage and prompt attribution are answerable from the delivered logs alone.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Delivery health is observable with nothing to enable -- Bedrock emits per-attempt CloudWatch metrics under the AWS/Bedrock namespace (ModelInvocationLogsCloudWatchDeliverySuccess/Failure, ModelInvocationLogsS3DeliverySuccess/Failure, and the large-data S3 variants), so silent delivery failure is alarmable from day one.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The configuration stores nothing itself -- recreating it from this manifest restores future capture; already-delivered logs live in the referenced destinations under their durability postures, and history was never the configuration's to lose.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: The configuration has no retention field by design -- delivered logs persist until the referenced log group's retention setting or the bucket's lifecycle rules say otherwise. Retention policy lives on those components.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Bedrock is a regional managed service AWS operates across availability zones -- capture and delivery have no zonal footprint the manifest could configure, and delivered data inherits the destinations' multi-AZ durability.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: The configuration carries no deletion-protection flag -- destroying this component deletes it and the region instantly reverts to NO invocation logging, a compliance-relevant blind spot to guard operationally. Already-delivered logs stay in the destinations.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the capture and delivery pipeline; the configuration exposes no runtime, version, or maintenance surface.

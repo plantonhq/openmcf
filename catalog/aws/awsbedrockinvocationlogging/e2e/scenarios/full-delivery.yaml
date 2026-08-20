@@ -1,0 +1,50 @@
+# Full surface: both delivery arms (CloudWatch with S3 spillover + the
+# S3 archive), plus explicit data-type opt-outs proving the
+# presence-typed toggles send false. All fixtures are consumer-scoped
+# (e2e/prerequisites/): the bucket fixture carries the
+# bedrock.amazonaws.com PutObject bucket policy Bedrock's service
+# principal needs.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockInvocationLogging
+metadata:
+  name: planton-oss-e2e-awsbedil-full
+  id: planton-oss-e2e-awsbedil-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockinvocationlogging
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsCloudwatchLogGroup,AwsIamRole,AwsS3Bucket"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  videoDataDeliveryEnabled: false
+  embeddingDataDeliveryEnabled: false
+  cloudwatch:
+    logGroupName:
+      valueFrom:
+        kind: AwsCloudwatchLogGroup
+        name: planton-oss-e2e-bedil-lg
+        fieldPath: status.outputs.log_group_name
+    roleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: planton-oss-e2e-bedil-role
+        fieldPath: status.outputs.role_arn
+    largeDataDeliveryS3:
+      bucketName:
+        valueFrom:
+          kind: AwsS3Bucket
+          name: planton-oss-e2e-bedil-logs
+          fieldPath: status.outputs.bucket_id
+      keyPrefix: spillover
+  s3:
+    bucketName:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: planton-oss-e2e-bedil-logs
+        fieldPath: status.outputs.bucket_id
+    keyPrefix: invocations

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsiamaccountsettings
+spec:
+  billing_model: free
+  free_tier: "The IAM FAQ states it directly: 'IAM is offered at no additional charge.' The account sign-in alias, the IAM user password policy, and the STS global-endpoint token-version preference are core IAM account features -- no meter counts them, and the STS tokens the preference shapes belong to the same no-charge IAM/STS feature set."
+  notes: "Nothing in this settings singleton can buy anything: the alias renames the console sign-in URL, the password policy hardens IAM user console passwords, and the STS arm picks which token format the global endpoint issues. The nearby PAID features belong to DIFFERENT objects and deserve naming so the boundary stays sharp -- IAM Access Analyzer's custom policy checks are 'a paid feature' per the same FAQ, and its unused-access analyzer bills per IAM role or user analyzed per month; this spec drives no Access Analyzer resource, so neither meter can start from here. Destroy semantics move no money either: the alias deletes (sign-in reverts to the bare account ID), the password policy resets to AWS's defaults, and the STS preference persists as last applied -- all equally free states."

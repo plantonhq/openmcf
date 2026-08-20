@@ -3,25 +3,19 @@ kind: ComponentE2EProfile
 metadata:
   name: azuremachinelearningworkspace
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests, both
-  # engine builds, offline tofu plan green); live dual-engine proof has
-  # not yet run. The Basic workspace is free at rest and provisions in
-  # two to five minutes; the scenario also provisions the managed VNet
-  # at deploy time (approved-outbound isolation with one rule of each
-  # type -- the composed-children flagship), which adds several minutes
-  # including the private endpoint to the fixture vault. The companion
-  # chain (storage account + key vault + application insights on the
-  # log-analytics fixture) rides the registry prerequisites. This kind
-  # is also a fixture of the datastore lane (and the compute lanes to
-  # come). The CMK / feature-store / serverless-subnet arms are
-  # offline-proven only (they need a Key Vault key grant, a feature
-  # store, and a delegated subnet the minimal lane deliberately does
-  # not deploy). storage_account_access_type is the kind's one
-  # PARITY-EXCEPTION (Terraform-only; the Pulumi module fails loudly).
-  # Deletion is a SOFT delete -- the workspace ghost holds its name
-  # until purged; the orphan sweep adds `az ml workspace list
-  # --archived`.
+  # PROVEN both engines. The smoke is a Basic system-identity workspace
+  # on the fixture companion chain in DEFAULT managed-network mode
+  # (create ~1 min, destroy ~2 min, purge-on-destroy proven: the
+  # Terraform lane recreated the same fixed name minutes after Pulumi
+  # destroy). Two live attempts at the approved-outbound +
+  # provision-on-creation flagship failed in different ways (PE-rule
+  # destroy 409-loop; managed-VNet create rolled the workspace back
+  # with "workspace identity has been deleted") -- that arm and the
+  # three composed outbound-rule children stay offline-proven, findings
+  # on the spec fields. timeout_minutes stays 90 so a future
+  # managed-network scenario has budget; default-network lanes finish
+  # in ~15 min including the companion chain.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
-  timeout_minutes: 45
+  status: green
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 90

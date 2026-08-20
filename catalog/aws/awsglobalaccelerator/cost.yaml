@@ -1,0 +1,44 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsglobalaccelerator
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: AWS Global Accelerator
+      sku_meter: accelerator hours
+      pricing_unit: hours
+      description: Fixed fee for every full or partial hour the accelerator exists -- enabled OR disabled -- accruing until the accelerator is deleted. One flat rate worldwide; listeners and endpoint groups add no fee of their own.
+    - service_name: Amazon Virtual Private Cloud
+      sku_meter: public IPv4 address usage
+      pricing_unit: IP-hours
+      description: The two static anycast IPv4 addresses bill as in-use public IPv4 addresses for the accelerator's lifetime -- they stay assigned (and billed) even while the accelerator is disabled.
+  cost_drivers:
+    - field_path: ip_addresses
+      sku_meter: public IPv4 address usage
+      pricing_unit: IP-hours
+      impact: Bring-your-own-IP addresses are not charged as public IPv4 addresses, so BYOIP removes the address charge for each address you bring (maximum 2).
+    - field_path: ip_address_type
+      sku_meter: public IPv4 address usage
+      pricing_unit: IP-hours
+      impact: DUAL_STACK adds two IPv6 addresses alongside the two IPv4 addresses; the public-address charge schedule covers IPv4 only, so the billed address count stays two either way.
+    - field_path: listeners
+      sku_meter: Data Transfer-Premium
+      pricing_unit: GB
+      impact: Listener and endpoint-group counts carry no committed fee; what they decide is WHICH DT-Premium rate row each transferred gigabyte bills at, since the rate varies by the endpoint group's source region and the client's edge location.
+    - field_path: enabled
+      sku_meter: Data Transfer-Premium
+      pricing_unit: GB
+      impact: Disabling stops traffic -- and with it DT-Premium -- but NOT the fixed hourly fee or the two address charges. Deletion is the only off switch, and deletion forfeits the static addresses.
+    - field_path: flow_logs
+      sku_meter: S3 storage
+      pricing_unit: GB-months
+      impact: Enabled flow logs write to the named S3 bucket, whose storage and request charges bill on that bucket's own component and grow with traffic.
+  estimate_exclusions:
+    - Data Transfer-Premium bills per GB in the dominant traffic direction, at a rate varying by source region and destination edge -- entirely traffic-dependent
+    - standard data transfer out at the endpoint resources (ALB, NLB, EC2) bills on those components, in addition to DT-Premium
+    - flow-log bytes bill to the destination S3 bucket, not the accelerator
+  notes: The fixed fee plus two public IPv4 addresses are the committed floor, and they accrue until DELETION -- disabling the accelerator stops traffic, not the meters. Everything else is DT-Premium, which follows every gigabyte through the accelerator.

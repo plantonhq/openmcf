@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpiamoauthclient
+spec:
+  billing_model: free
+  free_tier: "Google's Identity and Access Management pricing page states that all use of the Identity and Access Management API is free of charge, and the Workforce Identity Federation configuration guide says the same about the surface this client serves: Workforce Identity Federation is available as a no-cost feature. The client registration, its server-generated credentials, and every OAuth token exchange it enables cost nothing at any credential count or sign-in volume."
+  notes: "No field on this spec starts a meter. Real spend lives on either side of the registration: whatever the workforce-federated users DO with the access tokens bills on the resources they touch, and the one meter Google names for workforce federation itself is opt-in detailed audit logging on the workforce pool provider (a different resource), which writes IdP payloads to Cloud Logging at that service's rates. Client and credential mutations land in Admin Activity audit logs, stored free in the non-deletable _Required bucket. Parking the client_secret output in a GcpSecretManagerSecret is a common companion move that bills on Secret Manager, a sibling resource with its own cost profile."

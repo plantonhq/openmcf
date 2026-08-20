@@ -1,0 +1,42 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. The policy itself is free -- Microsoft's
+# object-replication billing documentation opens with "There's no cost to
+# configure object replication, including the task of enabling change feed,
+# enabling versioning, and adding replication policies" -- but the
+# replication it drives bills real transaction, capacity, and egress meters
+# on BOTH referenced accounts. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurestorageobjectreplication
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: rules
+      sku_meter: network egress
+      pricing_unit: GB
+      impact: "Every replicated blob copies its WHOLE version (not just changed blocks -- Microsoft's documented behavior) from the source account to the destination; when the destination sits in another region, that transfer bills standard inter-region bandwidth egress per GB. For the cross-region DR pattern this is usually the dominant recurring charge."
+    - field_path: destination_storage_account_id
+      sku_meter: blob data stored (destination copy)
+      pricing_unit: GB-month
+      impact: "Replication materializes a full second copy: the destination account bills capacity for every replicated blob and version -- and Microsoft bills ALL blocks of each version at the destination, whether or not they are unique. The copy's rate is keyed by the DESTINATION account's tier and redundancy."
+    - field_path: rules
+      sku_meter: read and write transactions
+      pricing_unit: per 10,000 operations
+      impact: "The replication engine bills ordinary account meters for its work: reads of change-feed records and of each blob and version on the SOURCE account, then writes of each blob and version on the DESTINATION account -- per 10,000 each, at each account's own rates."
+    - field_path: rules.copy_blobs_created_after
+      sku_meter: read and write transactions
+      pricing_unit: per 10,000 operations
+      impact: "Everything backfills the whole existing container through the same read/copy/write/egress meters -- a one-time surge proportional to the container's current size (the DR preset's deliberate choice). OnlyNewObjects (the default) and a timestamp bound what joins the copy and therefore the surge."
+    - field_path: rules.prefix_match
+      sku_meter: network egress
+      pricing_unit: GB
+      impact: "Prefix filters are the scoping lever: replicating only the published/ subset (the distribution preset) shrinks every downstream meter -- egress, destination capacity, and both accounts' transactions -- to the matching blobs."
+  estimate_exclusions:
+    - "network egress bills per GB for every replicated version copied to a destination in another region -- whole versions transfer, not deltas"
+    - "the destination account bills blob capacity per GB-month for the full second copy (all blocks of each version, unique or not) plus write transactions per 10,000 for the replication engine's writes"
+    - "the source account bills read transactions per 10,000 for change-feed record reads and blob/version reads, and per-GB data retrieval when replicated blobs sit in cool or cold tiers"
+    - "the PREREQUISITES bill on the account components, not here -- blob versioning (every overwrite creates a version that bills capacity) and change feed (per 10,000 changes) must be enabled on the source, and versioning on the destination, before Azure accepts the policy"
+    - "replication volume is workload-driven -- write rate on the source containers times blob sizes -- which no manifest can know"
+  notes: "The policy is the free control head of a metered pipeline: configuring it costs nothing, and every dollar follows the data it moves -- source-side reads, destination-side writes and capacity, and inter-region egress per GB. Microsoft's own operational advice is to enable replication on a small container first and measure before production rollout, because an Everything backfill of a large container bills its whole size through the transfer meters at once. Deleting the policy stops future replication and its charges; the already-replicated copies stay, and keep billing capacity, on the destination account."

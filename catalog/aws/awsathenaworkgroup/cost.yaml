@@ -1,0 +1,51 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsathenaworkgroup
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: bytes_scanned_cutoff_per_query
+      sku_meter: data scanned
+      pricing_unit: TB
+      impact: The workgroup's reason to exist -- SQL queries bill per TB scanned, rounded up to the nearest MB with a 10 MB minimum per query, charged on successful AND cancelled queries alike. This cutoff cancels any query that would scan past the limit, turning a runaway full-table scan from a bill into an error.
+    - field_path: enforce_workgroup_configuration
+      sku_meter: data scanned
+      pricing_unit: TB
+      impact: The default (true) makes the workgroup's settings binding -- clients cannot sidestep the scan cutoff or redirect results. Setting it false turns every cost control here into a suggestion.
+    - field_path: state
+      sku_meter: data scanned
+      pricing_unit: TB
+      impact: DISABLED rejects new query submissions while keeping configuration, history, and saved queries -- the pause switch on a team's entire query spend without deleting anything.
+    - field_path: execution_role
+      sku_meter: Spark code execution
+      pricing_unit: DPU-hours
+      impact: Wiring an execution role unlocks Apache Spark, which swaps the meter -- Spark sessions bill per DPU-hour while the driver and workers run, clocked by session lifetime rather than data scanned. A Spark-enabled workgroup with no sessions running still costs nothing.
+    - field_path: result_configuration.output_location
+      sku_meter: S3 storage and requests
+      pricing_unit: GB
+      impact: Every query writes its result set to this location at standard S3 rates -- storage, requests, and transfer bill on the bucket, for successful and unsuccessful queries alike, and nothing cleans the results up unless the bucket's lifecycle rules do.
+    - field_path: managed_query_results
+      sku_meter: data scanned
+      pricing_unit: TB
+      impact: AWS-managed result storage carries no meter of its own -- results live in AWS-owned storage for 24 hours at no published charge, eliminating the result bucket's S3 spend (and its lifecycle chores) for workloads that read results only through the Athena APIs.
+    - field_path: requester_pays_enabled
+      sku_meter: S3 data access
+      pricing_unit: requests
+      impact: Against requester-pays buckets, true shifts the S3 data-access charges for scanned data onto THIS account -- a billing relocation, not a new meter; false (the default) simply blocks such queries.
+    - field_path: monitoring
+      sku_meter: log delivery
+      pricing_unit: GB
+      impact: Each log arm bills where it lands -- CloudWatch Logs ingestion and storage on the log group, S3 storage on the archive location; Athena-managed log storage carries no published meter of its own.
+  free_tier: Athena publishes no free allotment -- every SQL query bills from its first (minimum 10 MB) scan. The one adjacent allowance is indirect -- federated queries invoke Lambda functions in your account, and those invocations are subject to Lambda's own free tier.
+  estimate_exclusions:
+    - scan volume is entirely query-driven -- the same workgroup costs nothing idle and real money under a busy dashboard
+    - S3 storage, requests, and transfer for the data being queried and the results written bill on the buckets, for successful and unsuccessful queries alike
+    - AWS Glue Data Catalog requests and storage bill at Glue's rates when Athena resolves tables through it
+    - federated queries bill per TB aggregated across connectors PLUS the Lambda invocations they trigger in your account
+    - Spark DPU-hours are driven by session count, worker sizing, and how long notebooks stay open
+    - provisioned capacity (a separate capacity-reservation resource, not this workgroup) bills DPU-hours for as long as it exists, query or no query
+  notes: "A workgroup is a governance shell -- free to exist, and every meter it fronts is usage: SQL bills per TB scanned (10 MB minimum per query, cancelled queries included -- cancelling late saves nothing), Spark bills per DPU-hour while sessions run. The workgroup's real cost job is enforcement: bytes_scanned_cutoff_per_query is the only hard brake AWS offers on a runaway query, and it only binds while enforce_workgroup_configuration stays true. The biggest bill lever is not in this manifest at all -- it is data layout: AWS's own pricing example shows compression plus columnar formats (Parquet) cutting the same query's scan twelvefold, because Athena bills bytes read, not rows returned. The per-query minimum makes death-by-a-thousand-small-queries real: a dashboard firing thousands of tiny lookups bills each at the 10 MB floor. Capacity reservations flip Athena's economics to always-billing DPU-hours -- deliberately a different resource, so this workgroup stays pay-per-query."

@@ -10,12 +10,12 @@
 //	├── catalog.md         the catalog page                       (required)
 //	├── logo.svg           the component logo                     (required)
 //	├── GUIDE.md           authored operational judgment          (optional)
-//	├── cost.yaml          the component's cost profile           (accepted)
-//	├── controls.yaml      the component's control profile        (accepted)
+//	├── cost.yaml          the component's cost profile           (required)
+//	├── controls.yaml      the component's control profile        (required)
 //	├── iac/               ONE live module set per component      (required)
 //	│   ├── pulumi/        with README.md, no Makefile            (required)
 //	│   ├── tf/            with README.md, no .gitignore          (required)
-//	│   ├── permissions.yaml   runner least-privilege manifest    (accepted)
+//	│   ├── permissions.yaml   runner least-privilege manifest    (required)
 //	│   ├── import-map.yaml                                       (optional)
 //	│   └── provider-parity.yaml   recorded parity judgment       (optional)
 //	├── presets/           .yaml manifests + .md sidecar pairs    (required)
@@ -25,15 +25,12 @@
 //	    api.proto, spec.proto, input.proto, outputs.proto,
 //	    their .pb.go stubs, BUILD.bazel, spec_test.go, reference.md
 //
-// cost.yaml, controls.yaml, and iac/permissions.yaml are the per-component
-// profile sidecars (schemas: finops/componentcostprofile,
-// compliance/componentcontrolprofile, iac/componentpermissions). This gate
-// ACCEPTS them wherever they exist; the requirement (with its burn-down
-// baseline) is enforced by the gate revision that owns the sidecar
-// amendment, so components authored with them never regress to violations.
-//
 // Two prefix conventions coexist deliberately: underscore dirs at the catalog
-// root (_docs/, _patterns/) hold docs-only content Go tooling must ignore,
+// root (_docs/, _patterns/, _compliance/, _pricing/) hold non-component
+// content Go tooling must ignore (_compliance/ carries the authored control
+// catalog and framework crosswalks the per-component controls.yaml files
+// reference; _pricing/ carries the per-preset cost estimates priced from the
+// components' cost.yaml profiles at published list prices),
 // while aa_-prefixed dirs inside providers (aa_e2e/, aa_eval/, aa_import/)
 // hold provider infrastructure that CONTAINS buildable Go -- Go tooling skips
 // underscore dirs entirely, so Go-bearing infrastructure cannot use one.
@@ -80,23 +77,26 @@ func (v Violation) ID() string { return v.Path + ":" + v.Rule }
 
 // Rule identifiers. Stable: baseline.yaml entries reference them.
 const (
-	RuleUnregisteredDir    = "unregistered-component-dir"
-	RuleMissingComponent   = "missing-component-dir"
-	RuleUnexpectedEntry    = "unexpected-entry"
-	RuleMissingReadme      = "missing-readme"
-	RuleMissingCatalogPage = "missing-catalog-md"
-	RuleMissingLogo        = "missing-logo"
-	RuleMissingIac         = "missing-iac"
-	RuleMissingPulumi      = "missing-pulumi-module"
-	RuleMissingTf          = "missing-tf-module"
-	RuleMissingIacReadme   = "missing-iac-readme"
-	RuleForbiddenFile      = "forbidden-file"
-	RuleMissingPresets     = "missing-presets"
-	RuleMissingSidecar     = "missing-preset-sidecar"
-	RuleMissingProto       = "missing-proto"
-	RuleMissingStub        = "missing-stub"
-	RuleMissingSpecTest    = "missing-spec-test"
-	RuleMissingReference   = "missing-reference"
+	RuleUnregisteredDir       = "unregistered-component-dir"
+	RuleMissingComponent      = "missing-component-dir"
+	RuleUnexpectedEntry       = "unexpected-entry"
+	RuleMissingReadme         = "missing-readme"
+	RuleMissingCatalogPage    = "missing-catalog-md"
+	RuleMissingLogo           = "missing-logo"
+	RuleMissingIac            = "missing-iac"
+	RuleMissingPulumi         = "missing-pulumi-module"
+	RuleMissingTf             = "missing-tf-module"
+	RuleMissingIacReadme      = "missing-iac-readme"
+	RuleForbiddenFile         = "forbidden-file"
+	RuleMissingPresets        = "missing-presets"
+	RuleMissingSidecar        = "missing-preset-sidecar"
+	RuleMissingProto          = "missing-proto"
+	RuleMissingStub           = "missing-stub"
+	RuleMissingSpecTest       = "missing-spec-test"
+	RuleMissingReference      = "missing-reference"
+	RuleMissingCostProfile    = "missing-cost-profile"
+	RuleMissingControlProfile = "missing-control-profile"
+	RuleMissingPermissions    = "missing-permissions"
 )
 
 // componentEntries is the CLOSED set of names allowed at a component root
@@ -164,12 +164,12 @@ func Check(repoRoot string) ([]Violation, error) {
 		return nil, err
 	}
 	for _, p := range providers {
-		if p.Name() == "_docs" || p.Name() == "_patterns" {
-			continue // docs-only homes at the catalog root
+		if p.Name() == "_docs" || p.Name() == "_patterns" || p.Name() == "_compliance" || p.Name() == "_pricing" {
+			continue // non-component homes at the catalog root
 		}
 		if !p.IsDir() {
 			add(filepath.Join("catalog", p.Name()), RuleUnexpectedEntry,
-				"the catalog root holds only provider directories (and _docs/, _patterns/)")
+				"the catalog root holds only provider directories (and _docs/, _patterns/, _compliance/, _pricing/)")
 			continue
 		}
 		providerRel := filepath.Join("catalog", p.Name())
@@ -243,9 +243,11 @@ func checkComponent(repoRoot, componentRel string, add func(rel, rule, detail st
 		add(componentRel, RuleMissingProto, "component has no version directory serving its contract")
 	}
 	for name, rule := range map[string]string{
-		"README.md":  RuleMissingReadme,
-		"catalog.md": RuleMissingCatalogPage,
-		"logo.svg":   RuleMissingLogo,
+		"README.md":     RuleMissingReadme,
+		"catalog.md":    RuleMissingCatalogPage,
+		"logo.svg":      RuleMissingLogo,
+		"cost.yaml":     RuleMissingCostProfile,
+		"controls.yaml": RuleMissingControlProfile,
 	} {
 		if !names[name] {
 			add(componentRel, rule, "required at the component root")
@@ -259,9 +261,12 @@ func checkComponent(repoRoot, componentRel string, add func(rel, rule, detail st
 	} else {
 		iacRel := filepath.Join(componentRel, "iac")
 		iacEntries, _ := os.ReadDir(filepath.Join(repoRoot, iacRel))
+		hasPermissions := false
 		for _, e := range iacEntries {
 			switch e.Name() {
-			case "pulumi", "tf", "permissions.yaml", "import-map.yaml", "provider-parity.yaml":
+			case "permissions.yaml":
+				hasPermissions = true
+			case "pulumi", "tf", "import-map.yaml", "provider-parity.yaml":
 			case "crds":
 				// Operator kinds stage the CRD manifests their modules apply
 				// (both engines read them) -- declared-optional module payload.
@@ -269,6 +274,10 @@ func checkComponent(repoRoot, componentRel string, add func(rel, rule, detail st
 				add(filepath.Join(iacRel, e.Name()), RuleUnexpectedEntry,
 					"iac/ holds exactly pulumi/, tf/, permissions.yaml, optionally import-map.yaml, provider-parity.yaml, and staged crds/")
 			}
+		}
+		if !hasPermissions {
+			add(iacRel, RuleMissingPermissions,
+				"every module set declares the runner permissions it needs (iac/permissions.yaml)")
 		}
 		for _, engine := range []string{"pulumi", "tf"} {
 			engineRel := filepath.Join(iacRel, engine)

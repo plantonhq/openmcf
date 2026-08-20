@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>AWS OpenSearch Serverless Collection</title>
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect fill="#8C4FFF" x="0" y="0" width="80" height="80"></rect>
+        <g fill="#FFFFFF">
+            <!-- magnifier lens -->
+            <path d="M37,18 C46.94,18 55,26.06 55,36 C55,45.94 46.94,54 37,54 C27.06,54 19,45.94 19,36 C19,26.06 27.06,18 37,18 Z M37,21 C28.72,21 22,27.72 22,36 C22,44.28 28.72,51 37,51 C45.28,51 52,44.28 52,36 C52,27.72 45.28,21 37,21 Z"></path>
+            <!-- handle -->
+            <path d="M49.8,50.98 L52.63,48.15 L61.41,56.93 C62.19,57.71 62.19,58.98 61.41,59.76 C60.63,60.54 59.36,60.54 58.58,59.76 L49.8,50.98 Z"></path>
+            <!-- serverless capacity bars inside lens -->
+            <rect x="29" y="38" width="4" height="8" rx="1"></rect>
+            <rect x="35" y="32" width="4" height="14" rx="1"></rect>
+            <rect x="41" y="26" width="4" height="20" rx="1"></rect>
+        </g>
+    </g>
+</svg>

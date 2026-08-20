@@ -1,0 +1,38 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSsmMaintenanceWindow
+metadata:
+  name: weekly-patching
+spec:
+  region: <aws-region>
+  schedule: cron(0 2 ? * SUN *)
+  scheduleTimezone: <iana-timezone>
+  duration: 4
+  cutoff: 1
+  description: Sunday 02:00 patching window
+  targets:
+    - name: prod-instances
+      resourceType: INSTANCE
+      targets:
+        - key: tag:env
+          values:
+            - prod
+  tasks:
+    - name: patch-install
+      taskType: RUN_COMMAND
+      taskArn:
+        value: AWS-RunPatchBaseline
+      priority: 1
+      targets:
+        - key: tag:env
+          values:
+            - prod
+      maxConcurrency: 10%
+      maxErrors: 5%
+      cutoffBehavior: CANCEL_TASK
+      invocation:
+        runCommand:
+          timeoutSeconds: 3600
+          parameters:
+            - name: Operation
+              values:
+                - Install

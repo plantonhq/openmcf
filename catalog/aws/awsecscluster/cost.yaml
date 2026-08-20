@@ -1,0 +1,52 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsecscluster
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: container_insights
+      sku_meter: Container Insights observability
+      pricing_unit: GB
+      impact: The one charge the cluster manifest itself can switch on -- Insights ingests per-container performance events at CloudWatch rates, and `enhanced` collects materially more than `enabled`. Unset leaves the account default.
+    - field_path: default_capacity_provider_strategy
+      sku_meter: Fargate task compute
+      pricing_unit: vCPU-hours
+      impact: The FARGATE vs FARGATE_SPOT split for tasks placed without their own strategy -- Spot runs the same tasks at roughly 70% below the On-Demand rate, interruptible with two minutes' notice.
+    - field_path: ec2_capacity_providers
+      sku_meter: EC2 capacity instance hours
+      pricing_unit: hours
+      impact: Each provider wraps a referenced Auto Scaling Group whose instances bill EC2 rates on their own component -- the cluster decides when they scale, the ASG owns what they cost.
+    - field_path: ec2_capacity_providers.managed_scaling.target_capacity
+      sku_meter: EC2 capacity instance hours
+      pricing_unit: hours
+      impact: Below-100 targets keep warm headroom -- at 80%, one instance in five is paid idle capacity bought for placement speed.
+    - field_path: managed_instances_capacity_providers
+      sku_meter: managed instance hours
+      pricing_unit: hours
+      impact: ECS launches and retires EC2 instances matching the declared requirements -- instances bill EC2 On-Demand or Spot rates while they exist, without an ASG to manage.
+    - field_path: managed_instances_capacity_providers.instance_launch_template.storage_size_gib
+      sku_meter: managed instance storage
+      pricing_unit: GB-months
+      impact: Every managed instance carries an EBS volume of this size, billed per GB-month while the instance lives.
+    - field_path: managed_instances_capacity_providers.instance_launch_template.monitoring
+      sku_meter: detailed CloudWatch metrics
+      pricing_unit: metrics
+      impact: DETAILED enables paid one-minute EC2 monitoring per managed instance; BASIC is free.
+    - field_path: managed_instances_capacity_providers.scale_in_after_seconds
+      sku_meter: managed instance hours
+      pricing_unit: hours
+      impact: How long an idle managed instance survives before retirement -- a longer window trades paid idle hours for faster task placement.
+    - field_path: execute_command_configuration.log_configuration
+      sku_meter: exec session log ingestion
+      pricing_unit: GB
+      impact: Auditing ECS Exec sessions writes to the referenced CloudWatch log group or S3 bucket at their standard rates.
+  estimate_exclusions:
+    - the cluster object itself is free -- AWS charges no ECS control-plane fee
+    - task compute bills through the services that place tasks (Fargate rates per task, or EC2 rates on the capacity the cluster manages)
+    - Container Insights volume follows container count and churn -- unknowable from the manifest
+    - EC2 capacity providers' instances bill on the referenced Auto Scaling Group's component
+  notes: "ECS has no cluster fee -- unlike EKS's per-hour management charge, an empty ECS cluster bills exactly nothing. Every dollar flows through capacity: Fargate tasks placed by services, ASG instances the cluster scales, or managed instances it launches. Container Insights is the manifest's one direct meter."

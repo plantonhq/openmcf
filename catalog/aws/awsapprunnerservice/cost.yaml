@@ -1,0 +1,47 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsapprunnerservice
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: AWS App Runner
+      sku_meter: provisioned instance memory
+      pricing_unit: GB-hours
+      description: A running service holds at least the auto-scaling minimum of provisioned (warm) container instances, and each bills its memory allocation per GB-hour every hour -- the committed floor of the bill. vCPU is NOT billed while an instance is merely provisioned; it starts billing only when the instance actively serves requests.
+    - service_name: AWS App Runner
+      sku_meter: automatic deployment fee
+      pricing_unit: months
+      description: While auto_deployments_enabled is true, the service carries a fixed monthly automatic-deployment fee, independent of how many deployments actually run.
+  cost_drivers:
+    - field_path: memory
+      sku_meter: provisioned instance memory
+      pricing_unit: GB-hours
+      impact: Each provisioned instance bills exactly this allocation per hour, active or idle -- doubling memory doubles the committed floor. Active instances also bill the same allocation as usage while serving.
+    - field_path: auto_scaling_configuration_arn
+      sku_meter: provisioned instance memory
+      pricing_unit: GB-hours
+      impact: The referenced AwsAppRunnerAutoScalingConfiguration's min_size multiplies the provisioned-memory floor -- two warm instances double it. When omitted, the account's default configuration applies (minimum 1 unless the account default was changed).
+    - field_path: cpu
+      sku_meter: active instance vCPU
+      pricing_unit: vCPU-hours
+      impact: Active instances bill their vCPU allocation per hour while serving requests -- the usage-driven half of the bill, scaling with traffic and concurrency up to the auto-scaling maximum.
+    - field_path: auto_deployments_enabled
+      sku_meter: automatic deployment fee
+      pricing_unit: months
+      impact: Enabling automatic deployments adds the fixed monthly fee for the service; disabling it removes the fee and deployments happen only when the resource is applied.
+    - field_path: code_source
+      sku_meter: build minutes
+      pricing_unit: minutes
+      impact: Code-based services bill build minutes for every build App Runner runs -- each push to the tracked branch (with auto-deploy) or each applied source change triggers one.
+  estimate_exclusions:
+    - active instance vCPU and memory usage follows request traffic and concurrency -- anywhere from zero (all instances idle at the provisioned floor) up to the auto-scaling maximum running around the clock
+    - build minutes (code_source services) bill per minute per build and follow deployment frequency
+    - data transfer out to the internet
+    - the interface VPC endpoints carrying vpc_ingress_connections bill hourly and per GB on their own AwsVpcEndpoint components
+    - referenced companions bill on their own components -- the KMS key (kms_key_arn), the WAF web ACL (web_acl_arn), the Secrets Manager secrets and SSM parameters behind environment_secrets
+    - X-Ray traces recorded through observability_configuration_arn bill per trace on the account's X-Ray meter
+  notes: "The committed floor is provisioned-instance memory times the auto-scaling minimum: the memory rate applies whether instances serve traffic or sit warm, which is why memory -- not cpu -- is the field that moves the standing bill. Custom domains and the managed TLS certificates App Runner issues for them are free."

@@ -214,6 +214,11 @@ variable "spec" {
               claim_name = string
               read_only = optional(bool, false)
             }))
+            service_account_token = optional(object({
+              audience = string
+              expiration_seconds = optional(number, 0)
+              path = optional(string, "")
+            }))
           })), [])
           lifecycle = optional(object({
             post_start = optional(object({
@@ -470,6 +475,11 @@ variable "spec" {
             pvc = optional(object({
               claim_name = string
               read_only = optional(bool, false)
+            }))
+            service_account_token = optional(object({
+              audience = string
+              expiration_seconds = optional(number, 0)
+              path = optional(string, "")
             }))
           })), [])
           lifecycle = optional(object({
@@ -732,6 +742,11 @@ variable "spec" {
             pvc = optional(object({
               claim_name = string
               read_only = optional(bool, false)
+            }))
+            service_account_token = optional(object({
+              audience = string
+              expiration_seconds = optional(number, 0)
+              path = optional(string, "")
             }))
           })), [])
           lifecycle = optional(object({

@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureplantonrunner.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AzurePlantonRunnerSpec defines a standing Planton runner appliance in
+// your Azure subscription: an always-on worker that receives deploy
+// operations from the Planton control plane and executes them from WITHIN
+// your network perimeter.
+//
+// Why it exists: some targets are reachable only from inside the network --
+// the canonical case is a private AKS API server or a private-endpoint
+// database, which no hosted runner fleet can reach. Placing a runner
+// beside them makes those targets deployable and operable (day-2 updates,
+// destroys, CloudOps) with zero inbound exposure: the runner only ever
+// dials OUT to the control plane, and the deployed app exposes no ingress
+// at all.
+//
+// ENROLLMENT IS TOKEN-FIRST: the runner is born with a runner TOKEN, never
+// an identity. On first boot it presents the token to the control plane,
+// registers ITSELF, and receives its own individually revocable identity.
+// Replica replacement re-joins with the same token (the token's lineage
+// re-admits the runner it originally admitted -- no other token can). The
+// token lives in the Container App's own secret store; the container reads
+// it as a secret-backed environment variable, never as plaintext.
+//
+// The runner runs inside a Container App Environment (the referenced
+// prerequisite) -- the environment decides the network boundary: an
+// environment integrated with a VNet gives the runner reach into that
+// network's private endpoints. The spec models intent -- where the runner
+// lives (resource group/environment), how big it is (cpu/memory), which
+// build it runs (runner_version), and the token it joins with; the
+// compute substrate (a single-revision Container App pinned to exactly
+// one replica) is an implementation detail of the IaC modules.
+message AzurePlantonRunnerSpec {
+  // The Azure resource group the runner is created in. Accepts a literal
+  // name or a reference to an AzureResourceGroup resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The Container App Environment the runner runs in. The environment
+  // decides the network boundary: pick (or compose) a VNet-integrated
+  // environment when the runner must reach private endpoints. Accepts a
+  // literal environment resource ID or a reference to an
+  // AzureContainerAppEnvironment resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef container_app_environment_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureContainerAppEnvironment,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.environment_id"
+  ];
+
+  // The runner token that authorizes this runner to JOIN the control
+  // plane. Create one with `planton runner token create` (or in the
+  // console under Organization Settings -> Runner Tokens); on Planton, the
+  // platform mints a token and writes it at exactly the managed-secret
+  // reference this field names, before the infrastructure applies -- there
+  // is no manual credential step. The token only gates joining and is
+  // never the runner's identity: the runner receives its own individually
+  // revocable identity when it registers itself on arrival, and revoking
+  // this token never touches runners it already admitted. This is a
+  // secret: supply it as a managed-secret reference, never inline
+  // plaintext; it reaches the runner through the Container App's secret
+  // store, not through any plain environment variable.
+  string token = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // The control-plane endpoint the runner joins, as host:port. Leave
+  // unset for Planton's hosted control plane (the runner's built-in
+  // default); set it for a self-hosted instance (e.g.
+  // "planton.example.com:443"). This is the one bootstrap coordinate the
+  // join cannot deliver -- everything else (work queue, tunnel, API
+  // endpoints) arrives in the join response.
+  string control_plane_endpoint = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "control_plane_endpoint_format"
+      message: "control plane endpoint must be host:port, e.g. \"planton.example.com:443\" -- no scheme prefix"
+      expression: "this.matches('^[a-zA-Z0-9.-]+:[0-9]+$')"
+    }
+  ];
+
+  // The runner build to deploy: an image tag of the official runner
+  // container image. "latest" tracks the newest release; pin a specific
+  // version tag for change control. New replicas pull the tag on every
+  // (re)start.
+  optional string runner_version = 5 [(dev.planton.shared.options.default) = "latest"];
+
+  // The container image repository the runner is pulled from. Override
+  // only for air-gapped or mirrored registries hosting a copy of the
+  // official image; the digest-identical mirror is your responsibility.
+  optional string image_repository = 6 [(dev.planton.shared.options.default) = "ghcr.io/plantonhq/planton/runner"];
+
+  // CPU allocated to the runner, in vCPUs. The default 0.5 comfortably
+  // runs the runner's control loops plus typical IaC operations; size up
+  // for large stacks or high operation concurrency. On the Consumption
+  // plan, cpu and memory must form one of the fixed pairings (see
+  // memory).
+  optional double cpu = 7 [(dev.planton.shared.options.default) = "0.5"];
+
+  // Memory allocated to the runner, e.g. "1Gi". The default 1Gi pairs
+  // with the default cpu of 0.5. On the Consumption plan the pairing is
+  // fixed at memory = cpu x 2 (0.25/0.5Gi, 0.5/1Gi, 0.75/1.5Gi, 1/2Gi,
+  // 1.25/2.5Gi, 1.5/3Gi, 1.75/3.5Gi, 2/4Gi) -- an invalid pairing is
+  // rejected by Azure only at deploy time, so the spec validates it up
+  // front. Memory pressure shows up as failed IaC operations mid-apply;
+  // when in doubt, size the pairing up.
+  optional string memory = 8 [(dev.planton.shared.options.default) = "1Gi"];
+
+  // ---------------------------------------------------------------------------
+  // Spec-level CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "cpu_valid"
+    message: "cpu must be one of the Consumption-plan sizes: 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, or 2 vCPUs"
+    expression: "!has(this.cpu) || this.cpu in [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]"
+  };
+
+  // Azure validates the cpu/memory pairing only at deploy time; enforcing
+  // it here turns a mid-deploy failure into an instant, explainable one.
+  option (buf.validate.message).cel = {
+    id: "cpu_memory_combination"
+    message: "cpu and memory must form a valid Consumption-plan pairing -- memory is always cpu x 2: 0.25/0.5Gi, 0.5/1Gi, 0.75/1.5Gi, 1/2Gi, 1.25/2.5Gi, 1.5/3Gi, 1.75/3.5Gi, 2/4Gi"
+    expression:
+      "!has(this.cpu) || !has(this.memory)"
+      " || (this.cpu == 0.25 && this.memory == '0.5Gi')"
+      " || (this.cpu == 0.5 && this.memory == '1Gi')"
+      " || (this.cpu == 0.75 && this.memory == '1.5Gi')"
+      " || (this.cpu == 1.0 && this.memory == '2Gi')"
+      " || (this.cpu == 1.25 && this.memory == '2.5Gi')"
+      " || (this.cpu == 1.5 && this.memory == '3Gi')"
+      " || (this.cpu == 1.75 && this.memory == '3.5Gi')"
+      " || (this.cpu == 2.0 && this.memory == '4Gi')"
+  };
+}

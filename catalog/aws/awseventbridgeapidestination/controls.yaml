@@ -1,0 +1,78 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awseventbridgeapidestination
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The only data at rest is the connection's credential material (API key, password, or OAuth client secret), which AWS stores in a Secrets Manager secret it creates and owns -- encrypted at rest with AWS-owned keys by default, and never returned by DescribeConnection or any other read API.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: connection.kms_key_identifier
+      evidence:
+        type: spec_default
+        reference: "Setting a customer-managed KMS key re-encrypts the connection's secret material under a key you own and can revoke; unset uses AWS-owned keys. The key policy must allow Secrets Manager decryption scoped to the AWS-created secret (kms:EncryptionContext:SecretARN on arn:aws:secretsmanager:*:*:secret:events!connection/*)."
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every hop is TLS: the destination's invocation_endpoint must match https:// (the spec's pattern mirrors AWS's own HTTPS-only rule for API destinations), and the OAuth token fetch targets an HTTPS authorization endpoint. A plaintext invocation path is not representable."
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The destination is a CALLER, not a receiver -- it exposes no inbound endpoint to protect. The outbound-privacy lever exists though -- connection.private_invocation_endpoint (and private_authorization_endpoint for OAuth) route invocations through VPC Lattice resource configurations so event delivery never touches the public internet.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound network surface exists to filter; traffic flows outbound only, from EventBridge to the configured endpoint.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The component receives no HTTP requests -- web ACLs have nothing to attach to. Protecting the INVOKED API's edge belongs to whoever operates that API.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management operation is IAM-authorized on the connection and api-destination ARNs, and USING the destination requires the invoking rule, pipe, or schedule's role to hold events:InvokeApiDestination on it -- nothing can fire events through it without an explicit grant.
+    - control_id: workload-identity
+      status: configurable
+      field_path: connection.oauth
+      evidence:
+        type: spec_default
+        reference: The auth-mode choice decides what travels on the wire. oauth makes EventBridge fetch a short-lived access token from the authorization endpoint before invoking -- per-invocation ephemeral credentials; api_key and basic send the same static secret with every call. All three keep the secret inside the AWS-owned Secrets Manager secret rather than in application code.
+      notes: This governs how EVENTBRIDGE authenticates to the external API -- the closest thing an outbound integration has to workload identity.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: The connection speaks exactly the declared auth mode and nothing else -- the spec's CEL requires exactly one of api_key, basic, and oauth, and AWS derives the connection's authorization_type from it, so no fallback or downgrade path exists. Unauthenticated destinations are not representable at all.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Management calls and the rule/pipe invocations that fire the destination are recorded by AWS CloudTrail as account-level posture, not per-destination configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Delivery health surfaces on the INVOKING side -- the rules, pipes, and schedules firing this destination publish invocation and failure metrics to CloudWatch as automatic service behavior on those components. The destination object itself exposes no monitoring knob.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "Nothing to back up -- both arms are declarative and re-creatable from the manifest, with one sharp edge: AWS never returns credential values, so re-creating a connection needs the API key, password, or client secret from your own secret store, not from AWS."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: EventBridge is a regional managed service AWS operates across availability zones; connections and destinations have no zonal placement to configure, and invocation delivery rides that footprint.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists on either arm. Deleting a connection strands every destination bound to it (including other instances referencing it by ARN) -- treat a SHARED connection's deletion as a coordinated change.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the invocation machinery, the OAuth token fetcher, and the credential store; nothing here runs software the operator maintains.

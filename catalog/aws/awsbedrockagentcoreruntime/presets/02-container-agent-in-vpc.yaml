@@ -1,0 +1,37 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreRuntime
+metadata:
+  name: my-vpc-agent-runtime
+spec:
+  region: us-west-2
+  runtimeName: my_vpc_agent
+  description: Container agent reaching private resources through the VPC
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: my-agentcore-role
+      fieldPath: status.outputs.role_arn
+  artifact:
+    container:
+      imageUri: 123456789012.dkr.ecr.us-west-2.amazonaws.com/my-agent:v1
+  network:
+    mode: VPC
+    vpcConfig:
+      subnets:
+        - valueFrom:
+            kind: AwsSubnet
+            name: my-private-subnet
+            fieldPath: status.outputs.subnet_id
+      securityGroups:
+        - valueFrom:
+            kind: AwsSecurityGroup
+            name: my-agent-sg
+            fieldPath: status.outputs.security_group_id
+  lifecycle:
+    idleRuntimeSessionTimeoutSeconds: 900
+    maxLifetimeSeconds: 3600
+  filesystems:
+    - mountPath: /mnt/scratch
+      sessionStorage: true
+  endpoints:
+    - name: live

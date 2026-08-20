@@ -1,0 +1,40 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. The Application Insights resource itself
+# carries no meter -- workspace-based App Insights stores every byte of
+# telemetry in the LINKED Log Analytics workspace, so the money rides
+# THAT component's per-GB ingestion and retention meters; this spec's
+# fields are the dials that decide how many GB arrive there. Schema:
+# finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureapplicationinsights
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: workspace_id
+      sku_meter: analytics logs data ingestion
+      pricing_unit: GB
+      impact: "Where the money rides: every GB of telemetry this resource collects bills the referenced Log Analytics workspace's ingestion meter -- \"2.30\" USD per GB at East US pay-as-you-go analytics rates -- on the AzureLogAnalyticsWorkspace component, not here. The workspace's own pricing posture (commitment tiers, a dedicated cluster) reprices this resource's telemetry wholesale."
+    - field_path: sampling_percentage
+      sku_meter: analytics logs data ingestion
+      pricing_unit: GB
+      impact: "A direct multiplier on ingested GB: 50 keeps half the telemetry (statistically representative) and roughly halves the ingestion bill; 100 keeps everything. The cheapest fidelity dial the spec offers."
+    - field_path: daily_data_cap_in_gb
+      sku_meter: analytics logs data ingestion
+      pricing_unit: GB
+      impact: "A hard daily ceiling on ingestion spend that is also a data-loss dial: when the cap is hit, telemetry is DROPPED until the next UTC day -- the worst-case ingestion cost is cap times the workspace's per-GB rate (Azure's default of 100 GB/day bounds nothing in practice; sizing it just above normal volume makes the bound real)."
+    - field_path: retention_in_days
+      sku_meter: analytics logs data retention
+      pricing_unit: GB-month
+      impact: "Application Insights tables get 90 days of interactive retention at no charge; keeping telemetry longer bills \"0.10\" USD per GB per month on the workspace. For workspace-based resources the workspace's own retention setting governs -- this value covers the classic-experience tables and is kept aligned in most estates."
+  free_tier: "Each Log Analytics workspace's analytics-logs ingestion is free for the first 5 GB per month (the paid tier starts above 5 GB in the Retail Prices API's own tier rows), and Application Insights tables carry 90 days of interactive retention at no charge."
+  estimate_exclusions:
+    - telemetry ingestion bills per GB on the LINKED Log Analytics workspace ("2.30" USD/GB at East US pay-as-you-go analytics rates, first 5 GB per workspace per month free) -- volume is the instrumented applications' traffic, unknowable from this manifest
+    - retention beyond the 90-day Application Insights window bills "0.10" USD per GB per month on the workspace
+    - the workspace's pricing posture (commitment tiers, dedicated cluster, basic/auxiliary table plans and their per-GB-scanned query meters) reprices and re-shapes all of it on the AzureLogAnalyticsWorkspace component
+    - availability tests are separate billed surfaces -- standard web test executions bill "0.0005" USD per execution on Azure Monitor, and the legacy multi-step tests bill per test; both are their own components, not this spec
+    - alert rules watching this telemetry bill their own Azure Monitor meters on their own components
+    - the .NET Profiler and Snapshot Debugger artifacts land in Microsoft-managed storage at no charge, or in YOUR storage account (billed there) when force_customer_storage_for_profiler is set
+  notes: "This resource is a lens, not a store: creating it bills nothing, an uninstrumented resource bills nothing, and every telemetry dollar lands on the linked workspace's meters. The spec's three cost dials compose honestly -- sampling_percentage cuts volume before it ships, daily_data_cap_in_gb bounds the worst day (by dropping data), and retention_in_days prices the tail -- but none of them changes WHERE the charge appears: the AzureLogAnalyticsWorkspace's invoice line. Rates verified live from the Retail Prices API (serviceName 'Log Analytics' and 'Azure Monitor', eastus) on 2026-08-18."

@@ -1,0 +1,37 @@
+# Where each placeholder in this component's import-ID formats comes
+# from (the formats themselves live in aa_import/catalog.yaml). The
+# vended source and destinations import by name, deliveries by their
+# AWS-generated ID, and the cross-account destination (with its policy)
+# by its own name.
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awscloudwatchlogdelivery
+spec:
+  values:
+    - name: source_name
+      derivations:
+        - from_spec_field: vended.source.name
+      where_to_find: >-
+        The delivery source's name -- `aws logs
+        describe-delivery-sources` (name).
+    - name: destination_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The delivery destination's name -- the spec's destinations
+        entry (owned destinations are keyed by it), or `aws logs
+        describe-delivery-destinations` (name).
+    - name: delivery_id
+      derivations:
+        - from_stack_output_keyed_by_address: delivery_ids
+      where_to_find: >-
+        The AWS-generated delivery ID -- `aws logs describe-deliveries`
+        (id; match the delivery whose deliverySourceName and
+        deliveryDestinationArn pair you configured).
+    - name: cross_account_destination_name
+      derivations:
+        - from_spec_field: cross_account_destination.name
+      where_to_find: >-
+        The cross-account destination's name -- `aws logs
+        describe-destinations` (destinationName).

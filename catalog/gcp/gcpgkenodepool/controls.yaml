@@ -1,0 +1,91 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpgkenodepool
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Node boot disks and local storage are encrypted at rest with Google-managed keys on every node pool without configuration.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: node_config.boot_disk_kms_key
+      evidence:
+        type: spec_default
+        reference: Unset means Google-managed encryption; naming a Cloud KMS key encrypts every node's boot disk with the customer-managed key instead.
+      notes: No preset sets it. The runner principal and the Compute Engine service agent need encrypt/decrypt on the key as a prerequisite.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: GKE encrypts control-plane-to-node communication on every cluster, and Google encrypts VM traffic that leaves a physical boundary; the pool exposes no switch to weaken either.
+    - control_id: no-public-access
+      status: configurable
+      field_path: network_config.enable_private_nodes
+      evidence:
+        type: spec_default
+        reference: Unset inherits the cluster's node posture; enable_private_nodes=true gives this pool's nodes internal IPs only, removing their public internet exposure entirely.
+      notes: Private nodes need Cloud NAT on the network for outbound pulls. Both cluster-level presets in GcpGkeCluster run private nodes.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nodes accept no direct inbound traffic by design -- ingress reaches workloads through Services and load balancers, and node-level firewalling is the network's posture (VPC firewall rules, separate kinds).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Request filtering belongs to the load balancers and Cloud Armor policies in front of workloads, not to the node fleet.
+    - control_id: rbac
+      status: not_applicable
+      notes: Access to nodes is governed by the cluster's Kubernetes RBAC and the project's IAM (see GcpGkeCluster); the pool adds no authentication plane of its own.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The pool's workload-identity posture follows the cluster, where Workload Identity Federation is on by default; pool nodes run the GKE metadata server so pods exchange Kubernetes service accounts for short-lived Google credentials.
+      notes: node_config.service_account sets the node VM identity itself -- the presets pin a dedicated minimal-privilege GcpServiceAccount rather than the Compute Engine default.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Node pools expose no legacy authentication path of their own; legacy metadata endpoints are disabled by GKE on current node images, and cluster-level legacy paths (ABAC, client certificates) are governed on GcpGkeCluster.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Administrative actions on the pool (create, resize, upgrade, delete) land in Cloud Audit Logs unconditionally as GKE Admin Activity events.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Node metrics flow into Cloud Monitoring through the cluster's monitoring configuration, which defaults to system-component metrics; the pool needs no separate wiring.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Nodes are disposable compute recreated from the pool's declarative shape; stateful data belongs to workloads and their persistent volumes, whose backup posture lives on those components.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: node_locations
+      evidence:
+        type: spec_default
+        reference: Unset inherits the cluster's zones -- a regional cluster spreads the pool across three zones; listing zones pins placement explicitly, and a single-zone list is a deliberate single-zone pool.
+      notes: autoscaling.location_policy=BALANCED (preset 01) keeps the spread even as the pool scales.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Unset applies no engine-side stance; deletion_policy=PREVENT makes destroy plans fail before touching the pool. Node pools are otherwise deletable at will -- workloads reschedule onto surviving pools.
+      notes: node_drain_config governs how gracefully nodes drain when deletion does proceed.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: management.auto_repair and management.auto_upgrade both default to true -- unhealthy nodes are recreated and node versions track the cluster's release channel automatically; opting out requires explicitly setting them false.
+      notes: upgrade_settings (surge, blue-green) bounds how disruptive those automatic upgrades may be.

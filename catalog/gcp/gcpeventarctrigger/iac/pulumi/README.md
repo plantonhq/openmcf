@@ -13,7 +13,7 @@ This directory contains the Pulumi implementation for deploying an Eventarc trig
    ```bash
    gcloud auth application-default login
    ```
-5. **IAM permissions**: `roles/eventarc.admin` (or narrower eventarc roles) on the target project; the trigger's `service_account` needs `roles/eventarc.eventReceiver` (plus `roles/run.invoker` for authenticated Cloud Run destinations)
+5. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs; the trigger's `service_account` needs `roles/eventarc.eventReceiver` (plus `roles/run.invoker` for authenticated Cloud Run destinations)
 
 ## Directory Structure
 

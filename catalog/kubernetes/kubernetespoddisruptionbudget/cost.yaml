@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetespoddisruptionbudget
+spec:
+  billing_model: free
+  free_tier: A PodDisruptionBudget is a Kubernetes policy object -- a floor the eviction API respects during voluntary disruptions (node drains, upgrades, autoscaler consolidation). The object reserves no node capacity and no cloud SKU bills for it.
+  notes: "No field of this spec buys anything: min_available / max_unavailable and the selector decide when the eviction API says no; they create no pods and reserve no capacity. Real spend lives in the workload pods the budget protects -- their resource requests reserve cluster node capacity through their own catalog kinds. One indirect effect worth knowing: a very strict budget (min_available \"100%\" or max_unavailable \"0\") can block node drains and so keep the cluster autoscaler from consolidating nodes -- a cluster-economics effect, not a charge on this object."

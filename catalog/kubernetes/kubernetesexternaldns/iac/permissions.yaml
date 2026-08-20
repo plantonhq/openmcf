@@ -1,0 +1,109 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesexternaldns
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.external_dns -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: "Covers the module's four conditional credential Secrets, each rendered only when its arm declares static credentials: kubernetes_secret_v1.cloudflare_credentials (<name>-cloudflare-credentials, whenever the cloudflare arm is set), kubernetes_secret_v1.aws_credentials (when aws_route53.access_key_id is set), kubernetes_secret_v1.gcp_credentials (when google_cloud_dns.service_account_key_json is set), and kubernetes_secret_v1.azure_config (azure.json, whenever the azure_dns arm is set -- even keyless modes need the file). Keyless installs and the webhook/in-memory arms materialize nothing. Also covers Helm's own release-state Secret."
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - serviceaccounts
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Chart-rendered objects applied by helm_release.external_dns -- the metrics ClusterIP Service and the controller ServiceAccount (carrying the workload-identity annotations the modules render). The chart's fullname is pinned to the release name (metadata.name), so multiple instances coexist with deterministic object names.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The ExternalDNS controller Deployment -- one pod, plus the webhook provider sidecar container inside it on the webhook arm.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart's ClusterRole and ClusterRoleBinding granting the controller read access to the watched source types across the cluster -- not rendered when spec.namespaced is true (the chart then scopes to a Role).
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The namespaced Role and RoleBinding that replace the ClusterRole when spec.namespaced is true -- the controller then watches only its own namespace.
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Rendered only when spec.prometheus.service_monitor is true -- requires the Prometheus operator CRDs on the cluster (the release fails to install without them).

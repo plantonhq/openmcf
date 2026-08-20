@@ -1,0 +1,63 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azuredataprotectionbackupinstance
+spec:
+  presets:
+    - preset: 01-disk-backup
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - "the disk variant carries NO protected-instance fee and no Backup Storage (the pricing page verbatim: 'Because the snapshots aren't copied to the Backup Vault, Azure Backup doesn't charge a Protected Instance fee and Backup Storage cost doesn't apply') -- the spend is incremental snapshot storage at standard-storage rates in the snapshot resource group, following delta churn between backups"
+        - restores from the Standard tier of Backup Storage are free of charge; soft-deleted backup data continues to occupy paid Backup Storage for the vault's retention window after a destroy
+    - preset: 02-aks-cluster-backup
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Backup
+          sku_meter: AKS protected instance fee
+          pricing_unit: namespace-months
+          pricing_quantity: "1"
+          quantity_basis: with included_namespaces empty the backup covers every namespace (minus exclusions) and the fee follows the cluster's LIVE namespace count, invisible in this manifest -- one namespace-month at 12.0 USD is the stated committed FLOOR (every cluster carries at least one namespace), never the ceiling
+          list_unit_price: "12"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Backup' and armRegionName eq 'eastus' and meterName eq 'AKS Namespace' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "12.0000"
+      total_list_cost: "12.0000"
+      exclusions:
+        - "AKS backup data staged in the customer's storage account bills that account's blob meters, and vault-tier copies bill Backup Storage GB at the vault's redundancy (eastus Standard tier: 0.0224 USD/GB-month LRS, 0.028 ZRS, 0.0448 GRS), following recovery-point count and retention"
+        - persistent-volume snapshots taken with each backup bill as incremental disk snapshots at standard-storage rates in the snapshot resource group, following volume churn
+        - restores from the Standard tier of Backup Storage are free of charge; soft-deleted backup data continues to occupy paid Backup Storage for the vault's retention window after a destroy
+      notes: "The committed figure scales with namespaces: naming them in included_namespaces makes it exact; leaving the list empty makes one namespace-month the floor while the live cluster's namespace count (minus excluded_namespaces) sets the real bill. All rates read from the Azure Retail Prices API (serviceName Backup, eastus) and the Azure Backup pricing page on 2026-08-18."
+    - preset: 03-blob-backup
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Backup
+          sku_meter: vaulted blob protected instance fee
+          pricing_unit: instance-months
+          pricing_quantity: "1"
+          quantity_basis: "setting container names is the spec's documented vault-tier shape, and vaulted blob protection bills one protected-instance fee per protected storage account -- priced at the full >=1 TB rate of 10.0 USD/month as a stated assumption: accounts holding less protected data bill 10% (below 10 GB), 30% (10-100 GB), or 60% (100 GB-1 TB) of this figure, and the data size is invisible in this manifest"
+          list_unit_price: "10"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Backup' and armRegionName eq 'eastus' and meterName eq 'Azure Blob Protected Instance' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "10.0000"
+      total_list_cost: "10.0000"
+      exclusions:
+        - "vaulted blob backup additionally bills write transactions (eastus: 0.05 USD per 10K LRS, 0.0625 ZRS, 0.1 GRS at the vault's redundancy), Backup Storage GB for the vaulted copies, and change-feed plus blob-versioning charges on the protected account -- all following write volume and data churn"
+        - restores from the Standard tier of Backup Storage are free of charge; soft-deleted backup data continues to occupy paid Backup Storage for the vault's retention window after a destroy
+      notes: The committed figure assumes the full >=1 TB band of the tiered fee -- an account holding less protected data bills as little as 1.00 USD/month (10% below 10 GB). The proration follows protected data size, which no manifest can see.

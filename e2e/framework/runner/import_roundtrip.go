@@ -26,16 +26,38 @@ import (
 // re-imported and re-planned) -- the scheduled matrix enables it per lane.
 const ImportRoundTripEnvVar = "PLANTON_E2E_IMPORT_ROUNDTRIP"
 
+// ImportRoundTripSkipAnnotation opts ONE scenario out of the round-trip
+// phase; its value MUST state the reason (an empty value does not skip).
+// It exists for configs that STRUCTURALLY cannot round-trip to zero
+// changes no matter how correct the recipes are -- the first user: a
+// scenario carrying write-only ForceNew SECRETS (a container group's
+// secure environment variables), where a blind import necessarily lacks
+// the secret, the config supplies it, and the only plan is a replace --
+// which the oracle rightly refuses, and which ignore_changes must never
+// paper over because rotating such a secret is SUPPOSED to replace the
+// resource. The kind's recipes still enroll and still prove on its
+// secret-free scenarios; the skip is per scenario, reason-carrying, and
+// printed into the lane log so the record stays honest.
+const ImportRoundTripSkipAnnotation = "planton.dev/e2e-import-roundtrip-skip"
+
 // importRoundTripEnabled gates the phase: opted in, terraform engine (the
 // pulumi arm rides the same recipes once its lane lands), and the component
 // actually ships an import map. File presence is the recipes' single
 // enrollment signal everywhere -- this gate, the offline conformance guard,
 // and the platform's catalog bundler all key off the same import-map.yaml,
-// so a map cannot ship while dodging its checks.
+// so a map cannot ship while dodging its checks. A scenario-declared,
+// reason-carrying skip annotation (above) excludes ONE scenario.
 func importRoundTripEnabled(tc *provider.ComponentTestContext) bool {
-	return os.Getenv(ImportRoundTripEnvVar) == "1" &&
-		tc.Engine == "terraform" &&
-		importmap.HasComponentImportMap(tc.RepoRoot, tc.Provider, tc.Component)
+	if os.Getenv(ImportRoundTripEnvVar) != "1" ||
+		tc.Engine != "terraform" ||
+		!importmap.HasComponentImportMap(tc.RepoRoot, tc.Provider, tc.Component) {
+		return false
+	}
+	if reason, err := ManifestAnnotation(tc.ManifestPath, ImportRoundTripSkipAnnotation); err == nil && reason != "" {
+		fmt.Printf("  [import-rt] SKIP (scenario-declared): %s\n", reason)
+		return false
+	}
+	return true
 }
 
 // runImportRoundTrip is the machine proof that a component's import recipes
@@ -101,10 +123,14 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 	// separately: the changed attribute is then re-compared with only those
 	// sub-paths pruned, so an undeclared sibling drift still fails.
 	formats := map[string]string{}
+	notImportableReasons := map[string]string{}
 	toleratedAttributes := map[string]map[string]bool{}
 	toleratedSubPaths := map[string][][]string{}
 	for _, rt := range catalog.GetSpec().GetResourceTypes() {
 		formats[rt.GetTerraformType()] = rt.GetIdFormat()
+		if reason := rt.GetNotImportableUpstreamReason(); reason != "" {
+			notImportableReasons[rt.GetTerraformType()] = reason
+		}
 		declared := append(append([]string{}, rt.GetConfigOnlyAttributes()...), rt.GetWriteNormalizedAttributes()...)
 		for _, attr := range declared {
 			if strings.Contains(attr, ".") {
@@ -153,10 +179,22 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 	// output would let a wrong recipe pass.
 	accountArnParts := accountLevelArnParts(tc.FlatOutputs)
 
+	skippedNotImportable := 0
 	for _, address := range addresses {
 		resourceType, logicalName, instanceKey, parsed := importmap.ParseTofuAddress(address)
 		if !parsed {
 			return errors.Errorf("address %q is not mappable (module-nested?)", address)
+		}
+		// Types the upstream provider ships no importer for cannot enter the
+		// re-imported state. Their proof is the adopter's contract instead:
+		// the oracle below expects the plan to propose re-CREATING exactly
+		// these addresses, and the reconcile-apply executes it -- honest only
+		// because the catalog admits the reason solely for upsert-convergent
+		// create paths.
+		if reason, declared := notImportableReasons[resourceType]; declared {
+			fmt.Printf("  [import-rt] skipping %s: %s not importable upstream (%s)\n", address, resourceType, reason)
+			skippedNotImportable++
+			continue
 		}
 		idFormat, mapped := formats[resourceType]
 		if !mapped {
@@ -231,8 +269,19 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 		return errors.Wrap(err, "plan after re-import")
 	}
 	tolerated := 0
+	recreated := 0
 	for address, rc := range planStruct.ResourceChangesMap {
 		if rc.Change == nil || rc.Change.Actions.NoOp() || rc.Change.Actions.Read() || rc.Mode == "data" {
+			continue
+		}
+		// A not-importable type's address was deliberately never imported, so
+		// the ONLY honest plan for it is a create (the adopter's first apply
+		// re-puts the resource). Anything else on such an address -- and a
+		// create on any other type -- still fails.
+		if _, declared := notImportableReasons[rc.Type]; declared && rc.Change.Actions.Create() {
+			fmt.Printf("  [import-rt] tolerating re-create of %s: %s not importable upstream; the reconcile-apply takes ownership\n",
+				address, rc.Type)
+			recreated++
 			continue
 		}
 		if !rc.Change.Actions.Update() {
@@ -277,8 +326,8 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 		tolerated++
 	}
 
-	fmt.Printf("  [import-rt] %d resources re-imported blind; plan proposes no real change (%d config-only updates tolerated)\n",
-		len(addresses), tolerated)
+	fmt.Printf("  [import-rt] %d resources re-imported blind; plan proposes no real change (%d config-only updates tolerated, %d not-importable-upstream re-creates via reconcile-apply)\n",
+		len(addresses)-skippedNotImportable, tolerated, recreated)
 
 	// 5. Reconcile the imported state the way a real adopter does: import →
 	// APPLY → operate. An import cannot read CONFIG-ONLY attributes back

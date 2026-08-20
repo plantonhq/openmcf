@@ -1,0 +1,46 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awscodepipeline
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: pipeline_type
+      sku_meter: active pipeline-months
+      pricing_unit: pipeline-months
+      impact: The type field selects the pricing model entirely -- V1 bills a flat monthly rate per ACTIVE pipeline (one that has existed over 30 days and had at least one code change run through it that month; unprorated, so a single change commits the whole month's charge and a thousand changes cost no more), while V2 drops the monthly dollar and bills per action-execution minute. A V1 pipeline with no code changes in a month bills nothing, and every pipeline's first 30 days are free.
+    - field_path: stages
+      sku_meter: action execution duration
+      pricing_unit: action-minutes
+      impact: On V2, every action bills its execution duration rounded up to the minute -- except Manual approval and Custom action types, which are free -- so the stage and action count is the per-execution multiplier. A slow deploy action holding a stage open bills every minute it runs.
+    - field_path: stages.actions.commands
+      sku_meter: build duration
+      pricing_unit: build-minutes
+      impact: A Compute action (provider Commands) runs its shell commands on CodePipeline-managed CodeBuild compute -- AWS bills those builds separately at CodeBuild rates by the configured compute type (default BUILD_GENERAL1_SMALL) on top of the action's own execution minutes, and they count against the account's CodeBuild concurrency limits.
+    - field_path: triggers
+      sku_meter: action execution duration
+      pricing_unit: action-minutes
+      impact: Each matching push or pull-request event starts a pipeline execution whose actions all bill -- the branch, tag, and file-path include/exclude filters are the throttle on how often the meter runs.
+    - field_path: execution_mode
+      sku_meter: action execution duration
+      pricing_unit: action-minutes
+      impact: PARALLEL lets simultaneous executions each bill their own action minutes; SUPERSEDED cancels an in-progress execution when a newer one arrives, cutting its remaining billed minutes; QUEUED serializes without discarding work.
+    - field_path: stages.on_failure
+      sku_meter: action execution duration
+      pricing_unit: action-minutes
+      impact: Automatic RETRY re-runs the failed actions (or the whole stage under ALL_ACTIONS) with each attempt billing fresh execution minutes, and ROLLBACK runs a rollback execution of its own -- failure handling trades minutes for hands-off recovery.
+    - field_path: artifact_stores
+      sku_meter: S3 storage
+      pricing_unit: GB-months
+      impact: Every execution writes source and build artifacts into the referenced buckets -- storage and request charges bill on those AwsS3Bucket components and grow with retention, and encryption_key_id adds KMS request charges on the referenced key for every artifact write and read.
+  free_tier: One active V1 pipeline per month is free, and V2 pipelines share 100 free action-execution minutes per account per month (reset each calendar month, unused minutes do not carry over) -- both available to new and existing customers, not 12-month trial allotments.
+  estimate_exclusions:
+    - execution volume is commit-driven -- a pipeline with no code changes bills nothing on either type
+    - the providers each action invokes (CodeBuild projects, CodeDeploy, CloudFormation, ECS, Lambda) bill on their own components and usually dwarf the orchestration charge
+    - Compute (Commands) actions incur separate CodeBuild build charges not visible in this manifest
+    - artifact storage, requests, and KMS encryption bill on the referenced S3 and KMS components
+    - the V1 monthly charge is unprorated -- an estimate cannot apportion it to activity level
+  notes: "A pipeline's existence is free -- V1's meter only turns for a month in which a code change actually runs through a pipeline older than 30 days, and then it bills the flat month regardless of volume; V2's meter is the sum of every non-approval action's execution minutes, rounded up per action. The two free allotments (one active V1 pipeline; 100 shared V2 action minutes per account) mean a small account often pays nothing. All five presets pin V2 explicitly, and the platform materializes the spec's V2 default when the manifest is loaded -- but the AWS provider's own default is V1, so only a raw module invocation that bypasses manifest loading can deploy a V1 pipeline unawares. The heavy spend lives in what the actions invoke: build minutes, deployments, and the artifact buckets every execution feeds."

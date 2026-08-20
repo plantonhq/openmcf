@@ -1,0 +1,32 @@
+# An account-scope resource policy live: the Route53 query-logging
+# grant on an E2E-scoped log-group path (free; the grant references a
+# path no real service uses, so the blast radius is zero). Proves the
+# name-scope identity, the semantic document diff, and the
+# revision-guarded update path.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchLogResourcePolicy
+metadata:
+  name: planton-oss-e2e-awscwlrp-svc
+  id: planton-oss-e2e-awscwlrp-svc
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscloudwatchlogresourcepolicy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  policyName: planton-oss-e2e-awscwlrp-svc
+  policyDocument:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: route53.amazonaws.com
+        Action:
+          - logs:CreateLogStream
+          - logs:PutLogEvents
+        Resource: arn:aws:logs:us-west-2:${E2E_ENV:PLANTON_E2E_AWS_ACCOUNT_ID}:log-group:/planton-e2e/absent/*

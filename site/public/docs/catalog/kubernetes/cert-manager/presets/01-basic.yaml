@@ -1,8 +1,0 @@
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesCertManager
-metadata:
-  name: my-cert-manager
-spec:
-  namespace:
-    value: cert-manager
-  createNamespace: true

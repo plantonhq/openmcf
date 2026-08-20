@@ -1,0 +1,49 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awshttpapigateway
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: routes
+      sku_meter: API requests
+      pricing_unit: requests
+      impact: Every matched request bills at the HTTP API per-million rate -- route count shapes traffic surface, and each route's target invokes a backend that bills its own compute.
+    - field_path: stage.default_throttle
+      sku_meter: API requests
+      pricing_unit: requests
+      impact: The stage-wide rate and burst limits are the manifest's spend ceiling -- throttled requests never reach a billable backend.
+    - field_path: stage.route_settings
+      sku_meter: API requests
+      pricing_unit: requests
+      impact: Per-route throttles cap individual routes' billed volume below the stage default.
+    - field_path: stage.detailed_metrics_enabled
+      sku_meter: detailed CloudWatch metrics
+      pricing_unit: metrics
+      impact: Detailed metrics emit per-route, per-method CloudWatch metrics -- each billed monthly, multiplying quickly on APIs with many routes.
+    - field_path: stage.access_log
+      sku_meter: access log ingestion
+      pricing_unit: GB
+      impact: Access logging writes one record per request to the referenced CloudWatch log group at standard ingestion rates -- full request volume.
+    - field_path: authorizers
+      sku_meter: authorizer invocations
+      pricing_unit: requests
+      impact: A Lambda authorizer invokes (and bills) a function per request; JWT authorizers validate tokens for free.
+    - field_path: authorizers.result_ttl_seconds
+      sku_meter: authorizer invocations
+      pricing_unit: requests
+      impact: Caching authorizer results collapses repeated invocations for the TTL window -- the direct dial on Lambda-authorizer spend.
+    - field_path: cors_configuration.max_age_seconds
+      sku_meter: API requests
+      pricing_unit: requests
+      impact: A longer preflight cache means browsers repeat fewer billed OPTIONS requests.
+  free_tier: The first 1 million HTTP API requests each month are free for the first 12 months of an AWS account.
+  estimate_exclusions:
+    - request volume is entirely traffic-driven -- an idle API bills nothing
+    - requests over 512 KB bill in 512 KB increments
+    - backend compute (the Lambda functions and services behind integration_uri) bills on its own components
+    - data transfer out bills per GB
+  notes: "An HTTP API's existence is free -- the bill is request count times the per-million rate, roughly a third of REST API pricing, which is why this is the demo's API front door. The opt-in meters (detailed metrics, access logs, Lambda authorizers) are all visible manifest choices. A VPC_LINK integration (routes.integration.connection_id) adds NO meter: HTTP API VPC links are free -- the AmazonApiGateway offer carries no VPC-link product -- and the widespread hourly-charge belief conflates them with interface-endpoint pricing; the private targets behind the link bill on their own components."

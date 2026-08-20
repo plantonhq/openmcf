@@ -1,0 +1,30 @@
+# AwsSagemakerModel install profile used as a prerequisite by the
+# AwsSagemakerEndpoint lanes (a variant cannot exist without a model).
+# The smallest deployable model: the AWS-owned us-west-2 scikit-learn
+# image on the family's shared execution role - free, instant, and
+# fully self-contained (the role fixture is this manifest's own
+# prerequisite).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerModel
+metadata:
+  name: planton-oss-e2e-awssgmmd-prereq
+  id: planton-oss-e2e-awssgmmd-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssagemakermodel
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  executionRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-sagemaker-execution-role
+      fieldPath: status.outputs.role_arn
+  primaryContainer:
+    image: 746614075791.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1

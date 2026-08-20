@@ -1,0 +1,48 @@
+# A five-minute rate schedule delivering a static payload to the SQS
+# queue fixture, in an OWNED group (the group carries the identity
+# tags - the schedule itself is untaggable at AWS), with a bounded
+# retry policy. The target arn is a BARE POLYMORPHIC reference - the
+# valueFrom carries its kind explicitly (no offline gate catches the
+# omission). Scheduler's free tier dwarfs a minutes-lived schedule
+# firing at most twice: ~$0.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEventBridgeScheduler
+metadata:
+  name: planton-oss-e2e-awsebsch-min
+  id: planton-oss-e2e-awsebsch-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awseventbridgescheduler
+  annotations:
+    planton.dev/e2e: "true"
+    # The SQS target fixture; the registry prerequisite (AwsIamRole)
+    # deploys the consumer-scoped scheduler-trusting role.
+    planton.dev/e2e-prerequisites: "AwsSqsQueue"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E heartbeat schedule
+  group:
+    name: planton-oss-e2e-awsebsch-group
+  scheduleExpression: rate(5 minutes)
+  scheduleExpressionTimezone: UTC
+  flexibleTimeWindow:
+    mode: "OFF"
+  target:
+    arn:
+      valueFrom:
+        kind: AwsSqsQueue
+        name: planton-oss-e2e-awssqsqueue-prereq
+        fieldPath: status.outputs.queue_arn
+    roleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: planton-oss-e2e-awsebsch-exec
+        fieldPath: status.outputs.role_arn
+    input: '{"type": "heartbeat", "source": "planton-e2e"}'
+    retryPolicy:
+      maximumEventAgeInSeconds: 3600
+      maximumRetryAttempts: 3

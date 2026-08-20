@@ -1,0 +1,93 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesargoworkflows
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The engine's durable data lives on the two composed seams -- artifacts on the declared object store, history on the archive database -- whose encryption at rest rides those resources (a KubernetesSeaweedFs, a KubernetesPostgres, or cloud services). Workflow CRs live in the cluster's etcd.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No storage of its own (see enc-at-rest); customer-managed keys apply to the artifact store, the archive database, and the cluster's etcd, owned elsewhere.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: server.secure
+      evidence:
+        type: spec_default
+        reference: False (the chart default) serves the Argo server as plain HTTP behind composed exposure -- the standard pattern where TLS terminates at the edge. True serves HTTPS with the server's self-signed certificate, and the exported endpoint output follows the scheme.
+      notes: The other transport seams are archive.ssl_mode (empty = plain towards the database, the in-cluster default; require/verify-ca/verify-full for TLS) and artifact_repository.s3.insecure (plain HTTP for in-cluster stores without TLS -- never towards real S3).
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The server's Service stays ClusterIP -- exposure is a deliberate composition through KubernetesIngress or Gateway API kinds over the exported service handle, never something this module creates.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress seam exists on this spec -- exposure and network fencing are composed through separate resources.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: This module serves no HTTP edge traffic of its own; when the server is exposed through a composed ingress, web application firewalls belong to that resource.
+    - control_id: rbac
+      status: configurable
+      field_path: workflow_service_account
+      evidence:
+        type: spec_default
+        reference: Workflow pods run as the chart-created runner ServiceAccount ("argo-workflow" by default) with Role/RoleBinding in the install namespace and every controller.workflow_namespaces entry -- pods carry the RUNNER's permissions, never the controller's. Grant extra RBAC or cloud annotations to this account alone; never widen the controller's.
+      notes: The 03-multi-team preset names a team-scoped runner (team-a-runner) so grants stay unmistakably one team's. Management-plane access to this resource is the target cluster's Kubernetes RBAC.
+    - control_id: workload-identity
+      status: configurable
+      field_path: artifact_repository.s3.use_ambient_credentials
+      evidence:
+        type: spec_default
+        reference: False requires a declared credentials_secret (the spec's CEL enforces exactly one path). True signs artifact requests with the pod's ambient cloud identity -- IRSA / workload identity annotated onto the RUNNER service account -- and the GCS/Azure arms go keyless the same way when their credentials_secret_name is empty.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: server.auth_modes
+      evidence:
+        type: spec_default
+        reference: Empty means ["client"] (the application default) -- callers present a Kubernetes bearer token and act with ITS permissions. "server" mode performs every request with the server's own ServiceAccount -- no login, anyone who reaches the endpoint has the server's full power; acceptable only behind trusted network boundaries. "sso" opens OIDC login (configured via the chart's server.sso block through helm_values).
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Every mutation is a Kubernetes API operation on Workflow CRs, captured by the target cluster's audit policy; the archive database keeps the durable record of what ran. A dedicated audit trail is not modeled in this spec.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: service_monitor_enabled
+      evidence:
+        type: spec_default
+        reference: False (the chart default) renders no ServiceMonitor. True creates one for the controller's /metrics -- requires the Prometheus Operator CRDs on the cluster (deploy KubernetesKubePrometheusStack first).
+      notes: The 02-durable-pipelines preset enables it.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: archive
+      evidence:
+        type: spec_default
+        reference: Empty means workflow history lives only as Workflow CRs in etcd until retention_policy or TTLs prune it -- restarts and cleanup lose the record. Declaring the archive writes completed workflows to Postgres/MySQL so history survives CR garbage collection; artifact_repository does the same for step outputs and archived logs.
+      notes: The 02-durable-pipelines preset declares both durability seams against composed in-cluster resources.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: retention_policy governs the in-cluster WORKING SET of completed CRs per outcome, not backup retention -- the archive database itself has no retention knob on this spec; its growth is unbounded until cleaned at the database.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: controller.replicas
+      evidence:
+        type: spec_default
+        reference: Empty runs 1 controller (no failover). Replicas beyond 1 are hot standbys behind leader election -- takeover on failure, not load sharing. server.replicas scales the stateless UI/API horizontally. Zone spread rides scheduling and the cluster's topology.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: crds.keep
+      evidence:
+        type: spec_default
+        reference: True (the default) keeps the Argo Workflows CRDs when this resource is destroyed -- REMOVING the CRDs deletes every Workflow, WorkflowTemplate and CronWorkflow in the cluster with them. Turn off only on throwaway clusters.
+      notes: There is no deletion-protection flag on the release itself; crds.keep is the blast-radius control that matters.
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: Unset installs the pinned default 1.0.23 (Argo Workflows v4.0.8) -- versions must exist as served charts in the upstream repository index. Version changes are deliberate manifest edits; with crds.install true (the default) upgrades also refresh the CRDs, and the full-schema arm downloads them from the chart's GitHub release at install time (air-gapped clusters set crds.full_schema false or mirror via crds.base_url).

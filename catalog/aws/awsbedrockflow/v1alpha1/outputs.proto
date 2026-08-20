@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockflow.v1alpha1;
+
+// AwsBedrockFlowStackOutputs captures observable identifiers from a
+// provisioned Bedrock flow.
+message AwsBedrockFlowStackOutputs {
+  // The unique flow identifier (e.g. "ABCDEFGHIJ").
+  string flow_id = 1;
+
+  // The Amazon Resource Name of the flow - the canonical key for IAM
+  // policies and flow invocations.
+  string flow_arn = 2;
+
+  // The flow's mutable working version - always the literal "DRAFT".
+  string draft_version = 3;
+}

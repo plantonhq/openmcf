@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview: Landing Page - Marketing Optimization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0f0f0f;
+            color: #e0e0e0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+            line-height: 1.6;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 3rem;
+            border: 1px solid #2a2a3e;
+        }
+        
+        .metadata {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .meta-item {
+            background: #1a1a1a;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid #2a2a2a;
+        }
+        
+        .meta-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #888;
+            margin-bottom: 0.25rem;
+        }
+        
+        .meta-value {
+            font-size: 0.95rem;
+            color: #fff;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #7c3aed, #0ea5e9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        h2 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            color: #fff;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #2a2a2a;
+        }
+        
+        h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 2rem;
+            margin-bottom: 0.5rem;
+            color: #e0e0e0;
+        }
+        
+        h4 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: #d0d0d0;
+        }
+        
+        p {
+            margin-bottom: 1rem;
+            color: #b0b0b0;
+            font-size: 1.05rem;
+        }
+        
+        ul, ol {
+            margin-bottom: 1rem;
+            padding-left: 2rem;
+            color: #b0b0b0;
+        }
+        
+        li {
+            margin-bottom: 0.5rem;
+        }
+        
+        strong {
+            color: #fff;
+            font-weight: 600;
+        }
+        
+        em {
+            color: #10b981;
+            font-style: italic;
+        }
+        
+        code {
+            background: #1a1a1a;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            color: #10b981;
+            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        pre {
+            background: #1a1a1a;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-bottom: 1rem;
+            border: 1px solid #2a2a2a;
+            white-space: pre-wrap;
+        }
+        
+        pre code {
+            background: none;
+            padding: 0;
+        }
+        
+        blockquote {
+            border-left: 4px solid #7c3aed;
+            padding-left: 1rem;
+            margin: 1.5rem 0;
+            font-style: italic;
+            color: #a0a0a0;
+            background: #1a1a1a;
+            padding: 1rem;
+            padding-left: 1.5rem;
+            border-radius: 4px;
+        }
+        
+        .section {
+            margin-bottom: 4rem;
+            padding: 2rem;
+            background: #1a1a1a;
+            border-radius: 12px;
+            border: 1px solid #2a2a2a;
+        }
+        
+        .section-new {
+            border-left: 4px solid #10b981;
+        }
+        
+        .section-enhanced {
+            border-left: 4px solid #0ea5e9;
+        }
+        
+        .visual-note {
+            background: #1a2a1a;
+            border-left: 4px solid #10b981;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+        
+        .visual-note strong {
+            color: #10b981;
+        }
+        
+        .component-note {
+            background: #1a1a2a;
+            border-left: 4px solid #0ea5e9;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+        
+        .component-note strong {
+            color: #0ea5e9;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .badge-new {
+            background: #10b98122;
+            color: #10b981;
+            border: 1px solid #10b98144;
+        }
+        
+        .badge-enhanced {
+            background: #0ea5e922;
+            color: #0ea5e9;
+            border: 1px solid #0ea5e944;
+        }
+        
+        .badge-unchanged {
+            background: #88888822;
+            color: #888888;
+            border: 1px solid #88888844;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+        }
+        
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #2a2a2a;
+        }
+        
+        th {
+            background: #1a1a1a;
+            color: #fff;
+            font-weight: 600;
+        }
+        
+        tr:hover {
+            background: #1a1a1a;
+        }
+        
+        a {
+            color: #0ea5e9;
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        hr {
+            border: none;
+            border-top: 1px solid #2a2a2a;
+            margin: 2rem 0;
+        }
+        
+        .toc {
+            background: #1a1a1a;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            border: 1px solid #2a2a2a;
+        }
+        
+        .toc h3 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+        }
+        
+        .toc ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .toc li {
+            margin-bottom: 0.5rem;
+        }
+        
+        .toc a {
+            color: #b0b0b0;
+        }
+        
+        .toc a:hover {
+            color: #0ea5e9;
+        }
+        
+        .hero-demo {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .terminal-header {
+            background: #2a2a2a;
+            padding: 0.5rem;
+            border-radius: 6px 6px 0 0;
+            margin: -1rem -1rem 0.5rem -1rem;
+            color: #888;
+        }
+        
+        .terminal-line {
+            color: #10b981;
+            margin-bottom: 0.3rem;
+        }
+        
+        .checkmark {
+            color: #10b981;
+            margin-right: 0.5rem;
+        }
+        
+        .metric-card {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #7c3aed, #0ea5e9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+        
+        .metric-label {
+            color: #888;
+            font-size: 0.9rem;
+        }
+        
+        .testimonial-card {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .testimonial-quote {
+            font-style: italic;
+            color: #d0d0d0;
+            margin-bottom: 1rem;
+        }
+        
+        .testimonial-author {
+            color: #888;
+            font-size: 0.9rem;
+        }
+        
+        .comparison-table {
+            overflow-x: auto;
+        }
+        
+        .comparison-table table {
+            min-width: 700px;
+        }
+        
+        .comparison-table td, .comparison-table th {
+            min-width: 120px;
+        }
+        
+        .checkmark-green {
+            color: #10b981;
+        }
+        
+        .x-red {
+            color: #ef4444;
+        }
+        
+        .warning-amber {
+            color: #f59e0b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header with metadata -->
+        <div class="header">
+            <div class="metadata">
+                <div class="meta-item">
+                    <div class="meta-label">Page</div>
+                    <div class="meta-value">Landing Page</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Date</div>
+                    <div class="meta-value">December 31, 2025</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Version</div>
+                    <div class="meta-value">Draft 1</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Status</div>
+                    <div class="meta-value">Ready for Review</div>
+                </div>
+            </div>
+            <h1>Landing Page Marketing Optimization</h1>
+            <p style="color: #b0b0b0;">Comprehensive update based on Dec 24 competitive analysis feedback</p>
+        </div>
+        
+        <!-- Table of Contents -->
+        <div class="toc">
+            <h3>📋 Page Sections</h3>
+            <ul>
+                <li><span class="badge badge-enhanced">Enhanced</span> <a href="#hero">Section 1: Hero</a></li>
+                <li><span class="badge badge-new">New</span> <a href="#social-proof">Section 2: Social Proof Bar</a></li>
+                <li><span class="badge badge-new">New</span> <a href="#how-it-works">Section 3: How It Works</a></li>
+                <li><span class="badge badge-new">New</span> <a href="#comparison">Section 4: Comparison Table</a></li>
+                <li><span class="badge badge-enhanced">Enhanced</span> <a href="#infra-hub">Section 5: Infra Hub</a></li>
+                <li><span class="badge badge-enhanced">Enhanced</span> <a href="#service-hub">Section 6: Service Hub</a></li>
+                <li><span class="badge badge-new">New</span> <a href="#wall-of-love">Section 7: Wall of Love</a></li>
+                <li><span class="badge badge-enhanced">Enhanced</span> <a href="#customer-stories">Section 8: Customer Stories</a></li>
+                <li><span class="badge badge-new">New</span> <a href="#roi-calculator">Section 9: ROI Calculator</a></li>
+                <li><span class="badge badge-enhanced">Enhanced</span> <a href="#pricing">Section 10: Pricing</a></li>
+                <li><span class="badge badge-enhanced">Enhanced</span> <a href="#open-standards">Section 11: Open Standards</a></li>
+                <li><span class="badge badge-enhanced">Enhanced</span> <a href="#open-source">Section 12: Open Source Foundation</a></li>
+                <li><span class="badge badge-unchanged">Unchanged</span> <a href="#agent-fleet">Section 13: Agent Fleet</a></li>
+                <li><span class="badge badge-unchanged">Unchanged</span> <a href="#built-by">Section 14: Built by DevOps</a></li>
+                <li><span class="badge badge-enhanced">Enhanced</span> <a href="#security">Section 15: Security & Compliance</a></li>
+                <li><span class="badge badge-enhanced">Enhanced</span> <a href="#final-cta">Section 16: Final CTA</a></li>
+            </ul>
+        </div>
+        
+        <!-- Section 1: Hero -->
+        <div class="section section-enhanced" id="hero">
+            <span class="badge badge-enhanced">Enhanced</span>
+            <h2>Section 1: Hero</h2>
+            
+            <h3>Main Headline (Choose One)</h3>
+            
+            <h4>PRIMARY HEADLINE (User's Choice)</h4>
+            <div style="font-size: 2.5rem; font-weight: 700; background: linear-gradient(135deg, #7c3aed, #0ea5e9); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem;">
+                What if DevOps Didn't Block Your Developers?
+            </div>
+            <p style="color: #10b981; margin-top: 0.5rem;"><strong>Rationale</strong>: Leads with the pain point that resonates deeply. Questions make readers think about their current bottleneck immediately.</p>
+            
+            <h3>Subheadline</h3>
+            <p style="font-size: 1.25rem;">Multi-cloud infrastructure automation that eliminates DevOps bottlenecks. No ops team required. No vendor lock-in. 100% open source.</p>
+            
+            <h3>Quantified Social Proof (NEW)</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin: 1.5rem 0;">
+                <div class="metric-card">
+                    <div class="checkmark">✓</div>
+                    <div style="color: #fff; font-weight: 600;">7 developers managing production on AWS without a DevOps hire</div>
+                </div>
+                <div class="metric-card">
+                    <div class="checkmark">✓</div>
+                    <div style="color: #fff; font-weight: 600;">&lt;1 hour infrastructure setup (vs. couple weeks manual)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="checkmark">✓</div>
+                    <div style="color: #fff; font-weight: 600;">100% customer retention since launch</div>
+                </div>
+            </div>
+            
+            <h3>Interactive Terminal Demo (NEW)</h3>
+            <div class="hero-demo">
+                <div class="terminal-header">┌─ Terminal ─────────────────────────────────────────────────┐</div>
+                <div class="terminal-line">$ planton infra-chart deploy aws-ecs-environment</div>
+                <div class="terminal-line"></div>
+                <div class="terminal-line"><span class="checkmark">✓</span> VPC created (15s)</div>
+                <div class="terminal-line"><span class="checkmark">✓</span> Load Balancer configured (22s)</div>
+                <div class="terminal-line"><span class="checkmark">✓</span> ECR registry ready (8s)</div>
+                <div class="terminal-line"><span class="checkmark">✓</span> SSL certificates issued (35s)</div>
+                <div class="terminal-line"><span class="checkmark">✓</span> DNS configured (12s)</div>
+                <div class="terminal-line"></div>
+                <div class="terminal-line">⚡ Complete in 52 seconds</div>
+                <div class="terminal-header">└──────────────────────────────────────────────────────────────┘</div>
+            </div>
+            
+            <div class="visual-note">
+                <strong>Visual Direction:</strong> Terminal-style frame with animated typing effect. Checkmarks appear in sequence. Should feel like watching a real deployment.
+            </div>
+            
+            <div class="component-note">
+                <strong>Component Mapping:</strong> Update <code>HeroSection.tsx</code>
+            </div>
+        </div>
+        
+        <!-- Section 2: Social Proof Bar -->
+        <div class="section section-new" id="social-proof">
+            <span class="badge badge-new">New Section</span>
+            <h2>Section 2: Social Proof Bar</h2>
+            
+            <h3>Trusted by Fast-Moving Teams</h3>
+            
+            <div style="display: flex; justify-content: space-around; align-items: center; margin: 2rem 0; flex-wrap: wrap; gap: 2rem;">
+                <div style="color: #888; font-weight: 600;">[Jai.CX]</div>
+                <div style="color: #888; font-weight: 600;">[TynyBay]</div>
+                <div style="color: #888; font-weight: 600;">[iorta TechNext]</div>
+                <div style="color: #888; font-weight: 600;">[Odwen]</div>
+                <div style="color: #888; font-weight: 600;">[+ others in beta]</div>
+            </div>
+            
+            <div style="margin-top: 1rem; padding: 1rem; background: #1a1a1a; border-radius: 8px; font-size: 0.9rem; color: #888;">
+                <strong style="color: #10b981;">Customer Websites:</strong><br>
+                • <strong>Jai.CX</strong>: https://jai.cx/ (AI-native copilot for founders)<br>
+                • <strong>TynyBay</strong>: https://tynybay.com (IT consulting firm)<br>
+                • <strong>iorta TechNext</strong>: https://iorta.in (BFSI platform, SalesVerse)<br>
+                • <strong>Odwen</strong>: https://odwen.co.in (Online warehousing platform)
+            </div>
+            
+            <h3>Metrics Bar</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 2rem 0;">
+                <div class="metric-card">
+                    <div class="metric-value">450+</div>
+                    <div class="metric-label">Infrastructure Deployments</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">52 min</div>
+                    <div class="metric-label">Average Deployment Time</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">100%</div>
+                    <div class="metric-label">Customer Retention</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">$20</div>
+                    <div class="metric-label">Starting Price/Dev/Month</div>
+                </div>
+            </div>
+            
+            <div class="visual-note">
+                <strong>Visual Direction:</strong> Customer logos grayscale by default, color on hover. Metrics with animated counter-up effect on scroll. Prominent placement immediately below hero.
+            </div>
+            
+            <div class="component-note">
+                <strong>Component Mapping:</strong> NEW component <code>SocialProofBar.tsx</code>
+            </div>
+        </div>
+        
+        <!-- Section 3: How It Works -->
+        <div class="section section-new" id="how-it-works">
+            <span class="badge badge-new">New Section</span>
+            <h2>Section 3: How It Works</h2>
+            
+            <h3>From Zero to Production in Three Steps</h3>
+            <p style="font-size: 1.15rem; color: #b0b0b0; text-align: center; margin-bottom: 2rem;">No DevOps expertise required. No weeks of configuration. Just connect, choose, and deploy.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin: 2rem 0;">
+                <div style="background: #1a1a1a; padding: 1.5rem; border-radius: 8px; border: 1px solid #2a2a2a;">
+                    <h4>🔗 Step 1: Connect Your Cloud</h4>
+                    <p>Link your AWS, GCP, or Azure account using secure OAuth or assume-role credentials. Planton never stores long-term credentials—everything uses temporary tokens or customer-hosted runners for maximum security.</p>
+                </div>
+                
+                <div style="background: #1a1a1a; padding: 1.5rem; border-radius: 8px; border: 1px solid #2a2a2a;">
+                    <h4>🧱 Step 2: Choose Your Infrastructure</h4>
+                    <p>Browse the Deployment Component Store—pre-built infrastructure charts for common patterns (ECS Environment, GKE Cluster, RDS PostgreSQL, Redis, etc.). Or build custom charts using our DAG orchestration system.</p>
+                </div>
+                
+                <div style="background: #1a1a1a; padding: 1.5rem; border-radius: 8px; border: 1px solid #2a2a2a;">
+                    <h4>🚀 Step 3: Deploy in Minutes</h4>
+                    <p>Watch your infrastructure deploy in real-time with live Terraform visualization. Every change is auditable, every resource is tracked, and every deployment is backed by Tekton CI/CD pipelines you can customize.</p>
+                </div>
+            </div>
+            
+            <div class="visual-note">
+                <strong>Visual Direction:</strong> 3-column grid on desktop (arrows between steps), stacked on mobile. Icons for each step. Simple form/UI mockups showing the actual interface.
+            </div>
+            
+            <div class="component-note">
+                <strong>Component Mapping:</strong> NEW component <code>HowItWorks.tsx</code>
+            </div>
+        </div>
+        
+        <!-- Section 4: Comparison Table -->
+        <div class="section section-new" id="comparison">
+            <span class="badge badge-new">New Section</span>
+            <h2>Section 4: Why Planton Wins</h2>
+            
+            <h3>Why Teams Choose Planton Over Alternatives</h3>
+            <p>We're not the only DevOps platform. But we're the only one that's fully open source, multi-cloud, and built with a no-lock-in philosophy from day one.</p>
+            
+            <div class="comparison-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);">Planton</th>
+                            <th>Terraform Cloud</th>
+                            <th>Pulumi Cloud</th>
+                            <th>Manual DevOps</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Setup Time</strong></td>
+                            <td><span class="checkmark-green">✅</span> &lt;1 hour</td>
+                            <td>1-2 days</td>
+                            <td>1-2 days</td>
+                            <td>1-2 weeks</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Monthly Cost (7 devs)</strong></td>
+                            <td><span class="checkmark-green">✅</span> $450</td>
+                            <td>$1,200+</td>
+                            <td>$1,000+</td>
+                            <td>$12,500 (salary)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Backend CI/CD</strong></td>
+                            <td><span class="checkmark-green">✅</span> Included (ServiceHub)</td>
+                            <td><span class="x-red">❌</span> Build yourself</td>
+                            <td><span class="x-red">❌</span> Build yourself</td>
+                            <td><span class="x-red">❌</span> Build yourself</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Out-of-the-Box Infra</strong></td>
+                            <td><span class="checkmark-green">✅</span> 120+ deployment components</td>
+                            <td><span class="warning-amber">⚠️</span> Limited</td>
+                            <td><span class="warning-amber">⚠️</span> Limited (some efforts)</td>
+                            <td><span class="x-red">❌</span> Write everything</td>
+                        </tr>
+                        <tr>
+                            <td><strong>CLI Open Source</strong></td>
+                            <td><span class="checkmark-green">✅</span> Yes (openmcf)</td>
+                            <td><span class="checkmark-green">✅</span> Yes (terraform)</td>
+                            <td><span class="checkmark-green">✅</span> Yes (pulumi)</td>
+                            <td>N/A</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Deployment Modules Open Source</strong></td>
+                            <td><span class="checkmark-green">✅</span> Yes (100% on GitHub)</td>
+                            <td><span class="x-red">❌</span> You write & maintain</td>
+                            <td><span class="x-red">❌</span> You write & maintain</td>
+                            <td>N/A</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Platform (SaaS) Open Source</strong></td>
+                            <td><span class="x-red">❌</span> No (like competitors)</td>
+                            <td><span class="x-red">❌</span> No</td>
+                            <td><span class="x-red">❌</span> No</td>
+                            <td>N/A</td>
+                        </tr>
+                        <tr>
+                            <td><strong>AI Assistance Scope</strong></td>
+                            <td><span class="checkmark-green">✅</span> Full SDLC (infra + services)</td>
+                            <td><span class="x-red">❌</span> No AI</td>
+                            <td><span class="warning-amber">⚠️</span> Infra-only (Pulumi AI)</td>
+                            <td><span class="x-red">❌</span> No</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Exit Strategy</strong></td>
+                            <td><span class="checkmark-green">✅</span> Export everything</td>
+                            <td><span class="warning-amber">⚠️</span> Migration cost</td>
+                            <td><span class="warning-amber">⚠️</span> Migration cost</td>
+                            <td>N/A</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div style="margin-top: 2rem; padding: 1.5rem; background: #1a1a1a; border-radius: 8px; border-left: 4px solid #10b981;">
+                <h4 style="margin-top: 0; color: #10b981;">KEY DIFFERENTIATOR: Deployment Modules</h4>
+                <p style="color: #d0d0d0;">
+                    <strong>All three platforms have SaaS offerings that are NOT open source.</strong> That's standard.
+                </p>
+                <p style="color: #d0d0d0;">
+                    But with Planton, the <strong>infrastructure modules that deploy YOUR resources are 100% open source</strong> on GitHub (OpenMCF).
+                </p>
+                <p style="color: #d0d0d0;">
+                    With Terraform Cloud or Pulumi Cloud, <strong>you still need to write and maintain all those modules yourself</strong>.
+                </p>
+                <p style="color: #10b981; font-weight: 600;">
+                    Planton = Out-of-the-box infrastructure + Full transparency
+                </p>
+            </div>
+            
+            <div class="visual-note">
+                <strong>Visual Direction:</strong> Responsive table with Planton column highlighted via gradient background. On mobile: convert to cards (one per platform). Use color-coded icons (✅ green, ❌ red, ⚠️ amber).
+            </div>
+            
+            <div class="component-note">
+                <strong>Component Mapping:</strong> NEW component <code>ComparisonTable.tsx</code>
+            </div>
+            
+            <h3>Planton vs. PaaS Platforms (Vercel, Heroku, Render, Railway)</h3>
+            
+            <p style="font-size: 1.15rem; text-align: center; margin-bottom: 2rem;">
+                Planton sits at a unique intersection: <strong>Platform-as-a-Service (like Vercel/Heroku) + 
+                Infrastructure-as-Code (like Terraform/Pulumi) in YOUR cloud</strong>.
+            </p>
+            
+            <div class="comparison-table" style="margin-bottom: 2rem;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);">Planton</th>
+                            <th>Vercel</th>
+                            <th>Heroku</th>
+                            <th>Render</th>
+                            <th>Railway</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Service Deployment</strong></td>
+                            <td><span class="checkmark-green">✅</span> Backend services</td>
+                            <td><span class="warning-amber">⚠️</span> Next.js only</td>
+                            <td><span class="checkmark-green">✅</span> Backend services</td>
+                            <td><span class="checkmark-green">✅</span> Backend services</td>
+                            <td><span class="checkmark-green">✅</span> Backend services</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Infrastructure Deployment</strong></td>
+                            <td><span class="checkmark-green">✅</span> Full automation</td>
+                            <td><span class="x-red">❌</span> No infrastructure</td>
+                            <td><span class="x-red">❌</span> No infrastructure</td>
+                            <td><span class="x-red">❌</span> No infrastructure</td>
+                            <td><span class="x-red">❌</span> No infrastructure</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Infrastructure Control</strong></td>
+                            <td><span class="checkmark-green">✅</span> Full (your cloud)</td>
+                            <td><span class="x-red">❌</span> Zero control</td>
+                            <td><span class="x-red">❌</span> Zero control</td>
+                            <td><span class="x-red">❌</span> Zero control</td>
+                            <td><span class="x-red">❌</span> Zero control</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Cloud Provider</strong></td>
+                            <td><span class="checkmark-green">✅</span> YOUR cloud (AWS/GCP/Azure)</td>
+                            <td><span class="x-red">❌</span> Vercel's cloud only</td>
+                            <td><span class="x-red">❌</span> Heroku's cloud only</td>
+                            <td><span class="x-red">❌</span> Render's cloud only</td>
+                            <td><span class="x-red">❌</span> Railway's cloud only</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IaC Code Access</strong></td>
+                            <td><span class="checkmark-green">✅</span> 100% open source</td>
+                            <td><span class="x-red">❌</span> No IaC (black box)</td>
+                            <td><span class="x-red">❌</span> No IaC (black box)</td>
+                            <td><span class="x-red">❌</span> No IaC (black box)</td>
+                            <td><span class="x-red">❌</span> No IaC (black box)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div style="background: linear-gradient(135deg, #1a2a1a 0%, #162a1e 100%); padding: 2rem; border-radius: 12px; border: 2px solid #10b981; margin: 2rem 0;">
+                <h4 style="color: #10b981; margin-top: 0;">🎯 UNIQUE POSITIONING</h4>
+                <p style="font-size: 1.1rem;">
+                    <strong>Planton is the ONLY platform that combines:</strong>
+                </p>
+                <ul style="font-size: 1.05rem; color: #d0d0d0;">
+                    <li>✅ Out-of-the-box service deployment (like Vercel/Heroku)</li>
+                    <li>✅ Infrastructure automation (like Terraform/Pulumi)</li>
+                    <li>✅ In YOUR cloud account (full control)</li>
+                    <li>✅ No vendor lock-in (100% open source deployment modules)</li>
+                </ul>
+                <p style="font-size: 1.1rem; color: #10b981; font-weight: 600; margin-bottom: 0;">
+                    You get Vercel's developer experience without giving up infrastructure control 
+                    or getting locked into their platform.
+                </p>
+            </div>
+            
+            <h4>The Planton Difference</h4>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin: 2rem 0;">
+                <div style="background: #1a1a1a; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #ef4444;">
+                    <h5 style="color: #ef4444; margin-top: 0;">PaaS Platforms (Vercel/Heroku)</h5>
+                    <p style="color: #10b981;">✅ Great developer experience</p>
+                    <p style="color: #ef4444;">❌ No infrastructure automation</p>
+                    <p style="color: #ef4444;">❌ No infrastructure control (their cloud)</p>
+                    <p style="color: #ef4444;">❌ Vendor lock-in (rebuild to leave)</p>
+                </div>
+                
+                <div style="background: #1a1a1a; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                    <h5 style="color: #f59e0b; margin-top: 0;">IaC Platforms (Terraform/Pulumi)</h5>
+                    <p style="color: #10b981;">✅ Infrastructure automation</p>
+                    <p style="color: #10b981;">✅ Runs in your cloud</p>
+                    <p style="color: #ef4444;">❌ No service deployment (build CI/CD yourself)</p>
+                    <p style="color: #ef4444;">❌ Write all infrastructure modules yourself</p>
+                </div>
+                
+                <div style="background: #1a1a1a; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #10b981;">
+                    <h5 style="color: #10b981; margin-top: 0;">Planton (Best of Both Worlds)</h5>
+                    <p style="color: #10b981;">✅ Great developer experience</p>
+                    <p style="color: #10b981;">✅ Infrastructure automation (120+ components)</p>
+                    <p style="color: #10b981;">✅ Service deployment (ServiceHub)</p>
+                    <p style="color: #10b981;">✅ Runs in YOUR cloud (full control)</p>
+                    <p style="color: #10b981;">✅ No vendor lock-in</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 7: Wall of Love -->
+        <div class="section section-new" id="wall-of-love">
+            <span class="badge badge-new">New Section</span>
+            <h2>Section 7: Wall of Love</h2>
+            
+            <h3>Loved by DevOps Engineers and Developers</h3>
+            <p style="text-align: center; color: #888; margin-bottom: 2rem;">Real feedback from teams using Planton in production</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                <div class="testimonial-card">
+                    <div class="testimonial-quote">
+                        "As Planton's first user, I filled out forms one by one for VPC, ECS, Route 53, certificates. That led to Infra Charts—now I deploy complete environments in a single form. Weeks of Terraform → under 1 hr."
+                    </div>
+                    <div class="testimonial-author">
+                        👤 <strong>Harsha CH</strong><br>
+                        Solo Developer, Jai.CX<br>
+                        🏢 Jai.CX • 🌍 USA/India
+                    </div>
+                </div>
+                
+                <div class="testimonial-card">
+                    <div class="testimonial-quote">
+                        "For a client in regulated industry (BFSI) who mandated GCP, Planton delivered the entire infra despite zero GCP experience on our team. Mature infrastructure out-of-the-box. Using Planton for all future client projects."
+                    </div>
+                    <div class="testimonial-author">
+                        👤 <strong>Rohit Reddy Gopu</strong><br>
+                        CEO, TynyBay<br>
+                        🏢 TynyBay • 🌍 India
+                    </div>
+                </div>
+                
+                <div class="testimonial-card">
+                    <div class="testimonial-quote">
+                        "I handle 8+ client projects with Planton—no more rewriting Terraform between clients. My efficiency has improved dramatically, and I provide far better experience to all our developers."
+                    </div>
+                    <div class="testimonial-author">
+                        👤 <strong>Balaji Borra</strong><br>
+                        DevOps Engineer, TynyBay<br>
+                        🏢 TynyBay • 🌍 India
+                    </div>
+                </div>
+                
+                <div class="testimonial-card">
+                    <div class="testimonial-quote">
+                        "I can now update service configurations and deploy to dev, staging, and prod—all without waiting on DevOps. Self-service infrastructure through ServiceHub is a game changer for productivity."
+                    </div>
+                    <div class="testimonial-author">
+                        👤 <strong>Rakesh Kandhi</strong><br>
+                        Senior Developer, TynyBay<br>
+                        🏢 TynyBay • 🌍 India
+                    </div>
+                </div>
+                
+                <div class="testimonial-card">
+                    <div class="testimonial-quote">
+                        "Planton enabled me to provide a mature developer experience to our 7-person team without requiring deep AWS expertise. They deploy to multiple environments independently and manage the entire infrastructure lifecycle themselves."
+                    </div>
+                    <div class="testimonial-author">
+                        👤 <strong>Sai Saketh</strong><br>
+                        Junior DevOps Engineer, iorta TechNext<br>
+                        🏢 iorta TechNext (SalesVerse) • 🌍 India
+                    </div>
+                </div>
+            </div>
+            
+            <div class="visual-note">
+                <strong>Visual Direction:</strong> Twitter/testimonial-style cards in masonry grid. Subtle shadows, gradient border on hover. Avatars with placeholder images. Staggered fade-in animation on scroll.
+            </div>
+            
+            <div class="component-note">
+                <strong>Component Mapping:</strong> NEW component <code>WallOfLove.tsx</code>
+            </div>
+        </div>
+        
+        <!-- Section 9: ROI Calculator -->
+        <div class="section section-new" id="roi-calculator">
+            <span class="badge badge-new">New Section</span>
+            <h2>Section 9: ROI Calculator</h2>
+            
+            <h3>Calculate Your Savings with Planton</h3>
+            <p style="text-align: center; margin-bottom: 2rem;">See how much you'll save compared to hiring DevOps engineers or using legacy platforms</p>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin: 2rem 0;">
+                <div style="background: #1a1a1a; padding: 2rem; border-radius: 12px; border: 1px solid #2a2a2a;">
+                    <h4>Your Current Setup</h4>
+                    
+                    <div style="margin: 1.5rem 0;">
+                        <strong>Team Size</strong><br>
+                        <div style="color: #888; margin-top: 0.5rem;">[Slider: 1-50 developers] → 7 developers</div>
+                    </div>
+                    
+                    <div style="margin: 1.5rem 0;">
+                        <strong>Current DevOps Setup</strong><br>
+                        <div style="color: #888; margin-top: 0.5rem;">
+                            ○ No dedicated DevOps<br>
+                            ○ Junior DevOps Engineer ($75K/year)<br>
+                            ● Senior DevOps Engineer ($150K/year)<br>
+                            ○ DevOps Team (2-3 engineers)
+                        </div>
+                    </div>
+                    
+                    <div style="margin: 1.5rem 0;">
+                        <strong>Cloud Spending (Monthly)</strong><br>
+                        <div style="color: #888; margin-top: 0.5rem;">[Input: $___] → $1,500</div>
+                    </div>
+                    
+                    <div style="margin: 1.5rem 0;">
+                        <strong>Deployments per Week</strong><br>
+                        <div style="color: #888; margin-top: 0.5rem;">[Slider: 1-50] → 10 deployments/week</div>
+                    </div>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 2rem; border-radius: 12px; border: 1px solid #2a2a3e;">
+                    <h4>Your Savings with Planton</h4>
+                    
+                    <div style="border: 2px solid #2a2a2a; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                        <div style="color: #888; font-size: 0.9rem;">Current Annual Cost</div>
+                        <div style="font-size: 2rem; font-weight: 700; color: #ef4444;">💰 $150,000/year</div>
+                        <div style="color: #888; font-size: 0.85rem;">(DevOps salary)</div>
+                    </div>
+                    
+                    <div style="border: 2px solid #2a2a2a; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                        <div style="color: #888; font-size: 0.9rem;">Planton Annual Cost</div>
+                        <div style="font-size: 2rem; font-weight: 700; color: #0ea5e9;">💳 $5,400/year</div>
+                        <div style="color: #888; font-size: 0.85rem;">($20/dev/month × 7 × 12 + $450/month usage)</div>
+                    </div>
+                    
+                    <div style="border: 2px solid #10b981; padding: 1rem; border-radius: 8px; margin: 1rem 0; background: #10b98111;">
+                        <div style="color: #10b981; font-size: 0.9rem;">Your Annual Savings</div>
+                        <div style="font-size: 2.5rem; font-weight: 700; color: #10b981;">🎉 $144,600/year</div>
+                        <div style="color: #10b981; font-size: 1rem; font-weight: 600;">(96% cost reduction)</div>
+                    </div>
+                    
+                    <div style="margin-top: 1.5rem; color: #b0b0b0;">
+                        <strong>Payback Period:</strong> 0.4 days<br>
+                        <strong>5-Year Savings:</strong> $723,000
+                    </div>
+                </div>
+            </div>
+            
+            <div class="visual-note">
+                <strong>Visual Direction:</strong> Two-column layout (inputs left, outputs right with gradient bg). Real-time calculation with animated counter-up. Large emphasis on savings percentage. Mobile: stack vertically.
+            </div>
+            
+            <div class="component-note">
+                <strong>Component Mapping:</strong> NEW component <code>ROICalculator.tsx</code> - Interactive with sliders and live calculation
+            </div>
+        </div>
+        
+        <!-- Section 12: Open Source Foundation (Enhanced) -->
+        <div class="section section-enhanced" id="open-source">
+            <span class="badge badge-enhanced">Enhanced</span>
+            <h2>Section 12: Open Source Foundation</h2>
+            
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h3 style="font-size: 2.5rem; margin-bottom: 1rem;">The Only Truly Open DevOps Platform</h3>
+                <p style="font-size: 1.25rem; color: #d0d0d0;">
+                    Every line of infrastructure code? Open source.<br>
+                    Every deployment module? Auditable on GitHub.<br>
+                    Every credential? Stays in your control.
+                </p>
+                <p style="font-size: 1.25rem; color: #d0d0d0; margin-top: 1rem;">
+                    <strong>No black boxes. No vendor lock-in. No surprises.</strong>
+                </p>
+            </div>
+            
+            <h3>Your Exit Path (If You Ever Need It)</h3>
+            
+            <div style="display: flex; align-items: center; gap: 1rem; margin: 2rem 0; flex-wrap: wrap;">
+                <div style="background: #1a1a1a; padding: 1.5rem; border-radius: 8px; border: 1px solid #2a2a2a; flex: 1; min-width: 200px;">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">📥</div>
+                    <strong>Step 1: Export Configs</strong>
+                    <p style="color: #888; font-size: 0.9rem;">Download all infra definitions as Terraform/Pulumi</p>
+                </div>
+                <div style="color: #888; font-size: 2rem;">→</div>
+                <div style="background: #1a1a1a; padding: 1.5rem; border-radius: 8px; border: 1px solid #2a2a2a; flex: 1; min-width: 200px;">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚙️</div>
+                    <strong>Step 2: Use Independent CLI</strong>
+                    <p style="color: #888; font-size: 0.9rem;">openmcf CLI works without platform</p>
+                </div>
+                <div style="color: #888; font-size: 2rem;">→</div>
+                <div style="background: #1a1a1a; padding: 1.5rem; border-radius: 8px; border: 1px solid #2a2a2a; flex: 1; min-width: 200px;">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔄</div>
+                    <strong>Step 3: Migrate CI/CD</strong>
+                    <p style="color: #888; font-size: 0.9rem;">Use exported Tekton pipelines in GitHub Actions</p>
+                </div>
+                <div style="color: #888; font-size: 2rem;">→</div>
+                <div style="background: #1a1a1a; padding: 1.5rem; border-radius: 8px; border: 1px solid #2a2a2a; flex: 1; min-width: 200px;">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">💻</div>
+                    <strong>Step 4: Direct Module Usage</strong>
+                    <p style="color: #888; font-size: 0.9rem;">Keep using Terraform/Pulumi modules independently</p>
+                </div>
+            </div>
+            
+            <p style="text-align: center; margin-top: 2rem; font-size: 1.15rem; color: #10b981;">
+                <strong>No termination fees. No data hostage. No migration costs.</strong>
+            </p>
+            
+            <div class="visual-note">
+                <strong>Visual Direction:</strong> Lead with strong "Only Truly Open" headline. 4-step exit path as horizontal flow with arrows and icons. Make this the hero differentiator.
+            </div>
+            
+            <div class="component-note">
+                <strong>Component Mapping:</strong> Update <code>OpenSourceFoundation.tsx</code> with enhanced messaging
+            </div>
+        </div>
+        
+        <!-- Summary -->
+        <div class="section" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);">
+            <h2>Implementation Summary</h2>
+            
+            <h3>New Components Required (6)</h3>
+            <ul>
+                <li><code>SocialProofBar.tsx</code> - Customer logos + metrics</li>
+                <li><code>SecurityTrustBar.tsx</code> - Security badges (top of page)</li>
+                <li><code>HowItWorks.tsx</code> - 3-step visual process</li>
+                <li><code>ComparisonTable.tsx</code> - Platform comparison</li>
+                <li><code>WallOfLove.tsx</code> - Testimonial grid</li>
+                <li><code>ROICalculator.tsx</code> - Interactive calculator</li>
+            </ul>
+            
+            <h3>Updated Components (8)</h3>
+            <ul>
+                <li><code>HeroSection.tsx</code> - Add social proof, simplify CTAs, add terminal animation</li>
+                <li><code>InfraHub.tsx</code> - More proof points, GitHub links</li>
+                <li><code>ServiceHub.tsx</code> - Pipeline visualization, enhanced quotes</li>
+                <li><code>CustomerStories.tsx</code> - Expand from 2 to 5 stories</li>
+                <li><code>PricingSimplified.tsx</code> - Add urgency element</li>
+                <li><code>OpenStandards.tsx</code> - Strengthen messaging</li>
+                <li><code>OpenSourceFoundation.tsx</code> - "Only Truly Open" positioning</li>
+                <li><code>FinalCTA.tsx</code> - More social proof, quote carousel</li>
+            </ul>
+            
+            <h3>Key Improvements</h3>
+            <ul>
+                <li>✅ 6 new strategic sections added</li>
+                <li>✅ Quantified social proof moved to hero (immediate visibility)</li>
+                <li>✅ Direct competitor comparison table (reduces objections)</li>
+                <li>✅ Interactive ROI calculator (visualizes cost advantage)</li>
+                <li>✅ 4x more social proof (Wall of Love + expanded stories)</li>
+                <li>✅ "Only Truly Open" positioning (strongest differentiator)</li>
+                <li>✅ Simplified CTA hierarchy (one primary action)</li>
+                <li>✅ Security trust badges moved higher (enterprise confidence)</li>
+            </ul>
+            
+            <h3>Expected Impact</h3>
+            <p>Based on competitive benchmark feedback: <strong>30-50% increase in trial signups</strong> by implementing these "Quick Win" optimizations.</p>
+            
+            <h3>Next Steps</h3>
+            <ol>
+                <li>Review this preview and provide feedback</li>
+                <li>Approve for implementation (or request changes)</li>
+                <li>Implementation LLM creates React components</li>
+                <li>Build verification and testing</li>
+                <li>Changelog generation</li>
+                <li>Workspace cleanup</li>
+            </ol>
+        </div>
+        
+        <div style="text-align: center; padding: 3rem; background: #1a1a1a; border-radius: 12px; margin-top: 3rem;">
+            <h2>📄 Draft Complete - Ready for Review</h2>
+            <p style="color: #888; margin-top: 1rem;">Location: <code>/content/copywriting/_stage-area/2025-12-31-landing-page-marketing-optimization/</code></p>
+            <p style="color: #888;">Files: draft-1.md (comprehensive copywriting) + preview-1.html (this file)</p>
+        </div>
+    </div>
+</body>
+</html>
+

@@ -1,6 +1,10 @@
 The Planton runner is installed as {{ include "planton-runner.fullname" . }}
 in namespace {{ .Release.Namespace }}.
 
+On first boot the runner joins the control plane with its token, registers
+itself as "{{ include "planton-runner.runnerName" . }}", and receives its own
+identity -- it appears in your organization's Runners list the moment it joins.
+
 Check that it is up and connected:
 
   kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
@@ -31,5 +35,5 @@ Build capability is DISABLED (build.enabled=false). This runner serves
 infrastructure operations only. To also run build pipelines on this cluster,
 install Tekton Pipelines, then upgrade with:
 
-  --set build.enabled=true --set runner.executionMode=dual
+  --set build.enabled=true
 {{- end }}

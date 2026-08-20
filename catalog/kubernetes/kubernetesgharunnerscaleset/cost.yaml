@@ -1,0 +1,36 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesgharunnerscaleset
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: min_runners
+      sku_meter: cluster CPU and memory reservations
+      impact: The idle floor -- this many warm runner pods hold their reservation around the clock whether or not jobs run. Empty = 0 (fully scale-to-zero, one pod-schedule of cold-start latency per job).
+    - field_path: max_runners
+      sku_meter: cluster CPU and memory reservations
+      impact: The capacity ceiling -- the fleet never runs more than this many concurrent runners; additional queued jobs wait in GitHub. Empty = UNBOUNDED, so a busy queue can claim as much cluster capacity as it can schedule.
+    - field_path: runner.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: Each runner pod's reservation -- sized for the JOBS the fleet runs, not the runner agent (builds inherit these limits). Unset, the chart applies no requests or limits and runner pods schedule unbounded.
+    - field_path: container_mode
+      sku_meter: cluster CPU and memory reservations
+      impact: dind adds a privileged Docker-in-Docker sidecar to EVERY runner pod with its own reservation on top of runner.resources; kubernetes mode runs each container job as additional separate pods through the container hook.
+    - field_path: container_mode.kubernetes_work_volume.size
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: In kubernetes mode every runner pod claims an ephemeral PersistentVolumeClaim of this size from the declared StorageClass -- provisioned when the runner starts, released when it finishes.
+    - field_path: helm_values
+      sku_meter: cluster CPU and memory reservations
+      impact: The overlay merges LAST and can reshape the runner pod template and listener entirely (template, listenerTemplate) -- including resources beyond what the typed fields declare.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - "the fleet AUTOSCALES with CI demand: runners are EPHEMERAL (one pod per job, replaced after each job), so actual capacity swings between the min_runners idle floor and max_runners with the job queue -- only the idle floor is a manifest-time commitment"
+    - the listener pod the controller runs for this fleet reserves its own (chart-sized) capacity, not declared in this spec
+    - in dind mode the Docker-in-Docker sidecar adds per-runner capacity beyond runner.resources
+    - the helm_values overlay merges last and can change any of the above
+  notes: "This component creates no cloud SKU of its own -- its cost is the cluster capacity the runner fleet claims, and most of that capacity is demand-driven: the honest manifest-time statement is the idle floor (min_runners x runner.resources), with max_runners as the ceiling lever. The controller install that reconciles this fleet carries its own footprint on KubernetesGhaRunnerScaleSetController."

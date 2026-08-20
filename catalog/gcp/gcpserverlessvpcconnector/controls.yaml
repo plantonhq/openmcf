@@ -1,0 +1,80 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpserverlessvpcconnector
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The connector persists nothing -- it forwards packets between the serverless environment and the VPC. At-rest encryption questions belong to the endpoints on either side.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No stored data, no key to manage.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Traffic through the connector travels entirely inside Google's network, encrypted at the network layer whenever it crosses a physical boundary outside Google's control -- the connector exists precisely to keep serverless-to-VPC traffic off the public internet.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The connector fleet lives on an internal-only /28 inside your VPC with no external IPs -- it is an egress path for serverless workloads, unreachable from the internet by construction.
+    - control_id: restricted-ingress
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Google auto-creates the firewall rules that scope connector traffic (serverless environment to connector, connector health checks) and they are not yours to widen -- the connector accepts nothing else.
+      notes: On Shared VPC with the subnet in a host project, those automatic rules do not materialize -- the host-project admin must create the documented equivalents, so the posture there is operator-owned.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: An internal egress path has no internet-facing surface for a WAF to front.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Creating and deleting the connector is governed by Serverless VPC Access IAM permissions, and each serverless service must itself be IAM-authorized to attach to the connector.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The connector carries no identity of its own -- the serverless workloads egressing through it keep their own service-account identities end to end.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication surface exists beyond IAM -- nothing to log into, no legacy protocol to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every administrative action on the connector (create, resize, delete) lands in Cloud Audit Logs' Admin Activity stream unconditionally.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The connector publishes throughput, instance-count, and CPU metrics to Cloud Monitoring without configuration -- the signals that reveal both saturation and the never-scale-in ratchet.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless by design -- a replacement connector is one API call plus a 3-5 minute fleet build. There is no data to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The connector is a regional resource whose forwarding instances Google distributes across the region's zones -- a zone outage degrades capacity, not the egress path.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Default ("" = DELETE) tears down the fleet on destroy -- and every function and service in the region egressing through it loses VPC access within minutes. PREVENT fails the destroy; ABANDON leaves the fleet forwarding (and billing) outside management.
+      notes: The blast radius is the reason to consider PREVENT -- one connector commonly serves many serverless services.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Google owns the forwarding instances end to end -- patching and replacing them on its own schedule (instances are restarted roughly every two weeks) with no customer action or access.

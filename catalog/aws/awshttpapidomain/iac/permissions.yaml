@@ -1,0 +1,44 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awshttpapidomain
+spec:
+  aws:
+    statements:
+      - sid: ManageDomainAndMappings
+        actions:
+          - apigateway:GET
+          - apigateway:POST
+          - apigateway:PATCH
+          - apigateway:PUT
+          - apigateway:DELETE
+        resources:
+          - arn:aws:apigateway:*::/domainnames
+          - arn:aws:apigateway:*::/domainnames/*
+          - arn:aws:apigateway:*::/tags/*
+        provenance: derived
+        notes: Covers aws_apigatewayv2_domain_name and aws_apigatewayv2_api_mapping (tf) / apigatewayv2.DomainName and apigatewayv2.ApiMapping (pulumi). API Gateway authorizes by HTTP verb against resource paths -- POST on the /domainnames collection creates, GET/PATCH/DELETE act on /domainnames/{domain} and its /apimappings children (covered by the /domainnames/* pattern). The Tags resource authorizes GET/PUT/DELETE per the service reference; PUT serves only tagging here.
+      - sid: ManageRoutingRules
+        actions:
+          - apigateway:CreateRoutingRule
+          - apigateway:GetRoutingRule
+          - apigateway:ListRoutingRules
+          - apigateway:UpdateRoutingRule
+          - apigateway:DeleteRoutingRule
+        resources:
+          - arn:aws:apigateway:*:*:/domainnames/*/routingrules
+          - arn:aws:apigateway:*:*:/domainnames/*/routingrules/*
+        provenance: derived
+        notes: Covers aws_apigatewayv2_routing_rule (tf) / apigatewayv2.RoutingRule (pulumi), created when the spec's routing_rules are set. Unlike the rest of API Gateway, routing rules use named IAM actions, and their ARN format carries an account-id segment (arn:aws:apigateway:region:account:/domainnames/...), per the service reference.
+      - sid: CreateApiGatewayServiceLinkedRole
+        actions:
+          - iam:CreateServiceLinkedRole
+        resources:
+          - arn:aws:iam::*:role/aws-service-role/ops.apigateway.amazonaws.com/AWSServiceRoleForAPIGateway
+        provenance: derived
+        notes: AWS auto-creates the AWSServiceRoleForAPIGateway service-linked role (used, among other things, to read the referenced ACM certificate) when the first API, custom domain name, or VPC link is created in an account. Only the account's first such creation exercises this permission.

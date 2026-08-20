@@ -1,0 +1,43 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureserviceplan
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Azure App Service
+      sku_meter: plan instance hours
+      pricing_unit: hours
+      description: Dedicated-tier plans bill every instance hourly at the SKU's rate from the moment the plan exists -- apps or no apps, traffic or none. The plan is the billing anchor; the apps on it share its instances without charges of their own.
+  cost_drivers:
+    - field_path: sku_name
+      sku_meter: plan instance hours
+      pricing_unit: hours
+      impact: One value picks the tier and the VM size, and with them the hourly rate -- Basic through Premium v4 climb the dedicated ladder, Isolated tiers add single-tenant premiums, and the serverless values (CONSUMPTION_Y1, FLEX_CONSUMPTION_FC1) leave the hourly meter entirely for per-execution billing on the function app. FREE_F1 is unbilled with hard limits (shared VMs, 60 CPU-minutes/day, no SLA).
+    - field_path: os_type
+      sku_meter: plan instance hours
+      pricing_unit: hours
+      impact: Linux and Windows carry different rates for the same SKU letter -- Windows rates fold in the OS license. Unset deploys LINUX.
+    - field_path: worker_count
+      sku_meter: plan instance hours
+      pricing_unit: hours
+      impact: Multiplies the instance-hour rate directly -- 3 workers of one SKU bill exactly 3x one worker. Unset means 1.
+    - field_path: premium_plan_auto_scale_enabled
+      sku_meter: plan instance hours
+      pricing_unit: hours
+      impact: Lets the platform scale instances beyond worker_count up to maximum_elastic_worker_count -- the instances above the floor are load-dependent spend the committed estimate cannot include.
+    - field_path: zone_balancing_enabled
+      sku_meter: plan instance hours
+      pricing_unit: hours
+      impact: Zone balancing itself adds no meter, but it requires a multi-instance plan -- the cost lever is the higher instance floor it forces, not a zone fee.
+    - field_path: app_service_environment_id
+      sku_meter: environment charges
+      impact: Isolated-tier plans run inside an App Service Environment whose own charges bill on the environment, outside this plan's instance hours.
+  estimate_exclusions:
+    - serverless plans (CONSUMPTION_Y1, FLEX_CONSUMPTION_FC1) bill function executions and GB-seconds on the function app, following invocation volume
+    - outbound data transfer follows app traffic
+    - App Service Environment charges for Isolated-tier plans bill on the environment
+  notes: "The SKU vocabulary maps one-to-one onto Azure's own meters per OS ('S1 App' on the Linux Standard plan, 'P1 v3 App' on Linux Premium v3). Serverless plans provision no always-on instances, so their committed plan spend is zero -- the execution meters live on the function app that runs in them."

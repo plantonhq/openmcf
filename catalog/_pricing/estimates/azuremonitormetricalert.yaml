@@ -1,0 +1,85 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azuremonitormetricalert
+spec:
+  presets:
+    - preset: 01-static-threshold
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Monitor
+          sku_meter: metric alert time series
+          pricing_unit: time-series-months
+          pricing_quantity: "1"
+          quantity_basis: each static criterion evaluates one metric per scoped resource, and each pairing is one billed time series per month -- criteria count x scope count (single-resource scopes only; multi-resource shapes refuse above)
+          list_unit_price: "0.1"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Monitor' and armRegionName eq 'eastus' and meterName eq 'Alerts Metric Monitored' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "0.1000"
+      total_list_cost: "0.1000"
+      exclusions:
+        - notifications the fired alert sends (email, SMS, voice, webhooks beyond the free monthly allowances) bill on the referenced AzureMonitorActionGroup component
+        - dimension filters that split the evaluation (INCLUDE with several values, or "*") bill each matching dimension value as its own time series -- these rules price the undimensioned series count, and the split multiplier follows the live metric's dimension values
+        - the first 10 monitored metric time-series per subscription per month are free -- a subscription-wide allowance shared across every rule, so the estimate prices the list rate without netting it out
+      notes: The meter runs from rule creation until deletion whether the alert ever fires or not; enabled=false suspends both evaluation and billing, which is why pausing beats deleting during maintenance windows.
+    - preset: 02-dynamic-anomaly
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Monitor
+          sku_meter: metric alert time series
+          pricing_unit: time-series-months
+          pricing_quantity: "1"
+          quantity_basis: the one dynamic criterion a rule may carry monitors one time series per scoped resource on the base metric-alert meter
+          list_unit_price: "0.1"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Monitor' and armRegionName eq 'eastus' and meterName eq 'Alerts Metric Monitored' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "0.1000"
+        - service_name: Azure Monitor
+          sku_meter: dynamic threshold
+          pricing_unit: time-series-months
+          pricing_quantity: "1"
+          quantity_basis: the dynamic-threshold capability bills a second monthly fee for the same time series -- Microsoft's pricing page prices a dynamic alert as the base rule plus the dynamic-threshold add-on
+          list_unit_price: "0.1"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Monitor' and armRegionName eq 'eastus' and meterName eq 'Alerts Dynamic Threshold' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "0.1000"
+      total_list_cost: "0.2000"
+      exclusions:
+        - notifications the fired alert sends (email, SMS, voice, webhooks beyond the free monthly allowances) bill on the referenced AzureMonitorActionGroup component
+        - dimension filters that split the evaluation (INCLUDE with several values, or "*") bill each matching dimension value as its own time series -- these rules price the undimensioned series count, and the split multiplier follows the live metric's dimension values
+        - the first 10 monitored metric time-series per subscription per month are free -- a subscription-wide allowance shared across every rule, so the estimate prices the list rate without netting it out
+      notes: The meter runs from rule creation until deletion whether the alert ever fires or not; enabled=false suspends both evaluation and billing, which is why pausing beats deleting during maintenance windows.
+    - preset: 03-webtest-availability
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Monitor
+          sku_meter: metric alert time series
+          pricing_unit: time-series-months
+          pricing_quantity: "1"
+          quantity_basis: a web-test availability rule monitors the referenced test's availability signal as one time series; the test's own scheduled executions bill on the web-test component, and Microsoft's pricing page states alert-rule charges are separate from test charges
+          list_unit_price: "0.1"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Monitor' and armRegionName eq 'eastus' and meterName eq 'Alerts Metric Monitored' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "0.1000"
+      total_list_cost: "0.1000"
+      exclusions:
+        - notifications the fired alert sends (email, SMS, voice, webhooks beyond the free monthly allowances) bill on the referenced AzureMonitorActionGroup component
+        - dimension filters that split the evaluation (INCLUDE with several values, or "*") bill each matching dimension value as its own time series -- these rules price the undimensioned series count, and the split multiplier follows the live metric's dimension values
+        - the first 10 monitored metric time-series per subscription per month are free -- a subscription-wide allowance shared across every rule, so the estimate prices the list rate without netting it out
+      notes: The meter runs from rule creation until deletion whether the alert ever fires or not; enabled=false suspends both evaluation and billing, which is why pausing beats deleting during maintenance windows.

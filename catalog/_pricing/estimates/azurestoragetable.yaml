@@ -1,0 +1,43 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azurestoragetable
+spec:
+  presets:
+    - preset: 01-app-entities
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - table data stored bills per GB-month on the parent account at its redundancy rate -- entity volume no manifest can know
+        - transactions bill per 10,000 on the account, and every operation type counts (reads, writes, deletes, scans, batches); accounts using the account-scoped encryption key meter the operation types separately
+        - geo-redundant accounts add geo-replication data transfer per GB; consumers outside Azure add bandwidth egress
+      notes: Zero committed cost -- a declared, empty, untouched table bills exactly nothing; the serverless economics (no provisioned throughput, no capacity floor) are the reason to be here instead of Cosmos DB's Table API.
+    - preset: 02-audit-trail
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - an append-heavy audit table accrues table data stored per GB-month monotonically -- capacity is the meter that never sleeps, and only application-side pruning or export bends the curve
+        - every appended entity is a transaction per 10,000, and range scans over time buckets bill transactions too
+        - geo-redundant accounts add geo-replication data transfer per GB; consumers outside Azure add bandwidth egress
+      notes: Zero committed cost -- the audit trail bills nothing until events arrive; the time-bucketed partition convention spreads writes but does not change any rate.
+    - preset: 03-policy-anchored-access
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - stored access policies are free to declare and free to hold -- Azure has no meter for signed identifiers; revoking a policy is a free write
+        - every SAS-authorized request the policies anchor bills the account's transaction meter per 10,000 like any other call
+        - table data stored bills per GB-month on the account as entities arrive; geo-replication transfer and egress apply as on every preset
+      notes: Zero committed cost -- policy-anchored access changes who can generate metered traffic and how it is revoked, never the rates; the revocation lever itself is free.

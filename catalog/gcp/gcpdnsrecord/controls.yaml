@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpdnsrecord
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: DNS record data is public-by-design directory information (or VPC-visible in private zones); the record stores no customer data at rest beyond the answers it exists to publish.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest); Cloud DNS exposes no KMS surface for record sets.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The record is data Cloud DNS serves, not a connection endpoint. DNS transport security (DNS-over-TLS/HTTPS) is a resolver-side choice, and answer INTEGRITY (DNSSEC signing) is configured on the zone -- GcpDnsZone's dnssec_config -- never per record.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Whether this record resolves publicly is the ZONE's visibility choice (public vs private, on GcpDnsZone), not a record-level control; a record in a public zone is intentionally world-resolvable.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; DNS queries reach Cloud DNS's resolvers, not this configuration object.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The record receives no HTTP requests -- request filters have nothing to attach to.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is project IAM posture (Cloud DNS roles), not a component choice; the record exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The record runs no workloads and holds no credentials.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own exist to retire.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Record changes land in Cloud Audit Logs as project-level posture; per-query logging is the zone's cloud_logging_config (GcpDnsZone), not a record field.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The record publishes no metrics of its own; query metrics and logs surface at the zone level.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration fully re-creatable from the manifest -- the record set re-applies from name, type, and values or routing policy.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: routing_policy
+      evidence:
+        type: spec_default
+        reference: Static values answer identically everywhere with no health awareness; a routing_policy turns the record into a resilience instrument -- primary_backup answers from the global primaries while any is healthy and fails over to the backup_geo locations, geo steers queries to the nearest healthy region, and health-checked targets are withdrawn from answers automatically.
+      notes: This is resilience of what the record POINTS AT -- Cloud DNS itself serves every record from Google's globally replicated infrastructure regardless. Preset 03 uses weighted round robin for canary traffic splitting; failover shapes must be composed explicitly. primary_backup.trickle_ratio keeps backup paths warm and verifiable.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Unset defaults to DELETE; setting deletion_policy=PREVENT makes destroy fail before the record set is removed -- a guard for names other systems resolve (mail routing, domain verification, certificate validation, service discovery).
+      notes: No preset sets PREVENT; ABANDON leaves the record answering queries in GCP after it leaves management.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A pure configuration object with no software to patch; Cloud DNS's serving infrastructure is Google-operated.

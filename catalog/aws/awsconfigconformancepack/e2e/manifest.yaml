@@ -1,0 +1,37 @@
+# Canonical AwsConfigConformancePack example (hack/dev manifest and
+# refgen Example source): an account-scoped pack deploying two managed
+# S3 rules from an inline template, one parameterized. Literals stand
+# in so the offline `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsConfigConformancePack
+metadata:
+  name: s3-best-practices
+  id: s3-best-practices
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  inputParameters:
+    - parameterName: S3BucketPublicReadProhibitedParamCheckPeriod
+      parameterValue: TwentyFour_Hours
+  templateBody: |
+    Parameters:
+      S3BucketPublicReadProhibitedParamCheckPeriod:
+        Type: String
+    Resources:
+      S3BucketPublicReadProhibited:
+        Type: AWS::Config::ConfigRule
+        Properties:
+          ConfigRuleName: s3-bucket-public-read-prohibited
+          Source:
+            Owner: AWS
+            SourceIdentifier: S3_BUCKET_PUBLIC_READ_PROHIBITED
+          MaximumExecutionFrequency:
+            Ref: S3BucketPublicReadProhibitedParamCheckPeriod
+      S3BucketVersioningEnabled:
+        Type: AWS::Config::ConfigRule
+        Properties:
+          ConfigRuleName: s3-bucket-versioning-enabled
+          Source:
+            Owner: AWS
+            SourceIdentifier: S3_BUCKET_VERSIONING_ENABLED

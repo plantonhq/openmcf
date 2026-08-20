@@ -1,0 +1,44 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. All three presets are genuinely zero-committed: a volume
+# is a thin-provisioned logical container whose declared size reserves
+# nothing and bills nothing -- the real spend lives in the parent file
+# system's provisioned meters, and this spec only shapes how that capacity
+# is consumed. Stated in exclusions, never padded into fabricated dollars.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awsfsxontapvolume
+spec:
+  presets:
+    - preset: 01-general-purpose
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - the declared 100 GiB is a thin-provisioned ceiling, not a reservation -- SSD consumption bills through the parent AwsFsxOntapFileSystem's provisioned-capacity meters as data actually lands
+        - the AUTO tiering policy (31-day cooling) moves cold blocks to the capacity pool, billing per GB-month actually stored plus per-request charges -- pay-per-use relief on the parent's SSD, driven by data temperature
+        - storage efficiency (dedup, compression, compaction) shrinks physical consumption on both tiers at no charge
+        - the default final backup on deletion outlives the volume, billing backup storage per GB-month until someone deletes it
+      notes: Zero committed cost -- creating the volume starts no meter; every charge it shapes follows the data written into it, and the parent file system's provisioned spend exists with or without this volume.
+    - preset: 02-compliance-snaplock
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - the declared 500 GiB reserves nothing; consumption bills through the parent file system's provisioned SSD, with SNAPSHOT_ONLY tiering sending only snapshot blocks to the pay-per-use capacity pool
+        - SnapLock COMPLIANCE is the cost-shaped trap -- unexpired WORM files (default retention 5 years, up to 10) make the volume undeletable, so the parent-capacity they consume cannot be reclaimed until retention lapses
+        - snapshot consumption grows with churn under the parent's snapshot policy; the final backup on deletion bills per GB-month until deleted
+      notes: Zero committed cost at creation -- but WORM retention converts written data into consumption that cannot be walked back; the commitment arrives with the files, not the manifest.
+    - preset: 03-high-performance-flexgroup
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - the 1 TiB FlexGroup spread across two aggregates is still thin-provisioned -- constituents shape parallelism, not billing
+        - tiering NONE keeps every block on the parent's already-paid provisioned SSD, so no capacity-pool meter ever starts; performance posture at the price of consuming the most expensive tier
+        - the final backup on deletion bills backup storage per GB-month until deleted
+      notes: Zero committed cost -- the high-performance shape adds no meter of its own; it simply spends the parent file system's provisioned capacity faster per byte kept hot.

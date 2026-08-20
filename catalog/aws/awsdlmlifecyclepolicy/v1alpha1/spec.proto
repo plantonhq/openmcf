@@ -1,0 +1,721 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsdlmlifecyclepolicy.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsDlmLifecyclePolicySpec defines one Data Lifecycle Manager policy
+// - account-level automation that creates, retains, copies, archives,
+// and deletes EBS snapshots (or EBS-backed AMIs) on a schedule,
+// selecting its targets by TAGS. The policy references no specific
+// volume or snapshot; it acts on whatever carries the target tags
+// when a schedule fires.
+//
+// A policy runs in exactly one of two modes:
+//
+// DEFAULT mode (default_policy set) - AWS's simplified account-wide
+// posture: "snapshot every volume (or instance) daily-ish, keep for
+// N days", with tag/type exclusions. One default policy per resource
+// type per region.
+//
+// CUSTOM mode (custom_policy set) - the full engine: up to four named
+// schedules with cron or interval triggers, per-schedule retention,
+// archive tiering, cross-region copies, deprecation, fast snapshot
+// restore, and cross-account sharing; or an event-driven policy that
+// reacts to snapshots shared INTO this account.
+//
+// The provider's policy_language argument is derived by the modules
+// (SIMPLIFIED for default mode, STANDARD for custom mode) - a
+// separate field could contradict the configured arm.
+message AwsDlmLifecyclePolicySpec {
+  // Exactly one mode.
+  option (buf.validate.message).cel = {
+    id: "spec.exactly_one_mode"
+    message: "configure exactly one of default_policy (AWS's simplified account-wide posture) and custom_policy (named schedules or an event-driven policy)"
+    expression: "has(this.default_policy) != has(this.custom_policy)"
+  };
+
+  // The AWS region the policy runs in. Example: "us-east-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // What this policy does, shown in the DLM console listing. Unset
+  // means the modules use metadata.name. AWS restricts the character
+  // set.
+  string description = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 500
+      pattern: "^[0-9A-Za-z _-]+$"
+    }
+  ];
+
+  // The IAM role DLM assumes to create and manage snapshots/AMIs.
+  // AWS ships a service default (AWSDataLifecycleManagerDefaultRole)
+  // - create it once per account (aws dlm create-default-role) or
+  // reference an AwsIamRole with the documented DLM permissions.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef execution_role_arn = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Pause the policy without deleting it - schedules stop firing,
+  // existing snapshots are untouched.
+  bool disabled = 4;
+
+  // DEFAULT mode: the simplified account-wide snapshot posture.
+  AwsDlmDefaultPolicy default_policy = 5;
+
+  // CUSTOM mode: named schedules or an event-driven policy.
+  AwsDlmCustomPolicy custom_policy = 6;
+}
+
+// AwsDlmDefaultPolicy is AWS's simplified mode: snapshot everything
+// of one resource type on a fixed cadence, minus exclusions.
+message AwsDlmDefaultPolicy {
+  // Boot-volume exclusion is a volume-policy concept.
+  option (buf.validate.message).cel = {
+    id: "default_policy.exclude_boot_volumes_is_volume_only"
+    message: "exclusions.exclude_boot_volumes applies only when resource_type is VOLUME"
+    expression: "!has(this.exclusions) || !this.exclusions.exclude_boot_volumes || this.resource_type == 'VOLUME'"
+  };
+  // Volume-type exclusion is likewise volume-only surface.
+  option (buf.validate.message).cel = {
+    id: "default_policy.exclude_volume_types_is_volume_only"
+    message: "exclusions.exclude_volume_types applies only when resource_type is VOLUME"
+    expression: "!has(this.exclusions) || this.exclusions.exclude_volume_types.size() == 0 || this.resource_type == 'VOLUME'"
+  };
+
+  // Snapshot VOLUMEs individually, or INSTANCEs as multi-volume
+  // snapshot sets. One default policy per type per region.
+  string resource_type = 1 [(buf.validate.field).string = {
+    in: [
+      "VOLUME",
+      "INSTANCE"
+    ]
+  }];
+
+  // How often snapshots are created, in days (1-7). 0 means AWS's
+  // default of 1 (daily).
+  int64 create_interval_days = 2 [(buf.validate.field).cel = {
+    id: "default_policy.create_interval_range"
+    message: "create_interval_days must be between 1 and 7"
+    expression: "this == 0 || (this >= 1 && this <= 7)"
+  }];
+
+  // How long snapshots are kept, in days (2-14). 0 means AWS's
+  // default of 7.
+  int64 retain_interval_days = 3 [(buf.validate.field).cel = {
+    id: "default_policy.retain_interval_range"
+    message: "retain_interval_days must be between 2 and 14"
+    expression: "this == 0 || (this >= 2 && this <= 14)"
+  }];
+
+  // Copy the source resource's tags onto its snapshots.
+  bool copy_tags = 4;
+
+  // Keep snapshots even after their source resource is deleted or
+  // the policy stops targeting it (default: cleanup extends to them).
+  bool extend_deletion = 5;
+
+  // Carve-outs: resources the default policy must skip.
+  AwsDlmDefaultPolicyExclusions exclusions = 6;
+}
+
+// AwsDlmDefaultPolicyExclusions carves resources out of a default
+// policy's blanket coverage.
+message AwsDlmDefaultPolicyExclusions {
+  // Skip boot volumes (VOLUME policies only) - data-volume-only
+  // backup postures.
+  bool exclude_boot_volumes = 1;
+
+  // Skip resources carrying any of these tags.
+  map<string, string> exclude_tags = 2;
+
+  // Skip these volume types (VOLUME policies only). Example:
+  // ["standard", "sc1"].
+  repeated string exclude_volume_types = 3 [(buf.validate.field).repeated.max_items = 6];
+}
+
+// AwsDlmCustomPolicy is the full DLM engine: tag-targeted schedules,
+// or an event-driven policy reacting to snapshots shared into this
+// account.
+message AwsDlmCustomPolicy {
+  // Schedule-driven policies target by tags and carry 1-4 schedules.
+  option (buf.validate.message).cel = {
+    id: "custom_policy.schedules_require_target_tags"
+    message: "EBS_SNAPSHOT_MANAGEMENT and IMAGE_MANAGEMENT policies select resources by tags - target_tags is required"
+    expression: "this.policy_type == 'EVENT_BASED_POLICY' || this.target_tags.size() > 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "custom_policy.schedules_count"
+    message: "EBS_SNAPSHOT_MANAGEMENT and IMAGE_MANAGEMENT policies carry 1 to 4 schedules"
+    expression: "this.policy_type == 'EVENT_BASED_POLICY' ? this.schedules.size() == 0 : (this.schedules.size() >= 1 && this.schedules.size() <= 4)"
+  };
+  // Event-based policies react + act instead of scheduling.
+  option (buf.validate.message).cel = {
+    id: "custom_policy.event_based_requires_event_and_action"
+    message: "an EVENT_BASED_POLICY requires event_source and action (and takes no target_tags or schedules)"
+    expression: "this.policy_type != 'EVENT_BASED_POLICY' || (has(this.event_source) && has(this.action) && this.target_tags.size() == 0)"
+  };
+  option (buf.validate.message).cel = {
+    id: "custom_policy.event_source_is_event_based_only"
+    message: "event_source and action belong to EVENT_BASED_POLICY policies"
+    expression: "this.policy_type == 'EVENT_BASED_POLICY' || (!has(this.event_source) && !has(this.action))"
+  };
+  // Instance policies snapshot whole instances; the boot-volume
+  // exclusion parameter belongs to them (and no_reboot likewise).
+  option (buf.validate.message).cel = {
+    id: "custom_policy.parameters_are_instance_scope"
+    message: "parameters (exclude_boot_volume / no_reboot) apply to policies whose resource_types is [\"INSTANCE\"]"
+    expression: "!has(this.parameters) || 'INSTANCE' in this.resource_types"
+  };
+  // Schedule names are the satellite keys.
+  option (buf.validate.message).cel = {
+    id: "custom_policy.schedule_names_unique"
+    message: "schedule names must be unique"
+    expression: "this.schedules.map(s, s.name).unique()"
+  };
+
+  // What the policy manages. EBS_SNAPSHOT_MANAGEMENT (the default
+  // when unset) creates snapshots; IMAGE_MANAGEMENT creates
+  // EBS-backed AMIs; EVENT_BASED_POLICY copies snapshots shared into
+  // this account.
+  string policy_type = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "EBS_SNAPSHOT_MANAGEMENT",
+        "IMAGE_MANAGEMENT",
+        "EVENT_BASED_POLICY"
+      ]
+    }
+  ];
+
+  // What the schedules snapshot: VOLUME (individual volumes) or
+  // INSTANCE (multi-volume snapshot sets / AMIs). IMAGE_MANAGEMENT
+  // policies are implicitly INSTANCE.
+  repeated string resource_types = 2 [(buf.validate.field).repeated = {
+    max_items: 1
+    items: {
+      string: {
+        in: [
+          "VOLUME",
+          "INSTANCE"
+        ]
+      }
+    }
+  }];
+
+  // Where targeted resources live: CLOUD (the region - the default
+  // when unset), OUTPOST, or LOCAL_ZONE.
+  repeated string resource_locations = 3 [(buf.validate.field).repeated = {
+    max_items: 1
+    items: {
+      string: {
+        in: [
+          "CLOUD",
+          "OUTPOST",
+          "LOCAL_ZONE"
+        ]
+      }
+    }
+  }];
+
+  // The tags that select target resources - a resource matching ANY
+  // entry is in scope for every schedule.
+  map<string, string> target_tags = 4;
+
+  // Instance-policy dials (resource_types = ["INSTANCE"]).
+  AwsDlmParameters parameters = 5;
+
+  // The named schedules (1-4). The first schedule is the mandatory
+  // one; extras add cadences (e.g. daily + weekly + monthly tiers).
+  repeated AwsDlmSchedule schedules = 6;
+
+  // EVENT_BASED_POLICY: the event to react to.
+  AwsDlmEventSource event_source = 7;
+
+  // EVENT_BASED_POLICY: the action to take.
+  AwsDlmAction action = 8;
+}
+
+// AwsDlmParameters are instance-policy dials.
+message AwsDlmParameters {
+  // Snapshot only the data volumes - skip the boot volume.
+  bool exclude_boot_volume = 1;
+
+  // Create the AMI without rebooting the instance (IMAGE_MANAGEMENT).
+  // No-reboot images can be filesystem-inconsistent; the default
+  // (reboot) is the safe choice.
+  bool no_reboot = 2;
+}
+
+// AwsDlmSchedule is one named cadence within a custom policy.
+message AwsDlmSchedule {
+  // The schedule's key and console label. Fixed choices below are
+  // create-only at AWS: copy_tags replaces the whole schedule on
+  // change.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 120
+  }];
+
+  // Copy the source's tags onto created snapshots/AMIs. Changing this
+  // replaces the schedule.
+  bool copy_tags = 2;
+
+  // Extra tags stamped onto every snapshot/AMI this schedule creates.
+  map<string, string> tags_to_add = 3;
+
+  // Tags with runtime variables: $(instance-id) and $(timestamp)
+  // expand per snapshot (INSTANCE policies).
+  map<string, string> variable_tags = 4;
+
+  // When snapshots are created.
+  AwsDlmCreateRule create_rule = 5 [(buf.validate.field).required = true];
+
+  // How long they are kept.
+  AwsDlmRetainRule retain_rule = 6 [(buf.validate.field).required = true];
+
+  // Move aging snapshots to the archive tier instead of deleting
+  // (VOLUME snapshot schedules only).
+  AwsDlmArchiveRule archive_rule = 7;
+
+  // Replicate created snapshots/AMIs to other regions (up to 3).
+  repeated AwsDlmCrossRegionCopyRule cross_region_copy_rules = 8 [(buf.validate.field).repeated.max_items = 3];
+
+  // Deprecate aging AMIs (IMAGE_MANAGEMENT) so launches stop picking
+  // them while retention still holds them.
+  AwsDlmDeprecateRule deprecate_rule = 9;
+
+  // Enable fast snapshot restore on created snapshots in these zones.
+  // Billed per zone-hour per snapshot while enabled.
+  AwsDlmFastRestoreRule fast_restore_rule = 10;
+
+  // Share created snapshots with other accounts.
+  AwsDlmShareRule share_rule = 11;
+}
+
+// AwsDlmCreateRule fires the schedule: a fixed interval or a cron
+// expression, never both.
+message AwsDlmCreateRule {
+  option (buf.validate.message).cel = {
+    id: "create_rule.interval_xor_cron"
+    message: "configure exactly one of interval_hours and cron_expression"
+    expression: "(this.interval_hours > 0) != (this.cron_expression != '')"
+  };
+  option (buf.validate.message).cel = {
+    id: "create_rule.times_pairs_with_interval"
+    message: "times (the HH:MM start time) accompanies interval_hours - a cron expression carries its own timing"
+    expression: "this.times.size() == 0 || this.interval_hours > 0"
+  };
+
+  // Snapshot every N hours: 1, 2, 3, 4, 6, 8, 12, or 24.
+  int64 interval_hours = 1 [(buf.validate.field).cel = {
+    id: "create_rule.interval_values"
+    message: "interval_hours must be one of 1, 2, 3, 4, 6, 8, 12, 24"
+    expression: "this == 0 || this in [1, 2, 3, 4, 6, 8, 12, 24]"
+  }];
+
+  // The time of day (UTC, "HH:MM") interval-based snapshots start.
+  // At most one entry; unset lets AWS pick.
+  repeated string times = 2 [(buf.validate.field).repeated = {
+    max_items: 1
+    items: {
+      string: {pattern: "^\\d{2}:\\d{2}$"}
+    }
+  }];
+
+  // A cron expression ("cron(0 3 * * ? *)") for cadences the interval
+  // form cannot express - weekly, monthly, yearly.
+  string cron_expression = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 120
+      pattern: "^cron\\(.+\\)$"
+    }
+  ];
+
+  // Where the schedule creates snapshots: CLOUD (the default when
+  // unset), OUTPOST_LOCAL, or LOCAL_ZONE. Must match the policy's
+  // resource_locations.
+  string location = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "CLOUD",
+        "OUTPOST_LOCAL",
+        "LOCAL_ZONE"
+      ]
+    }
+  ];
+
+  // Run pre/post scripts around snapshot creation (application-
+  // consistent snapshots via SSM).
+  AwsDlmScripts scripts = 5;
+}
+
+// AwsDlmScripts runs SSM documents around snapshot creation for
+// application-consistent snapshots (INSTANCE policies).
+message AwsDlmScripts {
+  // The SSM document that quiesces/resumes the application:
+  // AWS_VSS_BACKUP (Windows VSS) or an SSM document name/ARN.
+  string execution_handler = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Which side(s) run: PRE (before the snapshot), POST (after), or
+  // both. Unset means AWS's default for the handler.
+  repeated string stages = 2 [(buf.validate.field).repeated = {
+    max_items: 2
+    items: {
+      string: {
+        in: [
+          "PRE",
+          "POST"
+        ]
+      }
+    }
+  }];
+
+  // The handler's service. Unset means AWS_SYSTEMS_MANAGER (the only
+  // published value).
+  string execution_handler_service = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: ["AWS_SYSTEMS_MANAGER"]
+    }
+  ];
+
+  // Snapshot anyway when the script fails (default: the failure
+  // blocks the snapshot).
+  bool execute_operation_on_script_failure = 4;
+
+  // Seconds the script may run (10-120). 0 means AWS's default of 10.
+  int64 execution_timeout_seconds = 5 [(buf.validate.field).cel = {
+    id: "scripts.execution_timeout_range"
+    message: "execution_timeout_seconds must be between 10 and 120"
+    expression: "this == 0 || (this >= 10 && this <= 120)"
+  }];
+
+  // Script retries (0-3).
+  int64 maximum_retry_count = 6 [(buf.validate.field).int64 = {
+    gte: 0
+    lte: 3
+  }];
+}
+
+// AwsDlmRetainRule keeps snapshots by count or by age, never both.
+message AwsDlmRetainRule {
+  option (buf.validate.message).cel = {
+    id: "retain_rule.count_xor_interval"
+    message: "configure exactly one of count (keep the newest N) and interval + interval_unit (keep for a duration)"
+    expression: "(this.count > 0) != (this.interval > 0)"
+  };
+  option (buf.validate.message).cel = {
+    id: "retain_rule.interval_pairs_with_unit"
+    message: "interval and interval_unit are set together"
+    expression: "(this.interval > 0) == (this.interval_unit != '')"
+  };
+
+  // Keep the newest N snapshots (1-1000); older ones are deleted as
+  // new ones arrive.
+  int64 count = 1 [(buf.validate.field).int64 = {
+    gte: 0
+    lte: 1000
+  }];
+
+  // Keep each snapshot for this long, paired with interval_unit.
+  int64 interval = 2 [(buf.validate.field).int64.gte = 0];
+
+  // The retention unit.
+  string interval_unit = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "DAYS",
+        "WEEKS",
+        "MONTHS",
+        "YEARS"
+      ]
+    }
+  ];
+}
+
+// AwsDlmArchiveRule moves snapshots into the archive tier when
+// retention would delete them, with its own archive-tier retention.
+message AwsDlmArchiveRule {
+  option (buf.validate.message).cel = {
+    id: "archive_rule.count_xor_interval"
+    message: "configure exactly one of count and interval + interval_unit for the archive tier"
+    expression: "(this.count > 0) != (this.interval > 0)"
+  };
+  option (buf.validate.message).cel = {
+    id: "archive_rule.interval_pairs_with_unit"
+    message: "interval and interval_unit are set together"
+    expression: "(this.interval > 0) == (this.interval_unit != '')"
+  };
+
+  // Keep the newest N archived snapshots.
+  int64 count = 1 [(buf.validate.field).int64.gte = 0];
+
+  // Keep archived snapshots for this long, paired with interval_unit.
+  int64 interval = 2 [(buf.validate.field).int64.gte = 0];
+
+  // The archive retention unit.
+  string interval_unit = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "DAYS",
+        "WEEKS",
+        "MONTHS",
+        "YEARS"
+      ]
+    }
+  ];
+}
+
+// AwsDlmCrossRegionCopyRule replicates created snapshots/AMIs to
+// another region, optionally re-encrypting, with copy-side retention
+// and (for AMIs) deprecation.
+message AwsDlmCrossRegionCopyRule {
+  // A CMK only makes sense on an encrypted copy.
+  option (buf.validate.message).cel = {
+    id: "cross_region_copy.cmk_requires_encrypted"
+    message: "cmk_arn requires encrypted=true"
+    expression: "!has(this.cmk_arn) || this.encrypted"
+  };
+
+  // The destination region. Example: "us-west-2".
+  string target_region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Encrypt the copies. Copies of encrypted snapshots are always
+  // encrypted; this forces encryption for unencrypted sources.
+  bool encrypted = 2;
+
+  // The KMS key in the DESTINATION region. Unset with encrypted=true
+  // means the destination's AWS-managed aws/ebs key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cmk_arn = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Copy the snapshot's tags to the copy.
+  bool copy_tags = 4;
+
+  // How long copies are kept in the destination region. Unset keeps
+  // them forever.
+  AwsDlmCopyRetainRule retain_rule = 5;
+
+  // Deprecate AMI copies after a duration (IMAGE_MANAGEMENT).
+  AwsDlmCopyRetainRule deprecate_rule = 6;
+}
+
+// AwsDlmCopyRetainRule is a duration (cross-region-copy retention and
+// deprecation both use it).
+message AwsDlmCopyRetainRule {
+  // The duration, paired with interval_unit.
+  int64 interval = 1 [(buf.validate.field).int64.gte = 1];
+
+  // The duration unit.
+  string interval_unit = 2 [(buf.validate.field).string = {
+    in: [
+      "DAYS",
+      "WEEKS",
+      "MONTHS",
+      "YEARS"
+    ]
+  }];
+}
+
+// AwsDlmDeprecateRule marks aging AMIs deprecated - launches and
+// listings stop surfacing them while retention still holds them.
+message AwsDlmDeprecateRule {
+  option (buf.validate.message).cel = {
+    id: "deprecate_rule.count_xor_interval"
+    message: "configure exactly one of count and interval + interval_unit"
+    expression: "(this.count > 0) != (this.interval > 0)"
+  };
+  option (buf.validate.message).cel = {
+    id: "deprecate_rule.interval_pairs_with_unit"
+    message: "interval and interval_unit are set together"
+    expression: "(this.interval > 0) == (this.interval_unit != '')"
+  };
+
+  // Deprecate all but the newest N AMIs (at most the schedule's
+  // retain count).
+  int64 count = 1 [(buf.validate.field).int64 = {
+    gte: 0
+    lte: 1000
+  }];
+
+  // Deprecate AMIs older than this, paired with interval_unit (at
+  // most the schedule's retention).
+  int64 interval = 2 [(buf.validate.field).int64.gte = 0];
+
+  // The deprecation unit.
+  string interval_unit = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "DAYS",
+        "WEEKS",
+        "MONTHS",
+        "YEARS"
+      ]
+    }
+  ];
+}
+
+// AwsDlmFastRestoreRule enables fast snapshot restore on created
+// snapshots - full performance on first read, billed per zone-hour
+// per snapshot while enabled.
+message AwsDlmFastRestoreRule {
+  option (buf.validate.message).cel = {
+    id: "fast_restore_rule.count_xor_interval"
+    message: "configure at most one of count and interval + interval_unit (how long FSR stays enabled); leaving both unset keeps FSR until the snapshot is deleted"
+    expression: "!(this.count > 0 && this.interval > 0)"
+  };
+  option (buf.validate.message).cel = {
+    id: "fast_restore_rule.interval_pairs_with_unit"
+    message: "interval and interval_unit are set together"
+    expression: "(this.interval > 0) == (this.interval_unit != '')"
+  };
+
+  // The availability zones (1-10) FSR is enabled in.
+  repeated string availability_zones = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 10
+    unique: true
+  }];
+
+  // Keep FSR on the newest N snapshots only.
+  int64 count = 2 [(buf.validate.field).int64 = {
+    gte: 0
+    lte: 1000
+  }];
+
+  // Keep FSR enabled for this long per snapshot, paired with
+  // interval_unit.
+  int64 interval = 3 [(buf.validate.field).int64.gte = 0];
+
+  // The FSR duration unit.
+  string interval_unit = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "DAYS",
+        "WEEKS",
+        "MONTHS",
+        "YEARS"
+      ]
+    }
+  ];
+}
+
+// AwsDlmShareRule shares created snapshots with other accounts,
+// optionally unsharing after a duration.
+message AwsDlmShareRule {
+  option (buf.validate.message).cel = {
+    id: "share_rule.unshare_interval_pairs_with_unit"
+    message: "unshare_interval and unshare_interval_unit are set together"
+    expression: "(this.unshare_interval > 0) == (this.unshare_interval_unit != '')"
+  };
+
+  // The accounts to share with.
+  repeated string target_accounts = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    unique: true
+    items: {
+      string: {pattern: "^[0-9]{12}$"}
+    }
+  }];
+
+  // Unshare after this long, paired with unshare_interval_unit.
+  // Unset shares until the snapshot is deleted.
+  int64 unshare_interval = 2 [(buf.validate.field).int64.gte = 0];
+
+  // The unshare duration unit.
+  string unshare_interval_unit = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "DAYS",
+        "WEEKS",
+        "MONTHS",
+        "YEARS"
+      ]
+    }
+  ];
+}
+
+// AwsDlmEventSource is the trigger for an EVENT_BASED_POLICY: a
+// snapshot shared INTO this account.
+message AwsDlmEventSource {
+  // The only published event: another account shares a snapshot with
+  // this one.
+  string event_type = 1 [(buf.validate.field).string = {
+    in: ["shareSnapshot"]
+  }];
+
+  // React only to snapshots whose description matches this regular
+  // expression. AWS requires it - "^.*$" reacts to everything.
+  string description_regex = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 1000
+  }];
+
+  // React only to snapshots shared BY these accounts.
+  repeated string snapshot_owners = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 50
+    unique: true
+    items: {
+      string: {pattern: "^[0-9]{12}$"}
+    }
+  }];
+}
+
+// AwsDlmAction is what an EVENT_BASED_POLICY does when its event
+// fires: copy the shared snapshot, with per-destination retention.
+message AwsDlmAction {
+  // The action's console label.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 120
+  }];
+
+  // Where to copy the shared snapshot (1-3 destinations).
+  repeated AwsDlmActionCrossRegionCopy cross_region_copies = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 3
+  }];
+}
+
+// AwsDlmActionCrossRegionCopy is one destination of an event-based
+// copy action.
+message AwsDlmActionCrossRegionCopy {
+  // A CMK only makes sense on an encrypted copy.
+  option (buf.validate.message).cel = {
+    id: "action_copy.cmk_requires_encrypted"
+    message: "cmk_arn requires encrypted=true"
+    expression: "!has(this.cmk_arn) || this.encrypted"
+  };
+
+  // The destination region or Outpost ARN. Example: "us-west-2".
+  string target = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Encrypt the copies.
+  bool encrypted = 2;
+
+  // The KMS key in the destination. Unset with encrypted=true means
+  // the destination's AWS-managed aws/ebs key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cmk_arn = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // How long copies are kept. Unset keeps them forever.
+  AwsDlmCopyRetainRule retain_rule = 4;
+}

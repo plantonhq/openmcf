@@ -1,0 +1,82 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesgrafana
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: "Grafana's state lives in one of three places, none with an encryption seam here: ephemeral pod storage (nothing persists), a PVC whose encryption is the storage class's property (compose an encrypted KubernetesStorageClass), or an external database whose at-rest posture rides that component."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No storage encryption seam exists on this component (see enc-at-rest); customer-managed keys apply to the storage class or database backing the state.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: database.ssl_mode
+      evidence:
+        type: spec_default
+        reference: "Grafana's own endpoint serves plain HTTP in-cluster -- TLS terminates at the composed edge (KubernetesIngress or Gateway API kinds over the exported service handle). The connections this spec does govern carry their own TLS seams: database.ssl_mode for the external Postgres (\"require\", \"verify-full\"), https datasource URLs, and smtp.skip_verify (test fixtures only) for outbound mail."
+      notes: The 03-ha-external-db preset sets ssl_mode require on its Postgres connection.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart's Service stays ClusterIP -- the modules render no exposure. External access composes from first-class kinds (KubernetesIngress, Gateway API) over the exported service handle, with server.root_url set to the public URL so OAuth redirects and rendered links work.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network-boundary seam exists on this spec; pod-level restrictions compose from first-class KubernetesNetworkPolicy resources.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A web application firewall rides the composed edge (the Ingress/Gateway kinds fronting the exported service handle), not this component.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Access is governed by Grafana's own organization role model (Admin/Editor/Viewer). The chart generates the admin credential ONCE at first install into its own Secret (keys admin-user/admin-password) -- or admin_secret points at a team-owned Secret; credentials never appear in rendered Helm values.
+      notes: auth.anonymous_org_role defaults to Viewer -- never hand anonymous visitors more than Viewer on a reachable endpoint.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Every credential this spec touches (admin, database password, datasource basic auth, SMTP) rides an existing Kubernetes Secret through environment expansion -- there is no cloud API access and no seam for platform-issued cloud identities.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: auth.anonymous_enabled
+      evidence:
+        type: spec_default
+        reference: Anonymous (no-login) access is off by default; enabling it opens the weakest path, capped by anonymous_org_role (default Viewer). disable_login_form supports pure-SSO deployments -- make sure another auth path exists first, or the UI locks everyone out.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Grafana logs to stdout for the cluster's log collector; deeper audit surfaces are grafana.ini configuration reachable through helm_values. Changes to the release are Kubernetes API operations, captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: service_monitor_enabled
+      evidence:
+        type: spec_default
+        reference: false by default (the chart default). When true, the chart creates a ServiceMonitor scraping Grafana's own /metrics -- requires the Prometheus Operator CRDs (deploy KubernetesKubePrometheusStack first).
+      notes: The 03-ha-external-db preset enables it -- the dashboard for the dashboards.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "No backup seam exists on this component. The durable paths route elsewhere: provisioned-as-code datasources and dashboards are re-createable by definition; storage-backed state rides the PVC (volume snapshots are the cluster's concern); database-backed state rides the database component's own backup seam."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist on this component to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replicas
+      evidence:
+        type: spec_default
+        reference: replicas defaults to 1. Scaling above 1 REQUIRES the database block (spec-enforced CEL rule) -- each pod's embedded SQLite is private, so scaled replicas without a shared database split sessions and dashboards across pods.
+      notes: The 03-ha-external-db preset runs 2 replicas against external Postgres. Zone spread is the cluster's scheduling posture; scheduling offers node_selector and tolerations.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the chart offers a deletion-protection flag; protection is operational (namespace RBAC, change review). With database-backed state, deleting the release loses nothing -- redeploying against the same database recovers everything; PVC-backed state survives only if the PVC does.
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: Empty pins chart 12.8.0 (ships Grafana 13.1.1), so every deployment is reproducible; version changes are deliberate chart_version bumps. image overrides the Grafana image itself for air-gap paths, defaulting to the chart's appVersion.

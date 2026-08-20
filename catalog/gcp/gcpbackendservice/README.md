@@ -15,7 +15,7 @@ The health check, Cloud Armor policies, and backend groups are deliberately NOT 
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **A health check** — referenced via `healthCheck` (a GcpHealthCheck resource or a literal self-link); required unless every backend is an internet or serverless NEG
-- **IAM permissions** — any role carrying `compute.backendServices.*` on the target project
+- **IAM permissions** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Quick Start
 

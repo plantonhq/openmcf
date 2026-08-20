@@ -1,0 +1,36 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Both presets are zero-committed: the plan object is free,
+# and every meter (per-recovery-point evaluation fee, restored GB,
+# restored-resource runtime) fires only when a scheduled drill finds
+# recovery points to restore -- a fleet-driven quantity the manifest
+# cannot see -- stated in exclusions, never padded into fabricated
+# dollars. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awsbackuprestoretestingplan
+spec:
+  presets:
+    - preset: 01-weekly-random-drills
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - every Monday run bills a flat evaluation fee per EBS recovery point it successfully orchestrates -- the count follows how many protected EBS volumes exist, invisible to this manifest
+        - restored data bills per GB at the regular restore-testing rates, and AWS's own pricing example prices EBS restore-testing storage at zero
+        - the random 30-day draw is the stronger recovery proof precisely because it exercises older points -- points that have moved to cold storage restore at the higher cold rate
+        - each restored volume is a real, temporary EBS resource billing its own rates for up to the 4-hour validation window before AWS deletes it
+      notes: Zero committed cost -- a drill schedule against an empty fleet bills nothing; the meters start when recovery points exist for the weekly draw to pick.
+    - preset: 02-tag-scoped-drills
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - the monthly run bills a flat evaluation fee per recovery point orchestrated, scoped to resources tagged tier=critical -- the tag condition is the quantity dial
+        - LATEST_WITHIN_WINDOW over 7 days draws the newest points, which sit in warm storage and avoid the cold-restore premium the random algorithm risks
+        - restored data bills per GB; each restored copy bills its own service's rates for up to the 8-hour validation window
+        - the recovery points being tested bill their storage on the AwsBackupPlan and vault components that created them
+      notes: Zero committed cost -- monthly cadence, tag scoping, and newest-point selection all shrink what each drill exercises, but the zero at creation is commitment-absence; the first tagged recovery point starts the meters.

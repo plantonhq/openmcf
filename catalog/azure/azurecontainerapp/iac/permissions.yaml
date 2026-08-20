@@ -1,0 +1,35 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurecontainerapp
+spec:
+  azure:
+    groups:
+      - purpose: ManageContainerApp
+        actions:
+          - Microsoft.App/containerApps/read
+          - Microsoft.App/containerApps/write
+          - Microsoft.App/containerApps/delete
+        provenance: derived
+        notes: "Covers azurerm_container_app / containerapp.NewApp -- create with the full template, ingress, dapr, and identity payload, refresh, in-place updates (template revisions, secrets, registries, ingress, tags), and destroy. The Microsoft.App namespace is absent from the committed action inventory snapshot; these operation names are verified against Microsoft's provider-operations documentation (learn.microsoft.com/azure/role-based-access-control/permissions/compute, microsoft.app section, retrieved 2026-08-18)."
+      - purpose: ReadAppSecrets
+        actions:
+          - Microsoft.App/containerApps/listsecrets/action
+        provenance: derived
+        notes: "The containerApps GET omits secret values, so azurerm's Read and Update paths call ListSecrets to reconcile the secret block (container_app_resource.go calls client.ListSecrets in both, verified in provider source); pulumi-azure is bridged from azurerm and shares the behavior. Needed on every refresh, not just when secrets change."
+      - purpose: JoinManagedEnvironment
+        actions:
+          - Microsoft.App/managedEnvironments/read
+          - Microsoft.App/managedEnvironments/join/action
+        provenance: derived
+        notes: "The modules never call the environment API -- the resolved container_app_environment_id rides the app payload -- but ARM authorizes placing the app into the REFERENCED environment with join/action on the environment's scope at create time (service-side; Microsoft's built-in Container Apps Contributor role carries exactly this grant for the same reason)."
+      - purpose: AssignUserManagedIdentities
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: "Required only when identity carries USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED identities -- ARM checks assign/action on every identity referenced in the app payload, service-side; the modules only pass the resolved identity IDs. Identity strings referenced by secrets, registries, and custom scale rules must already be attached in the identity block, so they add no separate grant."

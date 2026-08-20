@@ -1,0 +1,36 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurestorageaccount
+spec:
+  azure:
+    groups:
+      - purpose: ManageStorageAccount
+        actions:
+          - Microsoft.Storage/storageAccounts/read
+          - Microsoft.Storage/storageAccounts/write
+          - Microsoft.Storage/storageAccounts/delete
+          - Microsoft.Storage/storageAccounts/listkeys/action
+          - Microsoft.Storage/storageAccounts/blobServices/read
+          - Microsoft.Storage/storageAccounts/blobServices/write
+          - Microsoft.Storage/storageAccounts/fileServices/read
+          - Microsoft.Storage/storageAccounts/fileServices/write
+        provenance: derived
+        notes: Covers azurerm_storage_account -- create, read/refresh, in-place updates (tiers, network rules), and destroy. blob_properties and share_properties do NOT ride the account PUT -- the provider writes them through the account's blobServices and fileServices management-plane sub-resources (SetServiceProperties on create and update), and on every read/refresh it Gets both sub-resources to populate state for account kinds that support blob and file (this module's kinds do). listKeys is called on every read to export the keys and connection strings as outputs and to authenticate the provider's data-plane calls (e.g. queue service properties on supporting kinds); the provider tolerates a denied listKeys by skipping those outputs. The module does not use the deprecated inline static_website block, and in the pinned providers static website is a data-plane call anyway, not a management-plane sub-resource.
+      - purpose: ManageLifecyclePolicy
+        actions:
+          - Microsoft.Storage/storageAccounts/managementPolicies/read
+          - Microsoft.Storage/storageAccounts/managementPolicies/write
+          - Microsoft.Storage/storageAccounts/managementPolicies/delete
+        provenance: derived
+        notes: Required only when lifecycle_rules are declared -- azurerm_storage_management_policy manages the account's policy as its own resource.
+      - purpose: JoinNetworkRuleSubnets
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/join/action
+        provenance: derived
+        notes: Required only when network_rules allowlists virtual-network subnets -- binding a subnet service endpoint to the account demands join on each subnet.

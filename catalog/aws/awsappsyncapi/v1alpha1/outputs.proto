@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsappsyncapi.v1alpha1;
+
+// AwsAppSyncApiStackOutputs captures the observable state of the API
+// after apply.
+message AwsAppSyncApiStackOutputs {
+  // The API's id - the provider's import ID for the pivot, the
+  // prefix of every satellite's composite import ID, and the join
+  // key MERGED APIs use to reference their sources.
+  string api_id = 1;
+
+  // The API's ARN.
+  string api_arn = 2;
+
+  // GraphQL arm: the GraphQL endpoint URL clients query - the
+  // chart-ready join key for application configuration.
+  string graphql_url = 3;
+
+  // GraphQL arm: the real-time (subscriptions) endpoint URL.
+  string realtime_url = 4;
+
+  // Events arm: the HTTP endpoint domain clients publish through.
+  string events_http_endpoint = 5;
+
+  // Events arm: the real-time (WebSocket) endpoint domain clients
+  // subscribe through.
+  string events_realtime_endpoint = 6;
+
+  // The AppSync-managed domain to point DNS at when custom_domain is
+  // set (a CNAME target, or a Route53 alias with
+  // domain_hosted_zone_id).
+  string appsync_domain_name = 7;
+
+  // The Route53 hosted zone id for alias records at the custom
+  // domain.
+  string domain_hosted_zone_id = 8;
+
+  // Data source ARNs keyed by spec datasource name.
+  map<string, string> datasource_arns = 9;
+
+  // Function ids keyed by spec function name - part of each
+  // function's composite import ID.
+  map<string, string> function_ids = 10;
+
+  // API key ids keyed by spec key name - part of each key's
+  // composite import ID. NOTE: these are the key IDs, not the
+  // secrets; AWS returns a key's secret only at creation (fetch it
+  // from the console/CLI).
+  map<string, string> api_key_ids = 11;
+
+  // Channel namespace ARNs keyed by namespace name (Events arm).
+  map<string, string> channel_namespace_arns = 12;
+
+  // Source API association ids keyed by spec source-API entry name
+  // (MERGED APIs) - part of each association's composite import ID.
+  map<string, string> source_api_association_ids = 13;
+
+  // Import-derivation echo map: each managed type's format (SDL/JSON)
+  // keyed by type name - part of the type's composite import ID
+  // ("{api_id}:{format}:{name}").
+  map<string, string> type_formats = 14;
+}

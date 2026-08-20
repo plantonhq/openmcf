@@ -1,0 +1,47 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpgcsbucket
+spec:
+  gcp:
+    groups:
+      - purpose: EnableStorageApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling storage.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageBucket
+        permissions:
+          - storage.buckets.create
+          - storage.buckets.get
+          - storage.buckets.update
+          - storage.buckets.delete
+        provenance: derived
+        notes: Covers google_storage_bucket and google_storage_notification -- bucket create/read/update/delete, lifecycle and website configuration, and notification configuration, all bucket-scoped operations.
+      - purpose: GrantBucketIam
+        permissions:
+          - storage.buckets.getIamPolicy
+          - storage.buckets.setIamPolicy
+        provenance: derived
+        notes: Required only when iam_members declares grants (the 02-static-website preset's allUsers objectViewer) -- google_storage_bucket_iam_member reads and rewrites the bucket policy.
+      - purpose: ManageFolders
+        permissions:
+          - storage.folders.create
+          - storage.folders.get
+          - storage.folders.delete
+          - storage.managedFolders.create
+          - storage.managedFolders.get
+          - storage.managedFolders.delete
+        provenance: derived
+        notes: Required only when folders or managed_folders are declared (hierarchical-namespace buckets) -- google_storage_folder and google_storage_managed_folder manage them as their own resources.
+      - purpose: PublishNotificationsPrerequisite
+        permissions:
+          - pubsub.topics.getIamPolicy
+        provenance: derived
+        notes: Notifications (the 04-event-driven-pipeline preset) publish from the project's Cloud Storage service agent, which must hold pubsub.topics.publish on the target topic -- a grant made on the topic (a separate component), not by this module; the provider only verifies the topic. Listed for visibility, not held by this module's apply.

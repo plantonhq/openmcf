@@ -1,0 +1,48 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. A Container App Job bills nothing for
+# existing -- Microsoft's Container Apps pricing page states that resources
+# consumed by each execution bill at the active rate from start to
+# completion and that no usage charges apply while a job runs no executions
+# -- so every dollar follows execution seconds, never the job object.
+# Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurecontainerappjob
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: containers.cpu
+      sku_meter: active vCPU usage
+      pricing_unit: vCPU-seconds
+      impact: "Every second an execution runs, each replica bills its containers' summed vCPU allocation at the Consumption active rate -- $0.000024 per vCPU-second in eastus (Retail Prices API, retrieved 2026-08-18). Jobs never earn the reduced idle rate: the pricing page bills executions at the active rate from start to completion."
+    - field_path: containers.memory
+      sku_meter: active memory usage
+      pricing_unit: GiB-seconds
+      impact: "The memory twin of the vCPU meter: each replica bills its allocated GiB per second of execution at $0.000003 per GiB-second in eastus (Retail Prices API, retrieved 2026-08-18). CPU and memory scale together in Azure's allowed pairings, so sizing one sizes the other's bill."
+    - field_path: workload_profile_name
+      sku_meter: Dedicated plan compute
+      pricing_unit: ""
+      impact: "A billing-mode switch: omitted (every preset) runs on the serverless Consumption profile with the per-second meters above; naming a Dedicated workload profile moves executions onto that profile's provisioned hourly vCPU/memory meters plus the Dedicated management fee -- all carried on the parent environment's profile, which bills for provisioned instances whether this job uses them or not."
+    - field_path: schedule_trigger.cron_expression
+      sku_meter: active vCPU and memory usage
+      pricing_unit: vCPU-seconds
+      impact: "The cadence multiplier: every cron fire is one execution billing its full duration. Tightening a schedule from daily to every 15 minutes multiplies the month's billed seconds by 96x with no other spec change."
+    - field_path: event_trigger.scale.max_executions
+      sku_meter: active vCPU and memory usage
+      pricing_unit: vCPU-seconds
+      impact: "The fan-out ceiling: KEDA can run up to this many executions concurrently (default 100), each billing its replicas' full allocation. A deep queue burst bills max_executions-wide compute for as long as the backlog lasts."
+    - field_path: replica_timeout_in_seconds
+      sku_meter: active vCPU and memory usage
+      pricing_unit: seconds
+      impact: "The per-attempt cost ceiling: a replica bills until it exits or this deadline kills it, and a timed-out replica still billed its whole run -- then retries per replica_retry_limit, billing again. A generous timeout on a hung workload is the classic silent overspend."
+  free_tier: "The first 180,000 vCPU-seconds and 360,000 GiB-seconds per subscription per month are free on the Consumption plan; the separate 2-million-request free grant is irrelevant here because request charges do not apply to jobs (Container Apps pricing page, retrieved 2026-08-18)."
+  estimate_exclusions:
+    - active vCPU-seconds and memory GiB-seconds are execution-driven -- they depend on how often executions fire, how wide each fans out (parallelism, event scale), and how long each replica runs, none of which a manifest can predict
+    - naming a Dedicated workload profile (workload_profile_name) moves compute onto the environment's provisioned profile meters -- hourly vCPU, hourly memory, and the Dedicated management fee, billed on the parent environment component
+    - execution console and system logs ingest into the destination the parent environment's logging configuration declares -- Log Analytics ingestion bills per GB on that workspace's component
+    - AZURE_FILE and NFS_AZURE_FILE volumes bill capacity and transactions on the storage account behind the environment storage registration, not here
+    - Key Vault secret reads (key_vault_secret_id) bill per-transaction on the vault's component; image pulls and storage bill on the registry's component
+    - data the workload sends across zones, regions, or to the internet bills standard bandwidth meters
+  notes: "The job is the scale-to-zero ideal made literal: between executions there is no replica, no idle meter, and no charge -- the pricing page's job rule (active rate from start to completion, nothing otherwise) means jobs never touch the idle rates that min-replica Container Apps pay. The bill is therefore a pure product of four knobs: allocation per replica (containers), replicas per execution (parallelism), executions per month (trigger cadence or event pressure), and seconds per execution (bounded by replica_timeout_in_seconds, multiplied by retries). Rates quoted eastus from the Retail Prices API on 2026-08-18: $0.000024 per active vCPU-second, $0.000003 per active GiB-second; source pages https://azure.microsoft.com/en-us/pricing/details/container-apps/ and https://prices.azure.com."

@@ -1,0 +1,42 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurestorageaccount
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: access_tier
+      sku_meter: blob storage
+      pricing_unit: GB-months
+      impact: The tier sets the per-GB rate and the retrieval economics -- HOT has no retrieval fee, COOL and COLD trade cheaper storage for per-GB retrieval and early-deletion minimums.
+    - field_path: replication_type
+      sku_meter: blob storage
+      pricing_unit: GB-months
+      impact: The redundancy ladder multiplies the storage rate -- LRS is the base, ZRS adds zone redundancy, GRS/GZRS add a second region (roughly double), and the RA variants add a readable secondary on top.
+    - field_path: account_tier
+      sku_meter: blob storage
+      pricing_unit: GB-months
+      impact: PREMIUM stores on SSD at a higher per-GB rate with transaction charges largely folded in; STANDARD bills cheaper storage plus per-operation fees.
+    - field_path: lifecycle_rules
+      sku_meter: blob storage
+      pricing_unit: GB-months
+      impact: The cost brake -- age- and access-based tiering and deletion are what keep versioned and growing accounts from billing forever.
+    - field_path: blob_properties
+      sku_meter: blob storage
+      pricing_unit: GB-months
+      impact: Versioning and soft-delete windows keep noncurrent and deleted data billing as ordinary storage until they age out.
+    - field_path: sftp_enabled
+      sku_meter: SFTP endpoint
+      pricing_unit: hours
+      impact: The SFTP endpoint bills per hour while enabled, independent of transfer volume.
+    - field_path: provisioned_billing_model_version
+      sku_meter: provisioned capacity
+      impact: The V2 provisioned model (Files) swaps pay-as-you-go for provisioned GiB/IOPS/throughput billing on file shares.
+  estimate_exclusions:
+    - stored bytes are the bill, and an empty account stores nothing -- storage cost follows what workloads write
+    - operations (per-10,000 requests), network egress, and retrieval fees on cooler tiers follow access patterns
+    - geo-replication data transfer applies to GRS/GZRS accounts as data is written
+  notes: "A storage account is a container with a rate card: creation is free, and every charge follows bytes stored, moved, or requested. The tier-and-redundancy pair sets the rates; lifecycle rules, versioning, and soft delete decide how long bytes keep billing."

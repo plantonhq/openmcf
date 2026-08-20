@@ -1,0 +1,35 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kuberneteskuberayoperator
+spec:
+  presets:
+    - preset: 01-default
+      capacity_footprint:
+        cpu_requests: 100m
+        memory_requests: 512Mi
+        cpu_limits: 100m
+        memory_limits: 512Mi
+        basis: 1 operator pod x the chart-default limits (100m CPU / 512Mi memory; the chart sets no requests, so Kubernetes reserves the limits as requests too) -- no persistent volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - the Ray clusters this operator reconciles reserve their own capacity -- each rides its KubernetesRayCluster resource
+        - upstream sizes the operator at ~500MB per 500 managed Ray pods -- fleets past that scale need explicit resources beyond the modeled defaults
+    - preset: 02-private-mirror
+      capacity_footprint:
+        cpu_requests: 100m
+        memory_requests: 512Mi
+        cpu_limits: 100m
+        memory_limits: 512Mi
+        basis: 1 operator pod x the chart-default limits (100m CPU / 512Mi memory; requests default to the limits) -- the mirrored registry and the ServiceMonitor change discovery and pulls, not the reservation; no persistent volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - the Ray clusters this operator reconciles reserve their own capacity -- each rides its KubernetesRayCluster resource
+        - upstream sizes the operator at ~500MB per 500 managed Ray pods -- fleets past that scale need explicit resources beyond the modeled defaults

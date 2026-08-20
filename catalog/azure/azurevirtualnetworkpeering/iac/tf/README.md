@@ -69,7 +69,4 @@ module "peering" {
 
 ## Required Permissions
 
-The deploying credential needs
-`Microsoft.Network/virtualNetworks/virtualNetworkPeerings/write` on the
-local network and `Microsoft.Network/virtualNetworks/peer/action` on the
-remote network -- held via Network Contributor, Contributor, or Owner.
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege actions the deploying principal needs on both the local and the remote network.

@@ -1,0 +1,31 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureprivateendpoint
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Virtual Network
+      sku_meter: endpoint hours
+      pricing_unit: hours
+      description: Every private endpoint bills one flat hourly meter from provisioning to deletion, idle or busy -- the rate is the same whichever service the connection targets. The meter bills in Azure's Global region; the rate does not vary by deployment region.
+  cost_drivers:
+    - field_path: private_service_connection.subresource_names
+      sku_meter: endpoint hours
+      pricing_unit: hours
+      impact: Each endpoint maps ONE connection to one sub-resource of the target -- that is the data-exfiltration boundary, and it is also the billing multiplier. A service consumed through several sub-resources (a storage account's blob AND file AND queue) needs one endpoint each, each running its own hourly meter.
+    - field_path: private_dns_zone_ids
+      sku_meter: private DNS zone months
+      pricing_unit: zone-months
+      impact: The DNS zone group itself adds no meter, but each referenced zone bills its own monthly fee on its AzurePrivateDnsZone component -- and the registration A records the platform manages land in those zones, whose record-set count bills zone-side only past 25,000 record sets.
+    - field_path: ip_configurations
+      sku_meter: endpoint hours
+      pricing_unit: hours
+      impact: Static IP assignments are free -- pinning the endpoint's private addresses changes recreation behavior (allowlists survive), never the meter.
+  estimate_exclusions:
+    - data processed through the endpoint bills per GB in EACH direction -- ingress and egress are metered separately at the same tiered rate -- and follows traffic entirely
+    - the referenced subnet, private DNS zones, application security groups, and the target service are first-class components billing on their own lines
+  notes: "Azure prices a private endpoint as a flat rental: one hourly meter per endpoint (billed in the Global region, one worldwide rate), running whether or not a single packet flows, plus a per-GB usage arm that meters the bytes twice -- once inbound, once outbound. Nothing in the connection's shape moves the rate: resource-ID and alias targets, auto and manual approval, dynamic and static IPs all bill identically. The real architectural cost decision is endpoint COUNT -- per-sub-resource isolation multiplies flat meters -- and where spend hides is the DNS side: the endpoint's zone registrations are free, but the zones themselves bill monthly on their own components."

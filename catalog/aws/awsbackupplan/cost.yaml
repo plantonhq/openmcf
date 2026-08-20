@@ -1,0 +1,55 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbackupplan
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: selections
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: Selection breadth is the quantity dial for the whole plan -- the resources, tags, and conditions decide how much data every rule's meters multiply. A "*" selection backs up everything the role can reach.
+    - field_path: rules.schedule
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: Firing cadence sets how many recovery points exist at once between expiries -- storage bills on the average GB held through the month, so a more frequent schedule of changing data raises the average.
+    - field_path: rules.lifecycle.delete_after_days
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: Retention is the storage multiplier -- every recovery point bills until this expiry. Unset keeps recovery points (and their bill) until someone deletes them manually.
+    - field_path: rules.lifecycle.cold_storage_after_days
+      sku_meter: cold backup storage
+      pricing_unit: GB-months
+      impact: Moves eligible recovery points (EBS, EFS, DynamoDB, Timestream, SAP HANA on EC2, VMware) to the cheaper cold tier -- with a 90-day minimum stay. Deleting earlier bills the remaining days pro-rated, which is why the spec validates delete_after_days at least 90 beyond this.
+    - field_path: rules.enable_continuous_backup
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: Continuous point-in-time backups hold a rolling change stream instead of discrete snapshots, for the resource types that support them -- AWS caps continuous retention at 35 days.
+    - field_path: rules.copy_actions
+      sku_meter: cross-Region data transfer
+      pricing_unit: GB
+      impact: Every recovery point copied to a vault in another region bills transfer-out per GB to the SENDING account and vault storage to the receiving account, at rates grouped by resource type. Same-region copies skip the transfer meter but still store a second copy.
+    - field_path: rules.target_logically_air_gapped_backup_vault_arn
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: The air-gapped copy is a second stored copy billed under the Backup service at the air-gapped vault's storage rate -- and the EBS, DocumentDB, and Neptune backup-storage free tiers do not apply inside logically air-gapped vaults.
+    - field_path: scan_setting
+      sku_meter: malware protection data scanned
+      pricing_unit: GB
+      impact: Plan-wide GuardDuty malware scanning bills per GB of recovery-point data scanned, under GuardDuty Malware Protection's own pricing rather than Backup's.
+    - field_path: rules.scan_actions
+      sku_meter: malware protection data scanned
+      pricing_unit: GB
+      impact: Per-rule scans meter the same way -- and scan_mode is the direct dial, FULL_SCAN rescanning every recovery point where INCREMENTAL_SCAN bills only changed data.
+  free_tier: AWS Backup publishes no service-wide free allotment -- the pricing page's only free-tier mention is that the backup-storage free tiers of Amazon EBS, DocumentDB, and Neptune do not carry over into logically air-gapped vaults.
+  estimate_exclusions:
+    - protected data volume and change rate are workload-driven -- the plan names its selections, never their size
+    - per-GB storage and restore rates vary by resource type and region; EFS, S3, VMware, SAP HANA, and Timestream backups bill storage per GB-day (whole days), others per GB-hour averaged to GB-month
+    - restores bill per GB on their own meter when recovery points are pulled back -- a spend this manifest schedules nothing for
+    - S3 backups add S3 GET/LIST request charges and EventBridge event charges, and objects under 128 KB bill as 128 KB
+    - Audit Manager evaluations of this plan's compliance bill per evaluation on the framework component that watches it
+    - vault-side spend (storage encryption keys, vault policies) bills on the referenced AwsBackupVault and its KMS key
+  notes: "A backup plan is a free scheduling object -- no rule that never fires costs anything. Once rules fire, the bill has three surfaces: storage (average GB held through the month, priced per resource type), movement (cross-region copy transfer billed to the sender, destination storage to the receiver), and restore (per GB, on demand). The lifecycle block is where most money is won or lost: retention length multiplies storage, and the cold tier trades a lower rate for a 90-day minimum stay with a pro-rated early-delete charge. Malware scanning is the one meter that bills outside Backup entirely -- GuardDuty Malware Protection charges per GB scanned under its own pricing."

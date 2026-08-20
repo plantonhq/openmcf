@@ -1,0 +1,123 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureExpressRouteCircuit manifest's spec values into metered
+# quantities and price choices. A service-provider circuit bills a flat
+# monthly fee chosen by tier, billing family, and bandwidth step; a
+# circuit on an ExpressRoute Direct port commits nothing at Local and
+# Standard tiers (the port's own fee, billed on the AzureExpressRoutePort
+# component, includes them) and emits no line here. Fees key to the
+# peering FACILITY's pricing zone, not the ARM region -- the book pins
+# Zone 1, a stated assumption each basis carries. Tiers, families, and
+# bandwidth steps no committed preset consumes are refusals rather than
+# dead book entries; Local Metered provider circuits refuse on published
+# absence (the Zone 1 price list carries no such meter -- verified
+# 2026-08-18). The estimate generator replays the catalog presets
+# through these rules to emit ../estimates/azureexpressroutecircuit.yaml;
+# a server-side estimator evaluates the same rules against live
+# manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azureexpressroutecircuit
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    assumption: zone-1
+  refusals:
+    - when:
+        - field_path: sku_tier
+          op: equals
+          value: BASIC
+      reason: BASIC is a legacy constrained tier whose rate is not pinned in the price book -- no committed preset deploys it, and the spec itself steers new circuits to LOCAL or STANDARD
+    - when:
+        - field_path: sku_tier
+          op: equals
+          value: PREMIUM
+      reason: Premium fees (the provider-circuit premium rates and the Direct-port premium circuit add-on) are not pinned in the price book -- no committed preset deploys PREMIUM; Premium circuits price when their rates enter the book
+    - when:
+        - field_path: service_provider_name
+          op: is_set
+        - field_path: sku_tier
+          op: equals
+          value: STANDARD
+        - field_path: sku_family
+          op: equals
+          value: UNLIMITED_DATA
+      reason: the Standard Unlimited provider-circuit rate is not pinned in the price book -- no committed preset deploys it (unlimited multiplies the flat fee severalfold and pays off only at sustained high utilization)
+    - when:
+        - field_path: service_provider_name
+          op: is_set
+        - field_path: sku_tier
+          op: equals
+          value: LOCAL
+        - field_path: sku_family
+          op: equals
+          value: METERED_DATA
+      reason: Microsoft publishes no Local Metered meter for provider circuits -- the Zone 1 price list carries only Local Unlimited (verified 2026-08-18), matching the pricing page, where Local appears under the unlimited plan alone
+    - when:
+        - field_path: service_provider_name
+          op: is_set
+        - field_path: bandwidth_in_mbps
+          op: not_equals
+          value: "1000"
+      reason: only the 1 Gbps bandwidth step is pinned in the price book -- the other published steps (50 through 10000 Mbps, each with its own fee) price when their rates enter the book, and no committed preset deploys them
+  lines:
+    - sku_meter: circuit fee
+      applies_when:
+        - field_path: service_provider_name
+          op: is_set
+        - field_path: sku_tier
+          op: equals
+          value: STANDARD
+        - field_path: sku_family
+          op: equals
+          value: METERED_DATA
+        - field_path: bandwidth_in_mbps
+          op: equals
+          value: "1000"
+      quantity:
+        - constant: "1"
+      price_slug: expressroute-standard-metered-1gbps-circuit-zone1
+      basis: one circuit x the Standard Metered 1 Gbps monthly fee, covering the redundant port pair, billed in full from service-key issuance whether or not the provider has provisioned the cross-connect; the fee keys to the peering facility's pricing zone, and Zone 1 (North America and most of Europe) is the stated assumption
+    - sku_meter: circuit fee
+      applies_when:
+        - field_path: service_provider_name
+          op: is_set
+        - field_path: sku_tier
+          op: equals
+          value: LOCAL
+        - field_path: sku_family
+          op: equals
+          value: UNLIMITED_DATA
+        - field_path: bandwidth_in_mbps
+          op: equals
+          value: "1000"
+      quantity:
+        - constant: "1"
+      price_slug: expressroute-local-unlimited-1gbps-circuit-zone1
+      basis: one circuit x the Local Unlimited 1 Gbps monthly fee -- metro-only reach with all data transfer included, the flat rate that erases both egress metering and cross-area ambitions; Zone 1 assumed as above
+  exclusions:
+    - applies_when:
+        - field_path: sku_family
+          op: equals
+          value: METERED_DATA
+        - field_path: sku_tier
+          op: not_equals
+          value: LOCAL
+      text: outbound data transfer bills per GB by the peering location's zone (0.025 Zone 1, 0.05 Zone 2, 0.14 Zone 3, 0.1 Zone 4 at list, verified 2026-08-18) -- inbound is always free
+    - applies_when:
+        - field_path: service_provider_name
+          op: is_set
+      text: the connectivity provider's own charges for enabling the cross-connect are contracted with the provider, outside Azure entirely
+    - text: the ExpressRoute gateway that terminates private peering in a VNet bills hourly on its own component, and Global Reach circuit linking adds its own add-on fee and per-GB rates
+  notes:
+    - text: Fees key to the peering facility's pricing zone (Zone 1 through Zone 4) -- facilities outside Zone 1 bill different list rates on the SAME meters, and no committed mapping from peering_location to zone exists in the manifest, which is why the zone rides as a stated assumption rather than a lookup.
+    - applies_when:
+        - field_path: express_route_port_id
+          op: is_set
+      text: Local and Standard circuits carved from an ExpressRoute Direct port are included in the port's monthly fee, billed on the AzureExpressRoutePort component -- this circuit's zero-committed estimate is real, not an absence; metered egress still bills per GB on Standard circuits.
+    - applies_when:
+        - field_path: service_provider_name
+          op: is_set
+      text: Billing starts when the service key is issued and stops only after the circuit is deleted AND the provider deprovisions -- an unprovisioned circuit nobody hooked up bills at full rate, so deprovision circuits that will not be connected.

@@ -1,0 +1,28 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsConfigRecorder
+metadata:
+  name: config-full-recording
+spec:
+  region: <aws-region>
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: <config-recorder-role>
+      fieldPath: status.outputs.role_arn
+  recordingGroup:
+    includeGlobalResourceTypes: true
+  recordingMode:
+    recordingFrequency: CONTINUOUS
+    override:
+      description: Daily snapshots for noisy compute types
+      recordingFrequency: DAILY
+      resourceTypes:
+        - AWS::EC2::Instance
+        - AWS::EC2::NetworkInterface
+  deliveryChannel:
+    s3BucketName:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: <config-history-bucket>
+        fieldPath: status.outputs.bucket_id
+    snapshotDeliveryFrequency: TwentyFour_Hours

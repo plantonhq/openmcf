@@ -1,0 +1,35 @@
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbedrockcustommodel
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: AmazonBedrock
+      sku_meter: custom model storage months
+      pricing_unit: model-months
+      description: Once the customization job completes, the stored custom model bills $1.95 a month (us-east-1, uniform across every customizable model family on the current offer) for as long as it exists -- served or never invoked. Deleting the model is the only off switch.
+  cost_drivers:
+    - field_path: base_model_arn
+      sku_meter: custom model storage months
+      pricing_unit: model-months
+      impact: The committed meter -- once the customization job completes, the resulting custom model bills $1.95 a month in storage for as long as it exists (the rate is uniform across every customizable model family in us-east-1 on the current offer). The base model also sets the one-time training rate per 1,000 tokens.
+    - field_path: training_data_s3_uri
+      sku_meter: customization training tokens
+      pricing_unit: 1K-tokens
+      impact: The one-time training bill is tokens-processed x epochs x the base model's per-1K-token rate ($0.0004 for Titan Text Lite, $0.008 for Titan Text Express in us-east-1) -- the dataset's token count lives in S3, invisible to this manifest.
+    - field_path: hyperparameters
+      sku_meter: customization training tokens
+      pricing_unit: 1K-tokens
+      impact: epochCount multiplies the one-time training bill linearly -- every epoch reprocesses the full dataset.
+    - field_path: region
+      sku_meter: custom model storage months
+      pricing_unit: model-months
+      impact: Storage and training rates are published per region under the AmazonBedrock offer; customization runs in a subset of Bedrock regions.
+  free_tier: "None. Training bills per token processed and the stored model bills from job completion."
+  estimate_exclusions:
+    - the one-time training charge (tokens x epochs x the base model's rate) is unknowable here -- the dataset's token count lives in S3, not in the manifest
+    - serving traffic needs Provisioned Throughput (its own component, billed hourly per model unit) or on-demand custom-model deployment where AWS supports it -- inference never bills on this component
+    - the training/validation/output S3 buckets bill storage and requests on their own components
+    - a customer-managed KMS key (custom_model_kms_key_arn) bills its monthly fee and per-request charges on the referenced AwsKmsKey component
+  notes: "The stored-model fee is the only recurring charge this manifest commits: $1.95 a month, uniform across every Customization-Storage SKU on the us-east-1 offer (all eleven families -- Titan, Nova, image generators -- price identically), so one book entry serves every base model. Training is real money but ONE-TIME and data-sized; it is excluded with the rates stated rather than guessed."

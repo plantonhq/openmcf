@@ -1,0 +1,49 @@
+# IaC runner permissions: the least-privilege statements a provisioning
+# identity needs to manage this component's full lifecycle (create, read,
+# update, delete, tag) through the official modules. Resource patterns use
+# catalog placeholders; NON-SCOPABLE facts are verified against the AWS
+# service reference (servicereference.us-east-1.amazonaws.com/v1/ce/ce.json).
+# Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awscostanomalymonitor
+spec:
+  aws:
+    statements:
+      - sid: CreateAnomalyObjects
+        actions:
+          - ce:CreateAnomalyMonitor
+          - ce:CreateAnomalySubscription
+        resources:
+          - "*"
+        provenance: derived
+        notes: "NON-SCOPABLE: the service reference lists no resource type for either create action -- the monitor/subscription identifiers do not exist until the calls return, so both require '*'. Both honor aws:RequestTag/${TagKey} and aws:TagKeys condition keys for tag-on-create governance; the module tags both resource kinds with the platform's standard tag set. Create permissions are exercised on routine UPDATES too: the monitor's shape arms (monitor_type, monitor_dimension, monitor_specification) are create-only and force replacement."
+      - sid: OperateMonitor
+        actions:
+          - ce:GetAnomalyMonitors
+          - ce:UpdateAnomalyMonitor
+          - ce:DeleteAnomalyMonitor
+        resources:
+          - "arn:aws:ce::{account_id}:anomalymonitor/*"
+        provenance: derived
+        notes: "Read, rename (the display name is the only in-place update), and delete, scoped to the anomalymonitor resource type. Cost Explorer ARNs carry NO region segment -- the service is account-global -- and identifiers are service-generated UUIDs, hence the wildcard within the account. All three actions honor aws:ResourceTag condition keys if tag-fenced (ABAC) runner policies are wanted."
+      - sid: OperateSubscriptions
+        actions:
+          - ce:GetAnomalySubscriptions
+          - ce:UpdateAnomalySubscription
+          - ce:DeleteAnomalySubscription
+        resources:
+          - "arn:aws:ce::{account_id}:anomalysubscription/*"
+        provenance: derived
+        notes: "The folded subscriptions are separate CE resources with their own ARNs -- one aws_ce_anomaly_subscription per spec entry, each bound to the monitor's ARN. Frequency, subscribers, and threshold_expression all update in place; monitor replacement cascades a rebind. Same region-less, service-generated ARN shape as the monitor."
+      - sid: TagAnomalyObjects
+        actions:
+          - ce:TagResource
+          - ce:UntagResource
+          - ce:ListTagsForResource
+        resources:
+          - "arn:aws:ce::{account_id}:anomalymonitor/*"
+          - "arn:aws:ce::{account_id}:anomalysubscription/*"
+        provenance: derived
+        notes: "The module maintains the platform's standard tags (resource ID, org, env) on both the monitor and every subscription across updates; the service reference scopes all three actions to both resource types."

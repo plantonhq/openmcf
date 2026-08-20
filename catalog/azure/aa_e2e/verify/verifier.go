@@ -157,6 +157,7 @@ var verifiers = map[string]Verifier{
 	"azurenetworksecuritygroup":                      &networkSecurityGroupVerifier{},
 	"azurenetworkwatcherflowlog":                     &networkWatcherFlowLogVerifier{},
 	"azurepointtositevpngateway":                     &pointToSiteVpnGatewayVerifier{},
+	"azureplantonrunner":                             &plantonRunnerVerifier{},
 	"azurepostgresqlflexibleserver":                  &postgresqlFlexibleServerVerifier{},
 	"azureprivatednsrecord":                          &privateDnsRecordVerifier{},
 	"azureprivatednsresolver":                        &privateDnsResolverVerifier{},

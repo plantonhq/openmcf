@@ -28,9 +28,12 @@ spec:
   # scenario echoed true (explicit-true), and the shared prerequisite
   # fixture echoed true on the omit path in every consumer lane window
   # (AWS's default-on encryption stands when the field is unset).
-  # pending_proof: the tag-convergence sweep added the canonical Name key to
-  # the Pulumi identity map (the Terraform twin already sent it live) -- Q31
-  # proves the Name-addition class on this kind for the whole sweep
-  status: pending_proof
-  validated_provisioners: []
+  # Re-proven live 2026-08-13, both engines, both scenarios, after the
+  # tag-convergence sweep: per-engine ListQueueTags echoed the canonical
+  # six-key identity map INCLUDING Name on the Pulumi lane (the sweep's
+  # Name-addition class proof), and the blind import round-trip re-ran
+  # green on BOTH scenarios' Terraform lanes (queue_url re-imported,
+  # zero-diff plan) over the changed send surface.
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

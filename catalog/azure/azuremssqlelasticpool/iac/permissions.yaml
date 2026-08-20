@@ -1,0 +1,20 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremssqlelasticpool
+spec:
+  azure:
+    groups:
+      - purpose: ManageElasticPool
+        actions:
+          - Microsoft.Sql/servers/read
+          - Microsoft.Sql/servers/elasticPools/read
+          - Microsoft.Sql/servers/elasticPools/write
+          - Microsoft.Sql/servers/elasticPools/delete
+        provenance: derived
+        notes: Covers azurerm_mssql_elasticpool (the module's only resource) -- create, read/refresh, in-place resize and license changes, and destroy. servers/read is required because the provider resolves the parent server's properties from server_id during create and refresh before it can address the pool.

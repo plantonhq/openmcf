@@ -1,0 +1,41 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpmonitoringuptimecheck
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Cloud Monitoring
+      sku_meter: uptime check executions
+      pricing_unit: executions
+      description: Every probe from every checker location is one billed execution, and probes fire on the configured cadence from creation until deletion -- the volume is fixed by configuration, not traffic, so the spend is committed the moment the check exists.
+  cost_drivers:
+    - field_path: period
+      sku_meter: uptime check executions
+      pricing_unit: executions
+      impact: "The cadence is the main multiplier: a 60s check runs five times the executions of the 300s default; 900s runs a third of it."
+    - field_path: selected_regions
+      sku_meter: uptime check executions
+      pricing_unit: executions
+      impact: Each covered checker location probes independently and bills its own execution. An empty list means all regions -- six locations (three in the USA plus Europe, South America, and Asia Pacific); narrowing the list reduces the multiplier but GCP still requires at least three locations.
+    - field_path: synthetic_monitor
+      sku_meter: synthetic monitor executions
+      pricing_unit: executions
+      impact: A synthetic monitor bills a different, dearer meter per execution, and the referenced 2nd-gen Cloud Function additionally bills its own invocations and compute on that component.
+    - field_path: resource_group
+      sku_meter: uptime check executions
+      pricing_unit: executions
+      impact: A group target probes every member, multiplying executions by the group's membership -- a count that lives in Cloud Monitoring, not in this manifest.
+    - field_path: log_check_failures
+      sku_meter: Cloud Logging ingestion
+      pricing_unit: GiB
+      impact: When enabled, each failed probe writes a log entry billed at Cloud Logging ingestion rates -- negligible for healthy targets, real for flapping ones.
+  free_tier: "The first 1,000,000 uptime check executions per project each month are free -- the SKU's own tiering, aggregated monthly at project level. A single check at any supported cadence from the default six locations runs 17,520-262,800 executions per month, so a small estate of checks lives entirely inside the allotment; the meter starts billing only project-wide beyond the million."
+  estimate_exclusions:
+    - Cloud Logging ingestion for failed-probe logs when log_check_failures is enabled
+    - the alerting built on this check (GcpMonitoringAlertPolicy conditions) bills on that component
+    - a synthetic monitor's Cloud Function bills its own invocations and compute
+  notes: "The meter is execution-count, but the count is configuration-determined -- period times checker locations -- so unlike genuinely usage-based meters the monthly volume is knowable from the manifest alone. Deleting the check is the only thing that stops it."

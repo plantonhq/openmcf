@@ -80,9 +80,3 @@ module "site_to_site" {
   shared-key API).
 - `connection_protocol` is omitted when unset so Azure applies its
   default (IKEv2); the provider treats it as Computed.
-
-## Required Permissions
-
-The deploying credential needs `Microsoft.Network/connections/*` on the
-resource group, plus read on the referenced gateways/circuit -- held
-via Network Contributor, Contributor, or Owner.

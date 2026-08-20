@@ -23,4 +23,4 @@ Creates one named event stream (domain topic) inside an Azure Event Grid domain 
 
 ## Required Permissions
 
-The deploying principal needs `Microsoft.EventGrid/domains/topics/*` (EventGrid Contributor covers it).
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege actions the deploying principal needs.

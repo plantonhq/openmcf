@@ -13,7 +13,7 @@ When you deploy a GcpAddress resource, Planton provisions:
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **An existing GCP project** — referenced via `projectId` (or the provider's default project)
-- **IAM permissions** — `roles/compute.networkAdmin` on the target project
+- **IAM permissions** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 - **An existing VPC network** — required for INTERNAL addresses with VPC_PEERING or IPSEC_INTERCONNECT purpose (referenced via `network`)
 - **An existing subnetwork** — required for INTERNAL addresses with GCE_ENDPOINT or DNS_RESOLVER purpose (referenced via `subnetwork`)
 

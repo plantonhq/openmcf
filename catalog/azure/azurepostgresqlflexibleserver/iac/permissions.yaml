@@ -1,0 +1,41 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurepostgresqlflexibleserver
+spec:
+  azure:
+    groups:
+      - purpose: ManageServer
+        actions:
+          - Microsoft.DBforPostgreSQL/flexibleServers/read
+          - Microsoft.DBforPostgreSQL/flexibleServers/write
+          - Microsoft.DBforPostgreSQL/flexibleServers/delete
+          - Microsoft.DBforPostgreSQL/flexibleServers/databases/read
+          - Microsoft.DBforPostgreSQL/flexibleServers/databases/write
+          - Microsoft.DBforPostgreSQL/flexibleServers/databases/delete
+          - Microsoft.DBforPostgreSQL/flexibleServers/firewallRules/read
+          - Microsoft.DBforPostgreSQL/flexibleServers/firewallRules/write
+          - Microsoft.DBforPostgreSQL/flexibleServers/firewallRules/delete
+          - Microsoft.DBforPostgreSQL/flexibleServers/configurations/read
+          - Microsoft.DBforPostgreSQL/flexibleServers/configurations/write
+        provenance: derived
+        notes: Covers azurerm_postgresql_flexible_server and its child resources (databases, firewall rules, server configurations) -- create, read/refresh, in-place updates, and destroy.
+      - purpose: GrantEntraAdministrators
+        actions:
+          - Microsoft.DBforPostgreSQL/flexibleServers/administrators/read
+          - Microsoft.DBforPostgreSQL/flexibleServers/administrators/write
+          - Microsoft.DBforPostgreSQL/flexibleServers/administrators/delete
+        provenance: derived
+        notes: Required only when aad_administrators declares Entra admin principals -- azurerm_postgresql_flexible_server_active_directory_administrator manages them as their own resources.
+      - purpose: JoinDelegatedSubnet
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/join/action
+          - Microsoft.Network/privateDnsZones/read
+          - Microsoft.Network/privateDnsZones/join/action
+        provenance: derived
+        notes: Required only for VNet-injected servers (delegated_subnet_id + private_dns_zone_id) -- injecting the server demands join on the delegated subnet. The provider itself never calls the private DNS zone API (it only validates the ID's format client-side and carries it in the server payload); the zone permissions are a SERVICE-side need -- the flexible-server service validates the referenced zone and links it to the network during provisioning, which requires the deploying principal to hold read plus join on the zone in the ZONE's scope (the join action is what Azure checks when another resource references a private DNS zone).

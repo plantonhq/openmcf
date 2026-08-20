@@ -1,0 +1,54 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsbedrockknowledgebase
+spec:
+  aws:
+    statements:
+      - sid: CreateKnowledgeBase
+        actions:
+          - bedrock:CreateKnowledgeBase
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_bedrockagent_knowledge_base / bedrock.AgentKnowledgeBase creation. CreateKnowledgeBase is NON-SCOPABLE -- the bedrock service reference lists no resource types for it (the knowledge-base ID does not exist until the call returns), so the wildcard is the narrowest possible scope; an ARN-scoped grant would be a runtime DENY.
+      - sid: ManageKnowledgeBase
+        actions:
+          - bedrock:GetKnowledgeBase
+          - bedrock:UpdateKnowledgeBase
+          - bedrock:DeleteKnowledgeBase
+        resources:
+          - arn:aws:bedrock:*:*:knowledge-base/*
+        provenance: derived
+        notes: Read-back, in-place updates (description, role, supplemental storage), and destroy for the knowledge-base resource. Get runs on every plan/refresh. All three actions take the knowledge-base resource type per the service reference; narrow the region and account segments to the deployment's own in a hardened setup.
+      - sid: ManageDataSources
+        actions:
+          - bedrock:CreateDataSource
+          - bedrock:GetDataSource
+          - bedrock:UpdateDataSource
+          - bedrock:DeleteDataSource
+        resources:
+          - arn:aws:bedrock:*:*:knowledge-base/*
+        provenance: derived
+        notes: Covers aws_bedrockagent_data_source / bedrock.AgentDataSource -- one per data_sources entry (for_each on the name). Data-source actions authorize against the PARENT knowledge-base ARN per the service reference (data sources have no ARN format of their own), so the same knowledge-base scoping serves the whole family.
+      - sid: TagKnowledgeBase
+        actions:
+          - bedrock:TagResource
+          - bedrock:UntagResource
+          - bedrock:ListTagsForResource
+        resources:
+          - arn:aws:bedrock:*:*:knowledge-base/*
+        provenance: derived
+        notes: The modules apply the platform tag set to the knowledge base (tags = local.aws_tags); ListTagsForResource is read back on every refresh. Tagging actions cover the knowledge-base resource type per the service reference.
+      - sid: PassKnowledgeBaseServiceRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: CreateKnowledgeBase and UpdateKnowledgeBase pass the spec's required role_arn to Bedrock, which assumes it (trusting bedrock.amazonaws.com) to read data sources, call the embedding model, and read/write the vector store. Add an iam:PassedToService=bedrock.amazonaws.com condition and narrow to the actual role ARN in a hardened deployment. The role's OWN permissions (S3 reads, model invocation, store access) belong to the referenced AwsIamRole, not to the runner.

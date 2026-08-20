@@ -1,0 +1,21 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesopensearchoperator
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The manager runs as a single controller pod; these requests are what the scheduler reserves for it. Empty does NOT mean unbounded -- the chart ships default requests and limits (100m/350Mi requests, 200m/500Mi limits), applied whenever the manifest omits resources.
+    - field_path: kube_rbac_proxy_enabled
+      sku_meter: cluster CPU and memory reservations
+      impact: The kube-rbac-proxy sidecar (default enabled) rides the manager pod to shield the metrics endpoint; its image and sizing follow the chart (overridable only via helm_values), adding a small reservation beside the manager's.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - "the OpenSearch clusters this operator reconciles -- node pools, Dashboards, their volumes -- reserve their own capacity on their KubernetesOpenSearch resources, never this footprint"
+    - the helm_values overlay merges last and can override the modeled values, including resources and the kube-rbac-proxy sidecar's sizing
+  notes: "This component installs the ENGINE, not the search clusters: its footprint is the controller pod (manager container plus the kube-rbac-proxy sidecar). Everything the operator manages is declared through KubernetesOpenSearch resources, which carry their own capacity footprints. The chart-default manager resources make the honest manifest-time statement a hand-computed footprint: declared resources, or the chart defaults when omitted."

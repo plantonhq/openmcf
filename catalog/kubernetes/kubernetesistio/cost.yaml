@@ -1,0 +1,43 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesistio
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: istiod.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The istiod container's requests are what the scheduler reserves per control-plane replica. Unset, the chart applies its own default request (500m CPU / 2Gi memory) -- the reservation exists either way; the spec just does not restate it.
+    - field_path: istiod.autoscale
+      sku_meter: cluster CPU and memory reservations
+      impact: The chart's HPA is enabled by default (min 1 / max 5 at 80% CPU) and owns the istiod replica count -- the reservation floats between min_replicas and max_replicas with control-plane load. A fixed istiod.replicas disables the HPA and pins the multiplier.
+    - field_path: dataplane_mode
+      sku_meter: cluster CPU and memory reservations
+      impact: "Ambient mode installs two per-node DaemonSets on top of istiod: the istio-cni node agent and the ztunnel L4 proxy. Their reservations multiply by the cluster's node count -- a number no manifest declares."
+    - field_path: ztunnel.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The ztunnel container's reservation applies PER NODE (it is a DaemonSet). Unset, the chart requests 200m CPU / 512Mi memory on every node in the cluster.
+    - field_path: cni.enabled
+      sku_meter: cluster CPU and memory reservations
+      impact: In sidecar mode, true adds the istio-cni node agent DaemonSet (one pod per node); in ambient mode the agent installs regardless of this flag.
+    - field_path: proxy.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: Sidecar-mode proxy defaults multiply across EVERY injected workload pod in the mesh (chart default request 100m CPU / 128Mi memory, limit 2000m / 1Gi). That capacity rides the workload components' pods, not this component's -- but this field is the lever that sizes it mesh-wide.
+    - field_path: gateway_defaults.service_type
+      sku_meter: cloud load balancer
+      impact: Gateways istiod auto-provisions for KubernetesGateway resources default to Service type LoadBalancer -- each one makes the hosting cloud provision a billable load balancer at that provider's rates. NodePort or ClusterIP avoids the charge on clusters without a cloud LB controller.
+    - field_path: helm_values
+      sku_meter: cluster CPU and memory reservations
+      impact: Per-release value overlays (base, istiod, cni, ztunnel) merge LAST and can override any modeled value, including replica counts and resources.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - "no committed preset declares explicit resources, so no manifest-derived capacity footprint is generated: the charts apply their own defaults (istiod 500m CPU / 2Gi memory request; ztunnel 200m CPU / 512Mi memory request per node; sidecar proxy 100m CPU / 128Mi memory request per injected pod), which the spec does not restate"
+    - the istiod replica count is owned by the chart's HPA by default (min 1 / max 5) -- the reservation changes with control-plane load at runtime
+    - the istio-cni and ztunnel DaemonSets reserve capacity PER NODE; the node-count multiplication is the cluster's, not the manifest's
+    - sidecar proxies add their reservation to every injected workload pod across the mesh -- that capacity rides the workload components, sized by proxy.resources here
+    - gateway deployments and the cloud load balancers their Services provision ride the KubernetesGateway resources that create them
+    - the helm_values overlays merge last and can change any of the above
+  notes: "This component creates no cloud SKU of its own -- it installs the mesh CONTROL PLANE (istiod, plus per-node cni and ztunnel DaemonSets in ambient mode), and its cost is the share of the cluster those pods reserve. What the mesh MANAGES is priced elsewhere: gateway capacity and cloud load balancers ride KubernetesGateway, and sidecar proxy capacity rides the injected workload pods."

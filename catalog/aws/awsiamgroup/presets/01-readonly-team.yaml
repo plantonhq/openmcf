@@ -1,0 +1,11 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamGroup
+metadata:
+  name: readonly-auditors
+spec:
+  region: us-east-1
+  path: /teams/
+  users:
+    - value: <existing-iam-user-name>
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/ReadOnlyAccess

@@ -1,0 +1,75 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbedrockagentcoretokenvault
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The token vault is always encrypted -- every new account starts in the ServiceManagedKey posture where AWS owns and rotates the key; an unencrypted vault is not representable. This component's whole purpose is choosing WHICH key does it.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: key_type
+      evidence:
+        type: spec_default
+        reference: ServiceManagedKey (the account's default posture) leaves the key with AWS; CustomerManagedKey moves every stored OAuth token and API key under the KMS key named in kms_key_arn -- you control rotation, policy, and revocation, and revoking the key's grant locks AgentCore out of every stored credential.
+      notes: "Destroy does NOT revert this: the provider has no delete API for the setting, so the last-applied key remains in effect. Returning to AWS-managed encryption is an explicit apply with key_type ServiceManagedKey (the 02 preset exists exactly for that)."
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The vault's configuration APIs (SetTokenVaultCMK, GetTokenVault) and every credential read/write AgentCore Identity performs against the vault ride HTTPS-only SigV4 endpoints; no plaintext path exists.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A key setting exposes no access surface. The credentials the vault stores are reachable only through AgentCore Identity's IAM-authorized APIs -- that access posture is the AwsBedrockAgentCoreIdentity component's territory, decided there.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens anywhere -- the vault is AWS-internal storage and this component is one configuration write against it; there is no network surface to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request-serving surface exists for a WAF to front; edge filtering has no meaning for an encryption setting.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Reading and changing the vault's key setting is IAM-authorized, and both SetTokenVaultCMK and GetTokenVault take resource-level scoping on the token-vault ARN per the bedrock-agentcore service reference -- who may re-key the vault is a precise grant.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: No workload runs here. AgentCore itself creates the KMS grants it needs on the customer key when the setting is applied -- AWS service plumbing, not a workload-identity choice this manifest carries.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The service has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: SetTokenVaultCMK is a management event CloudTrail records unconditionally -- who re-keyed the vault that holds every agent credential, and when, is always answerable from the account's event history.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A key setting emits no telemetry and has no monitoring hook of its own. Key-usage visibility comes from the referenced AwsKmsKey's CloudTrail events; credential-usage visibility belongs to AgentCore Identity.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The setting holds no data to back up -- it is trivially re-applied from this manifest. The credentials inside the vault are AWS-operated storage recoverable by re-vaulting from the upstream providers via the AwsBedrockAgentCoreIdentity component; note that losing an actively-used CMK (not the setting) is the unrecoverable event.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Nothing here retains data on a schedule -- there is no retention surface on a key setting; stored credentials persist under AgentCore Identity's lifecycle.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The token vault is regional AWS-operated infrastructure run across availability zones -- neither the vault nor its key setting has a zonal footprint the manifest could configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "The vault itself cannot be deleted -- AWS provisions it per account+region -- and the setting has no delete API at all: destroying this component leaves the last-applied key in effect. The protection-relevant risk runs the other way: deleting the referenced CMK (on that component) would strand every credential encrypted under it."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed AWS infrastructure -- the vault's storage and encryption machinery is operated and patched by AWS; this component exposes no runtime, version, or maintenance surface.

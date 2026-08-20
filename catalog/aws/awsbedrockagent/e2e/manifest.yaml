@@ -1,0 +1,72 @@
+# Canonical AwsBedrockAgent example (hack/dev manifest and refgen Example
+# source): a supervisor agent exercising every folded satellite -- action
+# groups (custom function-schema plus a reserved capability), a published
+# alias, a collaborator, a knowledge-base association -- plus guardrail,
+# memory, and a prompt override. Literal ARNs/ids stand in for composed
+# references so the offline `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgent
+metadata:
+  name: support-agent
+  id: support-agent
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  description: Customer support agent with order tools and docs retrieval
+  foundationModel: amazon.nova-micro-v1:0
+  agentResourceRoleArn:
+    value: arn:aws:iam::123456789012:role/bedrock-agent-role
+  instruction: >-
+    You are a customer support agent. Answer order questions using the
+    order tools, retrieve product documentation when asked how something
+    works, and delegate billing questions to the billing collaborator.
+  idleSessionTtlSeconds: 900
+  agentCollaboration: SUPERVISOR
+  guardrail:
+    guardrailId:
+      value: gr-examplegr01
+    version: "1"
+  memory:
+    storageDays: 30
+    maxRecentSessions: 5
+  promptOverride:
+    promptConfigurations:
+      - promptType: ORCHESTRATION
+        basePromptTemplate: "$instruction$ $question$ $agent_scratchpad$"
+        promptState: ENABLED
+        inferenceConfiguration:
+          maxLength: 2048
+          temperature: 0
+          topP: 1
+  actionGroups:
+    - name: orders
+      description: Look up and update customer orders.
+      executor:
+        returnControl: true
+      functionSchema:
+        functions:
+          - name: get_order
+            description: Look up one order by its ID.
+            parameters:
+              - name: order_id
+                type: string
+                description: The order identifier.
+                required: true
+    - name: user-input
+      parentActionGroupSignature: AMAZON.UserInput
+  aliases:
+    - name: live
+      description: Production serving endpoint
+  collaborators:
+    - name: billing
+      collaborationInstruction: Handle all billing and invoice questions.
+      collaboratorAliasArn:
+        value: arn:aws:bedrock:us-west-2:123456789012:agent-alias/AGENT12345/ALIAS12345
+      relayConversationHistory: TO_COLLABORATOR
+  knowledgeBaseAssociations:
+    - name: docs
+      knowledgeBaseId:
+        value: KBEXAMPLE01
+      description: Product documentation for troubleshooting answers.
+      state: ENABLED

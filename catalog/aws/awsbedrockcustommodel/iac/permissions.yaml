@@ -1,0 +1,49 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsbedrockcustommodel
+spec:
+  aws:
+    statements:
+      - sid: CreateCustomizationJob
+        actions:
+          - bedrock:CreateModelCustomizationJob
+        resources:
+          - arn:aws:bedrock:*:*:custom-model/*
+          - arn:aws:bedrock:*::foundation-model/*
+          - arn:aws:bedrock:*:*:model-customization-job/*
+        provenance: derived
+        notes: Per the service reference the create authorizes against the custom-model AND foundation-model ARNs (the base model lives in an AWS-owned namespace -- no account id in its ARN); the job ARN is included because providers commonly evaluate the create against the job resource too.
+      - sid: TrackAndStopJob
+        actions:
+          - bedrock:GetModelCustomizationJob
+          - bedrock:StopModelCustomizationJob
+        resources:
+          - arn:aws:bedrock:*:*:model-customization-job/*
+        provenance: derived
+        notes: The apply polls the asynchronous job to completion (minutes to hours); StopModelCustomizationJob covers cancellation on destroy-while-training.
+      - sid: ManageCustomModel
+        actions:
+          - bedrock:GetCustomModel
+          - bedrock:DeleteCustomModel
+        resources:
+          - arn:aws:bedrock:*:*:custom-model/*
+        provenance: derived
+        notes: GetCustomModel serves every plan/refresh once the model exists; DeleteCustomModel tears down (the job record's deletion rides the provider's destroy of aws_bedrock_custom_model).
+      - sid: TagBedrockResources
+        actions:
+          - bedrock:TagResource
+          - bedrock:UntagResource
+          - bedrock:ListTagsForResource
+        resources:
+          - arn:aws:bedrock:*:*:custom-model/*
+          - arn:aws:bedrock:*:*:model-customization-job/*
+        provenance: derived
+        notes: The job and the resulting model carry the component tags; the tag actions scope to both ARN shapes per the service reference.
+      - sid: PassCustomizationRoleToBedrock
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: CreateModelCustomizationJob hands role_arn to bedrock.amazonaws.com so the job can read training data and write outputs -- iam:PassRole on that role is mandatory. The role ARN is a manifest value (often a foreign-key reference), so the honest static scope is the wildcard; platforms templating per-deployment policies should substitute the concrete role ARN.

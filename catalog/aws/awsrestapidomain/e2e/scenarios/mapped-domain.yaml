@@ -1,0 +1,45 @@
+# Custom domain over the ACM imported self-signed certificate fixture
+# (the registry prerequisite falls back to the ACM minimal scenario,
+# whose CN is e2e-smoke.planton-oss-e2e.example.com -- the domain name
+# must match what the certificate covers), with one base-path mapping
+# composing the REST API prerequisite fixture at the domain root.
+# example.com is IANA-reserved, so the region-unique custom-domain
+# namespace cannot collide with a real tenant. DNS is deliberately not
+# part of the lane -- the domain resource exists and maps independently
+# of any record pointing at it.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRestApiDomain
+metadata:
+  name: planton-oss-e2e-awsrestdm
+  id: planton-oss-e2e-awsrestdm
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsrestapidomain
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsRestApiGateway"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  domainName: e2e-smoke.planton-oss-e2e.example.com
+  certificateArn:
+    valueFrom:
+      kind: AwsCertManagerCert
+      name: planton-oss-e2e-acm-smoke
+      fieldPath: status.outputs.cert_arn
+  endpointConfiguration:
+    type: REGIONAL
+  basePathMappings:
+    - restApiId:
+        valueFrom:
+          kind: AwsRestApiGateway
+          name: planton-oss-e2e-awsrestgw-prereq
+          fieldPath: status.outputs.rest_api_id
+      stageName:
+        valueFrom:
+          kind: AwsRestApiGateway
+          name: planton-oss-e2e-awsrestgw-prereq
+          fieldPath: status.outputs.stage_name

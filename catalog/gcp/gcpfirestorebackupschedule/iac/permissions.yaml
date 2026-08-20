@@ -1,0 +1,26 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpfirestorebackupschedule
+spec:
+  gcp:
+    groups:
+      - purpose: EnableFirestoreApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling firestore.googleapis.com on the target project. disable_on_destroy is false in both modules, so the disable permission is never needed.
+      - purpose: ManageBackupSchedule
+        permissions:
+          - datastore.backupSchedules.create
+          - datastore.backupSchedules.delete
+          - datastore.backupSchedules.get
+          - datastore.backupSchedules.update
+        provenance: derived
+        notes: Covers google_firestore_backup_schedule -- create with recurrence and retention; get for read/refresh; update for retention (the only mutable field); delete on destroy. Google's Firestore IAM reference maps the backupschedules API methods to exactly these permissions; the predefined roles/datastore.backupSchedulesAdmin carries them all (broader roles/datastore.owner or roles/firebase.admin also work, at more privilege than needed). The backups themselves are taken by Firestore's own service on the cadence, not by the runner -- no datastore.backups.* permission is exercised by the modules. The datastore service is not yet in the committed action-inventory snapshot; every permission here was verified against Google's Firestore IAM reference (cloud.google.com/firestore/docs/security/iam) live.

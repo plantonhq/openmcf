@@ -1,0 +1,75 @@
+# Canonical AwsBedrockAgentCoreEvaluation example (hack/dev manifest and
+# refgen Example source): a bundle exercising every arm -- an LLM-judge
+# evaluator with a numerical scale, a code-based evaluator, a Bedrock
+# harness, and an online evaluation config sampling CloudWatch logs
+# with a builtin evaluator. Literal ARNs stand in for composed
+# references so the offline `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreEvaluation
+metadata:
+  name: support-eval
+  id: support-eval
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  evaluators:
+    - name: helpfulness
+      description: Scores whether the agent was helpful
+      level: SESSION
+      llmAsAJudge:
+        instructions: Score how helpful the agent's response was.
+        model:
+          modelId: anthropic.claude-3-haiku-20240307-v1:0
+          inference:
+            temperature: 0
+            maxTokens: 256
+        ratingScale:
+          numerical:
+            - label: poor
+              definition: Unhelpful or incorrect
+              value: 1
+            - label: excellent
+              definition: Fully helpful and correct
+              value: 5
+    - name: custom_score
+      description: Lambda scorer
+      level: TRACE
+      codeBased:
+        lambdaArn:
+          value: arn:aws:lambda:us-west-2:123456789012:function:score-trace
+        timeoutSeconds: 60
+  harnesses:
+    - name: support-bench
+      executionRoleArn:
+        value: arn:aws:iam::123456789012:role/agentcore-eval-role
+      model:
+        bedrock:
+          modelId: anthropic.claude-3-haiku-20240307-v1:0
+          temperature: 0.2
+          maxTokens: 512
+      systemPrompts:
+        - text: You are a support agent under evaluation.
+      tools:
+        - name: search
+          type: inline_function
+          inlineFunction:
+            description: Search the knowledge base
+            inputSchema: '{"type":"object","properties":{"query":{"type":"string"}}}'
+  onlineEvaluationConfigs:
+    - name: prod_sampling
+      description: Sample 5 percent of production sessions
+      executionRoleArn:
+        value: arn:aws:iam::123456789012:role/agentcore-eval-role
+      enabled: true
+      dataSource:
+        logGroupNames:
+          - value: /aws/bedrock/agentcore/support
+        serviceNames:
+          - support-agent
+      evaluatorIds:
+        - Builtin.Helpfulness
+        - helpfulness
+      rule:
+        samplingPercentage: 5
+        sessionTimeoutMinutes: 15

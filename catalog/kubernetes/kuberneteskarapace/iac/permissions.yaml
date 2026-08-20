@@ -1,0 +1,64 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kuberneteskarapace
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.this -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_secret_v1.sasl_password -- the module-materialized SASL password Secret, created only when spec.kafka.sasl.password is a declared literal (never when the spec references an existing Secret). Referenced Secrets (CA, client certs, authfile, server TLS) are mounted by the PODS at runtime, not touched by the runner.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_deployment_v1.registry (<metadata.name>, unconditional) and kubernetes_deployment_v1.rest_proxy (<metadata.name>-rest, rendered only when spec.rest_proxy.enabled is true) -- module-owned manifests; Karapace ships no Helm chart or operator.
+      - api_groups:
+          - ""
+        resources:
+          - services
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_service_v1.registry (unconditional) and kubernetes_service_v1.rest_proxy (only when spec.rest_proxy.enabled is true) -- both ClusterIP.

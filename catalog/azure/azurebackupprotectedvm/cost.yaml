@@ -1,0 +1,52 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. This component deliberately ships no
+# estimate: the protection commits real spend (a banded per-instance fee
+# plus backup storage), but both are set by the protected VM's DATA SIZE
+# -- the sum of its protected disks, delegated to the referenced
+# AzureVirtualMachine and invisible in this manifest -- so a dollar
+# figure here would be a guess wearing a dollar sign.
+# Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurebackupprotectedvm
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Backup
+      sku_meter: protected instance fee
+      pricing_unit: instance-months
+      description: Registering the VM starts a monthly Azure Backup fee banded by the instance's backed-up data size before compression -- Microsoft's retail meter is Azure VM Protected Instance at 10.00 per month (eastus, verified 2026-08-18), billed once for instances up to 500 GB and once per 500 GB increment above, with a reduced band for instances at or under 50 GB. The size that picks the band lives on the referenced VM's disks, not here.
+    - service_name: Backup
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      description: Every GB the vault holds for this VM bills monthly at the vault's redundancy rate -- Standard tier at 0.0224 (LRS), 0.028 (ZRS), or 0.0448 (GRS) per GB-month in eastus at list -- growing with each recovery point the policy retains and shrinking only as points expire.
+  cost_drivers:
+    - field_path: source_vm_id
+      sku_meter: protected instance fee
+      pricing_unit: instance-months
+      impact: The referenced VM's protected data size is THE price input -- it picks the instance-fee band and seeds the storage volume -- and this manifest never sees it. A 100 GB VM and a 1.2 TB VM registered by identical manifests bill one and three instance-fee units respectively, which is why no estimate document exists for this component.
+    - field_path: backup_policy_id
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: The referenced policy's schedule and retention decide how many recovery points the vault holds at once -- daily backups kept 120 days store roughly four times the data of the same schedule kept 30 days. The policy is the storage bill's throttle, and it lives on its own component.
+    - field_path: exclude_disk_luns
+      sku_meter: protected instance fee
+      pricing_unit: instance-months
+      impact: Skipping data disks shrinks the protected data size -- possibly into a lower fee band -- and every excluded GB never lands in backup storage. The OS disk is always protected regardless.
+    - field_path: include_disk_luns
+      sku_meter: protected instance fee
+      pricing_unit: instance-months
+      impact: The inclusion mirror of exclude_disk_luns -- protect ONLY the OS disk and the listed LUNs; everything else stays out of the size that sets the band and the storage that accrues.
+    - field_path: protection_state
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: ProtectionStopped halts new backups but does NOT stop the bill -- Microsoft's pricing FAQ is explicit that retained data keeps billing BOTH the protected-instance fee (at the last successful backup's size) and storage until the data is deleted. Destroying this resource is what deletes the data (the modules keep the engines' delete-on-destroy default).
+  estimate_exclusions:
+    - the instance-fee band and the backup storage volume follow the protected VM's data size and daily churn -- delegated to the referenced AzureVirtualMachine's disks and unknowable here, which is why no estimate document exists for this component
+    - backup storage grows with the policy's retention arithmetic (recovery points held x churn), carried on the referenced AzureBackupPolicyVm
+    - Instant Restore snapshots kept in the VM's own resource group bill managed-disk snapshot rates outside the vault
+    - backup data tiered to Archive bills its own lower per-GB rate plus a 180-day early-deletion charge when removed prematurely
+    - the vault's redundancy choice (LRS/ZRS/GRS) roughly halves or doubles the storage rate and lives on the referenced AzureRecoveryServicesVault
+  notes: "The honest estimate lives at composition time: this manifest contributes the registration and the disk scoping, the referenced VM contributes the data size that picks the fee band, and the referenced policy contributes the retention that multiplies storage. Each piece is verified data -- only their join is deferred to the surface that sees all three components together. The band arithmetic, from Microsoft's pricing page (2026-08-18): instances at or under 50 GB bill a reduced fee plus storage; over 50 through 500 GB bill one full unit (10.00/month eastus list) plus storage; larger instances bill one unit per 500 GB increment -- a 1.2 TB VM is three units. The quiet trap is deletion economics: stopping protection keeps billing fee and storage on retained data, and the true zero comes only from deleting the backup data itself."

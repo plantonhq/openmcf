@@ -1,0 +1,18 @@
+# Canonical AwsCloudwatchLogAnomalyDetector example (hack/dev manifest
+# and refgen Example source): a detector over one application log
+# group with a five-minute cadence and a 30-day anomaly window.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchLogAnomalyDetector
+metadata:
+  name: api-anomalies
+  id: api-anomalies
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  detectorName: api-anomalies
+  logGroupArns:
+    - value: arn:aws:logs:us-west-2:123456789012:log-group:/app/api
+  enabled: true
+  evaluationFrequency: FIVE_MIN
+  anomalyVisibilityTime: 30

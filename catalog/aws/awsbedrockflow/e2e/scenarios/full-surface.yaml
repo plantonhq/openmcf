@@ -1,0 +1,137 @@
+# AwsBedrockFlow full-surface scenario: a routing graph -- Input ->
+# inline Prompt (classify) -> Condition, with the billing branch querying
+# the prerequisite knowledge base and the default branch returning the
+# classification raw. Exercises conditional AND data connections, the
+# condition node's default arm, the knowledge-base node with an inference
+# configuration, and two Output nodes.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockFlow
+metadata:
+  name: planton-oss-e2e-awsbrflw-full
+  id: planton-oss-e2e-awsbrflw-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockflow
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsBedrockKnowledgeBase"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Full-surface routing pipeline
+  executionRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-bedrock-agents-role
+      fieldPath: status.outputs.role_arn
+  definition:
+    nodes:
+      - name: FlowInput
+        type: Input
+        outputs:
+          - name: document
+            type: String
+      - name: Classify
+        type: Prompt
+        inputs:
+          - name: input
+            expression: $.data
+            type: String
+        outputs:
+          - name: modelCompletion
+            type: String
+        prompt:
+          inline:
+            modelId: amazon.nova-micro-v1:0
+            text:
+              text: "Answer with exactly one word, billing or docs: {{input}}"
+              inputVariables:
+                - input
+            inferenceConfiguration:
+              temperature: 0
+      - name: Route
+        type: Condition
+        inputs:
+          - name: category
+            expression: $.data
+            type: String
+        condition:
+          conditions:
+            - name: billing
+              expression: category == "billing"
+            - name: default
+      - name: AskKb
+        type: KnowledgeBase
+        inputs:
+          - name: retrievalQuery
+            expression: $.data
+            type: String
+        outputs:
+          - name: outputText
+            type: String
+        knowledgeBase:
+          knowledgeBaseId:
+            valueFrom:
+              kind: AwsBedrockKnowledgeBase
+              name: planton-oss-e2e-bedrock-kb-prereq
+              fieldPath: status.outputs.knowledge_base_id
+          modelId: amazon.nova-micro-v1:0
+          numberOfResults: 3
+          inferenceConfiguration:
+            temperature: 0.2
+      - name: FlowOutput
+        type: Output
+        inputs:
+          - name: document
+            expression: $.data
+            type: String
+      - name: RawOutput
+        type: Output
+        inputs:
+          - name: document
+            expression: $.data
+            type: String
+    connections:
+      - name: InToClassify
+        source: FlowInput
+        target: Classify
+        data:
+          sourceOutput: document
+          targetInput: input
+      - name: ClassifyToRoute
+        source: Classify
+        target: Route
+        data:
+          sourceOutput: modelCompletion
+          targetInput: category
+      - name: ClassifyToKb
+        source: Classify
+        target: AskKb
+        data:
+          sourceOutput: modelCompletion
+          targetInput: retrievalQuery
+      - name: RouteBilling
+        source: Route
+        target: AskKb
+        conditional:
+          condition: billing
+      - name: ClassifyToRaw
+        source: Classify
+        target: RawOutput
+        data:
+          sourceOutput: modelCompletion
+          targetInput: document
+      - name: RouteDefault
+        source: Route
+        target: RawOutput
+        conditional:
+          condition: default
+      - name: KbToOut
+        source: AskKb
+        target: FlowOutput
+        data:
+          sourceOutput: outputText
+          targetInput: document

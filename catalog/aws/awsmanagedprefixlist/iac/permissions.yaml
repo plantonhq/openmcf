@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsmanagedprefixlist
+spec:
+  aws:
+    statements:
+      - sid: ManagePrefixList
+        actions:
+          - ec2:CreateManagedPrefixList
+          - ec2:ModifyManagedPrefixList
+          - ec2:DeleteManagedPrefixList
+          - ec2:GetManagedPrefixListEntries
+          - ec2:CreateTags
+          - ec2:DeleteTags
+        resources:
+          - arn:aws:ec2:*:*:prefix-list/*
+        provenance: derived
+        notes: Covers aws_ec2_managed_prefix_list / ec2.ManagedPrefixList with entries INLINE (the modules never emit the standalone entry resource). ModifyManagedPrefixList carries every in-place change -- entry adds/removes, max_entries resizes, and the two-round-trip remove-and-re-add a description-only edit costs. GetManagedPrefixListEntries reads the entry set back on every plan/refresh. CreateTags runs tag-on-create and DeleteTags later tag reconciliation; the service reference scopes all six actions to the prefix-list ARN format.
+      - sid: DescribePrefixLists
+        actions:
+          - ec2:DescribeManagedPrefixLists
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side during plan/refresh for the list's attributes (name, address family, capacity, version, tags). EC2 Describe APIs support no resource-level scoping (empty Resources list in the service reference), so the wildcard is the narrowest possible scope.

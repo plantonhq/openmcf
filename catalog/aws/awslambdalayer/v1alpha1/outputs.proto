@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package dev.planton.aws.awslambdalayer.v1alpha1;
+
+// AwsLambdaLayerStackOutputs captures the observable state of the
+// published layer version after apply.
+message AwsLambdaLayerStackOutputs {
+  // The layer's unversioned ARN
+  // (arn:aws:lambda:region:account:layer:name) - the identity that
+  // persists across versions.
+  string layer_arn = 1;
+
+  // The published version's ARN
+  // (arn:aws:lambda:region:account:layer:name:version) - what
+  // functions attach. The chart-ready join key for AwsLambda's
+  // layers list.
+  string layer_version_arn = 2;
+
+  // The published version number ("1", "2", ...).
+  string version = 3;
+
+  // Base64-encoded SHA256 of the archive as Lambda stored it - the
+  // deployed content's own digest.
+  string code_sha256 = 4;
+
+  // Policy revision ids keyed by each grant's statement_id.
+  map<string, string> permission_revision_ids = 5;
+}

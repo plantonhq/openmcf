@@ -29,7 +29,7 @@ The key composes with the rest of the security family:
 ### Azure Subscription
 
 - **An Azure Key Vault** for the key to live in. Reference an AzureKeyVault Cloud Resource via ValueFromRef, or provide the vault ARM ID directly. HSM key types (RSA_HSM/EC_HSM) require the vault on the PREMIUM SKU.
-- **Data-plane key permissions** for the deploying credential -- the "Key Vault Administrator" or "Key Vault Crypto Officer" RBAC role, or key permissions in a legacy access policy.
+- **Data-plane key permissions** for the deploying credential -- subscription Owner alone is not enough; the full deployer grant set is cataloged in [`iac/permissions.yaml`](iac/permissions.yaml).
 
 ## Deploy
 

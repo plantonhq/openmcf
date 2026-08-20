@@ -1,0 +1,70 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsopensearchdomain
+spec:
+  aws:
+    statements:
+      - sid: ManageDomain
+        actions:
+          - es:CreateDomain
+          - es:DeleteDomain
+          - es:DescribeDomain
+          - es:DescribeDomainConfig
+          - es:UpdateDomainConfig
+          - es:DescribeDomainChangeProgress
+          - es:UpgradeDomain
+          - es:GetUpgradeStatus
+          - es:AddTags
+          - es:RemoveTags
+          - es:ListTags
+        resources:
+          - arn:aws:es:*:*:domain/*
+        provenance: derived
+        notes: Covers aws_opensearch_domain end to end -- create, every in-place config update (topology, EBS, endpoint options, FGAC, Auto-Tune, log publishing), the blue/green change-progress polling the provider does while waiting, in-place engine_version upgrades, tagging, and teardown. aws_opensearch_domain_saml_options rides the same DescribeDomainConfig/UpdateDomainConfig pair -- SAML is domain configuration in the AWS API.
+      - sid: ManageVpcEndpointAccessGrants
+        actions:
+          - es:AuthorizeVpcEndpointAccess
+          - es:RevokeVpcEndpointAccess
+          - es:ListVpcEndpointAccess
+        resources:
+          - "*"
+        provenance: derived
+        notes: One aws_opensearch_authorize_vpc_endpoint_access per spec.authorized_vpc_endpoint_access_accounts entry -- the grantor side of cross-account managed VPC endpoints. The service reference lists NO resource types for any of the three actions (unlike the domain lifecycle actions, which scope to the domain ARN), so IAM evaluates them against Resource "*" -- an ARN-scoped grant never matches and would deny the grants at runtime. The wildcard is the narrowest possible scope.
+      - sid: ManageServiceLinkedRole
+        actions:
+          - iam:CreateServiceLinkedRole
+          - iam:GetRole
+        resources:
+          - arn:aws:iam::*:role/aws-service-role/opensearchservice.amazonaws.com/*
+        provenance: derived
+        notes: A VPC domain (spec.vpc_options) requires the AWSServiceRoleForAmazonOpenSearchService service-linked role to place ENIs in the subnets; the first VPC domain in an account creates it. Scoped to the OpenSearch service-linked role path.
+      - sid: PassCognitoRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: Required only when spec.cognito_options wires Dashboards sign-in -- the referenced role_arn (typically carrying AmazonOpenSearchServiceCognitoAccess) is passed to the service so it can configure the user and identity pools. Narrow the role ARN in a hardened deployment.
+      - sid: UseCustomerManagedKeys
+        actions:
+          - kms:DescribeKey
+          - kms:CreateGrant
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Required only when spec.kms_key_id selects a customer-managed key for at-rest encryption -- the service creates grants against the key at domain creation (the key is ForceNew).
+      - sid: DescribeVpcContext
+        actions:
+          - ec2:DescribeSubnets
+          - ec2:DescribeSecurityGroups
+          - ec2:DescribeVpcs
+        resources:
+          - "*"
+        provenance: derived
+        notes: VPC placement (spec.vpc_options) validates the referenced subnets and security groups. EC2 Describe APIs support no resource-level scoping, so the wildcard is the narrowest possible scope.

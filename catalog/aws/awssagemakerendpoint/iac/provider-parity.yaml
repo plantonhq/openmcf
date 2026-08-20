@@ -1,0 +1,165 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_sagemaker_endpoint_configuration:
+    mappings:
+      # The provider names the variant's model by name; the spec wires
+      # the sibling SageMaker model kind by reference.
+      - arg: production_variants.model_name
+        spec: spec.production_variants.model
+      # Bytes vs the spec's unit-suffixed names.
+      - arg: production_variants.volume_size_in_gb
+        spec: spec.production_variants.volume_size_gb
+      - arg: production_variants.container_startup_health_check_timeout_in_seconds
+        spec: spec.production_variants.container_startup_health_check_timeout_seconds
+      - arg: production_variants.model_data_download_timeout_in_seconds
+        spec: spec.production_variants.model_data_download_timeout_seconds
+      - arg: production_variants.serverless_config
+        spec: spec.production_variants.serverless
+      - arg: production_variants.serverless_config.memory_size_in_mb
+        spec: spec.production_variants.serverless.memory_size_mb
+      # The single-entry routing wrapper flattens to one enum field.
+      - arg: production_variants.routing_config
+        spec: spec.production_variants.routing_strategy
+      - arg: production_variants.routing_config.routing_strategy
+        spec: spec.production_variants.routing_strategy
+      - arg: production_variants.core_dump_config
+        spec: spec.production_variants.core_dump
+      - arg: production_variants.core_dump_config.kms_key_id
+        spec: spec.production_variants.core_dump.kms_key_arn
+      # The reservation block flattens to the ARN (its preference member
+      # is excluded below).
+      - arg: production_variants.capacity_reservation_config
+        spec: spec.production_variants.ml_capacity_reservation_arn
+      - arg: production_variants.capacity_reservation_config.ml_reservation_arn
+        spec: spec.production_variants.ml_capacity_reservation_arn
+      # The shadow tree mirrors the production tree onto one shared
+      # variant message.
+      - arg: shadow_production_variants
+        spec: spec.shadow_variants
+      - arg: shadow_production_variants.model_name
+        spec: spec.shadow_variants.model
+      - arg: shadow_production_variants.volume_size_in_gb
+        spec: spec.shadow_variants.volume_size_gb
+      - arg: shadow_production_variants.container_startup_health_check_timeout_in_seconds
+        spec: spec.shadow_variants.container_startup_health_check_timeout_seconds
+      - arg: shadow_production_variants.model_data_download_timeout_in_seconds
+        spec: spec.shadow_variants.model_data_download_timeout_seconds
+      - arg: shadow_production_variants.serverless_config
+        spec: spec.shadow_variants.serverless
+      - arg: shadow_production_variants.serverless_config.memory_size_in_mb
+        spec: spec.shadow_variants.serverless.memory_size_mb
+      - arg: shadow_production_variants.routing_config
+        spec: spec.shadow_variants.routing_strategy
+      - arg: shadow_production_variants.routing_config.routing_strategy
+        spec: spec.shadow_variants.routing_strategy
+      - arg: shadow_production_variants.core_dump_config
+        spec: spec.shadow_variants.core_dump
+      - arg: shadow_production_variants.core_dump_config.kms_key_id
+        spec: spec.shadow_variants.core_dump.kms_key_arn
+      - arg: shadow_production_variants.capacity_reservation_config
+        spec: spec.shadow_variants.ml_capacity_reservation_arn
+      - arg: shadow_production_variants.capacity_reservation_config.ml_reservation_arn
+        spec: spec.shadow_variants.ml_capacity_reservation_arn
+      # The async block flattens its two single-member wrappers.
+      - arg: async_inference_config
+        spec: spec.async_inference
+      - arg: async_inference_config.output_config
+        spec: spec.async_inference
+      - arg: async_inference_config.output_config.s3_output_path
+        spec: spec.async_inference.output_s3_path
+      - arg: async_inference_config.output_config.s3_failure_path
+        spec: spec.async_inference.failure_s3_path
+      - arg: async_inference_config.output_config.kms_key_id
+        spec: spec.async_inference.kms_key_arn
+      - arg: async_inference_config.output_config.notification_config
+        spec: spec.async_inference
+      - arg: async_inference_config.output_config.notification_config.success_topic
+        spec: spec.async_inference.success_topic_arn
+      - arg: async_inference_config.output_config.notification_config.error_topic
+        spec: spec.async_inference.error_topic_arn
+      - arg: async_inference_config.output_config.notification_config.include_inference_response_in
+        spec: spec.async_inference.include_inference_response_in
+      - arg: async_inference_config.client_config
+        spec: spec.async_inference
+      - arg: async_inference_config.client_config.max_concurrent_invocations_per_instance
+        spec: spec.async_inference.max_concurrent_invocations_per_instance
+      # The capture block flattens its header wrapper and mode list.
+      - arg: data_capture_config
+        spec: spec.data_capture
+      - arg: data_capture_config.kms_key_id
+        spec: spec.data_capture.kms_key_arn
+      - arg: data_capture_config.capture_options
+        spec: spec.data_capture.capture_modes
+      - arg: data_capture_config.capture_options.capture_mode
+        spec: spec.data_capture.capture_modes
+      - arg: data_capture_config.capture_content_type_header
+        spec: spec.data_capture
+      - arg: data_capture_config.capture_content_type_header.csv_content_types
+        spec: spec.data_capture.csv_content_types
+      - arg: data_capture_config.capture_content_type_header.json_content_types
+        spec: spec.data_capture.json_content_types
+    exclusions:
+      - arg: name
+        reason: the modules mint suffixed configuration names from metadata.name (create-before-destroy config rolling -- AWS's own update pattern); never user surface
+      - arg: name_prefix
+        reason: the module owns the prefix form (metadata.name + "-cfg-") to implement configuration rolling
+      - arg: production_variants.capacity_reservation_config.capacity_reservation_preference
+        reason: capacity-reservations-only is the only preference AWS defines -- the module owns the one-value constant; a field with one legal value is drift surface, not configuration
+      - arg: shadow_production_variants.capacity_reservation_config.capacity_reservation_preference
+        reason: capacity-reservations-only is the only preference AWS defines -- the module owns the one-value constant
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_sagemaker_endpoint:
+    mappings:
+      # The deployment block's two policies flatten their nested
+      # single-member wrappers onto the spec's strategy messages.
+      - arg: deployment_config
+        spec: spec.deployment
+      - arg: deployment_config.blue_green_update_policy
+        spec: spec.deployment.blue_green
+      - arg: deployment_config.blue_green_update_policy.traffic_routing_configuration
+        spec: spec.deployment.blue_green
+      - arg: deployment_config.blue_green_update_policy.traffic_routing_configuration.type
+        spec: spec.deployment.blue_green.traffic_routing_type
+      - arg: deployment_config.blue_green_update_policy.traffic_routing_configuration.wait_interval_in_seconds
+        spec: spec.deployment.blue_green.wait_interval_seconds
+      - arg: deployment_config.blue_green_update_policy.traffic_routing_configuration.canary_size
+        spec: spec.deployment.blue_green.canary_size
+      - arg: deployment_config.blue_green_update_policy.traffic_routing_configuration.linear_step_size
+        spec: spec.deployment.blue_green.linear_step_size
+      - arg: deployment_config.blue_green_update_policy.termination_wait_in_seconds
+        spec: spec.deployment.blue_green.termination_wait_seconds
+      - arg: deployment_config.blue_green_update_policy.maximum_execution_timeout_in_seconds
+        spec: spec.deployment.blue_green.maximum_execution_timeout_seconds
+      - arg: deployment_config.rolling_update_policy
+        spec: spec.deployment.rolling
+      - arg: deployment_config.rolling_update_policy.wait_interval_in_seconds
+        spec: spec.deployment.rolling.wait_interval_seconds
+      - arg: deployment_config.rolling_update_policy.maximum_execution_timeout_in_seconds
+        spec: spec.deployment.rolling.maximum_execution_timeout_seconds
+      # The alarm list flattens to alarm names.
+      - arg: deployment_config.auto_rollback_configuration
+        spec: spec.deployment.auto_rollback_alarm_names
+      - arg: deployment_config.auto_rollback_configuration.alarms
+        spec: spec.deployment.auto_rollback_alarm_names
+      - arg: deployment_config.auto_rollback_configuration.alarms.alarm_name
+        spec: spec.deployment.auto_rollback_alarm_names
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the component's name IS the endpoint name
+      - arg: endpoint_config_name
+        reason: wired by the module to the folded configuration it rolls (the repoint edge of the config-rolling choreography); never user surface
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

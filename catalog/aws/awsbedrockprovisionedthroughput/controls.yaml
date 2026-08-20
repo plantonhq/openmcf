@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbedrockprovisionedthroughput
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The purchase stores nothing -- it is dedicated serving capacity for a model that lives elsewhere. Model artifacts and their encryption belong to the referenced AwsBedrockCustomModel (or the AWS-owned foundation model), not to this capacity reservation.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest); key choice belongs to the component that owns the model artifacts.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The only paths to this capacity are the Bedrock management and runtime APIs (creation, inspection, and InvokeModel against the provisioned-model ARN), all served exclusively through TLS AWS service endpoints -- no plaintext transport option exists anywhere in the spec or modules.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: No network placement -- the capacity is an IAM-governed purchase addressed through the Bedrock API, never a network endpoint a manifest could expose or hide.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network ingress surface exists; access control is identity-based (see rbac).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No web-facing request traffic exists to filter -- invocations are IAM-signed Bedrock API calls.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every call touching the capacity -- GetProvisionedModelThroughput, DeleteProvisionedModelThroughput, and InvokeModel against the provisioned-model ARN -- is IAM-authorized; no anonymous path to the purchase exists.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The purchase holds no credentials and runs no workloads of its own; applications invoking the provisioned model authenticate with their own identities.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No legacy authentication path exists to disable -- the SigV4-signed Bedrock API is the only access path.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: No audit-logging configuration of its own -- the spec's four fields are region, the model reference, the unit count, and the commitment term. Administrative API calls are captured by account-level AWS CloudTrail, and model-invocation logging is a Bedrock account-level setting, both outside this component's choices.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Bedrock reports provisioned-throughput runtime metrics (invocation counts, latency, token throughput against the purchased capacity) to CloudWatch automatically under the AWS/Bedrock namespace -- there is no opt-in and no way to disable it.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stores no data -- the purchase is re-creatable from the manifest (subject to model-unit quotas), and the model it serves is owned and preserved by the referenced component.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The capacity is a regional managed-service purchase -- AWS operates the serving fleet behind it across the region's availability zones, and the spec exposes no placement surface to get right or wrong.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists. A committed purchase (OneMonth/SixMonths) is undeletable server-side until its term lapses, but that is a billing commitment, not a reversible safety control -- and a no-commitment purchase deletes at any time. Every spec field is create-time-immutable, so any change is a destroy-and-recreate.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the model-serving infrastructure behind the purchased capacity; no customer-visible patch surface exists.

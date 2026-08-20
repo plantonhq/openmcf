@@ -1,0 +1,43 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbedrockknowledgebase
+spec:
+  # A Bedrock knowledge base under live E2E: two lanes. The minimal lane
+  # proves the MANAGED type (AWS manages the vector store -- fully
+  # self-contained; its first live proof also establishes what the
+  # managed store costs at rest, currently expected ~$0 create/delete).
+  # The full-surface lane proves the VECTOR type on the standing S3
+  # Vectors fixture (the harness ensures bucket+index via the SDK --
+  # upstream's own test path -- and exports the index ARN as an
+  # environment token) plus an S3 data source over the shared bucket
+  # fixture with fixed-size chunking. Verification is GetKnowledgeBase
+  # keyed on knowledge_base_id (status ACTIVE, failure_reasons surfaced).
+  #
+  # Deliberately not exercised live: the OpenSearch Serverless backend
+  # (requires a pre-created vector index no AWS-provider resource can
+  # create -- upstream tests it with the third-party opensearch provider;
+  # offline plans/previews prove the render; unblock: a vector-index
+  # story, e.g. the planned AwsS3VectorBucket sibling class or an
+  # opensearch-index harness arm), the Kendra/SQL types and the
+  # Pinecone/MongoDB/Neptune/Redis/managed-OpenSearch/RDS backends (each
+  # needs external SaaS accounts or expensive warehouse fixtures --
+  # offline-proven arm-for-arm via e2e/manifest.yaml and the spec suites),
+  # the SaaS connectors (Confluence/Salesforce/SharePoint credentials),
+  # the managed connector (connector-catalog-specific parameters), and
+  # the web crawler's live crawl (billing and third-party-load concerns;
+  # the render is offline-proven).
+  #
+  # Live dual-engine run 2026-08-14 (session 056): Pulumi VECTOR
+  # full-surface 2m02s / MANAGED minimal 4m52s (deploy 1m29s, destroy
+  # 2m38s); Terraform VECTOR 2m10s with IMPORT-RT / MANAGED 5m21s
+  # (deploy 1m56s, destroy 2m30s, IMPORT-RT). Mid-lane ingestion probe
+  # on the VECTOR data source reached COMPLETE (1 doc indexed) and
+  # DELETE policy still destroyed cleanly. MANAGED echo is type-only
+  # (no storageConfiguration -- AWS owns the store); no extra
+  # account resources appeared; create/delete is the at-rest datapoint
+  # (same-day Cost Explorer will not show a charge).
+  tier: 1
+  status: green
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 45

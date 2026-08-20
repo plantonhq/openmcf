@@ -1,0 +1,73 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurepointtositevpngateway
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The gateway stores no customer data -- it is a managed tunnel terminator whose only state is ARM configuration. Authentication material (certificates, RADIUS secrets, Entra ID settings) lives on the referenced AzureVpnServerConfiguration, held by Azure's control plane.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With no data store there is no encryption key to bring -- the p2sVpnGateways API carries no customer-managed-key surface.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every client session is an encrypted VPN tunnel -- OpenVPN or IKEv2, negotiated per the referenced server configuration's protocol set. The gateway offers no unencrypted transport.
+      notes: Protocol and cipher choices live on the AzureVpnServerConfiguration, outside this manifest by design.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Accepting dial-in from anywhere is the gateway's function -- individual devices reach it over the public internet by design, on Azure-managed public endpoints no spec field can remove. routing_preference_internet_enabled shapes the egress path for client traffic, not whether the endpoints are public.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Point-to-site deliberately has no source-network restriction -- clients connect from unknown networks (homes, hotels), and the admission gate is AUTHENTICATION, enforced by the referenced AzureVpnServerConfiguration (Entra ID, certificate, or RADIUS), not by declared network sources. What addresses admitted clients then hold comes from this gateway's connection_configurations pools.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A VPN terminator is not an HTTP surface -- there is no request stream for a web application firewall to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane operation on the gateway -- create, scale, delete -- is authorized by Azure RBAC unconditionally. End-user session authentication is separate, governed by the referenced server configuration.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The gateway runs no customer workloads and calls no cloud APIs on the customer's behalf -- there is no identity block on the p2sVpnGateways API.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The gateway spec carries no authentication choices -- how users authenticate (Entra ID, certificate, RADIUS) is decided entirely by the referenced AzureVpnServerConfiguration, which is where legacy-versus-modern authentication is examined. The gateway is born pointing at that policy and repointing it replaces the gateway.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane action on the gateway lands in the Azure Activity Log unconditionally. Per-connection logs (who connected, from where) are opt-in via Azure Monitor diagnostic settings on the gateway, composed outside this spec.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Platform metrics for the gateway (point-to-site connection count, bandwidth) flow to Azure Monitor with no configuration -- ARM registers metric definitions on the p2sVpnGateways resource type itself.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: There is no data to back up -- the gateway is regenerable configuration, restored by redeploying the manifest; client sessions reconnect.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility there is no retention to configure.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure runs every Virtual WAN point-to-site gateway as a managed instance pair -- the same dual-instance resiliency model as the hub's site-to-site gateway, with placement Azure-managed and not configurable.
+      notes: Capacity (scale_unit) is aggregate across the pair; dropping and re-establishing client sessions on instance failure is Azure's job, not a spec choice.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the p2sVpnGateways API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. Deleting the gateway drops every connected client -- a blast-radius fact, not a guarded operation.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The gateway is a fully managed appliance -- Microsoft owns the instances' operating system, patch cadence, and upgrades, and exposes no version or maintenance surface to configure or neglect.

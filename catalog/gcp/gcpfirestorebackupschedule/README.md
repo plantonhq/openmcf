@@ -12,7 +12,7 @@ When you deploy a GcpFirestoreBackupSchedule resource, Planton provisions:
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **An existing Firestore database** (deploy via GcpFirestoreDatabase first)
-- **IAM permissions** — Firestore Admin access to create backup schedules (e.g. `roles/datastore.owner` or `roles/firebase.admin`)
+- **IAM permissions** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Quick Start
 

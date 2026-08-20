@@ -1,0 +1,48 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Presets with no quantity lines have no committed always-on
+# spend and estimate to zero. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awss3bucket
+spec:
+  presets:
+    - preset: 01-private-encrypted
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - object storage bills per GB-month as data arrives; versioned storage growth is bounded by the preset's 30-day noncurrent-version expiry
+        - requests and data transfer are traffic-dependent
+        - SSE-KMS bills per KMS request once objects flow (bucket_key_enabled cuts those calls by up to 99%)
+      notes: An empty bucket costs nothing -- every charge starts with the first objects.
+    - preset: 02-public-static-website
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - object storage bills per GB-month as site content arrives
+        - GET requests and data transfer out follow site traffic -- the dominant cost for a busy site
+      notes: An empty bucket costs nothing. Fronting the site with a CDN moves most transfer cost to the distribution.
+    - preset: 03-log-archive-lifecycle
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - log storage bills per GB-month, stepping down through STANDARD_IA at 30 days and GLACIER at 90 before deletion at 365 -- the lifecycle bounds the steady-state footprint
+        - lifecycle transitions bill a small per-object request charge at each step
+        - retrievals from GLACIER bill per GB when old logs are actually read
+      notes: An empty bucket costs nothing; steady-state cost tracks log volume times the tiered retention window.
+    - preset: 04-governed-data-lake
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - object storage bills per GB-month; raw/ objects tier into INTELLIGENT_TIERING on day zero, which adds a small monthly monitoring fee per object
+        - storage class analysis and the weekly inventory bill per million objects once data exists
+        - request metrics bill at CloudWatch's standard per-metric rate
+        - S3 Metadata journal and inventory tables bill table storage at S3 Tables pricing, bounded by the 90-day journal expiry
+      notes: An empty bucket costs nothing -- this preset's governance features attach fees to objects, not to the manifest.

@@ -1,0 +1,84 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesjupyterhub
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Hub state and user home directories rest on PersistentVolumes the target cluster's storage class provisions (or, on the postgres/mysql arms, in a separate database component); encryption at rest is a property of that storage, owned by the cluster, not by this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for the underlying volumes are configured on the cluster's storage class or the cloud disk encryption set (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: TLS for user-facing traffic terminates at the composed exposure layer (KubernetesService, Gateway API routes, KubernetesIngress over the exported proxy-public handle) -- the chart's autohttps/ACME machinery is deliberately never modeled, and in-cluster hub/proxy/user traffic rides the cluster network in plain HTTP.
+    - control_id: no-public-access
+      status: configurable
+      field_path: proxy.service_type
+      evidence:
+        type: spec_default
+        reference: Unset means ClusterIP -- this kind deliberately overrides the chart's own LoadBalancer default, so nothing is internet-reachable until exposure is composed explicitly; "LoadBalancer" or "NodePort" opts into direct exposure.
+      notes: Both presets keep the default ClusterIP posture.
+    - control_id: restricted-ingress
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: network_policy_enabled defaults to true -- the chart renders NetworkPolicies for the hub, proxy, and user pods; user pods get a deny-by-default posture that still allows DNS, the hub, and the internet, with the cloud metadata server blocked.
+      notes: Requires a CNI that enforces NetworkPolicy for any actual effect. Egress shaping beyond the defaults rides the helm_values overlay.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The component itself terminates no edge traffic -- exposure happens through separate kinds and a web application firewall belongs to that layer, not to this chart.
+    - control_id: rbac
+      status: configurable
+      field_path: authentication.admin_users
+      evidence:
+        type: spec_default
+        reference: Empty means no user holds JupyterHub admin rights; admin_users grants the admin panel (manage users, access servers) to named identities, and allowed_users pins the sign-in roster -- JupyterHub 5 denies sign-in unless an allow rule matches, so an empty roster is the explicit allow_all posture.
+      notes: Management-plane access (the Helm release and module Secrets) is governed by the target cluster's Kubernetes RBAC. Finer-grained hub roles ride the helm_values overlay (hub.loadRoles).
+    - control_id: workload-identity
+      status: configurable
+      field_path: helm_values
+      evidence:
+        type: spec_default
+        reference: Unset means the hub and notebook pods carry no cloud identity; the chart's serviceAccount annotation values (via the helm_values overlay) bind EKS IRSA, GKE Workload Identity, or AKS Workload Identity to the pods for keyless access to cloud storage and APIs from notebooks.
+      notes: Credentials users paste into notebooks are outside any platform control -- workload identity on the user pods is the honest alternative.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart's own default authenticator accepts ANY username with NO password -- that never ships; when authentication is empty, both modules generate a shared sign-in password into a Secret (<name>-auth) wired to the hub through an environment variable, never through rendered Helm values (which this chart embeds readable inside its own hub Secret).
+      notes: The 02-production-oidc preset replaces password sign-in entirely with OIDC against a Keycloak realm.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: A provider-style audit trail is not modeled in this spec -- hub and proxy activity streams to stdout for the cluster's log collector, and changes to the release itself are Kubernetes API operations captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No metrics integration is modeled in this spec or rendered by the modules -- component logs stream to stdout for the cluster's log collector; scraping the hub's own metrics endpoint composes via the helm_values overlay and the cluster's monitoring stack.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: hub.database
+      evidence:
+        type: spec_default
+        reference: The default sqlite arm keeps ALL hub state (users, running-server records, tokens) on a single PVC with no backup story; the postgres arm moves hub state into a KubernetesPostgres whose backup posture rides that component -- chosen exactly to survive PVC loss and snapshot hub state with the database fleet.
+      notes: User home PVCs are DATA with no backup seam in this spec -- snapshot them at the storage layer, and back them up before deleting the namespace (namespace deletion deletes every claim-<user> volume).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist on this component to retain (see backup-recovery) -- retention policy belongs to the composed database component or the storage layer snapshotting user homes.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The hub is single-replica BY DESIGN -- upstream JupyterHub has no HA story and the chart pins a Recreate deployment strategy; capacity scales via nodes and culling, never hub replicas. A hub restart interrupts spawns, not running notebook servers.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor Helm offers a deletion-protection flag on a release; protection is operational (namespace RBAC, change review). User home PVCs deliberately SURVIVE destruction of this resource -- but deleting a module-created namespace deletes them with it.
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: chart_version pins the Helm chart (default "4.4.0", shipping JupyterHub 5.5.0) -- upgrades are deliberate manifest edits, rolled by the modules as atomic Helm upgrades (wait, atomic, cleanup_on_fail, 1200s budget covering the pre-pull hook).

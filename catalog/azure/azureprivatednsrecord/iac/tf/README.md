@@ -40,4 +40,4 @@ The generated `variables.tf` mirrors the proto contract:
 
 ## Required Permissions
 
-The deploying principal needs `Microsoft.Network/privateDnsZones/*/write` on the zone's record types (Private DNS Zone Contributor on the resource group covers it).
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege control-plane actions the deploying principal needs.

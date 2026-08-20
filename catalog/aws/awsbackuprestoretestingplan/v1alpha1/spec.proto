@@ -1,0 +1,217 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbackuprestoretestingplan.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsBackupRestoreTestingPlanSpec defines an AWS Backup restore
+// testing plan with its folded selections: scheduled, automated
+// restore tests that prove recovery points actually restore (and feed
+// the restore-time metrics Backup Audit Manager can report on). AWS
+// runs each test into a temporary copy and deletes it after the
+// validation window - tests bill as regular restores.
+//
+// AWS restore testing names forbid hyphens and periods (letters,
+// digits, and underscores only), which is stricter than metadata.name
+// conventions - so the name is an explicit field rather than
+// metadata.name. Changing it forces replacement.
+message AwsBackupRestoreTestingPlanSpec {
+  // Selection names are for_each keys on both engines - duplicates
+  // would silently collapse entries.
+  option (buf.validate.message).cel = {
+    id: "spec.selection_names_unique"
+    message: "selections entries must have unique names"
+    expression: "this.selections.map(s, s.name).unique()"
+  };
+
+  // The AWS region the restore testing plan lives in.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The plan's name in AWS: 1-50 letters, digits, or underscores (NO
+  // hyphens or periods). Changing it forces replacement.
+  string plan_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 50
+    pattern: "^[0-9A-Za-z_]+$"
+  }];
+
+  // When the tests run, as a CloudWatch cron expression (e.g.
+  // "cron(0 5 ? * MON *)" for Mondays 05:00).
+  string schedule_expression = 3 [(buf.validate.field).string.min_len = 1];
+
+  // IANA timezone the schedule is evaluated in. Unset = UTC. Once
+  // set, AWS keeps a value - it cannot be cleared back to unset.
+  string schedule_expression_timezone = 4;
+
+  // Hours the test waits for a scheduled run to start before skipping
+  // it, 1-168. Unset = AWS's default. Once set, AWS keeps a value.
+  int32 start_window_hours = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 168
+    }
+  ];
+
+  // Which recovery points each test restores.
+  AwsBackupRestoreTestingPlanRecoveryPointSelection recovery_point_selection = 6 [(buf.validate.field).required = true];
+
+  // The per-resource-type selections tested under this plan, keyed by
+  // name. A plan without selections schedules tests that never select
+  // anything - add at least one to test for real.
+  repeated AwsBackupRestoreTestingPlanSelection selections = 7;
+}
+
+// AwsBackupRestoreTestingPlanRecoveryPointSelection picks which
+// recovery points a test run restores.
+message AwsBackupRestoreTestingPlanRecoveryPointSelection {
+  // How to pick within the selection window: the newest recovery
+  // point, or a random one (random exercises older points too - the
+  // stronger proof).
+  string algorithm = 1 [(buf.validate.field).string = {
+    in: [
+      "LATEST_WITHIN_WINDOW",
+      "RANDOM_WITHIN_WINDOW"
+    ]
+  }];
+
+  // Vaults to draw recovery points from: vault ARNs, or the literal
+  // "*" for every vault.
+  repeated string include_vaults = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // Which recovery point kinds are eligible.
+  repeated string recovery_point_types = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    unique: true
+    items: {
+      string: {
+        in: [
+          "CONTINUOUS",
+          "SNAPSHOT"
+        ]
+      }
+    }
+  }];
+
+  // Vaults to exclude (ARNs or "*"). Once set, AWS keeps a value - it
+  // cannot be cleared back to unset.
+  repeated string exclude_vaults = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // How many days back the test looks for eligible recovery points,
+  // 1-365. Unset = 30 (the AWS default). Once set, AWS keeps a value.
+  int32 selection_window_days = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 365
+    }
+  ];
+
+  // Every include_vaults entry is a vault ARN or the "*" wildcard.
+  option (buf.validate.message).cel = {
+    id: "recovery_point_selection.include_vaults_arn_or_wildcard"
+    message: "include_vaults entries must be vault ARNs or the literal \"*\""
+    expression: "this.include_vaults.all(v, v == '*' || v.startsWith('arn:'))"
+  };
+  option (buf.validate.message).cel = {
+    id: "recovery_point_selection.exclude_vaults_arn_or_wildcard"
+    message: "exclude_vaults entries must be vault ARNs or the literal \"*\""
+    expression: "this.exclude_vaults.all(v, v == '*' || v.startsWith('arn:'))"
+  };
+}
+
+// AwsBackupRestoreTestingPlanSelection tests one protected resource
+// type under the plan. Cover resources EITHER by explicit ARNs OR by
+// tag conditions - exactly one of the two (the provider enforces the
+// same rule resource-wide).
+message AwsBackupRestoreTestingPlanSelection {
+  option (buf.validate.message).cel = {
+    id: "selection.arns_xor_conditions"
+    message: "set exactly one of protected_resource_arns / protected_resource_conditions"
+    expression: "(size(this.protected_resource_arns) > 0) != has(this.protected_resource_conditions)"
+  };
+
+  // Selection name, 1-50 letters, digits, or underscores (NO hyphens
+  // or periods). The for_each key on both engines and half of the
+  // composed import ID.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 50
+    pattern: "^[0-9A-Za-z_]+$"
+  }];
+
+  // The resource type this selection tests (e.g. "EBS", "EC2",
+  // "RDS", "S3" - AWS's restore-testing type vocabulary).
+  string protected_resource_type = 2 [(buf.validate.field).string.min_len = 1];
+
+  // IAM role AWS Backup assumes to run the restore tests. The role
+  // must trust backup.amazonaws.com with restore permissions for the
+  // tested type.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef iam_role_arn = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Explicit resource ARNs to test ("*" for everything of the type).
+  // Exactly one of this and protected_resource_conditions.
+  repeated string protected_resource_arns = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Tag conditions selecting the resources to test. Exactly one of
+  // this and protected_resource_arns. AWS returns empty condition
+  // lists as present-but-empty; both modules collapse that to absent
+  // so an omitted block stays omitted.
+  AwsBackupRestoreTestingPlanSelectionConditions protected_resource_conditions = 5;
+
+  // Restore metadata overrides for the test restore (e.g. an
+  // alternate subnet or instance type), keyed by metadata key. AWS
+  // lowercases the keys on read.
+  map<string, string> restore_metadata_overrides = 6;
+
+  // Hours the restored copy stays up for validation before AWS
+  // deletes it, 1-168. Unset = AWS's default. Once set, AWS keeps a
+  // value.
+  int32 validation_window_hours = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 168
+    }
+  ];
+}
+
+// AwsBackupRestoreTestingPlanSelectionConditions are the tag
+// conditions selecting resources to test (keys use the
+// "aws:ResourceTag/<key>" form).
+message AwsBackupRestoreTestingPlanSelectionConditions {
+  // Exact-match conditions.
+  repeated AwsBackupRestoreTestingPlanSelectionConditionPair string_equals = 1;
+
+  // Exact-mismatch conditions.
+  repeated AwsBackupRestoreTestingPlanSelectionConditionPair string_not_equals = 2;
+
+  // At least one condition - an empty block is AWS's read-side
+  // artifact, never valid config.
+  option (buf.validate.message).cel = {
+    id: "conditions.at_least_one"
+    message: "set at least one of string_equals / string_not_equals"
+    expression: "size(this.string_equals) + size(this.string_not_equals) > 0"
+  };
+}
+
+// AwsBackupRestoreTestingPlanSelectionConditionPair is one key/value
+// condition.
+message AwsBackupRestoreTestingPlanSelectionConditionPair {
+  // The condition key (e.g. "aws:ResourceTag/backup").
+  string key = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The condition value.
+  string value = 2 [(buf.validate.field).string.min_len = 1];
+}

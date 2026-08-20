@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureserviceplan
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The plan is compute capacity, not a data store -- it holds no customer data of its own. App content and settings live in App Service's storage, whose encryption posture belongs to the apps' own components.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data of its own to encrypt (see enc-at-rest), so no CMK surface exists on the plan.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The plan terminates no connections -- HTTPS-only enforcement and minimum TLS versions are per-app settings on the web apps and function apps the plan hosts.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The plan has no network endpoint of its own; public exposure, private endpoints, and VNet integration are decided per app. Placing the plan in an App Service Environment (app_service_environment_id) moves all hosted apps onto single-tenant, network-isolated infrastructure -- a posture the environment's own component owns.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No endpoint means no ingress to restrict -- App Service access restrictions are per-app configuration.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: WAF fronting (Application Gateway, Front Door) attaches to the apps' endpoints, not to the plan.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The plan has only a management plane, and that plane is governed by Azure RBAC unconditionally -- every create, scale, and delete is an ARM operation authorized against the caller's role assignments.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The plan runs no code and holds no credentials; managed identities attach to the apps deployed onto it.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The plan has no authentication surface of its own -- FTP state and basic-auth publishing credentials are per-app settings.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Administrative operations on the plan (create, scale, SKU changes, delete) land in the Azure Activity Log unconditionally.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The plan publishes CPU and memory percentage metrics for its instances to Azure Monitor without configuration -- the capacity signals autoscale rules and alerts key on.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The plan stores no data to back up. App-level backup is a per-app feature (gated by the plan's tier -- a capability the SKU buys, not a setting on the plan).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface exists on the plan (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: zone_balancing_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to false (instances placed without a zone guarantee); true spreads the plan's instances across availability zones on Premium tiers -- a creation-time decision requiring a multi-instance worker_count.
+      notes: The 02-linux-premium preset enables it with 3 workers, a multiple of the typical zone count.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the App Service plan API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Microsoft patches the underlying VMs, operating system images, and runtime stacks for every plan; no customer patch surface exists on the plan.

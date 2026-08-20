@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpkmskeyring
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A key ring stores no customer data -- it is the container OTHER resources' encryption keys live in; its own name and location are Cloud KMS control-plane metadata. The key material inside belongs to the key resources, protected by Cloud KMS itself.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: The ring is the SUPPLY side of customer-managed encryption -- it groups the CMEKs other components reference -- and has no data of its own to key.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A ring terminates no connections of its own. Management and key-operation calls happen on Google API endpoints, which serve exclusively over TLS as provider behavior, not per-ring configuration.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A ring has no network endpoint to expose; it is a control-plane object reachable only through the IAM-governed Cloud KMS API.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; a ring is a configuration object with no addresses or ports.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A ring receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every action on the ring and on the keys inside it is governed by Cloud KMS IAM (the cloudkms.* permission families); the ring is itself a first-class IAM attachment point whose grants flow down to every key it contains, which is exactly why it is the blast-radius boundary -- one ring per environment or data domain keeps access reviews tractable.
+      notes: The spec exposes no IAM fields -- ring-level grants are wired outside this kind. The IAM-flows-down property cuts both ways and is the ring's central security design decision.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A ring holds no credentials and calls no cloud APIs as itself; callers of the keys inside authenticate with their own IAM identities.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The only authentication path involving the ring is IAM-authenticated Cloud KMS API access; no weaker alternative exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every create on a key ring (and every IAM change on it) is recorded in Cloud Audit Logs' Admin Activity log, which is always on and cannot be disabled. Data Access logging for key USE is a project-level Cloud KMS audit configuration, outside this spec.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A ring emits no runtime telemetry of its own; Cloud KMS request metrics attach to the keys and their operations, which belong to the key kind.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A ring holds no data to back up -- it is a permanent named container re-declarable from the manifest (though never re-creatable under the same name, since rings are undeletable and names are never reusable within a project and location).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: location
+      evidence:
+        type: spec_default
+        reference: The ring's location decides the failure-domain footprint of every key created inside it -- a single region ("us-central1") serves keys from that region's zones, while a multi-region ("us", "europe") or "global" location has Cloud KMS replicate key material and serving across regions.
+      notes: Immutable after creation, so the redundancy decision is made once for the ring's life -- and CMEK integrations generally require keys co-located with the data they protect, which constrains the choice.
+    - control_id: deletion-protection
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloud KMS has no delete operation for key rings at all -- a ring can never be deleted by anyone, through any path. On destroy the provider removes the ring from IaC state only, leaving the (free, inert) ring in the project forever.
+      notes: Stronger than any protection flag; the price is permanence -- names are never reusable within a project and location.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A ring is a pure configuration object with no software to patch; the Cloud KMS service (and its HSM fleet) is Google-operated.

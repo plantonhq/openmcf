@@ -1,0 +1,84 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureaksnodepool
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Managed OS disks and any attached data disks are encrypted at rest with platform-managed keys on every node without configuration (Azure Storage Service Encryption cannot be disabled).
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: host_encryption_enabled
+      evidence:
+        type: spec_default
+        reference: Off by default; enabling host-based encryption encrypts the node's temp disks and disk caches end to end on the host. Customer-managed keys for the OS disks themselves follow the cluster's disk encryption set, referenced at the cluster level.
+      notes: No preset enables it; the subscription must have the EncryptionAtHost feature registered first.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AKS encrypts control-plane-to-node communication (kubelet TLS bootstrapping) on every cluster; the pool exposes no switch to weaken it.
+      notes: Payload-level TLS between workloads remains the workloads' responsibility.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: node_public_ip_enabled defaults to false -- nodes get private addresses only, and internet exposure would require explicitly enabling per-node public IPs.
+      notes: All three presets leave node public IPs off.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nodes accept no direct inbound traffic by design -- ingress reaches workloads through Services and load balancers, and node-level filtering is the network security groups' posture (separate kinds).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Request filtering belongs to the application gateways and WAF policies in front of workloads, not to the node fleet.
+    - control_id: rbac
+      status: not_applicable
+      notes: Access to nodes is governed by the cluster's Kubernetes RBAC and Azure RBAC (see AzureAksCluster); the pool adds no authentication plane of its own.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The pool's workload-identity posture follows the cluster -- AKS workload identity federation exchanges Kubernetes service accounts for Entra tokens; pool nodes participate without pool-level configuration.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own; cluster-level legacy paths (local accounts, client certificates) are governed on AzureAksCluster.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Administrative actions on the pool (create, scale, upgrade, delete) land in the Azure Activity Log unconditionally.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Node and pool metrics (CPU, memory, count) flow into Azure Monitor through the cluster's monitoring integration; the pool needs no separate wiring.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Nodes are disposable compute recreated from the pool's declarative shape; stateful data belongs to workloads and their persistent volumes, whose backup posture lives on those components.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: zones
+      evidence:
+        type: spec_default
+        reference: Unset places nodes without a zone guarantee; listing zones spreads the pool's nodes across the declared availability zones, and losing one zone leaves the others serving.
+      notes: Presets 01 and 02 spread across zones 1/2/3; the single-node GPU preset deliberately does not.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a node pool; the blast radius of deletion is rescheduled workloads, recreated declaratively in minutes.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: Node OS security patches apply automatically per the pool's os_sku channel defaults, and node Kubernetes versions track the cluster through orchestrator upgrades; upgrade_settings.max_surge bounds the disruption.
+      notes: The cluster's automatic upgrade channel (on AzureAksCluster) decides cadence; the pool controls surge and drain behavior.

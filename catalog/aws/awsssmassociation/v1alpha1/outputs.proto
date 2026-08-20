@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsssmassociation.v1alpha1;
+
+// AwsSsmAssociationStackOutputs captures the observable state of the
+// association after apply.
+message AwsSsmAssociationStackOutputs {
+  // The association's AWS-generated ID (a UUID - also the provider's
+  // import ID; the association's name is NOT its identity at AWS).
+  string association_id = 1;
+
+  // The association's ARN.
+  string association_arn = 2;
+
+  // The document name the association resolved to (the chart-useful
+  // echo of the document reference).
+  string document_name = 3;
+}

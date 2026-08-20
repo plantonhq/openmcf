@@ -1,0 +1,73 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsAppSyncApi
+metadata:
+  name: orders-graphql-api
+spec:
+  region: us-west-2
+  # A GraphQL API resolving straight out of DynamoDB: Cognito-signed
+  # users query and mutate, the table is referenced from its Planton
+  # resource, and resolvers are modern APPSYNC_JS.
+  graphql:
+    apiName: orders_api
+    auth:
+      type: AMAZON_COGNITO_USER_POOLS
+      userPool:
+        userPoolId:
+          valueFrom:
+            kind: AwsCognitoUserPool
+            name: customer-users
+            fieldPath: status.outputs.user_pool_id
+        defaultAction: ALLOW
+    schema: |
+      type Order {
+        id: ID!
+        total: Float
+      }
+      type Query {
+        getOrder(id: ID!): Order
+      }
+      type Mutation {
+        putOrder(id: ID!, total: Float): Order
+      }
+      schema {
+        query: Query
+        mutation: Mutation
+      }
+    queryDepthLimit: "10"
+    resolvers:
+      - type: Query
+        field: getOrder
+        dataSourceName: orders_table
+        code: |
+          import { util } from "@aws-appsync/utils";
+          export function request(ctx) {
+            return { operation: "GetItem", key: util.dynamodb.toMapValues({ id: ctx.args.id }) };
+          }
+          export function response(ctx) {
+            return ctx.result;
+          }
+      - type: Mutation
+        field: putOrder
+        dataSourceName: orders_table
+        code: |
+          import { util } from "@aws-appsync/utils";
+          export function request(ctx) {
+            return { operation: "PutItem", key: util.dynamodb.toMapValues({ id: ctx.args.id }), attributeValues: util.dynamodb.toMapValues({ total: ctx.args.total }) };
+          }
+          export function response(ctx) {
+            return ctx.result;
+          }
+  datasources:
+    - name: orders_table
+      type: AMAZON_DYNAMODB
+      serviceRoleArn:
+        valueFrom:
+          kind: AwsIamRole
+          name: appsync-orders-table-role
+          fieldPath: status.outputs.role_arn
+      dynamodb:
+        tableName:
+          valueFrom:
+            kind: AwsDynamodb
+            name: orders
+            fieldPath: status.outputs.table_name

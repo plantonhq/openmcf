@@ -1,0 +1,47 @@
+# Estimate model: the authored capacity footprints of this cluster-capacity
+# component's presets. A hand model instead of a capacity derivation because
+# a DaemonSet has no replica field -- exactly one pod runs on every node
+# matching the scheduling rules, so node membership is the multiplier and
+# only the target cluster knows it. A mechanical derivation could only bind
+# a constant-1 instance count, and its generated "1 instance x ..." basis
+# would misread as the whole reservation; these footprints state the
+# PER-NODE reservation explicitly and name the node-count multiplication in
+# every exclusion. Cluster-capacity components carry no priced lines -- the
+# dollar value of the reservation is the target cluster's node economics.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: kubernetesdaemonset
+spec:
+  presets:
+    - preset: 01-log-collector
+      capacity_footprint:
+        cpu_requests: 50m
+        memory_requests: 128Mi
+        cpu_limits: 500m
+        memory_limits: 512Mi
+        basis: "per node: 50m CPU / 128Mi memory requests, 500m CPU / 512Mi limits -- one pod on every matching node"
+      exclusions:
+        - this footprint is PER NODE -- the cluster-wide reservation is this footprint times the number of matching nodes, which only the target cluster knows; the preset's control-plane toleration widens the set onto control-plane nodes too
+        - the dollar value of this capacity is the target cluster's node economics
+    - preset: 02-node-monitor
+      capacity_footprint:
+        cpu_requests: 50m
+        memory_requests: 64Mi
+        cpu_limits: 250m
+        memory_limits: 256Mi
+        basis: "per node: 50m CPU / 64Mi memory requests, 250m CPU / 256Mi limits -- one pod on every matching node"
+      exclusions:
+        - this footprint is PER NODE -- the cluster-wide reservation is this footprint times the number of matching nodes, which only the target cluster knows; the preset's control-plane toleration widens the set onto control-plane nodes too
+        - the dollar value of this capacity is the target cluster's node economics
+    - preset: 03-hardened-agent
+      capacity_footprint:
+        cpu_requests: 50m
+        memory_requests: 64Mi
+        cpu_limits: 200m
+        memory_limits: 256Mi
+        basis: "per node: 50m CPU / 64Mi memory requests, 200m CPU / 256Mi limits -- one pod on every matching node"
+      exclusions:
+        - this footprint is PER NODE -- the cluster-wide reservation is this footprint times the number of matching nodes, which only the target cluster knows
+        - the dollar value of this capacity is the target cluster's node economics

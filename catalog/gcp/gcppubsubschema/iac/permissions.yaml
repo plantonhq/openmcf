@@ -1,0 +1,26 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcppubsubschema
+spec:
+  gcp:
+    groups:
+      - purpose: EnablePubSubApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling pubsub.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageSchema
+        permissions:
+          - pubsub.schemas.create
+          - pubsub.schemas.get
+          - pubsub.schemas.commit
+          - pubsub.schemas.delete
+        provenance: derived
+        notes: Covers google_pubsub_schema -- create, read/refresh, and destroy. GCP defines NO pubsub.schemas.update permission (verified against IAM's testable-permissions inventory) because schemas are never edited in place -- a definition change commits a new REVISION, authorized as pubsub.schemas.commit, which is exactly how the module behaves (definition changes revise in place, up to 20 revisions; only renaming replaces the resource). pubsub.schemas.attach exists in the inventory but belongs to the TOPIC side -- attaching a schema is authorized on the topic mutation, not on this resource.

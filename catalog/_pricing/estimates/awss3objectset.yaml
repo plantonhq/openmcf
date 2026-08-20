@@ -1,0 +1,53 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awss3objectset
+spec:
+  presets:
+    - preset: 01-config-files
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - each deploy uploads two objects with PUT requests billed per thousand on the referenced bucket, again on every content change; DELETE is free, so destroys cost nothing in requests
+        - the config files' storage bills on the bucket per GB-month at the default STANDARD rate -- kilobytes of JSON and YAML, and rightly in STANDARD since redeploys would forfeit a cold class's minimum-duration window
+        - reads by the consuming applications bill GET requests and any transfer on the bucket
+      notes: Zero committed cost -- the set is content management, and its entire footprint is a few PUTs at deploy time plus whatever the bucket meters for the bytes that sit there.
+    - preset: 02-static-website-assets
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - three PUT requests per deploy bill on the referenced bucket; the assets' storage bills there per GB-month in STANDARD
+        - visitor traffic bills GET requests and data transfer out on the bucket -- the immutable max-age=31536000 cache header on the stylesheet is the cost lever, letting browsers and CDNs skip repeat fetches, while index.html's no-cache trades requests for freshness
+        - the website redirect answers without serving the old page's bytes
+      notes: Zero committed cost -- cache-control headers are this preset's economics; they decide how much of the site's read traffic ever reaches a billed S3 request.
+    - preset: 03-encrypted-compliance-drop
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the audit report's PUT routes through KMS (aws:kms override) at per-request rates, with bucket_key_enabled batching data-key calls to collapse the KMS charge; the key's monthly fee bills on the referenced AwsKmsKey component
+        - the COMPLIANCE object lock is a storage-cost floor on the bucket -- the locked version cannot be deleted until the retain-until date passes, absolutely, so its GB-months accrue on the bucket through that date no matter what this manifest later does
+        - storage and reads bill on the referenced object-lock-enabled bucket
+      notes: Zero committed cost on this component -- but the lock converts the uploaded bytes into storage the bucket MUST bill until retention expires; the commitment is real, small (one JSON report), and lives on the bucket's meter.
+    - preset: 04-promote-golden-artifacts
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - each promotion bills one COPY (priced like a PUT) plus a GET against the source bucket per object -- the bytes move inside S3 and never transit the deploy host, so same-region promotion has zero transfer cost
+        - a cross-region source would add inter-region data transfer out of the source's region per GB
+        - the promoted artifacts' storage bills on the destination bucket per GB-month; the ETag precondition fails the deploy rather than promoting a changed source
+      notes: Zero committed cost -- server-side copy is the promote pattern this component exists for, and its per-deploy request spend is a handful of COPY/GET operations regardless of artifact size.

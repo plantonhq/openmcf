@@ -1,0 +1,37 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsroute53healthcheck
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Amazon Route 53
+      sku_meter: health checks
+      pricing_unit: health-check-months
+      description: Every health check bills a flat monthly fee from creation, prorated for partial months. The rate is global (health checks are global objects) and follows the endpoint class -- checks of non-AWS endpoints bill more than checks of AWS endpoints, and calculated and metric-based checks bill at the AWS-endpoint rate.
+  cost_drivers:
+    - field_path: check_type
+      sku_meter: health checks
+      pricing_unit: health-check-months
+      impact: Selects the billing class. Endpoint checks (HTTP, HTTPS, *_STR_MATCH, TCP) bill the basic fee for their endpoint class; CALCULATED and CLOUDWATCH_METRIC checks bill as checks of an AWS endpoint. The HTTPS and *_STR_MATCH types additionally carry billed optional features (HTTPS scanning, string matching).
+    - field_path: request_interval
+      sku_meter: optional health check features
+      pricing_unit: feature-months
+      impact: The fast (10-second) interval is a billed optional feature every month; the default 30-second interval is inside the basic fee.
+    - field_path: measure_latency
+      sku_meter: optional health check features
+      pricing_unit: feature-months
+      impact: Latency measurement is a billed optional feature every month.
+    - field_path: search_string
+      sku_meter: optional health check features
+      pricing_unit: feature-months
+      impact: String matching (the *_STR_MATCH types this field defines) is a billed optional feature every month; an HTTPS_STR_MATCH check carries two features (string matching plus HTTPS).
+  free_tier: The first 50 health checks of AWS endpoints -- resources running within AWS, provisioned in or billed to the same account as the check -- are free; calculated and metric-based checks count as AWS-endpoint checks. Health checks of Elastic Load Balancing resources and S3 website endpoints are provisioned automatically by AWS and never billed as customer health checks.
+  estimate_exclusions:
+    - the CloudWatch alarm a CLOUDWATCH_METRIC check mirrors bills its alarm and metrics on CloudWatch, outside this component
+    - each child of a CALCULATED check bills as its own AwsRoute53HealthCheck component
+    - the Application Recovery Controller cluster and routing control behind a RECOVERY_CONTROL check bill on ARC's own pricing
+  notes: "Whether an endpoint check bills the AWS-endpoint or non-AWS-endpoint rate depends on where the probed resource runs and who is billed for it -- nothing in the manifest proves the class, so estimates state their assumption. Optional features double in price on non-AWS endpoints."

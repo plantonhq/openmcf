@@ -1,0 +1,72 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awscertmanagercert
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: ACM stores the certificate's private key encrypted at rest under the AWS-managed aws/acm KMS key with no opt-out; integrated services decrypt it only through KMS grants ACM creates when the certificate is associated with them.
+      notes: options.export defaults to DISABLED, which keeps the private key non-exportable -- it can never leave ACM in plaintext. ENABLED opens a deliberate export path (and a per-domain fee, per the cost profile).
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: ACM's key protection uses the AWS-managed aws/acm key exclusively; no customer-managed-key option exists on this surface.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: This component's product IS transport encryption -- an X.509 certificate that consumers (load balancers, CloudFront, API Gateway domains) terminate TLS with. ACM distributes it to integrated services over AWS-internal channels, and in the default non-exportable form the private key never travels in plaintext.
+      notes: How strong the TLS handshakes are is decided where the certificate is consumed (e.g. a domain's security policy); key_algorithm here sets the key-pair strength those handshakes are built on.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A certificate is not a network endpoint -- there is nothing to expose or hide. Where it is served publicly is the consuming components' posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No HTTP request surface exists -- web ACLs have nothing to attach to here.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may describe, use, export, or delete the certificate is governed by IAM policy on ACM actions -- account-level posture; the spec carries no access-control surface of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component runs no workloads and holds no cloud-API credentials. The certificate is itself a TLS identity for the services that consume it -- a server credential, not a workload's cloud credential.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path exists here to disable. The adjacent lever is cryptographic strength -- key_algorithm chooses the key pair (RSA_2048 default through the EC curves) that consumers' TLS handshakes are anchored on.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: ACM control-plane actions land in CloudTrail as account-level posture. The spec's options.certificate_transparency_logging_preference governs publication of the certificate's issuance to public Certificate Transparency logs (enabled by default and required for browser trust) -- public disclosure, not provider audit capture.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: ACM automatically publishes the per-certificate DaysToExpiry CloudWatch metric and emits ACM Certificate Approaching Expiration EventBridge events when renewal has not completed -- expiry monitoring exists for every certificate with no configuration.
+      notes: The classic silent failure -- a deleted DNS validation record stalling renewal -- surfaces through exactly these signals; alarm on DaysToExpiry to catch it.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: There is nothing to back up -- requested certificates re-issue from the manifest, imported certificates re-import from the operator-held material, and the default non-exportable private key by design cannot be copied out of ACM at all.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at this level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: ACM is a regional managed service with no zonal posture. The regional decision that matters is placement -- the certificate must exist in the consumer's region (us-east-1 for CloudFront), which is the spec's region field, not an availability lever.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists. AWS does refuse to delete a certificate still associated with an integrated service -- a dependency guard, not a configurable protection.
+    - control_id: managed-patching
+      status: configurable
+      field_path: validation_method
+      evidence:
+        type: spec_default
+        reference: Renewal is this credential's patching analog. The default DNS validation, with its CNAME records left in place (which route53_hosted_zone_id automates), gives fully automatic managed renewal -- ACM re-validates and rotates the certificate before expiry with no human step. EMAIL validation demands a human re-approval every renewal cycle, and imported certificates never renew -- fresh material must be re-imported before expiry.
+      notes: early_renewal_duration tunes how far before expiry eligible certificates renew. Renewal failures surface through the DaysToExpiry metric and expiration events (see monitoring-integration).

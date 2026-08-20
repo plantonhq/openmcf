@@ -1,0 +1,3 @@
+name: awsbudget
+runtime: go
+description: Pulumi module to manage an AWS Budgets budget and its folded actions

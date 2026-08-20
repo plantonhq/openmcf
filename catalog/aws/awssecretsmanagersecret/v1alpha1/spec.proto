@@ -1,0 +1,326 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssecretsmanagersecret.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsSecretsManagerSecretSpec defines the desired configuration for an AWS
+// Secrets Manager secret - a named, versioned, KMS-encrypted container for
+// credential material (database passwords, API keys, tokens, key/value JSON
+// documents) with optional automatic rotation and cross-region replication.
+//
+// The secret's name is taken from `metadata.name` (up to 512 characters;
+// AWS allows alphanumeric plus /_+=.@- so hierarchical names like
+// "prod/payments/db" are legal). The name is ForceNew - changing it
+// destroys and recreates the secret.
+//
+// The secret VALUE is set through exactly one of `string_value` (text or
+// JSON key/value document - the common case) or `binary_value`
+// (base64-encoded binary). Both are sensitive fields: the platform stores
+// them as managed-secret references and resolves them just-in-time at
+// deploy, so plaintext never lives in the control plane. Omitting both
+// creates the secret shell with no value - useful when an application or
+// rotation function writes the first version itself.
+//
+// Deletion is soft by default: AWS schedules the secret for deletion after
+// `recovery_window_in_days` (default 30) during which it can be restored;
+// 0 forces immediate, unrecoverable deletion. A deleted-but-recoverable
+// secret still holds its name - recreating a same-named secret during the
+// window requires waiting or force deletion (the modules retry create
+// through AWS's "scheduled for deletion" window).
+//
+// Create-time-immutable (ForceNew) fields: the name (metadata.name) and
+// `type`. Everything else - value, KMS key, policy, replicas, rotation -
+// updates in place.
+//
+// Credentials, region, and deployment workflow live outside this spec in
+// stack inputs.
+message AwsSecretsManagerSecretSpec {
+  // The AWS region where the secret will be created.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Human-readable description shown in the AWS console and
+  // ListSecrets/DescribeSecret responses. Updates in place.
+  string description = 2;
+
+  // ---------------------------------------------------------------------------
+  // Encryption
+  // ---------------------------------------------------------------------------
+
+  // Customer-managed KMS key for encrypting the secret value - accepts a key
+  // ARN, key ID, or alias. Without it, AWS uses the account's AWS-managed key
+  // `aws/secretsmanager`. Required in practice when other AWS accounts must
+  // read the secret (the AWS-managed key cannot be granted cross-account).
+  // Updates in place - new versions encrypt under the new key; existing
+  // versions remain readable (Secrets Manager tracks the key per version).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Secret Value (choose at most one arm)
+  // ---------------------------------------------------------------------------
+
+  // The secret value as text. Commonly a JSON key/value document (the shape
+  // the Secrets Manager console and rotation functions expect, e.g.
+  // '{"username":"app","password":"..."}') but any string up to 65536 bytes
+  // is legal. Mutually exclusive with `binary_value`. Sensitive: supply a
+  // managed-secret reference; the platform resolves it just-in-time at
+  // deploy. Updating the value publishes a new version staged AWSCURRENT
+  // (the previous version moves to AWSPREVIOUS).
+  string string_value = 4 [(dev.planton.shared.options.sensitive) = true];
+
+  // The secret value as base64-encoded binary (up to 65536 bytes decoded).
+  // For non-text material such as raw keys or certificates in DER form.
+  // Mutually exclusive with `string_value`. Sensitive: supply a
+  // managed-secret reference resolved just-in-time at deploy.
+  string binary_value = 5 [(dev.planton.shared.options.sensitive) = true];
+
+  // Additional staging labels to attach to the managed version beyond the
+  // AWSCURRENT label AWS assigns automatically. Staging labels partition a
+  // secret's versions (rotation moves AWSCURRENT/AWSPENDING/AWSPREVIOUS);
+  // custom labels support blue/green-style consumption. Each label is 1-256
+  // characters; a label can only be attached to one version at a time.
+  // Only meaningful when a value arm is set.
+  repeated string version_stages = 6 [(buf.validate.field).repeated.items.string = {
+    min_len: 1
+    max_len: 256
+  }];
+
+  // ---------------------------------------------------------------------------
+  // Resource Policy
+  // ---------------------------------------------------------------------------
+
+  // Resource-based IAM policy controlling who can read or manage this
+  // secret - the mechanism for cross-account access and for restricting
+  // reads to specific principals. Standard IAM policy document as a typed
+  // object (Version/Statement). Removing the field deletes the policy.
+  // Updates in place.
+  google.protobuf.Struct policy = 7;
+
+  // Reject the policy if AWS determines it grants public (anonymous)
+  // access - Secrets Manager's PutResourcePolicy validation gate, the
+  // secure posture for any policy that is not deliberately public. Only
+  // meaningful together with `policy`.
+  optional bool block_public_policy = 8 [(dev.planton.shared.options.default) = "true"];
+
+  // ---------------------------------------------------------------------------
+  // Cross-Region Replication
+  // ---------------------------------------------------------------------------
+
+  // Regions to replicate the secret to. Each replica is a read-only copy
+  // (same name, regional ARN) kept in sync by Secrets Manager - consumers
+  // in that region read locally with no cross-region call. Add or remove
+  // entries in place; removed regions have their replica deleted - but
+  // note that AWS performs that deletion ASYNCHRONOUSLY (seconds to
+  // minutes, live-verified 2026-08-13): destroying a replicated secret
+  // with recovery_window_in_days 0 can outrun it and strand a replica as
+  // a live standalone secret in its region. Prefer a recovery window
+  // (the primary's tombstone lets the async deletion complete), and if a
+  // replica ever strands, recover with StopReplicationToReplica in the
+  // replica's region followed by DeleteSecret - a stranded replica
+  // rejects a direct delete ("Operation not permitted on a replica
+  // secret") even after its primary is gone.
+  repeated AwsSecretsManagerSecretReplica replica_regions = 9;
+
+  // Overwrite an existing secret of the same name in a replica region
+  // instead of failing replication. Default false - failing loudly on a
+  // name collision is the safe posture; enable it deliberately when
+  // re-pointing replication at regions that hold stale copies. It does
+  // NOT clear a same-name secret that is itself a stranded ex-replica of
+  // a deleted secret: replication then fails with "currently replicated
+  // to <region> with a different arn" (live-verified 2026-08-13), and the
+  // failure is SILENT at apply on both engines - neither waits on
+  // replication status. Check ReplicationStatus (or the console) after
+  // enabling replication into a region with name history.
+  bool force_overwrite_replica_secret = 10;
+
+  // ---------------------------------------------------------------------------
+  // Deletion Behavior
+  // ---------------------------------------------------------------------------
+
+  // Days AWS retains the secret in a recoverable soft-deleted state after
+  // destroy: 7-30, or 0 to delete immediately and permanently. Default 30.
+  // Consumed only at delete time - it never affects the running secret.
+  // During the window the secret's NAME stays reserved; 0 is the right
+  // choice for ephemeral/test secrets that must be recreatable immediately.
+  // For secrets with replica_regions, prefer a non-zero window: 0
+  // force-deletes the primary immediately after replica removal is
+  // requested, which can outrun AWS's asynchronous replica deletion and
+  // strand live replica secrets (see replica_regions).
+  optional int32 recovery_window_in_days = 11 [(dev.planton.shared.options.default) = "30"];
+
+  // ---------------------------------------------------------------------------
+  // Managed External Secrets (advanced)
+  // ---------------------------------------------------------------------------
+
+  // Partner identifier for an AWS "managed external secret" - a secret whose
+  // authoritative value lives with a SaaS partner and is rotated through the
+  // partner's integration (see the external arm on `rotation`). The exact
+  // string comes from the partner's onboarding documentation. Leave empty
+  // for ordinary self-managed secrets. ForceNew - changing it destroys and
+  // recreates the secret.
+  string type = 12 [(buf.validate.field).string.max_len = 256];
+
+  // ---------------------------------------------------------------------------
+  // Automatic Rotation
+  // ---------------------------------------------------------------------------
+
+  // Automatic rotation configuration. When set, Secrets Manager rotates the
+  // secret on the configured cadence through exactly one of two mechanisms:
+  // a rotation Lambda function you own (`rotation_lambda_arn` - the classic
+  // path; the function receives createSecret/setSecret/testSecret/
+  // finishSecret steps), or a partner-managed external rotation
+  // (`external_rotation_role_arn` - pairs with `type`). Removing the block
+  // cancels rotation (the secret and its versions are untouched).
+  AwsSecretsManagerSecretRotation rotation = 13;
+
+  // ---------------------------------------------------------------------------
+  // CEL Validations
+  // ---------------------------------------------------------------------------
+
+  // The two value arms are mutually exclusive.
+  option (buf.validate.message).cel = {
+    id: "value_arms_mutual_exclusion"
+    message: "string_value and binary_value are mutually exclusive; a secret version holds one or the other"
+    expression: "!(this.string_value != '' && this.binary_value != '')"
+  };
+
+  // Custom staging labels ride the managed version - meaningless without one.
+  option (buf.validate.message).cel = {
+    id: "version_stages_require_value"
+    message: "version_stages only apply to the version this manifest manages; set string_value or binary_value"
+    expression: "this.version_stages.size() == 0 || this.string_value != '' || this.binary_value != ''"
+  };
+
+  // binary_value must be base64 (AWS rejects non-base64 at the API; fail at
+  // manifest time instead).
+  option (buf.validate.message).cel = {
+    id: "binary_value_base64"
+    message: "binary_value must be base64-encoded (A-Za-z0-9+/ with optional = padding)"
+    expression: "this.binary_value == '' || this.binary_value.matches('^[A-Za-z0-9+/]+={0,2}$')"
+  };
+
+  // recovery_window_in_days: 0 (force delete) or 7-30.
+  option (buf.validate.message).cel = {
+    id: "recovery_window_valid_range"
+    message: "recovery_window_in_days must be 0 (immediate permanent deletion) or between 7 and 30"
+    expression: "!has(this.recovery_window_in_days) || this.recovery_window_in_days == 0 || (this.recovery_window_in_days >= 7 && this.recovery_window_in_days <= 30)"
+  };
+}
+
+// AwsSecretsManagerSecretReplica defines one cross-region replica of the
+// secret.
+message AwsSecretsManagerSecretReplica {
+  // Region to replicate the secret into. Example: "us-east-1". Must differ
+  // from the secret's own region (AWS rejects self-replication at the API).
+  string region = 1 [(buf.validate.field).required = true];
+
+  // KMS key for encrypting the replica in its region - accepts a key ARN,
+  // key ID, or alias. Must be a key that LIVES in the replica region (keys
+  // are regional; a multi-Region key's replica in that region also works).
+  // Without it, the replica uses that region's AWS-managed
+  // `aws/secretsmanager` key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+}
+
+// AwsSecretsManagerSecretRotation configures automatic rotation for the
+// secret. Exactly one rotation mechanism must be chosen: a rotation Lambda
+// (self-managed) or an external rotation role (partner-managed).
+message AwsSecretsManagerSecretRotation {
+  // ARN of the Lambda function that performs rotation - the self-managed
+  // mechanism. The function must grant Secrets Manager invoke permission
+  // (lambda permission with principal secretsmanager.amazonaws.com); AWS
+  // rejects RotateSecret otherwise (the modules retry through IAM
+  // propagation, but a missing permission fails the deploy). Mutually
+  // exclusive with `external_rotation_role_arn`.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef rotation_lambda_arn = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // IAM role Secrets Manager assumes to rotate a managed EXTERNAL secret
+  // through the partner integration (pairs with the spec's `type` partner
+  // identifier). Mutually exclusive with `rotation_lambda_arn`.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef external_rotation_role_arn = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Key/value metadata passed to the partner's external rotation
+  // integration (partner-defined keys - consult the partner's onboarding
+  // documentation). Only meaningful with `external_rotation_role_arn`.
+  repeated AwsSecretsManagerSecretRotationMetadata external_rotation_metadata = 3;
+
+  // Rotate every N days (1-1000). AWS derives a schedule window from it.
+  // Exactly one of `automatically_after_days` or `schedule_expression`
+  // must be set.
+  optional int32 automatically_after_days = 4 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 1000
+  }];
+
+  // Rotation schedule as a cron or rate expression - the precise-control
+  // alternative to `automatically_after_days` (exactly one of the two).
+  // Examples: "rate(10 days)", "cron(0 16 1,15 * ? *)". Secrets Manager
+  // cron expressions are UTC and must resolve to at most one rotation per
+  // day.
+  string schedule_expression = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^(rate|cron)\\(.+\\)$"
+  ];
+
+  // Length of the rotation window in hours, e.g. "3h" (1h-24h). Only valid
+  // together with a schedule; without it AWS ends the window at the end of
+  // the schedule's day. Format: a number followed by "h".
+  string duration = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[0-9]{1,2}h$"
+  ];
+
+  // Rotate once immediately when rotation is configured (default true).
+  // Set false to test the rotation configuration without touching the
+  // current value - AWS then only tests the setup at the next scheduled
+  // window. Client-side flag consumed at configure time; it is not echoed
+  // back by AWS and re-applies on every rotation-config update.
+  optional bool rotate_immediately = 7 [(dev.planton.shared.options.default) = "true"];
+
+  // Exactly one cadence arm.
+  option (buf.validate.message).cel = {
+    id: "rotation_cadence_exactly_one"
+    message: "set exactly one of automatically_after_days or schedule_expression"
+    expression: "(has(this.automatically_after_days) && this.schedule_expression == '') || (!has(this.automatically_after_days) && this.schedule_expression != '')"
+  };
+
+  // Exactly one rotation mechanism.
+  option (buf.validate.message).cel = {
+    id: "rotation_mechanism_exactly_one"
+    message: "set exactly one of rotation_lambda_arn (self-managed rotation function) or external_rotation_role_arn (partner-managed external rotation)"
+    expression: "(has(this.rotation_lambda_arn) && !has(this.external_rotation_role_arn)) || (!has(this.rotation_lambda_arn) && has(this.external_rotation_role_arn))"
+  };
+
+  // External metadata rides the external mechanism only.
+  option (buf.validate.message).cel = {
+    id: "external_metadata_requires_external_role"
+    message: "external_rotation_metadata is only used with external_rotation_role_arn"
+    expression: "this.external_rotation_metadata.size() == 0 || has(this.external_rotation_role_arn)"
+  };
+}
+
+// AwsSecretsManagerSecretRotationMetadata is one key/value item passed to a
+// partner's external rotation integration.
+message AwsSecretsManagerSecretRotationMetadata {
+  // Metadata key (partner-defined).
+  string key = 1 [(buf.validate.field).required = true];
+
+  // Metadata value.
+  string value = 2 [(buf.validate.field).required = true];
+}

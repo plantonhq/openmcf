@@ -1,0 +1,59 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureprivatednsresolverforwardingruleset
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The ruleset is routing configuration (domain-to-server mappings); it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Forwarded queries travel as standard DNS (UDP/TCP, port per target_dns_servers.port, default 53) from the resolver's outbound endpoint to the declared servers; the DNS Private Resolver service offers no DNS-over-TLS forwarding, so the ruleset has no transport-security surface.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The ruleset is control-plane configuration with no reachable endpoint; forwarded traffic egresses from the resolver's outbound endpoint inside your virtual network (over VPN/ExpressRoute for on-premises targets), never from any public surface of the ruleset.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The ruleset accepts no inbound connections; it only decides where outbound queries go.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request path of its own to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is ARM RBAC on dnsForwardingRulesets operations (subscription/resource-group posture); the ruleset exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The ruleset runs no workloads and holds no credentials.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Ruleset and rule writes land in the Azure Activity Log as subscription-level posture; there is no query-audit surface on the ruleset itself.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The ruleset publishes no metrics of its own; forwarding health is observed on the resolver's endpoints, a separate catalog kind.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless declarative configuration -- the manifest recreates the ruleset and every rule exactly; there is no runtime state to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A rule book with no data plane of its own -- resolution availability rides the DNS Private Resolver's endpoints (a separate catalog kind) and the reachability of the declared target servers.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither ARM nor this spec offers a deletion-protection flag for rulesets (Azure resource locks are subscription-side governance outside the manifest). Deleting the ruleset returns every captured domain to normal in-Azure resolution.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Pure configuration inside the Microsoft-operated DNS Private Resolver service -- no software surface of its own to patch.

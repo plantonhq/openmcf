@@ -1,0 +1,71 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azuresearchservice
+spec:
+  presets:
+    - preset: 01-production-search
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Cognitive Search
+          sku_meter: search units
+          pricing_unit: hours
+          pricing_quantity: "2190"
+          quantity_basis: search units = replicas x partitions (each defaults to 1, the service default when unset) x 730 hours at the sku's per-SU hourly rate
+          list_unit_price: "0.336"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Cognitive Search' and armRegionName eq 'eastus' and meterName eq 'Standard S1 Unit' and productName eq 'Azure AI Search' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "735.8400"
+      total_list_cost: "735.8400"
+      exclusions:
+        - indexer AI enrichment (document cracking, custom skills) bills usage meters that follow document volume
+        - network egress follows client placement
+    - preset: 02-dev-basic-search
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Cognitive Search
+          sku_meter: search units
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: search units = replicas x partitions (each defaults to 1, the service default when unset) x 730 hours at the sku's per-SU hourly rate
+          list_unit_price: "0.101"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Cognitive Search' and armRegionName eq 'eastus' and meterName eq 'Basic Unit' and productName eq 'Azure AI Search' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "73.7300"
+      total_list_cost: "73.7300"
+      exclusions:
+        - indexer AI enrichment (document cracking, custom skills) bills usage meters that follow document volume
+        - network egress follows client placement
+    - preset: 03-semantic-rag-search
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Cognitive Search
+          sku_meter: search units
+          pricing_unit: hours
+          pricing_quantity: "1460"
+          quantity_basis: search units = replicas x partitions (each defaults to 1, the service default when unset) x 730 hours at the sku's per-SU hourly rate
+          list_unit_price: "0.336"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Cognitive Search' and armRegionName eq 'eastus' and meterName eq 'Standard S1 Unit' and productName eq 'Azure AI Search' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "490.5600"
+      total_list_cost: "490.5600"
+      exclusions:
+        - semantic ranking bills per 1,000 semantic queries (the 'Semantic Ranker queries' meter) on top of the search-unit hours, following query volume
+        - indexer AI enrichment (document cracking, custom skills) bills usage meters that follow document volume
+        - network egress follows client placement

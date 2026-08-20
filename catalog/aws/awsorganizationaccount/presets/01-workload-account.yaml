@@ -1,0 +1,26 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsOrganizationAccount
+metadata:
+  name: workload-account
+spec:
+  region: <aws-region>
+  accountName: Workloads Production
+  # Root emails are unique across ALL of AWS -- plus-address per account.
+  email: aws+workloads-prod@example.com
+  parentId:
+    valueFrom:
+      kind: AwsOrganizationalUnit
+      name: <workloads-ou-resource-name>
+      fieldPath: status.outputs.ou_id
+  iamUserAccessToBilling: DENY
+  alternateContacts:
+    billing:
+      name: Finance Team
+      title: Finance Lead
+      emailAddress: billing@example.com
+      phoneNumber: "+1 555 0100"
+    security:
+      name: Security Team
+      title: Security Lead
+      emailAddress: security@example.com
+      phoneNumber: "+1 555 0101"

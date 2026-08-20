@@ -21,7 +21,6 @@ The hosted-UI **domain** stays folded here: AWS allows one domain per pool and t
 
 ## Prerequisites
 
-- AWS credentials with `cognito-idp:*` permissions.
 - (Optional) A verified SES identity for `emailConfiguration.emailSendingAccount: DEVELOPER` -- required for production email volumes and for email MFA.
 - (Optional) An IAM role assumable by `cognito-idp.amazonaws.com` (with an external-ID condition) for any SMS feature (`smsConfiguration`).
 - (Optional) An ACM certificate in **us-east-1** for a custom hosted-UI domain (Cognito fronts custom domains with CloudFront).

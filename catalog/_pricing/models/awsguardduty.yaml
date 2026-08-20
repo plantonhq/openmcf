@@ -1,0 +1,36 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Both presets are zero-committed in the strict sense -- no
+# flat fee, no capacity floor, every meter volume-tiered on analyzed logs
+# and events -- but GuardDuty has no idle state: in any account doing real
+# work the foundational meters start the day the detector enables. That
+# honesty lives in the notes; nothing is padded into fabricated dollars.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awsguardduty
+spec:
+  presets:
+    - preset: 01-standalone-detector
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - foundational analysis cannot be unbundled -- CloudTrail management events bill per million analyzed, VPC Flow Logs and DNS query logs per GB with volume discounts, all in proportion to account activity
+        - S3_DATA_EVENTS bills per million CloudTrail S3 data events analyzed (volume-tiered); RUNTIME_MONITORING bills per vCPU-month of agent-covered workloads, and agent-covered instances stop billing foundational VPC Flow Log analysis (AWS's anti-double-charge rule)
+        - EKS_ADDON_MANAGEMENT deploys the agent fleet-wide, widening the monitored-vCPU count runtime monitoring meters; its telemetry VPC endpoints are explicitly not charged
+        - the archive-low-severity filter suppresses findings AFTER analysis -- it saves attention, never money
+        - findings export bills S3 PUT requests and storage on the referenced AwsS3Bucket and encryption requests on the referenced AwsKmsKey
+      notes: Zero committed cost, but no idle state -- a new account gets a 30-day trial per region (each new plan its own trial), and after it the foundational meters run at whatever volume the account's activity emits; enable false is the only pause switch.
+    - preset: 02-organization-admin
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - the admin account's own detector meters foundational analysis plus S3_DATA_EVENTS and RUNTIME_MONITORING exactly as a standalone detector would
+        - auto_enable_organization_members NEW turns GuardDuty on in every account that joins -- each member's analysis bills in that member's account, so fleet size multiplies the whole profile invisibly to this manifest
+        - org-wide feature auto-enablement (S3_DATA_EVENTS on ALL members, RUNTIME_MONITORING on NEW) turns those plans' meters on across the fleet, each member earning its own 30-day trial per not-yet-enabled plan
+      notes: Zero committed cost on this manifest -- but this is the multiplier preset; one field turns the per-account volume meters on across the organization, rolled up only by consolidated billing.

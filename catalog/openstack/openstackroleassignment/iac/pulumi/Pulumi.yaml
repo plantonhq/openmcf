@@ -1,3 +1,0 @@
-name: openstack-role-assignment
-runtime: go
-description: Pulumi module for OpenStackRoleAssignment

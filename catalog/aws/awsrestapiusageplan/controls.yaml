@@ -1,0 +1,59 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsrestapiusageplan
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The only stored values are API key strings, held inside the managed API Gateway service; the spec marks pinned key values sensitive so they never echo back. No customer-visible data store exists here.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest exists at this level (see enc-at-rest), so no key choice arises.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The plan has no endpoint. API keys travel inside the covered APIs' TLS connections (the x-api-key header), whose transport posture belongs to the API and domain components.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: No addressable endpoint exists -- a usage plan is a metering policy attached to API stages, not a network surface.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: There is no network surface to filter; ingress control lives on the covered APIs and their endpoint configurations.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Plan-level throttles cap request volume per consumer -- a quota lever, not a request-content filter. Web ACLs attach to the API stages themselves.
+    - control_id: rbac
+      status: not_applicable
+      notes: API keys identify consumers for metering and throttling -- the spec's own contract states they are not an authentication or authorization mechanism. Access control on the covered APIs belongs to their IAM, Cognito, or Lambda authorizers; nothing here grants or denies access by role.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The plan runs no workloads. Key values are consumer-metering identifiers, not cloud credentials -- though they should be handled as secrets, which the spec enforces by marking pinned values sensitive.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Nothing here enables or disables an authentication path. The relevant discipline -- never treating an API key as authentication -- is stated in the spec's contract and enforced by pairing keys with real authorizers on the APIs.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The plan produces metering data (per-key request counts, queryable through the service), not audit logs. Control-plane changes to plans and keys land in CloudTrail as account-level posture; request-level logging is the APIs' stage settings.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: API Gateway emits no CloudWatch metrics for usage plans or keys -- per-key consumption is available only through the service's usage-data API. Traffic metrics appear under the covered APIs and stages.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The plan and its memberships are declarative configuration re-creatable from the manifest. One caveat worth knowing -- deleting an AWS-generated key destroys its value permanently; re-creation issues a new value that consumers must adopt (pinned values re-create identically).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at this level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A metering policy inside a regional managed service has no availability posture of its own.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists for usage plans or keys. The modules detach covered stages before deleting the plan, so destruction is ordered rather than guarded.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Fully managed service surface with no customer-visible software to patch.

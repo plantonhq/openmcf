@@ -1,0 +1,32 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awssagemakermlflowserver
+spec:
+  aws:
+    statements:
+      - sid: ManageTrackingServer
+        actions:
+          - sagemaker:CreateMlflowTrackingServer
+          - sagemaker:DescribeMlflowTrackingServer
+          - sagemaker:UpdateMlflowTrackingServer
+          - sagemaker:DeleteMlflowTrackingServer
+          - sagemaker:AddTags
+          - sagemaker:DeleteTags
+          - sagemaker:ListTags
+        resources:
+          - arn:aws:sagemaker:*:*:mlflow-tracking-server/*
+        provenance: derived
+        notes: Covers aws_sagemaker_mlflow_tracking_server -- the module's single resource -- across create (~25 minutes), in-place updates (size, artifact store, model registration, maintenance window), tagging, and teardown (also ~25 minutes; the provider's own timeouts are 45m per operation). Every action authorizes on the mlflow-tracking-server ARN format per the service reference.
+      - sid: PassArtifactStoreRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: CreateMlflowTrackingServer passes the referenced role (role_arn, required by the spec) to SageMaker, which assumes it to read and write the artifact store -- and changing the role replaces the server, passing the new one. Add an iam:PassedToService=sagemaker.amazonaws.com condition and narrow to the actual role ARN in a hardened deployment.

@@ -1,0 +1,41 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpbigtableinstance
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Cloud Bigtable
+      sku_meter: provisioned nodes
+      pricing_unit: node-hours
+      description: Every node in every cluster bills hourly from creation regardless of traffic -- Bigtable charges each hour for the maximum node count that existed during that hour, with a one-hour minimum per node.
+  cost_drivers:
+    - field_path: clusters
+      sku_meter: provisioned nodes
+      pricing_unit: node-hours
+      impact: Each cluster is an independent replica with its own node bill -- a two-cluster instance pays for both clusters' nodes in full, plus replicated storage in each.
+    - field_path: clusters.num_nodes
+      sku_meter: provisioned nodes
+      pricing_unit: node-hours
+      impact: The fixed node count is the per-cluster bill -- every node accrues hourly whether or not a single request arrives.
+    - field_path: clusters.autoscaling_config
+      sku_meter: provisioned nodes
+      pricing_unit: node-hours
+      impact: Autoscaling floats the node count between min_nodes and max_nodes on CPU and storage targets -- min_nodes is the committed floor, max_nodes the worst-case ceiling.
+    - field_path: edition
+      sku_meter: provisioned nodes
+      pricing_unit: node-hours
+      impact: ENTERPRISE (GCP's default when unset) bills the standard node rate; ENTERPRISE_PLUS nodes bill a higher rate for the added capabilities, with no downgrade path.
+    - field_path: clusters.storage_type
+      sku_meter: data storage
+      pricing_unit: GiB-months
+      impact: SSD storage bills several times HDD's per-GiB rate; the choice is immutable per cluster and applies to everything the cluster stores.
+  free_tier: ""
+  estimate_exclusions:
+    - data storage bills per GiB-month of data actually stored, replicated in full in every cluster -- it grows with the tables, which no manifest can know
+    - table backup storage bills per GiB-month; backups are table-level resources managed outside this component
+    - network egress and inter-cluster replication traffic across regions bill per GiB and follow write volume
+  notes: "The nodes are the committed spend: each cluster's node count times the edition's hourly rate, around the clock. Autoscaling changes the exposure, not the model -- the floor is committed, the ceiling is the brake. When neither num_nodes nor autoscaling_config is set, Bigtable auto-allocates nodes to the data footprint, so the node bill follows storage growth."

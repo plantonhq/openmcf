@@ -1,0 +1,65 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. This kind is the catalog's
+# bring-your-own-manifest escape hatch -- raw YAML applied as written -- so
+# nearly every posture belongs to the MANIFEST AUTHOR's documents, and this
+# profile says so honestly rather than claiming stances the spec cannot
+# enforce. Schema: compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesmanifest
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: What data the applied documents store, and its at-rest posture, is the manifest author's declaration -- this spec has no seam for it. Secrets shipped in the manifest land in etcd under the cluster's encryption posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys are the applied documents' concern where they store data (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The applied workloads' traffic posture is whatever the YAML declares. The apply itself travels over the Kubernetes API's TLS.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Whether the manifest exposes anything publicly (LoadBalancer Services, Ingresses) is decided entirely by its documents -- unknowable from this spec.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Network exposure and its restriction are the applied documents' content (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Whether an HTTP edge even exists is the manifest's declaration; web application firewalls would ride whatever it deploys.
+    - control_id: rbac
+      status: not_applicable
+      notes: Any RBAC the manifest creates (ServiceAccounts, Roles, ClusterRoles) is its own content, applied exactly as written. Applying and managing the manifest itself is governed by the target cluster's Kubernetes RBAC on the IaC runner -- see iac/permissions.yaml for why that surface is unbounded for raw YAML.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: This spec holds no credential seam at all -- identities, ServiceAccounts, and cloud bindings are whatever the applied documents declare. Secrets belong in typed components or secret managers, not pasted into manifest_yaml.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Authentication paths of the applied workloads are the manifest's content; the component itself exposes none.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Applying, changing, and deleting the manifest are Kubernetes API operations captured by the target cluster's audit policy. Audit logging inside the applied workloads rides their own declarations.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Metrics endpoints and scrape discovery are the applied documents' content -- this spec models no monitoring seam.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The manifest declaration itself is a Planton resource and re-appliable by definition; data backup for whatever it deploys is the manifest author's concern.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at this layer to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Replica counts, topology spread, and disruption budgets are whatever the YAML declares -- the availability posture is the manifest author's.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists. Destroying the resource deletes the applied documents (and the anchor namespace when create_namespace owned it) -- whatever data they held survives or dies by the documents' own semantics.
+    - control_id: managed-patching
+      status: configurable
+      field_path: manifest_yaml
+      evidence:
+        type: spec_default
+        reference: There is no upstream to track -- the manifest IS the desired state, applied exactly as written (no injected labels, no rewritten fields), so patching is editing the YAML and re-applying. skip_await controls whether the deploy blocks until rollouts complete (the default) or returns at API-server acceptance.
+      notes: The 03-vendor-install-manifest preset is the update-a-vendor-bundle pattern -- paste the vendor's new manifest version and re-apply.

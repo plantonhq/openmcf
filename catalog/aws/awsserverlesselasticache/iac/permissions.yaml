@@ -1,0 +1,43 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsserverlesselasticache
+spec:
+  aws:
+    statements:
+      - sid: ManageServerlessCache
+        actions:
+          - elasticache:CreateServerlessCache
+          - elasticache:ModifyServerlessCache
+          - elasticache:DeleteServerlessCache
+          - elasticache:DescribeServerlessCaches
+          - elasticache:AddTagsToResource
+          - elasticache:RemoveTagsFromResource
+          - elasticache:ListTagsForResource
+        resources:
+          - arn:aws:elasticache:*:*:serverlesscache:*
+          - arn:aws:elasticache:*:*:serverlesscachesnapshot:*
+          - arn:aws:elasticache:*:*:snapshot:*
+          - arn:aws:elasticache:*:*:usergroup:*
+        provenance: derived
+        notes: Covers aws_elasticache_serverless_cache -- the module's single resource -- across create (including snapshot_arns_to_restore seeding), in-place modify of limits and snapshot settings, tagging, and teardown. CreateServerlessCache authorizes against the source snapshot ARNs the module forwards (serverless-cache snapshots or classic snapshots), and Create/ModifyServerlessCache authorize against the user group when user_group_id attaches one.
+      - sid: CreateElastiCacheServiceLinkedRole
+        actions:
+          - iam:CreateServiceLinkedRole
+        resources:
+          - arn:aws:iam::*:role/aws-service-role/elasticache.amazonaws.com/*
+        provenance: derived
+        notes: The first ElastiCache resource in an account creates the ElastiCache service-linked role automatically (it manages the cache's VPC endpoints and network interfaces); scoped to exactly that role path.
+      - sid: UseCustomerManagedKeys
+        actions:
+          - kms:DescribeKey
+          - kms:CreateGrant
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Required only when kms_key_id selects a customer-managed key -- ElastiCache creates grants against the key during cache create. Narrow the key ARN in a hardened deployment.

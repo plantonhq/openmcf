@@ -111,7 +111,4 @@ module "managed_disk" {
 
 ## Required Permissions
 
-The deploying credential needs `Microsoft.Compute/disks/write` on the
-resource group -- held via Contributor or Owner. Customer-managed-key
-encryption additionally requires read access on the referenced disk
-encryption set (`Microsoft.Compute/diskEncryptionSets/read`).
+The deploying principal's least-privilege permission manifest lives at [`../permissions.yaml`](../permissions.yaml).

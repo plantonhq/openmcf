@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurediskencryptionset
+spec:
+  billing_model: free
+  free_tier: A disk encryption set is a binding, not a store -- the resource that points managed disks at a customer-managed Key Vault key. It has no meter anywhere in Azure's managed-disks pricing; creating one, holding one, and encrypting any number of disks through one never bills.
+  notes: "No field of this spec buys anything: the key reference, rotation flag, encryption type, and managed identity are binding metadata. The real spend sits on either side of the binding: the DISKS that reference the set bill as managed disks exactly as they would under platform keys (CMK adds no disk surcharge), and the KEY VAULT holding the key bills its own per-operation pennies for the wrap/unwrap calls the set's identity makes -- both their own catalog kinds. The one indirect cost to know about: the vault must have purge protection enabled (Azure requires it for disk encryption), which keeps that vault billable until its retention window expires even after deletion."

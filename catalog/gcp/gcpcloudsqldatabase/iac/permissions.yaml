@@ -1,0 +1,20 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpcloudsqldatabase
+spec:
+  gcp:
+    groups:
+      - purpose: ManageDatabase
+        permissions:
+          - cloudsql.databases.create
+          - cloudsql.databases.get
+          - cloudsql.databases.update
+          - cloudsql.databases.delete
+        provenance: derived
+        notes: Covers google_sql_database -- create, read/refresh, in-place charset/collation updates, and the drop at destroy (deletion_policy PREVENT and ABANDON are client-side and never call the API). The module deliberately enables no API (the parent instance's module already enabled sqladmin.googleapis.com), so no serviceusage permissions are needed; the provider polls the operations each mutation returns under the same database-scoped authorization.

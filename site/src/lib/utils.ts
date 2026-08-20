@@ -1,8 +1,16 @@
-import { clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
 
-export function cn(...inputs: Array<string | undefined | false | null>): string {
-  return twMerge(clsx(inputs));
+/**
+ * Utility function to merge Tailwind CSS classes with proper precedence handling
+ */
+export function cn(...inputs: (string | undefined | null | false)[]): string {
+  // Use the ES6 imports that are already imported at the top
+  try {
+    return twMerge(clsx(inputs));
+  } catch (_e) {
+    return inputs.filter(Boolean).join(' ');
+  }
 }
 
 /**
@@ -33,7 +41,17 @@ export function formatShortDate(dateString: string): string {
     month: 'short',
     day: 'numeric'
   });
-}
+} 
+
+/**
+ * Checks if a slug has a markdown file extension (.md).
+ * 
+ * @param slug - The slug string to check
+ * @returns True if the slug has a markdown extension, false otherwise
+ */
+// export function hasMarkdownExtension(slug: string): boolean {
+//   return /\.md$/i.test(slug);
+// }
 
 /**
  * Removes markdown file extensions (.md) from a slug.
@@ -63,8 +81,8 @@ export function generateExcerptFromContent(content: string, maxLength: number = 
     .replace(/```[\s\S]*?```/g, '')
     // Remove inline code
     .replace(/`([^`]+)`/g, '$1')
-    // Remove headers
-    .replace(/^#{1,6}\s+/gm, '')
+    // Remove entire heading lines (headings are structural, not prose content for excerpts)
+    .replace(/^#{1,6}\s+.*$/gm, '')
     // Remove bold/italic
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/\*([^*]+)\*/g, '$1')
@@ -107,5 +125,16 @@ export function generateExcerptFromContent(content: string, maxLength: number = 
   }
 
   return truncated + '...';
-}
+} 
 
+export function createPageUrl(pageName: string): string {
+  const key = pageName.toLowerCase().replace(/[\s_-]/g, '');
+  const overrides: Record<string, string> = {
+    retailhub: '/acme/catalog/retail-hub',
+    home: '/acme',
+  };
+  if (overrides[key]) {
+    return overrides[key];
+  }
+  return '/acme/' + pageName.toLowerCase().replace(/ /g, '-');
+} 

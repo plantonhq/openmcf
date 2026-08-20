@@ -1,0 +1,10 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsConfigConformancePack
+metadata:
+  name: org-security-baseline
+spec:
+  region: <aws-region>
+  organizationScope: true
+  templateS3Uri: s3://<awsconfigconforms-templates-bucket>/security-baseline.yaml
+  excludedAccounts:
+    - "<sandbox-account-id>"

@@ -1,0 +1,15 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpPlantonRunner
+metadata:
+  name: <runner-name>
+spec:
+  # Deploy the runner in the same region as the private endpoints it
+  # needs to reach. projectId is omitted: the provider's default project
+  # is used.
+  region: us-central1
+  # The runner token gates JOINING, never identity: the runner registers
+  # itself on first boot and receives its own individually revocable
+  # identity. On Planton the platform mints the token and writes it at
+  # exactly this managed-secret reference before the infrastructure
+  # applies -- there is no manual credential step.
+  token: $secret/runner-token

@@ -1,0 +1,26 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awslambdalayer
+spec:
+  # One scenario: a layer published from the staged zip fixture with a
+  # self-account share grant. Free at AWS (layer storage and dormant
+  # versions bill nothing). Watch: the version-number string-to-int
+  # bridge on the permission (first live run), and the blind
+  # round-trip's config-only posture on the never-read-back archive
+  # location.
+  #
+  # Deliberately not exercised live:
+  #   - the organization grant arm (principal "*" + organization_id) --
+  #     the shared test account is deliberately standalone (the
+  #     recorded org-wall class). Unblock: an organization-joined
+  #     account, then one scenario extension.
+  #   - skip_destroy (leaves dormant versions to sweep manually --
+  #     the lane proves the default full-cleanup path instead).
+  #
+  # pending_proof: forged this session to the full offline bar -- Q48
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

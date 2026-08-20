@@ -13,3 +13,10 @@ spec:
     - azure-cli
   github_environment: e2e-azure
   max_concurrent_tests: 4
+  # Every lane re-plans after apply and fails on any pending change (the
+  # IDEMPOTENCY phase): a dirty second plan is the send-omitted-value /
+  # Optional+Computed echo defect class users otherwise meet as a
+  # perpetual diff on every re-apply. The gate binds the component under
+  # test only; kinds proven before it was armed re-prove under it
+  # whenever their lanes next run.
+  assert_apply_idempotency: true

@@ -1,0 +1,250 @@
+# Cost derivation: the machine-executable rules turning any AwsRdsInstance
+# manifest's spec values into metered quantities and price choices. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/awsrdsinstance.yaml; a server-side estimator evaluates
+# the same rules against live manifests. Instance-hour and storage prices
+# are selected by the manifest's own values (instance class, engine,
+# license model, Multi-AZ) through the price book's attribute identities.
+# A read replica inherits engine and storage from its source instance --
+# those rules price under STATED assumptions, per their basis prose.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsrdsinstance
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-west-2
+  refusals:
+    - when:
+        - field_path: replicate_source_db
+          op: is_set
+        - field_path: multi_az
+          op: equals
+          value: "true"
+      reason: Multi-AZ read replicas are not yet priced -- the replica inherits engine and storage from its source instance, and the Multi-AZ replica rates are not in the price book
+  lines:
+    - sku_meter: instance hours
+      applies_when:
+        - field_path: replicate_source_db
+          op: is_set
+      quantity:
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Relational Database Service
+        pricing_unit: hours
+        attributes:
+          - key: instance_class
+            from_field: instance_class
+          - key: engine
+            from_field: engine
+            assumption_when_unset: postgres
+          - key: deployment
+            constant: single-az
+      basis: one read replica instance (single-AZ), billed every hour of the month on top of its source instance's own bill; the engine is inherited from the source -- assumed PostgreSQL when the manifest does not state it
+    - sku_meter: instance hours
+      applies_when:
+        - field_path: replicate_source_db
+          op: is_unset
+        - field_path: license_model
+          op: is_unset
+        - field_path: multi_az
+          op: equals
+          value: "true"
+      quantity:
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Relational Database Service
+        pricing_unit: hours
+        attributes:
+          - key: instance_class
+            from_field: instance_class
+          - key: engine
+            from_field: engine
+          - key: deployment
+            constant: multi-az
+      basis: one instance with multi_az true -- the Multi-AZ rate carries the synchronous standby -- billed every hour of the month
+    - sku_meter: instance hours
+      applies_when:
+        - field_path: replicate_source_db
+          op: is_unset
+        - field_path: license_model
+          op: is_unset
+        - field_path: multi_az
+          op: not_equals
+          value: "true"
+      quantity:
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Relational Database Service
+        pricing_unit: hours
+        attributes:
+          - key: instance_class
+            from_field: instance_class
+          - key: engine
+            from_field: engine
+          - key: deployment
+            constant: single-az
+      basis: one single-AZ instance, billed every hour of the month
+    - sku_meter: instance hours
+      applies_when:
+        - field_path: replicate_source_db
+          op: is_unset
+        - field_path: license_model
+          op: is_set
+        - field_path: multi_az
+          op: equals
+          value: "true"
+      quantity:
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Relational Database Service
+        pricing_unit: hours
+        attributes:
+          - key: instance_class
+            from_field: instance_class
+          - key: engine
+            from_field: engine
+          - key: license
+            from_field: license_model
+          - key: deployment
+            constant: multi-az
+      basis: one instance under the declared license model with multi_az true, billed every hour at the licensed Multi-AZ rate
+    - sku_meter: instance hours
+      applies_when:
+        - field_path: replicate_source_db
+          op: is_unset
+        - field_path: license_model
+          op: is_set
+        - field_path: multi_az
+          op: not_equals
+          value: "true"
+      quantity:
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon Relational Database Service
+        pricing_unit: hours
+        attributes:
+          - key: instance_class
+            from_field: instance_class
+          - key: engine
+            from_field: engine
+          - key: license
+            from_field: license_model
+          - key: deployment
+            constant: single-az
+      basis: one single-AZ instance under the declared license model, billed every hour at the licensed rate
+    - sku_meter: provisioned storage
+      applies_when:
+        - field_path: replicate_source_db
+          op: is_unset
+        - field_path: multi_az
+          op: equals
+          value: "true"
+      quantity:
+        - field_value:
+            field_path: allocated_storage_gb
+      price_lookup:
+        service_name: Amazon Relational Database Service
+        pricing_unit: GB-months
+        attributes:
+          - key: storage_type
+            from_field: storage_type
+            assumption_when_unset: gp3
+          - key: deployment
+            constant: multi-az
+      basis: allocated_storage_gb at the Multi-AZ storage rate (the standby doubles storage inside the rate)
+    - sku_meter: provisioned storage
+      applies_when:
+        - field_path: replicate_source_db
+          op: is_unset
+        - field_path: multi_az
+          op: not_equals
+          value: "true"
+      quantity:
+        - field_value:
+            field_path: allocated_storage_gb
+      price_lookup:
+        service_name: Amazon Relational Database Service
+        pricing_unit: GB-months
+        attributes:
+          - key: storage_type
+            from_field: storage_type
+            assumption_when_unset: gp3
+          - key: deployment
+            constant: single-az
+      basis: allocated_storage_gb at the single-AZ storage rate
+    - sku_meter: provisioned storage
+      applies_when:
+        - field_path: replicate_source_db
+          op: is_set
+      quantity:
+        - field_value:
+            field_path: allocated_storage_gb
+            default_when_unset: "50"
+      price_lookup:
+        service_name: Amazon Relational Database Service
+        pricing_unit: GB-months
+        attributes:
+          - key: storage_type
+            from_field: storage_type
+            assumption_when_unset: gp3
+          - key: deployment
+            constant: single-az
+      basis: the replica provisions its own volume matching the source's allocation -- assumed 50 GB on gp3 at the single-AZ storage rate when the manifest does not state it
+  exclusions:
+    - applies_when:
+        - field_path: max_allocated_storage_gb
+          op: not_equals
+          value: "0"
+      text: storage autoscaling can grow the volume toward max_allocated_storage_gb, multiplying the storage line
+    - applies_when:
+        - field_path: replicate_source_db
+          op: is_unset
+        - field_path: backup_retention_period
+          op: not_equals
+          value: "0"
+      text: backup storage beyond the free allowance grows with churn across the retention window
+    - applies_when:
+        - field_path: enabled_cloudwatch_logs_exports
+          op: is_set
+      text: CloudWatch ingestion for the exported logs is load-dependent
+    - applies_when:
+        - field_path: blue_green_update_enabled
+          op: equals
+          value: "true"
+      text: blue_green_update_enabled runs a temporary synchronized duplicate environment for the length of each update window
+    - applies_when:
+        - field_path: replicate_source_db
+          op: is_set
+      text: the source instance bills separately -- this estimate covers only the replica
+    - applies_when:
+        - field_path: license_model
+          op: equals
+          value: bring-your-own-license
+      text: the engine license is NOT in this price -- bring-your-own-license moves it onto your own license agreement
+    - applies_when:
+        - field_path: s3_import
+          op: is_set
+      text: the one-time S3 restore transfer and the source backup bucket's storage bill outside this component
+  notes:
+    - applies_when:
+        - field_path: replicate_source_db
+          op: is_unset
+      text: Estimated at the allocated floor.
+    - applies_when:
+        - field_path: performance_insights_enabled
+          op: equals
+          value: "true"
+      text: Performance Insights stays in its free 7-day tier.
+    - applies_when:
+        - field_path: replicate_source_db
+          op: is_set
+      text: A read replica is a full additional billed instance on top of its source.
+    - applies_when:
+        - field_path: s3_import
+          op: is_set
+      text: The migration itself is a create-time event, not a recurring charge.

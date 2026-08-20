@@ -1,0 +1,29 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsorganizationaccount
+spec:
+  # The account imports by its 12-digit ID; every folded settings
+  # satellite composes that ID with its own spec key (the contact
+  # type or region name the module keys instances by).
+  values:
+    - name: account_id
+      derivations:
+        - from_stack_output: account_id
+      where_to_find: >-
+        Organizations console -> AWS accounts (the account's 12-digit
+        ID), or `aws organizations list-accounts` (Id).
+    - name: alternate_contact_type
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        BILLING, OPERATIONS, or SECURITY -- each configured
+        spec.alternate_contacts arm is its own resource under its
+        type token.
+    - name: region_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The opt-in region's name (e.g. ap-southeast-3) -- each
+        spec.regions entry is its own resource (`aws account
+        list-regions --account-id <id>` shows RegionName).

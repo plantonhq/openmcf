@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurecognitiveaccountproject
+spec:
+  azure:
+    groups:
+      - purpose: ManageCognitiveAccountProject
+        actions:
+          - Microsoft.CognitiveServices/accounts/projects/read
+          - Microsoft.CognitiveServices/accounts/projects/write
+          - Microsoft.CognitiveServices/accounts/projects/delete
+        provenance: derived
+        notes: Covers azurerm_cognitive_account_project -- create, read/refresh, in-place updates (identity, description, display_name, tags), and destroy. The project is an ARM child of the account named in cognitive_account_id, so the permissions must be held at (or above) that account's scope; Cognitive Services Contributor carries them. The module makes no other provider calls -- referenced user-assigned identity IDs are passed through and validated by ARM server-side.

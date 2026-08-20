@@ -1,0 +1,47 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsbackupplan
+spec:
+  aws:
+    statements:
+      - sid: ManageBackupPlan
+        actions:
+          - backup:CreateBackupPlan
+          - backup:UpdateBackupPlan
+          - backup:GetBackupPlan
+          - backup:DeleteBackupPlan
+        resources:
+          - arn:aws:backup:*:*:backup-plan:*
+        provenance: derived
+        notes: Covers aws_backup_plan / backup.Plan -- create, the in-place rule/setting updates (UpdateBackupPlan versions the plan; the UUID identity survives), refresh reads, and destroy. All four actions authorize on the backupPlan ARN format per the service reference. The provider retries DeleteBackupPlan while folded selections drain, because AWS refuses to delete a plan that still has selections.
+      - sid: ManageSelections
+        actions:
+          - backup:CreateBackupSelection
+          - backup:GetBackupSelection
+          - backup:DeleteBackupSelection
+        resources:
+          - arn:aws:backup:*:*:backup-plan:*
+        provenance: derived
+        notes: Covers the folded aws_backup_selection / backup.Selection resources (one per spec.selections entry). Selections are fully ForceNew -- there is no update action to grant -- and all three actions authorize on the PLAN's ARN, not a selection ARN (the service reference maps selection operations to the backupPlan resource).
+      - sid: ManageTags
+        actions:
+          - backup:TagResource
+          - backup:UntagResource
+          - backup:ListTags
+        resources:
+          - arn:aws:backup:*:*:backup-plan:*
+        provenance: derived
+        notes: TagResource rides CreateBackupPlan for the module's identity tags and serves later tag reconciliation; ListTags backs every refresh. These are plan-resource tags -- the per-rule recovery_point_tags travel inside the plan document and need no separate action.
+      - sid: PassRolesToBackup
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: CreateBackupSelection passes each selection's iam_role_arn to backup.amazonaws.com (the role AWS Backup assumes to take backups), and CreateBackupPlan / UpdateBackupPlan pass scan_setting.scanner_role_arn to malware-protection.guardduty.amazonaws.com when GuardDuty scanning is configured -- the service reference names both PassedToService values. Add iam:PassedToService conditions for those two principals and narrow to the actual role ARNs in a hardened deployment.

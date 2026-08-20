@@ -1,0 +1,52 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesnamespace
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.namespace -- the namespace itself, created unconditionally and owned by the module.
+      - api_groups:
+          - ""
+        resources:
+          - resourcequotas
+          - limitranges
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_resource_quota_v1.quota and kubernetes_limit_range_v1.limits -- rendered inside the created namespace only when spec.resource_profile enables quotas or default limits (count guards resource_quota_enabled / limit_range_enabled).
+      - api_groups:
+          - networking.k8s.io
+        resources:
+          - networkpolicies
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_network_policy_v1.ingress and kubernetes_network_policy_v1.egress -- the default-deny isolation policies rendered inside the created namespace only when spec.network_config sets isolate_ingress or restrict_egress.

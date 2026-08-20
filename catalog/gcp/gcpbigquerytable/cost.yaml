@@ -1,0 +1,46 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpbigquerytable
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: time_partitioning
+      sku_meter: on-demand analysis
+      pricing_unit: TiB scanned
+      impact: Queries filtering on the partition column scan (and bill for) only the matching partitions -- the workhorse lever against BigQuery's $6.25/TiB on-demand rate. expiration_ms drops old partitions automatically, and each partition unmodified for 90 days independently falls to the ~50%-cheaper long-term storage rate.
+    - field_path: range_partitioning
+      sku_meter: on-demand analysis
+      pricing_unit: TiB scanned
+      impact: The same scan-pruning economics as time partitioning, keyed on an integer column -- queries touching a slice of the key range bill for that slice only.
+    - field_path: clustering
+      sku_meter: on-demand analysis
+      pricing_unit: TiB scanned
+      impact: Queries filtering on the leading clustering columns let BigQuery prune storage blocks, cutting the bytes scanned and billed within each partition.
+    - field_path: require_partition_filter
+      sku_meter: on-demand analysis
+      pricing_unit: TiB scanned
+      impact: The cost guard -- every query MUST carry a partition filter, making a full-table scan of a large fact table impossible to run by accident.
+    - field_path: expiration_time
+      sku_meter: table storage
+      pricing_unit: GiB-months
+      impact: The table deletes itself at the set time -- the storage brake for scratch and staging tables that would otherwise bill until someone remembers them.
+    - field_path: materialized_view
+      sku_meter: table storage
+      pricing_unit: GiB-months
+      impact: A materialized view bills three ways per Google's own pricing table -- the precomputed results are stored bytes, each automatic refresh bills the bytes processed to this view's project, and queries bill for bytes read from the view plus any base-table portions. enable_refresh and refresh_interval_ms set how often the maintenance meter runs.
+    - field_path: external_data_configuration
+      sku_meter: on-demand analysis
+      pricing_unit: TiB scanned
+      impact: The data stays in Cloud Storage and bills on that bucket, not here -- but queries still bill per byte scanned of the external files, and Google's long-term storage discount never applies to external data.
+    - field_path: kms_key_name
+      sku_meter: Cloud KMS key usage
+      impact: CMEK itself adds no BigQuery charge; the key's version storage and per-operation charges bill on the GcpKmsKey component protecting the table.
+  estimate_exclusions:
+    - an empty native table stores nothing -- storage bills per GiB-month as rows load, at the containing dataset's billing model and location rates (first 10 GiB each month free)
+    - queries bill to the project running them (on-demand at $6.25/TiB scanned after the free monthly 1 TiB, or editions slot capacity) -- BigQuery charges the querier, not the data owner
+    - streaming inserts, Storage Read/Write API traffic, and extracts follow the pipelines using the table
+  notes: "A table is where BigQuery's two meters meet: storage bills for the bytes it holds, analysis bills for the bytes queries scan of it. Partitioning, clustering, and the partition-filter guard are the scan-side levers; expiration fields are the storage-side brakes. A logical view stores nothing and an external table stores its bytes in GCS -- each arm moves where the money goes. Prices echoed from the BigQuery pricing page (us-central1)."

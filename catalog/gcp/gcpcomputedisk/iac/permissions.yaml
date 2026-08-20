@@ -1,0 +1,48 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpcomputedisk
+spec:
+  gcp:
+    groups:
+      - purpose: EnableComputeApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling compute.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageDisk
+        permissions:
+          - compute.disks.create
+          - compute.disks.get
+          - compute.disks.update
+          - compute.disks.delete
+          - compute.disks.resize
+          - compute.disks.setLabels
+          - compute.zoneOperations.get
+        provenance: derived
+        notes: Covers google_compute_disk across its lifecycle -- create, in-place size_gb growth (disks.resize) and hyperdisk IOPS/throughput retuning (disks.update), label changes (disks.setLabels), and delete -- plus polling the zone operation every mutation returns.
+      - purpose: SnapshotBeforeDestroy
+        permissions:
+          - compute.disks.createSnapshot
+          - compute.snapshots.create
+        provenance: derived
+        notes: Required only when create_snapshot_before_destroy is set (the 02-encrypted-database-volume preset does) -- the destroy path first captures a final snapshot, which checks createSnapshot on the disk and create on the snapshot resource.
+      - purpose: ReadDiskSources
+        permissions:
+          - compute.images.useReadOnly
+          - compute.snapshots.useReadOnly
+          - compute.instantSnapshots.useReadOnly
+          - compute.disks.use
+        provenance: derived
+        notes: Each permission gates one create-time source shape -- image, source_snapshot, source_instant_snapshot, and source_disk (cloning an existing disk checks disks.use on the source). None is needed for an empty disk; source_storage_object imports read GCS through storage ACLs, not a compute permission.
+      - purpose: UseStoragePool
+        permissions:
+          - compute.storagePools.use
+        provenance: derived
+        notes: Required only when storage_pool places the disk in a hyperdisk storage pool.

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awselasticacheusergroup
+spec:
+  billing_model: free
+  free_tier: An ElastiCache user group is the attachment unit of the RBAC system, and ElastiCache has no meter for it -- the service bills node-hours on node-based clusters and data stored (GB-hours) plus request units (ECPUs) on serverless caches; groups and the users in them appear on no meter. AWS's own documentation is explicit that its security features, RBAC included, carry no additional cost.
+  notes: "No field of this spec buys anything: engine and membership (user_ids) are access-control configuration stored by the ElastiCache control plane, and membership edits -- the group's whole job as the single place an application's cache access is granted or revoked -- are free operations. The real spend lives on the caches this group attaches to: node-based replication groups bill per node-hour and serverless caches bill GB-hours plus ECPUs, at identical rates with or without a user group attached. The member users (AwsElasticacheUser) are equally free -- nothing on the RBAC side of the graph meters."

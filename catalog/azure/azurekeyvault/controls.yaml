@@ -1,0 +1,100 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurekeyvault
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Everything the vault stores -- keys, secrets, certificates -- is encrypted at rest by the service unconditionally; Microsoft persists secrets encrypted with HSM-backed keys, and there is no configuration at any level that stores vault contents in plaintext."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "The vault IS the customer-key custodian -- it is where customer-managed keys for OTHER services live. Its own storage encryption is Microsoft-managed by design, with no customer-key option to configure; the closest analogue to hardware-rooted custody is the PREMIUM tier's HSM-backed key types, a capability choice on the sku field, not an encryption-of-the-vault setting."
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "The data plane is HTTPS only -- the vault_uri endpoint speaks TLS exclusively, Key Vault enforces TLS 1.2+ on connections, and no plaintext listener exists to enable or disable."
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_network_access_enabled
+      evidence:
+        type: spec_default
+        reference: "The default (true, matching Azure) leaves the vault's endpoint reachable from the internet, gated by Azure AD authentication and any network_acls; setting false takes the vault fully private, reachable only through private endpoints."
+      notes: "No preset sets it false -- 02-premium-network-restricted keeps the public endpoint but locks it to declared networks with a DENY firewall. Full privacy composes a private endpoint, a separate component."
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: network_acls
+      evidence:
+        type: spec_default
+        reference: "Unset means no network filter -- any internet source may attempt (authenticated) requests while public access is on. A network_acls block with default_action DENY restricts the public endpoint to the declared ip_rules and service-endpoint subnets, with an optional bypass for trusted Microsoft services."
+      notes: "The 02-premium-network-restricted preset enables it: DENY default, an office/CI CIDR, and an application subnet. DNS-level note -- the firewall gates the data plane; vault names remain globally resolvable."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: "The vault's data plane is a Microsoft-managed REST endpoint with no WAF attachment point -- request filtering for it is Microsoft's to run. The customer-side perimeter is network_acls plus Azure AD authentication (see restricted-ingress), not an HTTP request filter."
+    - control_id: rbac
+      status: configurable
+      field_path: rbac_authorization_enabled
+      evidence:
+        type: spec_default
+        reference: "The spec default (true) puts the data plane on Azure RBAC -- grants become ordinary role assignments (Key Vault Administrator, Key Vault Secrets User) composed via AzureRoleAssignment, with PIM and access-review participation. The management plane is Azure RBAC unconditionally."
+      notes: "Presets 01 and 02 run RBAC; 03-legacy-access-policy deliberately sets false and grants through access_policies for workloads that require the legacy mode. ARM stores but IGNORES access policies on an RBAC-mode vault, so populating both is almost always a mistake."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: "The vault runs no workloads and holds no credentials of its own -- it is the thing workloads authenticate TO, with Azure AD tokens. Whether its consumers use managed identities instead of static credentials is decided on the consumer components and their role assignments."
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: rbac_authorization_enabled
+      evidence:
+        type: spec_default
+        reference: "The legacy vault access-policy model is the weaker authorization path -- vault-wide ACLs outside PIM and access reviews. The spec default (true) keeps it inert (ARM stores but ignores access policies on an RBAC-mode vault); setting false re-enables it as the authorization mechanism."
+      notes: "The 03-legacy-access-policy preset runs the legacy mode on purpose, for existing workloads or org standards that require it. All data-plane paths, legacy or not, still authenticate through Azure AD -- there are no shared-key or anonymous paths to disable."
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every management-plane action on the vault -- create, policy change, authorization-mode flip, delete -- lands in the Azure Activity Log unconditionally."
+      notes: "Per-request DATA-plane auditing (the AuditEvent log of who read which secret) exists but requires a diagnostic setting the spec does not model -- compose it separately when access-level audit trails are required."
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Key Vault publishes platform metrics to Azure Monitor automatically -- availability, service API hits, latency, and saturation -- with no configuration and no way to disable them."
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Soft delete is always on for every vault Azure creates today and cannot be disabled: a deleted vault and deleted objects inside it remain recoverable for the retention window (spec default 90 days)."
+      notes: "Soft delete is deletion-recovery, not replication-grade backup; object-level backup/restore blobs exist as data-plane operations outside this spec. Contents are also replicated within the region (and to the paired region where one exists) by the service itself."
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: soft_delete_retention_days
+      evidence:
+        type: spec_default
+        reference: "7 to 90 days, unspecified applying Azure's default of 90. Creation-only -- changing it replaces the vault."
+      notes: "All three presets ride the 90-day default."
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Key Vault is zone-redundant automatically in regions with availability zones -- Microsoft spreads the service across zones with no configuration surface and no way to opt out (Azure reliability documentation for Key Vault)."
+      notes: "Zone-redundant is not region-redundant -- in most regions Microsoft also replicates vault contents to the paired region and fails over read-only, but regions without a pair (and single-zone regions) rely on in-region redundancy alone."
+    - control_id: deletion-protection
+      status: configurable
+      field_path: purge_protection_enabled
+      evidence:
+        type: spec_default
+        reference: "Default false (matching Azure). True forbids purging the soft-deleted vault or its objects until the retention window lapses -- deletion becomes recoverable-only, and IaC destroys turn into scheduled deletions instead of purges."
+      notes: "The 02-premium-network-restricted preset enables it, the right posture for any vault whose keys encrypt other resources (many services refuse customer-managed keys from a vault without it). One-way door: once on, it can never be turned off, and the globally unique name stays reserved until the window expires."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Fully managed PaaS -- Microsoft operates, patches, and upgrades the service transparently; no customer-visible patch surface exists."

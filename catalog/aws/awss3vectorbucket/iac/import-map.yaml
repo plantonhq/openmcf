@@ -1,0 +1,23 @@
+# Where each placeholder in this component's import-ID formats comes
+# from (the formats themselves live in aa_import/catalog.yaml).
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awss3vectorbucket
+spec:
+  values:
+    - name: vector_bucket_arn
+      derivations:
+        - from_stack_output: vector_bucket_arn
+      where_to_find: >-
+        S3 console -> Vector buckets (the bucket's ARN), or `aws
+        s3vectors list-vector-buckets` (vectorBucketArn).
+    # Indexes key their module instances by name - the same key the
+    # index_arns output map uses.
+    - name: index_arn
+      derivations:
+        - from_stack_output_keyed_by_address: index_arns
+      where_to_find: >-
+        The index's ARN, keyed by index name in the index_arns
+        output; `aws s3vectors list-indexes --vector-bucket-name ...`
+        (indexArn).

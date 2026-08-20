@@ -1,0 +1,72 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureeventhub
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Event Hubs encrypts all event data at rest with Microsoft-managed keys unconditionally -- the hub stores events on the namespace's encrypted storage with no opt-out and no hub-level knob.
+      notes: Upgrading to customer-managed keys happens on the parent namespace via the AzureEventHubNamespaceCustomerManagedKey kind, not on the hub.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys are a NAMESPACE-level configuration -- the AzureEventHubNamespaceCustomerManagedKey kind applies BYOK encryption to the parent namespace and every hub in it; the hub spec has no key surface of its own.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Clients connect to the NAMESPACE endpoint ({namespace}.servicebus.windows.net), where TLS is enforced and the minimum TLS version is configured -- the hub exposes no transport surface of its own.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Network exposure is the parent namespace's posture (public network access, private endpoints, IP rules); the hub has no endpoint of its own to expose or hide.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound restriction lives on the namespace's network rule sets and private endpoints -- namespace-level posture, not a hub field.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Event Hubs is an AMQP/Kafka/HTTPS messaging endpoint fronted by Azure's service fabric; no WAF attachment point exists on a hub.
+    - control_id: rbac
+      status: not_applicable
+      notes: The hub declares no access rules of its own, but its ARM ID is a data-plane RBAC grant scope -- grant "Azure Event Hubs Data Sender/Receiver" on exactly this hub via AzureRoleAssignment, or mint hub-scoped SAS credentials with AzureEventHubAuthorizationRule (event_hub_id). Both are separate kinds carrying their own posture.
+    - control_id: workload-identity
+      status: configurable
+      field_path: capture_description.destination.storage_authentication_type
+      evidence:
+        type: spec_default
+        reference: Unset means Azure's default STORAGE_SAS -- capture writes to the destination storage account with service-managed shared-access signatures; SYSTEM_ASSIGNED or USER_ASSIGNED switches capture to keyless managed-identity authentication (grant the identity Storage Blob Data Contributor on the account).
+      notes: Applies only when capture_description is declared. Application access to the hub itself goes keyless by granting Entra identities data-plane roles via AzureRoleAssignment instead of SAS rules.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The SAS-versus-Entra decision is the namespace's local_authentication_enabled switch -- disabling it kills SAS keys namespace-wide. The hub has no authentication toggle of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Runtime and operational audit logs (diagnostic settings) are configured on the NAMESPACE as separate resources; control-plane changes to the hub land in the Azure Activity Log as subscription-level posture.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Event Hubs metrics (incoming/outgoing messages, throttled requests) are published at the namespace level with per-hub dimensions; diagnostic-setting export is namespace-scoped configuration outside this spec.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: capture_description
+      evidence:
+        type: spec_default
+        reference: Unset means events exist only inside the retention window and are gone when it closes; declaring capture_description (enabled=true) continuously archives every event to Azure Blob Storage in Avro on a size-or-interval cadence -- the durable copy that outlives retention.
+      notes: Capture is archival, not a service-side restore -- recovering means re-ingesting or batch-reading the Avro archives. Hub METADATA replicates via the namespace's geo-DR pairing (AzureEventHubDisasterRecoveryConfig), which does not replicate event data.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Captured archives live in the referenced storage account, whose lifecycle-management policies (a separate kind's posture) govern how long they are kept; message_retention/retention_description bound the live stream's replay window, not backup retention.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Zone redundancy is the parent namespace's posture -- an Event Hubs namespace in an availability-zone region replicates across zones, and every hub inherits that placement; the hub has no zonal knob.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for an event hub (Azure resource locks are subscription-side governance outside the manifest). The status field gates traffic (DISABLED, SEND_DISABLED) but not deletion.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed PaaS -- Microsoft operates and patches the Event Hubs brokers and storage; no customer-visible patch surface exists.

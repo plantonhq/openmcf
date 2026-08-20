@@ -1,0 +1,94 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsappsyncapi
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: graphql.cache.at_rest_encryption_enabled
+      evidence:
+        type: spec_default
+        reference: The API itself persists only configuration -- schema, resolver code, auth settings -- inside AWS's managed control plane. The one place this component holds live DATA at rest is the optional provisioned cache, and its stored responses encrypt at rest only when this flag is set. It is a create-time decision -- changing it REPLACES the cache (a cold cache, not an outage).
+      notes: With no cache block there is no component-owned data at rest at all; the data resolvers serve lives in the referenced backends (DynamoDB, OpenSearch, Aurora), whose at-rest posture is decided on those components.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Neither the API nor its cache exposes a customer-managed KMS key surface -- AppSync has no kms key field anywhere in its create/update APIs. Backend data encrypts under the referenced components' keys (a DynamoDB table's CMK is that component's control).
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every AppSync endpoint -- the GraphQL HTTPS endpoint, the real-time WebSocket endpoint, and the Events API's HTTP and WebSocket endpoints -- serves TLS only; no plaintext listener exists. A custom domain fronts the API through AWS's CloudFront-class distribution with the ACM certificate the spec requires.
+      notes: The cache's transit_encryption_enabled flag additionally encrypts the internal API-to-cache hop; like the at-rest flag it is create-time and replaces the cache on change.
+    - control_id: no-public-access
+      status: configurable
+      field_path: graphql.visibility
+      evidence:
+        type: spec_default
+        reference: Unset means AWS's default GLOBAL -- the API answers on the public AppSync endpoint (every request still authenticated by a declared auth mode). PRIVATE serves the API only through VPC interface endpoints, removing it from the public internet entirely. Fixed for life -- changing visibility replaces the API.
+      notes: The Events arm carries no visibility dial -- an Events API always serves the public endpoint, gated by its per-phase auth modes. Choosing the events arm is choosing a public (authenticated) surface.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: AppSync exposes no security-group or CIDR surface -- reachability is decided by the visibility dial (public endpoint vs VPC endpoints) and every request is authorized per auth mode. Source-network restriction beyond that lives in the attached web ACL's rules on the referenced AwsWafWebAcl component.
+    - control_id: edge-protection
+      status: configurable
+      field_path: graphql.web_acl_arn
+      evidence:
+        type: spec_default
+        reference: Unset means no WAF. Referencing a REGIONAL web ACL makes the modules create the WAFv2 association alongside the API (aws_wafv2_web_acl_association / wafv2.WebAclAssociation), filtering every request before it reaches a resolver.
+      notes: AWS's WAF association supports GraphQL APIs only -- the Events arm has no web ACL attachment point, so an Events API's edge posture is its auth modes alone.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The management plane is IAM-authorized on every operation. The data plane refuses anonymous requests by design -- every call must satisfy one of the API's declared auth modes (Cognito user pools, OIDC, IAM SigV4, Lambda authorizer, or API key), and the Events arm additionally authorizes per lifecycle phase (connect, publish, subscribe) per namespace.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AppSync reaches every backend by assuming the data source's service_role_arn with short-lived STS credentials -- no access key or embedded credential surface exists on a data source. Log delivery likewise rides an assumed role (log_config's cloudwatch_logs_role_arn), and a MERGED API reads its sources through the merged execution role.
+      notes: The one stored secret in the design is the RELATIONAL_DATABASE data source's database password, which lives in the referenced Secrets Manager secret and is fetched by AWS at call time -- never written into this manifest.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: graphql.auth
+      evidence:
+        type: spec_default
+        reference: The API accepts only the auth modes the manifest declares -- nothing weaker is on by default. API_KEY (a long-lived shared secret, the weakest mode) authenticates callers only if a provider declares it; a manifest declaring Cognito, OIDC, IAM, or a Lambda authorizer has no key-based path at all.
+      notes: The Events arm declares its providers in events.auth_providers with the same property, and its per-phase modes can confine API_KEY to low-risk phases -- the 02 preset lets browsers connect and subscribe by key while requiring IAM to publish.
+    - control_id: audit-logging
+      status: configurable
+      field_path: graphql.log_config
+      evidence:
+        type: spec_default
+        reference: Unset means no request logging. Setting the block makes AppSync write field-level request logs to CloudWatch through the referenced delivery role, at the chosen field_log_level; the Events arm's equivalent is events.log_config.
+      notes: Management-plane operations on the API -- who changed the schema, who rotated a key, who deleted the API -- are captured by CloudTrail unconditionally, independent of this block.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AppSync publishes request count, error, and latency metrics to CloudWatch for every API unconditionally -- no spec surface can turn the baseline metrics off.
+      notes: enhanced_metrics deepens the signal to per-data-source, per-operation, and per-resolver granularity; xray_enabled adds distributed tracing; log_config adds the request-log stream.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The API stores no user data to back up -- the schema, resolvers, and configuration ARE the manifest and re-apply from it; the cache is ephemeral by design. The data behind the API lives in the referenced backends, whose backup posture is decided on those components.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With nothing persisted there is no backup to retain. Request-log retention is the CloudWatch log group's setting, on that component.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AppSync is a regional managed service AWS operates across availability zones -- the API, its real-time fleet, and its cache have no zonal footprint the manifest could configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: AppSync APIs carry no deletion-protection flag -- deleting the API removes configuration and endpoints only; backend data in the referenced components is untouched, and the manifest recreates the API wholesale.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the request-serving fleet, the real-time WebSocket layer, and the cache instances; the spec exposes no runtime version or maintenance surface.

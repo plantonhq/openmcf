@@ -1,0 +1,50 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its capacity derivation
+# (../capacity/, the machine-executable value-to-capacity rules): each
+# preset states the CPU/memory requests and limits and the persistent
+# volume storage it reserves from its target cluster, with a basis sentence
+# tracing every total back to the manifest's values. Cluster-capacity
+# components carry no priced lines -- the dollar value of the reservation
+# is the target cluster's node and storage-class economics, which this
+# catalog cannot know. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesseaweedfs
+spec:
+  presets:
+    - preset: 01-dev-single-node
+      capacity_footprint:
+        persistent_storage: 17Gi
+        basis: "1 master: 1 x 2Gi metadata volume; 1 volume server: 1 x 10Gi data volume; 1 filer: 1 x 5Gi metadata volume"
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - volume sizes left undeclared fall back to tier defaults this footprint cannot count -- master 5Gi, volume server 30Gi, filer 10Gi per pod
+        - the bucket-creation post-install hook Job is ephemeral and carries only chart-default sizing
+        - how fast the volume PVCs fill is workload-driven (bucket TTLs and versioning change object churn) -- the footprint states reservations, never occupancy
+      notes: the S3 gateway binding contributes only when s3.dedicated is declared -- the default embedded gateway rides the filer pods with no extra reservation the admin-console binding contributes only when admin resources or a data volume are declared alongside admin.enabled -- the console is off by default
+    - preset: 02-production-ha
+      capacity_footprint:
+        cpu_requests: 5350m
+        memory_requests: 9984Mi
+        cpu_limits: 12500m
+        memory_limits: 19968Mi
+        persistent_storage: 660Gi
+        basis: 3 masters x (250m CPU / 512Mi memory requests, 1 CPU / 1Gi limits) + 3 x 10Gi metadata volumes; 3 volume servers x (1 CPU / 2Gi memory requests, 2 CPU / 4Gi limits) + 3 x 200Gi data volumes; 1 filer x (500m CPU / 1Gi memory requests, 1 CPU / 2Gi limits) + 1 x 20Gi metadata volume; 2 S3 gateways x (500m CPU / 512Mi memory requests, 1 CPU / 1Gi limits); 1 admin console x (100m CPU / 256Mi memory requests, 500m CPU / 512Mi limits) + 1 x 10Gi state volume
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - volume sizes left undeclared fall back to tier defaults this footprint cannot count -- master 5Gi, volume server 30Gi, filer 10Gi per pod
+        - the replication placement code multiplies stored BYTES inside the declared volume PVCs -- "001" writes every object twice, halving effective capacity for the same reservation
+        - the bucket-creation post-install hook Job is ephemeral and carries only chart-default sizing
+        - how fast the volume PVCs fill is workload-driven (bucket TTLs and versioning change object churn) -- the footprint states reservations, never occupancy
+      notes: the S3 gateway binding contributes only when s3.dedicated is declared -- the default embedded gateway rides the filer pods with no extra reservation the admin-console binding contributes only when admin resources or a data volume are declared alongside admin.enabled -- the console is off by default
+    - preset: 03-artifact-store
+      capacity_footprint:
+        persistent_storage: 110Gi
+        basis: "1 volume server: 1 x 100Gi data volume; 1 filer: 1 x 10Gi metadata volume"
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - volume sizes left undeclared fall back to tier defaults this footprint cannot count -- master 5Gi, volume server 30Gi, filer 10Gi per pod
+        - the bucket-creation post-install hook Job is ephemeral and carries only chart-default sizing
+        - how fast the volume PVCs fill is workload-driven (bucket TTLs and versioning change object churn) -- the footprint states reservations, never occupancy
+      notes: the S3 gateway binding contributes only when s3.dedicated is declared -- the default embedded gateway rides the filer pods with no extra reservation the admin-console binding contributes only when admin resources or a data volume are declared alongside admin.enabled -- the console is off by default

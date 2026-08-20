@@ -1,0 +1,43 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsSagemakerMlflowServer manifest's spec values into metered quantities
+# and price choices. The server bills its size's hourly tracking-server
+# rate from Created until deletion -- there is no stop control -- so the
+# whole bill is one always-on line, with the rate selected by the
+# manifest's own size value (Small when unset, the AWS default) through
+# the price book's attribute identities. The estimate generator replays
+# the catalog presets through these rules to emit
+# ../estimates/awssagemakermlflowserver.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awssagemakermlflowserver
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-west-2
+  lines:
+    - sku_meter: MLflow tracking server hours
+      quantity:
+        - hours_in_month: true
+      price_lookup:
+        service_name: Amazon SageMaker
+        pricing_unit: hours
+        attributes:
+          - key: size
+            from_field: size
+            assumption_when_unset: Small
+      basis: one tracking server x 730 hours at its size's hourly rate (Small assumed when the manifest omits size -- the AWS default) -- the meter runs from Created onward with no stop control
+  exclusions:
+    - text: experiment metadata stored ON the tracking server (runs, params, metrics) bills $0.10 per GB-month as tracking activity accumulates -- workload-driven, near zero at creation, invisible to this manifest
+    - text: MLflow artifacts (model files, run outputs) bill S3 storage and requests at the artifact_store_uri location, on the bucket's own component
+    - applies_when:
+        - field_path: automatic_model_registration
+          op: equals
+          value: "true"
+      text: models auto-registered into the SageMaker Model Registry add no registry charge -- the registry is free
+    - text: data transfer out of the region follows client traffic
+  notes:
+    - text: Estimated at the full month -- dedicated hourly capacity with no pause; deleting the server is the only off switch, and the artifacts survive deletion in the customer's S3 bucket.

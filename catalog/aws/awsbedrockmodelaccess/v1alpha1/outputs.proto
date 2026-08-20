@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockmodelaccess.v1alpha1;
+
+// AwsBedrockModelAccessStackOutputs captures observable identifiers from a
+// Bedrock model-access agreement.
+message AwsBedrockModelAccessStackOutputs {
+  // The foundation model identifier the agreement covers. Matches
+  // spec.model_id - exported so charts can order model-consuming
+  // components (agents, provisioned throughput) after access is granted.
+  string model_id = 1;
+}

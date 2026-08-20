@@ -1,0 +1,46 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesopensearchoperator
+spec:
+  presets:
+    - preset: 01-standard
+      capacity_footprint:
+        cpu_requests: 100m
+        memory_requests: 350Mi
+        cpu_limits: 200m
+        memory_limits: 500Mi
+        basis: 1 manager pod x (100m CPU / 350Mi memory requests, 200m CPU / 500Mi limits) from the chart defaults (applied by the chart when the manifest omits resources) -- no persistent volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - the OpenSearch clusters this operator reconciles reserve their own capacity -- each rides its KubernetesOpenSearch resource
+        - the kube-rbac-proxy sidecar (default enabled) adds its own chart-sized reservation beside the manager's
+    - preset: 02-namespace-scoped
+      capacity_footprint:
+        cpu_requests: 100m
+        memory_requests: 350Mi
+        cpu_limits: 200m
+        memory_limits: 500Mi
+        basis: 1 manager pod x (100m CPU / 350Mi memory requests, 200m CPU / 500Mi limits) from the chart defaults (applied by the chart when the manifest omits resources) -- no persistent volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - the OpenSearch clusters this operator reconciles reserve their own capacity -- each rides its KubernetesOpenSearch resource
+        - the kube-rbac-proxy sidecar (default enabled) adds its own chart-sized reservation beside the manager's
+    - preset: 03-private-mirror
+      capacity_footprint:
+        cpu_requests: 100m
+        memory_requests: 350Mi
+        cpu_limits: 500m
+        memory_limits: 512Mi
+        basis: 1 manager pod x (100m CPU / 350Mi memory requests, 500m CPU / 512Mi limits) -- no persistent volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - the OpenSearch clusters this operator reconciles reserve their own capacity -- each rides its KubernetesOpenSearch resource
+        - the kube-rbac-proxy sidecar (default enabled) adds its own chart-sized reservation beside the manager's

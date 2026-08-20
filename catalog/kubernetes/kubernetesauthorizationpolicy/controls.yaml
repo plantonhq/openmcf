@@ -1,0 +1,66 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesauthorizationpolicy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The policy stores no data of its own -- it is a Kubernetes API object persisted in the cluster's etcd, whose encryption at rest is a property of the target cluster's control plane, not of this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); customer-managed keys for etcd belong to the cluster component.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The policy encrypts nothing itself. Several source-match fields (principals, namespaces, service_accounts, trust_domains) only WORK when mesh mTLS is in place, but that mTLS is provided by the mesh's PeerAuthentication and istiod configuration -- this resource consumes the identities mTLS establishes, it does not create the encryption.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The policy is not a network endpoint -- it is configuration istiod distributes to proxies. Whether the workloads it selects are publicly reachable is decided by their Services, gateways, and ingress resources.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: rules
+      evidence:
+        type: spec_default
+        reference: With action unset (upstream default ALLOW), only requests matching a rule are admitted to the selected workloads -- empty rules deny everything. Rule sources restrict who may connect by ip_blocks, remote_ip_blocks, namespaces, principals, request_principals, and service_accounts.
+      notes: The 01-require-jwt-principal preset admits only requests carrying a validated JWT principal; 02-custom-ext-authz-ingress delegates the admit/deny decision to an external authorizer via the CUSTOM action.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: An AuthorizationPolicy is request-level access control, not a web application firewall -- it matches identities, sources, and operations, it does not inspect payloads for attack signatures. A WAF for mesh traffic would sit on the gateway or an external authorizer.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: The resource IS an access-control instrument -- every deployment enforces its action (ALLOW when unset) against requests matched by rules, scoped to the workloads selected by selector or target_refs (or the whole namespace when both are omitted). With ALLOW and empty rules the posture is deny-by-default.
+      notes: Access to the policy object itself (create/update/delete) is governed by the target cluster's Kubernetes RBAC, outside this spec.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The policy calls no cloud APIs -- there is nothing for it to authenticate to. Mesh workload identities (SPIFFE principals from peer certificates) are inputs it matches on, established by the mesh, not by this resource.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The policy has no authentication path of its own to harden -- it evaluates identities that mTLS and RequestAuthentication established elsewhere in the mesh.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the policy are Kubernetes API operations captured by the target cluster's audit policy. The AUDIT action marks matched requests for auditing in the mesh's telemetry pipeline, but the pipeline itself belongs to the mesh installation, not this resource.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The policy emits no metrics of its own; allow/deny decisions surface in the sidecars' and gateways' Envoy telemetry, which the mesh installation owns.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The policy is stateless declarative configuration fully reproducible from its manifest -- there is no data to back up or restore.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The policy is an API-server record replicated by the cluster's control plane; enforcement runs in every proxy that receives it from istiod. There is no per-resource replication or zonal knob.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor Istio offers a deletion-protection flag on AuthorizationPolicy; protection is operational (namespace RBAC, change review). Note that deleting an ALLOW policy widens access -- the deny-by-default it imposed disappears with it.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software here to patch -- the resource is data. Envoy and istiod versions are patched through the mesh installation's own lifecycle.

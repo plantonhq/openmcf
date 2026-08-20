@@ -1,0 +1,78 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awseventbridgepipe
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Pipe data at rest -- events buffered in flight between source, enrichment, and target -- is encrypted with AWS-owned keys by default; an unencrypted pipe is not representable.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_identifier
+      evidence:
+        type: spec_default
+        reference: Setting a customer-managed KMS key re-encrypts the pipe's data at rest under a key you own and can revoke; unset keeps AWS-owned keys.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every hop the pipe makes -- reading the source, calling the enrichment, writing the target -- rides AWS service APIs over TLS; Kafka broker connections likewise negotiate TLS (mTLS is one of the supported credential modes, and a private CA is pluggable via server_root_ca_certificate).
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A pipe exposes no endpoint -- it is internal plumbing that CONSUMES and DELIVERS. Reaching brokers on private networks is handled by the self_managed_kafka.vpc placement, which keeps the pipe's Kafka client inside your subnets rather than exposing anything.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound listener exists to filter. The security groups under source_parameters.self_managed_kafka.vpc govern the pipe's OUTBOUND client traffic into your VPC, not ingress to the pipe.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The pipe receives no HTTP requests -- web ACLs have nothing to attach to.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: "role_arn is REQUIRED -- a pipe cannot exist without an execution role, and it can only read the source, call the enrichment, and write the target that role allows. The permission boundary of the integration IS the role's policy; the trust policy admits only pipes.amazonaws.com."
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The pipe authenticates to every AWS service it touches by ASSUMING the execution role -- short-lived STS credentials minted per session, no static keys anywhere. Broker credentials for Kafka/MQ sources enter only as Secrets Manager secret ARNs (references), never as values in the spec.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The pipe's own auth path is IAM-only, with nothing legacy to disable. The broker credential MECHANISM for Kafka/MQ sources (mTLS, SASL/SCRAM, SASL/PLAIN) follows what the broker is configured to speak -- a property of the referenced broker, not a switch on this spec; every mode is carried as a Secrets Manager reference.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Management calls on the pipe are recorded by AWS CloudTrail as account-level posture; the pipe's own EXECUTION visibility is log_configuration territory (see monitoring-integration).
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: log_configuration
+      evidence:
+        type: spec_default
+        reference: Execution logging at ERROR, INFO, or TRACE to any mix of CloudWatch Logs, Firehose, and S3 destinations -- the pipe's operational signal (delivery failures, retries, and with include_execution_data the payloads themselves). Unset disables pipe logging entirely, the AWS default.
+      notes: TRACE with include_execution_data writes event payloads into the log destinations -- enable deliberately when payloads are sensitive.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "The pipe holds no durable data -- events live in the source until consumed, so replay-ability is the SOURCE's retention (stream positions are kept while STOPPED). The failure-capture lever is the source families' dead_letter_queue_arn: batches that exhaust retries land in the referenced SQS queue or SNS topic instead of vanishing."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery); DLQ retention is the referenced queue's own setting.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: EventBridge Pipes is a regional managed service AWS operates across availability zones; the pipe itself has no zonal placement, and only the optional Kafka-client VPC config pins subnets -- spreading those across zones is the referenced network's design.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "No deletion-protection flag exists. Two lifecycle facts bound the damage: desired_state STOPPED pauses consumption WITHOUT deleting (positions kept) -- the safe alternative to deletion -- and the source is fixed for life, so changing it replaces the pipe and resets consumer positions; deletion loses nothing durable beyond those positions."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the polling, filtering, enrichment, and delivery machinery; nothing here runs software the operator maintains.

@@ -94,7 +94,7 @@ spec:
 | `spec.authentication.saslIamEnabled` | `bool` |  |  |  |
 | `spec.authentication.saslScramEnabled` | `bool` |  |  |  |
 | `spec.authentication.tlsEnabled` | `bool` |  |  |  |
-| `spec.authentication.tlsCertificateAuthorityArns` | `[]string \| valueFrom` |  |  |  |
+| `spec.authentication.tlsCertificateAuthorityArns` | `[]string \| valueFrom` |  |  | AwsPrivateCa (`status.outputs.certificate_authority_arn`) |
 | `spec.authentication.unauthenticated` | `bool` |  |  |  |
 | `spec.scramSecretArns` | `[]string` |  |  |  |
 | `spec.clusterPolicy` | `object` |  |  |  |
@@ -371,8 +371,10 @@ Brokers listen on port 9094 for TLS connections.
 
 tls_certificate_authority_arns are the ARNs of ACM Private Certificate Authority resources
 trusted for client certificate validation. Required when tls_enabled is true.
+Reference AwsPrivateCa certificate_authority_arn outputs or pass literal ARNs.
 
-- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+- references: AwsPrivateCa (`status.outputs.certificate_authority_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsPrivateCa, name: <that resource's name>, fieldPath: status.outputs.certificate_authority_arn}} -- a bare string does not parse
 
 ### spec.authentication.unauthenticated
 
@@ -676,6 +678,7 @@ Fields that can point at another resource's outputs:
 | `spec.subnetIds` | AwsSubnet | `status.outputs.subnet_id` |
 | `spec.securityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
 | `spec.kmsKeyArn` | AwsKmsKey | `status.outputs.key_arn` |
+| `spec.authentication.tlsCertificateAuthorityArns` | AwsPrivateCa | `status.outputs.certificate_authority_arn` |
 | `spec.logging.cloudwatchLogs.logGroup` | AwsCloudwatchLogGroup | `status.outputs.log_group_name` |
 | `spec.logging.firehose.deliveryStream` | AwsKinesisFirehose | `status.outputs.delivery_stream_name` |
 | `spec.logging.s3.bucket` | AwsS3Bucket | `status.outputs.bucket_id` |

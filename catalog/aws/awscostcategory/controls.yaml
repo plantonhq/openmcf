@@ -1,0 +1,62 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awscostcategory
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The category stores no customer data -- it is a rule set in AWS's billing control plane, and the cost data it buckets lives in AWS-operated billing systems protected as internal infrastructure. Nothing here offers or needs an encryption dial.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-managed-key surface exists in the spec or the underlying Cost Explorer cost-category APIs.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The category terminates no connections; management rides the TLS-only Cost Explorer API as provider-wide behavior.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: No network endpoint exists -- the category is reachable only through the IAM-authorized Cost Explorer API, and its output surfaces only inside the account's own Cost Explorer, CUR, and budgets views.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No addresses, ports, or network surface exist to filter.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The category receives no HTTP traffic -- web ACLs have nothing to attach to.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation is IAM-authorized through the Cost Explorer API with real resource-level scoping -- describe/update/delete actions scope to the individual costcategory ARN per the CE service reference, and they honor aws:ResourceTag condition keys, so tag-based (ABAC) policies can fence teams to their own categories. Seeing categorized costs additionally requires account-level Cost Explorer access.
+      notes: Categories are chargeback machinery -- who may EDIT the rules effectively decides which team a dollar is attributed to, so treat update permission on this resource as a finance-sensitive grant, not a routine one.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Nothing here runs as an identity. Categorization happens inside AWS's billing pipeline as internal machinery -- no execution role, credential, or service account exists in the arrangement.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The Cost Explorer API has a single authentication path -- SigV4-signed IAM requests; no weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface of its own. Every management call (CreateCostCategoryDefinition, UpdateCostCategoryDefinition, and the rest) is recorded by AWS CloudTrail as account-level posture -- and given the rbac note above, those CloudTrail records ARE the audit trail for who changed cost attribution.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The category emits nothing to monitor and wires no alerting -- it is a reporting dimension other tools consume. Anomaly monitors (an AwsCostAnomalyMonitor with dimension COST_CATEGORY), budgets, and CUR queries reference the category from THEIR side; no field here points outward.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The rule set is declarative configuration fully reconstructible from the manifest -- the manifest in version control IS the backup. The one thing no backup can restore is AWS-side history; see deletion-protection.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist, so no retention schedule applies.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Cost Explorer is an account-global service AWS operates on its own infrastructure -- no zonal or regional footprint exists to spread. The spec's region field is only the provider's API endpoint.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists, and this is the component's sharpest operational edge -- AWS states category deletion cannot be undone and historical cost data associated with a deleted category is no longer available for reporting (deleted categories linger only in reports for months they were active, and full processing can take up to 24 hours). Renaming is deletion in disguise -- category_name is create-only, so a name change replaces the category and severs its reporting history the same way.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Pure configuration with no software surface to patch -- the categorization engine is AWS-operated billing machinery.

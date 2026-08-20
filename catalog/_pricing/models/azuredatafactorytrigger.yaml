@@ -1,0 +1,51 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. All four presets are genuinely zero-committed: each one
+# deploys with activated false (a stopped trigger evaluates nothing and
+# bills nothing), and even started, a trigger's own meter is per-firing --
+# stated in exclusions, never padded into fabricated dollars. Schema:
+# finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: azuredatafactorytrigger
+spec:
+  presets:
+    - preset: 01-daily-schedule
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - deployed stopped (activated false) -- once started, each daily firing bills a trigger execution on the factory's orchestration meter ("1.0" USD per 1,000 runs at East US cloud rates) plus the fired pipeline run's full meter set (activity runs, DIU-hours, activity hours, vCore-hours)
+        - Data Factory operations bill read/write per 50,000 entity operations on the factory when the trigger is authored or updated
+        - a pipeline associated with this trigger is exempt from Azure's inactive-pipeline fee even in zero-run months
+      notes: "Zero committed cost -- a stopped schedule is pure configuration; started, ~30 firings a month cost fractions of a cent on the trigger side, and the money is the pipeline runs it starts."
+    - preset: 02-hourly-tumbling-window
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - deployed stopped (activated false) -- once started, one firing per contiguous hour bills a trigger execution ("1.0" USD per 1,000 runs, East US cloud rates) plus each window's pipeline run; retries (3 per the preset) bill every attempt
+        - "the backfill is the charge to respect: on START, Azure fires one billed run per window from start_time to now -- a start_time a month back queues ~730 pipeline runs immediately, throttled to 4 at a time by max_concurrency"
+        - Data Factory operations bill read/write per 50,000 entity operations on the factory
+      notes: "Zero committed cost -- stopped is free; the model deliberately estimates nothing because the preset's placeholder start_time makes the backfill size a deployment-day fact, not a manifest fact."
+    - preset: 03-blob-landing-event
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - deployed stopped (activated false) -- once started, every blob-created event matching the landing-path filters fires a billed trigger execution and pipeline run; firing volume is the storage account's write traffic, unknowable from the manifest
+        - the event path rides Azure Event Grid against the storage account's system topic -- standard event operations bill "0.60" USD per million (East US) after the monthly free grant
+        - Data Factory operations bill read/write per 50,000 entity operations on the factory
+      notes: "Zero committed cost -- stopped is free, and the narrow path filters (a specific incoming folder, .csv only, empty blobs ignored) are the preset's cost posture: filter breadth, not the trigger, decides the bill."
+    - preset: 04-custom-event
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - deployed stopped (activated false) -- once started, every event on the referenced Event Grid custom topic matching the subject and event-type filters fires a billed trigger execution and pipeline run
+        - the custom topic's own Event Grid per-operation meters ("0.60" USD per million standard event operations at East US after the free grant) bill on that topic's component, driven by the publisher's volume
+        - Data Factory operations bill read/write per 50,000 entity operations on the factory
+      notes: "Zero committed cost -- stopped is free; started, the upstream publisher's event volume is the only meter that matters, and it is invisible to this manifest."

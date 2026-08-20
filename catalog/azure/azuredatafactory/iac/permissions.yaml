@@ -1,0 +1,49 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuredatafactory
+spec:
+  azure:
+    groups:
+      - purpose: ManageFactory
+        actions:
+          - Microsoft.DataFactory/factories/read
+          - Microsoft.DataFactory/factories/write
+          - Microsoft.DataFactory/factories/delete
+        provenance: derived
+        notes: "Covers azurerm_data_factory / datafactory.NewFactory -- create, refresh, in-place updates (public network, purview, global parameters, identity, CMK), and destroy. Typically held via Data Factory Contributor or Contributor on the resource group. The purview_id and customer_managed_key references ride the factory payload with no runner-side grant evidenced in either module -- the CMK unwrap check Azure runs at create validates the FACTORY's user-assigned identity against the vault, not the runner."
+      - purpose: ConfigureRepository
+        actions:
+          - Microsoft.DataFactory/locations/configureFactoryRepo/action
+        provenance: derived
+        notes: "Conditional -- only when github_configuration or vsts_configuration is set. Both providers apply the repository binding through a separate configure-repo call against the subscription's Data Factory location AFTER the factory exists (the action lives under locations/, not factories/), so the grant sits at subscription scope. Removing the block calls no repo-clear API, so no extra action is needed to (not) detach."
+      - purpose: ManageManagedVirtualNetwork
+        actions:
+          - Microsoft.DataFactory/factories/managedVirtualNetworks/read
+          - Microsoft.DataFactory/factories/managedVirtualNetworks/write
+        provenance: derived
+        notes: "Conditional -- only when managed_virtual_network_enabled is true. The provider creates the managed network (named 'default') with a managedVirtualNetworks write after the factory exists, and the managed-private-endpoint resource lists managed networks on the factory to resolve that name on every plan. No delete action exists in ARM's inventory -- the managed network dies with the factory."
+      - purpose: ManageCredentials
+        actions:
+          - Microsoft.DataFactory/factories/credentials/read
+          - Microsoft.DataFactory/factories/credentials/write
+          - Microsoft.DataFactory/factories/credentials/delete
+        provenance: derived
+        notes: "Conditional -- only when user_managed_identity_credentials or service_principal_credentials carry entries. One ARM child resource per named credential (both flavors share the credentials type), keyed by name so renames replace only that credential. The service-principal flavor's Key Vault secret is resolved at run time through a linked service by NAME -- no vault access is exercised by the runner."
+      - purpose: ManageManagedPrivateEndpoints
+        actions:
+          - Microsoft.DataFactory/factories/managedVirtualNetworks/managedPrivateEndpoints/read
+          - Microsoft.DataFactory/factories/managedVirtualNetworks/managedPrivateEndpoints/write
+          - Microsoft.DataFactory/factories/managedVirtualNetworks/managedPrivateEndpoints/delete
+        provenance: derived
+        notes: "Conditional -- only when managed_private_endpoints carry entries. One child resource per entry under the managed network, create-only in both providers (any change replaces that endpoint; siblings untouched). NO grant is needed on the TARGET resource: the endpoint provisions to Succeeded with its connection Pending, and approval happens target-side (Networking -> Private endpoint connections) outside this runner's session."
+      - purpose: AssignUserAssignedIdentities
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: "Conditional -- only when the identity block carries a user-assigned flavor or user_managed_identity_credentials reference identities. ARM authorizes attaching each referenced identity to the factory (and wrapping it in a credential) with assign/action on the identity's scope, service-side; the modules make no managed-identity API calls of their own."

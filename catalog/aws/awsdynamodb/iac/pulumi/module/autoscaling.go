@@ -20,8 +20,11 @@ import (
 //   - spec.autoscaling unset: pinned targets (min = max = the declared
 //     provisioned_throughput values). A declared capacity change updates
 //     the target, and AWS moves out-of-range capacity into the new
-//     bounds by contract -- so capacity stays fully declarative even
-//     though the table resource ignores it (table.go).
+//     bounds by contract (live-verified 2026-08-13: re-registering a
+//     pinned write target 5/5 -> 8/8 moved DescribeTable's
+//     WriteCapacityUnits to 8 within ~15 seconds, no table operation
+//     involved) -- so capacity stays fully declarative even though the
+//     table resource ignores it (table.go).
 //
 // One target per dimension either way, which is what makes adding or
 // removing the autoscaling block an in-place update -- the table
@@ -160,11 +163,11 @@ func trackingPolicy(ctx *pulumi.Context, provider *aws.Provider, tableName strin
 	}
 
 	if _, err := appautoscaling.NewPolicy(ctx, dimension+"-utilization-policy", &appautoscaling.PolicyArgs{
-		Name:              pulumi.Sprintf("%s-%s-utilization", tableName, dimension),
-		PolicyType:        pulumi.String("TargetTrackingScaling"),
-		ServiceNamespace:  target.ServiceNamespace,
-		ResourceId:        target.ResourceId,
-		ScalableDimension: target.ScalableDimension,
+		Name:                                     pulumi.Sprintf("%s-%s-utilization", tableName, dimension),
+		PolicyType:                               pulumi.String("TargetTrackingScaling"),
+		ServiceNamespace:                         target.ServiceNamespace,
+		ResourceId:                               target.ResourceId,
+		ScalableDimension:                        target.ScalableDimension,
 		TargetTrackingScalingPolicyConfiguration: policyCfg,
 	}, pulumi.Provider(provider), pulumi.Parent(target)); err != nil {
 		return errors.Wrapf(err, "failed to create %s target-tracking policy", dimension)

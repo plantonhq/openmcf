@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsssmdocument.v1alpha1;
+
+// AwsSsmDocumentStackOutputs captures the observable state of the
+// document after apply.
+message AwsSsmDocumentStackOutputs {
+  // The document's name (also the provider's import ID, and what
+  // associations reference).
+  string document_name = 1;
+
+  // The document's ARN.
+  string document_arn = 2;
+
+  // The default document version (the one associations resolve when
+  // they pin "$DEFAULT"; updates promote the new version here).
+  string default_version = 3;
+
+  // The latest document version.
+  string latest_version = 4;
+
+  // The Sha256 digest of the document content.
+  string document_hash = 5;
+
+  // The document's lifecycle status ("Creating", "Active", ...).
+  string status = 6;
+}

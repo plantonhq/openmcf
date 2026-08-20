@@ -1,0 +1,33 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsssmpatchbaseline
+spec:
+  # The baseline imports by its AWS-generated "pb-..." id. Each folded
+  # patch group composes its own spec entry (the module's for_each key)
+  # with the baseline id; the default designation imports by the
+  # operating-system string the baseline resolved (WINDOWS when the
+  # spec leaves it unset -- the stack output always carries it).
+  values:
+    - name: baseline_id
+      derivations:
+        - from_stack_output: baseline_id
+      where_to_find: >-
+        Systems Manager console -> Patch Manager -> Patch baselines
+        (the Baseline ID column), or `aws ssm describe-patch-baselines`
+        (BaselineId).
+    - name: patch_group
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        Systems Manager console -> Patch Manager -> Patch groups (each
+        group's name), or `aws ssm describe-patch-groups` (PatchGroup)
+        -- each spec.patch_groups entry is its own registration.
+    - name: operating_system
+      derivations:
+        - from_stack_output: operating_system
+        - from_spec_field: operating_system
+      where_to_find: >-
+        The baseline's operating system (`aws ssm get-patch-baseline
+        --baseline-id <id>` shows OperatingSystem; WINDOWS when the
+        spec leaves it unset).

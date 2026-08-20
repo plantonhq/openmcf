@@ -1,0 +1,25 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsefsaccesspoint
+spec:
+  aws:
+    statements:
+      - sid: ManageAccessPoint
+        actions:
+          - elasticfilesystem:CreateAccessPoint
+          - elasticfilesystem:DeleteAccessPoint
+          - elasticfilesystem:DescribeAccessPoints
+          - elasticfilesystem:TagResource
+          - elasticfilesystem:UntagResource
+          - elasticfilesystem:ListTagsForResource
+        resources:
+          - arn:aws:elasticfilesystem:*:*:access-point/*
+          - arn:aws:elasticfilesystem:*:*:file-system/*
+        provenance: derived
+        notes: Covers aws_efs_access_point (tf) / efs.AccessPoint (pulumi) -- creation with the posix_user and root_directory blocks, read during plan/refresh, tagging, and deletion. Both ARN formats are required by the service reference -- CreateAccessPoint authorizes on the parent file-system ARN, DeleteAccessPoint on the access-point ARN, and the describe/tag actions on either. All access-point fields are immutable, so updates are replacements and no update action exists.

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsconfigaggregator
+spec:
+  billing_model: free
+  free_tier: "Both arms are free by AWS's own statement: \"Using aggregators does not incur any additional costs.\" (AWS Config developer guide, multi-account multi-region data aggregation). The Config pricing page bills exactly three things -- configuration items recorded, rule evaluations, and conformance pack evaluations -- and neither the aggregator nor an aggregation authorization is any of them. The aggregator is a read-only replica view; the grants are pure metadata."
+  notes: "The spend the aggregator makes VISIBLE is generated in the SOURCE accounts, on other components. Configuration items bill on each source account's recorder (AwsConfigRecorder: \"$0.003\" per continuous item, \"$0.012\" per periodic item, per the pricing page); rule and conformance-pack evaluations bill on the rules deployed there (\"$0.001\" per evaluation in the first 100,000). Aggregating an organization or adding source accounts/regions changes NOTHING on the bill by itself -- data only exists to collect where a recorder already runs, and replication into the aggregator account is unmetered. Adjacent plumbing routes elsewhere too: snapshot/history delivery bills standard S3 rates and change notifications standard SNS rates on the recorder's delivery channel, custom rules bill Lambda -- all in the source accounts. The organization arm's role_arn references an AwsIamRole, itself free. Destroy is symmetric-free: deleting the aggregator removes only the rollup view; source accounts' Config data (and its meters) are untouched."

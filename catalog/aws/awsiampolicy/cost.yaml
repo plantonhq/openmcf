@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsiampolicy
+spec:
+  billing_model: free
+  free_tier: A customer-managed IAM policy is a permission document inside AWS IAM, and IAM is a feature of the AWS account offered at no additional charge -- no meter counts policies, policy versions, or the principals a policy is attached to. AWS storing up to five versions of the document costs nothing either; version history is bookkeeping, not billed storage.
+  notes: "No field of this spec buys anything: the policy document, path, and description are IAM control-plane configuration. The real spend lives with the principals that carry the policy and what THEY do -- the roles and users it attaches to are themselves free (their own catalog kinds say so), and only the AWS services their credentials actually call ever bill. A policy granting s3:GetObject costs nothing; the S3 requests made under it bill on the bucket's meters."

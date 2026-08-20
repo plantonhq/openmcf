@@ -1,0 +1,26 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureexpressroutecircuitpeering
+spec:
+  azure:
+    groups:
+      - purpose: ManageExpressRouteCircuitPeering
+        actions:
+          - Microsoft.Network/expressRouteCircuits/peerings/read
+          - Microsoft.Network/expressRouteCircuits/peerings/write
+          - Microsoft.Network/expressRouteCircuits/peerings/delete
+        provenance: derived
+        notes: Covers azurerm_express_route_circuit_peering -- create, read/refresh, in-place routing updates, and destroy. The peering is an ARM child of the circuit named in express_route_circuit_name, so the permissions must be held at (or above) that circuit's resource group; Network Contributor, Contributor, and Owner all carry them.
+      - purpose: ManageGlobalReachConnections
+        actions:
+          - Microsoft.Network/expressRouteCircuits/peerings/connections/read
+          - Microsoft.Network/expressRouteCircuits/peerings/connections/write
+          - Microsoft.Network/expressRouteCircuits/peerings/connections/delete
+        provenance: derived
+        notes: Covers azurerm_express_route_circuit_connection, the composed Global Reach children created for each `connections` entry -- needed only when the spec configures them. The far side (peer_peering_id) is passed through and validated by ARM server-side; a cross-subscription far circuit is authorized by redeeming its authorization_key, not by granting this runner permissions there.

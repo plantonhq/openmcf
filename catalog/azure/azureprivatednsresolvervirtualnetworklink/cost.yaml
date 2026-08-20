@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureprivatednsresolvervirtualnetworklink
+spec:
+  billing_model: free
+  free_tier: The link is free at rest -- an attachment record that makes a forwarding ruleset take effect in one virtual network. Azure meters neither the link nor the number of links (up to 500 per ruleset).
+  notes: "No field of this spec buys anything: the ruleset reference, network reference, and metadata map are all free configuration. The real spend lives on the DNS Private Resolver whose outbound endpoints serve the linked network's forwarded queries -- AzurePrivateDnsResolver bills per endpoint-hour plus query volume. The ruleset itself (AzurePrivateDnsResolverForwardingRuleset) is likewise free."

@@ -1,0 +1,81 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azuremssqldatabase
+spec:
+  presets:
+    - preset: 01-general-purpose
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: SQL Database
+          sku_meter: database compute
+          pricing_unit: vCore-hours
+          pricing_quantity: "1460"
+          quantity_basis: GP_Gen5_2 provisions 2 General Purpose Gen5 vCores x 730 hours; region eastus is a stated assumption -- the database prices where its referenced logical server lives
+          list_unit_price: "0.152217"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'SQL Database' and armRegionName eq 'eastus' and armSkuName eq 'SQLDB_GP_Compute_Gen5' and meterName eq 'vCore' and productName eq 'SQL Database Single/Elastic Pool General Purpose - Compute Gen5' and skuName eq 'vCore' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "222.23682"
+        - service_name: SQL Database
+          sku_meter: SQL Server license
+          pricing_unit: vCore-hours
+          pricing_quantity: "1460"
+          quantity_basis: pay-as-you-go SQL licensing bills per provisioned vCore-hour (2 vCores x 730 hours) -- Azure's default when license_type is unset; BASE_PRICE (Azure Hybrid Benefit) removes this line
+          list_unit_price: "0.099966"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'SQL Database' and armRegionName eq 'Global' and meterName eq 'vCore' and productName eq 'SQL Database Single/Elastic Pool General Purpose - SQL License' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "145.95036"
+        - service_name: SQL Database
+          sku_meter: database storage
+          pricing_unit: GB-months
+          pricing_quantity: "128"
+          quantity_basis: provisioned data storage bills the configured max_size_gb per GB-month whether used or empty
+          list_unit_price: "0.115"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'SQL Database' and armRegionName eq 'eastus' and meterName eq 'General Purpose Data Stored' and productName eq 'SQL Database Single/Elastic Pool General Purpose - Storage' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "14.7200"
+      total_list_cost: "382.90718"
+      exclusions:
+        - backup storage beyond the free allowance (100% of the database size) follows churn, the short/long-term retention settings, and the storage_account_type redundancy choice
+        - network egress follows client placement
+    - preset: 03-hyperscale-replicas
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: SQL Database
+          sku_meter: database compute
+          pricing_unit: vCore-hours
+          pricing_quantity: "8760"
+          quantity_basis: the HS_Gen5_4 primary provisions 4 Hyperscale Gen5 vCores x 730 hours; region eastus is a stated assumption -- the database prices where its referenced logical server lives; each Hyperscale readable replica provisions the same 4 vCores as the primary x 730 hours
+          list_unit_price: "0.18266"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'SQL Database' and armRegionName eq 'eastus' and armSkuName eq 'SQLDB_HyperScale_Compute_Gen5' and productName eq 'SQL Database SingleDB/Elastic Pool Hyperscale - Compute Gen5' and skuName eq 'vCore' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "1600.1016"
+        - service_name: SQL Database
+          sku_meter: SQL Server license
+          pricing_unit: vCore-hours
+          pricing_quantity: "8760"
+          quantity_basis: pay-as-you-go SQL licensing bills the primary's 4 provisioned vCores x 730 hours -- Azure's default when license_type is unset; BASE_PRICE removes this line; each readable replica's 4 provisioned vCores carry the same pay-as-you-go license meter x 730 hours
+          list_unit_price: "0.099966"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'SQL Database' and armRegionName eq 'Global' and meterName eq 'vCore' and productName eq 'SQL Database SingleDB/Elastic Pool Hyperscale - SQL License' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "875.70216"
+      total_list_cost: "2475.80376"
+      exclusions:
+        - Hyperscale data storage bills per GB-month actually allocated as data grows (max_size_gb is ignored by design) and cannot be known from the manifest
+        - backup storage beyond the free allowance (100% of the database size) follows churn, the short/long-term retention settings, and the storage_account_type redundancy choice
+        - network egress follows client placement
+      notes: Hyperscale zone redundancy carries no meter of its own -- the resilience rides the readable replicas (at least one is required) and zone-redundant backup storage, both already reflected above.

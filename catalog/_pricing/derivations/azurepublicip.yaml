@@ -1,0 +1,67 @@
+# Cost derivation: the machine-executable rules turning any AzurePublicIp
+# manifest's spec values into metered quantities and price choices -- one
+# flat hourly meter per Standard static IPv4 address, billing from
+# creation to deletion whether or not anything attaches it. The GLOBAL
+# tier and STANDARD_V2 SKU are refusals (one is unconsumed by any
+# committed preset, the other has no published meter); IPv6 and
+# prefix-drawn addresses are honestly zero HERE -- IPv6 because Microsoft
+# charges nothing for it, prefix-drawn because the referenced prefix
+# component already bills every address in its block. The estimate
+# generator replays the catalog presets through these rules to emit
+# ../estimates/azurepublicip.yaml; a server-side estimator evaluates the
+# same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azurepublicip
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  refusals:
+    - when:
+        - field_path: sku
+          op: equals
+          value: STANDARD_V2
+      reason: the next-generation StandardV2 SKU has no meter of its own in Azure's retail price API -- Microsoft's pricing page lists it alongside Standard, but no API-verifiable rate exists to commit
+    - when:
+        - field_path: sku_tier
+          op: equals
+          value: GLOBAL
+      reason: the GLOBAL tier (cross-region load balancer frontends) bills its own hourly meter at double the Standard rate, a niche shape no committed preset uses -- pinning its price would create a book entry nothing consumes
+  lines:
+    - sku_meter: standard static public IPv4
+      applies_when:
+        - field_path: ip_version
+          op: not_equals
+          value: IPV6
+        - field_path: public_ip_prefix_id
+          op: is_unset
+      quantity:
+        - hours_in_month: true
+      price_slug: standard-static-public-ip
+      basis: one Standard static IPv4 address x 730 hours -- the meter runs from creation (Azure starts the clock the second hour, a one-hour assignment grace) to deletion, attached or idle, and bills in Azure's Global region at a rate that does not vary by deployment region
+  exclusions:
+    - applies_when:
+        - field_path: public_ip_prefix_id
+          op: is_set
+      text: the address is drawn from a reserved prefix that already bills every address in its block per IP-hour from the moment the prefix exists -- that spend lives on the referenced AzurePublicIpPrefix component, and Microsoft publishes no separate meter for the act of drawing an address from it
+    - applies_when:
+        - field_path: ddos_protection_mode
+          op: equals
+          value: ENABLED
+      text: dedicated IP-level DDoS protection bills through the referenced protection plan, a separately billed resource shared across many addresses, outside this manifest
+    - text: data transfer to and from the address bills per GB as bandwidth and follows traffic; a "RoutingPreference":"Internet" ip_tag moves egress to internet-transit bandwidth rates
+  notes:
+    - applies_when:
+        - field_path: ip_version
+          op: equals
+          value: IPV6
+      text: An IPv6 address is free -- Microsoft's documentation states public IPv6 addresses have no charge, and the retail price API publishes no IPv6 meter under the IP Addresses product. The spend around an IPv6 deployment lives in its IPv4 dual-stack counterparts and the bandwidth its traffic bills.
+    - applies_when:
+        - field_path: domain_name_label
+          op: is_set
+      text: The Azure-managed DNS name (label.region.cloudapp.azure.com) is free -- no meter attaches to DNS labels or their reuse scopes.

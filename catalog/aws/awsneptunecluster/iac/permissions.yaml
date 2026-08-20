@@ -1,0 +1,117 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Neptune
+# cluster management actions live under the rds: prefix -- the neptune-db:
+# namespace is the data plane (queries), which the runner never touches.
+# Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsneptunecluster
+spec:
+  aws:
+    statements:
+      - sid: ManageDbCluster
+        actions:
+          - rds:CreateDBCluster
+          - rds:DeleteDBCluster
+          - rds:ModifyDBCluster
+          - rds:DescribeDBClusters
+          - rds:RestoreDBClusterFromSnapshot
+          - rds:AddTagsToResource
+          - rds:RemoveTagsFromResource
+          - rds:ListTagsForResource
+        resources:
+          - arn:aws:rds:*:*:cluster:*
+          - arn:aws:rds:*:*:cluster-pg:*
+          - arn:aws:rds:*:*:subgrp:*
+          - arn:aws:rds:*:*:cluster-snapshot:*
+          - arn:aws:rds:*:*:global-cluster:*
+          - arn:aws:rds:*:*:db:*
+          - arn:aws:rds:*:*:pg:*
+          - arn:aws:rds:*:*:cluster-endpoint:*
+        provenance: derived
+        notes: Covers aws_neptune_cluster across its create shapes -- fresh cluster, snapshot restore, cross-cluster replica, and global-cluster join -- plus modify, tagging, and teardown. CreateDBCluster and RestoreDBClusterFromSnapshot authorize against the cluster parameter group and subnet group ARNs resolved for the request (defaults included), the source snapshot on snapshot restores, and the global cluster when global_cluster_identifier is set -- omitting those formats denies the create. Tagging (AddTagsToResource et al.) also authorizes against the instance (db), subnet-group, parameter-group (cluster-pg and the instance-level pg), and custom-endpoint ARNs the module tags.
+      - sid: ManageClusterInstances
+        actions:
+          - rds:CreateDBInstance
+          - rds:DeleteDBInstance
+          - rds:ModifyDBInstance
+          - rds:DescribeDBInstances
+        resources:
+          - arn:aws:rds:*:*:db:*
+          - arn:aws:rds:*:*:cluster:*
+          - arn:aws:rds:*:*:pg:*
+        provenance: derived
+        notes: Covers aws_neptune_cluster_instance -- one per spec.instances entry. CreateDBInstance/ModifyDBInstance authorize against the db and cluster ARNs plus the instance parameter group the module passes (neptune_parameter_group_name -- explicit, the managed instance group, or the engine default).
+      - sid: ManageClusterSnapshotsOnLifecycle
+        actions:
+          - rds:CreateDBClusterSnapshot
+          - rds:DeleteDBClusterSnapshot
+          - rds:DescribeDBClusterSnapshots
+        resources:
+          - arn:aws:rds:*:*:cluster-snapshot:*
+          - arn:aws:rds:*:*:cluster:*
+        provenance: derived
+        notes: Final snapshots on teardown (skip_final_snapshot=false) and reads of the source snapshot for restore-based creates.
+      - sid: ManageSubnetAndParameterGroups
+        actions:
+          - rds:CreateDBSubnetGroup
+          - rds:DeleteDBSubnetGroup
+          - rds:ModifyDBSubnetGroup
+          - rds:DescribeDBSubnetGroups
+          - rds:CreateDBClusterParameterGroup
+          - rds:DeleteDBClusterParameterGroup
+          - rds:ModifyDBClusterParameterGroup
+          - rds:DescribeDBClusterParameterGroups
+          - rds:DescribeDBClusterParameters
+          - rds:CreateDBParameterGroup
+          - rds:DeleteDBParameterGroup
+          - rds:ModifyDBParameterGroup
+          - rds:DescribeDBParameterGroups
+          - rds:DescribeDBParameters
+        resources:
+          - arn:aws:rds:*:*:subgrp:*
+          - arn:aws:rds:*:*:cluster-pg:*
+          - arn:aws:rds:*:*:pg:*
+        provenance: derived
+        notes: Covers the conditional aws_neptune_subnet_group, aws_neptune_cluster_parameter_group (spec.parameters), and aws_neptune_parameter_group (spec.instance_parameters -- a DB-level parameter group) satellites -- each created only when the spec provides subnets or inline parameters.
+      - sid: ManageCustomEndpoints
+        actions:
+          - rds:CreateDBClusterEndpoint
+          - rds:DeleteDBClusterEndpoint
+          - rds:ModifyDBClusterEndpoint
+          - rds:DescribeDBClusterEndpoints
+        resources:
+          - arn:aws:rds:*:*:cluster-endpoint:*
+          - arn:aws:rds:*:*:cluster:*
+        provenance: derived
+        notes: Covers aws_neptune_cluster_endpoint -- one per spec.custom_endpoints entry.
+      - sid: DescribeVpcContext
+        actions:
+          - ec2:DescribeSubnets
+          - ec2:DescribeSecurityGroups
+          - ec2:DescribeVpcs
+        resources:
+          - "*"
+        provenance: derived
+        notes: Subnet-group creation and security-group attachment validate their references. EC2 Describe APIs support no resource-level scoping, so the wildcard is the narrowest possible scope.
+      - sid: ManageIamRoleAssociations
+        actions:
+          - rds:AddRoleToDBCluster
+          - rds:RemoveRoleFromDBCluster
+          - iam:PassRole
+        resources:
+          - arn:aws:rds:*:*:cluster:*
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: Covers the cluster's inline iam_roles list (S3 bulk-loader and Neptune ML roles) -- Neptune assumes the referenced roles, and associating them passes them. Narrow the role ARN in a hardened deployment.
+      - sid: UseCustomerManagedKeys
+        actions:
+          - kms:DescribeKey
+          - kms:CreateGrant
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Required only when kms_key_id selects a customer-managed key -- the service creates grants against the key during cluster create.

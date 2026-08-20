@@ -1,0 +1,82 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpworkflow
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Workflow definitions and execution data are stored encrypted at rest with Google-managed keys without configuration -- the spec's crypto_key field exists precisely to REPLACE that default with a customer key, not to enable encryption.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: crypto_key
+      evidence:
+        type: spec_default
+        reference: Omitted (the default) keeps Google-managed encryption; naming a Cloud KMS crypto key (or referencing a GcpKmsKey resource) encrypts workflow definitions and execution data with the customer-managed key instead.
+      notes: The Workflows service agent must hold roles/cloudkms.cryptoKeyEncrypterDecrypter on the key BEFORE deploying, or the deploy fails -- a prerequisite grant outside this resource.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The workflow exposes no endpoint of its own to encrypt. Whether each step call rides TLS is decided by the URLs written in source_contents (an authoring concern, not a spec field); calls to Google APIs and connectors always ride Google's TLS, and the management API is TLS unconditionally.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A workflow has no inbound network surface -- executions start only through IAM-authorized API calls (workflows.executions.create) or an Eventarc trigger, and there is nothing for the public internet to reach.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress exists to restrict -- see no-public-access.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The workflow serves no inbound traffic for a WAF to filter; protecting the services its steps call is those components' concern.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Google's Workflows access-control documentation states every Workflows method requires the caller to hold the necessary IAM permission -- and the role family deliberately separates executing (roles/workflows.invoker) from developing and deploying (roles/workflows.editor/admin).
+    - control_id: workload-identity
+      status: configurable
+      field_path: service_account
+      evidence:
+        type: spec_default
+        reference: Executions run AS the named service account -- every HTTP call with OIDC/OAuth auth and every connector call carries short-lived tokens minted for that identity; no static credential is stored. Unset falls back to the project's default compute service account, which the spec itself calls wrong for production.
+      notes: Both presets name dedicated identities granted exactly the target services' invoker roles. Changing the account deploys a new revision.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The resource carries no authentication paths to weaken -- management and execution are IAM-only, and step-call authentication is declared per call in the source as OIDC or OAuth2 token minting. No older credential mechanism exists here to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Workflow create, update (each new revision), and delete land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+      notes: Admin Activity covers changes TO the workflow; per-execution call visibility is call_log_level's job (see monitoring-integration).
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: call_log_level
+      evidence:
+        type: spec_default
+        reference: Empty defers to the API default (errors only); LOG_ALL_CALLS exports every call and its result to Cloud Logging, LOG_ERRORS_ONLY only failures, LOG_NONE nothing -- the observability dial for execution traffic.
+      notes: execution_history_level is the sibling dial for step-level detail in the console (DETAILED keeps step inputs/outputs). Execution counts and durations flow to Cloud Monitoring regardless of either setting.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The workflow definition is declarative source fully re-creatable from the manifest -- the manifest is the recovery path. Execution history is operational telemetry that dies with the workflow, which is exactly what deletion-protection guards.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain -- see backup-recovery.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The workflow runs on Google's managed regional orchestration service; replication is not a configuration surface this API exposes, and no zonal placement choice exists on the resource.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_protection
+      evidence:
+        type: spec_default
+        reference: Defaults to true -- destroy FAILS before touching the workflow until the field is explicitly set false; both modules send the value on every apply so a true-to-false transition always reaches the engine.
+      notes: Deletion is destructive beyond the definition -- execution history is deleted and running executions are cancelled. deletion_policy PREVENT adds an engine-side second layer; the 01-http-orchestrator preset uses it.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software surface here to patch -- the execution engine that interprets the source is Google's fully managed service, maintained invisibly with no version or channel exposed on the resource.

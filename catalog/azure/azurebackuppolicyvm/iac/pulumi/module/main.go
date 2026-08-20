@@ -65,6 +65,10 @@ func Resources(ctx *pulumi.Context, stackInput *azurebackuppolicyvmv1alpha1.Azur
 
 	// Omit when unset so the SERVICE default applies (2 days on V1,
 	// 7 on V2 -- version-dependent, so the platform pins no default).
+	// Azure requires vaulted daily retention > this value
+	// (BMSUserErrorInstantRPRetentionExceedsVaultedRetention); the
+	// spec CEL `bpv_instant_lt_daily` front-loads that, including the
+	// V2-unset-defaults-to-7 case.
 	if spec.InstantRestoreRetentionDays != nil {
 		policyArgs.InstantRestoreRetentionDays = pulumi.Int(int(*spec.InstantRestoreRetentionDays))
 	}

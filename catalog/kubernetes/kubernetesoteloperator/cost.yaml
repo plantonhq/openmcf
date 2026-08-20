@@ -1,0 +1,25 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesoteloperator
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Each replica is a full operator pod carrying the declared resource requests. 2 gives a warm standby (leader election picks one active reconciler), each replica reserving its own capacity.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The reservation per replica. Empty means the chart defaults, and this chart ships NO default requests or limits for the manager -- the operator pods schedule unbounded and the cluster reserves nothing for them.
+    - field_path: default_collector_image
+      sku_meter: cluster CPU and memory reservations
+      impact: The collector image the operator injects fleet-wide into OpenTelemetryCollector CRs that declare none -- it shapes what the OPERAND pods run, not what this operator's pods reserve.
+  estimate_exclusions:
+    - no capacity derivation is published for this component -- neither committed preset declares resources and the chart ships no default requests or limits for the manager container, so a manifest-time footprint would state zero reservation, which is the truth but not a useful capacity statement; set resources to reserve capacity deliberately
+    - the collector fleets this operator creates are the real capacity story -- each rides its own KubernetesOtelCollector (or directly authored opentelemetry.io CR), never this component's footprint
+    - "helm_values merges LAST over the typed rendering and can override modeled values, including resources and replicas -- this profile describes the spec's declaration"
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster its operator pods reserve, realized on the cluster's bill. The operator is the control plane, not the workload: collector pods belong to the KubernetesOtelCollector resources it reconciles, and their capacity is stated there."

@@ -1,0 +1,65 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurecontainerappenvironmentstorage
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The registration stores no file data -- everything mounted through it rests in the Azure Files share, whose at-rest encryption is the storage account's posture (a separate kind). The one secret the registration holds, the SMB access_key, is platform-held configuration Azure encrypts service-side; ARM never returns it on reads.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to key; CMK posture for the mounted data belongs to the storage account kind.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The registration carries no traffic of its own; mount transport is decided by the protocol choice and the account -- SMB rides the storage account's encryption-in-transit posture, and the NFS path requires a VNet-injected environment precisely because NFS traffic never leaves the VNet. Both are posture of the storage and environment kinds.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The registration has no network endpoint. Whether the SHARE answers publicly is the storage account's network posture; the NFS variant additionally only works inside a VNet-injected environment.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound traffic exists to restrict on the registration itself.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request path exists to filter.
+    - control_id: rbac
+      status: configurable
+      field_path: access_mode
+      evidence:
+        type: spec_default
+        reference: access_mode is the registration's one access-governance dial -- READ_ONLY mounts every volume backed by this registration read-only (shared configuration and reference data), READ_WRITE permits writes. The spec requires an explicit choice (the unspecified value is rejected).
+      notes: Management-plane access to the registration is subscription/resource-group RBAC posture; per-principal data-plane RBAC on the share itself belongs to the storage kinds.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The surface offers no identity-based option -- SMB registrations authenticate with a storage account access key by Azure's own design (the one in-place-updatable field, for rotation), and the NFS path carries no credential at all (network trust inside the VNet). No managed-identity mode exists to opt into here.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The SMB access key is the ONLY authentication mode Azure offers on this surface, so no weaker path exists to disable relative to a stronger one; key hygiene (rotation via the in-place access_key update, referencing the key from a secret) is the available discipline.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Create/update/delete of the registration land in the Azure Activity Log automatically as subscription-level posture; file-access logs belong to the storage account's diagnostic settings, a separate kind.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The registration publishes no metrics of its own; share capacity and transaction telemetry ride the storage account, and mount health rides the apps -- separate kinds.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless configuration -- nothing to back up; the manifest recreates the registration declaratively. The mounted DATA's backup posture belongs to the Azure Files share and the backup kinds that protect it.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A registration has no runtime footprint with a zonal failure mode; share redundancy is the storage account's replication choice, a separate kind.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a storage registration (Azure resource locks are subscription-side governance outside the manifest). Deleting or recreating one briefly breaks every volume mount referencing it -- plan changes accordingly (everything except access_key is ForceNew).
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The mount plumbing that materializes AZURE_FILE / NFS_AZURE_FILE volumes from this registration is Microsoft-operated Container Apps infrastructure; no customer-visible patch surface exists.

@@ -1,0 +1,21 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awssesaccountsettings
+spec:
+  aws:
+    statements:
+      - sid: ManageAccountSettings
+        actions:
+          - ses:GetAccount
+          - ses:PutAccountSuppressionAttributes
+          - ses:PutAccountVdmAttributes
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_sesv2_account_suppression_attributes / sesv2.AccountSuppressionAttributes and aws_sesv2_account_vdm_attributes / sesv2.AccountVdmAttributes. PutAccountSuppressionAttributes writes the suppression arm (create, update, and the explicit empty-list posture); PutAccountVdmAttributes writes the VDM arm AND serves its destroy (the provider's delete resets VdmEnabled to DISABLED through the same call -- suppression's delete is a no-op by design). GetAccount is the single read both resources refresh from on every plan. All three are account-level actions for which the SES service reference publishes NO resource types -- an ARN-scoped grant on them is a runtime DENY, so the wildcard IS the narrowest possible scope; IAM condition keys, not ARNs, are the only way to constrain them. The module's aws_caller_identity data source rides sts:GetCallerIdentity, which every authenticated principal can call without a policy grant.

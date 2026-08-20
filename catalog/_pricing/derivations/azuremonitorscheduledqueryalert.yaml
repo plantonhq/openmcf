@@ -1,0 +1,56 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureMonitorScheduledQueryAlert manifest's spec values into metered
+# quantities and price choices. A log alert bills a monthly fee per
+# evaluated time series at the rate its evaluation frequency sets, and
+# the rule includes its first series -- so the committed floor is one
+# frequency-rate fee per criterion. Only the 5-minute rate is pinned in
+# the price book (every committed preset evaluates at PT5M, Azure's own
+# default); manifests at other frequencies refuse honestly rather than
+# borrow a rate. Dimension splits bill extra series that follow the
+# live data's values -- stated in exclusions, never guessed. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/azuremonitorscheduledqueryalert.yaml; a server-side
+# estimator evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azuremonitorscheduledqueryalert
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  refusals:
+    - when:
+        - field_path: evaluation_frequency
+          op: is_set
+        - field_path: evaluation_frequency
+          op: not_equals
+          value: PT5M
+      reason: only the 5-minute evaluation rate is pinned in the price book -- the other frequency bands (1-minute 3.00, 10-minute 1.00, 15-minute 0.50 at eastus list, verified 2026-08-18) price when their rates enter the book, and no committed preset deploys them
+  lines:
+    - sku_meter: log alert time series
+      applies_when:
+        - field_path: evaluation_frequency
+          op: equals
+          value: PT5M
+      quantity:
+        - count_of: criteria
+      price_slug: monitor-log-alert-5min-eastus
+      basis: each criterion is its own scheduled query evaluating one time series at the 5-minute frequency rate per month -- the rule's fee includes each criterion's first series
+    - sku_meter: log alert time series
+      applies_when:
+        - field_path: evaluation_frequency
+          op: is_unset
+      quantity:
+        - count_of: criteria
+      price_slug: monitor-log-alert-5min-eastus
+      basis: an unset evaluation frequency deploys PT5M (the spec and Azure default), so the rule bills the 5-minute rate per criterion
+  exclusions:
+    - text: dimension splits (at-scale log monitoring) bill each evaluated dimension combination beyond the included first series at the same frequency rate -- a count that follows the live data's values, which is why a "*" split's bill cannot be committed here
+    - text: notifications the fired alert sends (email, SMS, voice, webhooks beyond the free monthly allowances) bill on the referenced AzureMonitorActionGroup components
+    - text: the queried workspace's ingestion and retention bill on the AzureLogAnalyticsWorkspace component
+  notes:
+    - text: The fee accrues from rule creation until deletion whether the alert ever fires or not; enabled=false suspends both evaluation and billing, which is why pausing beats deleting during maintenance windows.

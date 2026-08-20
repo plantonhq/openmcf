@@ -1,0 +1,38 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsbedrockprovisionedthroughput
+spec:
+  aws:
+    statements:
+      - sid: CreateProvisionedThroughput
+        actions:
+          - bedrock:CreateProvisionedModelThroughput
+        resources:
+          - arn:aws:bedrock:*:*:custom-model/*
+          - arn:aws:bedrock:*::foundation-model/*
+          - arn:aws:bedrock:*:*:provisioned-model/*
+        provenance: derived
+        notes: Covers aws_bedrock_provisioned_model_throughput creation. The service reference authorizes CreateProvisionedModelThroughput on the MODEL being provisioned -- the custom-model ARN (the default reference wiring) or the foundation-model ARN (which carries no account id in its format) -- so both model formats must be granted; the provisioned-model format is included for the purchase the call brings into existence. Every spec field except tags is create-time-immutable, so the module never calls UpdateProvisionedModelThroughput.
+      - sid: ReadDeleteProvisionedThroughput
+        actions:
+          - bedrock:GetProvisionedModelThroughput
+          - bedrock:DeleteProvisionedModelThroughput
+        resources:
+          - arn:aws:bedrock:*:*:provisioned-model/*
+        provenance: derived
+        notes: Read-side of the resource during plan/refresh and the destroy path. AWS refuses the delete server-side while a commitment term is running -- the permission is still required for the eventual destroy once the term lapses (or any time for no-commitment purchases).
+      - sid: ManageTags
+        actions:
+          - bedrock:TagResource
+          - bedrock:UntagResource
+          - bedrock:ListTagsForResource
+        resources:
+          - arn:aws:bedrock:*:*:provisioned-model/*
+        provenance: derived
+        notes: The module applies the platform's resource-identity tags at creation and reconciles them on update -- tags are the only mutable surface of this resource.

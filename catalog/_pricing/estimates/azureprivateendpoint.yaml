@@ -1,0 +1,70 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azureprivateendpoint
+spec:
+  presets:
+    - preset: 01-sql-server
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Virtual Network
+          sku_meter: endpoint hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one private endpoint x 730 hours at the Standard rate -- the meter bills in Azure's Global region at one worldwide rate, runs from provisioning to deletion, idle or busy, and is identical whichever service or sub-resource the connection targets
+          list_unit_price: "0.01"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Network' and armRegionName eq 'Global' and meterName eq 'Standard Private Endpoint' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "7.3000"
+      total_list_cost: "7.3000"
+      exclusions:
+        - data processed through the endpoint bills per GB in EACH direction -- ingress and egress are metered separately, tiered from the first-petabyte rate down -- and follows traffic entirely
+        - the referenced subnet, private DNS zones, application security groups, and the target service are first-class components billing on their own lines; the DNS zone group itself adds no meter
+    - preset: 02-storage-account
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Virtual Network
+          sku_meter: endpoint hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one private endpoint x 730 hours at the Standard rate -- the meter bills in Azure's Global region at one worldwide rate, runs from provisioning to deletion, idle or busy, and is identical whichever service or sub-resource the connection targets
+          list_unit_price: "0.01"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Network' and armRegionName eq 'Global' and meterName eq 'Standard Private Endpoint' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "7.3000"
+      total_list_cost: "7.3000"
+      exclusions:
+        - data processed through the endpoint bills per GB in EACH direction -- ingress and egress are metered separately, tiered from the first-petabyte rate down -- and follows traffic entirely
+        - the referenced subnet, private DNS zones, application security groups, and the target service are first-class components billing on their own lines; the DNS zone group itself adds no meter
+    - preset: 03-key-vault
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Virtual Network
+          sku_meter: endpoint hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one private endpoint x 730 hours at the Standard rate -- the meter bills in Azure's Global region at one worldwide rate, runs from provisioning to deletion, idle or busy, and is identical whichever service or sub-resource the connection targets
+          list_unit_price: "0.01"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Network' and armRegionName eq 'Global' and meterName eq 'Standard Private Endpoint' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "7.3000"
+      total_list_cost: "7.3000"
+      exclusions:
+        - data processed through the endpoint bills per GB in EACH direction -- ingress and egress are metered separately, tiered from the first-petabyte rate down -- and follows traffic entirely
+        - the referenced subnet, private DNS zones, application security groups, and the target service are first-class components billing on their own lines; the DNS zone group itself adds no meter

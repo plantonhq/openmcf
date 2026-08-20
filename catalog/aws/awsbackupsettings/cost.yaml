@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbackupsettings
+spec:
+  billing_model: free
+  free_tier: "The settings singleton is free -- the AWS Backup pricing page opens with \"pay only for the backup storage you use, backup data transferred between AWS Regions, backup data you restore, and backup evaluations. There is no minimum fee and there are no setup charges.\" Account and region settings appear nowhere in that list: no meter counts global settings keys, resource-type opt-ins, or management preferences, and the settings objects exist per account/region whether or not this component manages them."
+  notes: "What these dials change is the SCOPE of spend that bills elsewhere. (1) Each resource_type_opt_in_preference type flipped on widens what the account's backup plans may capture in the region -- the resulting recovery points bill backup storage per GB-month (and restores per GB) on the AwsBackupPlan/AwsBackupVault estate, at rates that differ per resource type. (2) The global arm's isCrossAccountBackupEnabled unlocks cross-account copies for the organization -- each copy bills cross-Region data transfer per GB to the SENDING account and vault storage to the receiving account, on the plans that schedule the copies, never here. (3) resource_type_management_preference handing DynamoDB to Backup's advanced features changes that type's backup economics -- cold-tier storage for DynamoDB backups is only available under advanced features, per the pricing page's own footnote. A quirk worth knowing at zero: destroy is a no-op on both arms, so un-deploying this component never turns any of these scopes (or their downstream spend) back off -- apply the false value first."

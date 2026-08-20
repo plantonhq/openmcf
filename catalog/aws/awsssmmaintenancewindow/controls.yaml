@@ -1,0 +1,77 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsssmmaintenancewindow
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A maintenance window stores no data of its own -- schedule, targets, and task registrations live in Systems Manager's managed control plane. The one caution is task inputs -- Lambda payloads and Step Functions inputs routinely carry credentials, which is why the spec marks both sensitive; supply managed-secret references rather than literals.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With no data store there is no key surface -- the maintenance window API exposes no customer-managed-key option.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Systems Manager API is HTTPS-only, and every task delivery channel rides TLS -- the SSM Agent polls over TLS for Run Command tasks, and Automation, Lambda, and Step Functions invocations travel AWS's encrypted service channels.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A window exposes no endpoint -- it is a scheduler. Its reach is defined by registered targets and IAM, and the SSM Agent on targets initiates all connections outbound.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens on a maintenance window; there is no inbound network surface to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: With no request-serving surface there is no WAF attachment point; edge filtering has no meaning for a scheduling window.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every window operation is IAM-authorized. Reads, updates, deletes, and target/task registrations scope to the window's own ARN (arn:aws:ssm:region:account:maintenancewindow/mw-...), so operating grants can be pinned per window; only creation is authorized account-wide (the service reference publishes no resource type for CreateMaintenanceWindow).
+    - control_id: workload-identity
+      status: configurable
+      field_path: tasks.service_role_arn
+      evidence:
+        type: spec_default
+        reference: Unset means Systems Manager runs the task under AWS's service-linked role for SSM -- broad by design. Referencing an AwsIamRole pins the task's execution identity to a role you author, scoped to exactly what that task touches; the assumed credentials are short-lived either way.
+      notes: allow_unassociated_targets is the companion boundary -- left false (the default), tasks can only ever reach targets deliberately registered with the window.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "Systems Manager has a single authentication path: SigV4-signed IAM requests. The one adjacent legacy surface is run_command.document_hash_type, where Sha1 exists for legacy documents only -- pin document hashes with Sha256."
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Window create/update/delete, every target and task registration change, and each window execution's task invocations are management events captured in CloudTrail unconditionally -- what ran on which fleet during which window is always on the record.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: tasks.invocation.run_command.notification_config
+      evidence:
+        type: spec_default
+        reference: Unset means task runs report status only inside Systems Manager. Referencing an SNS topic notifies on chosen lifecycle events (Success, Failed, TimedOut, ...) per command or per target invocation -- the hook that pages someone when the patch window fails.
+      notes: cloudwatch_config is the sibling channel, streaming command output to a log group for retention and alerting; output_s3_bucket persists full output durably. Untargeted observability (window-level run history) lives in Systems Manager's own console either way.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: There is nothing to back up -- the window, targets, and tasks are pure configuration, recreatable by re-applying the manifest (AWS regenerates the mw-/target/task IDs). Run history is Systems Manager's operational record, not state this component owns.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility there is no backup retention to set; retention of streamed command output belongs to the receiving log group and bucket components.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Maintenance Windows is a regional managed service AWS operates across availability zones; the window has no zonal footprint the manifest could configure -- its resilience dials (max_concurrency, max_errors, cutoff) protect the FLEET from a bad run, not the scheduler.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists on a window. The enabled flag is the safe pause (a disabled window keeps its whole configuration but opens no more); destroy removes window, targets, and tasks together -- the blast radius is maintenance silently stopping, not lost data.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the window scheduler and task dispatch machinery; the window exposes no runtime, version, or maintenance surface of its own. It is also the catalog's patching cadence tool -- a weekly window running AWS-RunPatchBaseline (the 01 preset) IS how a fleet's managed patching gets its schedule.

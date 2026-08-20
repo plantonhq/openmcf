@@ -1,0 +1,24 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsiamsamlprovider
+spec:
+  # An IAM SAML provider under live E2E: one lane proves the trust
+  # anchor from a structurally realistic metadata stand-in (IAM
+  # validates the XML structure, not the certificate chain -- the
+  # stand-in is over the 1000-character floor). IAM is free (~$0) and
+  # global; provider names are account-unique, so lanes run serially.
+  #
+  # Deliberately not exercised live:
+  #   - a real IdP round-trip (metadata from a live Okta/Entra tenant
+  #     and an sts:AssumeRoleWithSAML sign-in) -- federation needs an
+  #     external tenant only a human can arrange. Unblock: the
+  #     e2e-required-env pattern with an owner-arranged IdP metadata
+  #     URL.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q43
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

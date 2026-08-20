@@ -1,0 +1,97 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsOpenSearchServerlessCollection manifest's spec values into metered
+# quantities and price choices. The committed cost is the minimum OCU
+# floor: with standby replicas (the AWS default) 1 indexing OCU + 1
+# search OCU billed every hour; without standby replicas, half that
+# (0.5 + 0.5) -- the dev/test posture. The floor is account-scoped
+# (collections sharing a KMS key share one OCU pool), so this estimate
+# prices the full floor as if this collection is the first on its key,
+# per the notes. A collection placed in a collection group REFUSES --
+# its capacity minimums live on the group and are invisible in this
+# manifest. The estimate generator replays the catalog presets through
+# these rules to emit ../estimates/awsopensearchserverlesscollection.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsopensearchserverlesscollection
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  refusals:
+    - when:
+        - field_path: collection_group_name
+          op: is_set
+      reason: the collection's capacity minimums and maximums are pooled on the referenced collection group and invisible in this manifest -- the group's own OCU settings carry the committed floor, so a number here would be a guess wearing a dollar sign
+  lines:
+    - sku_meter: indexing OCU hours
+      applies_when:
+        - field_path: collection_group_name
+          op: is_unset
+        - field_path: standby_replicas
+          op: not_equals
+          value: DISABLED
+      quantity:
+        - constant: "1"
+        - hours_in_month: true
+      price_slug: aoss-indexing-ocu-us-east-1
+      basis: with standby replicas enabled (the AWS default), the minimum indexing floor is 1 OCU (0.5 primary + 0.5 standby) billed every hour of the month
+    - sku_meter: indexing OCU hours
+      applies_when:
+        - field_path: collection_group_name
+          op: is_unset
+        - field_path: standby_replicas
+          op: equals
+          value: DISABLED
+      quantity:
+        - constant: "0.5"
+        - hours_in_month: true
+      price_slug: aoss-indexing-ocu-us-east-1
+      basis: without standby replicas (the dev/test posture), the minimum indexing floor is 0.5 OCU billed every hour of the month
+    - sku_meter: search and query OCU hours
+      applies_when:
+        - field_path: collection_group_name
+          op: is_unset
+        - field_path: standby_replicas
+          op: not_equals
+          value: DISABLED
+      quantity:
+        - constant: "1"
+        - hours_in_month: true
+      price_slug: aoss-search-ocu-us-east-1
+      basis: with standby replicas enabled (the AWS default), the minimum search floor is 1 OCU (0.5 active + 0.5 replica) billed every hour of the month
+    - sku_meter: search and query OCU hours
+      applies_when:
+        - field_path: collection_group_name
+          op: is_unset
+        - field_path: standby_replicas
+          op: equals
+          value: DISABLED
+      quantity:
+        - constant: "0.5"
+        - hours_in_month: true
+      price_slug: aoss-search-ocu-us-east-1
+      basis: without standby replicas (the dev/test posture), the minimum search floor is 0.5 OCU billed every hour of the month
+  exclusions:
+    - text: OCU usage above the minimum floor scales with indexing and query load and bills at the same per-OCU-hour rate
+    - text: managed storage bills per GB-month and grows with the indexed data -- zero at creation, unbounded without retention_rules
+    - applies_when:
+        - field_path: serverless_vector_acceleration
+          op: equals
+          value: ENABLED
+      text: GPU-backed vector acceleration OCU-hours accrue per accelerated indexing workload
+  notes:
+    - text: The OCU floor is account-scoped -- collections encrypted with the same KMS key share one OCU pool, so this estimate carries the full floor as if this collection is the first on its key; sibling collections on the same key add usage, not a second floor.
+    - applies_when:
+        - field_path: type
+          op: equals
+          value: VECTORSEARCH
+      text: VECTORSEARCH collections pool their OCUs separately from search and time-series collections, even on the same KMS key -- the first vector collection starts its own floor.
+    - applies_when:
+        - field_path: standby_replicas
+          op: equals
+          value: DISABLED
+      text: Standby replicas are disabled -- half the floor cost, single-AZ compute; storage durability remains multi-AZ. The choice is fixed at create time.

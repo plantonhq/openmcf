@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsssmparameter.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsSsmParameterSpec defines the desired configuration for one AWS
+// Systems Manager Parameter Store entry: a named configuration value
+// (String, StringList, or SecureString) applications read at runtime.
+//
+// The parameter's name is an explicit field rather than metadata.name:
+// parameter names are hierarchical paths ("/prod/db/url") and slashes
+// cannot live in metadata.name. Changing the name forces replacement.
+//
+// The VALUE is set through exactly one of `value` (plain configuration
+// text - the common String/StringList case, visible in plans and
+// state) or `secure_value` (a sensitive field: the platform stores it
+// as a managed-secret reference and resolves it just-in-time at
+// deploy, so plaintext never lives in the control plane). SecureString
+// parameters MUST use `secure_value`.
+message AwsSsmParameterSpec {
+  // A hierarchical name (one containing "/") must be fully qualified
+  // with a leading slash - AWS rejects "prod/db/url" but accepts
+  // "/prod/db/url". Flat names ("db-url") need no slash.
+  option (buf.validate.message).cel = {
+    id: "spec.parameter_name_hierarchy"
+    message: "a parameter name containing '/' must be fully qualified with a leading '/'"
+    expression: "!this.parameter_name.contains('/') || this.parameter_name.startsWith('/')"
+  };
+  // Exactly one value arm carries the parameter's value.
+  option (buf.validate.message).cel = {
+    id: "spec.value_arms_exactly_one"
+    message: "exactly one of value and secure_value must be set"
+    expression: "(this.value != '') != (this.secure_value != '')"
+  };
+  // SecureString values are secrets by definition - the plain arm
+  // would put the plaintext in engine plans and state.
+  option (buf.validate.message).cel = {
+    id: "spec.secure_string_uses_secure_value"
+    message: "SecureString parameters must carry their value in secure_value, never in value"
+    expression: "this.type != 'SecureString' || this.value == ''"
+  };
+
+  // The AWS region the parameter lives in.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The parameter's name in AWS: letters, digits, underscores,
+  // periods, hyphens, and slashes, up to 2048 characters. Hierarchical
+  // paths ("/prod/db/url") organize parameters and enable by-path
+  // reads; a name containing slashes must start with one. AWS rejects
+  // names beginning with the reserved "aws" or "ssm" prefixes
+  // (case-insensitive) - a server-side rule with no client-side
+  // mirror. Changing the name forces replacement.
+  string parameter_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 2048
+    pattern: "^[a-zA-Z0-9_.\\-/]+$"
+  }];
+
+  // The parameter type. String holds one value, StringList a
+  // comma-separated list, SecureString a KMS-encrypted secret.
+  // The type cannot move away from SecureString in place.
+  string type = 3 [(buf.validate.field).string = {
+    in: [
+      "String",
+      "StringList",
+      "SecureString"
+    ]
+  }];
+
+  // The parameter value as plain configuration text (for StringList: a
+  // comma-separated list). Visible in engine plans and state - use
+  // secure_value for anything secret. Mutually exclusive with
+  // secure_value; forbidden for SecureString parameters.
+  string value = 4;
+
+  // The parameter value as a secret. Sensitive: supply a
+  // managed-secret reference; the platform resolves it just-in-time at
+  // deploy, so plaintext never lives in the control plane. Required
+  // for SecureString parameters and legal for any type whose value
+  // should stay out of plan output. Mutually exclusive with value.
+  string secure_value = 5 [(dev.planton.shared.options.sensitive) = true];
+
+  // Human description of the parameter, up to 1024 characters.
+  string description = 6 [(buf.validate.field).string.max_len = 1024];
+
+  // A regular expression AWS validates VALUES against on every write
+  // (e.g. "^\\d+$" for numeric-only). Applies to future writes, not
+  // the current value.
+  string allowed_pattern = 7 [(buf.validate.field).string.max_len = 1024];
+
+  // The parameter tier. Unset = Standard (free, 4KB values, no
+  // policies). Advanced allows 8KB values and parameter policies but
+  // bills per parameter, and DOWNGRADING Advanced back to Standard
+  // forces replacement (AWS forbids it in place). Intelligent-Tiering
+  // lets AWS pick per write - AWS resolves it to a concrete tier
+  // server-side, so reads report Standard or Advanced, never
+  // Intelligent-Tiering.
+  string tier = 8 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Standard",
+        "Advanced",
+        "Intelligent-Tiering"
+      ]
+    }
+  ];
+
+  // KMS key for SecureString encryption (key ID, alias, or ARN).
+  // Unset = the account's AWS-managed aws/ssm key. Only meaningful on
+  // SecureString parameters - AWS ignores it for other types.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_id = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // The value's data type. Unset = "text". "aws:ec2:image" makes AWS
+  // validate the value as an AMI ID on every write; "aws:ssm:integration"
+  // is for SSM integrations. Changing the data type forces
+  // replacement.
+  string data_type = 10 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "text",
+        "aws:ec2:image",
+        "aws:ssm:integration"
+      ]
+    }
+  ];
+
+  // Overwrite a parameter of the same name that already exists OUTSIDE
+  // this deployment on first create (deploy-side behavior, never an
+  // AWS attribute: unset, the first apply fails on a pre-existing
+  // name; updates of this deployment's own parameter always
+  // overwrite). Never read back from AWS - a freshly imported
+  // parameter always shows it false.
+  bool overwrite = 11;
+}

@@ -1,0 +1,100 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsfsxwindowsfilesystem
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every FSx for Windows file system is encrypted at rest -- AWS applies AES-256 encryption to all data and backups with no opt-out at any configuration level.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset means the AWS-managed FSx service key encrypts the file system; setting kms_key_id upgrades to a customer-managed KMS key. ForceNew -- the key cannot be changed after creation.
+      notes: The 02-single-az-production and 03-multi-az-high-availability presets pin a customer-managed key. Because the field is ForceNew, choosing the key is a create-time decision.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: FSx for Windows automatically encrypts data in transit with SMB encryption (AES-based) for clients that support SMB 3.0 or later; there is no spec switch to disable it.
+      notes: Clients negotiating SMB 2.x connect unencrypted. Rejecting non-encrypting clients (enforcing in-transit encryption on every connection) is an FSx Remote PowerShell administration setting outside this spec and the module.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The file system's endpoints are network interfaces in the VPC subnets named by subnet_ids -- FSx exposes no public endpoint for SMB traffic at any configuration.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_default
+        reference: When security_group_ids is empty, AWS attaches the VPC's default security group; attaching explicit groups restricts inbound traffic to the declared SMB and AD ports (TCP 445, 5985, and the directory ports) and sources. ForceNew.
+      notes: Every catalog preset attaches an explicit security group. Because the field is ForceNew, tightening groups later means replacing the file system -- attach the right groups at creation.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: An SMB file server carries no HTTP request surface -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: The spec's ad_required rule forces exactly one of active_directory_id or self_managed_active_directory on every file system -- all data access authenticates against Active Directory identities and authorizes through Windows ACLs; an unauthenticated file system is unrepresentable.
+      notes: For self-managed AD, self_managed_active_directory.file_system_administrators_group scopes which domain group holds administrative rights (default Domain Admins -- narrow it for least privilege), and organizational_unit_distinguished_name places the computer object.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The file system runs no workloads and holds no cloud credentials of its own. The self-managed-AD domain-join secret is the one credential it consumes -- self_managed_active_directory.domain_join_service_account_secret_arn keeps it in Secrets Manager instead of the manifest.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: FSx for Windows negotiates SMB versions 2.0 through 3.1.1 only -- SMB 1 and its legacy authentication paths are not supported by the service and cannot be enabled.
+    - control_id: audit-logging
+      status: configurable
+      field_path: audit_log_configuration
+      evidence:
+        type: spec_default
+        reference: Omitted means auditing is off (both levels default DISABLED); configuring file_access_audit_log_level and file_share_access_audit_log_level streams access events to CloudWatch Logs, with audit_log_destination pinning the log group (which must live under /aws/fsx/).
+      notes: The 02-single-az-production and 03-multi-az-high-availability presets enable auditing. The spec refuses a destination while both levels are DISABLED -- dead audit configuration is unrepresentable.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: FSx reports file-system metrics (throughput, IOPS, storage consumption) to CloudWatch automatically for every file system -- there is no opt-in and no way to disable it.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: automatic_backup_retention_days
+      evidence:
+        type: spec_default
+        reference: Defaults to 7 -- daily automatic backups are ON unless the spec explicitly sets 0; backup_id restores a new file system from one.
+      notes: The 01-single-az-development preset opts out (0); production presets keep 7 and 30 days. skip_final_backup defaults to true, so deletion takes no last-resort backup unless the spec says otherwise.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: automatic_backup_retention_days
+      evidence:
+        type: spec_default
+        reference: The field carries retention directly, 0-90 days -- retention length is a spec choice within AWS's supported range.
+      notes: Retention beyond 90 days requires an external backup plan (AWS Backup), outside this component.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: deployment_type
+      evidence:
+        type: spec_validation
+        reference: MULTI_AZ_1 places an active/standby pair across two Availability Zones, and the spec's subnet_count_matches_deployment rule enforces exactly two subnets for it (preferred_subnet_id pins the active server); single-AZ types take exactly one subnet.
+      notes: The 03-multi-az-high-availability preset deploys MULTI_AZ_1. ForceNew -- the availability tier is a create-time decision.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the module exposes a deletion-protection flag for FSx file systems. The adjacent safeguard is skip_final_backup=false, which keeps a last-resort restore point -- it does not refuse deletion.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS patches the Windows Server file servers during the weekly maintenance window; no customer-visible patch surface exists.
+      notes: weekly_maintenance_start_time pins the window (d:HH:MM UTC); when unset, AWS chooses one.

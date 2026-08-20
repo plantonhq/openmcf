@@ -1,0 +1,32 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetespostgres
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: instances
+      sku_meter: cluster CPU and memory reservations
+      impact: Each instance is a full PostgreSQL pod with the declared resource requests -- three instances reserve three times the capacity, plus a persistent volume each.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The CPU and memory requests are what the scheduler reserves on the cluster's nodes per instance -- the capacity is claimed whether the database is busy or idle. Limits set the burst ceiling, not the reservation.
+    - field_path: storage.size
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: Every instance provisions its own PGDATA volume of this size through the cluster's storage class; the size can only grow.
+    - field_path: wal_storage
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: When set, every instance adds a second dedicated volume for write-ahead logs on top of its data volume.
+    - field_path: backup
+      sku_meter: object storage for backups
+      pricing_unit: GB-months
+      impact: WAL archives and base backups accumulate in the configured object store; retention_policy bounds how much history is kept -- empty retention keeps everything forever.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - object-store bytes for backups grow with database churn and retention
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: instances x (requests + volumes)."

@@ -12,7 +12,7 @@ This directory contains the Terraform/OpenTofu implementation for deploying a Co
    ```bash
    gcloud auth application-default login
    ```
-4. **IAM permissions**: `roles/compute.admin` (or narrower instance-group/instance-template roles) on the target project; `iam.serviceAccounts.actAs` on the template's service account when one is set
+4. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Directory Structure
 

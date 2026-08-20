@@ -1,0 +1,46 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awslblistener
+spec:
+  aws:
+    statements:
+      - sid: ManageListener
+        actions:
+          - elasticloadbalancing:CreateListener
+          - elasticloadbalancing:ModifyListener
+          - elasticloadbalancing:ModifyListenerAttributes
+          - elasticloadbalancing:DeleteListener
+          - elasticloadbalancing:AddTags
+          - elasticloadbalancing:RemoveTags
+        resources:
+          - arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*
+          - arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*
+          - arn:aws:elasticloadbalancing:*:*:listener/app/*
+          - arn:aws:elasticloadbalancing:*:*:listener/net/*
+        provenance: derived
+        notes: Covers aws_lb_listener -- creation with the default-action chain, TLS material, and tags; in-place updates of port, protocol, certificates, and actions (ModifyListener); and listener attributes (ModifyListenerAttributes carries tcp_idle_timeout_seconds and the routing_http_* request/response header handling). The service reference authorizes CreateListener on the LOAD BALANCER ARN formats (app and net; an under-scoped create denies provisioning), while modify, attribute, delete, and tag actions authorize on the listener ARN formats.
+      - sid: ManageListenerCertificates
+        actions:
+          - elasticloadbalancing:AddListenerCertificates
+          - elasticloadbalancing:RemoveListenerCertificates
+        resources:
+          - arn:aws:elasticloadbalancing:*:*:listener/app/*
+          - arn:aws:elasticloadbalancing:*:*:listener/net/*
+        provenance: derived
+        notes: Covers aws_lb_listener_certificate -- one attachment per entry of spec.additional_certificate_arns (the SNI certificates beyond the default). Both actions authorize on the listener ARN formats in the service reference.
+      - sid: DescribeListeners
+        actions:
+          - elasticloadbalancing:DescribeListeners
+          - elasticloadbalancing:DescribeListenerAttributes
+          - elasticloadbalancing:DescribeListenerCertificates
+          - elasticloadbalancing:DescribeTags
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side of aws_lb_listener and aws_lb_listener_certificate during plan/refresh. Elastic Load Balancing Describe APIs support no resource-level scoping (empty Resources lists in the service reference), so the wildcard is the narrowest possible scope.

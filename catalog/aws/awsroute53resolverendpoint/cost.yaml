@@ -1,0 +1,45 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsroute53resolverendpoint
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: AmazonRoute53
+      sku_meter: resolver network interface hours
+      pricing_unit: hours
+      description: Every ENI the endpoint places bills $0.125 per hour (us-east-1, from the AmazonRoute53 offer) around the clock from creation to deletion, queries or none. AWS requires at least 2 ENIs, so the floor is 2 x 730 x $0.125 = $182.50 a month -- one of the steepest always-on floors on a networking primitive.
+  cost_drivers:
+    - field_path: ip_addresses
+      sku_meter: resolver network interface hours
+      pricing_unit: hours
+      impact: The committed multiplier -- one ENI per entry (2-10), each billing its own $0.125/hour. Every entry beyond the 2-ENI minimum adds $91.25 a month; scale past 2 only for query throughput (each ENI handles up to 10,000 queries/second) or extra-AZ resilience.
+    - field_path: direction
+      sku_meter: resolver query charges
+      pricing_unit: queries
+      impact: Direction decides what generates the usage meter -- INBOUND bills the on-prem-originated queries arriving at the ENIs; OUTBOUND bills the VPC-originated queries the forwarding rules send out. The ENI-hour rate is identical either way.
+    - field_path: protocols
+      sku_meter: resolver network interface hours
+      pricing_unit: hours
+      impact: DoH/DoH-FIPS interfaces meter under the security-enabled usage type -- the same $0.125/hour in us-east-1 as plain Do53, a SKU distinction rather than a price one there.
+    - field_path: rules
+      sku_meter: resolver query charges
+      pricing_unit: queries
+      impact: Rules and their VPC associations are free to exist -- what they do is steer queries THROUGH the endpoint, and each forwarded query bills the per-query meter ($0.40 per million for the first billion each month, $0.20 beyond, us-east-1).
+    - field_path: rni_enhanced_metrics_enabled
+      sku_meter: CloudWatch metrics
+      pricing_unit: metrics
+      impact: Enhanced per-interface metrics (and target_name_server_metrics_enabled likewise for per-target metrics on outbound endpoints) publish extra CloudWatch metrics billed at CloudWatch's vended-metric rates on the account.
+    - field_path: region
+      sku_meter: resolver network interface hours
+      pricing_unit: hours
+      impact: The ENI-hour and per-query rates are published per region.
+  free_tier: "None. The ENI-hour meter has no free band -- the $182.50/month two-ENI floor is committed from apply. (Queries that stay entirely inside the VPC on Route 53's default resolver are free, but those never touch this endpoint.)"
+  estimate_exclusions:
+    - queries through the endpoint bill $0.40 per million for the first billion each month and $0.20 per million beyond (us-east-1) -- query volume is workload DNS behavior no manifest can know
+    - enhanced RNI and per-target-name-server metrics bill CloudWatch vended-metric charges when enabled
+    - the security groups and subnets the endpoint references bill nothing here; cross-AZ data transfer for DNS traffic is negligible and unmetered per query
+  notes: "The commitment lives in the ENI count, not the traffic: an idle endpoint and a saturated one pay the same $182.50 floor at 2 ENIs. Resolver RULES are free -- forwarding rules, SYSTEM holes, and VPC associations carry no meter of their own, which is why the outbound preset's two rules add nothing committed. Both catalog presets pin exactly 2 ENIs in us-east-1."

@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremonitoractiongroup
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The action group is a routing table -- receiver names, addresses, and endpoint URLs -- stored by the Microsoft-operated Azure Monitor service; it holds no customer data at rest. Treat receiver URLs as mildly sensitive configuration (a function's http_trigger_url or Logic App callback_url can embed access codes), which is manifest hygiene, not an encryption lever here.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to key (see enc-at-rest); Azure offers no customer-managed-key surface for action group definitions.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Notification delivery transport is Azure Monitor's own -- webhook, function, and Logic App receivers are called at the HTTPS endpoints the spec provides (the spec validates URL schemes but Azure accepts http://, so endpoint hygiene is the author's), while SMS and voice ride carrier networks by nature. No toggle here changes any of it.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The group has no addressable endpoint -- nothing exists to reach. It originates notifications outward; the endpoints it calls own their exposure.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound surface to restrict. The receiving side is where this question lives -- webhook endpoints should verify callers, which is exactly what the aad_auth block enables (see workload-identity).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Managing the group is ARM RBAC on the resource group (Monitoring Contributor is the canonical role) -- platform posture. The arm_role_receivers list is the inverse concern -- it READS role membership to build a notification list, granting nothing.
+    - control_id: workload-identity
+      status: configurable
+      field_path: webhook_receivers
+      evidence:
+        type: spec_default
+        reference: A webhook receiver's aad_auth block makes Azure Monitor authenticate the call as a Microsoft Entra application (object_id, optional identifier_uri and tenant_id) -- the receiving endpoint validates a platform-issued token instead of trusting a secret baked into the URL. Omitted, the webhook is an unauthenticated POST whose only secret is the URL itself.
+      notes: The keyless option exists on the webhook channel only; function and Logic App receivers authenticate by the code embedded in their trigger URLs (see no-legacy-auth).
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: azure_function_receivers
+      evidence:
+        type: spec_default
+        reference: The URL-embedded-secret pattern is explicit in the spec -- an Azure Function receiver's http_trigger_url carries the function's code parameter, a Logic App receiver's callback_url carries its signature, and a plain webhook's service_uri may carry a token -- while the webhook channel offers the stronger aad_auth alternative. Choosing URL-secret channels is a visible manifest choice.
+      notes: Rotating those embedded codes means updating the action group -- a real operational coupling worth knowing when choosing channels.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Create/update/delete operations land in the Azure Activity Log automatically, and notification delivery history is queryable per action group through Azure Monitor's notification-status APIs -- platform surfaces with no toggle here.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The group IS monitoring plumbing -- the fan-out node alert rules fire into. It emits no metrics of its own to export; delivery success is observable through Azure Monitor's notification history.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative definition -- nothing to back up; the manifest recreates the group and every alert rule reference to it survives by name only if the new group keeps the same ARM ID path (same resource group and name), which declarative recreation preserves.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Action groups are a GLOBAL resource -- they live in a resource group but not in any region, and Azure's own design intent (documented on the spec) is that notifications keep flowing during regional outages, which is exactly when they matter most. No configuration exists, and none is needed.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag; deleting the group silently disconnects every alert rule that references it -- alerts still fire, but nobody is told. The enabled flag is the reversible alternative -- a disabled group swallows alerts without breaking references.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The notification service that stores the group and delivers to every channel is Microsoft-operated Azure Monitor; no customer-visible patch surface exists.

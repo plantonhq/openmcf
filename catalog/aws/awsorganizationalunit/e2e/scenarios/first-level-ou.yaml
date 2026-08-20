@@ -1,0 +1,25 @@
+# A first-level OU under the organization fixture's root, proving the
+# composed root_id wiring and the identity tag map on a taggable
+# Organizations object. ~$0: OUs are free.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsOrganizationalUnit
+metadata:
+  name: planton-oss-e2e-awsou
+  id: planton-oss-e2e-awsou
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsorganizationalunit
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  ouName: Planton E2E Workloads
+  parentId:
+    valueFrom:
+      kind: AwsOrganization
+      name: planton-oss-e2e-awsou-org
+      fieldPath: status.outputs.root_id

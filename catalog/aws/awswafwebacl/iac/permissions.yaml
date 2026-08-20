@@ -1,0 +1,90 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awswafwebacl
+spec:
+  aws:
+    statements:
+      - sid: ManageWebAcl
+        actions:
+          - wafv2:CreateWebACL
+          - wafv2:UpdateWebACL
+          - wafv2:DeleteWebACL
+          - wafv2:GetWebACL
+        resources:
+          - arn:aws:wafv2:*:*:regional/webacl/*/*
+          - arn:aws:wafv2:*:*:global/webacl/*/*
+          - arn:aws:wafv2:*:*:regional/ipset/*/*
+          - arn:aws:wafv2:*:*:global/ipset/*/*
+          - arn:aws:wafv2:*:*:regional/regexpatternset/*/*
+          - arn:aws:wafv2:*:*:global/regexpatternset/*/*
+          - arn:aws:wafv2:*:*:regional/rulegroup/*/*
+          - arn:aws:wafv2:*:*:global/rulegroup/*/*
+          - arn:aws:wafv2:*:*:regional/managedruleset/*/*
+          - arn:aws:wafv2:*:*:global/managedruleset/*/*
+        provenance: derived
+        notes: Covers aws_wafv2_web_acl. The WAFv2 service reference authorizes CreateWebACL and UpdateWebACL against the web ACL AND every referenced ipset, regexpatternset, rulegroup, and managedruleset ARN -- omitting any of those formats breaks every ACL whose rules use ip_set_reference, regex_pattern_set_reference, rule_group_reference, or a managed rule group. Both scope path segments are granted because the spec supports REGIONAL and CLOUDFRONT (global, us-east-1) ACLs.
+      - sid: TagWebAcl
+        actions:
+          - wafv2:TagResource
+          - wafv2:UntagResource
+          - wafv2:ListTagsForResource
+        resources:
+          - arn:aws:wafv2:*:*:regional/webacl/*/*
+          - arn:aws:wafv2:*:*:global/webacl/*/*
+          - arn:aws:wafv2:*:*:regional/ipset/*/*
+          - arn:aws:wafv2:*:*:global/ipset/*/*
+          - arn:aws:wafv2:*:*:regional/regexpatternset/*/*
+          - arn:aws:wafv2:*:*:global/regexpatternset/*/*
+          - arn:aws:wafv2:*:*:regional/rulegroup/*/*
+          - arn:aws:wafv2:*:*:global/rulegroup/*/*
+        provenance: derived
+        notes: The modules tag the web ACL (tag-on-create plus tag updates); the service reference authorizes the tagging actions against the webacl, ipset, regexpatternset, and rulegroup ARN formats, so all four are granted in both scopes.
+      - sid: ManageLoggingConfiguration
+        actions:
+          - wafv2:PutLoggingConfiguration
+          - wafv2:GetLoggingConfiguration
+          - wafv2:DeleteLoggingConfiguration
+        resources:
+          - arn:aws:wafv2:*:*:regional/webacl/*/*
+          - arn:aws:wafv2:*:*:global/webacl/*/*
+        provenance: derived
+        notes: Covers aws_wafv2_web_acl_logging_configuration -- created only when spec.logging is set. All three actions authorize on the web ACL ARN.
+      - sid: LogDeliveryCloudWatch
+        actions:
+          - logs:CreateLogDelivery
+          - logs:DeleteLogDelivery
+          - logs:PutResourcePolicy
+          - logs:DescribeResourcePolicies
+          - logs:DescribeLogGroups
+        resources:
+          - "*"
+        provenance: derived
+        notes: WAF delivers request logs through the vended-log delivery service; AWS's logging guide requires these caller-side permissions when the destination is a CloudWatch log group (the class every logging preset uses). The logs service reference lists no resource types for any of them, so the wildcard is the narrowest possible scope.
+      - sid: LogDeliveryS3
+        actions:
+          - s3:PutBucketPolicy
+          - s3:GetBucketPolicy
+        resources:
+          - arn:aws:s3:::aws-waf-logs-*
+        provenance: derived
+        notes: Required only when spec.logging targets an S3 bucket -- WAF attaches the log-delivery policy to the destination bucket, whose name must start with "aws-waf-logs-" (the scope of this grant).
+      - sid: LogDeliveryFirehose
+        actions:
+          - firehose:ListDeliveryStreams
+        resources:
+          - "*"
+        provenance: derived
+        notes: Required only when spec.logging targets a Firehose delivery stream, per AWS's logging guide. The firehose service reference lists no resource types for this action, so the wildcard is the narrowest possible scope.
+      - sid: LogDeliveryServiceLinkedRole
+        actions:
+          - iam:CreateServiceLinkedRole
+        resources:
+          - arn:aws:iam::*:role/aws-service-role/*
+        provenance: derived
+        notes: Firehose-destination logging additionally requires creating WAF's service-linked role on first use, per AWS's logging guide; the grant is scoped to the aws-service-role path the IAM reference's role ARN format allows.

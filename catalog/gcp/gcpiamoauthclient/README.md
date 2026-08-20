@@ -24,7 +24,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** where the client is created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **IAM**: the deploying identity needs `roles/iam.workforcePoolAdmin` or broader on the project.
+- **IAM**: the deploying principal's permissions are listed in [`iac/permissions.yaml`](iac/permissions.yaml).
 
 ## Deploy
 

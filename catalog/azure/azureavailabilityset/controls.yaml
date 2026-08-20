@@ -1,0 +1,65 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureavailabilityset
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An availability set is placement metadata held by Azure's compute control plane; it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest); the member VMs' disks carry their own encryption posture.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The set carries no traffic; all interaction with it flows through ARM's TLS-only management API, which is platform posture, not a component choice.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A placement grouping has no network endpoint -- nothing exists to reach from the internet; exposure belongs to the member VMs' NICs and public IPs, separate kinds.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the set exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The set runs no workloads and holds no credentials of its own; the member VMs carry their own identities.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Set creation, tag changes, and deletion land in the Azure Activity Log automatically as subscription-level posture; no logging toggle exists on this resource.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A placement grouping emits no metrics or runtime signals; health and performance signals ride the member VMs.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless placement configuration -- nothing to back up; the manifest recreates the set declaratively (though VMs join a set only at their own creation, so re-membering VMs is a VM-side replacement).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: platform_fault_domain_count
+      evidence:
+        type: spec_default
+        reference: Failure-domain replication IS the resource's purpose -- Azure places member VMs across platform_fault_domain_count independent power/network/rack groups and platform_update_domain_count planned-maintenance batches. Unset, the provider defaults apply (3 fault domains, 5 update domains), so members are spread the moment they join; setting platform_fault_domain_count to 1 collapses the spread.
+      notes: The set is the pre-zones construct -- fault domains isolate hardware within one datacenter, not across availability zones, and a VM cannot be both zonal and in a set. In zoned regions prefer availability zones (the spec says so); the set remains the right tool in regions without zones. The managed flag (default true) extends the isolation to the members' managed-disk storage.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for an availability set (Azure resource locks are subscription-side governance outside the manifest); Azure refuses to delete a set that still contains VMs, but that is dependency ordering, not a control.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The placement fabric that honors fault and update domains is Microsoft-operated compute infrastructure -- during planned maintenance Azure reboots one update domain at a time by design; no customer-visible patch surface exists on the set itself.

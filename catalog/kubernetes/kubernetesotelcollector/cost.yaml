@@ -1,0 +1,31 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesotelcollector
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: mode
+      sku_meter: cluster CPU and memory reservations
+      impact: "The mode decides the multiplier: deployment/statefulset reserve resources x replicas; daemonset reserves resources ON EVERY NODE -- node membership is the multiplier and only the target cluster knows it; sidecar creates no standalone workload -- the collector rides inside every annotated target pod."
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The reservation per collector pod. Empty means no requests or limits -- the pods schedule unbounded and the cluster reserves nothing for them. Size memory with the config's memory_limiter processor so the collector sheds load instead of OOMing.
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: The pod count in deployment/statefulset modes. Ignored in daemonset mode (one per node) and sidecar mode (one per annotated target pod), and ignored when autoscaler is set.
+    - field_path: autoscaler
+      sku_meter: cluster CPU and memory reservations
+      impact: The operator manages an HPA between min_replicas and max_replicas -- the declared floor is the manifest-time reservation, and runtime scaling can grow it to the ceiling.
+    - field_path: volumes
+      sku_meter: node-local disk
+      impact: The daemonset log pattern mounts hostPath volumes (/var/log/pods read-only, a checkpoint directory) -- node-local disk on every node the collector runs on, never PersistentVolume storage.
+  estimate_exclusions:
+    - in daemonset mode every footprint is PER NODE -- the cluster-wide reservation is the per-node footprint times the number of matching nodes, which only the target cluster knows
+    - with autoscaler set the footprint states the declared floor; the operator-managed HPA changes the replica count at runtime up to max_replicas
+    - in sidecar mode the collector's resources ride every annotated target pod -- no standalone workload exists to state
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster its collector pods reserve, realized on the cluster's bill. The telemetry backends the pipelines export to (Loki, Tempo, cloud vendors) carry their own capacity and cost on their own resources. The operator that reconciles this resource is a separate KubernetesOtelOperator with its own footprint."

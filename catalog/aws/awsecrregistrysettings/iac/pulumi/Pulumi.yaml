@@ -1,0 +1,3 @@
+name: awsecrregistrysettings
+runtime: go
+description: Pulumi module to manage a region's ECR registry-level configuration

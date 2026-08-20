@@ -1,0 +1,182 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsrestapiusageplan.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsRestApiUsagePlanSpec defines the desired configuration for an AWS
+// API Gateway usage plan with its API keys.
+//
+// Usage plans meter and throttle API consumers: each plan covers one
+// or more REST API stages, sets quota (requests per day/week/month)
+// and throttle ceilings, and admits callers through API keys attached
+// to the plan. Routes opt in with api_key_required on the
+// AwsRestApiGateway component; requests then need a valid key on the
+// X-Api-Key header (or from the authorizer, per the API's
+// api_key_source).
+//
+// A plan spans APIs and stages - which is why it is its own component
+// rather than part of AwsRestApiGateway. The component bundles the
+// plan, its stage coverage, and the keys it admits (each key is
+// created AND attached to the plan).
+//
+// API keys identify consumers for metering - they are NOT an
+// authentication mechanism; pair them with IAM, Cognito, or Lambda
+// authorization on the routes.
+message AwsRestApiUsagePlanSpec {
+  // The AWS region where the usage plan will be created.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // What this plan meters (e.g. "Free tier: 1000 requests/day").
+  string description = 2 [(buf.validate.field).string.max_len = 1024];
+
+  // AWS Marketplace product code - links the plan to a Marketplace
+  // SaaS listing so subscribers are metered through it.
+  string product_code = 3;
+
+  // The REST API stages this plan covers. A key admitted by this plan
+  // may call exactly these stages.
+  repeated AwsRestApiUsagePlanApiStage api_stages = 4;
+
+  // Total request quota over a period. Omitted = unmetered (throttle
+  // only).
+  AwsRestApiUsagePlanQuota quota = 5;
+
+  // Steady-state and burst throttle ceilings across the plan. Omitted =
+  // the account-level limits apply.
+  AwsRestApiUsagePlanThrottle throttle = 6;
+
+  // API keys created and attached to this plan.
+  repeated AwsRestApiUsagePlanApiKey api_keys = 7;
+
+  // Key names are for_each keys on both engines and must be unique in
+  // AWS.
+  option (buf.validate.message).cel = {
+    id: "api_key_names_unique"
+    message: "api_keys entries must have unique names"
+    expression: "this.api_keys.map(k, k.name).unique()"
+  };
+}
+
+// AwsRestApiUsagePlanApiStage covers one REST API stage, optionally
+// with per-method throttles.
+message AwsRestApiUsagePlanApiStage {
+  // The REST API whose stage this plan covers.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef rest_api_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsRestApiGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.rest_api_id"
+  ];
+
+  // The stage name (must be deployed before the plan attaches -
+  // referencing the AwsRestApiGateway stage_name output wires the
+  // ordering).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef stage_name = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsRestApiGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.stage_name"
+  ];
+
+  // Per-method throttles within this stage, addressed by
+  // "{resource-path}/{METHOD}" (e.g. "/search/GET").
+  repeated AwsRestApiUsagePlanMethodThrottle method_throttles = 3;
+
+  // One throttle per method path.
+  option (buf.validate.message).cel = {
+    id: "method_throttle_paths_unique"
+    message: "method_throttles entries must have unique path values"
+    expression: "this.method_throttles.map(t, t.path).unique()"
+  };
+}
+
+// AwsRestApiUsagePlanMethodThrottle throttles one method within a
+// covered stage.
+message AwsRestApiUsagePlanMethodThrottle {
+  // The method to throttle: "{resource-path}/{METHOD}" (e.g.
+  // "/search/GET", "/orders/{id}/DELETE").
+  string path = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Token-bucket burst for this method.
+  int32 burst_limit = 2 [(buf.validate.field).int32.gte = 0];
+
+  // Steady-state request rate (requests/second) for this method.
+  double rate_limit = 3 [(buf.validate.field).double.gte = 0];
+}
+
+// AwsRestApiUsagePlanQuota caps total requests over a calendar period.
+message AwsRestApiUsagePlanQuota {
+  // Requests allowed per period.
+  int32 limit = 1 [(buf.validate.field).int32.gte = 1];
+
+  // The metering period.
+  string period = 2 [(buf.validate.field).string = {
+    in: [
+      "DAY",
+      "WEEK",
+      "MONTH"
+    ]
+  }];
+
+  // Requests already counted against the FIRST period (a mid-period
+  // migration knob). DAY takes 0; WEEK takes 0-6; MONTH takes 0-27.
+  int32 offset = 3 [(buf.validate.field).int32.gte = 0];
+
+  // AWS bounds the offset by the period. Guarded on the known periods
+  // so an invalid period reports only its own enum violation.
+  option (buf.validate.message).cel = {
+    id: "offset_within_period"
+    message: "quota offset must be 0 for DAY, 0-6 for WEEK, and 0-27 for MONTH"
+    expression: "!(this.period in ['DAY', 'WEEK', 'MONTH']) || (this.period == 'DAY' && this.offset == 0) || (this.period == 'WEEK' && this.offset <= 6) || (this.period == 'MONTH' && this.offset <= 27)"
+  };
+}
+
+// AwsRestApiUsagePlanThrottle sets plan-wide throttle ceilings.
+message AwsRestApiUsagePlanThrottle {
+  // Token-bucket burst across the plan.
+  int32 burst_limit = 1 [(buf.validate.field).int32.gte = 0];
+
+  // Steady-state request rate (requests/second) across the plan.
+  double rate_limit = 2 [(buf.validate.field).double.gte = 0];
+
+  // An all-zero throttle would silently block every request - AWS
+  // treats the block as meaningful only when a ceiling is set.
+  option (buf.validate.message).cel = {
+    id: "throttle_at_least_one_ceiling"
+    message: "set at least one of burst_limit or rate_limit (omit throttle entirely for account defaults)"
+    expression: "this.burst_limit > 0 || this.rate_limit > 0.0"
+  };
+}
+
+// AwsRestApiUsagePlanApiKey is one consumer key, created and attached
+// to the plan.
+message AwsRestApiUsagePlanApiKey {
+  // Key name in AWS (unique account-wide). The for_each key on both
+  // engines and the key in the `api_key_ids` output map.
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Who this key identifies (e.g. "acme-corp mobile app").
+  string description = 2 [(buf.validate.field).string.max_len = 1024];
+
+  // Whether the key is accepted. Omitted = enabled; set false to cut a
+  // consumer off without deleting (and re-generating) the key.
+  optional bool enabled = 3;
+
+  // AWS Marketplace customer identifier for Marketplace-metered
+  // consumers.
+  string customer_id = 4;
+
+  // The key value (20-128 characters). Omitted = AWS generates one
+  // (recommended). Set it only when a consumer's key must survive
+  // re-creation - and treat it as the secret it is.
+  string value = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len: 20
+      max_len: 128
+    },
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}

@@ -1,0 +1,35 @@
+# The framework's cost-floored surface: one parameterless coverage
+# control plus one parameterized retention control. The lane lives in
+# us-east-1 BY DESIGN: framework evaluation needs the region's
+# one-per-region Config recorder singleton (the annotation-declared
+# fixture chain below), and us-west-2's recorder belongs to the Q39
+# Config lanes while us-east-2's belongs to Q40's conformance-pack
+# fixture -- a third region makes cross-queue overlap structurally
+# impossible (the session-061 region-isolation lesson). Config bills
+# per recorded configuration item and per rule evaluation; the
+# recorder fixture records only S3 buckets and the lane creates none.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupFramework
+metadata:
+  name: planton-oss-e2e-awsbkf
+  id: planton-oss-e2e-awsbkf
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbackupframework
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsConfigRecorder"
+  tags:
+    - planton-e2e
+spec:
+  region: us-east-1
+  frameworkName: planton_oss_e2e_awsbkf
+  description: Planton E2E coverage and retention audit
+  controls:
+    - name: BACKUP_RESOURCES_PROTECTED_BY_BACKUP_PLAN
+    - name: BACKUP_RECOVERY_POINT_MINIMUM_RETENTION_CHECK
+      inputParameters:
+        - name: requiredRetentionDays
+          value: "35"

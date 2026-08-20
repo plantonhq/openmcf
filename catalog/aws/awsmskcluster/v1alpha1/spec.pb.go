@@ -449,6 +449,7 @@ type AwsMskClusterAuthentication struct {
 	TlsEnabled bool `protobuf:"varint,3,opt,name=tls_enabled,json=tlsEnabled,proto3" json:"tls_enabled,omitempty"`
 	// tls_certificate_authority_arns are the ARNs of ACM Private Certificate Authority resources
 	// trusted for client certificate validation. Required when tls_enabled is true.
+	// Reference AwsPrivateCa certificate_authority_arn outputs or pass literal ARNs.
 	TlsCertificateAuthorityArns []*v1.StringValueOrRef `protobuf:"bytes,4,rep,name=tls_certificate_authority_arns,json=tlsCertificateAuthorityArns,proto3" json:"tls_certificate_authority_arns,omitempty"`
 	// unauthenticated allows clients to connect without any authentication.
 	// Not recommended for production. Useful for development or when network-level
@@ -979,13 +980,14 @@ const file_catalog_aws_awsmskcluster_v1alpha1_spec_proto_rawDesc = "" +
 	" topic_replication_within_brokers\x12Aa topic's replication_factor cannot exceed number_of_broker_nodes\x1aGthis.topics.all(t, t.replication_factor <= this.number_of_broker_nodes)B\x16\n" +
 	"\x14_ebs_volume_size_gibB\x1b\n" +
 	"\x19_client_broker_encryptionB\x18\n" +
-	"\x16_in_cluster_encryption\"\xf8\x03\n" +
+	"\x16_in_cluster_encryption\"\xac\x04\n" +
 	"\x1bAwsMskClusterAuthentication\x12(\n" +
 	"\x10sasl_iam_enabled\x18\x01 \x01(\bR\x0esaslIamEnabled\x12,\n" +
 	"\x12sasl_scram_enabled\x18\x02 \x01(\bR\x10saslScramEnabled\x12\x1f\n" +
 	"\vtls_enabled\x18\x03 \x01(\bR\n" +
-	"tlsEnabled\x12w\n" +
-	"\x1etls_certificate_authority_arns\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x1btlsCertificateAuthorityArns\x12(\n" +
+	"tlsEnabled\x12\xaa\x01\n" +
+	"\x1etls_certificate_authority_arns\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\x88\xd4a\xcb\n" +
+	"\x92\xd4a(status.outputs.certificate_authority_arnR\x1btlsCertificateAuthorityArns\x12(\n" +
 	"\x0funauthenticated\x18\x05 \x01(\bR\x0funauthenticated:\xbc\x01\xbaH\xb8\x01\x1a\xb5\x01\n" +
 	"$tls_requires_certificate_authorities\x12Ctls_certificate_authority_arns is required when tls_enabled is true\x1aHthis.tls_enabled ? this.tls_certificate_authority_arns.size() > 0 : true\"\x97\x01\n" +
 	"\x1cAwsMskClusterVpcConnectivity\x12(\n" +

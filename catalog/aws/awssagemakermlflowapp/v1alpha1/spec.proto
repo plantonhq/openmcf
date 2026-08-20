@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssagemakermlflowapp.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsSagemakerMlflowAppSpec defines the desired configuration for an
+// Amazon SageMaker AI MLflow app - the SERVERLESS managed MLflow
+// deployment (MLflow 3.x) that succeeds the hourly-billed tracking
+// server: no capacity to size, billed per use. The app's AWS name
+// derives from metadata.name.
+//
+// The app is standalone - it does NOT attach to a tracking server. It
+// associates with SageMaker domains (`default_domain_ids`) so Studio
+// users in those domains get it as their default MLflow, and it can be
+// the account-wide default (`account_default_status`). Everything
+// updates in place except the role.
+message AwsSagemakerMlflowAppSpec {
+  // The AWS region where the MLflow app will be created.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // S3 location where MLflow artifacts (model files, run outputs) are
+  // stored. Example: "s3://my-mlflow/artifacts". Updates in place.
+  string artifact_store_uri = 2 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^(https|s3)://([^/]+)/?(.*)$"
+  }];
+
+  // IAM role the app uses to read and write the artifact store. Must
+  // trust sagemaker.amazonaws.com with S3 access to the artifact
+  // bucket. The ONE replace-on-change field - everything else updates
+  // in place.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Make this app the account's default MLflow: "ENABLED" or
+  // "DISABLED". Omitted = AWS default (not the account default). Only
+  // one app per account can be the default.
+  string account_default_status = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "ENABLED",
+        "DISABLED"
+      ]
+    }
+  ];
+
+  // SageMaker domains for which this app is the default MLflow (Studio
+  // users in these domains track to it automatically).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef default_domain_ids = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSagemakerDomain,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.domain_id"
+  ];
+
+  // Auto-register models logged to MLflow into the SageMaker Model
+  // Registry: "AutoModelRegistrationEnabled" or
+  // "AutoModelRegistrationDisabled". Omitted = AWS default (disabled).
+  string model_registration_mode = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "AutoModelRegistrationEnabled",
+        "AutoModelRegistrationDisabled"
+      ]
+    }
+  ];
+
+  // Weekly maintenance window start, UTC 24-hour "DDD:HH:MM" (e.g.
+  // "SUN:03:00"). Omitted = AWS picks.
+  string weekly_maintenance_window_start = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^(MON|TUE|WED|THU|FRI|SAT|SUN):([01]\\d|2[0-3]):[0-5]\\d$"
+  ];
+}

@@ -1,0 +1,40 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSsmDocument
+metadata:
+  name: resize-instance-runbook
+spec:
+  region: <aws-region>
+  documentType: Automation
+  documentFormat: YAML
+  content: |
+    schemaVersion: '0.3'
+    description: Stop, resize, and restart an EC2 instance
+    parameters:
+      InstanceId:
+        type: String
+        description: The instance to resize
+      InstanceType:
+        type: String
+        description: The target instance type
+    mainSteps:
+      - name: stopInstance
+        action: aws:changeInstanceState
+        inputs:
+          InstanceIds:
+            - '{{InstanceId}}'
+          DesiredState: stopped
+      - name: resizeInstance
+        action: aws:executeAwsApi
+        inputs:
+          Service: ec2
+          Api: ModifyInstanceAttribute
+          InstanceId: '{{InstanceId}}'
+          InstanceType:
+            Value: '{{InstanceType}}'
+      - name: startInstance
+        action: aws:changeInstanceState
+        inputs:
+          InstanceIds:
+            - '{{InstanceId}}'
+          DesiredState: running
+  versionName: release-1.0.0

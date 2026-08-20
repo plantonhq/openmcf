@@ -1,0 +1,39 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awssesconfigurationset
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: delivery_options.sending_pool_name
+      sku_meter: dedicated IP monthly charge
+      pricing_unit: IP-months
+      impact: Naming a pool routes this set's mail through paid dedicated capacity -- standard dedicated IPs bill $24.95 per IP per month and managed dedicated IPs $15 per month per account plus a per-email fee. The charge lives on the pool's own lifecycle (created outside this catalog); the reference here commits nothing new, but it is the manifest's signal that committed IP spend exists behind this set.
+    - field_path: vdm_options.engagement_metrics_enabled
+      sku_meter: VDM per-email fee
+      pricing_unit: emails
+      impact: The per-set VDM override -- mail sent under this set meters the Virtual Deliverability Manager per-email fee ($0.07 per 1,000 for the first 10M a month a la carte, stepping down at higher tiers). Zero in an idle set; proportional to send volume once traffic flows.
+    - field_path: vdm_options.optimized_shared_delivery_enabled
+      sku_meter: VDM per-email fee
+      pricing_unit: emails
+      impact: Guardian's smart shared-IP selection is a feature of the same VDM subscription -- it rides the per-email fee the VDM override already carries, adding no meter of its own.
+    - field_path: event_destinations
+      sku_meter: CloudWatch custom metrics
+      pricing_unit: metric-months
+      impact: SES publishes events from the set for free -- the destinations charge. A CloudWatch destination materializes one custom metric per event type per unique dimension value, billed under CloudWatch's own pricing; high-cardinality dimensions (per-campaign tags) multiply the metric count. Firehose, SNS, and Pinpoint destinations bill on those services likewise.
+    - field_path: sending_enabled
+      sku_meter: outbound email
+      pricing_unit: emails
+      impact: The per-set kill switch -- flipping it false immediately stops every send under the set, and with the sends stop the per-1,000 outbound meter, attachment-data charges, and any VDM per-email fees. The set object itself keeps existing for free either way.
+  free_tier: "SES publishes no permanent free sending allotment a la carte -- the only free tier on the pricing page is the new-account AWS Free Tier credit ($200, usable 6-12 months), a trial. The configuration set itself is permanently free: no meter counts sets, their options, their event destinations, or the event publishing SES does from them -- what bills is the mail sent under the set and what the destination services do with the events."
+  estimate_exclusions:
+    - outbound sending under the set bills $0.10 per 1,000 emails a la carte plus $0.12 per GB of attachment data -- entirely workload-driven, invisible to this manifest
+    - VDM per-email fees start only when vdm_options enables them, proportional to send volume
+    - dedicated IP charges ($24.95 per month per standard IP; managed at $15 per month plus per-email fees) bill on the pool named by sending_pool_name, which is created and owned outside this catalog
+    - CloudWatch custom metrics created by event destinations and by reputation_metrics_enabled bill under CloudWatch's pricing, per metric per month, in proportion to event-type and dimension cardinality
+    - Firehose ingestion for streamed events bills on the referenced AwsKinesisFirehose; SNS publishes on the referenced AwsSnsTopic; Pinpoint engagement data on that service
+    - the tracking domain's DNS record (CNAME to the SES tracking endpoint) bills on the AwsRoute53DnsRecord that creates it
+  notes: "A configuration set is the policy layer of the SES graph and costs nothing to exist -- TLS posture, suppression overrides, tracking domains, and the sending kill switch are all free configuration. Its cost story is routing: the mail sent under it bills on SES's per-1,000 outbound meter, the VDM override adds a per-email analytics fee, a dedicated IP pool reference points at committed monthly IP spend that lives on the pool, and every event destination hands the bill to the destination service (CloudWatch metrics, Firehose ingestion, SNS deliveries). Nothing on this spec commits a dollar at zero sends -- the fields decide how expensive each email is once sending starts."

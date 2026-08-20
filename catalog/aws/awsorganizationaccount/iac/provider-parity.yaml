@@ -1,0 +1,78 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_organizations_account:
+    mappings:
+      # The display name is an explicit spec field (account names allow
+      # spaces metadata.name cannot carry).
+      - arg: name
+        spec: spec.account_name
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_account_alternate_contact:
+    # One AWS resource serves three typed spec arms (billing /
+    # operations / security) -- FAN-IN mappings cover all three; the
+    # module renders one resource per present arm.
+    mappings:
+      - arg: name
+        spec: spec.alternate_contacts.billing.name
+      - arg: name
+        spec: spec.alternate_contacts.operations.name
+      - arg: name
+        spec: spec.alternate_contacts.security.name
+      - arg: title
+        spec: spec.alternate_contacts.billing.title
+      - arg: title
+        spec: spec.alternate_contacts.operations.title
+      - arg: title
+        spec: spec.alternate_contacts.security.title
+      - arg: email_address
+        spec: spec.alternate_contacts.billing.email_address
+      - arg: email_address
+        spec: spec.alternate_contacts.operations.email_address
+      - arg: email_address
+        spec: spec.alternate_contacts.security.email_address
+      - arg: phone_number
+        spec: spec.alternate_contacts.billing.phone_number
+      - arg: phone_number
+        spec: spec.alternate_contacts.operations.phone_number
+      - arg: phone_number
+        spec: spec.alternate_contacts.security.phone_number
+    exclusions:
+      - arg: account_id
+        reason: module-derived from the folded pivot -- always the created member account's ID, never user surface
+      - arg: alternate_contact_type
+        reason: module-derived from the typed arm (billing/operations/security) the entry lives under -- the fold's key, never user surface
+
+  aws_account_primary_contact:
+    # The primary contact folds in as spec.primary_contact; every leaf
+    # matches by exact name under that root.
+    specRoot: spec.primary_contact
+    exclusions:
+      - arg: account_id
+        reason: module-derived from the folded pivot -- always the created member account's ID, never user surface
+
+  aws_account_region:
+    # Each region enablement is one spec.regions entry.
+    specRoot: spec.regions
+    exclusions:
+      - arg: account_id
+        reason: module-derived from the folded pivot -- always the created member account's ID, never user surface
+
+specExclusions:
+  # Organizations and Account Management are GLOBAL services: none of
+  # the consumed resources carries a region argument (the account's
+  # OPT-IN regions are spec.regions -- a different concept). The spec's
+  # region drives only the provider connection.
+  - field: spec.region
+    reason: provider-connection region only -- Organizations/Account Management are global; the opt-in-region arms are spec.regions entries, not this field

@@ -11,26 +11,46 @@
 # Regenerate with:  PLANTON_REGEN_ANATOMY_BASELINE=1 go test ./pkg/anatomy/
 violations:
   - catalog/_test/testcloudresourcegeneric/iac/pulumi:missing-iac-readme
+  - catalog/_test/testcloudresourcegeneric/iac:missing-permissions
   - catalog/_test/testcloudresourcegeneric/v1alpha1:missing-reference
   - catalog/_test/testcloudresourcegeneric/v1alpha2:missing-reference
   - catalog/_test/testcloudresourcegeneric/v1alpha2:missing-spec-test
   - catalog/_test/testcloudresourcegeneric:missing-catalog-md
+  - catalog/_test/testcloudresourcegeneric:missing-control-profile
+  - catalog/_test/testcloudresourcegeneric:missing-cost-profile
   - catalog/_test/testcloudresourcegeneric:missing-logo
   - catalog/_test/testcloudresourcekubernetes/v1alpha1:missing-proto
   - catalog/_test/testcloudresourcekubernetes/v1alpha1:missing-reference
   - catalog/_test/testcloudresourcekubernetes/v1alpha1:missing-spec-test
   - catalog/_test/testcloudresourcekubernetes:missing-catalog-md
+  - catalog/_test/testcloudresourcekubernetes:missing-control-profile
+  - catalog/_test/testcloudresourcekubernetes:missing-cost-profile
   - catalog/_test/testcloudresourcekubernetes:missing-iac
   - catalog/_test/testcloudresourcekubernetes:missing-logo
   - catalog/_test/testcloudresourcekubernetes:missing-presets
   - catalog/_test/testcloudresourcekubernetes:missing-readme
-  - catalog/alicloud/alicloudcontainerregistry/iac/pulumi:missing-iac-readme
-  - catalog/alicloud/alicloudcontainerregistry/iac/tf:missing-iac-readme
-  - catalog/atlas/atlasmongodb:missing-presets
+  - catalog/auth0/auth0action/iac:missing-permissions
+  - catalog/auth0/auth0action:missing-control-profile
+  - catalog/auth0/auth0action:missing-cost-profile
+  - catalog/auth0/auth0client/iac:missing-permissions
+  - catalog/auth0/auth0client:missing-control-profile
+  - catalog/auth0/auth0client:missing-cost-profile
   - catalog/auth0/auth0client:missing-presets
+  - catalog/auth0/auth0connection/iac:missing-permissions
+  - catalog/auth0/auth0connection:missing-control-profile
+  - catalog/auth0/auth0connection:missing-cost-profile
   - catalog/auth0/auth0connection:missing-presets
+  - catalog/auth0/auth0eventstream/iac:missing-permissions
+  - catalog/auth0/auth0eventstream:missing-control-profile
+  - catalog/auth0/auth0eventstream:missing-cost-profile
   - catalog/auth0/auth0eventstream:missing-presets
+  - catalog/auth0/auth0resourceserver/iac:missing-permissions
+  - catalog/auth0/auth0resourceserver:missing-control-profile
+  - catalog/auth0/auth0resourceserver:missing-cost-profile
   - catalog/auth0/auth0resourceserver:missing-presets
+  - catalog/auth0/auth0role/iac:missing-permissions
+  - catalog/auth0/auth0role:missing-control-profile
+  - catalog/auth0/auth0role:missing-cost-profile
   - catalog/aws/awsautoscalinggroup/iac/pulumi:missing-iac-readme
   - catalog/aws/awsautoscalinggroup/iac/tf:missing-iac-readme
   - catalog/aws/awsbatchcomputeenvironment/iac/pulumi:missing-iac-readme
@@ -110,51 +130,188 @@ violations:
   - catalog/aws/awswafipset/iac/tf:missing-iac-readme
   - catalog/aws/awswafregexpatternset/iac/pulumi:missing-iac-readme
   - catalog/aws/awswafregexpatternset/iac/tf:missing-iac-readme
-  - catalog/civo/civobucket:missing-tf-module
-  - catalog/civo/civocertificate:missing-tf-module
-  - catalog/civo/civocomputeinstance:missing-tf-module
-  - catalog/civo/civodnszone/iac/tf:missing-iac-readme
-  - catalog/civo/civofirewall/iac/tf:missing-iac-readme
-  - catalog/civo/civoipaddress/iac/pulumi:missing-iac-readme
-  - catalog/civo/civoipaddress/iac/tf:missing-iac-readme
-  - catalog/civo/civokubernetescluster/iac/tf:missing-iac-readme
-  - catalog/civo/civokubernetesnodepool/iac/tf:missing-iac-readme
   - catalog/cloudflare/cloudflarecertificatepack/iac/pulumi:missing-iac-readme
   - catalog/cloudflare/cloudflarecertificatepack/iac/tf:missing-iac-readme
+  - catalog/cloudflare/cloudflarecertificatepack/iac:missing-permissions
+  - catalog/cloudflare/cloudflarecertificatepack:missing-control-profile
+  - catalog/cloudflare/cloudflarecertificatepack:missing-cost-profile
+  - catalog/cloudflare/cloudflarecustomhostname/iac:missing-permissions
+  - catalog/cloudflare/cloudflarecustomhostname:missing-control-profile
+  - catalog/cloudflare/cloudflarecustomhostname:missing-cost-profile
   - catalog/cloudflare/cloudflarecustomhostnamefallbackorigin/iac/pulumi:missing-iac-readme
   - catalog/cloudflare/cloudflarecustomhostnamefallbackorigin/iac/tf:missing-iac-readme
+  - catalog/cloudflare/cloudflarecustomhostnamefallbackorigin/iac:missing-permissions
+  - catalog/cloudflare/cloudflarecustomhostnamefallbackorigin:missing-control-profile
+  - catalog/cloudflare/cloudflarecustomhostnamefallbackorigin:missing-cost-profile
+  - catalog/cloudflare/cloudflared1database/iac:missing-permissions
+  - catalog/cloudflare/cloudflared1database:missing-control-profile
+  - catalog/cloudflare/cloudflared1database:missing-cost-profile
+  - catalog/cloudflare/cloudflarednsrecord/iac:missing-permissions
+  - catalog/cloudflare/cloudflarednsrecord:missing-control-profile
+  - catalog/cloudflare/cloudflarednsrecord:missing-cost-profile
   - catalog/cloudflare/cloudflarednszone/iac/pulumi:missing-iac-readme
   - catalog/cloudflare/cloudflarednszone/iac/tf:missing-iac-readme
+  - catalog/cloudflare/cloudflarednszone/iac:missing-permissions
+  - catalog/cloudflare/cloudflarednszone:missing-control-profile
+  - catalog/cloudflare/cloudflarednszone:missing-cost-profile
   - catalog/cloudflare/cloudflareemailroutingaddress/iac/pulumi:missing-iac-readme
   - catalog/cloudflare/cloudflareemailroutingaddress/iac/tf:missing-iac-readme
+  - catalog/cloudflare/cloudflareemailroutingaddress/iac:missing-permissions
+  - catalog/cloudflare/cloudflareemailroutingaddress:missing-control-profile
+  - catalog/cloudflare/cloudflareemailroutingaddress:missing-cost-profile
   - catalog/cloudflare/cloudflareemailroutingrule/iac/pulumi:missing-iac-readme
   - catalog/cloudflare/cloudflareemailroutingrule/iac/tf:missing-iac-readme
+  - catalog/cloudflare/cloudflareemailroutingrule/iac:missing-permissions
+  - catalog/cloudflare/cloudflareemailroutingrule:missing-control-profile
+  - catalog/cloudflare/cloudflareemailroutingrule:missing-cost-profile
   - catalog/cloudflare/cloudflareemailroutingzone/iac/pulumi:missing-iac-readme
   - catalog/cloudflare/cloudflareemailroutingzone/iac/tf:missing-iac-readme
+  - catalog/cloudflare/cloudflareemailroutingzone/iac:missing-permissions
+  - catalog/cloudflare/cloudflareemailroutingzone:missing-control-profile
+  - catalog/cloudflare/cloudflareemailroutingzone:missing-cost-profile
   - catalog/cloudflare/cloudflarehyperdriveconfig/iac/pulumi:missing-iac-readme
   - catalog/cloudflare/cloudflarehyperdriveconfig/iac/tf:missing-iac-readme
+  - catalog/cloudflare/cloudflarehyperdriveconfig/iac:missing-permissions
+  - catalog/cloudflare/cloudflarehyperdriveconfig:missing-control-profile
+  - catalog/cloudflare/cloudflarehyperdriveconfig:missing-cost-profile
   - catalog/cloudflare/cloudflarekvnamespace/iac/pulumi:missing-iac-readme
+  - catalog/cloudflare/cloudflarekvnamespace/iac:missing-permissions
+  - catalog/cloudflare/cloudflarekvnamespace:missing-control-profile
+  - catalog/cloudflare/cloudflarekvnamespace:missing-cost-profile
   - catalog/cloudflare/cloudflarelist/iac/pulumi:missing-iac-readme
   - catalog/cloudflare/cloudflarelist/iac/tf:missing-iac-readme
+  - catalog/cloudflare/cloudflarelist/iac:missing-permissions
+  - catalog/cloudflare/cloudflarelist:missing-control-profile
+  - catalog/cloudflare/cloudflarelist:missing-cost-profile
   - catalog/cloudflare/cloudflarelistitem/iac/pulumi:missing-iac-readme
   - catalog/cloudflare/cloudflarelistitem/iac/tf:missing-iac-readme
+  - catalog/cloudflare/cloudflarelistitem/iac:missing-permissions
+  - catalog/cloudflare/cloudflarelistitem:missing-control-profile
+  - catalog/cloudflare/cloudflarelistitem:missing-cost-profile
+  - catalog/cloudflare/cloudflareloadbalancer/iac:missing-permissions
+  - catalog/cloudflare/cloudflareloadbalancer:missing-control-profile
+  - catalog/cloudflare/cloudflareloadbalancer:missing-cost-profile
+  - catalog/cloudflare/cloudflareloadbalancermonitor/iac:missing-permissions
+  - catalog/cloudflare/cloudflareloadbalancermonitor:missing-control-profile
+  - catalog/cloudflare/cloudflareloadbalancermonitor:missing-cost-profile
+  - catalog/cloudflare/cloudflareloadbalancerpool/iac:missing-permissions
+  - catalog/cloudflare/cloudflareloadbalancerpool:missing-control-profile
+  - catalog/cloudflare/cloudflareloadbalancerpool:missing-cost-profile
   - catalog/cloudflare/cloudflareorigincacertificate/iac/pulumi:missing-iac-readme
   - catalog/cloudflare/cloudflareorigincacertificate/iac/tf:missing-iac-readme
+  - catalog/cloudflare/cloudflareorigincacertificate/iac:missing-permissions
+  - catalog/cloudflare/cloudflareorigincacertificate:missing-control-profile
+  - catalog/cloudflare/cloudflareorigincacertificate:missing-cost-profile
   - catalog/cloudflare/cloudflarepagesproject/iac/pulumi:missing-iac-readme
   - catalog/cloudflare/cloudflarepagesproject/iac/tf:missing-iac-readme
+  - catalog/cloudflare/cloudflarepagesproject/iac:missing-permissions
+  - catalog/cloudflare/cloudflarepagesproject:missing-control-profile
+  - catalog/cloudflare/cloudflarepagesproject:missing-cost-profile
   - catalog/cloudflare/cloudflarequeue/iac/pulumi:missing-iac-readme
   - catalog/cloudflare/cloudflarequeue/iac/tf:missing-iac-readme
+  - catalog/cloudflare/cloudflarequeue/iac:missing-permissions
+  - catalog/cloudflare/cloudflarequeue:missing-control-profile
+  - catalog/cloudflare/cloudflarequeue:missing-cost-profile
+  - catalog/cloudflare/cloudflarer2bucket/iac:missing-permissions
+  - catalog/cloudflare/cloudflarer2bucket:missing-control-profile
+  - catalog/cloudflare/cloudflarer2bucket:missing-cost-profile
+  - catalog/cloudflare/cloudflareruleset/iac:missing-permissions
+  - catalog/cloudflare/cloudflareruleset:missing-control-profile
+  - catalog/cloudflare/cloudflareruleset:missing-cost-profile
   - catalog/cloudflare/cloudflareturnstilewidget/iac/pulumi:missing-iac-readme
   - catalog/cloudflare/cloudflareturnstilewidget/iac/tf:missing-iac-readme
+  - catalog/cloudflare/cloudflareturnstilewidget/iac:missing-permissions
+  - catalog/cloudflare/cloudflareturnstilewidget:missing-control-profile
+  - catalog/cloudflare/cloudflareturnstilewidget:missing-cost-profile
+  - catalog/cloudflare/cloudflareworker/iac:missing-permissions
+  - catalog/cloudflare/cloudflareworker:missing-control-profile
+  - catalog/cloudflare/cloudflareworker:missing-cost-profile
   - catalog/cloudflare/cloudflareworkerskvpair/iac/pulumi:missing-iac-readme
   - catalog/cloudflare/cloudflareworkerskvpair/iac/tf:missing-iac-readme
+  - catalog/cloudflare/cloudflareworkerskvpair/iac:missing-permissions
+  - catalog/cloudflare/cloudflareworkerskvpair:missing-control-profile
+  - catalog/cloudflare/cloudflareworkerskvpair:missing-cost-profile
+  - catalog/cloudflare/cloudflarezerotrustaccessapplication/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustaccessapplication:missing-control-profile
+  - catalog/cloudflare/cloudflarezerotrustaccessapplication:missing-cost-profile
+  - catalog/cloudflare/cloudflarezerotrustaccessgroup/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustaccessgroup:missing-control-profile
+  - catalog/cloudflare/cloudflarezerotrustaccessgroup:missing-cost-profile
+  - catalog/cloudflare/cloudflarezerotrustaccesspolicy/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrustaccesspolicy:missing-control-profile
+  - catalog/cloudflare/cloudflarezerotrustaccesspolicy:missing-cost-profile
   - catalog/cloudflare/cloudflarezerotrusttunnel/iac/pulumi:missing-iac-readme
   - catalog/cloudflare/cloudflarezerotrusttunnel/iac/tf:missing-iac-readme
+  - catalog/cloudflare/cloudflarezerotrusttunnel/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrusttunnel:missing-control-profile
+  - catalog/cloudflare/cloudflarezerotrusttunnel:missing-cost-profile
   - catalog/cloudflare/cloudflarezerotrusttunnelroute/iac/pulumi:missing-iac-readme
   - catalog/cloudflare/cloudflarezerotrusttunnelroute/iac/tf:missing-iac-readme
+  - catalog/cloudflare/cloudflarezerotrusttunnelroute/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrusttunnelroute:missing-control-profile
+  - catalog/cloudflare/cloudflarezerotrusttunnelroute:missing-cost-profile
   - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/iac/pulumi:missing-iac-readme
   - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/iac/tf:missing-iac-readme
-  - catalog/confluent/confluentkafka:missing-presets
+  - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork:missing-control-profile
+  - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork:missing-cost-profile
+  - catalog/digitalocean/digitaloceanapp/iac:missing-permissions
+  - catalog/digitalocean/digitaloceanapp:missing-control-profile
+  - catalog/digitalocean/digitaloceanapp:missing-cost-profile
+  - catalog/digitalocean/digitaloceanbucket/iac:missing-permissions
+  - catalog/digitalocean/digitaloceanbucket:missing-control-profile
+  - catalog/digitalocean/digitaloceanbucket:missing-cost-profile
+  - catalog/digitalocean/digitaloceancertificate/iac:missing-permissions
+  - catalog/digitalocean/digitaloceancertificate:missing-control-profile
+  - catalog/digitalocean/digitaloceancertificate:missing-cost-profile
+  - catalog/digitalocean/digitaloceancontainerregistry/iac:missing-permissions
+  - catalog/digitalocean/digitaloceancontainerregistry:missing-control-profile
+  - catalog/digitalocean/digitaloceancontainerregistry:missing-cost-profile
+  - catalog/digitalocean/digitaloceandatabasecluster/iac:missing-permissions
+  - catalog/digitalocean/digitaloceandatabasecluster:missing-control-profile
+  - catalog/digitalocean/digitaloceandatabasecluster:missing-cost-profile
+  - catalog/digitalocean/digitaloceandnsrecord/iac:missing-permissions
+  - catalog/digitalocean/digitaloceandnsrecord:missing-control-profile
+  - catalog/digitalocean/digitaloceandnsrecord:missing-cost-profile
+  - catalog/digitalocean/digitaloceandnszone/iac:missing-permissions
+  - catalog/digitalocean/digitaloceandnszone:missing-control-profile
+  - catalog/digitalocean/digitaloceandnszone:missing-cost-profile
+  - catalog/digitalocean/digitaloceandroplet/iac:missing-permissions
+  - catalog/digitalocean/digitaloceandroplet:missing-control-profile
+  - catalog/digitalocean/digitaloceandroplet:missing-cost-profile
+  - catalog/digitalocean/digitaloceanfirewall/iac:missing-permissions
+  - catalog/digitalocean/digitaloceanfirewall:missing-control-profile
+  - catalog/digitalocean/digitaloceanfirewall:missing-cost-profile
+  - catalog/digitalocean/digitaloceanfunction/iac:missing-permissions
+  - catalog/digitalocean/digitaloceanfunction:missing-control-profile
+  - catalog/digitalocean/digitaloceanfunction:missing-cost-profile
+  - catalog/digitalocean/digitaloceankubernetescluster/iac:missing-permissions
+  - catalog/digitalocean/digitaloceankubernetescluster:missing-control-profile
+  - catalog/digitalocean/digitaloceankubernetescluster:missing-cost-profile
+  - catalog/digitalocean/digitaloceankubernetesnodepool/iac:missing-permissions
+  - catalog/digitalocean/digitaloceankubernetesnodepool:missing-control-profile
+  - catalog/digitalocean/digitaloceankubernetesnodepool:missing-cost-profile
+  - catalog/digitalocean/digitaloceanloadbalancer/iac:missing-permissions
+  - catalog/digitalocean/digitaloceanloadbalancer:missing-control-profile
+  - catalog/digitalocean/digitaloceanloadbalancer:missing-cost-profile
+  - catalog/digitalocean/digitaloceanvolume/iac:missing-permissions
+  - catalog/digitalocean/digitaloceanvolume:missing-control-profile
+  - catalog/digitalocean/digitaloceanvolume:missing-cost-profile
+  - catalog/digitalocean/digitaloceanvpc/iac:missing-permissions
+  - catalog/digitalocean/digitaloceanvpc:missing-control-profile
+  - catalog/digitalocean/digitaloceanvpc:missing-cost-profile
+  - catalog/gcp/gcpcloudfunction/iac:missing-permissions
+  - catalog/gcp/gcpcloudfunction:missing-control-profile
+  - catalog/gcp/gcpcloudfunction:missing-cost-profile
+  - catalog/gcp/gcpcloudrun/iac:missing-permissions
+  - catalog/gcp/gcpcloudrun:missing-control-profile
+  - catalog/gcp/gcpcloudrun:missing-cost-profile
+  - catalog/gcp/gcpidentityplatformconfig/iac:missing-permissions
+  - catalog/gcp/gcpidentityplatformconfig:missing-control-profile
+  - catalog/gcp/gcpidentityplatformconfig:missing-cost-profile
+  - catalog/gcp/gcpidentityplatformtenant/iac:missing-permissions
+  - catalog/gcp/gcpidentityplatformtenant:missing-control-profile
+  - catalog/gcp/gcpidentityplatformtenant:missing-cost-profile
   - catalog/kubernetes/kubernetesairflow/iac/pulumi:missing-iac-readme
   - catalog/kubernetes/kubernetesairflow/iac/tf:missing-iac-readme
   - catalog/kubernetes/kubernetesargoworkflows/iac/pulumi:missing-iac-readme
@@ -175,6 +332,9 @@ violations:
   - catalog/kubernetes/kubernetesharbor/iac/tf:missing-iac-readme
   - catalog/kubernetes/kubernetesistiobasecrds/iac/pulumi:missing-iac-readme
   - catalog/kubernetes/kubernetesistiobasecrds/iac/tf:missing-iac-readme
+  - catalog/kubernetes/kubernetesjenkins/iac:missing-permissions
+  - catalog/kubernetes/kubernetesjenkins:missing-control-profile
+  - catalog/kubernetes/kubernetesjenkins:missing-cost-profile
   - catalog/kubernetes/kubernetesjupyterhub/iac/pulumi:missing-iac-readme
   - catalog/kubernetes/kubernetesjupyterhub/iac/tf:missing-iac-readme
   - catalog/kubernetes/kuberneteskarpenterec2nodeclass/iac/pulumi:missing-iac-readme
@@ -232,138 +392,15 @@ violations:
   - catalog/kubernetes/kubernetestrino/iac/pulumi:missing-iac-readme
   - catalog/kubernetes/kubernetestrino/iac/tf:missing-iac-readme
   - catalog/kubernetes/kubernetesvalkey/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocialarm/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocialarm/iac/tf:missing-iac-readme
-  - catalog/oci/ociapigateway/iac/pulumi:missing-iac-readme
-  - catalog/oci/ociapigateway/iac/tf:missing-iac-readme
-  - catalog/oci/ociapplicationloadbalancer/iac/pulumi:missing-iac-readme
-  - catalog/oci/ociapplicationloadbalancer/iac/tf:missing-iac-readme
-  - catalog/oci/ociautonomousdatabase/iac/pulumi:missing-iac-readme
-  - catalog/oci/ociautonomousdatabase/iac/tf:missing-iac-readme
-  - catalog/oci/ocibastion/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocibastion/iac/tf:missing-iac-readme
-  - catalog/oci/ociblockvolume/iac/pulumi:missing-iac-readme
-  - catalog/oci/ociblockvolume/iac/tf:missing-iac-readme
-  - catalog/oci/ocicompartment/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocicompartment/iac/tf:missing-iac-readme
-  - catalog/oci/ocicomputeinstance/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocicomputeinstance/iac/tf:missing-iac-readme
-  - catalog/oci/ocicontainerenginecluster/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocicontainerenginecluster/iac/tf:missing-iac-readme
-  - catalog/oci/ocicontainerenginenodepool/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocicontainerenginenodepool/iac/tf:missing-iac-readme
-  - catalog/oci/ocicontainerinstance/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocicontainerinstance/iac/tf:missing-iac-readme
-  - catalog/oci/ocidbsystem/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocidbsystem/iac/tf:missing-iac-readme
-  - catalog/oci/ocidevopsproject/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocidevopsproject/iac/tf:missing-iac-readme
-  - catalog/oci/ocidnsrecord/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocidnsrecord/iac/tf:missing-iac-readme
-  - catalog/oci/ocidnszone/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocidnszone/iac/tf:missing-iac-readme
-  - catalog/oci/ocidynamicgroup/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocidynamicgroup/iac/tf:missing-iac-readme
-  - catalog/oci/ocidynamicroutinggateway/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocidynamicroutinggateway/iac/tf:missing-iac-readme
-  - catalog/oci/ocifilesystem/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocifilesystem/iac/tf:missing-iac-readme
-  - catalog/oci/ocifunctionsapplication/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocifunctionsapplication/iac/tf:missing-iac-readme
-  - catalog/oci/ociidentitypolicy/iac/pulumi:missing-iac-readme
-  - catalog/oci/ociidentitypolicy/iac/tf:missing-iac-readme
-  - catalog/oci/ocikmskey/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocikmskey/iac/tf:missing-iac-readme
-  - catalog/oci/ocikmsvault/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocikmsvault/iac/tf:missing-iac-readme
-  - catalog/oci/ociloggroup/iac/pulumi:missing-iac-readme
-  - catalog/oci/ociloggroup/iac/tf:missing-iac-readme
-  - catalog/oci/ocimysqldbsystem/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocimysqldbsystem/iac/tf:missing-iac-readme
-  - catalog/oci/ocinetworkfirewall/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocinetworkfirewall/iac/tf:missing-iac-readme
-  - catalog/oci/ocinetworkloadbalancer/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocinetworkloadbalancer/iac/tf:missing-iac-readme
-  - catalog/oci/ocinosqltable/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocinosqltable/iac/tf:missing-iac-readme
-  - catalog/oci/ociobjectstoragebucket/iac/pulumi:missing-iac-readme
-  - catalog/oci/ociobjectstoragebucket/iac/tf:missing-iac-readme
-  - catalog/oci/ocipostgresqldbsystem/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocipostgresqldbsystem/iac/tf:missing-iac-readme
-  - catalog/oci/ocipublicip/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocipublicip/iac/tf:missing-iac-readme
-  - catalog/oci/ociqueue/iac/pulumi:missing-iac-readme
-  - catalog/oci/ociqueue/iac/tf:missing-iac-readme
-  - catalog/oci/ocirediscluster/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocirediscluster/iac/tf:missing-iac-readme
-  - catalog/oci/ocisecuritygroup/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocisecuritygroup/iac/tf:missing-iac-readme
-  - catalog/oci/ocistreampool/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocistreampool/iac/tf:missing-iac-readme
-  - catalog/oci/ocisubnet/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocisubnet/iac/tf:missing-iac-readme
-  - catalog/oci/ocivaultsecret/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocivaultsecret/iac/tf:missing-iac-readme
-  - catalog/oci/ocivcn/iac/pulumi:missing-iac-readme
-  - catalog/oci/ocivcn/iac/tf:missing-iac-readme
+  - catalog/openfga/openfgaauthorizationmodel/iac:missing-permissions
   - catalog/openfga/openfgaauthorizationmodel/v1alpha1:missing-spec-test
+  - catalog/openfga/openfgaauthorizationmodel:missing-control-profile
+  - catalog/openfga/openfgaauthorizationmodel:missing-cost-profile
+  - catalog/openfga/openfgarelationshiptuple/iac:missing-permissions
   - catalog/openfga/openfgarelationshiptuple/v1alpha1:missing-spec-test
+  - catalog/openfga/openfgarelationshiptuple:missing-control-profile
+  - catalog/openfga/openfgarelationshiptuple:missing-cost-profile
+  - catalog/openfga/openfgastore/iac:missing-permissions
   - catalog/openfga/openfgastore/v1alpha1:missing-spec-test
-  - catalog/openstack/openstackdnsrecord/iac/pulumi:missing-iac-readme
-  - catalog/openstack/openstackdnsrecord/iac/tf:missing-iac-readme
-  - catalog/openstack/openstackdnsrecord:missing-readme
-  - catalog/openstack/openstackdnszone/iac/pulumi:missing-iac-readme
-  - catalog/openstack/openstackdnszone/iac/tf:missing-iac-readme
-  - catalog/openstack/openstackdnszone:missing-readme
-  - catalog/scaleway/scalewayblockvolume/iac/pulumi:missing-iac-readme
-  - catalog/scaleway/scalewayblockvolume/iac/tf:missing-iac-readme
-  - catalog/scaleway/scalewayblockvolume/v1alpha1:missing-spec-test
-  - catalog/scaleway/scalewaycontainerregistry/iac/pulumi:missing-iac-readme
-  - catalog/scaleway/scalewaycontainerregistry/iac/tf:missing-iac-readme
-  - catalog/scaleway/scalewaycontainerregistry/v1alpha1:missing-spec-test
-  - catalog/scaleway/scalewaydnsrecord/iac/pulumi:missing-iac-readme
-  - catalog/scaleway/scalewaydnsrecord/iac/tf:missing-iac-readme
-  - catalog/scaleway/scalewaydnsrecord/v1alpha1:missing-spec-test
-  - catalog/scaleway/scalewaydnszone/iac/pulumi:missing-iac-readme
-  - catalog/scaleway/scalewaydnszone/iac/tf:missing-iac-readme
-  - catalog/scaleway/scalewaydnszone/v1alpha1:missing-spec-test
-  - catalog/scaleway/scalewayinstance/iac/pulumi:missing-iac-readme
-  - catalog/scaleway/scalewayinstance/iac/tf:missing-iac-readme
-  - catalog/scaleway/scalewayinstance/v1alpha1:missing-spec-test
-  - catalog/scaleway/scalewayinstancesecuritygroup/iac/pulumi:missing-iac-readme
-  - catalog/scaleway/scalewayinstancesecuritygroup/iac/tf:missing-iac-readme
-  - catalog/scaleway/scalewaykapsulecluster/iac/pulumi:missing-iac-readme
-  - catalog/scaleway/scalewaykapsulecluster/iac/tf:missing-iac-readme
-  - catalog/scaleway/scalewaykapsulecluster/v1alpha1:missing-spec-test
-  - catalog/scaleway/scalewaykapsulepool/iac/pulumi:missing-iac-readme
-  - catalog/scaleway/scalewaykapsulepool/iac/tf:missing-iac-readme
-  - catalog/scaleway/scalewayloadbalancer/iac/pulumi:missing-iac-readme
-  - catalog/scaleway/scalewayloadbalancer/iac/tf:missing-iac-readme
-  - catalog/scaleway/scalewayloadbalancer/v1alpha1:missing-spec-test
-  - catalog/scaleway/scalewaymongodbinstance/iac/pulumi:missing-iac-readme
-  - catalog/scaleway/scalewaymongodbinstance/iac/tf:missing-iac-readme
-  - catalog/scaleway/scalewaymongodbinstance/v1alpha1:missing-spec-test
-  - catalog/scaleway/scalewayobjectbucket/iac/pulumi:missing-iac-readme
-  - catalog/scaleway/scalewayobjectbucket/iac/tf:missing-iac-readme
-  - catalog/scaleway/scalewayobjectbucket/v1alpha1:missing-spec-test
-  - catalog/scaleway/scalewayprivatenetwork/iac/pulumi:missing-iac-readme
-  - catalog/scaleway/scalewayprivatenetwork/iac/tf:missing-iac-readme
-  - catalog/scaleway/scalewayprivatenetwork/v1alpha1:missing-spec-test
-  - catalog/scaleway/scalewaypublicgateway/iac/pulumi:missing-iac-readme
-  - catalog/scaleway/scalewaypublicgateway/iac/tf:missing-iac-readme
-  - catalog/scaleway/scalewaypublicgateway/v1alpha1:missing-spec-test
-  - catalog/scaleway/scalewayrdbinstance/iac/pulumi:missing-iac-readme
-  - catalog/scaleway/scalewayrdbinstance/iac/tf:missing-iac-readme
-  - catalog/scaleway/scalewayrdbinstance/v1alpha1:missing-spec-test
-  - catalog/scaleway/scalewayrediscluster/iac/pulumi:missing-iac-readme
-  - catalog/scaleway/scalewayrediscluster/iac/tf:missing-iac-readme
-  - catalog/scaleway/scalewayrediscluster/v1alpha1:missing-spec-test
-  - catalog/scaleway/scalewayserverlesscontainer/iac/pulumi:missing-iac-readme
-  - catalog/scaleway/scalewayserverlesscontainer/iac/tf:missing-iac-readme
-  - catalog/scaleway/scalewayserverlesscontainer/v1alpha1:missing-spec-test
-  - catalog/scaleway/scalewayserverlessfunction/iac/pulumi:missing-iac-readme
-  - catalog/scaleway/scalewayserverlessfunction/iac/tf:missing-iac-readme
-  - catalog/scaleway/scalewayserverlessfunction/v1alpha1:missing-spec-test
-  - catalog/scaleway/scalewayvpc/iac/pulumi:missing-iac-readme
-  - catalog/scaleway/scalewayvpc/iac/tf:missing-iac-readme
-  - catalog/scaleway/scalewayvpc/v1alpha1:missing-spec-test
+  - catalog/openfga/openfgastore:missing-control-profile
+  - catalog/openfga/openfgastore:missing-cost-profile

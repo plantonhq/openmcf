@@ -1,0 +1,131 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsRoute53HealthCheck manifest's spec values into metered quantities
+# and price choices. The estimate generator replays the catalog presets
+# through these rules to emit ../estimates/awsroute53healthcheck.yaml; a
+# server-side estimator evaluates the same rules against live manifests.
+# Prices live in the provider's price book (../pricebook/). Health-check
+# rates are global -- the offer publishes one price regardless of the
+# manifest's region -- and split by endpoint class (AWS vs non-AWS
+# endpoint), which no manifest field can prove; the endpoint lines state
+# the non-AWS assumption in their basis.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsroute53healthcheck
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  refusals:
+    - when:
+        - field_path: check_type
+          op: equals
+          value: RECOVERY_CONTROL
+      reason: Recovery-control health checks have no published rate -- neither the AmazonRoute53 offer document nor AWS's health-check pricing terms name them (the routing control they mirror bills on Application Recovery Controller's own pricing), so no committable monthly fee can be pinned
+  lines:
+    - sku_meter: health checks
+      applies_when:
+        - field_path: check_type
+          op: not_equals
+          value: CALCULATED
+        - field_path: check_type
+          op: not_equals
+          value: CLOUDWATCH_METRIC
+        - field_path: check_type
+          op: not_equals
+          value: RECOVERY_CONTROL
+      quantity:
+        - constant: "1"
+      price_slug: route53-health-check-non-aws
+      basis: one endpoint health check at the non-AWS-endpoint basic rate -- the manifest's fqdn/ip_address cannot prove the target is an AWS resource in (or billed to) this account, so the non-AWS class is the stated assumption; AWS-endpoint checks bill a lower basic rate with the account's first 50 free
+    - sku_meter: health checks
+      applies_when:
+        - field_path: check_type
+          op: equals
+          value: CALCULATED
+      quantity:
+        - constant: "1"
+      price_slug: route53-health-check-aws
+      basis: AWS's pricing terms bill calculated health checks as health checks of an AWS endpoint; priced at the beyond-free-tier rate -- the account's first 50 AWS-endpoint checks are free
+    - sku_meter: health checks
+      applies_when:
+        - field_path: check_type
+          op: equals
+          value: CLOUDWATCH_METRIC
+      quantity:
+        - constant: "1"
+      price_slug: route53-health-check-aws
+      basis: AWS's pricing terms bill metric-based health checks as health checks of an AWS endpoint; priced at the beyond-free-tier rate -- the account's first 50 AWS-endpoint checks are free
+    - sku_meter: optional health check features
+      applies_when:
+        - field_path: check_type
+          op: equals
+          value: HTTPS
+      quantity:
+        - constant: "1"
+      price_slug: route53-health-check-optional-feature-non-aws
+      basis: HTTPS probing is one billed optional feature per month, at the non-AWS-endpoint feature rate under the same endpoint-class assumption as the basic fee
+    - sku_meter: optional health check features
+      applies_when:
+        - field_path: check_type
+          op: equals
+          value: HTTP_STR_MATCH
+      quantity:
+        - constant: "1"
+      price_slug: route53-health-check-optional-feature-non-aws
+      basis: string matching is one billed optional feature per month, at the non-AWS-endpoint feature rate under the same endpoint-class assumption as the basic fee
+    - sku_meter: optional health check features
+      applies_when:
+        - field_path: check_type
+          op: equals
+          value: HTTPS_STR_MATCH
+      quantity:
+        - constant: "2"
+      price_slug: route53-health-check-optional-feature-non-aws
+      basis: two billed optional features per month -- string matching plus HTTPS -- at the non-AWS-endpoint feature rate under the same endpoint-class assumption as the basic fee
+    - sku_meter: optional health check features
+      applies_when:
+        - field_path: request_interval
+          op: equals
+          value: "10"
+      quantity:
+        - constant: "1"
+      price_slug: route53-health-check-optional-feature-non-aws
+      basis: the fast (10-second) request interval is one billed optional feature per month (the default 30-second interval is inside the basic fee); the spec restricts request_interval to endpoint checks, so this line never fires for calculated or metric checks
+    - sku_meter: optional health check features
+      applies_when:
+        - field_path: measure_latency
+          op: equals
+          value: "true"
+      quantity:
+        - constant: "1"
+      price_slug: route53-health-check-optional-feature-non-aws
+      basis: latency measurement is one billed optional feature per month; the spec restricts measure_latency to endpoint checks, so this line never fires for calculated or metric checks
+  exclusions:
+    - text: the probed endpoint's own infrastructure, and any Route 53 hosted zones or DNS records the check gates, bill as their own components -- this fee covers only the health check itself
+    - applies_when:
+        - field_path: check_type
+          op: equals
+          value: CLOUDWATCH_METRIC
+      text: the mirrored CloudWatch alarm and its metrics bill on CloudWatch, outside this component
+    - applies_when:
+        - field_path: check_type
+          op: equals
+          value: CALCULATED
+      text: each child health check bills as its own AwsRoute53HealthCheck component -- this fee covers only the aggregating check
+  notes:
+    - text: Health-check fees are global -- one published rate regardless of the manifest's region -- and prorated for partial months.
+    - applies_when:
+        - field_path: check_type
+          op: not_equals
+          value: CALCULATED
+        - field_path: check_type
+          op: not_equals
+          value: CLOUDWATCH_METRIC
+        - field_path: check_type
+          op: not_equals
+          value: RECOVERY_CONTROL
+      text: If the probed target is an AWS resource in (or billed to) this account, the basic fee drops to the AWS-endpoint rate (with the first 50 such checks free) and each optional feature bills at half the non-AWS feature rate -- this estimate states the conservative non-AWS class.

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremanagedredisgeoreplication
+spec:
+  billing_model: free
+  free_tier: A geo-replication group is pure replication topology -- it links Managed Redis instances whose databases already declare the same group name, and it has no ARM object of its own (its resource ID is the managing cluster's ID). Linking, holding, and unlinking the group bills nothing, and Microsoft currently absorbs the cross-region replication bandwidth rather than metering it to customers.
+  notes: "No field of this spec buys anything: managed_redis_id and linked_managed_redis_ids are membership coordinates. The real spend is the members themselves -- every instance in the group bills its own SKU-hour as an AzureManagedRedis, so a five-member group costs five instances (and the BALANCED_B3-or-larger link-time requirement sets a floor on each). Microsoft documents that the inter-region data transfer the group produces is currently absorbed by Azure Managed Redis and flags that this can change; if it does, it would surface as standard bandwidth meters, not as a charge on this resource."

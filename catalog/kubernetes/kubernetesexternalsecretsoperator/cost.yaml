@@ -1,0 +1,32 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesexternalsecretsoperator
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Controller replicas each carry the declared resources (one is standard; more require leader_elect so exactly one reconciles -- extras are standbys, not throughput).
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The controller container's requests are reserved per replica; empty means the chart's default of no explicit resources.
+    - field_path: webhook.replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: The admission webhook runs its own Deployment (chart default 1 replica); every ESO resource apply passes through it, and each replica carries webhook.resources.
+    - field_path: webhook.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The webhook container's requests are reserved per webhook replica.
+    - field_path: cert_controller.replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: The cert-controller runs its own Deployment (chart default 1 replica) bootstrapping and rotating the webhook's serving certificate; each replica carries cert_controller.resources.
+    - field_path: cert_controller.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The cert-controller container's requests are reserved per cert-controller replica.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - the helm_values overlay merges LAST over the typed rendering and can override modeled values, including resources and replica counts -- this profile describes the spec's declaration
+  notes: "This component creates no cloud SKU of its own -- its footprint is the operator machinery: the controller, webhook, and cert-controller pods. The stores it connects to and the secrets it syncs are separate first-class resources (KubernetesClusterSecretStore, KubernetesSecretStore, KubernetesExternalSecret) whose cost story rides those components and the external secret stores' own billing, never this one's."

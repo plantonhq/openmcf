@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuredataprotectionresourceguard
+spec:
+  azure:
+    groups:
+      - purpose: ManageResourceGuard
+        actions:
+          - Microsoft.DataProtection/subscriptions/resourceGroups/providers/resourceGuards/read
+          - Microsoft.DataProtection/subscriptions/resourceGroups/providers/resourceGuards/write
+          - Microsoft.DataProtection/subscriptions/resourceGroups/providers/resourceGuards/delete
+        provenance: derived
+        notes: Covers azurerm_data_protection_resource_guard -- create, read/refresh, in-place exclusion-list and tag updates, and destroy. Azure's own operation inventory spells resource-guard operations with the scope segments shown (verified against the live Microsoft.DataProtection inventory); Contributor on the guard's resource group covers them. By the guard's security model that resource group should belong to a DIFFERENT administrator than the vaults it guards -- so this principal is typically NOT the one deploying the vaults.

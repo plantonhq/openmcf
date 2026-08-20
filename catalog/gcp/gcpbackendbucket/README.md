@@ -15,7 +15,7 @@ The origin bucket itself is deliberately NOT created here — reference an exist
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **An existing GCS bucket** — referenced via `bucketName` (a GcpGcsBucket resource or a literal name); objects must be publicly readable or served via signed URLs
-- **IAM permissions** — any role carrying `compute.backendBuckets.*` on the target project
+- **IAM permissions** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Quick Start
 

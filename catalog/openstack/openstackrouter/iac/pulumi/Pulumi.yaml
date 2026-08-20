@@ -1,3 +1,0 @@
-name: openstack-router
-runtime: go
-description: Pulumi module for OpenStackRouter

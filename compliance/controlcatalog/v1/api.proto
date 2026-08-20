@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.compliance.controlcatalog.v1;
+
+import "compliance/controlcatalog/v1/spec.proto";
+import "shared/metadata.proto";
+
+// ControlCatalog is the single central definition of every technical control
+// the catalog speaks about -- the controlled vocabulary. Per-component
+// control profiles reference these controls by id and MUST NOT invent their
+// own; framework crosswalks map external framework requirements onto these
+// same ids. One catalog, referenced everywhere, so a control's meaning is
+// defined exactly once. Follows the KRM pattern (apiVersion + kind +
+// metadata + spec). Lives at catalog/_compliance/controls-catalog.yaml.
+//
+// Language discipline: controls state TECHNICAL posture ("data encrypted at
+// rest") -- never framework verdicts ("HIPAA-compliant"). Framework mapping
+// is the crosswalks' job.
+//
+// Example:
+//   apiVersion: compliance.planton.dev/v1
+//   kind: ControlCatalog
+//   metadata:
+//     name: planton-controls
+//   spec:
+//     controls:
+//       - id: enc-at-rest
+//         name: Encryption at rest
+//         statement: Data the component stores is encrypted at rest.
+//         category: data_protection
+message ControlCatalog {
+  string api_version = 1;
+  string kind = 2;
+  dev.planton.shared.CloudResourceMetadata metadata = 3;
+  ControlCatalogSpec spec = 4;
+}

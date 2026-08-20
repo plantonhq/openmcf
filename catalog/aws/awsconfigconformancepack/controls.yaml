@@ -1,0 +1,72 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsconfigconformancepack
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A pack is control-plane configuration -- its template and evaluation results live in AWS Config's managed store under AWS's own encryption. Result artifacts optionally delivered to delivery_s3_bucket inherit that referenced bucket's encryption posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-managed-key surface exists on a pack; the spec carries no key field because the conformance pack API offers none.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Config API is HTTPS-only and pack evaluations run inside AWS's service fabric; no plaintext path exists.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A pack is a regional API resource, not a network-placed endpoint. Whether delivered result artifacts are exposed is the referenced delivery bucket's posture, decided on that component.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens on a pack; there is no inbound network surface to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: With no request-serving surface there is no WAF attachment point.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every pack operation is IAM-authorized, and the rules a pack creates are managed exclusively by AWS Config's service-linked role (AWSServiceRoleForConfigConforms) -- they cannot be edited out from under the pack. Organization packs are additionally locked to the management account or Config delegated administrator.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The pack runs no user workload -- its rules are created and managed by AWS Config's service-linked role with short-lived credentials, plumbing fixed by AWS's design. Custom rules in the template execute under their own Lambda functions' execution roles, governed on those components.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: AWS Config has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Pack operations -- who deployed it, who changed the template, who deleted the bundle -- are management events captured in CloudTrail unconditionally, so dismantling a compliance baseline is itself on the record.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every packed rule's evaluation results land in the AWS Config compliance dashboard without configuration, aggregated per pack -- the pack IS a compliance-monitoring bundle, and delivery_s3_bucket optionally archives the results as queryable artifacts.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A pack holds no data to back up -- it redeploys verbatim from the manifest's template, and evaluation history ages out with AWS Config's retention on the recorder component.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no stored data there is no retention surface here; result-artifact retention is the referenced delivery bucket's lifecycle policy.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AWS Config is a regional managed service AWS operates across availability zones; a pack has no zonal footprint the manifest could configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: The conformance pack API offers no deletion-protection flag. Deleting the pack deletes every rule it created (organization packs unwind from all member accounts, taking minutes) -- redeployment from the manifest restores the baseline.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the evaluation engine, and managed rules inside the template stay current with AWS's own logic maintenance.
+      notes: Custom rules in the template are patched on the Lambda functions they reference, outside this manifest.

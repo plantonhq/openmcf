@@ -1,0 +1,46 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremongocluster
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Azure Cosmos DB
+      sku_meter: shard compute
+      pricing_unit: vCore-hours
+      description: Every physical shard (node) bills its tier's vCores by the hour from creation; Azure's price book carries the meters under the product name Azure DocumentDB.
+    - service_name: Azure Cosmos DB
+      sku_meter: shard storage
+      pricing_unit: GB-months
+      description: Provisioned premium SSD storage bills per GiB-month per shard whether used or empty; storage grows in place and never shrinks.
+  cost_drivers:
+    - field_path: compute_tier
+      sku_meter: shard compute
+      pricing_unit: vCore-hours
+      impact: The dominant lever -- each M-tier fixes the vCores per node (M30 has 2, M40 4, up to M200 with 64), and the per-node price is exactly the vCore count times the general-purpose per-vCore rate. Free is a genuinely free sandbox; M10/M20/M25 are burstable dev tiers on their own cheaper meters.
+    - field_path: shard_count
+      sku_meter: shard compute
+      pricing_unit: vCore-hours
+      impact: A direct multiplier on compute AND storage -- every physical shard carries the same compute and storage configuration, so two shards cost exactly twice one.
+    - field_path: storage_size_in_gb
+      sku_meter: shard storage
+      pricing_unit: GB-months
+      impact: Provisioned GiB per shard (32 to 32768), billed monthly whether used or not; it can grow in place but never shrink.
+    - field_path: high_availability_mode
+      sku_meter: shard compute
+      pricing_unit: vCore-hours
+      impact: ZoneRedundantPreferred runs one standby shard per primary shard with the same compute and storage configuration -- Microsoft bills both, doubling compute and storage; Disabled halves the production bill at the cost of failover cover.
+    - field_path: storage_type
+      sku_meter: shard storage
+      pricing_unit: GB-months
+      impact: PremiumSSD (the default) bills per provisioned GiB; PremiumSSDv2 bills GiB plus separate IOPS and throughput dimensions.
+    - field_path: create_mode
+      sku_meter: shard compute
+      pricing_unit: vCore-hours
+      impact: GeoReplica creates a full second cluster billed at its own compute and storage rates, inheriting its sizing from the source cluster.
+  estimate_exclusions:
+    - network egress follows client placement and cross-region replication topology
+  notes: "The cluster bills per physical shard: each shard is a node whose tier fixes its vCores, priced at the general-purpose per-vCore rate, plus provisioned storage per GiB-month. High availability is the honest doubler -- Microsoft's documentation states every primary shard gets a standby with the same compute and storage configuration -- so ZoneRedundantPreferred is a 2x line item on the whole bill. Automated backups carry no separate charge (no additional cost for backups up to 35 days per the pricing page), and the Free tier bills nothing for the life of the cluster within its one-shard, no-HA sandbox walls."

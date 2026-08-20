@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurestoragedatalakegen2filesystem
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Azure Storage service-side encryption covers every byte in the filesystem with 256-bit AES, always on, with no disable switch at any configuration level."
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: default_encryption_scope
+      evidence:
+        type: spec_default
+        reference: "Unset, data encrypts under the account's default key posture. Set, everything landing in the filesystem that doesn't name its own scope encrypts under the referenced AzureStorageEncryptionScope -- which can carry a customer-managed Key Vault key -- giving key custody for just this zone while the rest of the lake stays on platform keys."
+      notes: "The Regulated Zone CMK preset is exactly this pattern. Account-wide customer-managed keys remain the AzureStorageAccount's posture; the filesystem-level scope narrows key isolation to one zone without splitting accounts."
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: "Transport posture is account-level -- HTTPS-only enforcement and minimum TLS live on the AzureStorageAccount and cover the dfs endpoint; the filesystem offers no transport lever of its own."
+    - control_id: no-public-access
+      status: not_applicable
+      notes: "The filesystem exposes no anonymous-access lever at all -- the container it surfaces as in ARM is born private, and every data request is evaluated against RBAC, ACLs, or the account's shared key. Internet REACHABILITY of the dfs endpoint is the account's firewall and private-endpoint posture, with no per-filesystem network control."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: "Network-source restriction is the account's firewall posture -- one dfs endpoint serves every filesystem in the account. Worth knowing when composing: the official modules deploy over the dfs DATA plane, so a firewall that blocks the runner blocks the create even though ARM would allow it."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: "The dfs endpoint accepts storage API requests from analytics engines and SDKs, not application traffic -- no WAF attachment point exists at this grain."
+    - control_id: rbac
+      status: configurable
+      field_path: aces
+      evidence:
+        type: spec_default
+        reference: "The spec makes the root path's access control first-class: aces declares per-principal POSIX rwx entries (ACCESS entries gate the root, DEFAULT entries are the template new children inherit), and owner / group set the root's owning principals -- all evaluated per-request against the caller's Entra identity. Left empty, Azure's defaults apply ($superuser ownership) and access falls back to RBAC and shared key."
+      notes: "Every preset ships deny-by-default posture (OTHER \"---\") with an owning user or team group holding access -- the medallion-zone pattern. Coarse-grained data roles (Storage Blob Data Reader/Contributor at the filesystem's ARM scope) compose via AzureRoleAssignment and are evaluated BEFORE ACLs; the ACL is the fine-grained refinement. One sharp edge the spec documents: ACL entries for managed identities must name the PRINCIPAL id, not the client id -- a client-id entry silently never matches."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: "The filesystem authenticates nobody and holds no credentials. It is, however, built to be GRANTED to keyless workloads: owner, group, and ace entries reference an AzureUserAssignedIdentity's principal_id so a workload identity can own or access a zone -- the identity plumbing itself lives on the caller's side."
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "Disabling shared-key authorization is the AzureStorageAccount's switch -- but note the deploy contract: the official modules talk to the dfs data plane with the account's shared key by default, so locking shared key down on the account affects how this kind deploys."
+    - control_id: audit-logging
+      status: not_applicable
+      notes: "Filesystem create/delete land in the Azure Activity Log automatically; per-operation data-plane auditing (who read which path) is Azure Monitor resource logs on the account's blob/dfs service via diagnostic settings -- account-side, with no per-filesystem toggle."
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: "Storage metrics emit at the account and service grain; Microsoft defines no per-filesystem metric surface and this spec carries no monitoring toggle. Per-zone visibility is composed from resource logs filtered by filesystem name."
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "Data protection for hierarchical-namespace accounts is account-side and narrower than flat blob (soft delete exists; blob versioning and point-in-time restore do NOT support HNS) -- all of it configured on the AzureStorageAccount, none of it here. The blast radius worth knowing: renaming the filesystem REPLACES it, destroying everything stored in it, and deleting it does the same."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: "No backup surface exists on this spec to retain (see backup-recovery); soft-delete retention windows live on the account."
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: "Zone and geo redundancy follow the ACCOUNT's replication choice (LRS through RA-GZRS); the filesystem inherits it with no per-filesystem lever."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither the Data Lake API nor this spec offers a deletion-protection flag; ARM locks are subscription-side governance. A filesystem delete (or rename, which replaces) takes the whole zone -- the account's container soft-delete window is the only recovery net."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Data Lake Storage is a fully managed service -- Microsoft operates and patches the storage infrastructure with no customer-visible patch surface."

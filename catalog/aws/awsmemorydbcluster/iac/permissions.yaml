@@ -1,0 +1,91 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsmemorydbcluster
+spec:
+  aws:
+    statements:
+      - sid: ManageCluster
+        actions:
+          - memorydb:CreateCluster
+          - memorydb:DescribeClusters
+          - memorydb:UpdateCluster
+          - memorydb:DeleteCluster
+          - memorydb:TagResource
+          - memorydb:UntagResource
+          - memorydb:ListTags
+        resources:
+          - arn:aws:memorydb:*:*:cluster/*
+          - arn:aws:memorydb:*:*:acl/*
+          - arn:aws:memorydb:*:*:subnetgroup/*
+          - arn:aws:memorydb:*:*:parametergroup/*
+          - arn:aws:memorydb:*:*:snapshot/*
+          - arn:aws:memorydb::*:multiregioncluster/*
+        provenance: derived
+        notes: Covers aws_memorydb_cluster across create, in-place updates (node type, shard/replica counts, ACL, engine and version, windows, SNS topic), tagging, and teardown. CreateCluster and UpdateCluster authorize against the referenced ACL, subnet group, and parameter group as well as the cluster itself, so those ARN classes ride the same statement. CreateCluster also authorizes against the source snapshot on snapshot_name/snapshot_arns restores and the multi-region cluster when multi_region_cluster_name joins one (its ARN carries no region), and DeleteCluster authorizes against the snapshot when final_snapshot_name is set.
+      - sid: ManageSubnetGroup
+        actions:
+          - memorydb:DescribeSubnetGroups
+          - memorydb:UpdateSubnetGroup
+          - memorydb:DeleteSubnetGroup
+        resources:
+          - arn:aws:memorydb:*:*:subnetgroup/*
+        provenance: derived
+        notes: Covers the conditional aws_memorydb_subnet_group -- created only when the spec provides subnet_ids inline; the bring-your-own subnet_group_name arm passes through untouched.
+      - sid: CreateGroups
+        actions:
+          - memorydb:CreateSubnetGroup
+          - memorydb:CreateParameterGroup
+        resources:
+          - "*"
+        provenance: derived
+        notes: The service reference lists NO resource types for CreateSubnetGroup and CreateParameterGroup (their Describe/Update/Delete siblings DO scope to the group ARNs, proving the absence is meaningful), so IAM evaluates both creates against Resource "*" -- ARN-scoped grants never match and would deny provisioning at runtime. The wildcard is the narrowest possible scope.
+      - sid: ManageParameterGroup
+        actions:
+          - memorydb:DescribeParameterGroups
+          - memorydb:DescribeParameters
+          - memorydb:UpdateParameterGroup
+          - memorydb:ResetParameterGroup
+          - memorydb:DeleteParameterGroup
+        resources:
+          - arn:aws:memorydb:*:*:parametergroup/*
+        provenance: derived
+        notes: Covers the conditional aws_memorydb_parameter_group -- created only for inline parameters; removing an entry issues a ResetParameterGroup for the dropped name.
+      - sid: ManageSnapshotsOnLifecycle
+        actions:
+          - memorydb:CreateSnapshot
+          - memorydb:DescribeSnapshots
+        resources:
+          - arn:aws:memorydb:*:*:snapshot/*
+          - arn:aws:memorydb:*:*:cluster/*
+        provenance: derived
+        notes: DeleteCluster with final_snapshot_name creates a final snapshot on teardown, and snapshot_name restores read the source snapshot at create.
+      - sid: DescribeVpcContext
+        actions:
+          - ec2:DescribeSubnets
+          - ec2:DescribeSecurityGroups
+          - ec2:DescribeVpcs
+        resources:
+          - "*"
+        provenance: derived
+        notes: Subnet-group creation and security-group attachment validate their references. EC2 Describe APIs support no resource-level scoping, so the wildcard is the narrowest possible scope.
+      - sid: UseCustomerManagedKeys
+        actions:
+          - kms:DescribeKey
+          - kms:CreateGrant
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Required only when kms_key_arn selects a customer-managed key -- MemoryDB validates the key and creates grants against it during cluster create.
+      - sid: CreateServiceLinkedRole
+        actions:
+          - iam:CreateServiceLinkedRole
+        resources:
+          - arn:aws:iam::*:role/aws-service-role/memorydb.amazonaws.com/*
+        provenance: derived
+        notes: The first MemoryDB cluster in an account creates the MemoryDB service-linked role automatically; scoped to exactly that role path.

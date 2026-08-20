@@ -1,0 +1,3 @@
+name: awseventbridgescheduler
+runtime: go
+description: Pulumi module to manage an AWS EventBridge Scheduler schedule and its group

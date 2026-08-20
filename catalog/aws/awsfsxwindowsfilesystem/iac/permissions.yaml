@@ -1,0 +1,64 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsfsxwindowsfilesystem
+spec:
+  aws:
+    statements:
+      - sid: ManageFileSystem
+        actions:
+          - fsx:CreateFileSystem
+          - fsx:CreateFileSystemFromBackup
+          - fsx:UpdateFileSystem
+          - fsx:DeleteFileSystem
+          - fsx:TagResource
+          - fsx:UntagResource
+          - fsx:ListTagsForResource
+        resources:
+          - arn:aws:fsx:*:*:file-system/*
+          - arn:aws:fsx:*:*:backup/*
+        provenance: derived
+        notes: Covers aws_fsx_windows_file_system -- creation (including the Active Directory join, audit-log configuration, DNS aliases, and disk IOPS arms), in-place updates (storage growth, throughput scaling, backup settings, alias changes, maintenance window), tagging, and deletion. The backup ARN format is required alongside file-system by the service reference for CreateFileSystemFromBackup (the spec's backup_id restore arm) and for DeleteFileSystem (the final backup taken when skip_final_backup is false, including its final_backup_tags).
+      - sid: DescribeFileSystems
+        actions:
+          - fsx:DescribeFileSystems
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side of aws_fsx_windows_file_system during plan/refresh. FSx Describe APIs support no resource-level scoping (empty Resources lists in the service reference), so the wildcard is the narrowest possible scope.
+      - sid: ReadVpcNetworking
+        actions:
+          - ec2:DescribeSubnets
+          - ec2:DescribeVpcs
+          - ec2:DescribeSecurityGroups
+        resources:
+          - "*"
+        provenance: derived
+        notes: FSx invokes these with the caller's credentials (forward-access sessions via fsx.amazonaws.com, mirrored in the AmazonFSxFullAccess policy) to validate subnet_ids and security_group_ids during creation. EC2 Describe APIs support no resource-level scoping, so the wildcard is the narrowest possible scope.
+      - sid: ViewManagedDirectory
+        actions:
+          - ds:DescribeDirectories
+        resources:
+          - "*"
+        provenance: derived
+        notes: Required only when spec.active_directory_id joins an AWS Managed Microsoft AD -- FSx resolves and validates the directory during creation with the caller's credentials. The Directory Service reference lists no resource-level scoping for DescribeDirectories, so the wildcard is the narrowest possible scope.
+      - sid: UseCustomerManagedKey
+        actions:
+          - kms:DescribeKey
+          - kms:CreateGrant
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Required only when spec.kms_key_id selects a customer-managed at-rest key -- FSx validates the key and creates a grant against it during file-system creation. Both actions authorize on the key ARN per the KMS service reference.
+      - sid: ManageServiceLinkedRole
+        actions:
+          - iam:CreateServiceLinkedRole
+        resources:
+          - arn:aws:iam::*:role/aws-service-role/fsx.amazonaws.com/*
+        provenance: derived
+        notes: The first FSx file system in an account creates the AWSServiceRoleForAmazonFSx service-linked role, which FSx uses to place network interfaces in the subnets. Scoped to the FSx service-linked role path.

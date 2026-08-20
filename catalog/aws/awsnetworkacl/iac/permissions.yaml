@@ -1,0 +1,34 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsnetworkacl
+spec:
+  aws:
+    statements:
+      - sid: ManageNetworkAcl
+        actions:
+          - ec2:CreateNetworkAcl
+          - ec2:DeleteNetworkAcl
+          - ec2:CreateNetworkAclEntry
+          - ec2:DeleteNetworkAclEntry
+          - ec2:ReplaceNetworkAclAssociation
+          - ec2:CreateTags
+          - ec2:DeleteTags
+        resources:
+          - arn:aws:ec2:*:*:network-acl/*
+          - arn:aws:ec2:*:*:vpc/*
+          - arn:aws:ec2:*:*:subnet/*
+        provenance: derived
+        notes: Covers aws_network_acl / ec2.NetworkAcl with rules and subnet associations INLINE (the modules never emit the standalone rule/association resources). The service reference authorizes CreateNetworkAcl on BOTH the network-acl and vpc ARN formats, and ReplaceNetworkAclAssociation on the network-acl and subnet formats -- an under-scoped grant denies provisioning. Rule reconciliation diffs the inline set and runs the CreateNetworkAclEntry/DeleteNetworkAclEntry pair (the providers never call ReplaceNetworkAclEntry for this resource). ReplaceNetworkAclAssociation is the ONLY association verb AWS has -- it moves each subnet_ids entry onto this ACL at create and hands subnets back to the VPC's default NACL on removal and destroy. CreateTags runs tag-on-create; DeleteTags later tag reconciliation.
+      - sid: DescribeNetworkAcls
+        actions:
+          - ec2:DescribeNetworkAcls
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side during plan/refresh for the ACL, its inline rules, and its association state -- and the destroy path reads it to locate the VPC's default NACL to re-parent subnets onto. EC2 Describe APIs support no resource-level scoping (empty Resources list in the service reference), so the wildcard is the narrowest possible scope.

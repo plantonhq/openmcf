@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesenvoyfilter
+spec:
+  billing_model: free
+  free_tier: An Istio EnvoyFilter is a record in the Kubernetes API server -- ordered patches (add/merge/remove/insert/replace) that istiod applies to the Envoy xDS configuration it generates for selected workloads. No provider bills for the filter object, and it reserves no cluster capacity of its own.
+  notes: "No field of this spec buys anything: config_patches rewrite the configuration of proxy containers that already exist -- the sidecars and gateways being patched bill through their own workloads' cluster-capacity profiles. A patch can change how those proxies process traffic (e.g. adding an HTTP filter adds per-request CPU work inside the existing proxy), but no new billable resource is ever created by this object."

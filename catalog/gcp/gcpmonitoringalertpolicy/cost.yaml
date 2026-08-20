@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpmonitoringalertpolicy
+spec:
+  billing_model: free
+  free_tier: "An alerting policy bills nothing today, but this free claim carries an expiry date Google has already published. The Cloud Monitoring pricing page lists an alerting meter -- $0.35 per month for each metric reference in an alerting policy, plus $0.50 per 1,000,000 points returned by the query of a metric alerting policy condition -- effective no sooner than September 1, 2027 (customers on an active commit contract with discounts as of May 31, 2026 stay exempt until that contract expires, renews, or is replaced). Until that date, creating, evaluating, and firing alert policies is free at any policy count."
+  notes: "When the scheduled meter activates, the count and shape of `conditions` becomes the bill: each filter-built threshold or absence condition counts as one metric reference (a policy holds 1 to 6 conditions), log-match and SQL policies count one, and PromQL or MQL conditions count as many metric references as their query names -- at $0.35 per reference per month for as long as the policy exists, disabled only by modifying, disabling, or deleting the policy. Metric conditions additionally return query points every ~30-second execution period against the $0.50-per-million-points meter; log-match and SQL conditions return no points, and policies on Billing, Quota, or Uptime metrics are not charged at all. Independent of that schedule, the real spend an alert policy points at today lives elsewhere: the metrics its conditions watch bill on Cloud Monitoring's ingestion meters where chargeable ($0.2580/MiB first tier for byte-charged metrics beyond the 150 MiB monthly allotment; GCP system metrics are non-chargeable), a condition_matched_log filter depends on logs whose storage bills on Cloud Logging's $0.50/GiB meter, and notification_channels are free config -- though a pubsub-type channel delivers into a topic whose throughput bills as GcpPubSubTopic. The policy itself never appears on today's invoice."

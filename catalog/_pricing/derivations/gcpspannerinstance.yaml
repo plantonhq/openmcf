@@ -1,0 +1,96 @@
+# Cost derivation: the machine-executable rules turning any
+# GcpSpannerInstance manifest's spec values into metered quantities and
+# price choices. Spanner meters compute per REPLICA: the published
+# regional node price is the per-replica rate times the configuration's
+# three read-write replicas (Google's own worked example prices $0.41 x 3
+# = $1.23 per node-hour for Enterprise in us-central1), so quantities
+# here carry the x3 explicitly and the price book pins the per-replica
+# SKU rate. Nodes and processing units are split-arm sibling rules with
+# disjoint conditions; autoscaling refuses -- capacity that floats
+# between bounds has no single committed number. A FREE_INSTANCE emits
+# no lines and totals an honest zero. Schema:
+# finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: gcpspannerinstance
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    assumption: us-central1
+  refusals:
+    - when:
+        - field_path: autoscaling_config
+          op: is_set
+      reason: autoscaling floats capacity between autoscaling_limits bounds on live utilization -- there is no single committed capacity to price, and the floor-to-ceiling spread can be severalfold
+    - when:
+        - field_path: config
+          op: not_equals
+          value: regional-us-central1
+      reason: the price book pins only the regional-us-central1 configuration's rates -- other regional, dual-region, and multi-region configurations carry their own per-replica rates and replica counts and are not priced
+  lines:
+    - sku_meter: compute capacity
+      applies_when:
+        - field_path: instance_type
+          op: not_equals
+          value: FREE_INSTANCE
+        - field_path: processing_units
+          op: equals
+          value: "0"
+      quantity:
+        - field_value:
+            field_path: num_nodes
+            default_when_unset: "1"
+        - constant: "3"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Cloud Spanner
+        pricing_unit: replica-hours
+        attributes:
+          - key: config
+            from_field: config
+          - key: edition
+            from_field: edition
+      basis: num_nodes nodes (GCP defaults a PROVISIONED instance to 1 node when no capacity field is set), each running the regional configuration's three read-write replicas, billed every hour at the edition's per-replica rate -- a manifest that names no edition refuses because the book pins edition-keyed rates
+    - sku_meter: compute capacity
+      applies_when:
+        - field_path: instance_type
+          op: not_equals
+          value: FREE_INSTANCE
+        - field_path: processing_units
+          op: not_equals
+          value: "0"
+      quantity:
+        - field_value:
+            field_path: processing_units
+        - constant: "0.003"
+        - hours_in_month: true
+      price_lookup:
+        service_name: Cloud Spanner
+        pricing_unit: replica-hours
+        attributes:
+          - key: config
+            from_field: config
+          - key: edition
+            from_field: edition
+      basis: processing_units at 1000 per node, times the regional configuration's three read-write replicas -- 3/1000 = 0.003 replica-node per processing unit -- billed every hour at the edition's per-replica rate
+  exclusions:
+    - text: database storage bills per GiB-month of data actually stored across the configuration's replicas and grows with the databases
+    - applies_when:
+        - field_path: default_backup_schedule_type
+          op: equals
+          value: AUTOMATIC
+      text: backup storage bills per GiB-month -- AUTOMATIC gives every new database on the instance a default backup schedule, so backup GiB start accruing with the first database
+    - text: network egress and Data Boost usage are workload-dependent
+  notes:
+    - applies_when:
+        - field_path: instance_type
+          op: equals
+          value: FREE_INSTANCE
+      text: A FREE_INSTANCE is the billing account's one zero-cost development instance (about 10 GB of storage, no capacity fields) -- the total is genuinely zero, not an omission. Google frames the free instance as a 90-day trial; at expiry it must upgrade to PROVISIONED (starting normal billing) or be reclaimed.
+    - applies_when:
+        - field_path: instance_type
+          op: not_equals
+          value: FREE_INSTANCE
+      text: Spanner's published regional node price is the per-replica rate times three read-write replicas -- the quantity carries the replicas so the rate stays the billing SKU's own number.

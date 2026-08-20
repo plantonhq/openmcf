@@ -1,0 +1,96 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuresearchservice
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure AI Search encrypts all data at rest -- indexes, synonym maps, and object definitions on both data and temporary disks -- with 256-bit AES service-managed keys on every service, in every tier and region; encryption cannot be disabled.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: customer_managed_key_enforcement_enabled
+      evidence:
+        type: spec_default
+        reference: Off by default. CMK encryption itself is applied per index and object at the data plane with Key Vault keys, adding a second layer on top of service-managed encryption; this flag is the service-side policy that reports and enforces non-compliance when objects are not CMK-encrypted.
+      notes: The module exports customer_managed_key_encryption_compliance_status so the posture is observable.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The endpoint ({name}.search.windows.net) requires HTTPS on port 443 and negotiates TLS 1.2 or 1.3; earlier TLS versions are not supported.
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_network_access_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to true (public endpoint); setting it false limits connectivity to private endpoints, and shared_private_link_services let the service reach its data sources privately in the same posture.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: allowed_ips
+      evidence:
+        type: spec_default
+        reference: An IP allowlist of client address ranges on the public endpoint; empty applies no source filtering. network_rule_bypass_option decides whether trusted Azure services may bypass the list.
+      notes: The rules matter only while the public endpoint exists.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The search endpoint is an API surface protected by TLS, authentication, and network scoping; the platform offers no WAF attachment point on it. Fronting it with an application gateway is that component's own posture.
+    - control_id: rbac
+      status: configurable
+      field_path: local_authentication_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to true (API keys accepted); setting it false makes the data plane Azure-RBAC-only, and authentication_failure_mode instead enables Entra RBAC alongside keys during migration. Management-plane access is always Azure RBAC.
+      notes: The 01-production-search preset runs RBAC alongside keys via authenticationFailureMode http401WithBearerChallenge.
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: Unset means no service identity; a SYSTEM_ASSIGNED or USER_ASSIGNED managed identity lets indexers reach data sources with directory-issued tokens instead of stored connection strings, and Entra-side RBAC lets workloads query with tokens instead of keys.
+      notes: The 01-production-search preset enables a system-assigned identity.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: local_authentication_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to true (static admin and query keys work); setting it false retires the shared-key path entirely -- the service then rejects key-authenticated requests and the module's key outputs come back empty.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Administrative operations on the service land in the Azure Activity Log unconditionally; the service logs CRUD operations without user identities.
+      notes: Query and indexing resource logs flow through Azure Monitor diagnostic settings outside this spec's fields.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The service publishes search latency, queries per second, and throttling metrics to Azure Monitor for every service without configuration.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Azure AI Search offers no managed backup/restore -- it is not a primary data store, and Microsoft's documented recovery path is rebuilding indexes from the source data (or exporting index JSON with client-side tooling). Source-data durability belongs to the data stores' own components.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface exists to set retention on (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replica_count
+      evidence:
+        type: spec_default
+        reference: With two or more replicas on a billable tier in a zone-enabled region, the platform automatically spreads replicas across availability zones -- no separate zone switch exists. One replica (the default) has no zone redundancy; 3+ replicas carry the 99.9% read-write SLA.
+      notes: The 01-production-search preset runs 3 replicas.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the search service API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. A deleted service's indexes are rebuilt from source data.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Microsoft manages infrastructure security, patching, and service updates for every search service; no customer patch surface exists.

@@ -35,7 +35,3 @@ The module is executed by the Planton platform with a tfvars file converted from
 - **A Premium host without a public IP deploys PRIVATE-ONLY** (reachable only from connected networks) -- surfaced in the `private_only_enabled` output.
 - **Billing starts at provisioning** (~10-minute creates): hourly per SKU, plus per-scale-unit on Standard/Premium. Developer is free.
 - **The SKU/feature matrix is spec-validated** (features require Standard/Premium; session recording requires Premium; scale units are fixed at 2 below Standard) -- invalid combinations are rejected before any cloud call.
-
-## Required Permissions
-
-The deploying principal needs `Microsoft.Network/bastionHosts/*` plus join permissions on the subnet and public IP (Network Contributor on the resource group covers all three).

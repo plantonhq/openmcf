@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurefrontdoorruleset
+spec:
+  billing_model: free
+  free_tier: The rule set and every rule inside it never bill -- on Front Door Standard/Premium profiles, delivery-rule evaluation is included in the profile's SKU with no per-rule or per-evaluation meter.
+  notes: "No field of this spec buys anything: the rule set is a delivery policy on the Front Door PROFILE it references (profile_id), and the profile is where Front Door billing lives -- a base fee per its own SKU plus requests and egress, a separate catalog kind. Rules can INFLUENCE spend indirectly (a route_configuration_override that disables caching sends every matched request to the origin; one that repoints traffic changes which backend serves it), but the influence lands on the profile's traffic meters and the backends, never on this resource."

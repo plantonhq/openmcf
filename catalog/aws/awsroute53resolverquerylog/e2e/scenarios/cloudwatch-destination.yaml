@@ -1,0 +1,32 @@
+# A query-log configuration writing to the consumer-scoped CloudWatch
+# log group, associated to the chain VPC. Exercises the immutable
+# config, the destination reference, and the association join whose
+# FAILED status class the verifier asserts against (ACTIVE, never mere
+# existence). Free at AWS beyond negligible log ingestion.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRoute53ResolverQueryLog
+metadata:
+  name: planton-oss-e2e-awsr53rql-cwl
+  id: planton-oss-e2e-awsr53rql-cwl
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsroute53resolverquerylog
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "catalog/aws/awsroute53resolverquerylog/e2e/prerequisites/awscwlg-destination.yaml"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  destinationArn:
+    valueFrom:
+      kind: AwsCloudwatchLogGroup
+      name: planton-oss-e2e-awsr53rql-dest
+      fieldPath: status.outputs.log_group_arn
+  vpcIds:
+    - valueFrom:
+        kind: AwsVpc
+        name: planton-oss-e2e-awsvpc-prereq
+        fieldPath: status.outputs.vpc_id

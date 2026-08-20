@@ -1,0 +1,84 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremachinelearningcomputeinstance
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The instance's OS and temporary disks are Azure managed disks, encrypted at rest with platform-managed keys on every VM; the durable data (notebooks, datastores) lives in the workspace's storage account, also encrypted at rest by default.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: The instance spec carries no key surface. Customer-managed-key encryption for Azure Machine Learning is a workspace-level, creation-time decision configured on AzureMachineLearningWorkspace and inherited by the computes in it.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Access to the instance's notebook and terminal applications goes over HTTPS through the workspace's endpoints; SSH, when the ssh block enables it, is encrypted by the protocol itself. No plaintext access path exists.
+    - control_id: no-public-access
+      status: configurable
+      field_path: node_public_ip_enabled
+      evidence:
+        type: spec_default
+        reference: Unspecified applies true (the provider's default -- the instance gets a public IP); setting it false removes the public address, and the provider then requires subnet_id UNLESS the workspace runs a managed network (a live-workspace contract checked at apply time, recorded on the spec fields).
+      notes: The 02-private-instance preset disables the public IP and supplies the subnet.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: subnet_id
+      evidence:
+        type: spec_default
+        reference: Unset leaves the instance on service-managed networking fronted by the workspace's endpoints; placing it in your subnet puts its ingress under that subnet's NSG topology. The SSH port is DISABLED unless the ssh block is present (the provider's own contract), so the only default ingress is the authenticated workspace path.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A single-user development workstation reached through authenticated workspace endpoints has no request-filtering attachment point; a WAF fronts public applications, which this is not.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management of the instance is Azure RBAC on the workspace unconditionally, and access to the instance itself is single-user by the service's model -- authorization_type "personal" (the only value the provider accepts) locks it to its creator or the assign_to_user principal.
+      notes: assign_to_user is the admin-provisions-for-the-team pattern; unspecified authorization_type leaves the service's own personal-style single-user access.
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: Absent means no managed identity; the block attaches a system-assigned or user-assigned identity through which the instance's workloads reach storage and Key Vault with short-lived tokens instead of embedded credentials. Fixed at creation.
+      notes: Both presets attach SYSTEM_ASSIGNED.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: local_auth_enabled
+      evidence:
+        type: spec_default
+        reference: Unspecified applies true (the provider's default -- Azure Machine Learning token authentication works); setting it false forces Entra ID authentication only. Fixed at creation.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: ARM writes every management operation on the compute (create, delete, start, stop) to the Azure Activity Log unconditionally.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Compute state and utilization surface through the workspace's Azure Monitor metric and diagnostic surface without per-instance configuration -- the workspaces resource type carries its own Azure Monitor metric and log definitions.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The instance is deliberately disposable -- the provider has NO update path, so every change replaces it and its OS disk and local files go with it. Durable work belongs in the workspace's datastores and git, both outside this component; nothing here is backed up because nothing here is meant to be durable.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A compute instance is a single VM serving one person; the service offers no replicated or zone-spanning variant of it. Resilience for production workloads belongs to compute clusters and endpoints, not personal workstations.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither the provider resource nor this spec offers a deletion-protection flag -- the opposite is true: every spec change replaces the instance by the provider's own contract, so the kind is built around disposability."
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no managed channel that patches a RUNNING instance -- Microsoft ships updated VM images monthly (and hotfixes within a week for compute instances), but a deployed instance is not actively updated; Microsoft's guidance is to re-create the instance to get the latest image, or patch OS and Python packages yourself from inside it. No spec field changes this; recreation is the patch path.

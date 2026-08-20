@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpiamdenypolicy
+spec:
+  billing_model: free
+  free_tier: "Google's Identity and Access Management pricing page states it in one sentence: all use of the Identity and Access Management API is free of charge. A deny policy is IAM v2 API content -- guardrail rules stored in Google's control plane -- so creating it, attaching it to a project, folder, or organization, and evaluating it on every authorization check under the attach point costs nothing at any rule count, principal count, or request volume."
+  notes: "No field on this spec starts a meter. The policy is a pure authorization guardrail: the resources it protects (the secrets, roles, or APIs whose permissions it denies) bill on their own services, never on the policy. Policy create, update, and delete land in Admin Activity audit logs, which Cloud Logging stores free in the non-deletable _Required bucket; a request BLOCKED by the policy surfaces in the target service's audit logs under that service's own logging posture. The only nearby meter is opt-in Data Access audit logging, which bills Cloud Logging storage at $0.50/GiB past the 50 GiB monthly project allotment -- a project-wide choice this resource neither makes nor exposes."

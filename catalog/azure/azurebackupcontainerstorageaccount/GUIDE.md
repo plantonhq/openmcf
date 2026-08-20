@@ -10,9 +10,9 @@ Registering an already-registered account fails ("already exists") -- the regist
 
 AzureBackupProtectedFileShare's `sourceStorageAccountId` should reference THIS resource's `storage_account_id` output (its default reference does exactly that), not the storage account directly. The value is identical -- the registration echoes the account's ARM ID -- but the reference edge is what guarantees the registration deploys before the protection. Reference the account directly and a fresh chart deploy can race: the protection's discovery pass finds an unregistered account and fails.
 
-## Expect the resource lock
+## Expect the resource lock -- and it blocks share deletes too
 
-While registered, Azure Backup places an ARM resource lock on the storage account (protecting the backups' source from accidental deletion). Teams auditing locks should expect it; it is removed at unregister, not by hand.
+While registered, Azure Backup places a DoNotDelete ARM lock on the storage account (protecting the backups' source from accidental deletion). Teams auditing locks should expect it; it is removed at unregister, not by hand. The lock's scope covers the account's children: deleting ANY file share in a registered account fails with `ScopeLocked` naming the account -- even a share that was never protected. If infrastructure automation tears down shares alongside this registration, the unregister must run FIRST; a share delete that hits ScopeLocked is ordering, not a stuck lock.
 
 ## Teardown runs strictly backwards
 

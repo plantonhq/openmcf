@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesconfigmap
+spec:
+  billing_model: free
+  free_tier: A ConfigMap is a record in the Kubernetes API server -- up to 1MiB of non-confidential UTF-8 and binary configuration data persisted in the cluster's etcd. No provider bills for the object, and it reserves no cluster capacity.
+  notes: "No field of this spec buys anything: data, binary_data, and immutable describe content and mutability of an API object. The real spend lives in the pods that consume the ConfigMap as environment variables or mounted files -- their own components carry the cluster-capacity profiles. immutable is itself a small efficiency lever: immutable ConfigMaps reduce kube-apiserver watch load in clusters with many consumers."

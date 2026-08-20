@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcppubsubschema
+spec:
+  billing_model: free
+  free_tier: "A schema carries no meter -- Pub/Sub's pricing page bills exactly three things (throughput for publishing and delivery, cross-region data transfer, and message storage), and a schema is none of them: it is a control-plane contract document. Creating schemas, committing revisions (up to the 20-revision limit), and validating every published message against an attached schema all bill nothing, at any message volume."
+  notes: "No field of this spec buys anything: type and definition are the contract text, and validation of publishes against it is a free side effect of throughput Pub/Sub already meters. The real spend lives on the TOPICS and SUBSCRIPTIONS that attach this schema -- publish and delivery throughput at $40/TiB beyond the billing account's first 10 GiB each month ($50/TiB for BigQuery and Cloud Storage export subscriptions), message storage at $0.27/GiB-month where retention is configured, and inter-region data transfer at VPC network rates -- all billing as GcpPubSubTopic and its subscriptions, exactly as they would without a schema. One indirect lever: messages rejected by schema validation are never accepted, so their bytes never reach the throughput meter."

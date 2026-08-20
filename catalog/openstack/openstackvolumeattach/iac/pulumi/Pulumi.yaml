@@ -1,3 +1,0 @@
-name: openstack-volume-attach
-runtime: go
-description: Pulumi module for OpenStackVolumeAttach

@@ -1,0 +1,108 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsmemorydbcluster
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: MemoryDB always encrypts data at rest -- the Multi-AZ transaction log and snapshots included; kms_key_arn only substitutes WHICH key, never whether.
+      notes: The module passes kms_key_arn through when set and otherwise leaves the AWS-managed key standing.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Unset means the AWS-managed key; setting kms_key_arn encrypts under the referenced customer-managed key. ForceNew -- the key is chosen at create time.
+      notes: The 03-high-throughput preset supplies a key ARN.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: tls_enabled
+      evidence:
+        type: spec_default
+        reference: Carries declared default true, and the provider enforces that default itself -- omitting the field is identical to sending true; explicit false is the only way to disable, and AWS then only accepts the open-access ACL.
+      notes: All three presets keep TLS on; IAM-authenticated ACL users additionally require TLS.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: MemoryDB clusters live only on VPC subnet groups with private addressing -- no public endpoint option exists for this resource class.
+      notes: Reachability is governed entirely by the subnet placement and attached security groups.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_default
+        reference: The attached security groups are the network-level access control for the cluster endpoint -- ports open only to the sources those referenced AwsSecurityGroup nodes declare.
+      notes: Presets 02 and 03 attach an explicit security group. One AWS quirk -- once a cluster has at least one security group, the set can only be swapped, never emptied.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A Redis/Valkey-protocol database endpoint has no WAF attachment point; request filtering belongs to the application tier in front of it.
+    - control_id: rbac
+      status: configurable
+      field_path: acl_name
+      evidence:
+        type: spec_validation
+        reference: acl_name is required -- every cluster names its Access Control List explicitly, and an AwsMemorydbAcl carries per-user command and key-pattern permissions; the built-in open-access ACL must be stated literally to opt out.
+      notes: Presets 02 and 03 reference a composed AwsMemorydbAcl; the dev preset states open-access deliberately.
+    - control_id: workload-identity
+      status: configurable
+      field_path: acl_name
+      evidence:
+        type: provider_default
+        reference: ACL users on the referenced AwsMemorydbAcl can authenticate with IAM -- clients sign connections with short-lived IAM credentials instead of stored passwords; the spec notes IAM-authenticated users require TLS.
+      notes: The user definitions (password vs IAM authentication) live on the referenced ACL resource, not this spec.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: acl_name
+      evidence:
+        type: spec_default
+        reference: The literal open-access ACL is the unauthenticated path -- referencing a real AwsMemorydbAcl disables it, and AWS couples tls_enabled=false to open-access so an unencrypted-and-authenticated shape is unrepresentable at create.
+      notes: Stating open access explicitly is deliberate spec design -- an invisible default granting unauthenticated access has no place in a manifest.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: MemoryDB exposes no data-plane access or audit log delivery this spec could enable; control-plane changes land in CloudTrail, and sns_topic_arn carries operational events (failover, maintenance, scaling), which are notifications, not access logs.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every cluster publishes engine and host metrics to CloudWatch automatically; no configuration can turn the metric stream off.
+      notes: sns_topic_arn additionally routes cluster events (failover, maintenance, scaling, configuration changes) to an SNS topic; the 03 preset wires one.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: snapshot_retention_limit
+      evidence:
+        type: spec_default
+        reference: 0 disables automatic snapshots; any positive value takes daily snapshots in snapshot_window, and snapshot_name/snapshot_arns restore a new cluster from them.
+      notes: Presets 02 and 03 retain 7 and 14 days; final_snapshot_name additionally preserves data through teardown. Durability itself is baseline -- the Multi-AZ transaction log holds even at zero replicas and zero snapshots.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: snapshot_retention_limit
+      evidence:
+        type: spec_validation
+        reference: The retention window is a first-class dial validated to 0-35 days, so organizational retention policy is expressed directly in the manifest.
+      notes: final_snapshot_name governs what survives cluster deletion.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: num_replicas_per_shard
+      evidence:
+        type: spec_default
+        reference: Defaults to 1 -- each shard runs a primary plus one replica placed in a different AZ for automatic failover; 0 keeps durability (the Multi-AZ transaction log) but slows recovery.
+      notes: Provide subnet_ids in at least two AZs so replicas land across zones; presets 02 and 03 run two replicas per shard across multi-AZ subnets.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: MemoryDB offers no deletion-protection flag; final_snapshot_name preserves the data through teardown but nothing refuses the deletion itself.
+    - control_id: managed-patching
+      status: configurable
+      field_path: auto_minor_version_upgrade
+      evidence:
+        type: spec_default
+        reference: Carries declared default true, and the provider enforces that default itself -- minor engine versions patch automatically in the maintenance window; explicit false is the only opt-out, fixed at create time (ForceNew).
+      notes: engine_version upgrades apply in place when named explicitly; downgrades are not supported.

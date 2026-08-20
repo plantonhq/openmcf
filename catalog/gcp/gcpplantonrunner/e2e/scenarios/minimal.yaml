@@ -1,0 +1,25 @@
+# Minimal GcpPlantonRunner scenario: the appliance in the ambient project
+# with an obviously-fake runner token. NOTE for the proof lane: unlike
+# ECS, Cloud Run v2 gates service CREATION on the first revision becoming
+# ready, and a runner holding a fake token exits after its refused join --
+# so this lane needs either a reachable control plane with a real
+# throwaway token (via the fenced env below) or a recorded deferral; the
+# fake-token default documents the shape, not a passing lane.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpPlantonRunner
+metadata:
+  name: planton-oss-e2e-gcp-runner
+  id: planton-oss-e2e-gcp-runner
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpplantonrunner
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-required-env: PLANTON_E2E_RUNNER_TOKEN
+  tags:
+    - planton-e2e
+spec:
+  region: us-central1
+  token: ${E2E_ENV:PLANTON_E2E_RUNNER_TOKEN}

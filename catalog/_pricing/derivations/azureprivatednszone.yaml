@@ -1,0 +1,37 @@
+# Cost derivation: the machine-executable rules turning any
+# AzurePrivateDnsZone manifest's spec values into metered quantities and
+# price choices -- one flat monthly fee per hosted private zone. The fee
+# is tiered by SUBSCRIPTION-wide private-zone count, a scope no single
+# manifest can see, so the line carries the stated assumption that the
+# zone bills in the first-25-zones tier -- the honest ceiling, since
+# every zone from the subscription's 26th bills at a fifth of this rate.
+# Queries are the usage arm and ride exclusion prose. The zone is a
+# global resource with no region field; its meter bills under Azure's
+# "Zone 1" billing geography wherever the linked networks live. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/azureprivatednszone.yaml; a server-side estimator
+# evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azureprivatednszone
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    assumption: global
+  lines:
+    - sku_meter: hosted private zone
+      quantity:
+        - constant: "1"
+      price_slug: dns-private-zone
+      basis: one private zone billed per month (prorated daily by Azure) at the first-25-zones list rate -- a stated assumption, since the tier is counted across the whole subscription and invisible here; zones from the subscription's 26th bill at a fifth of this rate, so the line never understates a single zone's fee
+  exclusions:
+    - text: query volume bills per million queries answered, aggregated across the subscription, and follows traffic entirely
+    - text: record sets beyond the first 25,000 in the zone bill a small monthly fee each -- the records ride their own record components, and virtual network links carry no meter at all
+  notes:
+    - applies_when:
+        - field_path: soa_record
+          op: is_set
+      text: SOA tuning changes resolver caching behavior, never the fee -- the customized zone bills identically to the bare one.

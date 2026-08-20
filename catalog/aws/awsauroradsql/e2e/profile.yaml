@@ -1,0 +1,31 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsauroradsql
+spec:
+  # One scenario: a defaults-only single-region cluster. Serverless
+  # pay-per-use - a never-queried cluster bills ~nothing for lane
+  # minutes. Watch: whether us-west-2's GetCluster reaches ACTIVE
+  # inside the waiter budget (the provider polls with
+  # ContinuousTargetOccurence 2), the derived
+  # "{identifier}.dsql.{region}.on.aws" endpoint output's shape
+  # against the console's connection host, and the DELETED-parking
+  # window on verify-absent.
+  #
+  # Deliberately not exercised live:
+  #   - the multi_region pairing arm -- the peer clusters ARE this
+  #     kind (the self-kind-prerequisite class) and live in ANOTHER
+  #     region with a witness in a third; the harness runs
+  #     single-region. The arm is offline-proven (spec CELs, both
+  #     engines' renders); the peering resource's PENDING_SETUP
+  #     one-shot is taught on the spec. Unblock: a two-region proof
+  #     session deploying two instances that name each other.
+  #   - a customer-managed KMS key (the AWS-owned default proves the
+  #     encryption path; the key swap is an in-place update).
+  #
+  # pending_proof: forged this session to the full offline bar -- Q48
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

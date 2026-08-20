@@ -1,0 +1,50 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsecstaskdefinition
+spec:
+  aws:
+    statements:
+      - sid: ManageTaskDefinition
+        actions:
+          - ecs:RegisterTaskDefinition
+          - ecs:DescribeTaskDefinition
+          - ecs:DeregisterTaskDefinition
+          - ecs:TagResource
+          - ecs:UntagResource
+          - ecs:ListTagsForResource
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_ecs_task_definition. RegisterTaskDefinition supports no resource-level ARN (the revision does not exist until the call returns), so ECS documents it against '*'; describe/deregister act on the family:revision ARN, kept in the same statement for one honest surface.
+      - sid: ManageLogGroup
+        actions:
+          - logs:CreateLogGroup
+          - logs:DeleteLogGroup
+          - logs:PutRetentionPolicy
+          - logs:TagResource
+          - logs:UntagResource
+          - logs:ListTagsForResource
+        resources:
+          - arn:aws:logs:*:*:log-group:*
+        provenance: derived
+        notes: Covers the module's aws_cloudwatch_log_group, created only when logging is enabled and no existing group is referenced (defaults to /ecs/<family> with 30-day retention).
+      - sid: DescribeLogGroups
+        actions:
+          - logs:DescribeLogGroups
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side of the log group during plan/refresh. The CloudWatch Logs API reference states DescribeLogGroups supports no resource type and requires Resource "*" (the other log-group actions scope to the log-group ARN), so an ARN-scoped grant never matches -- the wildcard is the narrowest possible scope.
+      - sid: PassTaskRoles
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: RegisterTaskDefinition passes the referenced execution_role and task_role to ECS. Scope to the actual role ARNs in a hardened deployment.

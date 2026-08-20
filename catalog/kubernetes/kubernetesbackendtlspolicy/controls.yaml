@@ -1,0 +1,62 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesbackendtlspolicy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The policy stores no data of its own -- it is a Kubernetes API object persisted in the cluster's etcd, whose encryption at rest is a property of the target cluster's control plane, not of this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); customer-managed keys for etcd belong to the cluster component.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: The spec makes an unverified backend connection unrepresentable -- validation is a required field, its CEL rules require exactly one trust anchor (ca_certificate_refs XOR well_known_ca_certificates), and hostname is required for SNI and certificate identity. Every accepted policy demands TLS origination to the targeted Services with certificate verification.
+      notes: "Caveat a reviewer should hear: the policy only takes effect when the Gateway's controller implements BackendTLSPolicy -- a policy behind a non-implementing controller is accepted by the API server and silently ignored, leaving the gateway's own default posture toward the backend. Verify the controller's support. Encryption of client-to-gateway traffic is the KubernetesGateway listeners' concern."
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The policy is not a network endpoint -- it configures the gateway-to-backend hop of an existing data plane. Public exposure is decided by the Gateway and the backend Services themselves.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The policy governs the OUTBOUND hop from gateway to backend, not who may reach anything -- inbound restriction belongs to the Gateway's listeners and the implementing infrastructure.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The policy performs no request filtering -- it secures a transport hop. A WAF for gateway traffic belongs to the implementing controller or the infrastructure in front of it.
+    - control_id: rbac
+      status: not_applicable
+      notes: The policy has no management or data plane of its own -- access to the object is governed by the target cluster's Kubernetes RBAC, and the upstream same-namespace targetRef rule keeps a policy from reaching Services outside its own namespace.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The policy calls no cloud APIs -- there is nothing for it to authenticate to. Backend identity verification (hostname, subject_alt_names, SPIFFE URIs) is certificate validation the gateway performs, not platform-issued credential exchange.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The policy has no authentication path of its own to harden; it strengthens the backend hop by requiring verified TLS (see enc-in-transit).
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the policy are Kubernetes API operations captured by the target cluster's audit policy; the policy itself produces no access events.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The policy emits no metrics; attachment status surfaces on the resource's ResolvedRefs/Accepted conditions and handshake telemetry belongs to the implementing gateway controller.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The policy is stateless declarative configuration fully reproducible from its manifest -- there is no data to back up or restore.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The policy is an API-server record replicated by the cluster's control plane; the data plane whose availability matters is the implementing gateway's, owned by its own components.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the Gateway API offers a deletion-protection flag on BackendTLSPolicy; protection is operational (namespace RBAC, change review). Deleting the policy reverts the gateway to its default -- typically plaintext -- posture toward the backend.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software here to patch -- the resource is data. The gateway controller enforcing it is patched through its own component's lifecycle.

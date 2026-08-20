@@ -1,0 +1,95 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awssnstopic
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset means messages queued for delivery are not encrypted at rest; setting kms_key_id enables server-side encryption -- the AWS-managed alias/aws/sns key or a customer-managed key both satisfy it.
+      notes: None of the presets pin a key today; encryption is one field away and the evidence keeps that honest.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: The same field escalates from the AWS-managed SNS key to a referenced customer-managed KMS key with rotation and key-policy control.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Publishes and management calls are HTTPS-only SigV4 requests; SNS exposes no plaintext publish path.
+      notes: Delivery-leg security to subscriber endpoints (an https:// vs http:// subscription URL) is governed on the AwsSnsSubscription component.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A topic with no resource policy accepts publishes and subscriptions only from its own account's IAM-authorized principals -- cross-account or public access exists only when the policy field deliberately grants it.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: policy
+      evidence:
+        type: spec_default
+        reference: The topic policy narrows publishers and subscribers to declared principals, source ARNs (e.g. a specific S3 bucket or EventBridge rule), and conditions.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A topic has no WAF attachment point; it is an API-addressed service, not a web endpoint.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Publishing, subscribing, and administration are IAM-authorized against the topic ARN; no non-IAM access path exists.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A topic holds no credentials and runs no workloads; publishers authenticate with their own identities, and delivery-side roles (delivery feedback, Firehose) are referenced, never embedded.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: signature_version
+      evidence:
+        type: spec_default
+        reference: SNS signs delivered messages with SHA1 (SignatureVersion 1) by default; setting signature_version 2 signs with SHA256 so subscribers verify authenticity against the stronger algorithm.
+      notes: The 01 preset pins signature version 2 -- the weaker signing path is disabled by manifest choice.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management API call is recorded in CloudTrail by default; Publish data events can additionally be enabled account-side.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: SNS publishes message counts, delivery successes and failures, and size metrics to CloudWatch automatically for every topic; delivery_feedback adds per-delivery status logs at a declared sample rate.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: archive_policy
+      evidence:
+        type: spec_default
+        reference: Unset means a delivered (or undeliverable) message is gone; a FIFO archive policy retains published messages for the declared window and replays them to subscribers on demand.
+      notes: The 03 preset archives 30 days for replay -- pub/sub's recovery story is the archive, since a topic stores nothing durably by design.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: archive_policy
+      evidence:
+        type: spec_default
+        reference: The archive policy's MessageRetentionPeriod is the declared retention length in days -- retention is a manifest choice, not an accident.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: SNS stores messages redundantly across multiple availability zones within the region until delivery -- zone-level durability is structural, not configured.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: SNS offers no deletion-protection flag; a deleted topic is recreated from the manifest, and subscriptions re-attach through their own components.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the fleet; no customer-visible patch surface exists.

@@ -1,0 +1,51 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awscloudtrail
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: event_selectors.data_resources
+      sku_meter: data events delivered
+      pricing_unit: events
+      impact: Every data-plane event a classic scope matches bills per 100,000 delivered -- and the coarse ARN scopes here are blunt ("arn:aws:s3" records every object in every bucket), so a wide scope on a busy account is the classic CloudTrail bill surprise.
+    - field_path: advanced_event_selectors
+      sku_meter: data and network activity events delivered
+      pricing_unit: events
+      impact: Advanced selectors are the cost throttle -- each field condition narrows which data or network-activity events bill, and both categories meter per 100,000 delivered. The tighter the eventCategory/resources.ARN match, the smaller the bill.
+    - field_path: insight_types
+      sku_meter: Insights events analyzed
+      pricing_unit: events
+      impact: Each enabled engine (ApiCallRateInsight, ApiErrorRateInsight) analyzes the trail's management events and bills per 100,000 analyzed PER insight type -- two engines meter the same events twice, at a rate well above ordinary event delivery.
+    - field_path: is_organization_trail
+      sku_meter: management events delivered
+      pricing_unit: events
+      impact: An organization trail captures every member account's activity into this one trail -- every meter on this profile multiplies by the whole organization's API volume, not just this account's.
+    - field_path: is_multi_region_trail
+      sku_meter: management events delivered
+      pricing_unit: events
+      impact: Multi-region capture widens the recorded event set to all regions. It stays inside the free management-events copy when this is the account's only copy -- what bills is duplication across trails, not breadth within one.
+    - field_path: include_global_service_events
+      sku_meter: management events delivered
+      pricing_unit: events
+      impact: Global-service events (IAM, STS, CloudFront) default on; leaving them on in SEVERAL trails duplicates the same events into each copy, and every copy past the free one bills per 100,000 delivered.
+    - field_path: cloudwatch_logs
+      sku_meter: CloudWatch Logs event delivery
+      pricing_unit: GB
+      impact: The mirror bills twice -- CloudTrail meters each GB delivered to the log group, and the group then meters its own ingestion on the AwsCloudwatchLogGroup component. Full event volume flows through both.
+    - field_path: enable_logging
+      sku_meter: management events delivered
+      pricing_unit: events
+      impact: The kill switch -- a trail created with logging off (or stopped later) delivers nothing and bills nothing, while the trail object itself keeps existing for free.
+  free_tier: One copy of ongoing management events delivered to S3 through trails is free -- a permanent allotment, not a trial -- and the console's 90-day event history is free with no trail at all. Additional management-event copies bill per 100,000 events delivered.
+  estimate_exclusions:
+    - event volume is entirely workload-driven -- the same manifest costs nothing in a quiet account and real money in a busy one
+    - S3 storage and requests for the delivered log files bill on the referenced AwsS3Bucket
+    - CloudWatch Logs ingestion and storage for the mirror bill on the referenced AwsCloudwatchLogGroup, on top of CloudTrail's own per-GB delivery meter
+    - SNS delivery notifications bill on the referenced AwsSnsTopic
+    - SSE-KMS encryption requests bill per call on the referenced AwsKmsKey
+    - an organization trail multiplies every meter by member-account activity invisible to this manifest
+  notes: "A trail's existence is free, and because the account's first copy of ongoing management events is also free, the canonical single audit trail carries a CloudTrail line of zero -- its real spend is S3 storage on the delivery bucket. The bill starts where scope grows: a second management copy bills per 100,000 events delivered, data events bill per 100,000 from the first event matched (S3 object activity on a busy bucket dwarfs management volume), Insights bills per 100,000 events analyzed per engine, and the CloudWatch Logs mirror adds a per-GB delivery meter on top of the log group's own ingestion. The widespread misconception is that multi-region or global-service capture costs extra -- breadth within the free copy is free; duplication across copies is what bills."

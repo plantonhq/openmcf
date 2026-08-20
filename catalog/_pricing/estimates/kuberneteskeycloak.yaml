@@ -1,0 +1,35 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kuberneteskeycloak
+spec:
+  presets:
+    - preset: 01-standard
+      capacity_footprint:
+        cpu_requests: 500m
+        memory_requests: 1536Mi
+        cpu_limits: "2"
+        memory_limits: 3Gi
+        basis: 2 instances x (250m CPU / 768Mi memory requests, 1 CPU / 1536Mi limits) -- no persistent volumes; state lives in the referenced postgres database
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - the postgres database holding every realm and user carries its own footprint on its KubernetesPostgres resource
+        - the Keycloak Operator reconciling this resource carries its own footprint on KubernetesKeycloakOperator
+    - preset: 02-dev-sandbox
+      capacity_footprint:
+        cpu_requests: 250m
+        memory_requests: 768Mi
+        cpu_limits: 1000m
+        memory_limits: 1Gi
+        basis: 1 instance x (250m CPU / 768Mi memory requests, 1000m CPU / 1Gi limits) from the spec-declared defaults (the platform applies them when the manifest omits resources) -- no persistent volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - the dev-mem sandbox database lives in the pod's own memory -- no storage is reserved and every realm and user is lost on restart
+        - the Keycloak Operator reconciling this resource carries its own footprint on KubernetesKeycloakOperator

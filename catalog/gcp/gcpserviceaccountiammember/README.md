@@ -16,7 +16,7 @@ Nothing else in the policy is read as owned or modified — grants made by other
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **An existing service account** — referenced via `serviceAccountId`
-- **IAM permissions** — `roles/iam.serviceAccountAdmin` on the target service account (or its project)
+- **IAM permissions** — the deploying principal's permissions are listed in [`iac/permissions.yaml`](iac/permissions.yaml)
 - **The role and the member must exist** — reference a GcpServiceAccount and/or GcpIamCustomRole, or use literal values
 
 ## Quick Start

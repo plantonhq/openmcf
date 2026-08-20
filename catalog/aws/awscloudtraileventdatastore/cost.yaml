@@ -1,0 +1,43 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awscloudtraileventdatastore
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: advanced_event_selectors
+      sku_meter: Lake data ingestion
+      pricing_unit: GB
+      impact: Ingestion is what Lake bills, and the selectors decide what flows in. The trap is OMITTING them -- AWS then materializes a default selector ingesting ALL management events, so an unscoped store meters the account's entire control-plane activity from day one. Data-event selectors on busy resources multiply volume far past that.
+    - field_path: billing_mode
+      sku_meter: Lake data ingestion
+      pricing_unit: GB
+      impact: The pricing-shape switch. EXTENDABLE_RETENTION_PRICING (the default) bills each GB once at a flat rate with the first year of retention included; FIXED_RETENTION_PRICING bills ingestion on a volume-tiered schedule with seven years of retention included -- cheaper only at sustained high volume. AWS allows changing it later only from fixed to extendable.
+    - field_path: retention_period_days
+      sku_meter: Lake extended data retention
+      pricing_unit: GB-months
+      impact: On the extendable pricing mode, data kept past its included first year bills per GB-month (on compressed size) until it ages out -- and the default is 2555 days, so seven years of retention charges is the DEFAULT posture, not an opt-in. On fixed pricing this dial changes nothing but the deletion horizon.
+    - field_path: multi_region_enabled
+      sku_meter: Lake data ingestion
+      pricing_unit: GB
+      impact: Defaults ON -- the store ingests matching events from every region, not just its home region. Region-scoping to false is a volume reducer for deliberately local stores.
+    - field_path: organization_enabled
+      sku_meter: Lake data ingestion
+      pricing_unit: GB
+      impact: An organization store ingests every member account's matching activity -- ingestion volume multiplies by the whole organization, invisible to this manifest.
+    - field_path: suspend
+      sku_meter: Lake data ingestion
+      pricing_unit: GB
+      impact: The pause switch -- suspended ingestion meters nothing new, while already-ingested events stay queryable and keep aging through retention (extended-retention charges continue on the extendable mode).
+  free_tier: New CloudTrail Lake customers get a 30-day free trial -- up to 5 GB ingested, 5 GB scanned, retention included -- which ends at 30 days or the usage caps, whichever comes first. A trial, not a permanent tier; there is no ongoing free allotment.
+  estimate_exclusions:
+    - ingestion volume is entirely workload-driven -- an empty store bills nothing on existence, and the same manifest meters whatever the account's activity generates
+    - query charges bill per GB scanned as investigations run -- driven by who queries and how often, never by the manifest
+    - queries run through Amazon Athena instead of Lake SQL bill on Athena's own meters
+    - SSE-KMS requests bill per call on the referenced AwsKmsKey
+    - an organization store multiplies ingestion by member-account activity
+    - ingestion meters uncompressed bytes while retention and query scans meter compressed bytes -- the compression ratio between them is workload-dependent
+  notes: "The store's existence is free -- no ingested events means no bill -- and everything after that is three meters: ingestion per GB (the dominant one), extended retention per GB-month (extendable mode only, after each event's included first year), and queries per GB scanned. The two costly defaults deserve respect: omitted selectors ingest ALL management events, and unset retention is the 2555-day maximum. billing_mode is the one decision that is hard to unwind -- fixed can become extendable, never the reverse -- and the break-even lives around sustained multi-TB monthly volume because fixed pricing's tiered ingest rates include seven years of retention. Trails and event data stores bill independently: a store needs no trail, and running both meters the same activity twice by design."

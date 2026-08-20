@@ -1,0 +1,30 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuredatafactoryintegrationruntime
+spec:
+  azure:
+    groups:
+      - purpose: ManageIntegrationRuntime
+        actions:
+          - Microsoft.DataFactory/factories/integrationruntimes/read
+          - Microsoft.DataFactory/factories/integrationruntimes/write
+          - Microsoft.DataFactory/factories/integrationruntimes/delete
+        provenance: derived
+        notes: Covers all three variant resources the module fans out on the spec's variant block -- azurerm_data_factory_integration_runtime_azure, _azure_ssis, and _self_hosted (datafactory.NewIntegrationRuntimeRule / NewIntegrationRuntimeSsis / NewIntegrationRuntimeSelfHosted) -- because Azure stores every flavor in the same factory-scoped integrationruntimes namespace with the same three operations for create, read/refresh, update, and destroy. The module parses data_factory_id client-side and performs no factory read. STARTING an SSIS runtime (integrationruntimes/start/action, stop/action) is an operational grant outside deployment -- the modules never start anything. Held at the factory's scope; Data Factory Contributor carries all of these.
+      - purpose: ReadSelfHostedAuthKeys
+        actions:
+          - Microsoft.DataFactory/factories/integrationruntimes/listauthkeys/action
+        provenance: derived
+        notes: The self-hosted variant surfaces the registration's primary and secondary authorization keys as sensitive outputs (the agent installer consumes one to join) -- the provider retrieves them through the listAuthKeys API on read/refresh, so the grant is exercised on every refresh of a self-hosted runtime, not just create. Linked registrations (rbac_authorization set) issue no keys, but the provider still calls the API and receives empties.
+      - purpose: EnableInteractiveAuthoring
+        actions:
+          - Microsoft.DataFactory/factories/integrationruntimes/enableInteractiveQuery/action
+          - Microsoft.DataFactory/factories/integrationruntimes/getstatus/read
+        provenance: derived
+        notes: Exercised only when the azure variant sets interactive_authoring_time_to_live_in_minutes -- Azure applies interactive authoring through a separate enable operation after the runtime is online (not part of the create body; documented on the spec field and in both module sources), and the provider polls the runtime's status to know when. Omit this group for manifests that never enable interactive authoring.

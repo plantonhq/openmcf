@@ -1,0 +1,30 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetescronjob
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: job_template.container.app.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The app container's CPU and memory requests are what the scheduler reserves per pod WHILE A RUN EXECUTES -- between runs the workload reserves nothing. Limits set the burst ceiling, not the reservation.
+    - field_path: job_template.parallelism
+      sku_meter: cluster CPU and memory reservations
+      impact: The maximum pods running at once within a run -- each concurrent pod carries the full declared resources, so parallelism 3 triples the peak reservation while the run executes. Defaults to 1.
+    - field_path: schedule
+      sku_meter: cluster CPU and memory reservations
+      impact: The cron expression decides how often the reservation recurs -- an every-15-minutes sync claims capacity far more of the time than a monthly report of the same size.
+    - field_path: concurrency_policy
+      sku_meter: cluster CPU and memory reservations
+      impact: Defaults to Forbid, so at most one run's pods exist at a time. Allow lets a run overrun into the next slot and STACK reservations; Replace cancels the stale run instead.
+    - field_path: job_template.container.sidecars
+      sku_meter: cluster CPU and memory reservations
+      impact: Each declared sidecar runs in every run pod and adds its own requests and limits on top of the app container's.
+  estimate_exclusions:
+    - capacity is reserved only while a scheduled run's pods execute -- between runs this workload reserves nothing, so wall-clock share depends on the schedule and each run's duration
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - declared sidecar containers add their own reservations on top of the app container's
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster its runs reserve while they execute, realized on the cluster's bill. An honest manifest-time statement is the per-run peak footprint: parallelism x the app container's requests, claimed only while a run is active."

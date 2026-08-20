@@ -1,0 +1,108 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources plus the
+# pinned openfga chart 0.3.10, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesopenfga
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.openfga (Terraform namespace.tf) and namespace.go (Pulumi) -- created and owned only when spec.create_namespace is true; get is needed for refresh either way.
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_secret_v1.authn_keys (authn_secret.tf; authn_secret.go in Pulumi) -- rendered only when spec.authn.preshared declares keys inline (the managed arm); an existing_keys_secret_name is referenced by the chart, never read by the runner. Helm's own release-state Secrets in the target namespace also live here.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - serviceaccounts
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Chart-rendered inside helm_release.openfga -- the API Service (HTTP 8080, gRPC 8081, metrics 2112) and the server ServiceAccount (annotated from spec.service_account_annotations). The spec.helm_values escape hatch is bounded by the chart's CLOSED values schema, so it can reshape but not invent chart objects.
+      - api_groups:
+          - ""
+        resources:
+          - pods
+          - events
+        verbs:
+          - get
+          - list
+          - watch
+        cluster_scoped: false
+        provenance: derived
+        notes: Read-only -- helm_release.openfga sets wait=true and atomic=true (safe because migrations run as an init container, not the chart's hook Job), so the provider tracks Deployment rollout readiness and surfaces failure events; the modules never create bare pods.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart renders exactly one Deployment -- the OpenFGA server (replicas from spec.replicas, omitted when hpa is enabled so the HPA owns the count), with the idempotent `openfga migrate` init container in every pod.
+      - api_groups:
+          - autoscaling
+        resources:
+          - horizontalpodautoscalers
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Rendered only when spec.hpa.enabled is true -- one HPA on the server Deployment with the declared min/max and CPU/memory utilization targets (CEL forbids it on the memory datastore).
+      - api_groups:
+          - monitoring.coreos.com
+        resources:
+          - servicemonitors
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Rendered only when spec.metrics.service_monitor_enabled is true -- requires the Prometheus operator CRDs on the cluster.

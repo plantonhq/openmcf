@@ -1,0 +1,41 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awscloudtraileventdatastore
+spec:
+  # A CloudTrail Lake event data store under live E2E: the scenario
+  # applies a single-region store at the 7-day retention floor with
+  # termination protection OFF, ingestion SUSPENDED, and one narrow
+  # data-event selector matching nothing, verifies GetEventDataStore
+  # echoes the posture, then destroys. Destroy is a REAL delete into
+  # AWS's 7-day PENDING_DELETION window -- the store stays describable
+  # (and its name reserved) until the purge; verify-absent treats
+  # PENDING_DELETION as gone, and the scenario's store name is
+  # RUN-SCOPED (${E2E_RUN_ID}) so lanes never collide with a prior
+  # run's reservation. Cost: ingestion is suspended and the selector
+  # matches nothing, so Lake's per-GB bill rounds to zero.
+  #
+  # Deliberately not exercised live:
+  #   - kms_key_id -- the encryption arm is proven arm-for-arm offline;
+  #     a store's KMS key CANNOT change after creation, so a live
+  #     toggle would only widen the lane. Unblock: fold a KMS fixture
+  #     in when the proof lane wants the arm.
+  #   - termination_protection_enabled = true (the AWS default) -- the
+  #     scenario disables it so destroy is single-step; the enabled
+  #     posture's refuse-then-disable teardown is taught in the GUIDE.
+  #     Unblock: a two-apply teardown scenario when the harness grows
+  #     one.
+  #   - organization_enabled -- the single-account wall (needs an AWS
+  #     Organization management account). Unblock: an
+  #     organization-enabled test account pair.
+  #   - billing-mode transitions (fixed -> extendable is the only legal
+  #     direction) -- create-time postures are offline-proven; the
+  #     transition needs a mutation scenario. Unblock: the proof lane's
+  #     mutation vocabulary.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q40
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

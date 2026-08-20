@@ -1,0 +1,33 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureeventgridnamespace
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Event Grid
+      sku_meter: throughput units
+      pricing_unit: hours
+      description: The namespace bills its provisioned throughput units by the hour from creation, traffic or none -- TUs are pre-purchased capacity, so a namespace is not free at rest. Azure's default is 1 TU when capacity is unset.
+  cost_drivers:
+    - field_path: capacity
+      sku_meter: throughput units
+      pricing_unit: hours
+      impact: The only committed dial -- each TU (1-40) adds one more unit on the hourly meter, and capacity changes in place, so the rate can be trimmed without replacing the namespace. TUs are also the connection ceiling for MQTT fleets (each TU admits 10,000 concurrent MQTT clients), so large device fleets push this number -- and the bill -- up even when message volume is modest.
+    - field_path: topic_spaces_configuration
+      sku_meter: MQTT operations
+      pricing_unit: million operations
+      impact: Presence turns on the MQTT broker. The broker itself adds no always-on fee -- MQTT traffic (CONNECT, SUBSCRIBE, and every PUBLISH in or out, counted per 64 KB of data) bills per million operations above the monthly free grant.
+    - field_path: topic_spaces_configuration.route_topic_id
+      sku_meter: event operations
+      pricing_unit: million operations
+      impact: Routing every MQTT message into a custom topic converts MQTT traffic into event operations at the published 4-to-1 accounting (4 routed or enriched messages bill as one event operation) -- and the referenced AzureEventgridTopic then bills its own per-operation meters for the fan-out.
+  estimate_exclusions:
+    - event operations (publishes to namespace topics, delivery attempts, data-field filtering, dead-letters) bill per million above a 1M/month free grant and follow traffic
+    - MQTT operations bill per million above a 1M/month free grant and follow device traffic; each 64 KB of message data is one billable operation
+    - routed and enriched MQTT messages bill on the event-operations meter at 4 per billable operation; the route topic's own charges live on the referenced AzureEventgridTopic component
+    - network egress follows subscriber placement
+  notes: "The namespace is the newer Event Grid's capacity-scaled hub, and its bill has exactly two shapes: a committed hourly meter on the provisioned throughput units, and pay-per-use operation meters (event operations for CloudEvents publish/delivery, MQTT operations for broker traffic) that each carry a 1M/month free grant and count data in 64 KB units. Namespace topics created inside it are free objects -- event retention on a namespace topic is free for 7 days -- so the honest cost conversation is capacity: the TU count is both the throughput ceiling and the MQTT connection ceiling, billed every hour it is provisioned."

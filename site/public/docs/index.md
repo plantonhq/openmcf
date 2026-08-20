@@ -1,209 +1,76 @@
 ---
-title: "Documentation"
-description: "Comprehensive guides for Planton - the free desktop app and CLI for your cloud infrastructure"
-icon: "book"
-order: 1
+title: "Welcome"
+description: "Planton documentation — infrastructure provisioning, application delivery, and cloud operations in one platform."
+icon: welcome
+order: 0
+tags:
+  - Overview
+  - Introduction
+  - Welcome
 ---
 
-# Welcome to Planton Documentation
+# Planton Documentation
 
-Planton is a free desktop app and CLI for your cloud infrastructure. You download it, open it, and deploy to your own cloud — with clean, auditable infrastructure-as-code running underneath. Manifests follow the Kubernetes Resource Model, are validated with Protobuf + Buf, and deploy through proven Pulumi or OpenTofu modules.
+Planton turns your own cloud account into a self-service platform. AI designs the infrastructure, verifies the cost and permissions before anything is created, and publishes it as templates your whole team can deploy. Your services then ship onto that infrastructure straight from Git. It deploys to your cloud accounts (AWS, GCP, Azure, Kubernetes) while providing a single control plane for the full software delivery lifecycle.
 
-## Getting Started
+This documentation covers every shipped feature of the platform, from connecting your cloud accounts to deploying production workloads.
 
-New to Planton? Start with the **[Getting Started guide](/docs/getting-started)**:
+<!-- SCREENSHOT: Planton console dashboard
+  Page: /dashboard
+  Action: Show the main dashboard with resource cards, recent pipelines, and cloud resources
+  Focus: Full dashboard view with summary cards and activity lists
+  Alt: Planton console dashboard showing resource counts, recent pipelines, and cloud resource summary
+-->
 
-- Download the desktop app and deploy from a short form
-- Or install the companion CLI via Homebrew
-- Validate a manifest and deploy to your cloud provider or Kubernetes cluster
+## Platform
 
-## CLI Reference
+Foundational concepts, resource hierarchy, and how the platform is organized.
 
-Master the Planton command-line interface:
+[Get started with the platform](/docs/platform)
 
-- **[Unified Commands](/docs/cli/unified-commands)** - kubectl-style `apply` and `destroy` commands
-- **[Complete CLI Reference](/docs/cli/cli-reference)** - All commands, flags, and options
-- **[Pulumi Commands](/docs/cli/pulumi-commands)** - Deploy with Pulumi (init, preview, up, refresh, destroy)
-- **[OpenTofu Commands](/docs/cli/tofu-commands)** - Deploy with OpenTofu (init, plan, apply, refresh, destroy)
+## Connections
 
-## Guides
+Credential and integration management — connect cloud providers, Git providers, container registries, state backends, and Kubernetes clusters.
 
-In-depth guides for common scenarios:
+[Learn about Connections](/docs/connections)
 
-- **[Manifest Structure](/docs/guides/manifests)** - Understanding and writing manifests
-- **[Credentials Management](/docs/guides/credentials)** - Setting up cloud provider authentication
-- **[Kustomize Integration](/docs/guides/kustomize)** - Multi-environment deployments
-- **[Advanced Usage](/docs/guides/advanced-usage)** - Runtime overrides, URL manifests, and power techniques
+## Infrastructure
 
-## Tutorials
+Declarative infrastructure provisioning across cloud providers. Deploy individual Cloud Resources, compose them into Infra Charts, orchestrate with Infra Pipelines, and track execution through Stack Jobs.
 
-Step-by-step walkthroughs for common deployment scenarios:
+[Explore Infrastructure](/docs/infrastructure)
 
-- **[Deploy Your First AWS Resource](/docs/tutorials/first-aws-resource)** - S3 bucket end-to-end
-- **[Deploy Your First Kubernetes Resource](/docs/tutorials/first-kubernetes-resource)** - PostgreSQL on Kubernetes
-- **[Multi-Environment Deployments](/docs/tutorials/multi-environment)** - Kustomize overlays for dev/staging/prod
-- **[Deploy Across Providers](/docs/tutorials/multi-provider)** - Cross-provider comparison
+## CI/CD
 
-## Examples
+Application CI/CD from Git push to production deployment. Build with Buildpacks or Dockerfiles, deploy to Kubernetes, ECS, Cloud Run, or Cloudflare Workers, and manage secrets and ingress configuration.
 
-Copy-paste-ready manifest examples:
+[Explore CI/CD](/docs/ci-cd)
 
-- **[Manifest Gallery](/docs/examples/manifest-gallery)** - Curated manifests across AWS, GCP, Azure, Kubernetes, and more
+## Operations
 
-## Self-Hosting
+Runtime operations gateway for Kubernetes pod management, log streaming, shell access, and multi-cloud resource browsing.
 
-Run the full Planton platform on your own Kubernetes cluster:
+[Learn about Operations](/docs/operations)
 
-- **[Self-Hosting Planton](/docs/self-hosting)** - Install the operator, apply one manifest, and reach a running platform at your own URL
+## Runner
 
-## Contributing
+A single native binary deployed in your infrastructure that handles secure execution of IaC operations, reverse tunnel connectivity, and CloudOps request handling. Credentials never leave your environment.
 
-Join the Planton community:
+[Learn about Runner](/docs/runner)
 
-- **[How to Contribute](/docs/contributing)** - Development setup, building, testing, and PR workflow
-- **[Adding Components](/docs/contributing/adding-components)** - Create new components
+## Security
 
-## Components
+Credential isolation, encryption, authorization, audit trails, and the platform's security architecture.
 
-Browse components by cloud provider in the [Catalog](/docs/catalog):
+[Learn about Security](/docs/security)
 
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
-  <a href="/docs/catalog/aws" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">
-    <img src="/images/providers/aws.svg" alt="AWS" class="w-8 h-8 object-contain" />
-    <div>
-      <div class="font-semibold text-white">AWS</div>
-      <div class="text-sm text-slate-400">25 components</div>
-    </div>
-  </a>
-  <a href="/docs/catalog/gcp" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">
-    <img src="/images/providers/gcp.svg" alt="GCP" class="w-8 h-8 object-contain" />
-    <div>
-      <div class="font-semibold text-white">GCP</div>
-      <div class="text-sm text-slate-400">19 components</div>
-    </div>
-  </a>
-  <a href="/docs/catalog/azure" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">
-    <img src="/images/providers/azure.svg" alt="Azure" class="w-8 h-8 object-contain" />
-    <div>
-      <div class="font-semibold text-white">Azure</div>
-      <div class="text-sm text-slate-400">10 components</div>
-    </div>
-  </a>
-  <a href="/docs/catalog/cloudflare" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">
-    <img src="/images/providers/cloudflare.svg" alt="Cloudflare" class="w-8 h-8 object-contain" />
-    <div>
-      <div class="font-semibold text-white">Cloudflare</div>
-      <div class="text-sm text-slate-400">8 components</div>
-    </div>
-  </a>
-  <a href="/docs/catalog/civo" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">
-    <img src="/images/providers/civo.svg" alt="Civo" class="w-8 h-8 object-contain" />
-    <div>
-      <div class="font-semibold text-white">Civo</div>
-      <div class="text-sm text-slate-400">12 components</div>
-    </div>
-  </a>
-  <a href="/docs/catalog/digitalocean" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">
-    <img src="/images/providers/digital-ocean.svg" alt="DigitalOcean" class="w-8 h-8 object-contain" />
-    <div>
-      <div class="font-semibold text-white">DigitalOcean</div>
-      <div class="text-sm text-slate-400">15 components</div>
-    </div>
-  </a>
-  <a href="/docs/catalog/atlas" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">
-    <img src="/images/providers/mongodb-atlas.svg" alt="MongoDB Atlas" class="w-8 h-8 object-contain" />
-    <div>
-      <div class="font-semibold text-white">Atlas</div>
-      <div class="text-sm text-slate-400">1 component</div>
-    </div>
-  </a>
-  <a href="/docs/catalog/confluent" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">
-    <img src="/images/providers/confluent.svg" alt="Confluent" class="w-8 h-8 object-contain" />
-    <div>
-      <div class="font-semibold text-white">Confluent</div>
-      <div class="text-sm text-slate-400">1 component</div>
-    </div>
-  </a>
-  <a href="/docs/catalog/kubernetes" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">
-    <img src="/images/providers/kubernetes.svg" alt="Kubernetes" class="w-8 h-8 object-contain" />
-    <div>
-      <div class="font-semibold text-white">Kubernetes</div>
-      <div class="text-sm text-slate-400">51 components</div>
-    </div>
-  </a>
-  <a href="/docs/catalog/snowflake" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">
-    <img src="/images/providers/snowflake.svg" alt="Snowflake" class="w-8 h-8 object-contain" />
-    <div>
-      <div class="font-semibold text-white">Snowflake</div>
-      <div class="text-sm text-slate-400">1 component</div>
-    </div>
-  </a>
-  <a href="/docs/catalog/scaleway" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">
-    <img src="/images/providers/scaleway.svg" alt="Scaleway" class="w-8 h-8 object-contain" />
-    <div>
-      <div class="font-semibold text-white">Scaleway</div>
-      <div class="text-sm text-slate-400">19 components</div>
-    </div>
-  </a>
-  <a href="/docs/catalog/openstack" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">
-    <img src="/images/providers/openstack.svg" alt="OpenStack" class="w-8 h-8 object-contain" />
-    <div>
-      <div class="font-semibold text-white">OpenStack</div>
-      <div class="text-sm text-slate-400">27 components</div>
-    </div>
-  </a>
-</div>
+## Teams and Access
 
-## Key Features
+Team management, role-based permissions, and billing.
 
-- **One Model, Many Clouds**: Single API structure across AWS, GCP, Azure, and Kubernetes
-- **Validation First**: Buf ProtoValidate catches errors before deployment
-- **Battle-Tested Modules**: Curated Pulumi and OpenTofu modules
-- **App and Terminal, One Engine**: Deploy from the desktop app's forms or the companion CLI — both drive the same engine
-- **Security & Governance**: Provider credentials as stack inputs, consistent labeling
+[Manage teams and access](/docs/teams-and-access)
 
-## Quick Example
+## Quick Links
 
-```yaml
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesRedis
-metadata:
-  name: my-redis
-  annotations:
-    planton.dev/provisioner: pulumi
-spec:
-  namespace: redis
-  container:
-    replicas: 3
-    resources:
-      limits:
-        memory: 2Gi
-        cpu: 1000m
-```
-
-```bash
-# Simple kubectl-style workflow
-planton validate redis.yaml
-planton apply -f redis.yaml
-
-# Or use provisioner-specific commands
-planton pulumi up -f redis.yaml --stack myorg/project/dev
-```
-
-## Troubleshooting
-
-Having issues? Common solutions:
-
-- **Manifest validation errors** — Check field names and types against the component's protobuf schema
-- **Authentication and credentials** — See the [Credentials Management](/docs/guides/credentials) guide
-- **Pulumi/OpenTofu-specific issues** — Ensure the provisioner CLI is installed and your backend is configured
-- **Network and connectivity** — The CLI clones modules from GitHub; verify network access
-
-For detailed solutions, see the full [Troubleshooting Guide](/docs/troubleshooting).
-
-## Resources
-
-- [GitHub Repository](https://github.com/plantonhq/planton)
-- [Buf Schema Registry](https://buf.build/planton/planton)
-- [Issue Tracker](https://github.com/plantonhq/planton/issues)
-
+- [Getting Started](/docs/getting-started) — From signup to first deployment
+- [CLI Reference](/docs/cli) — Install and use the Planton CLI

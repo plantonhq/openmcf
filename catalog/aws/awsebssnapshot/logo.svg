@@ -1,0 +1,9 @@
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="80" height="80" fill="#ED7100"/>
+<g fill="none" stroke="#FFFFFF" stroke-width="3">
+<ellipse cx="40" cy="24" rx="16" ry="7"/>
+<path d="M24 24v10c0 3.9 7.2 7 16 7s16-3.1 16-7V24"/>
+<circle cx="40" cy="56" r="12"/>
+<path d="M40 48v8l6 4"/>
+</g>
+</svg>

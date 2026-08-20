@@ -62,6 +62,58 @@ type CatalogEntry struct {
 	WebLinks CatalogEntryWebLinks `json:"webLinks"`
 	// IacModules names the official module directories the release ships.
 	IacModules CatalogEntryIacModules `json:"iacModules"`
+	// CostSummary is the component's cost anatomy at a glance, projected
+	// from its cost profile and generated preset estimates (the costs/ and
+	// estimates/ cargo). Absent when the component ships no fact-sheets --
+	// absence means "not yet covered", never "free".
+	CostSummary *CatalogEntryCostSummary `json:"costSummary,omitempty"`
+	// ControlSummary counts the component's posture across the central
+	// control catalog, projected from its control profile (the controls/
+	// cargo). Absent when the component ships no fact-sheets.
+	ControlSummary *CatalogEntryControlSummary `json:"controlSummary,omitempty"`
+	// PermissionsProvenance says how the component's permission manifest
+	// (the permissions/ cargo) was established: "derived" (static analysis
+	// of the official modules), "proven" (observed from live provisioning),
+	// or "mixed". Presence signals a downloadable least-privilege manifest
+	// exists; the value carries the trust distinction. Absent when the
+	// component ships no fact-sheets.
+	PermissionsProvenance string `json:"permissionsProvenance,omitempty"`
+}
+
+// CatalogEntryCostSummary is the price-tag projection: enough for a card
+// chip ("~$18-140/mo"), with the full story (per-preset line items, sources,
+// exclusions) in the estimates/ cargo. The range spans the component's
+// priced preset estimates at published list prices; the bounds echo the
+// estimate documents' own decimal strings.
+type CatalogEntryCostSummary struct {
+	// BillingModel classifies how cost accrues, in the cost profile's own
+	// vocabulary: always_on, usage_based, hybrid, free, or cluster_capacity.
+	BillingModel string `json:"billingModel"`
+	// Currency is the ISO 4217 currency of the range below. Empty when no
+	// priced preset estimate exists (rate-delegated and cluster-capacity
+	// components state no dollar figure -- an honest absence, never 0).
+	Currency string `json:"currency,omitempty"`
+	// MonthlyMin and MonthlyMax bound the monthly totals across the
+	// component's priced preset estimates, as decimal strings. A genuine
+	// zero-committed preset yields "0.00" -- that is a verified number, not
+	// a missing one.
+	MonthlyMin string `json:"monthlyMin,omitempty"`
+	MonthlyMax string `json:"monthlyMax,omitempty"`
+}
+
+// CatalogEntryControlSummary counts the component's stance per control
+// status across the ENTIRE central control catalog -- the control-profile
+// gate guarantees every catalog control is examined, so these counts always
+// sum to the catalog's size and "examined" is never in question.
+type CatalogEntryControlSummary struct {
+	// EnforcedByDefault counts controls the official modules (or the
+	// provider) enforce on every deployment.
+	EnforcedByDefault int `json:"enforcedByDefault"`
+	// Configurable counts controls exposed as spec choices.
+	Configurable int `json:"configurable"`
+	// NotApplicable counts controls with no meaning for this component
+	// class.
+	NotApplicable int `json:"notApplicable"`
 }
 
 // CatalogEntryWebLinks point at the component's API contract, as source and
@@ -100,8 +152,10 @@ type CatalogEntryIacModules struct {
 // a registry kind without a component directory, an iac/ directory without
 // its engine's entry point, or a tree yielding zero entries fails the build
 // with the exact list -- stale or guessed deploy coordinates are unshippable
-// by construction.
-func projectEntries(catalogDir string) (map[string][]byte, error) {
+// by construction. Components with fact-sheet cargo additionally carry
+// cost/controls/permissions summaries, computed from the same parsed
+// documents the cargo packs.
+func projectEntries(catalogDir string, cargo map[string]*componentCargo) (map[string][]byte, error) {
 	entries := map[string][]byte{}
 	var missing, liveness []string
 
@@ -126,6 +180,12 @@ func projectEntries(catalogDir string) (map[string][]byte, error) {
 
 		title, description := readCatalogPage(filepath.Join(componentDir, "catalog.md"), kindName)
 		entry := buildCatalogEntry(kindName, providerDir, kindDir, versionDir, title, description)
+
+		if c := cargo[providerDir+"/"+kindDir]; c != nil {
+			if err := applyCargoSummaries(&entry, c); err != nil {
+				return nil, fmt.Errorf("projecting the %s fact-sheet summaries: %w", kindName, err)
+			}
+		}
 
 		for _, engine := range []struct {
 			dir, entryGlob, label string
@@ -241,7 +301,7 @@ func readCatalogPage(path, kindName string) (title, description string) {
 
 // entrySlug derives a component's URL slug: the provider directory name kept
 // as one atomic word, then the kind name's remaining words kebab-cased
-// (HetznerCloudServer -> hetznercloud-server, AwsS3Bucket -> aws-s3-bucket).
+// (DigitalOceanDroplet -> digitalocean-droplet, AwsS3Bucket -> aws-s3-bucket).
 // A kind whose name does not start with its provider kebabs whole. One rule
 // for every kind -- uniqueness is gated at conformance.
 func entrySlug(kindName, providerDir string) string {

@@ -1,0 +1,85 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpdnszone
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A managed zone holds DNS routing data served from Google's managed authoritative fleet; it exposes no customer at-rest encryption surface.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No at-rest encryption surface to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Standard DNS resolution is a plaintext protocol by design; the zone exposes no transport-encryption control. DNSSEC (below, under no-legacy-auth) adds response authenticity, not confidentiality.
+    - control_id: no-public-access
+      status: configurable
+      field_path: visibility
+      evidence:
+        type: spec_default
+        reference: Defaults to public (resolvable from the whole internet); visibility=private makes the zone resolvable only from the VPC networks and GKE clusters declared in private_visibility_config. Visibility is chosen at creation.
+      notes: The 02-private-vpc preset is private. Public zones are the normal choice for internet-facing domains -- their exposure is the product, not a defect.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: private_visibility_config
+      evidence:
+        type: spec_default
+        reference: For private zones, the declared networks and GKE clusters are the complete list of resolution scopes -- a private zone answers no query from outside them.
+      notes: Resolution scope is the zone's ingress surface. Public zones answer everyone by design.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: DNS queries are answered by Google's authoritative edge; there is no request-filtering attachment point on a managed zone.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is project IAM posture, not a component choice; the zone exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The zone runs no workloads and holds no credentials of its own; DNSSEC keys are Google-managed.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: dnssec_config
+      evidence:
+        type: spec_default
+        reference: Omitted means unsigned DNS (the default), where resolvers cannot verify response authenticity; setting dnssec_config.state=on has Google sign the zone and serve the DS chain for validating resolvers.
+      notes: DNSSEC retires trust in unauthenticated DNS responses -- the protocol's legacy trust model. The 03-public-dnssec preset enables it with NSEC non-existence proofs.
+    - control_id: audit-logging
+      status: configurable
+      field_path: cloud_logging_config.enable_logging
+      evidence:
+        type: spec_default
+        reference: Off by default; enabling writes every answered query (source, name, type, response code) to Cloud Logging.
+      notes: The 03-public-dnssec preset enables it. Administrative changes to the zone always land in Cloud Audit Logs regardless.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloud DNS publishes zone-serving metrics through Cloud Monitoring for every managed zone without configuration; query-level visibility is the audit-logging control above.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Zone contents are declarative record manifests (GcpDnsRecord kinds) recreated from source control; Google operates the authoritative store redundantly. No customer backup surface exists.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloud DNS is a global anycast service -- every zone is served from Google's worldwide authoritative fleet with a 100% availability SLA; single-zone operation is unrepresentable.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: force_destroy
+      evidence:
+        type: spec_default
+        reference: Defaults to false, which refuses to destroy a zone that still carries records beyond the NS/SOA pair; force_destroy=true lets teardown purge all records first. deletion_policy=PREVENT layers an engine-side stance under it.
+      notes: The default-false posture is the protective one -- a populated production zone cannot be deleted by accident.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Google operates and patches the authoritative DNS fleet; no customer-visible patch surface exists.

@@ -1,0 +1,15 @@
+# Canonical AwsS3DirectoryBucket example (hack/dev manifest and
+# refgen Example source): a scratch bucket co-located with compute in
+# one zone. The modules derive the full bucket name
+# "scratch-data--use1-az4--x-s3".
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3DirectoryBucket
+metadata:
+  name: scratch-data
+  id: scratch-data
+  org: test-org
+  env: dev
+spec:
+  region: us-east-1
+  zoneId: use1-az4
+  forceDestroy: true

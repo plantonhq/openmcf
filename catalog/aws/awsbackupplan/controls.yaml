@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbackupplan
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The plan stores no data of its own -- it is a scheduling document. The recovery points it creates are encrypted at rest in the vaults that hold them, and the key posture belongs to the referenced AwsBackupVault components (rules.target_vault_name, copy_actions.destination_vault_arn).
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest lives here to key (see enc-at-rest); whether recovery points use a customer-managed KMS key is decided on the vaults, deliberately outside this manifest.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A plan terminates no connections. Its only wire traffic is Backup management calls on AWS API endpoints, which serve exclusively over TLS as provider behavior, not per-plan configuration -- and the data movement it schedules happens inside AWS's backup infrastructure, with no transport dial in this spec.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The plan has no network endpoint to expose -- it is control-plane metadata that AWS Backup reads to launch jobs. Exposure questions belong to the protected resources and vaults, none of which this spec configures.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; a backup schedule carries no addresses, ports, or security groups.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A backup plan receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may create, update, or delete the plan is governed by IAM permissions on the Backup API -- account-level posture outside this spec and the modules. The only principals the spec itself carries are execution roles the service assumes (see workload-identity), not access grants on the plan.
+    - control_id: workload-identity
+      status: enforced_by_default
+      field_path: selections.iam_role_arn
+      evidence:
+        type: provider_default
+        reference: AWS Backup takes and manages backups exclusively by assuming each selection's IAM role through short-lived STS credentials -- there is no static-credential path in the service. The role must trust backup.amazonaws.com, and GuardDuty scans assume the separate scan_setting.scanner_role_arn the same way.
+      notes: The role is also the plan's blast-radius boundary -- a selection covers only what its role can reach, so least-privilege selection roles bound both access and the "*" selection's reach.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The plan exposes no authentication path of its own -- there is no protocol, credential, or client negotiation to harden.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Every management call against the plan -- create, rule change, selection change, delete -- is recorded by AWS CloudTrail as account-level posture, not per-plan settings.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The spec carries no monitoring dial. Job-level observability for the backups this plan launches (job state changes, vault metrics) is provider-side AWS Backup behavior surfaced through CloudWatch and EventBridge at the account, with nothing to configure on the plan itself.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: rules.schedule
+      evidence:
+        type: spec_default
+        reference: This component IS the backup automation -- each rule's cron schedule creates recovery points of everything the selections cover, on cadence, into the rule's target vault. A rule with no schedule fires only on demand, so the schedule field is what turns the plan from a capability into a running practice.
+      notes: Restores are on-demand Backup operations against the recovery points, outside this manifest. enable_continuous_backup upgrades supported resource types to point-in-time recovery.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: rules.lifecycle.delete_after_days
+      evidence:
+        type: spec_default
+        reference: Each rule's lifecycle sets exactly how long its recovery points live -- unset keeps them until manually deleted, a day count expires them on schedule, and copy_actions carry independent lifecycles for the copies. AWS enforces the 90-day cold-storage minimum, mirrored by the spec's own validation.
+      notes: Continuous backups cap retention at 35 days by AWS's contract -- keep delete_after_days within it on continuous rules.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A regional control-plane object with no zonal placement of its own. The resilience the plan CAN add is geographic -- copy_actions replicate recovery points to vaults in other regions or accounts, and the air-gapped vault target hardens against deletion of the primaries -- but that is disaster recovery for the data, not zone-replicated availability of this component.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for plans. AWS does refuse to delete a plan while selections exist -- a dependency guard, not a protection, and the modules fold selections with the plan so both drain together on destroy. Deleting the plan never deletes recovery points; those live in the vaults.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A backup plan is a pure configuration object with no software to patch.

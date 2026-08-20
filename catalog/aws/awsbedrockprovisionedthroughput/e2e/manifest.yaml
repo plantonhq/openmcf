@@ -1,0 +1,12 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockProvisionedThroughput
+metadata:
+  name: test-support-model-capacity
+  id: test-support-model-capacity
+  org: test-org
+  env: dev
+spec:
+  region: us-east-1
+  modelArn:
+    value: arn:aws:bedrock:us-east-1:123456789012:custom-model/amazon.titan-text-lite-v1/abc123def456
+  modelUnits: 1

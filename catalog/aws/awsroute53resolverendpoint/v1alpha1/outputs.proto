@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsroute53resolverendpoint.v1alpha1;
+
+// AwsRoute53ResolverEndpointStackOutputs captures the observable state
+// of the resolver endpoint after apply.
+message AwsRoute53ResolverEndpointStackOutputs {
+  // The endpoint's id (rslvr-in-... / rslvr-out-...) - the provider's
+  // import ID.
+  string endpoint_id = 1;
+
+  // The endpoint's ARN.
+  string endpoint_arn = 2;
+
+  // The VPC the endpoint's subnets belong to (AWS derives it).
+  string host_vpc_id = 3;
+
+  // The ENI IP addresses the endpoint answers or originates on - what
+  // on-prem resolvers target (inbound) or what firewalls must allow
+  // (outbound).
+  repeated string ip_addresses = 4;
+
+  // AWS-generated rule IDs (rslvr-rr-...) keyed by rule name - what
+  // rule associations and imports reference.
+  map<string, string> rule_ids = 5;
+
+  // AWS-generated rule association IDs (rslvr-rrassoc-...) keyed by
+  // "{rule_name}//{vpc_id}".
+  map<string, string> rule_association_ids = 6;
+}

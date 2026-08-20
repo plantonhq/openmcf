@@ -1,0 +1,24 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePlantonRunner
+metadata:
+  name: <runner-name>
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: <resource-group-resource-name>
+      fieldPath: status.outputs.resource_group_name
+  # The environment decides the network boundary: a VNet-integrated
+  # environment gives the runner reach into that network's private
+  # endpoints.
+  containerAppEnvironmentId:
+    valueFrom:
+      kind: AzureContainerAppEnvironment
+      name: <container-app-environment-resource-name>
+      fieldPath: status.outputs.environment_id
+  # The runner token gates JOINING, never identity: the runner registers
+  # itself on first boot and receives its own individually revocable
+  # identity. On Planton the platform mints the token and writes it at
+  # exactly this managed-secret reference before the infrastructure
+  # applies -- there is no manual credential step.
+  token: $secret/runner-token

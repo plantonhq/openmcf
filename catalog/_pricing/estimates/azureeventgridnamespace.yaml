@@ -1,0 +1,56 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azureeventgridnamespace
+spec:
+  presets:
+    - preset: 01-cloudevents-hub
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Event Grid
+          sku_meter: throughput units
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: capacity TUs (Azure's default 1 when unset; 1-40, updatable in place) x 730 hours at the Standard Throughput Unit rate -- pre-purchased capacity that bills every hour it is provisioned, traffic or none
+          list_unit_price: "0.04"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Event Grid' and armRegionName eq 'eastus' and meterName eq 'Standard Throughput Unit' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "29.2000"
+      total_list_cost: "29.2000"
+      exclusions:
+        - event operations (publishes to namespace topics, delivery attempts, data-field filters, dead-letters) bill per million above a 1M/month free grant, counted per 64 KB of data, and follow traffic
+        - network egress follows subscriber placement
+      notes: The TU count is also the MQTT connection ceiling (10,000 concurrent clients per TU), so device-fleet growth raises this committed line even when message volume is modest. Namespace topics are free objects inside the namespace -- event retention on a namespace topic is free for 7 days -- so the capacity line is the namespace's whole committed bill.
+    - preset: 02-mqtt-broker
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Event Grid
+          sku_meter: throughput units
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: capacity TUs (Azure's default 1 when unset; 1-40, updatable in place) x 730 hours at the Standard Throughput Unit rate -- pre-purchased capacity that bills every hour it is provisioned, traffic or none
+          list_unit_price: "0.04"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Event Grid' and armRegionName eq 'eastus' and meterName eq 'Standard Throughput Unit' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "29.2000"
+      total_list_cost: "29.2000"
+      exclusions:
+        - event operations (publishes to namespace topics, delivery attempts, data-field filters, dead-letters) bill per million above a 1M/month free grant, counted per 64 KB of data, and follow traffic
+        - MQTT operations (CONNECT, SUBSCRIBE/UNSUBSCRIBE, and every PUBLISH in or out) bill per million above a 1M/month free grant, counted per 64 KB -- the broker adds no always-on meter of its own
+        - routed and enriched MQTT messages bill on the event-operations meter at Microsoft's published 4-per-billable-operation accounting, and the route topic's own per-operation charges bill on the referenced AzureEventgridTopic component
+        - network egress follows subscriber placement
+      notes: The TU count is also the MQTT connection ceiling (10,000 concurrent clients per TU), so device-fleet growth raises this committed line even when message volume is modest. Namespace topics are free objects inside the namespace -- event retention on a namespace topic is free for 7 days -- so the capacity line is the namespace's whole committed bill.

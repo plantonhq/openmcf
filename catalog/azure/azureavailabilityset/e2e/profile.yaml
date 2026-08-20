@@ -3,15 +3,18 @@ kind: ComponentE2EProfile
 metadata:
   name: azureavailabilityset
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, offline tofu plan green); live dual-engine
-  # proof has not yet run. ONE scenario runs: `minimal` (the
-  # provider-default shape -- free at rest, near-instant). The
+  # PROVEN live on both engines: the `minimal` scenario (the
+  # provider-default shape: 5 update / 3 fault domains, managed
+  # alignment -- all OMITTED in the manifest) through the full
+  # lifecycle in ~2.5-3 min/engine, with the apply-idempotency re-plan
+  # clean (the omitted defaults produced no echo drift) and the
+  # terraform lane's blind import round-trip zero-change (IMPORT-RT
+  # ~14s, the `managed`/Aligned-SKU read-back included). The
   # proximity-placement arm is offline-proven with reason: proximity
   # placement groups are a P2 kind the catalog does not carry yet, and
   # the field is a pass-through ARM ID exercised by the canonical
-  # manifest's offline plan.
+  # manifest's offline plan. Free at rest -- measured lane spend = $0.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

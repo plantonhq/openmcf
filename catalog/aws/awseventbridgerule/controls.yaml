@@ -1,0 +1,68 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awseventbridgerule
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A rule stores only routing configuration -- pattern, schedule, target list. The events it routes rest on the bus (whose kms_key_identifier keys them) and in the targets and DLQs that receive them; none of that data lives on the rule.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest lives here to key (see enc-at-rest). Customer-managed keys apply on the bus, the archives, and the target components -- deliberately outside this manifest.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A rule terminates no connections. Deliveries to AWS-service targets ride TLS inside EventBridge's infrastructure as provider behavior, and API destinations accept HTTPS endpoints only by the service's own contract -- neither is a transport dial in this spec.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The rule has no endpoint to expose -- it is routing configuration the service evaluates. API destination targets push OUTBOUND to external endpoints; nothing about the rule is inbound-reachable.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter -- what may enter the event stream is governed bus-side (the bus's resource_policy), and the rule only selects from what the bus already accepted.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A rule receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may create, update, or delete the rule is governed by IAM permissions on the EventBridge API -- account-level posture outside this spec and the modules. The only principals the spec carries are invocation roles the service assumes (see workload-identity), not access grants on the rule.
+    - control_id: workload-identity
+      status: enforced_by_default
+      field_path: targets.role_arn
+      evidence:
+        type: provider_default
+        reference: EventBridge invokes role-based targets (Step Functions, ECS, Kinesis, Batch, Redshift, SSM, SageMaker, AppSync, cross-account buses) exclusively by assuming the declared role through short-lived STS credentials -- there is no static-credential path. Lambda, SQS, and SNS targets use resource-based policies on the target instead, granting the events.amazonaws.com service principal directly.
+      notes: The rule-level role_arn governs targets that carry no role of their own; a per-target role_arn takes precedence for its target. Least-privilege invocation roles bound each target's blast radius.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The rule exposes no authentication path of its own -- there is no protocol, credential, or client negotiation to harden. API destination endpoint credentials live on the EventBridge connection the destination references, outside this spec.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec carries no logging dial. Management calls against the rule land in CloudTrail as account-level posture, and per-event delivery logs are configured bus-side (the bus's log_config), which records this rule's matches and delivery outcomes among the rest of the bus's traffic.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: EventBridge publishes per-rule CloudWatch metrics automatically -- matched events, invocations, failed invocations, dead-lettered deliveries -- with no configuration in this spec to enable or disable them.
+      notes: FailedInvocations alarms on these metrics are the standard watch for silently broken targets; dead_letter_config preserves the failing events themselves.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The rule is stateless configuration recreated from the manifest -- there is no data to back up. Replayable event history is an archive on the bus (AwsEventBridgeBus spec.archives), and replayed events flow through this rule again like live traffic.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No stored data means no retention surface; archived-event retention is governed on the bus's archives, and DLQ message retention on the referenced SQS queues.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Rule evaluation and target delivery run on EventBridge's regional, multi-AZ managed infrastructure -- no single-zone deployment mode exists and no zonal placement is configurable.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists for rules. AWS does refuse to delete a rule that still has targets -- a dependency guard, not a protection -- and the modules remove their own targets first, so the guard only trips when an out-of-band consumer attached extra targets. force_destroy (default false) chooses whether that situation fails loudly or is forced through.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A rule is declarative routing configuration with no software of its own to patch; the EventBridge fleet that evaluates it is AWS-operated infrastructure.

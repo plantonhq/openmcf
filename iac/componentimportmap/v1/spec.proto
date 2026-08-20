@@ -155,6 +155,14 @@ message ImportValueDerivation {
     // flattening; resolves empty for addresses without an instance key,
     // falling back to the next derivation or where_to_find.
     string from_stack_output_keyed_by_address = 10;
+    // This literal prefix plus metadata.name -- the mirror of
+    // from_metadata_name_suffix, for composed identifiers a provider
+    // builds by PREFIXING the parent's name (the canonical case:
+    // Application Auto Scaling's resource_id "table/<table_name>", where
+    // the module names the table after the Planton resource). Keeps
+    // provider-composed identifiers blind-derivable without exporting
+    // them as stack outputs.
+    string from_metadata_name_prefix = 11;
   }
 }
 

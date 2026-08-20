@@ -1,0 +1,29 @@
+# A managed rule scoped to S3 buckets, evaluating detectively under
+# the fixture recorder. The rule itself is free (Config bills per
+# evaluation over recorded items; the fixture recorder's inclusion
+# scope keeps that at pennies). Destroy is a real delete.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsConfigRule
+metadata:
+  name: planton-oss-e2e-awscfgrl-managed
+  id: planton-oss-e2e-awscfgrl-managed
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsconfigrule
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole,AwsS3Bucket,AwsConfigRecorder"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E managed rule - every S3 bucket must have versioning enabled
+  managed:
+    ruleIdentifier: S3_BUCKET_VERSIONING_ENABLED
+  scope:
+    complianceResourceTypes:
+      - AWS::S3::Bucket
+  evaluationModes:
+    - DETECTIVE

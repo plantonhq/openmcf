@@ -1,0 +1,102 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpgcsbucket
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloud Storage encrypts every object at rest with Google-managed keys before it is written to disk; encryption cannot be disabled.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_name
+      evidence:
+        type: spec_default
+        reference: Unset means Google-managed encryption; naming a Cloud KMS key makes it the bucket's default object encryption key. encryption_enforcement can additionally restrict which key families new objects may use.
+      notes: No preset enables CMK. The Cloud Storage service agent needs encrypt/decrypt on the key as a prerequisite.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Cloud Storage API serves HTTPS; Google's endpoints negotiate TLS for every object operation.
+      notes: Static-website serving through a load balancer keeps TLS termination on the load balancer, a separate component.
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_access_prevention
+      evidence:
+        type: spec_default
+        reference: inherited (the default) follows the organization policy, which may allow public grants; enforced makes public ACLs and allUsers grants impossible on this bucket regardless of who asks.
+      notes: The 02-static-website preset deliberately grants allUsers objectViewer -- its exposure is the product. The other presets stay private; 01 pins enforced explicitly.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: ip_filter
+      evidence:
+        type: spec_default
+        reference: Unset accepts requests from any source that passes IAM; configuring ip_filter restricts bucket access to the declared public CIDRs and VPC networks.
+      notes: IAM remains the primary gate; the IP filter is a network-boundary layer on top.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Requests terminate on Google's storage API edge; request filtering (Cloud Armor) attaches to load balancers in front of website buckets, a separate component.
+    - control_id: rbac
+      status: configurable
+      field_path: uniform_bucket_level_access_enabled
+      evidence:
+        type: spec_default
+        reference: Off by default (legacy per-object ACLs remain possible); enabling it makes IAM the single uniform access model for the whole bucket, retiring object ACLs.
+      notes: Presets 01, 03, and 04 enable it; iam_members grants roles declaratively either way.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The bucket runs no workloads and holds no credentials; callers authenticate with their own IAM identities.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: uniform_bucket_level_access_enabled
+      evidence:
+        type: spec_default
+        reference: Legacy object ACLs -- the pre-IAM access path -- stay live while this is false; enabling uniform bucket-level access disables them permanently after 90 days.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Object-level access audit is Cloud Audit Logs data-access configuration at the project level, not a bucket field; the logging block here writes legacy usage logs to another bucket, a weaker surface. Administrative changes always land in Cloud Audit Logs.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloud Storage publishes bucket metrics (stored bytes, request counts, network) to Cloud Monitoring for every bucket without configuration.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: versioning_enabled
+      evidence:
+        type: spec_default
+        reference: Off by default; enabling keeps noncurrent object versions on overwrite and delete, and soft_delete_policy (7-day default) preserves even fully deleted objects for the retention window.
+      notes: Presets 01 and 03 enable versioning with lifecycle caps on noncurrent copies.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: retention_policy.retention_period_seconds
+      evidence:
+        type: spec_default
+        reference: Unset means no minimum retention; setting it forbids deleting or overwriting objects younger than the period, and locking the policy makes the floor irrevocable. enable_object_retention adds per-object retention configuration.
+      notes: soft_delete_policy.retention_duration_seconds independently tunes the deleted-object recovery window (04 raises it to 14 days via the preset's lifecycle posture).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: location
+      evidence:
+        type: spec_default
+        reference: Every location replicates objects across zones; dual-region and multi-region locations (presets 02 and 03) additionally replicate across regions, and rpo=ASYNC_TURBO tightens dual-region replication to a 15-minute objective.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: force_destroy
+      evidence:
+        type: spec_default
+        reference: Defaults to false, which refuses to destroy a bucket that still contains objects; force_destroy=true lets teardown purge contents first. deletion_policy=PREVENT layers an engine-side stance under it.
+      notes: The default-false posture is the protective one -- a populated bucket cannot be deleted by accident.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Google operates and patches the storage fleet; no customer-visible patch surface exists.

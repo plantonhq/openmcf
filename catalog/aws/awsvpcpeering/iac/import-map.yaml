@@ -1,0 +1,19 @@
+# Where each placeholder in this component's import-ID formats comes
+# from (the formats themselves live in aa_import/catalog.yaml).
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsvpcpeering
+spec:
+  # Both arms import through the same pcx- id - the request arm as
+  # aws_vpc_peering_connection, the accept arm as
+  # aws_vpc_peering_connection_accepter.
+  values:
+    - name: peering_connection_id
+      derivations:
+        - from_stack_output: peering_connection_id
+        - from_arn_part: resource_id
+      where_to_find: >-
+        VPC console -> Peering connections (the pcx-... ID column), or
+        `aws ec2 describe-vpc-peering-connections`
+        (VpcPeeringConnectionId).

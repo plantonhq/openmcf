@@ -1,0 +1,59 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbackupframework
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A framework stores no customer data -- its control definitions are Backup Audit Manager control-plane metadata held inside AWS's own service infrastructure, and its evaluation results live in AWS Config's account-level store, neither a data store this component owns.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest here to key (see enc-at-rest); Backup Audit Manager exposes no KMS surface on frameworks.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A framework terminates no connections of its own. Its only wire traffic is Backup management calls and the service-side evaluation flow against AWS Config, both on AWS API endpoints serving exclusively over TLS as provider behavior, not per-framework configuration.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The framework has no network endpoint to expose -- it is an audit rulebook the Backup service evaluates internally. Its findings surface in the Backup console and AWS Config, both IAM-gated management surfaces.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; an audit rulebook carries no addresses, ports, or security groups.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A framework receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: not_applicable
+      notes: The spec carries no principal or access surface of its own -- who may create, edit, or delete the framework and who may read its compliance results is governed by IAM permissions on the Backup and Config APIs, account-level posture outside this spec and the modules.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The framework runs no workloads and holds no credentials -- evaluations execute inside AWS Backup and AWS Config under the services' own identities, with no role field anywhere in this spec.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The framework exposes no authentication path at all -- there is no protocol, credential, or client negotiation to harden.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface for itself. Every management call against the framework is recorded by AWS CloudTrail as account-level posture. The framework's PURPOSE is auditing others -- it continuously evaluates the account's backup posture -- but that is its function, not a logging control on this component.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The spec carries no monitoring dial. Compliance results surface through the Backup console and AWS Config as provider-side behavior, and the deployment_status output is where a failed evaluation pipeline (no ACTIVE Config recorder) shows up.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The framework holds no data to back up -- it is declarative configuration fully re-creatable from the manifest. What it CAN do is audit everyone else's backups (e.g. the BACKUP_RESOURCES_PROTECTED_BY_BACKUP_PLAN control), which is compliance verification of other components' posture, not a backup facility of its own.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist here to retain (see backup-recovery). Retention MINIMUMS elsewhere are exactly what controls like BACKUP_RECOVERY_POINT_MINIMUM_RETENTION_CHECK verify, parameterized through controls.input_parameters.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A regional control-plane object with no zonal placement of its own; availability of the evaluation pipeline is AWS Backup's and AWS Config's service concern.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for frameworks; deleting one stops future evaluations and nothing else -- historical compliance data lives in AWS Config, outside the framework's lifecycle.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A framework is a pure configuration object with no software to patch; the control vocabulary it draws from is maintained service-side by AWS.

@@ -1,0 +1,36 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsCloudwatchDashboard manifest's spec values into metered quantities
+# and price choices. The estimate generator replays the catalog presets
+# through these rules to emit ../estimates/awscloudwatchdashboard.yaml; a
+# server-side estimator evaluates the same rules against live manifests.
+# Prices live in the provider's price book (../pricebook/). One committed
+# meter, unconditional: every custom dashboard bills a flat $3.00 per
+# dashboard per month (prorated hourly), at a region-uniform rate the
+# offer publishes at location "Any". The account's first-3-free
+# allowance is account-level and invisible to a single manifest, so the
+# estimate prices the full rate and the note states the allowance.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awscloudwatchdashboard
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  lines:
+    - sku_meter: dashboard months
+      quantity:
+        - constant: "1"
+      price_slug: cloudwatch-dashboard-months-global
+      basis: one custom dashboard bills one dashboard-month at AWS's flat $3.00 rate -- region-uniform (the offer prices it at location "Any") and prorated hourly for dashboards that exist less than the month
+  exclusions:
+    - text: log widgets execute a Logs Insights query on every dashboard load, billing per GB of log data scanned -- view frequency is human-driven and invisible to this manifest
+    - text: sharing the dashboard bills the GetMetricData API calls used to render the shared copy; rendering the original in the owner's console stays free
+    - text: custom widgets and external metric data sources invoke a Lambda function per render, billed on that function
+    - text: the metrics, logs, and alarms the widgets chart bill on their own source components -- the dashboard only visualizes them
+  notes:
+    - text: The account's first 3 custom dashboards (up to 50 metrics referenced each) are free as a permanent allowance; whether THIS dashboard falls inside it depends on account-wide dashboard count, which no single manifest can see, so the estimate states the full committed rate. A dashboard referencing more than 50 metrics bills even inside the allowance.
+    - text: Nothing in the widget layout moves the committed fee; PutDashboard is a pure upsert, so body edits never restart or duplicate the meter.

@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureroledefinition
+spec:
+  azure:
+    groups:
+      - purpose: ManageRoleDefinition
+        actions:
+          - Microsoft.Authorization/roleDefinitions/read
+          - Microsoft.Authorization/roleDefinitions/write
+          - Microsoft.Authorization/roleDefinitions/delete
+        provenance: derived
+        notes: Covers azurerm_role_definition -- create, read/refresh, in-place updates (name, description, permissions, assignable_scopes), and destroy. The read also serves the provider's consistency polling, which waits for created/updated timestamps to settle after writes and for consecutive not-found responses after deletes. The write must be held AT THE TARGET SCOPE, typically via Owner, User Access Administrator, or Role Based Access Control Administrator; Contributor alone is NOT sufficient -- it manages resources, not authorization.

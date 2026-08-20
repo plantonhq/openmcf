@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpworkloadidentitypoolprovider
+spec:
+  billing_model: free
+  free_tier: "Google's IAM billing-questions page states Identity and Access Management is offered at no additional charge for all Google Cloud customers, and the IAM product page lists Workforce and Workload Identity Federation among what is included with no additional cost per user or identity. The provider -- one trusted external issuer inside a pool -- costs nothing to create or hold, and every token exchange it validates (each CI run, each AWS workload call, each mTLS handshake against the x509 trust store) is free at any volume."
+  notes: "No field on this spec starts a meter. All the configuration is trust material, not billable infrastructure: OIDC issuer URLs and JWKS, SAML IdP metadata, and x509 trust anchors are public key material the provider VALIDATES against -- unlike the pool's certificate-issuance surface, nothing here issues certificates or touches CA Service. The real spend lives entirely downstream: whatever the federated identities do in GCP bills on the services they touch, under the roles granted to the pool's principal:// and principalSet:// names. Removal is free; note the ~30-day soft-delete holds the provider ID hostage (see deletion-protection in controls.yaml)."

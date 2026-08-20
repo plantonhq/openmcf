@@ -1,0 +1,42 @@
+# Canonical AwsOrganization example (hack/dev manifest and refgen
+# Example source): an all-features organization with trusted access
+# for CloudTrail, Account Management, and IAM, SCP + tag policies
+# enabled, one delegated administrator, centralized root-access
+# management, and the org's resource-based delegation policy. Literal
+# values stand in for a real member account so the offline `tofu plan`
+# renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsOrganization
+metadata:
+  name: acme-organization
+  id: acme-organization
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  featureSet: ALL
+  awsServiceAccessPrincipals:
+    - cloudtrail.amazonaws.com
+    - account.amazonaws.com
+    - iam.amazonaws.com
+  enabledPolicyTypes:
+    - SERVICE_CONTROL_POLICY
+    - TAG_POLICY
+  delegatedAdministrators:
+    - accountId: "111111111111"
+      servicePrincipal: config.amazonaws.com
+  rootAccessManagement:
+    enabledFeatures:
+      - RootCredentialsManagement
+      - RootSessions
+  resourcePolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: DelegateDescribe
+        Effect: Allow
+        Principal:
+          AWS: "111111111111"
+        Action:
+          - organizations:DescribeOrganization
+          - organizations:ListAccounts
+        Resource: "*"

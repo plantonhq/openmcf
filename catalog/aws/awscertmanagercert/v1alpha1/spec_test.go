@@ -187,7 +187,9 @@ var _ = ginkgo.Describe("AwsCertManagerCert", func() {
 		ginkgo.BeforeEach(func() {
 			input.Spec.ValidationMethod = ""
 			input.Spec.Route53HostedZoneId = nil
-			input.Spec.CertificateAuthorityArn = "arn:aws:acm-pca:us-west-2:123456789012:certificate-authority/abc-123"
+			input.Spec.CertificateAuthorityArn = &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:acm-pca:us-west-2:123456789012:certificate-authority/abc-123"},
+			}
 		})
 
 		ginkgo.It("should accept a private certificate", func() {
@@ -209,10 +211,22 @@ var _ = ginkgo.Describe("AwsCertManagerCert", func() {
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
-		ginkgo.It("should reject a malformed CA ARN", func() {
-			input.Spec.CertificateAuthorityArn = "not-an-arn"
+		ginkgo.It("should reject a malformed CA ARN literal", func() {
+			input.Spec.CertificateAuthorityArn = &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "not-an-arn"},
+			}
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a reference-shaped CA (the ARN pattern applies to literals only)", func() {
+			input.Spec.CertificateAuthorityArn = &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+					ValueFrom: &foreignkeyv1.ValueFromRef{Name: "internal-root-ca"},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 	})
 
@@ -251,10 +265,14 @@ var _ = ginkgo.Describe("AwsCertManagerCert", func() {
 	})
 
 	ginkgo.Context("Early renewal (early_renewal_requires_private_ca)", func() {
+		privateCa := &foreignkeyv1.StringValueOrRef{
+			LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:acm-pca:us-west-2:123456789012:certificate-authority/abc-123"},
+		}
+
 		ginkgo.It("should accept an RFC 3339 duration on a private certificate", func() {
 			input.Spec.ValidationMethod = ""
 			input.Spec.Route53HostedZoneId = nil
-			input.Spec.CertificateAuthorityArn = "arn:aws:acm-pca:us-west-2:123456789012:certificate-authority/abc-123"
+			input.Spec.CertificateAuthorityArn = privateCa
 			input.Spec.EarlyRenewalDuration = "P90D"
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).To(gomega.BeNil())
@@ -263,13 +281,13 @@ var _ = ginkgo.Describe("AwsCertManagerCert", func() {
 		ginkgo.It("should accept a Go-style duration on a private certificate", func() {
 			input.Spec.ValidationMethod = ""
 			input.Spec.Route53HostedZoneId = nil
-			input.Spec.CertificateAuthorityArn = "arn:aws:acm-pca:us-west-2:123456789012:certificate-authority/abc-123"
+			input.Spec.CertificateAuthorityArn = privateCa
 			input.Spec.EarlyRenewalDuration = "2160h"
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should reject early renewal on a publicly validated certificate", func() {
+		ginkgo.It("should reject early renewal on a publicly validated certificate (no CA set)", func() {
 			input.Spec.EarlyRenewalDuration = "P90D"
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).NotTo(gomega.BeNil())
@@ -278,7 +296,7 @@ var _ = ginkgo.Describe("AwsCertManagerCert", func() {
 		ginkgo.It("should reject a malformed duration", func() {
 			input.Spec.ValidationMethod = ""
 			input.Spec.Route53HostedZoneId = nil
-			input.Spec.CertificateAuthorityArn = "arn:aws:acm-pca:us-west-2:123456789012:certificate-authority/abc-123"
+			input.Spec.CertificateAuthorityArn = privateCa
 			input.Spec.EarlyRenewalDuration = "ninety days"
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).NotTo(gomega.BeNil())

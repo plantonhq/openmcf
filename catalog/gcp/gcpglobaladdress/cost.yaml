@@ -1,0 +1,29 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpglobaladdress
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Compute Engine
+      sku_meter: reserved external IPv4
+      pricing_unit: IP-hours
+      description: A static global EXTERNAL IPv4 bills hourly only while reserved but unattached ($0.01/hr). Assigned to a global forwarding rule -- the only thing a global address can actually be attached to -- it is FREE, so an address doing its job costs nothing.
+  cost_drivers:
+    - field_path: address_type
+      sku_meter: reserved external IPv4
+      pricing_unit: IP-hours
+      impact: The whole bill switch -- EXTERNAL (the default) reserves a public IPv4 that bills hourly while idle; INTERNAL carves a free private range for VPC peering or Private Service Connect.
+    - field_path: ip_version
+      sku_meter: reserved external IPv4
+      impact: External IPv6 addresses are free -- only external IPv4 carries the hourly charge, a scarcity price on the exhausted IPv4 pool.
+    - field_path: prefix_length
+      sku_meter: reserved external IPv4
+      impact: No charge -- an INTERNAL peering range is free however wide, but a /20 hands 4,096 private IPs to managed services whose instances (Cloud SQL, Memorystore) each bill on their own resources.
+  estimate_exclusions:
+    - the attached state -- assigned to a global forwarding rule the IP is free; the forwarding rule and its load balancer bill on their own resources, outside this manifest
+    - whatever managed services fill an INTERNAL peering range bill as their own components
+  notes: "The global variant of the idleness tax: the reservation bills $0.01/hr ONLY between reserve and attach. Its one purpose is fronting a global load balancer, and in that state Google charges nothing for it. INTERNAL ranges (VPC peering, PSC) and external IPv6 never bill."

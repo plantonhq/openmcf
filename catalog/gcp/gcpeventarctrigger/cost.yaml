@@ -1,0 +1,37 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpeventarctrigger
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: matching_criteria
+      sku_meter: events published
+      pricing_unit: events per million
+      impact: The filters decide how many events flow, but on Eventarc Standard's own meter most of them are free -- events from Google sources and from Pub/Sub sources publish at $0 per million, with the first 50,000 chargeable events each calendar month free. Broad filters raise volume on the meters that DO bill (the transport and the destination), not this one.
+    - field_path: transport_pubsub_topic
+      sku_meter: Pub/Sub transport
+      pricing_unit: TiB
+      impact: Every delivery rides a real Pub/Sub topic and subscription billed at standard Pub/Sub rates -- Google's own billing examples show the transport, not Eventarc, as the entire bill for high-volume triggers. Bring-your-own topic moves that charge onto the referenced GcpPubSubTopic; omitting it bills the same rates on the Eventarc-created topic.
+    - field_path: partner_channel
+      sku_meter: events published
+      pricing_unit: events per million
+      impact: Events from SaaS partner sources are the one Standard category with a published rate -- "$1 per million events published (free while in Preview)", as Google prints it. Events larger than 64 KiB bill per 64 KiB portion (a 512 KiB event counts as 8).
+    - field_path: destination
+      sku_meter: events published
+      impact: The destination moves the real spend downstream -- Cloud Run request-time compute, a Cloud Workflows execution's steps per event, or the GKE/HTTP endpoint's own resources. The trigger's meter is identical for all four arms.
+    - field_path: retry_max_attempts
+      sku_meter: Pub/Sub transport
+      impact: Unset keeps Eventarc's default retries -- every redelivery of a failing event moves transport bytes again; setting 1 (the only accepted value) disables retries, trading redelivery cost and pressure for at-most-once delivery.
+    - field_path: google_channel_crypto_key
+      sku_meter: Cloud KMS key operations
+      impact: CMEK on the project/location's shared Google channel routes its encrypt/decrypt operations through the named key -- key-version storage and per-operation charges bill on the GcpKmsKey component's project.
+  estimate_exclusions:
+    - an idle trigger bills nothing -- Eventarc Standard's meter counts published events, and Google-source and Pub/Sub-source events publish at $0 per million anyway (first 50,000 chargeable events per month free)
+    - the Pub/Sub transport layer bills at standard Pub/Sub rates as events flow -- Google's pricing examples show it as the dominant real cost
+    - events using Cloud Audit Logs incur Cloud Logging charges, per Google's own pricing note, and the receiving service bills its own compute
+    - events larger than 64 KiB bill as multiple events, one per 64 KiB portion
+  notes: "Eventarc Standard's headline is that the trigger itself is nearly free: Google-source and Pub/Sub-source events are $0 per million on Eventarc's meter, partner-source events are $1 per million (free while in Preview, as Google prints it), and the first 50,000 chargeable events each month cost nothing. The real bill is the combined charge Google defines it as -- Eventarc PLUS its Pub/Sub transport layer -- and whatever the destination does with each event."

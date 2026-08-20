@@ -1,0 +1,35 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpsubnetwork
+spec:
+  gcp:
+    groups:
+      - purpose: EnableComputeApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling compute.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageSubnetwork
+        permissions:
+          - compute.subnetworks.create
+          - compute.subnetworks.get
+          - compute.subnetworks.update
+          - compute.subnetworks.delete
+          - compute.subnetworks.expandIpCidrRange
+          - compute.subnetworks.setPrivateIpGoogleAccess
+          - compute.regionOperations.get
+        provenance: derived
+        notes: "Covers google_compute_subnetwork -- create, read/refresh, in-place updates, and destroy. The provider splits mutations across dedicated API methods with their own permissions -- growing ip_cidr_range calls expandIpCidrRange (the one-way expansion; shrinking recreates), toggling private_ip_google_access calls setPrivateIpGoogleAccess, and everything else mutable (role, secondary ranges, stack_type, flow-log config) patches the subnetwork under compute.subnetworks.update. Every mutation returns a region operation the provider polls. The component's READMEs previously recommended roles/compute.networkAdmin -- this manifest is the narrower truth (and networkAdmin alone was also insufficient: it lacks the serviceusage enablement grant the module needs)."
+      - purpose: ApplyResourceManagerTags
+        permissions:
+          - compute.subnetworks.createTagBinding
+          - resourcemanager.tagValueBindings.create
+        provenance: derived
+        notes: Required only when resource_manager_tags is set -- attaching a tag at create time authorizes on both sides, the binding on the subnetwork and the use of each named tag value (tag values are org-level resources, so the tagValueBindings grant lives there). The module sends tags only through the create-only params block; tag changes replace the subnetwork, re-running these checks. Not needed for untagged subnets.

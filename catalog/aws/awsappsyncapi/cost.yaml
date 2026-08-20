@@ -1,0 +1,46 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsappsyncapi
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: graphql
+      sku_meter: GraphQL query and data modification operations
+      pricing_unit: operations
+      impact: The GraphQL arm bills $4.00 per million query and mutation operations -- an API with no traffic bills nothing, and the manifest cannot see the request volume that decides the bill. Data transfer out rides EC2's data transfer rates on top.
+    - field_path: graphql.schema
+      sku_meter: real-time updates
+      pricing_unit: updates
+      impact: Subscriptions in the SDL schema are what generate real-time traffic -- every outbound message broadcast and every WebSocket operation bills $2.00 per million as a real-time update, metered per 5 KB of payload (an 8 KB message counts twice), plus $0.08 per million connection-minutes while clients stay connected.
+    - field_path: events
+      sku_meter: Events API operations
+      pricing_unit: operations
+      impact: The Events arm bills $1.00 per million operations, and AWS counts EVERYTHING as an operation -- inbound publishes, outbound broadcasts, event handler invocations, client connections, subscription requests, even WebSocket pings -- metered per 5 KB of payload, plus $0.08 per million connection-minutes.
+    - field_path: events.channel_namespaces
+      sku_meter: Events API operations
+      pricing_unit: operations
+      impact: Each namespace's code_handlers and handler_configs add an operation per published event they process -- a handler on a busy channel doubles that channel's publish-side metering, as AWS's own pricing example shows.
+    - field_path: graphql.cache
+      sku_meter: cache instance hours
+      pricing_unit: hours
+      impact: "The optional provisioned cache is the one meter on this spec that bills on existence: an hourly instance rate from $0.044 (SMALL) to $6.775 (LARGE_12X) that runs whether or not any query hits it. Setting this block flips an otherwise zero-at-idle manifest into committed hourly spend."
+    - field_path: graphql.xray_enabled
+      sku_meter: X-Ray traces recorded
+      pricing_unit: traces
+      impact: Tracing sends every sampled request to AWS X-Ray, which bills on its own per-trace recording and retrieval meters -- a per-request companion charge that scales with the same traffic driving the operations meter.
+  free_tier: "The AppSync free tier is a 12-month TRIAL, not a permanent allotment: 250,000 query or data modification operations, 250,000 real-time updates, and 600,000 connection-minutes per month, expiring 12 months after account sign-up. After expiry every operation bills from the first request."
+  estimate_exclusions:
+    - GraphQL query and mutation volume bills $4.00 per million operations and is entirely workload-driven -- invisible to the manifest
+    - real-time updates bill $2.00 per million (metered per 5 KB payload) and connection time bills $0.08 per million connection-minutes on the GraphQL arm
+    - Events API operations bill $1.00 per million -- publishes, broadcasts, handler invocations, connections, subscriptions, and pings all count -- plus $0.08 per million connection-minutes
+    - data transfer out bills at EC2 data transfer rates on both arms
+    - a provisioned cache (graphql.cache) bills hourly on existence -- $0.044/hour SMALL up to $6.775/hour LARGE_12X
+    - CloudWatch Logs ingestion and storage for log_config bill on CloudWatch's meters against the log group AppSync writes to
+    - enhanced_metrics emits additional CloudWatch metrics that bill on CloudWatch's own meters
+    - X-Ray tracing bills per trace recorded on X-Ray's meters when xray_enabled is set
+    - the backends behind datasources bill as their own components -- DynamoDB tables, Lambda invocations, OpenSearch domains, Aurora clusters
+  notes: "This spec is a graphql-XOR-events union, and each arm prices differently: the GraphQL arm meters queries and mutations at $4.00 per million with real-time updates at $2.00 per million, while the Events arm meters every operation -- including connections and pings -- at $1.00 per million. Preset 01 (orders-graphql-api) prices the GraphQL arm; its schema declares queries and mutations only, so the operations meter is its whole AppSync bill. Preset 02 (live-updates) prices the Events arm; every connect, subscribe, publish, broadcast, and chat-handler invocation counts. Neither arm charges for the API's existence -- the one existence meter on this spec is the OPTIONAL provisioned cache, an hourly Redis-backed instance that neither preset pins (the 01 preset's prose merely suggests one, and itself warns it bills per hour). A MERGED API bills on its own operations with no additional source-API charge, per the pricing page."

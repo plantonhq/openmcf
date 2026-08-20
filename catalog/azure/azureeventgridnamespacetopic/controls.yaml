@@ -1,0 +1,61 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureeventgridnamespacetopic
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Events retained for delivery rest inside the parent Event Grid namespace's storage, encrypted as the NAMESPACE's posture; the topic exposes no encryption surface of its own.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No encryption surface of its own to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Publishers and pull-delivery consumers connect to the NAMESPACE's HTTP/MQTT endpoints, where TLS is enforced -- the topic has no public hostname of its own (unique within the namespace only).
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Network exposure (public network access, IP rules) is the parent namespace's posture; the topic adds no reachable surface.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound restriction lives on the namespace's network configuration, not on a topic.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No traffic terminates at a topic; there is no request-filtering attachment point.
+    - control_id: rbac
+      status: not_applicable
+      notes: The topic declares no access rules, but its ARM ID is a data-plane grant scope -- "EventGrid Data Sender" can be granted on exactly this topic via AzureRoleAssignment, confining a publisher to its own stream. The granting is that separate kind's posture.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The topic runs no workloads and holds no credentials of its own; publishers authenticate through the namespace's keys or Entra data-plane roles.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own; the key-versus-Entra switch is the namespace's posture.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Topic creation, retention changes, and deletion land in the Azure Activity Log as subscription-level posture; runtime failure logging is the namespace's diagnostic-settings territory.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Event Grid publishes metrics at the namespace level (with per-topic dimensions); the topic itself emits none and carries no export configuration.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The topic is declarative configuration recreated from the manifest; retained events are transient delivery traffic bounded by event_retention_in_days (1-7 days), not stored state Azure offers to back up or restore.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery) -- event_retention_in_days governs the live delivery window, not backup retention.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A namespace topic is metadata and stream state inside the parent namespace, whose zone posture it inherits; the topic has no zonal knob.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a namespace topic (Azure resource locks are subscription-side governance outside the manifest). Deleting a topic drops its event subscriptions and any retained events; the namespace and sibling topics are untouched.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed PaaS -- Microsoft operates and patches the Event Grid namespace service the topic lives in; no customer-visible patch surface exists.

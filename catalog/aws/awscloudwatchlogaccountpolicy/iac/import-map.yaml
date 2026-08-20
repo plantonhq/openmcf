@@ -1,0 +1,21 @@
+# Where each placeholder in this component's import-ID formats comes
+# from (the formats themselves live in aa_import/catalog.yaml).
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awscloudwatchlogaccountpolicy
+spec:
+  values:
+    - name: policy_name
+      derivations:
+        - from_spec_field: policy_name
+      where_to_find: >-
+        The account policy's name -- `aws logs describe-account-policies
+        --policy-type <type>` (policyName).
+    - name: policy_type
+      derivations:
+        - from_spec_field: policy_type
+      where_to_find: >-
+        The policy's type (DATA_PROTECTION_POLICY /
+        SUBSCRIPTION_FILTER_POLICY / FIELD_INDEX_POLICY /
+        TRANSFORMER_POLICY / METRIC_EXTRACTION_POLICY).

@@ -1,0 +1,38 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. This component deliberately ships a
+# zero-committed estimate: the deployment is a job RECIPE -- nothing runs
+# or bills at create time, and every dollar it shapes lands on the compute
+# pool its jobs run on. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremachinelearningbatchdeployment
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: compute_id
+      sku_meter: routed node VM hours
+      pricing_unit: hours
+      impact: Names WHERE each invocation's job runs and therefore where the money lands -- the referenced compute cluster's VM meters (dedicated or low-priority, on that component) bill for the job's duration, and a scale-to-zero pool returns to zero after. Unset routes jobs to serverless compute, whose node-hours bill the workspace directly at plain VM rates.
+    - field_path: resources.instance_count
+      sku_meter: routed node VM hours
+      pricing_unit: hours
+      impact: Nodes each JOB holds for its duration -- a job spread across 4 nodes for an hour is four node-hours. The compute pool's max node count is the real ceiling, checked at job time.
+    - field_path: retry_settings.max_retries
+      sku_meter: routed node VM hours
+      pricing_unit: hours
+      impact: Failed mini-batches re-run up to this many times (the service's default is 3), and every retry extends the job's billed node-hours. Pair it with error_threshold so a systematically failing job aborts instead of burning its full retry budget on every mini-batch.
+    - field_path: max_concurrency_per_instance
+      sku_meter: routed node VM hours
+      pricing_unit: hours
+      impact: Parallel scoring invocations per node -- raising it for I/O-bound scoring code finishes the same work in fewer node-hours; for CPU-bound code it buys nothing. An efficiency dial on the job's duration, not a meter of its own.
+    - field_path: pipeline_component.settings
+      sku_meter: routed node VM hours
+      pricing_unit: hours
+      impact: For pipeline-component recipes, the steps find their compute HERE (default_compute), not through compute_id -- the pipeline jobs' node-hours land on whatever pools the settings name, each billing on its own component.
+  estimate_exclusions:
+    - job node-hours bill on the referenced compute pool -- the AzureMachineLearningComputeCluster component's dedicated or low-priority VM meters, or serverless compute VM hours billed directly when compute_id is unset -- following invocation cadence and job duration, which no manifest can predict
+    - job inputs and outputs rest in the workspace's datastores, so storage capacity and transactions bill on the storage account's own component
+    - network egress follows what jobs move between regions and out of Azure
+  notes: "A recipe, priced like one: the deployment object carries no meter under Azure Machine Learning's no-additional-charge model (Microsoft's pricing page, retrieved 2026-08-18), so holding it -- even with a registered model, scoring code and environment attached -- costs exactly nothing. Money moves only when the ENDPOINT is invoked: each invocation materializes a job from this recipe, the referenced pool scales up, and plain VM node-hours accrue for the job's duration on the pool's component. The recipe's fields shape that spend without owning it -- instance_count multiplies concurrent node-hours, retries extend them, concurrency compresses them. The pattern's whole appeal is that an idle batch stack (endpoint + deployment + scale-to-zero cluster) is a zero-dollar standing army."

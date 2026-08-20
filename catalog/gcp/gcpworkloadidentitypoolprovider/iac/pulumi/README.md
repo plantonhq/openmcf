@@ -15,7 +15,7 @@ A provider attaches one external issuer (OIDC, AWS, SAML, or X.509) to a Workloa
    ```bash
    gcloud auth application-default login
    ```
-5. **IAM permissions**: `roles/iam.workloadIdentityPoolAdmin` on the target project
+5. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Directory Structure
 

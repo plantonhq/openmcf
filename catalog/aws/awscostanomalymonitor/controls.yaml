@@ -1,0 +1,66 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awscostanomalymonitor
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The monitor stores no customer data -- it is configuration in AWS's billing control plane that reads the account's own Cost Explorer data, which AWS holds and protects as internal billing infrastructure. There is no data store here to encrypt or point a key at.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-managed-key surface exists anywhere in the spec or the underlying CE anomaly APIs -- the billing data the monitor evaluates lives in AWS-operated systems outside customer key control.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The monitor terminates no connections. Management calls ride the TLS-only Cost Explorer API as provider-wide behavior, and alert delivery encryption is the posture of the delivery channels (SNS, email), not of this configuration object.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: There is no network endpoint to expose -- the monitor is reachable only through the IAM-authorized Cost Explorer API. The one exposure decision nearby is what the alerts themselves reveal (spend patterns) and who subscribes, which is access control, handled under rbac.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No addresses, ports, or network surface exist to filter.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The monitor receives no HTTP traffic -- web ACLs have nothing to attach to.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation is IAM-authorized through the Cost Explorer API, and the CE service reference gives the anomaly objects real resource-level scoping -- get/update/delete actions scope to the individual anomalymonitor and anomalysubscription ARNs, and nearly all actions honor aws:ResourceTag condition keys, so tag-based (ABAC) policies can fence teams to their own monitors. Cost data visibility itself additionally requires Cost Explorer access at the account level.
+      notes: "The access-shaped field in the spec is subscriptions[].subscribers: each address (email or SNS topic) is a standing grant to observe the account's spend anomalies -- curate it like an ACL. SNS-fed subscribers additionally require the topic's policy to allow costalerts.amazonaws.com to publish, an explicit trust decision on the AwsSnsTopic side."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Nothing here runs AS an identity. The detection service reads the account's billing data as AWS-internal machinery -- there is no execution role, credential, or service account in the arrangement (unlike automation components that act on your resources).
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The Cost Explorer API has a single authentication path -- SigV4-signed IAM requests; no weaker or legacy protocol exists to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface of its own. Every management call (CreateAnomalyMonitor, UpdateAnomalySubscription, and the rest) is recorded by AWS CloudTrail as account-level posture, and detected anomalies additionally surface as EventBridge events for programmatic trails.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: subscriptions
+      evidence:
+        type: spec_default
+        reference: This component IS a monitoring integration -- but detection alone is silent outside the console. The subscriptions list is what wires anomalies to humans and systems (IMMEDIATE via SNS, DAILY/WEEKLY via email digests, per-subscription impact thresholds); an empty list means anomalies accumulate on the dashboard unwatched. Both presets ship a subscription, and the spec validates the AWS channel-frequency pairing at manifest time.
+      notes: Detected anomalies also publish to Amazon EventBridge independent of subscriptions, so event-driven pipelines can consume them without email or SNS.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: There is no data to back up -- the monitor is declarative configuration fully reconstructible from the manifest, and anomaly history is AWS-retained billing metadata no customer backup can capture.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist, so no retention schedule applies.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Cost Explorer is an account-global service AWS operates on its own infrastructure -- the monitor has no zonal or regional footprint to spread. The spec's region field is only the provider's API endpoint.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists on CE anomaly resources. Worth knowing when planning changes -- the monitor's shape arms (monitor_type, monitor_dimension, monitor_specification) are create-only, so a shape edit is a silent delete-and-recreate that discards the ML model's learned baseline and starts detection cold (new monitors take about 24 hours to begin detecting).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Pure configuration with no software surface to patch -- the ML models behind detection are AWS-operated and updated invisibly.

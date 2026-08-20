@@ -1,0 +1,68 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremanagedredisaccesspolicyassignment
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An access policy assignment is authorization metadata held by the Redis Enterprise resource provider; it stores no customer data at rest. The cached data lives on the AzureManagedRedis instance, which owns that posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The grant carries no traffic of its own; managing it flows through ARM's TLS-only management API, and the granted identity's Redis sessions ride the instance's own TLS posture -- both outside this spec.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A grant record has no network endpoint -- nothing exists to reach from the internet. The Redis endpoint's exposure is the AzureManagedRedis instance's posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: The resource IS a data-plane access grant -- the Redis analog of a role assignment. It cannot be deployed without expressing one -- managed_redis_id (where) and object_id (who) are both required -- and Azure names the assignment after the granted object ID, so an identity is granted at most once per database. Minting a grant is itself RBAC-governed, requiring accessPolicyAssignments write rights on the cluster.
+      notes: Managed Redis exposes one built-in policy ("default", full data access) today, so the grant decides WHO may connect, not how much; when Azure ships scoped policies, least privilege becomes a policy choice here.
+    - control_id: workload-identity
+      status: configurable
+      field_path: object_id
+      evidence:
+        type: spec_default
+        reference: object_id defaults to referencing an AzureUserAssignedIdentity's principal_id output -- the composition grants Redis access to a managed identity that connects with an Entra token as the password, so no secret exists to leak or rotate. Passing a literal GUID (a user, group, or externally managed service principal) opts out of that keyless default.
+      notes: The assignment is the grant half of Managed Redis's keyless-by-default story -- access keys are off unless the instance enables them, so granted Entra identities are how clients connect at all.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The assignment exposes no authentication path of its own to strengthen or disable -- it grants the modern Entra path. The legacy path (shared access keys) is a switch on the AzureManagedRedis instance, which owns that posture.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Creation and deletion of assignments land in the Azure Activity Log automatically as subscription-level posture; no logging toggle exists on the grant itself.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A grant record emits no metrics or runtime signals; connection telemetry belongs to the AzureManagedRedis instance.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless authorization configuration -- nothing to back up; the manifest recreates the grant declaratively (every field is ForceNew, so replacement momentarily revokes and re-grants, which is safe for the grant class).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: An assignment has no runtime footprint with a zonal failure mode; the authorization state is held by the Microsoft-operated Redis Enterprise resource provider.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for an access policy assignment; deleting one revokes the identity's Redis access and is recreated declaratively.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The engine that stores and evaluates grants is the Microsoft-operated Redis Enterprise control plane; no customer-visible patch surface exists on the assignment.

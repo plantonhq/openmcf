@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurediskencryptionset
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The set stores no data of its own -- it exists to UPGRADE the at-rest encryption of the disks that reference it from platform-managed keys (always on for managed disks) to a customer-managed key; that upgrade is the enc-at-rest-cmk stance below.
+    - control_id: enc-at-rest-cmk
+      status: enforced_by_default
+      field_path: key_vault_key_id
+      evidence:
+        type: spec_default
+        reference: Customer-managed-key encryption IS the resource -- key_vault_key_id is spec-required, and every disk, snapshot, or image that references the set by disk_encryption_set_id is encrypted at rest with that Key Vault key. encryption_type unspecified applies Azure's default EncryptionAtRestWithCustomerKey (CMK only); ENCRYPTION_AT_REST_WITH_PLATFORM_AND_CUSTOMER_KEYS is a one-enum upgrade to double encryption, and CONFIDENTIAL_VM_ENCRYPTED_WITH_CUSTOMER_KEY covers confidential-VM guest state.
+      notes: The recommended posture pairs auto_key_rotation_enabled true with a VERSIONLESS key reference (the spec's default foreign-key path) so the set follows the key's current version automatically as it rotates. The referenced vault must carry purge protection -- Azure's own precondition for disk encryption -- so the key cannot be purged out from under encrypted disks.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The set carries no traffic; its identity's key-unwrap calls to Key Vault ride Azure's TLS-only APIs -- platform posture, not a component choice.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A key binding has no network endpoint -- nothing exists to reach from the internet; the Key Vault's network posture is its own kind's concern.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture. The one RBAC decision the set DEPENDS on -- granting its identity "Key Vault Crypto Service Encryption User" (or get/wrapKey/unwrapKey) on the key -- is a role assignment on the vault, a separate kind composed alongside the set.
+    - control_id: workload-identity
+      status: enforced_by_default
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: identity is spec-required -- a set cannot read its key without one. The managed identity unwraps the customer key with platform-issued tokens; no stored credential exists anywhere in the encryption path. SYSTEM_ASSIGNED is created and rotated by Azure with the set; USER_ASSIGNED brings an identity that can be granted vault access BEFORE the set exists, avoiding the system-assigned chicken-and-egg.
+      notes: federated_client_id extends the same keyless model across Entra tenants for cross-tenant CMK -- still token-based, never a shared secret.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The set exposes no authentication path of its own to strengthen or disable; its key access is managed-identity tokens only.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Set creation, key rotation configuration changes, and deletion land in the Azure Activity Log automatically as subscription-level posture; key USAGE (every wrap/unwrap) is auditable in the Key Vault's diagnostic logs, a separate kind's posture.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A key binding emits no metrics of its own; key-access signals ride the Key Vault.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless binding configuration -- nothing to back up; the manifest recreates the set declaratively. The key material's durability is the Key Vault's posture (soft delete and purge protection), and the disk data's durability is the disks'.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A regional control-plane object with no data path -- there is no zonal failure mode of its own; the disks and the vault carry their own resilience posture.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for the set itself (Azure resource locks are subscription-side governance outside the manifest); Azure refuses to delete a set still referenced by disks, but that is dependency ordering. The purge-protected vault is what actually protects the encryption chain from irreversible loss.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The encryption machinery the set drives -- the storage fabric that encrypts disk data and the Key Vault service that guards the key -- is Microsoft-operated infrastructure; no customer-visible patch surface exists.

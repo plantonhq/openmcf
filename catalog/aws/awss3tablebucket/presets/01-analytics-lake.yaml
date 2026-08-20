@@ -1,0 +1,26 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3TableBucket
+metadata:
+  name: analytics-lake
+spec:
+  region: us-east-1
+  namespaces:
+    - name: analytics
+      tables:
+        - name: events
+          icebergSchema:
+            fields:
+              - name: event_id
+                type: string
+                required: true
+              - name: user_id
+                type: string
+              - name: occurred_at
+                type: timestamp
+              - name: payload
+                type: string
+          compaction:
+            targetFileSizeMb: 256
+          snapshotManagement:
+            maxSnapshotAgeHours: 168
+            minSnapshotsToKeep: 3

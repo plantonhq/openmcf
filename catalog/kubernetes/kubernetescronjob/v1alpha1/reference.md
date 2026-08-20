@@ -400,6 +400,10 @@ spec:
 | `spec.jobTemplate.container.app.volumeMounts[].pvc` | `PvcVolumeSource` |  |  |  |
 | `spec.jobTemplate.container.app.volumeMounts[].pvc.claimName` | `string` | yes |  |  |
 | `spec.jobTemplate.container.app.volumeMounts[].pvc.readOnly` | `bool` |  |  |  |
+| `spec.jobTemplate.container.app.volumeMounts[].serviceAccountToken` | `ServiceAccountTokenVolumeSource` |  |  |  |
+| `spec.jobTemplate.container.app.volumeMounts[].serviceAccountToken.audience` | `string` | yes |  |  |
+| `spec.jobTemplate.container.app.volumeMounts[].serviceAccountToken.expirationSeconds` | `int64` |  |  |  |
+| `spec.jobTemplate.container.app.volumeMounts[].serviceAccountToken.path` | `string` |  |  |  |
 | `spec.jobTemplate.container.app.lifecycle` | `WorkloadContainerLifecycle` |  |  |  |
 | `spec.jobTemplate.container.app.lifecycle.postStart` | `WorkloadLifecycleHandler` |  |  |  |
 | `spec.jobTemplate.container.app.lifecycle.postStart.exec` | `ExecAction` |  |  |  |
@@ -611,6 +615,10 @@ spec:
 | `spec.jobTemplate.container.sidecars[].volumeMounts[].pvc` | `PvcVolumeSource` |  |  |  |
 | `spec.jobTemplate.container.sidecars[].volumeMounts[].pvc.claimName` | `string` | yes |  |  |
 | `spec.jobTemplate.container.sidecars[].volumeMounts[].pvc.readOnly` | `bool` |  |  |  |
+| `spec.jobTemplate.container.sidecars[].volumeMounts[].serviceAccountToken` | `ServiceAccountTokenVolumeSource` |  |  |  |
+| `spec.jobTemplate.container.sidecars[].volumeMounts[].serviceAccountToken.audience` | `string` | yes |  |  |
+| `spec.jobTemplate.container.sidecars[].volumeMounts[].serviceAccountToken.expirationSeconds` | `int64` |  |  |  |
+| `spec.jobTemplate.container.sidecars[].volumeMounts[].serviceAccountToken.path` | `string` |  |  |  |
 | `spec.jobTemplate.container.sidecars[].lifecycle` | `WorkloadContainerLifecycle` |  |  |  |
 | `spec.jobTemplate.container.sidecars[].lifecycle.postStart` | `WorkloadLifecycleHandler` |  |  |  |
 | `spec.jobTemplate.container.sidecars[].lifecycle.postStart.exec` | `ExecAction` |  |  |  |
@@ -826,6 +834,10 @@ spec:
 | `spec.jobTemplate.pod.initContainers[].volumeMounts[].pvc` | `PvcVolumeSource` |  |  |  |
 | `spec.jobTemplate.pod.initContainers[].volumeMounts[].pvc.claimName` | `string` | yes |  |  |
 | `spec.jobTemplate.pod.initContainers[].volumeMounts[].pvc.readOnly` | `bool` |  |  |  |
+| `spec.jobTemplate.pod.initContainers[].volumeMounts[].serviceAccountToken` | `ServiceAccountTokenVolumeSource` |  |  |  |
+| `spec.jobTemplate.pod.initContainers[].volumeMounts[].serviceAccountToken.audience` | `string` | yes |  |  |
+| `spec.jobTemplate.pod.initContainers[].volumeMounts[].serviceAccountToken.expirationSeconds` | `int64` |  |  |  |
+| `spec.jobTemplate.pod.initContainers[].volumeMounts[].serviceAccountToken.path` | `string` |  |  |  |
 | `spec.jobTemplate.pod.initContainers[].lifecycle` | `WorkloadContainerLifecycle` |  |  |  |
 | `spec.jobTemplate.pod.initContainers[].lifecycle.postStart` | `WorkloadLifecycleHandler` |  |  |  |
 | `spec.jobTemplate.pod.initContainers[].lifecycle.postStart.exec` | `ExecAction` |  |  |  |
@@ -1300,9 +1312,6 @@ Allowed values (use exactly as shown):
 - `unspecified` -- 0: Default/unspecified
 - `TestCloudResourceGeneric` -- 1–49: Test/dev/custom
 - `TestCloudResourceKubernetes`
-- `ConfluentKafka` -- 50–199: saas platform resources
-- `AtlasMongodb`
-- `SnowflakeDatabase`
 - `AwsAlb` -- 1000–1999: AWS resources AwsSubnet is a prerequisite because an ALB requires at least two subnets in different availability zones -- the spec's subnet references must resolve before the load balancer can be created.
 - `AwsCertManagerCert`
 - `AwsCloudFront`
@@ -1415,6 +1424,99 @@ Allowed values (use exactly as shown):
 - `AwsRoute53HealthCheck`
 - `AwsSesConfigurationSet` -- Both SES kinds are dependency-free leaves: an identity's configuration set is optional composition (scenarios declare it via the e2e-prerequisites annotation), and a configuration set's event destinations reference other kinds only optionally.
 - `AwsSesEmailIdentity`
+- `AwsSecretsManagerSecret` -- A dependency-free leaf: the KMS key, rotation Lambda, and external rotation role references are all optional composition -- scenarios declare them via the e2e-prerequisites annotation, never registry edges.
+- `AwsOpenSearchServerlessCollection` -- A dependency-free leaf: the collection-scoped encryption/network/ data-access/retention policies are module-rendered, and the KMS key and data-access principal references are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockGuardrail` -- A dependency-free leaf: the KMS key reference is optional composition (e2e-prerequisites annotation); published versions are folded satellites of the guardrail itself.
+- `AwsBedrockCustomModel` -- AwsIamRole is a prerequisite because Bedrock assumes the job role to read training data and write outputs; the S3 locations and KMS key are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockInferenceProfile` -- A dependency-free leaf: the model source is a foundation model or an AWS system-defined cross-region profile, never a customer resource.
+- `AwsBedrockProvisionedThroughput` -- A dependency-free leaf in the registry: capacity is typically bought for an AwsBedrockCustomModel (the default reference), but foundation model ARNs are equally legal, so the edge is optional composition.
+- `AwsBedrockModelAccess` -- A dependency-free leaf: the agreement covers an AWS-listed foundation model, never a customer resource.
+- `AwsBedrockInvocationLogging` -- Region settings singleton (one invocation-logging configuration per account+region; identity = the region). Delivery destinations are optional references (at least one of CloudWatch/S3, enforced by CEL), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsBedrockAgent` -- AwsIamRole is a prerequisite because the Bedrock service assumes the agent resource role to invoke models, action-group Lambdas, and knowledge bases; the guardrail, KMS key, provisioned throughput, and collaborator/knowledge-base edges are optional composition (e2e-prerequisites annotation). Action groups, aliases, collaborators, and knowledge-base associations are folded satellites of the agent.
+- `AwsBedrockKnowledgeBase` -- AwsIamRole is a prerequisite because the Bedrock service assumes the knowledge-base role to read data sources, call the embedding model, and read/write the vector store; the vector-store and data-source reference edges (OpenSearch, S3, Secrets Manager, ...) are optional composition (e2e-prerequisites annotation). Data sources are folded satellites of the knowledge base.
+- `AwsBedrockFlow` -- AwsIamRole is a prerequisite because the Bedrock service assumes the flow execution role to invoke the models, agents, knowledge bases, and Lambdas its nodes reference; the node-level reference edges are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockPrompt` -- A dependency-free leaf: variants target AWS-listed foundation models by ID; targeting another agent's alias is optional composition (e2e-prerequisites annotation).
+- `AwsBedrockAgentCoreRuntime` -- AwsIamRole is a prerequisite because the AgentCore service assumes the runtime role to pull the container image or read the S3 code bundle and to run the hosted agent; the code-bundle S3 bucket and VPC placement edges are optional composition (e2e-prerequisites annotation). Endpoints and the runtime's resource policy are folded satellites of the runtime.
+- `AwsBedrockAgentCoreGateway` -- AwsIamRole is a prerequisite because the gateway assumes its role to reach targets (invoke Lambdas, sign SigV4 requests); the target and credential-provider reference edges (runtime, Lambda, Identity providers, policy engine) are optional composition (e2e-prerequisites annotation). Targets are folded satellites of the gateway - AWS deletes them before the gateway at destroy.
+- `AwsBedrockAgentCoreMemory` -- A dependency-free leaf for built-in strategies: the execution role (custom strategies, Kinesis delivery), KMS key, and Kinesis stream edges are optional composition (e2e-prerequisites annotation). Strategies are folded satellites of the memory - AWS serializes their changes through the parent.
+- `AwsBedrockAgentCoreIdentity` -- A dependency-free leaf: workload identities, credential providers, and the Cedar policy engine with its policies are all name-keyed arms of one identity-and-access bundle; the KMS key edge is optional composition (e2e-prerequisites annotation). The account/region token-vault CMK is deliberately NOT modeled here (settings singleton).
+- `AwsBedrockAgentCoreTools` -- A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution role (recordings, certificates), S3, Secrets Manager, and VPC edges are optional composition (e2e-prerequisites annotation). Browsers, profiles, and code interpreters are name-keyed arms of one tools bundle; AWS exposes no update - every field change recreates the tool.
+- `AwsBedrockAgentCoreEvaluation` -- The AgentCore Evaluations bundle - evaluators (LLM-judge or Lambda scorers), harnesses (repeatable agent test benches), and online evaluation configs (continuous scoring of sampled production sessions). Deploys standalone - no arm requires an agent runtime to exist. No registry prerequisite: every arm is optional, so no dependency is required for the kind to function (scenarios compose IAM roles via annotations).
+- `AwsBedrockAgentCoreTokenVault` -- Account/region settings singleton: sets the KMS key on the ONE default AgentCore token vault. The KMS reference is conditional on key_type (CEL-enforced), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsSagemakerModel` -- The immutable serving definition (container image + artifacts + execution role) that endpoints deploy - one container or an inference pipeline.
+- `AwsSagemakerEndpoint` -- A real-time inference endpoint WITH its folded endpoint configuration - the configuration is immutable upstream, so the modules roll name-suffixed configurations create-before-destroy and repoint the endpoint.
+- `AwsSagemakerNotebookInstance` -- A managed Jupyter notebook EC2 instance with its folded lifecycle configuration (bootstrap scripts).
+- `AwsSagemakerFeatureGroup` -- A Feature Store feature group - online and/or offline stores over a declared feature schema.
+- `AwsSagemakerModelRegistry` -- A model registry package group with its folded resource policy - model package VERSIONS register into it imperatively (training pipelines), never declaratively.
+- `AwsSagemakerPipeline` -- An ML workflow DAG (the SageMaker pipeline-definition JSON) that executions run against - free to create, billed per execution.
+- `AwsSagemakerImage` -- A named registry entry exposing YOUR container images to Studio, with folded AWS-numbered versions (append-only by position).
+- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; Small ~$0.6/hour). The serverless successor is AwsSagemakerMlflowApp.
+- `AwsSagemakerMlflowApp` -- The serverless MLflow 3.x deployment (billed per use) - standalone, associating with SageMaker domains; NOT a tracking-server satellite.
+- `AwsRestApiGateway` -- A full REST API (API Gateway v1): the resource/method tree with inline integrations (or an imported OpenAPI document), one stage with an explicit hash-triggered deployment, and the API-scoped satellites (authorizers, models, validators, gateway responses, policy, documentation, client certificate). Self-contained: a MOCK-integration API needs no other resource.
+- `AwsRestApiDomain` -- A custom domain for REST APIs with base-path mappings and - for PRIVATE domains - VPC-endpoint access associations. AwsCertManagerCert is a prerequisite because the domain cannot be created without a TLS certificate covering it.
+- `AwsRestApiUsagePlan` -- A usage plan metering REST API consumers - stage coverage, quota, throttles, and the API keys it admits. No registry prerequisite: a plan is valid with no stage coverage (scenarios compose the REST API via annotations).
+- `AwsRestApiVpcLink` -- A REST API VPC link fronting an internal Network Load Balancer so REST integrations reach private services. AwsNlb is a prerequisite because AWS rejects link creation without the target balancer.
+- `AwsApiGatewayAccountSettings` -- Region settings singleton (one API Gateway account object per account+region; identity = the region). The CloudWatch role is an optional reference (unset = the explicit no-logging posture), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsCloudTrail` -- The account's API audit trail. AwsS3Bucket is a prerequisite because AWS rejects trail creation without a delivery bucket carrying the CloudTrail service-principal policy. 1240 opens the governance sub-band (1240-1249).
+- `AwsConfigRecorder` -- Region singleton (one AWS Config recorder per region, named "default" by AWS; identity = the region). AwsIamRole is a prerequisite because the recorder cannot exist without its service role.
+- `AwsConfigRule` -- One AWS Config compliance rule (managed, custom-lambda, or custom-policy; account- or organization-scoped) with optional auto-remediation. Managed rules need no prerequisites; the custom-lambda arm's function reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsGuardDuty` -- Region singleton (AWS allows one GuardDuty detector per account+region; the detector has no name - identity = the region). Satellite references (S3 export bucket, KMS key) are conditional, so E2E fixtures ride scenario annotations.
+- `AwsCloudTrailEventDataStore` -- CloudTrail Lake: a queryable, immutable event data store with its own retention and billing lifecycle - no trail required. The KMS key reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsConfigAggregator` -- AWS Config cross-account/cross-region aggregation: the aggregator (collector side) and/or the reciprocal authorization grants (source-account side). Works with zero recorders; the org-source role reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsConfigConformancePack` -- An AWS Config conformance pack (account- or organization-scoped): a template bundle that creates its own Config rules. Deployment requires an active Config recorder in the region (a service-side requirement, not a spec reference), so E2E fixtures ride scenario annotations.
+- `AwsGuardDutyMalwareProtectionPlan` -- GuardDuty Malware Protection for S3: scans new objects in one bucket - a standalone plan protecting a bucket, not a detector satellite (its schema carries no detector reference). The execution role and the protected bucket are required references.
+- `AwsBackupVault` -- An AWS Backup vault - the encrypted container recovery points live in, as either a standard vault (with its lock, access policy, and notification satellites) or a logically air-gapped vault (AWS's own VaultType discriminator). The KMS and SNS references are conditional, so E2E fixtures ride scenario annotations. 1250 opens the backup sub-band (1250-1259).
+- `AwsBackupPlan` -- An AWS Backup plan: scheduled backup rules plus the resource selections that assign resources to them. AwsBackupVault is a prerequisite because every rule requires a target vault; the selections' IAM role is conditional and rides scenario annotations.
+- `AwsBackupFramework` -- A Backup Audit Manager framework: compliance controls evaluating backup posture. No schema-required references (the Config recorder its evaluations need is a lane fixture, not a spec reference).
+- `AwsBackupReportPlan` -- A Backup Audit Manager report plan: scheduled compliance/job reports delivered to S3. AwsS3Bucket is a prerequisite because the delivery channel's bucket is required.
+- `AwsBackupRestoreTestingPlan` -- An AWS Backup restore testing plan with its folded selections: scheduled restore tests proving recovery points actually restore. Vault targeting accepts the "*" wildcard, so fixtures are conditional and ride scenario annotations.
+- `AwsBackupSettings` -- Account/region settings singleton for AWS Backup: the account's global settings (cross-account backup) and the region's resource-type opt-in/management preferences. Both provider deletes are no-ops - settings persist after destroy.
+- `AwsSsmParameter` -- An SSM Parameter Store entry (String/StringList/SecureString). The parameter's name is an explicit spec field - names are hierarchical paths ("/prod/db/url") metadata.name cannot carry. The KMS reference is conditional (SecureString only), so E2E fixtures ride scenario annotations. 1260 opens the SSM sub-band (1260-1269).
+- `AwsSsmDocument` -- A customer-owned SSM document (Command/Automation/Session/...): reusable action definitions managed nodes and automations execute. State Manager associations are their own AwsSsmAssociation kind - an association binds ANY document (AWS-managed included), so it is not this document's satellite.
+- `AwsSsmMaintenanceWindow` -- An SSM maintenance window with its folded target registrations and tasks (Run Command / Automation / Lambda / Step Functions) - the targets and tasks are true window satellites (ForceNew window_id edges). Identity is the AWS-generated "mw-..." id.
+- `AwsSsmPatchBaseline` -- An SSM patch baseline with its folded patch-group registrations and the account/region default-baseline designation (delete RESTORES AWS's own predefined default for the OS). Identity is the AWS-generated "pb-..." id.
+- `AwsSsmAssociation` -- A State Manager association: the binding of an SSM document to targets on a schedule. Split from the document kind because the document reference is a free string with no structural edge - associations routinely bind AWS-managed documents (AWS-RunShellScript, ...) with no user document anywhere, so no registry prerequisite either. Identity is the AWS-generated association UUID.
+- `AwsOrganization` -- THE AWS Organization of the deploying account - creating it makes the caller the management account. Trusted service access, delegated administrators, the org's singleton resource policy, and centralized root-access management (IAM's organizations features - a management-account act requiring iam.amazonaws.com trusted access) fold in (none has a life of its own; the standalone service-access resource fights the org's own argument with a perpetual diff). Deleting this deletes the entire organization. 1270 opens the Organizations sub-band (1270-1279).
+- `AwsOrganizationalUnit` -- An organizational unit in the org's OU tree. The display name is an explicit spec field (OU names allow spaces metadata.name cannot carry); the parent reference (root or parent OU) is required and immutable, so the organization is a registry prerequisite.
+- `AwsOrganizationAccount` -- A MEMBER account of the organization: creation, OU placement, and the account-level settings satellites (alternate/primary contacts, opt-in region enablement) fold onto the created account's ID. Destroy is never a clean delete (remove-from-org or ~90-day close) - taught on the spec. No registry prerequisite by the schema-required-only rule (the OU parent reference is optional).
+- `AwsOrganizationPolicy` -- An Organizations policy (SCP and its twelve sibling types) with its folded attachments to roots, OUs, and member accounts. The policy type must be enabled on the organization first; AWS-managed policies are never adopted. No registry prerequisite by the schema-required-only rule (attachments are optional).
+- `AwsBudget` -- A Budgets budget (COST/USAGE/RI/Savings Plans coverage and utilization) with its folded budget actions as name-keyed satellites - an action exists only on its budget and fires an IAM-policy application, an SCP attachment, or SSM instance stops when a threshold breaches. Budgets is account-global (served from us-east-1; the spec region is the provider endpoint). 1280 opens the cost-management sub-band (1280-1289).
+- `AwsCostAnomalyMonitor` -- A Cost Explorer anomaly monitor (DIMENSIONAL over one dimension, or CUSTOM over a CE expression) with its folded alert subscriptions - a subscription's monitor list is the structural edge that makes it this monitor's satellite. Account-global; AWS identifies both by ARN.
+- `AwsCostCategory` -- A Cost Explorer cost category: ordered rules (regular expression rules or inherited-value rules) over the recursive CE expression tree, plus split-charge rules. The account's cost-allocation-tag activation toggle is deliberately NOT folded here - it is a per-tag-key account feature with no edge to any category, so many category instances would fight over one account object.
+- `AwsIamGroup` -- An IAM group with its folded declarative membership (the authoritative users list) and group policies - name-keyed inline documents plus managed-policy attachments. IAM is global; identity is the group name (renames update in place, the ARN recomputes). 1290 opens the IAM P1 sub-band (1290-1299).
+- `AwsIamSamlProvider` -- An IAM SAML identity provider: the account's federation trust anchor, created from the IdP's metadata XML (a public document carrying certificates, not a secret). Identity is the provider ARN; the name is write-once.
+- `AwsIamAccountSettings` -- Account settings singleton for IAM (a GLOBAL service - one object per ACCOUNT, not per region): the sign-in alias, the password policy, and the STS global-endpoint token version. Destroy contracts DIFFER per arm (each taught on its arm): the alias truly deletes, the password policy resets to AWS defaults, the STS preference is a no-op delete that persists.
+- `AwsCloudwatchDashboard` -- A CloudWatch dashboard: one named dashboard whose widget layout is the dashboard-body JSON document (modeled as a typed Struct, the catalog's uniform policy-document idiom). Dashboards are untaggable at AWS. Identity is the dashboard name; every change is an in-place PutDashboard upsert. 1300 opens the CloudWatch observability P1 sub-band (1300-1309).
+- `AwsCloudwatchSynthetics` -- CloudWatch Synthetics: a canary (a scheduled scripted probe running from an S3-staged code bundle under an execution role, writing run artifacts to S3) plus the grouping surface - owned groups and the canary's group associations (joins by group NAME, so shared groups are referenced, never fought over). A groups-only instance manages shared groups with no canary.
+- `AwsCloudwatchLogDelivery` -- CloudWatch Logs delivery: the two ways logs leave CloudWatch. The vended-log arm pivots on a delivery SOURCE (one AWS resource whose service vends logs) with name-keyed deliveries fanning out to delivery destinations (S3 / CloudWatch Logs / Firehose / X-Ray), each created inline or referenced by ARN. The cross-account arm is the legacy Kinesis subscription destination with its access policy (whose delete is a no-op at AWS - the policy persists).
+- `AwsCloudwatchLogAccountPolicy` -- A CloudWatch Logs account-level policy: one policy object per (name, type) pair per region - data protection, subscription filter, field index, transformer, or metric extraction - applied account-wide, optionally narrowed by selection criteria. Standalone account configuration, never a per-log-group satellite.
+- `AwsCloudwatchLogAnomalyDetector` -- A CloudWatch Logs anomaly detector: one detector trains over a LIST of log groups (multi-parent scope - never a single group's satellite), surfacing anomalies on a chosen evaluation frequency with a bounded visibility window.
+- `AwsCloudwatchLogResourcePolicy` -- A CloudWatch Logs resource policy: the account-scoped named policy (or resource-scoped policy on one log group ARN) that grants AWS services permission to write logs - Route53 query logging, EventBridge, and friends. Exactly one scope per instance.
+- `AwsManagedPrometheus` -- An Amazon Managed Prometheus workspace with its folded satellites: workspace configuration (retention, label-set limits - a created-via-update singleton whose delete is a no-op at AWS), the alert manager definition (strictly one per workspace), name-keyed rule group namespaces, query logging, the workspace resource policy, and alias-keyed anomaly detectors. Scrapers are deliberately NOT folded here - a scraper can target CloudWatch with zero AMP workspaces, so it is its own kind.
+- `AwsManagedPrometheusScraper` -- An Amazon Managed Prometheus scraper: the agentless collector. Source is an EKS cluster or a bare VPC placement (both replace-on-change); destination is an AMP workspace or a CloudWatch dataset. Carries its own scraper logging configuration satellite. Scrape configuration is optional on the EKS arm (AWS publishes a default, resolved at deploy) and required on the VPC arm.
+- `AwsEventBridgePipe` -- An EventBridge Pipe: one point-to-point integration reading from one source (SQS, Kinesis, DynamoDB streams, MSK or self-managed Kafka, ActiveMQ/RabbitMQ), optionally filtering and enriching in-flight, and delivering to one target (ECS, Batch, Lambda, Step Functions, Kinesis, SQS, Redshift, SageMaker, CloudWatch Logs, EventBridge buses, HTTP via API destinations). The source is fixed for life (replace-on-change); the target swaps in place. 1310 opens the EventBridge extras P1 sub-band (1310-1319).
+- `AwsEventBridgeScheduler` -- An EventBridge Scheduler schedule: cron/rate/one-time invocation of one target under an execution role, with flexible time windows, retry policy, and a dead-letter queue. The schedule GROUP is folded own-XOR-existing (a name-and-tags container - the provider's own update path is tags-only); unset means AWS's default group.
+- `AwsEventBridgeApiDestination` -- An EventBridge API destination with its connection: the authenticated HTTP(S) endpoint rules, pipes, and schedules invoke. Two independently deployable arms - the CONNECTION (the shareable auth trust anchor: api-key, basic, or OAuth credentials that AWS stores in Secrets Manager) and the DESTINATION (endpoint + method + rate limit) whose connection is owned inline or referenced by ARN.
+- `AwsVpcPeering` -- A VPC peering connection, as a request-XOR-accept mode union: the REQUEST arm creates the peering from its VPC toward a peer VPC (same-account auto-accept supported; cross-account/cross-region stays pending until accepted), the ACCEPT arm adopts and accepts a pending connection by ID from the accepter side. DNS-resolution options fold into both arms. 1320 opens the VPC networking P1 sub-band (1320-1329).
+- `AwsNetworkAcl` -- A network ACL: the stateless subnet-level firewall - ordered ingress/egress rules (allow or deny, evaluated by rule number) and the subnet associations, all folded in-line as the single declarative owner (the standalone rule/association resources are the same payload and fight the in-line form).
+- `AwsManagedPrefixList` -- A customer-managed prefix list: a named, versioned set of CIDR blocks that security-group rules, NACL rules, and route tables reference as one object. Entries fold in-line; max_entries is the capacity contract (referencing consumes that many rule slots regardless of how many entries exist).
+- `AwsEbsVolume` -- A standalone EBS volume as a create-XOR-copy union (fresh in a zone, or cloned from another volume) with attachments managed in-line. 1330 opens the block & object storage sub-band (1330-1339).
+- `AwsEbsSnapshot` -- An EBS snapshot as a three-way source union (snapshot a volume, copy a snapshot, or import a disk image) with archive tiering, fast snapshot restore, and cross-account share grants in-line.
+- `AwsS3DirectoryBucket` -- An S3 directory bucket (S3 Express One Zone): single-AZ, single-digit-millisecond object storage. The modules derive the mandated "{name}--{zone_id}--x-s3" bucket name.
+- `AwsS3TableBucket` -- An S3 table bucket (S3 Tables - managed Apache Iceberg storage) with its namespaces, tables, policies, and replication folded in-line as the single declarative owner.
+- `AwsS3VectorBucket` -- An S3 vector bucket (AI embedding storage with similarity query) with its vector indexes folded in-line - the natural backend for Bedrock knowledge bases.
+- `AwsDlmLifecyclePolicy` -- A Data Lifecycle Manager policy: account-level, tag-targeted snapshot/AMI automation (create, retain, archive, copy cross-region, share, deprecate) as a default-XOR-custom mode union. AwsIamRole is a prerequisite because DLM acts through a required execution role.
+- `AwsRoute53ResolverEndpoint` -- A Route 53 Resolver endpoint (the hybrid-DNS bridge between a VPC and outside networks) with its forwarding rules and their VPC associations managed in-line. Subnets place the ENIs and security groups guard them - both schema-required. 1340 opens the DNS & service discovery sub-band (1340-1349).
+- `AwsRoute53ResolverFirewall` -- A Route 53 Resolver DNS Firewall rule group with its domain lists, filtering rules, and VPC associations managed in-line - the DNS-layer block/allow policy for VPC egress queries. AwsVpc is a prerequisite because the association arm filters a referenced VPC.
+- `AwsRoute53ResolverQueryLog` -- A Resolver query logging configuration (every DNS query VPCs make through the resolver, to CloudWatch Logs / S3 / Firehose) with its VPC associations managed in-line. AwsVpc is a prerequisite because the association arm logs a referenced VPC.
+- `AwsCloudMapNamespace` -- An AWS Cloud Map namespace (HTTP-XOR-private-DNS-XOR-public-DNS) with its discoverable services and statically registered instances managed in-line - the service-discovery registry ECS and custom applications look each other up in. AwsVpc is a prerequisite because the private-DNS arm binds its hosted zone to a referenced VPC.
+- `AwsAppSyncApi` -- An AppSync API - AWS's managed API service, as a GraphQL API (SDL schema, resolvers over data sources, caching, the MERGED federation variant) XOR an Events API (real-time pub/sub over channel namespaces) - with its data sources, resolvers, functions, types, API keys, and custom domain managed in-line. Every backend reference (data source targets, roles, the certificate) is optional, so no registry prerequisite - lanes exercise the fixture-free arms.
+- `AwsLambdaLayer` -- A Lambda layer version - a shared code archive (libraries, custom runtimes) functions attach by ARN - with its cross-account and organization share grants managed in-line. The archive lives in S3 (an optional reference, so no registry prerequisite - lanes compose their own bucket fixture). 1351 sits in the app & data services sub-band (1350-1359; 1350 opens it with AwsAppSyncApi).
+- `AwsRdsProxy` -- An RDS Proxy - the managed connection pool between connection-hungry applications and a database - with its connection-pool tuning, additional endpoints, and database target managed in-line. AwsIamRole is a prerequisite because the proxy assumes a required role to read database credentials from Secrets Manager; AwsSubnet because the proxy's network interfaces require at least two subnets.
+- `AwsAuroraDsql` -- An Aurora DSQL cluster - serverless, PostgreSQL-compatible distributed SQL with active-active multi-region pairing managed in-line. No prerequisites: a single-region cluster deploys from defaults alone (the KMS and peer references are optional arms).
+- `AwsEcrRegistrySettings` -- Region settings singleton (one private ECR registry per account+region): the registry policy, scanning configuration, replication rules, pull-through cache rules, repository creation templates, account settings, and pull-time update exclusions. Repository-scoped surface stays on AwsEcrRepo.
+- `AwsPrivateCa` -- An AWS Private Certificate Authority with composed activation (a ROOT self-signs at apply; a subordinate activates from a parent AwsPrivateCa), issued certificates, the ACM renewal permission, and the resource policy managed in-line. No prerequisites: the S3 (CRL) and parent-CA references are optional arms.
+- `AwsSesAccountSettings` -- Account/region settings singleton (one SES account object per account+region): the suppression list and VDM posture. 1360 opens the SES P1 sub-band (1360-1369).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -1559,7 +1661,7 @@ Allowed values (use exactly as shown):
 - `AzureBackupPolicyVm` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules that govern IaaS VM backups.
 - `AzureBackupProtectedVm` -- An ARM child of its vault (.../protectedItems/...) -- the binding that puts one virtual machine under a backup policy's protection.
 - `AzureBackupPolicyFileShare` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules that govern Azure Files share backups (snapshot or vaulted).
-- `AzureBackupProtectedFileShare` -- An ARM child of its vault (.../protectedItems/AzureFileShare;...) -- the binding that puts one Azure Files share under a backup policy's protection. The share's storage account must already be registered with the vault (AzureBackupContainerStorageAccount).
+- `AzureBackupProtectedFileShare` -- An ARM child of its vault (.../protectedItems/AzureFileShare;...) -- the binding that puts one Azure Files share under a backup policy's protection. The share's storage account must already be registered with the vault (AzureBackupContainerStorageAccount). Prerequisite ORDER is load-bearing for teardown (destroy runs in reverse): the registration must list AFTER the share so it unregisters FIRST -- Azure Backup holds a DoNotDelete lock on a registered storage account, and a share delete under that lock fails ScopeLocked.
 - `AzureDataProtectionBackupVault` -- The Data Protection backup vault (Microsoft.DataProtection/ backupVaults) -- the safe that MODERN Azure Backup data lives in (managed disks, blob storage, AKS clusters, MySQL/PostgreSQL flexible servers, Data Lake storage). Backup policies and backup instances are ARM children of a vault.
 - `AzureDataProtectionBackupPolicy` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules for ONE Data Protection datasource type (blob storage, disk, Kubernetes cluster, MySQL/PostgreSQL flexible server, or Data Lake storage), modeled as one kind with variant blocks.
 - `AzureDataProtectionBackupInstance` -- An ARM child of its vault (.../backupInstances/{name}) -- the binding that puts ONE datasource (a managed disk, a storage account's blob services, an AKS cluster, a MySQL/PostgreSQL flexible server, or a Data Lake storage account) under a Data Protection backup policy, modeled as one kind with variant blocks. The vault's managed identity must hold the datasource roles Azure Backup requires BEFORE the instance is created.
@@ -1599,6 +1701,7 @@ Allowed values (use exactly as shown):
 - `AzureEventgridDomainTopic` -- One named event stream inside an Azure Event Grid domain ({domain_id}/topics/{name}) -- the per-tenant mailbox of the multi-tenant pattern: many per domain, each with its own subscriptions and lifecycle, tenants joining and leaving without touching the domain (which is why the domain topic is a standalone kind, exactly like AzureEventHubConsumerGroup on a shared hub). Part of the Event Grid family (2193-2194) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureEventgridNamespaceTopic` -- One named CloudEvents stream inside an Azure Event Grid namespace ({namespace_id}/topics/{name}) -- many per namespace, publishers and teams creating and deleting their own against the shared namespace (which is why the topic is a standalone kind, exactly like AzureEventgridDomainTopic and AzureEventHubConsumerGroup). Part of the Event Grid family (2193-2197) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureMongoClusterUser` -- Grants one Microsoft Entra principal access to an Azure Cosmos DB for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an access binding, not a password user: many per cluster, principals joining and leaving independently (which is why the grant is a standalone kind, the access-grant class of AzureRoleAssignment). Part of the Mongo vCore family (2211) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
+- `AzurePlantonRunner` -- AzureContainerAppEnvironment is a prerequisite because the runner appliance is a Container App, and every Container App runs inside an environment -- the environment reference must resolve before the appliance can deploy.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
@@ -1697,6 +1800,7 @@ Allowed values (use exactly as shown):
 - `GcpWorkflow`
 - `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
 - `GcpEventarcMessageBus`
+- `GcpPlantonRunner`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -1817,6 +1921,9 @@ Allowed values (use exactly as shown):
 - `KubernetesTemporal` -- 4170–4189: Kubernetes app platforms KubernetesPostgres is a prerequisite because the recommended (and E2E-proven) database composition backs Temporal's default and visibility stores with a CloudNativePG cluster.
 - `KubernetesNats`
 - `KubernetesLocust`
+- `KubernetesPlantonRunner`
+- `KubernetesPlantonOperator`
+- `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
 - `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
@@ -1848,18 +1955,6 @@ Allowed values (use exactly as shown):
 - `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
 - `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
 - `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
-- `CivoBucket` -- 6000–6999: Civo resources
-- `CivoCertificate`
-- `CivoComputeInstance`
-- `CivoDatabase`
-- `CivoDnsZone`
-- `CivoFirewall`
-- `CivoIpAddress`
-- `CivoKubernetesCluster`
-- `CivoKubernetesNodePool`
-- `CivoVolume`
-- `CivoVpc`
-- `CivoDnsRecord`
 - `CloudflareDnsZone` -- 7000–7999: Cloudflare resources
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
@@ -1899,128 +1994,6 @@ Allowed values (use exactly as shown):
 - `OpenFgaStore` -- 9000–9999: OpenFGA resources Note: OpenFGA is Terraform-only - there is no Pulumi provider available. Pulumi modules for OpenFGA resources are pass-through placeholders.
 - `OpenFgaAuthorizationModel`
 - `OpenFgaRelationshipTuple`
-- `OpenStackKeypair` -- 10000–10999: OpenStack resources
-- `OpenStackNetwork`
-- `OpenStackSubnet`
-- `OpenStackRouter`
-- `OpenStackRouterInterface`
-- `OpenStackSecurityGroup`
-- `OpenStackFloatingIp`
-- `OpenStackNetworkPort`
-- `OpenStackSecurityGroupRule`
-- `OpenStackFloatingIpAssociate`
-- `OpenStackInstance`
-- `OpenStackServerGroup`
-- `OpenStackVolume`
-- `OpenStackVolumeAttach`
-- `OpenStackProject`
-- `OpenStackApplicationCredential`
-- `OpenStackImage`
-- `OpenStackRoleAssignment`
-- `OpenStackLoadBalancer`
-- `OpenStackLoadBalancerListener`
-- `OpenStackLoadBalancerPool`
-- `OpenStackLoadBalancerMember`
-- `OpenStackLoadBalancerMonitor`
-- `OpenStackDnsZone`
-- `OpenStackDnsRecord`
-- `ScalewayVpc`
-- `ScalewayPrivateNetwork`
-- `ScalewayPublicGateway`
-- `ScalewayLoadBalancer`
-- `ScalewayInstanceSecurityGroup`
-- `ScalewayInstance`
-- `ScalewayKapsuleCluster`
-- `ScalewayKapsulePool`
-- `ScalewayRdbInstance`
-- `ScalewayRedisCluster`
-- `ScalewayMongodbInstance`
-- `ScalewayObjectBucket`
-- `ScalewayBlockVolume`
-- `ScalewayContainerRegistry`
-- `ScalewayDnsZone`
-- `ScalewayDnsRecord`
-- `ScalewayServerlessFunction`
-- `ScalewayServerlessContainer`
-- `AliCloudLogProject`
-- `AliCloudRamRole`
-- `AliCloudRamPolicy`
-- `AliCloudVpc`
-- `AliCloudVswitch`
-- `AliCloudSecurityGroup`
-- `AliCloudEipAddress`
-- `AliCloudNatGateway`
-- `AliCloudApplicationLoadBalancer`
-- `AliCloudNetworkLoadBalancer`
-- `AliCloudVpnGateway`
-- `AliCloudDnsZone`
-- `AliCloudDnsRecord`
-- `AliCloudPrivateDnsZone`
-- `AliCloudStorageBucket`
-- `AliCloudNasFileSystem`
-- `AliCloudKmsKey`
-- `AliCloudRdsInstance`
-- `AliCloudPolardbCluster`
-- `AliCloudRedisInstance`
-- `AliCloudMongodbInstance`
-- `AliCloudEcsInstance`
-- `AliCloudContainerRegistry`
-- `AliCloudKubernetesCluster`
-- `AliCloudKubernetesNodePool`
-- `AliCloudCdnDomain`
-- `AliCloudFunction`
-- `AliCloudSaeApplication`
-- `AliCloudRocketmqInstance`
-- `AliCloudCenInstance`
-- `OciVcn`
-- `OciSubnet`
-- `OciSecurityGroup`
-- `OciCompartment`
-- `OciIdentityPolicy`
-- `OciDynamicGroup`
-- `OciComputeInstance`
-- `OciContainerEngineCluster`
-- `OciContainerEngineNodePool`
-- `OciContainerInstance`
-- `OciApplicationLoadBalancer`
-- `OciNetworkLoadBalancer`
-- `OciDynamicRoutingGateway`
-- `OciPublicIp`
-- `OciAutonomousDatabase`
-- `OciDbSystem`
-- `OciMysqlDbSystem`
-- `OciPostgresqlDbSystem`
-- `OciRedisCluster`
-- `OciNosqlTable`
-- `OciObjectStorageBucket`
-- `OciFileSystem`
-- `OciBlockVolume`
-- `OciKmsVault`
-- `OciKmsKey`
-- `OciVaultSecret`
-- `OciBastion`
-- `OciFunctionsApplication`
-- `OciApiGateway`
-- `OciStreamPool`
-- `OciQueue`
-- `OciAlarm`
-- `OciLogGroup`
-- `OciDnsZone`
-- `OciDnsRecord`
-- `OciNetworkFirewall`
-- `OciDevopsProject`
-- `HetznerCloudSshKey`
-- `HetznerCloudPlacementGroup`
-- `HetznerCloudFirewall`
-- `HetznerCloudNetwork`
-- `HetznerCloudPrimaryIp`
-- `HetznerCloudFloatingIp`
-- `HetznerCloudServer`
-- `HetznerCloudVolume`
-- `HetznerCloudSnapshot`
-- `HetznerCloudCertificate`
-- `HetznerCloudLoadBalancer`
-- `HetznerCloudDnsZone`
 
 ### spec.jobTemplate.container.app.env.variables[].valueFrom.env
 
@@ -2189,9 +2162,6 @@ Allowed values (use exactly as shown):
 - `unspecified` -- 0: Default/unspecified
 - `TestCloudResourceGeneric` -- 1–49: Test/dev/custom
 - `TestCloudResourceKubernetes`
-- `ConfluentKafka` -- 50–199: saas platform resources
-- `AtlasMongodb`
-- `SnowflakeDatabase`
 - `AwsAlb` -- 1000–1999: AWS resources AwsSubnet is a prerequisite because an ALB requires at least two subnets in different availability zones -- the spec's subnet references must resolve before the load balancer can be created.
 - `AwsCertManagerCert`
 - `AwsCloudFront`
@@ -2304,6 +2274,99 @@ Allowed values (use exactly as shown):
 - `AwsRoute53HealthCheck`
 - `AwsSesConfigurationSet` -- Both SES kinds are dependency-free leaves: an identity's configuration set is optional composition (scenarios declare it via the e2e-prerequisites annotation), and a configuration set's event destinations reference other kinds only optionally.
 - `AwsSesEmailIdentity`
+- `AwsSecretsManagerSecret` -- A dependency-free leaf: the KMS key, rotation Lambda, and external rotation role references are all optional composition -- scenarios declare them via the e2e-prerequisites annotation, never registry edges.
+- `AwsOpenSearchServerlessCollection` -- A dependency-free leaf: the collection-scoped encryption/network/ data-access/retention policies are module-rendered, and the KMS key and data-access principal references are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockGuardrail` -- A dependency-free leaf: the KMS key reference is optional composition (e2e-prerequisites annotation); published versions are folded satellites of the guardrail itself.
+- `AwsBedrockCustomModel` -- AwsIamRole is a prerequisite because Bedrock assumes the job role to read training data and write outputs; the S3 locations and KMS key are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockInferenceProfile` -- A dependency-free leaf: the model source is a foundation model or an AWS system-defined cross-region profile, never a customer resource.
+- `AwsBedrockProvisionedThroughput` -- A dependency-free leaf in the registry: capacity is typically bought for an AwsBedrockCustomModel (the default reference), but foundation model ARNs are equally legal, so the edge is optional composition.
+- `AwsBedrockModelAccess` -- A dependency-free leaf: the agreement covers an AWS-listed foundation model, never a customer resource.
+- `AwsBedrockInvocationLogging` -- Region settings singleton (one invocation-logging configuration per account+region; identity = the region). Delivery destinations are optional references (at least one of CloudWatch/S3, enforced by CEL), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsBedrockAgent` -- AwsIamRole is a prerequisite because the Bedrock service assumes the agent resource role to invoke models, action-group Lambdas, and knowledge bases; the guardrail, KMS key, provisioned throughput, and collaborator/knowledge-base edges are optional composition (e2e-prerequisites annotation). Action groups, aliases, collaborators, and knowledge-base associations are folded satellites of the agent.
+- `AwsBedrockKnowledgeBase` -- AwsIamRole is a prerequisite because the Bedrock service assumes the knowledge-base role to read data sources, call the embedding model, and read/write the vector store; the vector-store and data-source reference edges (OpenSearch, S3, Secrets Manager, ...) are optional composition (e2e-prerequisites annotation). Data sources are folded satellites of the knowledge base.
+- `AwsBedrockFlow` -- AwsIamRole is a prerequisite because the Bedrock service assumes the flow execution role to invoke the models, agents, knowledge bases, and Lambdas its nodes reference; the node-level reference edges are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockPrompt` -- A dependency-free leaf: variants target AWS-listed foundation models by ID; targeting another agent's alias is optional composition (e2e-prerequisites annotation).
+- `AwsBedrockAgentCoreRuntime` -- AwsIamRole is a prerequisite because the AgentCore service assumes the runtime role to pull the container image or read the S3 code bundle and to run the hosted agent; the code-bundle S3 bucket and VPC placement edges are optional composition (e2e-prerequisites annotation). Endpoints and the runtime's resource policy are folded satellites of the runtime.
+- `AwsBedrockAgentCoreGateway` -- AwsIamRole is a prerequisite because the gateway assumes its role to reach targets (invoke Lambdas, sign SigV4 requests); the target and credential-provider reference edges (runtime, Lambda, Identity providers, policy engine) are optional composition (e2e-prerequisites annotation). Targets are folded satellites of the gateway - AWS deletes them before the gateway at destroy.
+- `AwsBedrockAgentCoreMemory` -- A dependency-free leaf for built-in strategies: the execution role (custom strategies, Kinesis delivery), KMS key, and Kinesis stream edges are optional composition (e2e-prerequisites annotation). Strategies are folded satellites of the memory - AWS serializes their changes through the parent.
+- `AwsBedrockAgentCoreIdentity` -- A dependency-free leaf: workload identities, credential providers, and the Cedar policy engine with its policies are all name-keyed arms of one identity-and-access bundle; the KMS key edge is optional composition (e2e-prerequisites annotation). The account/region token-vault CMK is deliberately NOT modeled here (settings singleton).
+- `AwsBedrockAgentCoreTools` -- A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution role (recordings, certificates), S3, Secrets Manager, and VPC edges are optional composition (e2e-prerequisites annotation). Browsers, profiles, and code interpreters are name-keyed arms of one tools bundle; AWS exposes no update - every field change recreates the tool.
+- `AwsBedrockAgentCoreEvaluation` -- The AgentCore Evaluations bundle - evaluators (LLM-judge or Lambda scorers), harnesses (repeatable agent test benches), and online evaluation configs (continuous scoring of sampled production sessions). Deploys standalone - no arm requires an agent runtime to exist. No registry prerequisite: every arm is optional, so no dependency is required for the kind to function (scenarios compose IAM roles via annotations).
+- `AwsBedrockAgentCoreTokenVault` -- Account/region settings singleton: sets the KMS key on the ONE default AgentCore token vault. The KMS reference is conditional on key_type (CEL-enforced), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsSagemakerModel` -- The immutable serving definition (container image + artifacts + execution role) that endpoints deploy - one container or an inference pipeline.
+- `AwsSagemakerEndpoint` -- A real-time inference endpoint WITH its folded endpoint configuration - the configuration is immutable upstream, so the modules roll name-suffixed configurations create-before-destroy and repoint the endpoint.
+- `AwsSagemakerNotebookInstance` -- A managed Jupyter notebook EC2 instance with its folded lifecycle configuration (bootstrap scripts).
+- `AwsSagemakerFeatureGroup` -- A Feature Store feature group - online and/or offline stores over a declared feature schema.
+- `AwsSagemakerModelRegistry` -- A model registry package group with its folded resource policy - model package VERSIONS register into it imperatively (training pipelines), never declaratively.
+- `AwsSagemakerPipeline` -- An ML workflow DAG (the SageMaker pipeline-definition JSON) that executions run against - free to create, billed per execution.
+- `AwsSagemakerImage` -- A named registry entry exposing YOUR container images to Studio, with folded AWS-numbered versions (append-only by position).
+- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; Small ~$0.6/hour). The serverless successor is AwsSagemakerMlflowApp.
+- `AwsSagemakerMlflowApp` -- The serverless MLflow 3.x deployment (billed per use) - standalone, associating with SageMaker domains; NOT a tracking-server satellite.
+- `AwsRestApiGateway` -- A full REST API (API Gateway v1): the resource/method tree with inline integrations (or an imported OpenAPI document), one stage with an explicit hash-triggered deployment, and the API-scoped satellites (authorizers, models, validators, gateway responses, policy, documentation, client certificate). Self-contained: a MOCK-integration API needs no other resource.
+- `AwsRestApiDomain` -- A custom domain for REST APIs with base-path mappings and - for PRIVATE domains - VPC-endpoint access associations. AwsCertManagerCert is a prerequisite because the domain cannot be created without a TLS certificate covering it.
+- `AwsRestApiUsagePlan` -- A usage plan metering REST API consumers - stage coverage, quota, throttles, and the API keys it admits. No registry prerequisite: a plan is valid with no stage coverage (scenarios compose the REST API via annotations).
+- `AwsRestApiVpcLink` -- A REST API VPC link fronting an internal Network Load Balancer so REST integrations reach private services. AwsNlb is a prerequisite because AWS rejects link creation without the target balancer.
+- `AwsApiGatewayAccountSettings` -- Region settings singleton (one API Gateway account object per account+region; identity = the region). The CloudWatch role is an optional reference (unset = the explicit no-logging posture), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsCloudTrail` -- The account's API audit trail. AwsS3Bucket is a prerequisite because AWS rejects trail creation without a delivery bucket carrying the CloudTrail service-principal policy. 1240 opens the governance sub-band (1240-1249).
+- `AwsConfigRecorder` -- Region singleton (one AWS Config recorder per region, named "default" by AWS; identity = the region). AwsIamRole is a prerequisite because the recorder cannot exist without its service role.
+- `AwsConfigRule` -- One AWS Config compliance rule (managed, custom-lambda, or custom-policy; account- or organization-scoped) with optional auto-remediation. Managed rules need no prerequisites; the custom-lambda arm's function reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsGuardDuty` -- Region singleton (AWS allows one GuardDuty detector per account+region; the detector has no name - identity = the region). Satellite references (S3 export bucket, KMS key) are conditional, so E2E fixtures ride scenario annotations.
+- `AwsCloudTrailEventDataStore` -- CloudTrail Lake: a queryable, immutable event data store with its own retention and billing lifecycle - no trail required. The KMS key reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsConfigAggregator` -- AWS Config cross-account/cross-region aggregation: the aggregator (collector side) and/or the reciprocal authorization grants (source-account side). Works with zero recorders; the org-source role reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsConfigConformancePack` -- An AWS Config conformance pack (account- or organization-scoped): a template bundle that creates its own Config rules. Deployment requires an active Config recorder in the region (a service-side requirement, not a spec reference), so E2E fixtures ride scenario annotations.
+- `AwsGuardDutyMalwareProtectionPlan` -- GuardDuty Malware Protection for S3: scans new objects in one bucket - a standalone plan protecting a bucket, not a detector satellite (its schema carries no detector reference). The execution role and the protected bucket are required references.
+- `AwsBackupVault` -- An AWS Backup vault - the encrypted container recovery points live in, as either a standard vault (with its lock, access policy, and notification satellites) or a logically air-gapped vault (AWS's own VaultType discriminator). The KMS and SNS references are conditional, so E2E fixtures ride scenario annotations. 1250 opens the backup sub-band (1250-1259).
+- `AwsBackupPlan` -- An AWS Backup plan: scheduled backup rules plus the resource selections that assign resources to them. AwsBackupVault is a prerequisite because every rule requires a target vault; the selections' IAM role is conditional and rides scenario annotations.
+- `AwsBackupFramework` -- A Backup Audit Manager framework: compliance controls evaluating backup posture. No schema-required references (the Config recorder its evaluations need is a lane fixture, not a spec reference).
+- `AwsBackupReportPlan` -- A Backup Audit Manager report plan: scheduled compliance/job reports delivered to S3. AwsS3Bucket is a prerequisite because the delivery channel's bucket is required.
+- `AwsBackupRestoreTestingPlan` -- An AWS Backup restore testing plan with its folded selections: scheduled restore tests proving recovery points actually restore. Vault targeting accepts the "*" wildcard, so fixtures are conditional and ride scenario annotations.
+- `AwsBackupSettings` -- Account/region settings singleton for AWS Backup: the account's global settings (cross-account backup) and the region's resource-type opt-in/management preferences. Both provider deletes are no-ops - settings persist after destroy.
+- `AwsSsmParameter` -- An SSM Parameter Store entry (String/StringList/SecureString). The parameter's name is an explicit spec field - names are hierarchical paths ("/prod/db/url") metadata.name cannot carry. The KMS reference is conditional (SecureString only), so E2E fixtures ride scenario annotations. 1260 opens the SSM sub-band (1260-1269).
+- `AwsSsmDocument` -- A customer-owned SSM document (Command/Automation/Session/...): reusable action definitions managed nodes and automations execute. State Manager associations are their own AwsSsmAssociation kind - an association binds ANY document (AWS-managed included), so it is not this document's satellite.
+- `AwsSsmMaintenanceWindow` -- An SSM maintenance window with its folded target registrations and tasks (Run Command / Automation / Lambda / Step Functions) - the targets and tasks are true window satellites (ForceNew window_id edges). Identity is the AWS-generated "mw-..." id.
+- `AwsSsmPatchBaseline` -- An SSM patch baseline with its folded patch-group registrations and the account/region default-baseline designation (delete RESTORES AWS's own predefined default for the OS). Identity is the AWS-generated "pb-..." id.
+- `AwsSsmAssociation` -- A State Manager association: the binding of an SSM document to targets on a schedule. Split from the document kind because the document reference is a free string with no structural edge - associations routinely bind AWS-managed documents (AWS-RunShellScript, ...) with no user document anywhere, so no registry prerequisite either. Identity is the AWS-generated association UUID.
+- `AwsOrganization` -- THE AWS Organization of the deploying account - creating it makes the caller the management account. Trusted service access, delegated administrators, the org's singleton resource policy, and centralized root-access management (IAM's organizations features - a management-account act requiring iam.amazonaws.com trusted access) fold in (none has a life of its own; the standalone service-access resource fights the org's own argument with a perpetual diff). Deleting this deletes the entire organization. 1270 opens the Organizations sub-band (1270-1279).
+- `AwsOrganizationalUnit` -- An organizational unit in the org's OU tree. The display name is an explicit spec field (OU names allow spaces metadata.name cannot carry); the parent reference (root or parent OU) is required and immutable, so the organization is a registry prerequisite.
+- `AwsOrganizationAccount` -- A MEMBER account of the organization: creation, OU placement, and the account-level settings satellites (alternate/primary contacts, opt-in region enablement) fold onto the created account's ID. Destroy is never a clean delete (remove-from-org or ~90-day close) - taught on the spec. No registry prerequisite by the schema-required-only rule (the OU parent reference is optional).
+- `AwsOrganizationPolicy` -- An Organizations policy (SCP and its twelve sibling types) with its folded attachments to roots, OUs, and member accounts. The policy type must be enabled on the organization first; AWS-managed policies are never adopted. No registry prerequisite by the schema-required-only rule (attachments are optional).
+- `AwsBudget` -- A Budgets budget (COST/USAGE/RI/Savings Plans coverage and utilization) with its folded budget actions as name-keyed satellites - an action exists only on its budget and fires an IAM-policy application, an SCP attachment, or SSM instance stops when a threshold breaches. Budgets is account-global (served from us-east-1; the spec region is the provider endpoint). 1280 opens the cost-management sub-band (1280-1289).
+- `AwsCostAnomalyMonitor` -- A Cost Explorer anomaly monitor (DIMENSIONAL over one dimension, or CUSTOM over a CE expression) with its folded alert subscriptions - a subscription's monitor list is the structural edge that makes it this monitor's satellite. Account-global; AWS identifies both by ARN.
+- `AwsCostCategory` -- A Cost Explorer cost category: ordered rules (regular expression rules or inherited-value rules) over the recursive CE expression tree, plus split-charge rules. The account's cost-allocation-tag activation toggle is deliberately NOT folded here - it is a per-tag-key account feature with no edge to any category, so many category instances would fight over one account object.
+- `AwsIamGroup` -- An IAM group with its folded declarative membership (the authoritative users list) and group policies - name-keyed inline documents plus managed-policy attachments. IAM is global; identity is the group name (renames update in place, the ARN recomputes). 1290 opens the IAM P1 sub-band (1290-1299).
+- `AwsIamSamlProvider` -- An IAM SAML identity provider: the account's federation trust anchor, created from the IdP's metadata XML (a public document carrying certificates, not a secret). Identity is the provider ARN; the name is write-once.
+- `AwsIamAccountSettings` -- Account settings singleton for IAM (a GLOBAL service - one object per ACCOUNT, not per region): the sign-in alias, the password policy, and the STS global-endpoint token version. Destroy contracts DIFFER per arm (each taught on its arm): the alias truly deletes, the password policy resets to AWS defaults, the STS preference is a no-op delete that persists.
+- `AwsCloudwatchDashboard` -- A CloudWatch dashboard: one named dashboard whose widget layout is the dashboard-body JSON document (modeled as a typed Struct, the catalog's uniform policy-document idiom). Dashboards are untaggable at AWS. Identity is the dashboard name; every change is an in-place PutDashboard upsert. 1300 opens the CloudWatch observability P1 sub-band (1300-1309).
+- `AwsCloudwatchSynthetics` -- CloudWatch Synthetics: a canary (a scheduled scripted probe running from an S3-staged code bundle under an execution role, writing run artifacts to S3) plus the grouping surface - owned groups and the canary's group associations (joins by group NAME, so shared groups are referenced, never fought over). A groups-only instance manages shared groups with no canary.
+- `AwsCloudwatchLogDelivery` -- CloudWatch Logs delivery: the two ways logs leave CloudWatch. The vended-log arm pivots on a delivery SOURCE (one AWS resource whose service vends logs) with name-keyed deliveries fanning out to delivery destinations (S3 / CloudWatch Logs / Firehose / X-Ray), each created inline or referenced by ARN. The cross-account arm is the legacy Kinesis subscription destination with its access policy (whose delete is a no-op at AWS - the policy persists).
+- `AwsCloudwatchLogAccountPolicy` -- A CloudWatch Logs account-level policy: one policy object per (name, type) pair per region - data protection, subscription filter, field index, transformer, or metric extraction - applied account-wide, optionally narrowed by selection criteria. Standalone account configuration, never a per-log-group satellite.
+- `AwsCloudwatchLogAnomalyDetector` -- A CloudWatch Logs anomaly detector: one detector trains over a LIST of log groups (multi-parent scope - never a single group's satellite), surfacing anomalies on a chosen evaluation frequency with a bounded visibility window.
+- `AwsCloudwatchLogResourcePolicy` -- A CloudWatch Logs resource policy: the account-scoped named policy (or resource-scoped policy on one log group ARN) that grants AWS services permission to write logs - Route53 query logging, EventBridge, and friends. Exactly one scope per instance.
+- `AwsManagedPrometheus` -- An Amazon Managed Prometheus workspace with its folded satellites: workspace configuration (retention, label-set limits - a created-via-update singleton whose delete is a no-op at AWS), the alert manager definition (strictly one per workspace), name-keyed rule group namespaces, query logging, the workspace resource policy, and alias-keyed anomaly detectors. Scrapers are deliberately NOT folded here - a scraper can target CloudWatch with zero AMP workspaces, so it is its own kind.
+- `AwsManagedPrometheusScraper` -- An Amazon Managed Prometheus scraper: the agentless collector. Source is an EKS cluster or a bare VPC placement (both replace-on-change); destination is an AMP workspace or a CloudWatch dataset. Carries its own scraper logging configuration satellite. Scrape configuration is optional on the EKS arm (AWS publishes a default, resolved at deploy) and required on the VPC arm.
+- `AwsEventBridgePipe` -- An EventBridge Pipe: one point-to-point integration reading from one source (SQS, Kinesis, DynamoDB streams, MSK or self-managed Kafka, ActiveMQ/RabbitMQ), optionally filtering and enriching in-flight, and delivering to one target (ECS, Batch, Lambda, Step Functions, Kinesis, SQS, Redshift, SageMaker, CloudWatch Logs, EventBridge buses, HTTP via API destinations). The source is fixed for life (replace-on-change); the target swaps in place. 1310 opens the EventBridge extras P1 sub-band (1310-1319).
+- `AwsEventBridgeScheduler` -- An EventBridge Scheduler schedule: cron/rate/one-time invocation of one target under an execution role, with flexible time windows, retry policy, and a dead-letter queue. The schedule GROUP is folded own-XOR-existing (a name-and-tags container - the provider's own update path is tags-only); unset means AWS's default group.
+- `AwsEventBridgeApiDestination` -- An EventBridge API destination with its connection: the authenticated HTTP(S) endpoint rules, pipes, and schedules invoke. Two independently deployable arms - the CONNECTION (the shareable auth trust anchor: api-key, basic, or OAuth credentials that AWS stores in Secrets Manager) and the DESTINATION (endpoint + method + rate limit) whose connection is owned inline or referenced by ARN.
+- `AwsVpcPeering` -- A VPC peering connection, as a request-XOR-accept mode union: the REQUEST arm creates the peering from its VPC toward a peer VPC (same-account auto-accept supported; cross-account/cross-region stays pending until accepted), the ACCEPT arm adopts and accepts a pending connection by ID from the accepter side. DNS-resolution options fold into both arms. 1320 opens the VPC networking P1 sub-band (1320-1329).
+- `AwsNetworkAcl` -- A network ACL: the stateless subnet-level firewall - ordered ingress/egress rules (allow or deny, evaluated by rule number) and the subnet associations, all folded in-line as the single declarative owner (the standalone rule/association resources are the same payload and fight the in-line form).
+- `AwsManagedPrefixList` -- A customer-managed prefix list: a named, versioned set of CIDR blocks that security-group rules, NACL rules, and route tables reference as one object. Entries fold in-line; max_entries is the capacity contract (referencing consumes that many rule slots regardless of how many entries exist).
+- `AwsEbsVolume` -- A standalone EBS volume as a create-XOR-copy union (fresh in a zone, or cloned from another volume) with attachments managed in-line. 1330 opens the block & object storage sub-band (1330-1339).
+- `AwsEbsSnapshot` -- An EBS snapshot as a three-way source union (snapshot a volume, copy a snapshot, or import a disk image) with archive tiering, fast snapshot restore, and cross-account share grants in-line.
+- `AwsS3DirectoryBucket` -- An S3 directory bucket (S3 Express One Zone): single-AZ, single-digit-millisecond object storage. The modules derive the mandated "{name}--{zone_id}--x-s3" bucket name.
+- `AwsS3TableBucket` -- An S3 table bucket (S3 Tables - managed Apache Iceberg storage) with its namespaces, tables, policies, and replication folded in-line as the single declarative owner.
+- `AwsS3VectorBucket` -- An S3 vector bucket (AI embedding storage with similarity query) with its vector indexes folded in-line - the natural backend for Bedrock knowledge bases.
+- `AwsDlmLifecyclePolicy` -- A Data Lifecycle Manager policy: account-level, tag-targeted snapshot/AMI automation (create, retain, archive, copy cross-region, share, deprecate) as a default-XOR-custom mode union. AwsIamRole is a prerequisite because DLM acts through a required execution role.
+- `AwsRoute53ResolverEndpoint` -- A Route 53 Resolver endpoint (the hybrid-DNS bridge between a VPC and outside networks) with its forwarding rules and their VPC associations managed in-line. Subnets place the ENIs and security groups guard them - both schema-required. 1340 opens the DNS & service discovery sub-band (1340-1349).
+- `AwsRoute53ResolverFirewall` -- A Route 53 Resolver DNS Firewall rule group with its domain lists, filtering rules, and VPC associations managed in-line - the DNS-layer block/allow policy for VPC egress queries. AwsVpc is a prerequisite because the association arm filters a referenced VPC.
+- `AwsRoute53ResolverQueryLog` -- A Resolver query logging configuration (every DNS query VPCs make through the resolver, to CloudWatch Logs / S3 / Firehose) with its VPC associations managed in-line. AwsVpc is a prerequisite because the association arm logs a referenced VPC.
+- `AwsCloudMapNamespace` -- An AWS Cloud Map namespace (HTTP-XOR-private-DNS-XOR-public-DNS) with its discoverable services and statically registered instances managed in-line - the service-discovery registry ECS and custom applications look each other up in. AwsVpc is a prerequisite because the private-DNS arm binds its hosted zone to a referenced VPC.
+- `AwsAppSyncApi` -- An AppSync API - AWS's managed API service, as a GraphQL API (SDL schema, resolvers over data sources, caching, the MERGED federation variant) XOR an Events API (real-time pub/sub over channel namespaces) - with its data sources, resolvers, functions, types, API keys, and custom domain managed in-line. Every backend reference (data source targets, roles, the certificate) is optional, so no registry prerequisite - lanes exercise the fixture-free arms.
+- `AwsLambdaLayer` -- A Lambda layer version - a shared code archive (libraries, custom runtimes) functions attach by ARN - with its cross-account and organization share grants managed in-line. The archive lives in S3 (an optional reference, so no registry prerequisite - lanes compose their own bucket fixture). 1351 sits in the app & data services sub-band (1350-1359; 1350 opens it with AwsAppSyncApi).
+- `AwsRdsProxy` -- An RDS Proxy - the managed connection pool between connection-hungry applications and a database - with its connection-pool tuning, additional endpoints, and database target managed in-line. AwsIamRole is a prerequisite because the proxy assumes a required role to read database credentials from Secrets Manager; AwsSubnet because the proxy's network interfaces require at least two subnets.
+- `AwsAuroraDsql` -- An Aurora DSQL cluster - serverless, PostgreSQL-compatible distributed SQL with active-active multi-region pairing managed in-line. No prerequisites: a single-region cluster deploys from defaults alone (the KMS and peer references are optional arms).
+- `AwsEcrRegistrySettings` -- Region settings singleton (one private ECR registry per account+region): the registry policy, scanning configuration, replication rules, pull-through cache rules, repository creation templates, account settings, and pull-time update exclusions. Repository-scoped surface stays on AwsEcrRepo.
+- `AwsPrivateCa` -- An AWS Private Certificate Authority with composed activation (a ROOT self-signs at apply; a subordinate activates from a parent AwsPrivateCa), issued certificates, the ACM renewal permission, and the resource policy managed in-line. No prerequisites: the S3 (CRL) and parent-CA references are optional arms.
+- `AwsSesAccountSettings` -- Account/region settings singleton (one SES account object per account+region): the suppression list and VDM posture. 1360 opens the SES P1 sub-band (1360-1369).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -2448,7 +2511,7 @@ Allowed values (use exactly as shown):
 - `AzureBackupPolicyVm` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules that govern IaaS VM backups.
 - `AzureBackupProtectedVm` -- An ARM child of its vault (.../protectedItems/...) -- the binding that puts one virtual machine under a backup policy's protection.
 - `AzureBackupPolicyFileShare` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules that govern Azure Files share backups (snapshot or vaulted).
-- `AzureBackupProtectedFileShare` -- An ARM child of its vault (.../protectedItems/AzureFileShare;...) -- the binding that puts one Azure Files share under a backup policy's protection. The share's storage account must already be registered with the vault (AzureBackupContainerStorageAccount).
+- `AzureBackupProtectedFileShare` -- An ARM child of its vault (.../protectedItems/AzureFileShare;...) -- the binding that puts one Azure Files share under a backup policy's protection. The share's storage account must already be registered with the vault (AzureBackupContainerStorageAccount). Prerequisite ORDER is load-bearing for teardown (destroy runs in reverse): the registration must list AFTER the share so it unregisters FIRST -- Azure Backup holds a DoNotDelete lock on a registered storage account, and a share delete under that lock fails ScopeLocked.
 - `AzureDataProtectionBackupVault` -- The Data Protection backup vault (Microsoft.DataProtection/ backupVaults) -- the safe that MODERN Azure Backup data lives in (managed disks, blob storage, AKS clusters, MySQL/PostgreSQL flexible servers, Data Lake storage). Backup policies and backup instances are ARM children of a vault.
 - `AzureDataProtectionBackupPolicy` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules for ONE Data Protection datasource type (blob storage, disk, Kubernetes cluster, MySQL/PostgreSQL flexible server, or Data Lake storage), modeled as one kind with variant blocks.
 - `AzureDataProtectionBackupInstance` -- An ARM child of its vault (.../backupInstances/{name}) -- the binding that puts ONE datasource (a managed disk, a storage account's blob services, an AKS cluster, a MySQL/PostgreSQL flexible server, or a Data Lake storage account) under a Data Protection backup policy, modeled as one kind with variant blocks. The vault's managed identity must hold the datasource roles Azure Backup requires BEFORE the instance is created.
@@ -2488,6 +2551,7 @@ Allowed values (use exactly as shown):
 - `AzureEventgridDomainTopic` -- One named event stream inside an Azure Event Grid domain ({domain_id}/topics/{name}) -- the per-tenant mailbox of the multi-tenant pattern: many per domain, each with its own subscriptions and lifecycle, tenants joining and leaving without touching the domain (which is why the domain topic is a standalone kind, exactly like AzureEventHubConsumerGroup on a shared hub). Part of the Event Grid family (2193-2194) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureEventgridNamespaceTopic` -- One named CloudEvents stream inside an Azure Event Grid namespace ({namespace_id}/topics/{name}) -- many per namespace, publishers and teams creating and deleting their own against the shared namespace (which is why the topic is a standalone kind, exactly like AzureEventgridDomainTopic and AzureEventHubConsumerGroup). Part of the Event Grid family (2193-2197) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureMongoClusterUser` -- Grants one Microsoft Entra principal access to an Azure Cosmos DB for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an access binding, not a password user: many per cluster, principals joining and leaving independently (which is why the grant is a standalone kind, the access-grant class of AzureRoleAssignment). Part of the Mongo vCore family (2211) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
+- `AzurePlantonRunner` -- AzureContainerAppEnvironment is a prerequisite because the runner appliance is a Container App, and every Container App runs inside an environment -- the environment reference must resolve before the appliance can deploy.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
@@ -2586,6 +2650,7 @@ Allowed values (use exactly as shown):
 - `GcpWorkflow`
 - `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
 - `GcpEventarcMessageBus`
+- `GcpPlantonRunner`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -2706,6 +2771,9 @@ Allowed values (use exactly as shown):
 - `KubernetesTemporal` -- 4170–4189: Kubernetes app platforms KubernetesPostgres is a prerequisite because the recommended (and E2E-proven) database composition backs Temporal's default and visibility stores with a CloudNativePG cluster.
 - `KubernetesNats`
 - `KubernetesLocust`
+- `KubernetesPlantonRunner`
+- `KubernetesPlantonOperator`
+- `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
 - `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
@@ -2737,18 +2805,6 @@ Allowed values (use exactly as shown):
 - `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
 - `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
 - `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
-- `CivoBucket` -- 6000–6999: Civo resources
-- `CivoCertificate`
-- `CivoComputeInstance`
-- `CivoDatabase`
-- `CivoDnsZone`
-- `CivoFirewall`
-- `CivoIpAddress`
-- `CivoKubernetesCluster`
-- `CivoKubernetesNodePool`
-- `CivoVolume`
-- `CivoVpc`
-- `CivoDnsRecord`
 - `CloudflareDnsZone` -- 7000–7999: Cloudflare resources
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
@@ -2788,128 +2844,6 @@ Allowed values (use exactly as shown):
 - `OpenFgaStore` -- 9000–9999: OpenFGA resources Note: OpenFGA is Terraform-only - there is no Pulumi provider available. Pulumi modules for OpenFGA resources are pass-through placeholders.
 - `OpenFgaAuthorizationModel`
 - `OpenFgaRelationshipTuple`
-- `OpenStackKeypair` -- 10000–10999: OpenStack resources
-- `OpenStackNetwork`
-- `OpenStackSubnet`
-- `OpenStackRouter`
-- `OpenStackRouterInterface`
-- `OpenStackSecurityGroup`
-- `OpenStackFloatingIp`
-- `OpenStackNetworkPort`
-- `OpenStackSecurityGroupRule`
-- `OpenStackFloatingIpAssociate`
-- `OpenStackInstance`
-- `OpenStackServerGroup`
-- `OpenStackVolume`
-- `OpenStackVolumeAttach`
-- `OpenStackProject`
-- `OpenStackApplicationCredential`
-- `OpenStackImage`
-- `OpenStackRoleAssignment`
-- `OpenStackLoadBalancer`
-- `OpenStackLoadBalancerListener`
-- `OpenStackLoadBalancerPool`
-- `OpenStackLoadBalancerMember`
-- `OpenStackLoadBalancerMonitor`
-- `OpenStackDnsZone`
-- `OpenStackDnsRecord`
-- `ScalewayVpc`
-- `ScalewayPrivateNetwork`
-- `ScalewayPublicGateway`
-- `ScalewayLoadBalancer`
-- `ScalewayInstanceSecurityGroup`
-- `ScalewayInstance`
-- `ScalewayKapsuleCluster`
-- `ScalewayKapsulePool`
-- `ScalewayRdbInstance`
-- `ScalewayRedisCluster`
-- `ScalewayMongodbInstance`
-- `ScalewayObjectBucket`
-- `ScalewayBlockVolume`
-- `ScalewayContainerRegistry`
-- `ScalewayDnsZone`
-- `ScalewayDnsRecord`
-- `ScalewayServerlessFunction`
-- `ScalewayServerlessContainer`
-- `AliCloudLogProject`
-- `AliCloudRamRole`
-- `AliCloudRamPolicy`
-- `AliCloudVpc`
-- `AliCloudVswitch`
-- `AliCloudSecurityGroup`
-- `AliCloudEipAddress`
-- `AliCloudNatGateway`
-- `AliCloudApplicationLoadBalancer`
-- `AliCloudNetworkLoadBalancer`
-- `AliCloudVpnGateway`
-- `AliCloudDnsZone`
-- `AliCloudDnsRecord`
-- `AliCloudPrivateDnsZone`
-- `AliCloudStorageBucket`
-- `AliCloudNasFileSystem`
-- `AliCloudKmsKey`
-- `AliCloudRdsInstance`
-- `AliCloudPolardbCluster`
-- `AliCloudRedisInstance`
-- `AliCloudMongodbInstance`
-- `AliCloudEcsInstance`
-- `AliCloudContainerRegistry`
-- `AliCloudKubernetesCluster`
-- `AliCloudKubernetesNodePool`
-- `AliCloudCdnDomain`
-- `AliCloudFunction`
-- `AliCloudSaeApplication`
-- `AliCloudRocketmqInstance`
-- `AliCloudCenInstance`
-- `OciVcn`
-- `OciSubnet`
-- `OciSecurityGroup`
-- `OciCompartment`
-- `OciIdentityPolicy`
-- `OciDynamicGroup`
-- `OciComputeInstance`
-- `OciContainerEngineCluster`
-- `OciContainerEngineNodePool`
-- `OciContainerInstance`
-- `OciApplicationLoadBalancer`
-- `OciNetworkLoadBalancer`
-- `OciDynamicRoutingGateway`
-- `OciPublicIp`
-- `OciAutonomousDatabase`
-- `OciDbSystem`
-- `OciMysqlDbSystem`
-- `OciPostgresqlDbSystem`
-- `OciRedisCluster`
-- `OciNosqlTable`
-- `OciObjectStorageBucket`
-- `OciFileSystem`
-- `OciBlockVolume`
-- `OciKmsVault`
-- `OciKmsKey`
-- `OciVaultSecret`
-- `OciBastion`
-- `OciFunctionsApplication`
-- `OciApiGateway`
-- `OciStreamPool`
-- `OciQueue`
-- `OciAlarm`
-- `OciLogGroup`
-- `OciDnsZone`
-- `OciDnsRecord`
-- `OciNetworkFirewall`
-- `OciDevopsProject`
-- `HetznerCloudSshKey`
-- `HetznerCloudPlacementGroup`
-- `HetznerCloudFirewall`
-- `HetznerCloudNetwork`
-- `HetznerCloudPrimaryIp`
-- `HetznerCloudFloatingIp`
-- `HetznerCloudServer`
-- `HetznerCloudVolume`
-- `HetznerCloudSnapshot`
-- `HetznerCloudCertificate`
-- `HetznerCloudLoadBalancer`
-- `HetznerCloudDnsZone`
 
 ### spec.jobTemplate.container.app.env.secrets[].valueFrom.env
 
@@ -3692,6 +3626,43 @@ For StatefulSets, this can be the name of a volumeClaimTemplate.
 Whether the PVC should be mounted read-only.
 Default is false.
 
+### spec.jobTemplate.container.app.volumeMounts[].serviceAccountToken
+
+`ServiceAccountTokenVolumeSource`
+
+Projected ServiceAccount token volume source.
+Use this to mount a short-lived, audience-bound identity token that the
+kubelet issues for the pod's ServiceAccount and rotates automatically.
+
+### spec.jobTemplate.container.app.volumeMounts[].serviceAccountToken.audience
+
+`string` · required
+
+Intended audience of the token. The receiving service must identify
+itself with this audience when verifying the token; a token minted for a
+different audience is rejected. Required: an audience-less token would be
+replayable against any service in the cluster.
+
+- rule: {"required":true}
+
+### spec.jobTemplate.container.app.volumeMounts[].serviceAccountToken.expirationSeconds
+
+`int64`
+
+Requested lifetime of the token in seconds. The kubelet starts rotating
+the token when it passes 80% of its lifetime or 24 hours, whichever is
+shorter. Defaults to 3600 (1 hour). The Kubernetes API enforces a
+minimum of 600 (10 minutes).
+
+- rule: Expiration must be at least 600 seconds (the Kubernetes API minimum)
+
+### spec.jobTemplate.container.app.volumeMounts[].serviceAccountToken.path
+
+`string`
+
+Filename for the token relative to the mount path.
+Defaults to "token".
+
 ### spec.jobTemplate.container.app.lifecycle
 
 `WorkloadContainerLifecycle`
@@ -4231,9 +4202,6 @@ Allowed values (use exactly as shown):
 - `unspecified` -- 0: Default/unspecified
 - `TestCloudResourceGeneric` -- 1–49: Test/dev/custom
 - `TestCloudResourceKubernetes`
-- `ConfluentKafka` -- 50–199: saas platform resources
-- `AtlasMongodb`
-- `SnowflakeDatabase`
 - `AwsAlb` -- 1000–1999: AWS resources AwsSubnet is a prerequisite because an ALB requires at least two subnets in different availability zones -- the spec's subnet references must resolve before the load balancer can be created.
 - `AwsCertManagerCert`
 - `AwsCloudFront`
@@ -4346,6 +4314,99 @@ Allowed values (use exactly as shown):
 - `AwsRoute53HealthCheck`
 - `AwsSesConfigurationSet` -- Both SES kinds are dependency-free leaves: an identity's configuration set is optional composition (scenarios declare it via the e2e-prerequisites annotation), and a configuration set's event destinations reference other kinds only optionally.
 - `AwsSesEmailIdentity`
+- `AwsSecretsManagerSecret` -- A dependency-free leaf: the KMS key, rotation Lambda, and external rotation role references are all optional composition -- scenarios declare them via the e2e-prerequisites annotation, never registry edges.
+- `AwsOpenSearchServerlessCollection` -- A dependency-free leaf: the collection-scoped encryption/network/ data-access/retention policies are module-rendered, and the KMS key and data-access principal references are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockGuardrail` -- A dependency-free leaf: the KMS key reference is optional composition (e2e-prerequisites annotation); published versions are folded satellites of the guardrail itself.
+- `AwsBedrockCustomModel` -- AwsIamRole is a prerequisite because Bedrock assumes the job role to read training data and write outputs; the S3 locations and KMS key are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockInferenceProfile` -- A dependency-free leaf: the model source is a foundation model or an AWS system-defined cross-region profile, never a customer resource.
+- `AwsBedrockProvisionedThroughput` -- A dependency-free leaf in the registry: capacity is typically bought for an AwsBedrockCustomModel (the default reference), but foundation model ARNs are equally legal, so the edge is optional composition.
+- `AwsBedrockModelAccess` -- A dependency-free leaf: the agreement covers an AWS-listed foundation model, never a customer resource.
+- `AwsBedrockInvocationLogging` -- Region settings singleton (one invocation-logging configuration per account+region; identity = the region). Delivery destinations are optional references (at least one of CloudWatch/S3, enforced by CEL), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsBedrockAgent` -- AwsIamRole is a prerequisite because the Bedrock service assumes the agent resource role to invoke models, action-group Lambdas, and knowledge bases; the guardrail, KMS key, provisioned throughput, and collaborator/knowledge-base edges are optional composition (e2e-prerequisites annotation). Action groups, aliases, collaborators, and knowledge-base associations are folded satellites of the agent.
+- `AwsBedrockKnowledgeBase` -- AwsIamRole is a prerequisite because the Bedrock service assumes the knowledge-base role to read data sources, call the embedding model, and read/write the vector store; the vector-store and data-source reference edges (OpenSearch, S3, Secrets Manager, ...) are optional composition (e2e-prerequisites annotation). Data sources are folded satellites of the knowledge base.
+- `AwsBedrockFlow` -- AwsIamRole is a prerequisite because the Bedrock service assumes the flow execution role to invoke the models, agents, knowledge bases, and Lambdas its nodes reference; the node-level reference edges are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockPrompt` -- A dependency-free leaf: variants target AWS-listed foundation models by ID; targeting another agent's alias is optional composition (e2e-prerequisites annotation).
+- `AwsBedrockAgentCoreRuntime` -- AwsIamRole is a prerequisite because the AgentCore service assumes the runtime role to pull the container image or read the S3 code bundle and to run the hosted agent; the code-bundle S3 bucket and VPC placement edges are optional composition (e2e-prerequisites annotation). Endpoints and the runtime's resource policy are folded satellites of the runtime.
+- `AwsBedrockAgentCoreGateway` -- AwsIamRole is a prerequisite because the gateway assumes its role to reach targets (invoke Lambdas, sign SigV4 requests); the target and credential-provider reference edges (runtime, Lambda, Identity providers, policy engine) are optional composition (e2e-prerequisites annotation). Targets are folded satellites of the gateway - AWS deletes them before the gateway at destroy.
+- `AwsBedrockAgentCoreMemory` -- A dependency-free leaf for built-in strategies: the execution role (custom strategies, Kinesis delivery), KMS key, and Kinesis stream edges are optional composition (e2e-prerequisites annotation). Strategies are folded satellites of the memory - AWS serializes their changes through the parent.
+- `AwsBedrockAgentCoreIdentity` -- A dependency-free leaf: workload identities, credential providers, and the Cedar policy engine with its policies are all name-keyed arms of one identity-and-access bundle; the KMS key edge is optional composition (e2e-prerequisites annotation). The account/region token-vault CMK is deliberately NOT modeled here (settings singleton).
+- `AwsBedrockAgentCoreTools` -- A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution role (recordings, certificates), S3, Secrets Manager, and VPC edges are optional composition (e2e-prerequisites annotation). Browsers, profiles, and code interpreters are name-keyed arms of one tools bundle; AWS exposes no update - every field change recreates the tool.
+- `AwsBedrockAgentCoreEvaluation` -- The AgentCore Evaluations bundle - evaluators (LLM-judge or Lambda scorers), harnesses (repeatable agent test benches), and online evaluation configs (continuous scoring of sampled production sessions). Deploys standalone - no arm requires an agent runtime to exist. No registry prerequisite: every arm is optional, so no dependency is required for the kind to function (scenarios compose IAM roles via annotations).
+- `AwsBedrockAgentCoreTokenVault` -- Account/region settings singleton: sets the KMS key on the ONE default AgentCore token vault. The KMS reference is conditional on key_type (CEL-enforced), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsSagemakerModel` -- The immutable serving definition (container image + artifacts + execution role) that endpoints deploy - one container or an inference pipeline.
+- `AwsSagemakerEndpoint` -- A real-time inference endpoint WITH its folded endpoint configuration - the configuration is immutable upstream, so the modules roll name-suffixed configurations create-before-destroy and repoint the endpoint.
+- `AwsSagemakerNotebookInstance` -- A managed Jupyter notebook EC2 instance with its folded lifecycle configuration (bootstrap scripts).
+- `AwsSagemakerFeatureGroup` -- A Feature Store feature group - online and/or offline stores over a declared feature schema.
+- `AwsSagemakerModelRegistry` -- A model registry package group with its folded resource policy - model package VERSIONS register into it imperatively (training pipelines), never declaratively.
+- `AwsSagemakerPipeline` -- An ML workflow DAG (the SageMaker pipeline-definition JSON) that executions run against - free to create, billed per execution.
+- `AwsSagemakerImage` -- A named registry entry exposing YOUR container images to Studio, with folded AWS-numbered versions (append-only by position).
+- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; Small ~$0.6/hour). The serverless successor is AwsSagemakerMlflowApp.
+- `AwsSagemakerMlflowApp` -- The serverless MLflow 3.x deployment (billed per use) - standalone, associating with SageMaker domains; NOT a tracking-server satellite.
+- `AwsRestApiGateway` -- A full REST API (API Gateway v1): the resource/method tree with inline integrations (or an imported OpenAPI document), one stage with an explicit hash-triggered deployment, and the API-scoped satellites (authorizers, models, validators, gateway responses, policy, documentation, client certificate). Self-contained: a MOCK-integration API needs no other resource.
+- `AwsRestApiDomain` -- A custom domain for REST APIs with base-path mappings and - for PRIVATE domains - VPC-endpoint access associations. AwsCertManagerCert is a prerequisite because the domain cannot be created without a TLS certificate covering it.
+- `AwsRestApiUsagePlan` -- A usage plan metering REST API consumers - stage coverage, quota, throttles, and the API keys it admits. No registry prerequisite: a plan is valid with no stage coverage (scenarios compose the REST API via annotations).
+- `AwsRestApiVpcLink` -- A REST API VPC link fronting an internal Network Load Balancer so REST integrations reach private services. AwsNlb is a prerequisite because AWS rejects link creation without the target balancer.
+- `AwsApiGatewayAccountSettings` -- Region settings singleton (one API Gateway account object per account+region; identity = the region). The CloudWatch role is an optional reference (unset = the explicit no-logging posture), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsCloudTrail` -- The account's API audit trail. AwsS3Bucket is a prerequisite because AWS rejects trail creation without a delivery bucket carrying the CloudTrail service-principal policy. 1240 opens the governance sub-band (1240-1249).
+- `AwsConfigRecorder` -- Region singleton (one AWS Config recorder per region, named "default" by AWS; identity = the region). AwsIamRole is a prerequisite because the recorder cannot exist without its service role.
+- `AwsConfigRule` -- One AWS Config compliance rule (managed, custom-lambda, or custom-policy; account- or organization-scoped) with optional auto-remediation. Managed rules need no prerequisites; the custom-lambda arm's function reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsGuardDuty` -- Region singleton (AWS allows one GuardDuty detector per account+region; the detector has no name - identity = the region). Satellite references (S3 export bucket, KMS key) are conditional, so E2E fixtures ride scenario annotations.
+- `AwsCloudTrailEventDataStore` -- CloudTrail Lake: a queryable, immutable event data store with its own retention and billing lifecycle - no trail required. The KMS key reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsConfigAggregator` -- AWS Config cross-account/cross-region aggregation: the aggregator (collector side) and/or the reciprocal authorization grants (source-account side). Works with zero recorders; the org-source role reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsConfigConformancePack` -- An AWS Config conformance pack (account- or organization-scoped): a template bundle that creates its own Config rules. Deployment requires an active Config recorder in the region (a service-side requirement, not a spec reference), so E2E fixtures ride scenario annotations.
+- `AwsGuardDutyMalwareProtectionPlan` -- GuardDuty Malware Protection for S3: scans new objects in one bucket - a standalone plan protecting a bucket, not a detector satellite (its schema carries no detector reference). The execution role and the protected bucket are required references.
+- `AwsBackupVault` -- An AWS Backup vault - the encrypted container recovery points live in, as either a standard vault (with its lock, access policy, and notification satellites) or a logically air-gapped vault (AWS's own VaultType discriminator). The KMS and SNS references are conditional, so E2E fixtures ride scenario annotations. 1250 opens the backup sub-band (1250-1259).
+- `AwsBackupPlan` -- An AWS Backup plan: scheduled backup rules plus the resource selections that assign resources to them. AwsBackupVault is a prerequisite because every rule requires a target vault; the selections' IAM role is conditional and rides scenario annotations.
+- `AwsBackupFramework` -- A Backup Audit Manager framework: compliance controls evaluating backup posture. No schema-required references (the Config recorder its evaluations need is a lane fixture, not a spec reference).
+- `AwsBackupReportPlan` -- A Backup Audit Manager report plan: scheduled compliance/job reports delivered to S3. AwsS3Bucket is a prerequisite because the delivery channel's bucket is required.
+- `AwsBackupRestoreTestingPlan` -- An AWS Backup restore testing plan with its folded selections: scheduled restore tests proving recovery points actually restore. Vault targeting accepts the "*" wildcard, so fixtures are conditional and ride scenario annotations.
+- `AwsBackupSettings` -- Account/region settings singleton for AWS Backup: the account's global settings (cross-account backup) and the region's resource-type opt-in/management preferences. Both provider deletes are no-ops - settings persist after destroy.
+- `AwsSsmParameter` -- An SSM Parameter Store entry (String/StringList/SecureString). The parameter's name is an explicit spec field - names are hierarchical paths ("/prod/db/url") metadata.name cannot carry. The KMS reference is conditional (SecureString only), so E2E fixtures ride scenario annotations. 1260 opens the SSM sub-band (1260-1269).
+- `AwsSsmDocument` -- A customer-owned SSM document (Command/Automation/Session/...): reusable action definitions managed nodes and automations execute. State Manager associations are their own AwsSsmAssociation kind - an association binds ANY document (AWS-managed included), so it is not this document's satellite.
+- `AwsSsmMaintenanceWindow` -- An SSM maintenance window with its folded target registrations and tasks (Run Command / Automation / Lambda / Step Functions) - the targets and tasks are true window satellites (ForceNew window_id edges). Identity is the AWS-generated "mw-..." id.
+- `AwsSsmPatchBaseline` -- An SSM patch baseline with its folded patch-group registrations and the account/region default-baseline designation (delete RESTORES AWS's own predefined default for the OS). Identity is the AWS-generated "pb-..." id.
+- `AwsSsmAssociation` -- A State Manager association: the binding of an SSM document to targets on a schedule. Split from the document kind because the document reference is a free string with no structural edge - associations routinely bind AWS-managed documents (AWS-RunShellScript, ...) with no user document anywhere, so no registry prerequisite either. Identity is the AWS-generated association UUID.
+- `AwsOrganization` -- THE AWS Organization of the deploying account - creating it makes the caller the management account. Trusted service access, delegated administrators, the org's singleton resource policy, and centralized root-access management (IAM's organizations features - a management-account act requiring iam.amazonaws.com trusted access) fold in (none has a life of its own; the standalone service-access resource fights the org's own argument with a perpetual diff). Deleting this deletes the entire organization. 1270 opens the Organizations sub-band (1270-1279).
+- `AwsOrganizationalUnit` -- An organizational unit in the org's OU tree. The display name is an explicit spec field (OU names allow spaces metadata.name cannot carry); the parent reference (root or parent OU) is required and immutable, so the organization is a registry prerequisite.
+- `AwsOrganizationAccount` -- A MEMBER account of the organization: creation, OU placement, and the account-level settings satellites (alternate/primary contacts, opt-in region enablement) fold onto the created account's ID. Destroy is never a clean delete (remove-from-org or ~90-day close) - taught on the spec. No registry prerequisite by the schema-required-only rule (the OU parent reference is optional).
+- `AwsOrganizationPolicy` -- An Organizations policy (SCP and its twelve sibling types) with its folded attachments to roots, OUs, and member accounts. The policy type must be enabled on the organization first; AWS-managed policies are never adopted. No registry prerequisite by the schema-required-only rule (attachments are optional).
+- `AwsBudget` -- A Budgets budget (COST/USAGE/RI/Savings Plans coverage and utilization) with its folded budget actions as name-keyed satellites - an action exists only on its budget and fires an IAM-policy application, an SCP attachment, or SSM instance stops when a threshold breaches. Budgets is account-global (served from us-east-1; the spec region is the provider endpoint). 1280 opens the cost-management sub-band (1280-1289).
+- `AwsCostAnomalyMonitor` -- A Cost Explorer anomaly monitor (DIMENSIONAL over one dimension, or CUSTOM over a CE expression) with its folded alert subscriptions - a subscription's monitor list is the structural edge that makes it this monitor's satellite. Account-global; AWS identifies both by ARN.
+- `AwsCostCategory` -- A Cost Explorer cost category: ordered rules (regular expression rules or inherited-value rules) over the recursive CE expression tree, plus split-charge rules. The account's cost-allocation-tag activation toggle is deliberately NOT folded here - it is a per-tag-key account feature with no edge to any category, so many category instances would fight over one account object.
+- `AwsIamGroup` -- An IAM group with its folded declarative membership (the authoritative users list) and group policies - name-keyed inline documents plus managed-policy attachments. IAM is global; identity is the group name (renames update in place, the ARN recomputes). 1290 opens the IAM P1 sub-band (1290-1299).
+- `AwsIamSamlProvider` -- An IAM SAML identity provider: the account's federation trust anchor, created from the IdP's metadata XML (a public document carrying certificates, not a secret). Identity is the provider ARN; the name is write-once.
+- `AwsIamAccountSettings` -- Account settings singleton for IAM (a GLOBAL service - one object per ACCOUNT, not per region): the sign-in alias, the password policy, and the STS global-endpoint token version. Destroy contracts DIFFER per arm (each taught on its arm): the alias truly deletes, the password policy resets to AWS defaults, the STS preference is a no-op delete that persists.
+- `AwsCloudwatchDashboard` -- A CloudWatch dashboard: one named dashboard whose widget layout is the dashboard-body JSON document (modeled as a typed Struct, the catalog's uniform policy-document idiom). Dashboards are untaggable at AWS. Identity is the dashboard name; every change is an in-place PutDashboard upsert. 1300 opens the CloudWatch observability P1 sub-band (1300-1309).
+- `AwsCloudwatchSynthetics` -- CloudWatch Synthetics: a canary (a scheduled scripted probe running from an S3-staged code bundle under an execution role, writing run artifacts to S3) plus the grouping surface - owned groups and the canary's group associations (joins by group NAME, so shared groups are referenced, never fought over). A groups-only instance manages shared groups with no canary.
+- `AwsCloudwatchLogDelivery` -- CloudWatch Logs delivery: the two ways logs leave CloudWatch. The vended-log arm pivots on a delivery SOURCE (one AWS resource whose service vends logs) with name-keyed deliveries fanning out to delivery destinations (S3 / CloudWatch Logs / Firehose / X-Ray), each created inline or referenced by ARN. The cross-account arm is the legacy Kinesis subscription destination with its access policy (whose delete is a no-op at AWS - the policy persists).
+- `AwsCloudwatchLogAccountPolicy` -- A CloudWatch Logs account-level policy: one policy object per (name, type) pair per region - data protection, subscription filter, field index, transformer, or metric extraction - applied account-wide, optionally narrowed by selection criteria. Standalone account configuration, never a per-log-group satellite.
+- `AwsCloudwatchLogAnomalyDetector` -- A CloudWatch Logs anomaly detector: one detector trains over a LIST of log groups (multi-parent scope - never a single group's satellite), surfacing anomalies on a chosen evaluation frequency with a bounded visibility window.
+- `AwsCloudwatchLogResourcePolicy` -- A CloudWatch Logs resource policy: the account-scoped named policy (or resource-scoped policy on one log group ARN) that grants AWS services permission to write logs - Route53 query logging, EventBridge, and friends. Exactly one scope per instance.
+- `AwsManagedPrometheus` -- An Amazon Managed Prometheus workspace with its folded satellites: workspace configuration (retention, label-set limits - a created-via-update singleton whose delete is a no-op at AWS), the alert manager definition (strictly one per workspace), name-keyed rule group namespaces, query logging, the workspace resource policy, and alias-keyed anomaly detectors. Scrapers are deliberately NOT folded here - a scraper can target CloudWatch with zero AMP workspaces, so it is its own kind.
+- `AwsManagedPrometheusScraper` -- An Amazon Managed Prometheus scraper: the agentless collector. Source is an EKS cluster or a bare VPC placement (both replace-on-change); destination is an AMP workspace or a CloudWatch dataset. Carries its own scraper logging configuration satellite. Scrape configuration is optional on the EKS arm (AWS publishes a default, resolved at deploy) and required on the VPC arm.
+- `AwsEventBridgePipe` -- An EventBridge Pipe: one point-to-point integration reading from one source (SQS, Kinesis, DynamoDB streams, MSK or self-managed Kafka, ActiveMQ/RabbitMQ), optionally filtering and enriching in-flight, and delivering to one target (ECS, Batch, Lambda, Step Functions, Kinesis, SQS, Redshift, SageMaker, CloudWatch Logs, EventBridge buses, HTTP via API destinations). The source is fixed for life (replace-on-change); the target swaps in place. 1310 opens the EventBridge extras P1 sub-band (1310-1319).
+- `AwsEventBridgeScheduler` -- An EventBridge Scheduler schedule: cron/rate/one-time invocation of one target under an execution role, with flexible time windows, retry policy, and a dead-letter queue. The schedule GROUP is folded own-XOR-existing (a name-and-tags container - the provider's own update path is tags-only); unset means AWS's default group.
+- `AwsEventBridgeApiDestination` -- An EventBridge API destination with its connection: the authenticated HTTP(S) endpoint rules, pipes, and schedules invoke. Two independently deployable arms - the CONNECTION (the shareable auth trust anchor: api-key, basic, or OAuth credentials that AWS stores in Secrets Manager) and the DESTINATION (endpoint + method + rate limit) whose connection is owned inline or referenced by ARN.
+- `AwsVpcPeering` -- A VPC peering connection, as a request-XOR-accept mode union: the REQUEST arm creates the peering from its VPC toward a peer VPC (same-account auto-accept supported; cross-account/cross-region stays pending until accepted), the ACCEPT arm adopts and accepts a pending connection by ID from the accepter side. DNS-resolution options fold into both arms. 1320 opens the VPC networking P1 sub-band (1320-1329).
+- `AwsNetworkAcl` -- A network ACL: the stateless subnet-level firewall - ordered ingress/egress rules (allow or deny, evaluated by rule number) and the subnet associations, all folded in-line as the single declarative owner (the standalone rule/association resources are the same payload and fight the in-line form).
+- `AwsManagedPrefixList` -- A customer-managed prefix list: a named, versioned set of CIDR blocks that security-group rules, NACL rules, and route tables reference as one object. Entries fold in-line; max_entries is the capacity contract (referencing consumes that many rule slots regardless of how many entries exist).
+- `AwsEbsVolume` -- A standalone EBS volume as a create-XOR-copy union (fresh in a zone, or cloned from another volume) with attachments managed in-line. 1330 opens the block & object storage sub-band (1330-1339).
+- `AwsEbsSnapshot` -- An EBS snapshot as a three-way source union (snapshot a volume, copy a snapshot, or import a disk image) with archive tiering, fast snapshot restore, and cross-account share grants in-line.
+- `AwsS3DirectoryBucket` -- An S3 directory bucket (S3 Express One Zone): single-AZ, single-digit-millisecond object storage. The modules derive the mandated "{name}--{zone_id}--x-s3" bucket name.
+- `AwsS3TableBucket` -- An S3 table bucket (S3 Tables - managed Apache Iceberg storage) with its namespaces, tables, policies, and replication folded in-line as the single declarative owner.
+- `AwsS3VectorBucket` -- An S3 vector bucket (AI embedding storage with similarity query) with its vector indexes folded in-line - the natural backend for Bedrock knowledge bases.
+- `AwsDlmLifecyclePolicy` -- A Data Lifecycle Manager policy: account-level, tag-targeted snapshot/AMI automation (create, retain, archive, copy cross-region, share, deprecate) as a default-XOR-custom mode union. AwsIamRole is a prerequisite because DLM acts through a required execution role.
+- `AwsRoute53ResolverEndpoint` -- A Route 53 Resolver endpoint (the hybrid-DNS bridge between a VPC and outside networks) with its forwarding rules and their VPC associations managed in-line. Subnets place the ENIs and security groups guard them - both schema-required. 1340 opens the DNS & service discovery sub-band (1340-1349).
+- `AwsRoute53ResolverFirewall` -- A Route 53 Resolver DNS Firewall rule group with its domain lists, filtering rules, and VPC associations managed in-line - the DNS-layer block/allow policy for VPC egress queries. AwsVpc is a prerequisite because the association arm filters a referenced VPC.
+- `AwsRoute53ResolverQueryLog` -- A Resolver query logging configuration (every DNS query VPCs make through the resolver, to CloudWatch Logs / S3 / Firehose) with its VPC associations managed in-line. AwsVpc is a prerequisite because the association arm logs a referenced VPC.
+- `AwsCloudMapNamespace` -- An AWS Cloud Map namespace (HTTP-XOR-private-DNS-XOR-public-DNS) with its discoverable services and statically registered instances managed in-line - the service-discovery registry ECS and custom applications look each other up in. AwsVpc is a prerequisite because the private-DNS arm binds its hosted zone to a referenced VPC.
+- `AwsAppSyncApi` -- An AppSync API - AWS's managed API service, as a GraphQL API (SDL schema, resolvers over data sources, caching, the MERGED federation variant) XOR an Events API (real-time pub/sub over channel namespaces) - with its data sources, resolvers, functions, types, API keys, and custom domain managed in-line. Every backend reference (data source targets, roles, the certificate) is optional, so no registry prerequisite - lanes exercise the fixture-free arms.
+- `AwsLambdaLayer` -- A Lambda layer version - a shared code archive (libraries, custom runtimes) functions attach by ARN - with its cross-account and organization share grants managed in-line. The archive lives in S3 (an optional reference, so no registry prerequisite - lanes compose their own bucket fixture). 1351 sits in the app & data services sub-band (1350-1359; 1350 opens it with AwsAppSyncApi).
+- `AwsRdsProxy` -- An RDS Proxy - the managed connection pool between connection-hungry applications and a database - with its connection-pool tuning, additional endpoints, and database target managed in-line. AwsIamRole is a prerequisite because the proxy assumes a required role to read database credentials from Secrets Manager; AwsSubnet because the proxy's network interfaces require at least two subnets.
+- `AwsAuroraDsql` -- An Aurora DSQL cluster - serverless, PostgreSQL-compatible distributed SQL with active-active multi-region pairing managed in-line. No prerequisites: a single-region cluster deploys from defaults alone (the KMS and peer references are optional arms).
+- `AwsEcrRegistrySettings` -- Region settings singleton (one private ECR registry per account+region): the registry policy, scanning configuration, replication rules, pull-through cache rules, repository creation templates, account settings, and pull-time update exclusions. Repository-scoped surface stays on AwsEcrRepo.
+- `AwsPrivateCa` -- An AWS Private Certificate Authority with composed activation (a ROOT self-signs at apply; a subordinate activates from a parent AwsPrivateCa), issued certificates, the ACM renewal permission, and the resource policy managed in-line. No prerequisites: the S3 (CRL) and parent-CA references are optional arms.
+- `AwsSesAccountSettings` -- Account/region settings singleton (one SES account object per account+region): the suppression list and VDM posture. 1360 opens the SES P1 sub-band (1360-1369).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -4490,7 +4551,7 @@ Allowed values (use exactly as shown):
 - `AzureBackupPolicyVm` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules that govern IaaS VM backups.
 - `AzureBackupProtectedVm` -- An ARM child of its vault (.../protectedItems/...) -- the binding that puts one virtual machine under a backup policy's protection.
 - `AzureBackupPolicyFileShare` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules that govern Azure Files share backups (snapshot or vaulted).
-- `AzureBackupProtectedFileShare` -- An ARM child of its vault (.../protectedItems/AzureFileShare;...) -- the binding that puts one Azure Files share under a backup policy's protection. The share's storage account must already be registered with the vault (AzureBackupContainerStorageAccount).
+- `AzureBackupProtectedFileShare` -- An ARM child of its vault (.../protectedItems/AzureFileShare;...) -- the binding that puts one Azure Files share under a backup policy's protection. The share's storage account must already be registered with the vault (AzureBackupContainerStorageAccount). Prerequisite ORDER is load-bearing for teardown (destroy runs in reverse): the registration must list AFTER the share so it unregisters FIRST -- Azure Backup holds a DoNotDelete lock on a registered storage account, and a share delete under that lock fails ScopeLocked.
 - `AzureDataProtectionBackupVault` -- The Data Protection backup vault (Microsoft.DataProtection/ backupVaults) -- the safe that MODERN Azure Backup data lives in (managed disks, blob storage, AKS clusters, MySQL/PostgreSQL flexible servers, Data Lake storage). Backup policies and backup instances are ARM children of a vault.
 - `AzureDataProtectionBackupPolicy` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules for ONE Data Protection datasource type (blob storage, disk, Kubernetes cluster, MySQL/PostgreSQL flexible server, or Data Lake storage), modeled as one kind with variant blocks.
 - `AzureDataProtectionBackupInstance` -- An ARM child of its vault (.../backupInstances/{name}) -- the binding that puts ONE datasource (a managed disk, a storage account's blob services, an AKS cluster, a MySQL/PostgreSQL flexible server, or a Data Lake storage account) under a Data Protection backup policy, modeled as one kind with variant blocks. The vault's managed identity must hold the datasource roles Azure Backup requires BEFORE the instance is created.
@@ -4530,6 +4591,7 @@ Allowed values (use exactly as shown):
 - `AzureEventgridDomainTopic` -- One named event stream inside an Azure Event Grid domain ({domain_id}/topics/{name}) -- the per-tenant mailbox of the multi-tenant pattern: many per domain, each with its own subscriptions and lifecycle, tenants joining and leaving without touching the domain (which is why the domain topic is a standalone kind, exactly like AzureEventHubConsumerGroup on a shared hub). Part of the Event Grid family (2193-2194) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureEventgridNamespaceTopic` -- One named CloudEvents stream inside an Azure Event Grid namespace ({namespace_id}/topics/{name}) -- many per namespace, publishers and teams creating and deleting their own against the shared namespace (which is why the topic is a standalone kind, exactly like AzureEventgridDomainTopic and AzureEventHubConsumerGroup). Part of the Event Grid family (2193-2197) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureMongoClusterUser` -- Grants one Microsoft Entra principal access to an Azure Cosmos DB for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an access binding, not a password user: many per cluster, principals joining and leaving independently (which is why the grant is a standalone kind, the access-grant class of AzureRoleAssignment). Part of the Mongo vCore family (2211) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
+- `AzurePlantonRunner` -- AzureContainerAppEnvironment is a prerequisite because the runner appliance is a Container App, and every Container App runs inside an environment -- the environment reference must resolve before the appliance can deploy.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
@@ -4628,6 +4690,7 @@ Allowed values (use exactly as shown):
 - `GcpWorkflow`
 - `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
 - `GcpEventarcMessageBus`
+- `GcpPlantonRunner`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -4748,6 +4811,9 @@ Allowed values (use exactly as shown):
 - `KubernetesTemporal` -- 4170–4189: Kubernetes app platforms KubernetesPostgres is a prerequisite because the recommended (and E2E-proven) database composition backs Temporal's default and visibility stores with a CloudNativePG cluster.
 - `KubernetesNats`
 - `KubernetesLocust`
+- `KubernetesPlantonRunner`
+- `KubernetesPlantonOperator`
+- `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
 - `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
@@ -4779,18 +4845,6 @@ Allowed values (use exactly as shown):
 - `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
 - `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
 - `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
-- `CivoBucket` -- 6000–6999: Civo resources
-- `CivoCertificate`
-- `CivoComputeInstance`
-- `CivoDatabase`
-- `CivoDnsZone`
-- `CivoFirewall`
-- `CivoIpAddress`
-- `CivoKubernetesCluster`
-- `CivoKubernetesNodePool`
-- `CivoVolume`
-- `CivoVpc`
-- `CivoDnsRecord`
 - `CloudflareDnsZone` -- 7000–7999: Cloudflare resources
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
@@ -4830,128 +4884,6 @@ Allowed values (use exactly as shown):
 - `OpenFgaStore` -- 9000–9999: OpenFGA resources Note: OpenFGA is Terraform-only - there is no Pulumi provider available. Pulumi modules for OpenFGA resources are pass-through placeholders.
 - `OpenFgaAuthorizationModel`
 - `OpenFgaRelationshipTuple`
-- `OpenStackKeypair` -- 10000–10999: OpenStack resources
-- `OpenStackNetwork`
-- `OpenStackSubnet`
-- `OpenStackRouter`
-- `OpenStackRouterInterface`
-- `OpenStackSecurityGroup`
-- `OpenStackFloatingIp`
-- `OpenStackNetworkPort`
-- `OpenStackSecurityGroupRule`
-- `OpenStackFloatingIpAssociate`
-- `OpenStackInstance`
-- `OpenStackServerGroup`
-- `OpenStackVolume`
-- `OpenStackVolumeAttach`
-- `OpenStackProject`
-- `OpenStackApplicationCredential`
-- `OpenStackImage`
-- `OpenStackRoleAssignment`
-- `OpenStackLoadBalancer`
-- `OpenStackLoadBalancerListener`
-- `OpenStackLoadBalancerPool`
-- `OpenStackLoadBalancerMember`
-- `OpenStackLoadBalancerMonitor`
-- `OpenStackDnsZone`
-- `OpenStackDnsRecord`
-- `ScalewayVpc`
-- `ScalewayPrivateNetwork`
-- `ScalewayPublicGateway`
-- `ScalewayLoadBalancer`
-- `ScalewayInstanceSecurityGroup`
-- `ScalewayInstance`
-- `ScalewayKapsuleCluster`
-- `ScalewayKapsulePool`
-- `ScalewayRdbInstance`
-- `ScalewayRedisCluster`
-- `ScalewayMongodbInstance`
-- `ScalewayObjectBucket`
-- `ScalewayBlockVolume`
-- `ScalewayContainerRegistry`
-- `ScalewayDnsZone`
-- `ScalewayDnsRecord`
-- `ScalewayServerlessFunction`
-- `ScalewayServerlessContainer`
-- `AliCloudLogProject`
-- `AliCloudRamRole`
-- `AliCloudRamPolicy`
-- `AliCloudVpc`
-- `AliCloudVswitch`
-- `AliCloudSecurityGroup`
-- `AliCloudEipAddress`
-- `AliCloudNatGateway`
-- `AliCloudApplicationLoadBalancer`
-- `AliCloudNetworkLoadBalancer`
-- `AliCloudVpnGateway`
-- `AliCloudDnsZone`
-- `AliCloudDnsRecord`
-- `AliCloudPrivateDnsZone`
-- `AliCloudStorageBucket`
-- `AliCloudNasFileSystem`
-- `AliCloudKmsKey`
-- `AliCloudRdsInstance`
-- `AliCloudPolardbCluster`
-- `AliCloudRedisInstance`
-- `AliCloudMongodbInstance`
-- `AliCloudEcsInstance`
-- `AliCloudContainerRegistry`
-- `AliCloudKubernetesCluster`
-- `AliCloudKubernetesNodePool`
-- `AliCloudCdnDomain`
-- `AliCloudFunction`
-- `AliCloudSaeApplication`
-- `AliCloudRocketmqInstance`
-- `AliCloudCenInstance`
-- `OciVcn`
-- `OciSubnet`
-- `OciSecurityGroup`
-- `OciCompartment`
-- `OciIdentityPolicy`
-- `OciDynamicGroup`
-- `OciComputeInstance`
-- `OciContainerEngineCluster`
-- `OciContainerEngineNodePool`
-- `OciContainerInstance`
-- `OciApplicationLoadBalancer`
-- `OciNetworkLoadBalancer`
-- `OciDynamicRoutingGateway`
-- `OciPublicIp`
-- `OciAutonomousDatabase`
-- `OciDbSystem`
-- `OciMysqlDbSystem`
-- `OciPostgresqlDbSystem`
-- `OciRedisCluster`
-- `OciNosqlTable`
-- `OciObjectStorageBucket`
-- `OciFileSystem`
-- `OciBlockVolume`
-- `OciKmsVault`
-- `OciKmsKey`
-- `OciVaultSecret`
-- `OciBastion`
-- `OciFunctionsApplication`
-- `OciApiGateway`
-- `OciStreamPool`
-- `OciQueue`
-- `OciAlarm`
-- `OciLogGroup`
-- `OciDnsZone`
-- `OciDnsRecord`
-- `OciNetworkFirewall`
-- `OciDevopsProject`
-- `HetznerCloudSshKey`
-- `HetznerCloudPlacementGroup`
-- `HetznerCloudFirewall`
-- `HetznerCloudNetwork`
-- `HetznerCloudPrimaryIp`
-- `HetznerCloudFloatingIp`
-- `HetznerCloudServer`
-- `HetznerCloudVolume`
-- `HetznerCloudSnapshot`
-- `HetznerCloudCertificate`
-- `HetznerCloudLoadBalancer`
-- `HetznerCloudDnsZone`
 
 ### spec.jobTemplate.container.sidecars[].env.variables[].valueFrom.env
 
@@ -5120,9 +5052,6 @@ Allowed values (use exactly as shown):
 - `unspecified` -- 0: Default/unspecified
 - `TestCloudResourceGeneric` -- 1–49: Test/dev/custom
 - `TestCloudResourceKubernetes`
-- `ConfluentKafka` -- 50–199: saas platform resources
-- `AtlasMongodb`
-- `SnowflakeDatabase`
 - `AwsAlb` -- 1000–1999: AWS resources AwsSubnet is a prerequisite because an ALB requires at least two subnets in different availability zones -- the spec's subnet references must resolve before the load balancer can be created.
 - `AwsCertManagerCert`
 - `AwsCloudFront`
@@ -5235,6 +5164,99 @@ Allowed values (use exactly as shown):
 - `AwsRoute53HealthCheck`
 - `AwsSesConfigurationSet` -- Both SES kinds are dependency-free leaves: an identity's configuration set is optional composition (scenarios declare it via the e2e-prerequisites annotation), and a configuration set's event destinations reference other kinds only optionally.
 - `AwsSesEmailIdentity`
+- `AwsSecretsManagerSecret` -- A dependency-free leaf: the KMS key, rotation Lambda, and external rotation role references are all optional composition -- scenarios declare them via the e2e-prerequisites annotation, never registry edges.
+- `AwsOpenSearchServerlessCollection` -- A dependency-free leaf: the collection-scoped encryption/network/ data-access/retention policies are module-rendered, and the KMS key and data-access principal references are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockGuardrail` -- A dependency-free leaf: the KMS key reference is optional composition (e2e-prerequisites annotation); published versions are folded satellites of the guardrail itself.
+- `AwsBedrockCustomModel` -- AwsIamRole is a prerequisite because Bedrock assumes the job role to read training data and write outputs; the S3 locations and KMS key are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockInferenceProfile` -- A dependency-free leaf: the model source is a foundation model or an AWS system-defined cross-region profile, never a customer resource.
+- `AwsBedrockProvisionedThroughput` -- A dependency-free leaf in the registry: capacity is typically bought for an AwsBedrockCustomModel (the default reference), but foundation model ARNs are equally legal, so the edge is optional composition.
+- `AwsBedrockModelAccess` -- A dependency-free leaf: the agreement covers an AWS-listed foundation model, never a customer resource.
+- `AwsBedrockInvocationLogging` -- Region settings singleton (one invocation-logging configuration per account+region; identity = the region). Delivery destinations are optional references (at least one of CloudWatch/S3, enforced by CEL), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsBedrockAgent` -- AwsIamRole is a prerequisite because the Bedrock service assumes the agent resource role to invoke models, action-group Lambdas, and knowledge bases; the guardrail, KMS key, provisioned throughput, and collaborator/knowledge-base edges are optional composition (e2e-prerequisites annotation). Action groups, aliases, collaborators, and knowledge-base associations are folded satellites of the agent.
+- `AwsBedrockKnowledgeBase` -- AwsIamRole is a prerequisite because the Bedrock service assumes the knowledge-base role to read data sources, call the embedding model, and read/write the vector store; the vector-store and data-source reference edges (OpenSearch, S3, Secrets Manager, ...) are optional composition (e2e-prerequisites annotation). Data sources are folded satellites of the knowledge base.
+- `AwsBedrockFlow` -- AwsIamRole is a prerequisite because the Bedrock service assumes the flow execution role to invoke the models, agents, knowledge bases, and Lambdas its nodes reference; the node-level reference edges are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockPrompt` -- A dependency-free leaf: variants target AWS-listed foundation models by ID; targeting another agent's alias is optional composition (e2e-prerequisites annotation).
+- `AwsBedrockAgentCoreRuntime` -- AwsIamRole is a prerequisite because the AgentCore service assumes the runtime role to pull the container image or read the S3 code bundle and to run the hosted agent; the code-bundle S3 bucket and VPC placement edges are optional composition (e2e-prerequisites annotation). Endpoints and the runtime's resource policy are folded satellites of the runtime.
+- `AwsBedrockAgentCoreGateway` -- AwsIamRole is a prerequisite because the gateway assumes its role to reach targets (invoke Lambdas, sign SigV4 requests); the target and credential-provider reference edges (runtime, Lambda, Identity providers, policy engine) are optional composition (e2e-prerequisites annotation). Targets are folded satellites of the gateway - AWS deletes them before the gateway at destroy.
+- `AwsBedrockAgentCoreMemory` -- A dependency-free leaf for built-in strategies: the execution role (custom strategies, Kinesis delivery), KMS key, and Kinesis stream edges are optional composition (e2e-prerequisites annotation). Strategies are folded satellites of the memory - AWS serializes their changes through the parent.
+- `AwsBedrockAgentCoreIdentity` -- A dependency-free leaf: workload identities, credential providers, and the Cedar policy engine with its policies are all name-keyed arms of one identity-and-access bundle; the KMS key edge is optional composition (e2e-prerequisites annotation). The account/region token-vault CMK is deliberately NOT modeled here (settings singleton).
+- `AwsBedrockAgentCoreTools` -- A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution role (recordings, certificates), S3, Secrets Manager, and VPC edges are optional composition (e2e-prerequisites annotation). Browsers, profiles, and code interpreters are name-keyed arms of one tools bundle; AWS exposes no update - every field change recreates the tool.
+- `AwsBedrockAgentCoreEvaluation` -- The AgentCore Evaluations bundle - evaluators (LLM-judge or Lambda scorers), harnesses (repeatable agent test benches), and online evaluation configs (continuous scoring of sampled production sessions). Deploys standalone - no arm requires an agent runtime to exist. No registry prerequisite: every arm is optional, so no dependency is required for the kind to function (scenarios compose IAM roles via annotations).
+- `AwsBedrockAgentCoreTokenVault` -- Account/region settings singleton: sets the KMS key on the ONE default AgentCore token vault. The KMS reference is conditional on key_type (CEL-enforced), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsSagemakerModel` -- The immutable serving definition (container image + artifacts + execution role) that endpoints deploy - one container or an inference pipeline.
+- `AwsSagemakerEndpoint` -- A real-time inference endpoint WITH its folded endpoint configuration - the configuration is immutable upstream, so the modules roll name-suffixed configurations create-before-destroy and repoint the endpoint.
+- `AwsSagemakerNotebookInstance` -- A managed Jupyter notebook EC2 instance with its folded lifecycle configuration (bootstrap scripts).
+- `AwsSagemakerFeatureGroup` -- A Feature Store feature group - online and/or offline stores over a declared feature schema.
+- `AwsSagemakerModelRegistry` -- A model registry package group with its folded resource policy - model package VERSIONS register into it imperatively (training pipelines), never declaratively.
+- `AwsSagemakerPipeline` -- An ML workflow DAG (the SageMaker pipeline-definition JSON) that executions run against - free to create, billed per execution.
+- `AwsSagemakerImage` -- A named registry entry exposing YOUR container images to Studio, with folded AWS-numbered versions (append-only by position).
+- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; Small ~$0.6/hour). The serverless successor is AwsSagemakerMlflowApp.
+- `AwsSagemakerMlflowApp` -- The serverless MLflow 3.x deployment (billed per use) - standalone, associating with SageMaker domains; NOT a tracking-server satellite.
+- `AwsRestApiGateway` -- A full REST API (API Gateway v1): the resource/method tree with inline integrations (or an imported OpenAPI document), one stage with an explicit hash-triggered deployment, and the API-scoped satellites (authorizers, models, validators, gateway responses, policy, documentation, client certificate). Self-contained: a MOCK-integration API needs no other resource.
+- `AwsRestApiDomain` -- A custom domain for REST APIs with base-path mappings and - for PRIVATE domains - VPC-endpoint access associations. AwsCertManagerCert is a prerequisite because the domain cannot be created without a TLS certificate covering it.
+- `AwsRestApiUsagePlan` -- A usage plan metering REST API consumers - stage coverage, quota, throttles, and the API keys it admits. No registry prerequisite: a plan is valid with no stage coverage (scenarios compose the REST API via annotations).
+- `AwsRestApiVpcLink` -- A REST API VPC link fronting an internal Network Load Balancer so REST integrations reach private services. AwsNlb is a prerequisite because AWS rejects link creation without the target balancer.
+- `AwsApiGatewayAccountSettings` -- Region settings singleton (one API Gateway account object per account+region; identity = the region). The CloudWatch role is an optional reference (unset = the explicit no-logging posture), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsCloudTrail` -- The account's API audit trail. AwsS3Bucket is a prerequisite because AWS rejects trail creation without a delivery bucket carrying the CloudTrail service-principal policy. 1240 opens the governance sub-band (1240-1249).
+- `AwsConfigRecorder` -- Region singleton (one AWS Config recorder per region, named "default" by AWS; identity = the region). AwsIamRole is a prerequisite because the recorder cannot exist without its service role.
+- `AwsConfigRule` -- One AWS Config compliance rule (managed, custom-lambda, or custom-policy; account- or organization-scoped) with optional auto-remediation. Managed rules need no prerequisites; the custom-lambda arm's function reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsGuardDuty` -- Region singleton (AWS allows one GuardDuty detector per account+region; the detector has no name - identity = the region). Satellite references (S3 export bucket, KMS key) are conditional, so E2E fixtures ride scenario annotations.
+- `AwsCloudTrailEventDataStore` -- CloudTrail Lake: a queryable, immutable event data store with its own retention and billing lifecycle - no trail required. The KMS key reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsConfigAggregator` -- AWS Config cross-account/cross-region aggregation: the aggregator (collector side) and/or the reciprocal authorization grants (source-account side). Works with zero recorders; the org-source role reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsConfigConformancePack` -- An AWS Config conformance pack (account- or organization-scoped): a template bundle that creates its own Config rules. Deployment requires an active Config recorder in the region (a service-side requirement, not a spec reference), so E2E fixtures ride scenario annotations.
+- `AwsGuardDutyMalwareProtectionPlan` -- GuardDuty Malware Protection for S3: scans new objects in one bucket - a standalone plan protecting a bucket, not a detector satellite (its schema carries no detector reference). The execution role and the protected bucket are required references.
+- `AwsBackupVault` -- An AWS Backup vault - the encrypted container recovery points live in, as either a standard vault (with its lock, access policy, and notification satellites) or a logically air-gapped vault (AWS's own VaultType discriminator). The KMS and SNS references are conditional, so E2E fixtures ride scenario annotations. 1250 opens the backup sub-band (1250-1259).
+- `AwsBackupPlan` -- An AWS Backup plan: scheduled backup rules plus the resource selections that assign resources to them. AwsBackupVault is a prerequisite because every rule requires a target vault; the selections' IAM role is conditional and rides scenario annotations.
+- `AwsBackupFramework` -- A Backup Audit Manager framework: compliance controls evaluating backup posture. No schema-required references (the Config recorder its evaluations need is a lane fixture, not a spec reference).
+- `AwsBackupReportPlan` -- A Backup Audit Manager report plan: scheduled compliance/job reports delivered to S3. AwsS3Bucket is a prerequisite because the delivery channel's bucket is required.
+- `AwsBackupRestoreTestingPlan` -- An AWS Backup restore testing plan with its folded selections: scheduled restore tests proving recovery points actually restore. Vault targeting accepts the "*" wildcard, so fixtures are conditional and ride scenario annotations.
+- `AwsBackupSettings` -- Account/region settings singleton for AWS Backup: the account's global settings (cross-account backup) and the region's resource-type opt-in/management preferences. Both provider deletes are no-ops - settings persist after destroy.
+- `AwsSsmParameter` -- An SSM Parameter Store entry (String/StringList/SecureString). The parameter's name is an explicit spec field - names are hierarchical paths ("/prod/db/url") metadata.name cannot carry. The KMS reference is conditional (SecureString only), so E2E fixtures ride scenario annotations. 1260 opens the SSM sub-band (1260-1269).
+- `AwsSsmDocument` -- A customer-owned SSM document (Command/Automation/Session/...): reusable action definitions managed nodes and automations execute. State Manager associations are their own AwsSsmAssociation kind - an association binds ANY document (AWS-managed included), so it is not this document's satellite.
+- `AwsSsmMaintenanceWindow` -- An SSM maintenance window with its folded target registrations and tasks (Run Command / Automation / Lambda / Step Functions) - the targets and tasks are true window satellites (ForceNew window_id edges). Identity is the AWS-generated "mw-..." id.
+- `AwsSsmPatchBaseline` -- An SSM patch baseline with its folded patch-group registrations and the account/region default-baseline designation (delete RESTORES AWS's own predefined default for the OS). Identity is the AWS-generated "pb-..." id.
+- `AwsSsmAssociation` -- A State Manager association: the binding of an SSM document to targets on a schedule. Split from the document kind because the document reference is a free string with no structural edge - associations routinely bind AWS-managed documents (AWS-RunShellScript, ...) with no user document anywhere, so no registry prerequisite either. Identity is the AWS-generated association UUID.
+- `AwsOrganization` -- THE AWS Organization of the deploying account - creating it makes the caller the management account. Trusted service access, delegated administrators, the org's singleton resource policy, and centralized root-access management (IAM's organizations features - a management-account act requiring iam.amazonaws.com trusted access) fold in (none has a life of its own; the standalone service-access resource fights the org's own argument with a perpetual diff). Deleting this deletes the entire organization. 1270 opens the Organizations sub-band (1270-1279).
+- `AwsOrganizationalUnit` -- An organizational unit in the org's OU tree. The display name is an explicit spec field (OU names allow spaces metadata.name cannot carry); the parent reference (root or parent OU) is required and immutable, so the organization is a registry prerequisite.
+- `AwsOrganizationAccount` -- A MEMBER account of the organization: creation, OU placement, and the account-level settings satellites (alternate/primary contacts, opt-in region enablement) fold onto the created account's ID. Destroy is never a clean delete (remove-from-org or ~90-day close) - taught on the spec. No registry prerequisite by the schema-required-only rule (the OU parent reference is optional).
+- `AwsOrganizationPolicy` -- An Organizations policy (SCP and its twelve sibling types) with its folded attachments to roots, OUs, and member accounts. The policy type must be enabled on the organization first; AWS-managed policies are never adopted. No registry prerequisite by the schema-required-only rule (attachments are optional).
+- `AwsBudget` -- A Budgets budget (COST/USAGE/RI/Savings Plans coverage and utilization) with its folded budget actions as name-keyed satellites - an action exists only on its budget and fires an IAM-policy application, an SCP attachment, or SSM instance stops when a threshold breaches. Budgets is account-global (served from us-east-1; the spec region is the provider endpoint). 1280 opens the cost-management sub-band (1280-1289).
+- `AwsCostAnomalyMonitor` -- A Cost Explorer anomaly monitor (DIMENSIONAL over one dimension, or CUSTOM over a CE expression) with its folded alert subscriptions - a subscription's monitor list is the structural edge that makes it this monitor's satellite. Account-global; AWS identifies both by ARN.
+- `AwsCostCategory` -- A Cost Explorer cost category: ordered rules (regular expression rules or inherited-value rules) over the recursive CE expression tree, plus split-charge rules. The account's cost-allocation-tag activation toggle is deliberately NOT folded here - it is a per-tag-key account feature with no edge to any category, so many category instances would fight over one account object.
+- `AwsIamGroup` -- An IAM group with its folded declarative membership (the authoritative users list) and group policies - name-keyed inline documents plus managed-policy attachments. IAM is global; identity is the group name (renames update in place, the ARN recomputes). 1290 opens the IAM P1 sub-band (1290-1299).
+- `AwsIamSamlProvider` -- An IAM SAML identity provider: the account's federation trust anchor, created from the IdP's metadata XML (a public document carrying certificates, not a secret). Identity is the provider ARN; the name is write-once.
+- `AwsIamAccountSettings` -- Account settings singleton for IAM (a GLOBAL service - one object per ACCOUNT, not per region): the sign-in alias, the password policy, and the STS global-endpoint token version. Destroy contracts DIFFER per arm (each taught on its arm): the alias truly deletes, the password policy resets to AWS defaults, the STS preference is a no-op delete that persists.
+- `AwsCloudwatchDashboard` -- A CloudWatch dashboard: one named dashboard whose widget layout is the dashboard-body JSON document (modeled as a typed Struct, the catalog's uniform policy-document idiom). Dashboards are untaggable at AWS. Identity is the dashboard name; every change is an in-place PutDashboard upsert. 1300 opens the CloudWatch observability P1 sub-band (1300-1309).
+- `AwsCloudwatchSynthetics` -- CloudWatch Synthetics: a canary (a scheduled scripted probe running from an S3-staged code bundle under an execution role, writing run artifacts to S3) plus the grouping surface - owned groups and the canary's group associations (joins by group NAME, so shared groups are referenced, never fought over). A groups-only instance manages shared groups with no canary.
+- `AwsCloudwatchLogDelivery` -- CloudWatch Logs delivery: the two ways logs leave CloudWatch. The vended-log arm pivots on a delivery SOURCE (one AWS resource whose service vends logs) with name-keyed deliveries fanning out to delivery destinations (S3 / CloudWatch Logs / Firehose / X-Ray), each created inline or referenced by ARN. The cross-account arm is the legacy Kinesis subscription destination with its access policy (whose delete is a no-op at AWS - the policy persists).
+- `AwsCloudwatchLogAccountPolicy` -- A CloudWatch Logs account-level policy: one policy object per (name, type) pair per region - data protection, subscription filter, field index, transformer, or metric extraction - applied account-wide, optionally narrowed by selection criteria. Standalone account configuration, never a per-log-group satellite.
+- `AwsCloudwatchLogAnomalyDetector` -- A CloudWatch Logs anomaly detector: one detector trains over a LIST of log groups (multi-parent scope - never a single group's satellite), surfacing anomalies on a chosen evaluation frequency with a bounded visibility window.
+- `AwsCloudwatchLogResourcePolicy` -- A CloudWatch Logs resource policy: the account-scoped named policy (or resource-scoped policy on one log group ARN) that grants AWS services permission to write logs - Route53 query logging, EventBridge, and friends. Exactly one scope per instance.
+- `AwsManagedPrometheus` -- An Amazon Managed Prometheus workspace with its folded satellites: workspace configuration (retention, label-set limits - a created-via-update singleton whose delete is a no-op at AWS), the alert manager definition (strictly one per workspace), name-keyed rule group namespaces, query logging, the workspace resource policy, and alias-keyed anomaly detectors. Scrapers are deliberately NOT folded here - a scraper can target CloudWatch with zero AMP workspaces, so it is its own kind.
+- `AwsManagedPrometheusScraper` -- An Amazon Managed Prometheus scraper: the agentless collector. Source is an EKS cluster or a bare VPC placement (both replace-on-change); destination is an AMP workspace or a CloudWatch dataset. Carries its own scraper logging configuration satellite. Scrape configuration is optional on the EKS arm (AWS publishes a default, resolved at deploy) and required on the VPC arm.
+- `AwsEventBridgePipe` -- An EventBridge Pipe: one point-to-point integration reading from one source (SQS, Kinesis, DynamoDB streams, MSK or self-managed Kafka, ActiveMQ/RabbitMQ), optionally filtering and enriching in-flight, and delivering to one target (ECS, Batch, Lambda, Step Functions, Kinesis, SQS, Redshift, SageMaker, CloudWatch Logs, EventBridge buses, HTTP via API destinations). The source is fixed for life (replace-on-change); the target swaps in place. 1310 opens the EventBridge extras P1 sub-band (1310-1319).
+- `AwsEventBridgeScheduler` -- An EventBridge Scheduler schedule: cron/rate/one-time invocation of one target under an execution role, with flexible time windows, retry policy, and a dead-letter queue. The schedule GROUP is folded own-XOR-existing (a name-and-tags container - the provider's own update path is tags-only); unset means AWS's default group.
+- `AwsEventBridgeApiDestination` -- An EventBridge API destination with its connection: the authenticated HTTP(S) endpoint rules, pipes, and schedules invoke. Two independently deployable arms - the CONNECTION (the shareable auth trust anchor: api-key, basic, or OAuth credentials that AWS stores in Secrets Manager) and the DESTINATION (endpoint + method + rate limit) whose connection is owned inline or referenced by ARN.
+- `AwsVpcPeering` -- A VPC peering connection, as a request-XOR-accept mode union: the REQUEST arm creates the peering from its VPC toward a peer VPC (same-account auto-accept supported; cross-account/cross-region stays pending until accepted), the ACCEPT arm adopts and accepts a pending connection by ID from the accepter side. DNS-resolution options fold into both arms. 1320 opens the VPC networking P1 sub-band (1320-1329).
+- `AwsNetworkAcl` -- A network ACL: the stateless subnet-level firewall - ordered ingress/egress rules (allow or deny, evaluated by rule number) and the subnet associations, all folded in-line as the single declarative owner (the standalone rule/association resources are the same payload and fight the in-line form).
+- `AwsManagedPrefixList` -- A customer-managed prefix list: a named, versioned set of CIDR blocks that security-group rules, NACL rules, and route tables reference as one object. Entries fold in-line; max_entries is the capacity contract (referencing consumes that many rule slots regardless of how many entries exist).
+- `AwsEbsVolume` -- A standalone EBS volume as a create-XOR-copy union (fresh in a zone, or cloned from another volume) with attachments managed in-line. 1330 opens the block & object storage sub-band (1330-1339).
+- `AwsEbsSnapshot` -- An EBS snapshot as a three-way source union (snapshot a volume, copy a snapshot, or import a disk image) with archive tiering, fast snapshot restore, and cross-account share grants in-line.
+- `AwsS3DirectoryBucket` -- An S3 directory bucket (S3 Express One Zone): single-AZ, single-digit-millisecond object storage. The modules derive the mandated "{name}--{zone_id}--x-s3" bucket name.
+- `AwsS3TableBucket` -- An S3 table bucket (S3 Tables - managed Apache Iceberg storage) with its namespaces, tables, policies, and replication folded in-line as the single declarative owner.
+- `AwsS3VectorBucket` -- An S3 vector bucket (AI embedding storage with similarity query) with its vector indexes folded in-line - the natural backend for Bedrock knowledge bases.
+- `AwsDlmLifecyclePolicy` -- A Data Lifecycle Manager policy: account-level, tag-targeted snapshot/AMI automation (create, retain, archive, copy cross-region, share, deprecate) as a default-XOR-custom mode union. AwsIamRole is a prerequisite because DLM acts through a required execution role.
+- `AwsRoute53ResolverEndpoint` -- A Route 53 Resolver endpoint (the hybrid-DNS bridge between a VPC and outside networks) with its forwarding rules and their VPC associations managed in-line. Subnets place the ENIs and security groups guard them - both schema-required. 1340 opens the DNS & service discovery sub-band (1340-1349).
+- `AwsRoute53ResolverFirewall` -- A Route 53 Resolver DNS Firewall rule group with its domain lists, filtering rules, and VPC associations managed in-line - the DNS-layer block/allow policy for VPC egress queries. AwsVpc is a prerequisite because the association arm filters a referenced VPC.
+- `AwsRoute53ResolverQueryLog` -- A Resolver query logging configuration (every DNS query VPCs make through the resolver, to CloudWatch Logs / S3 / Firehose) with its VPC associations managed in-line. AwsVpc is a prerequisite because the association arm logs a referenced VPC.
+- `AwsCloudMapNamespace` -- An AWS Cloud Map namespace (HTTP-XOR-private-DNS-XOR-public-DNS) with its discoverable services and statically registered instances managed in-line - the service-discovery registry ECS and custom applications look each other up in. AwsVpc is a prerequisite because the private-DNS arm binds its hosted zone to a referenced VPC.
+- `AwsAppSyncApi` -- An AppSync API - AWS's managed API service, as a GraphQL API (SDL schema, resolvers over data sources, caching, the MERGED federation variant) XOR an Events API (real-time pub/sub over channel namespaces) - with its data sources, resolvers, functions, types, API keys, and custom domain managed in-line. Every backend reference (data source targets, roles, the certificate) is optional, so no registry prerequisite - lanes exercise the fixture-free arms.
+- `AwsLambdaLayer` -- A Lambda layer version - a shared code archive (libraries, custom runtimes) functions attach by ARN - with its cross-account and organization share grants managed in-line. The archive lives in S3 (an optional reference, so no registry prerequisite - lanes compose their own bucket fixture). 1351 sits in the app & data services sub-band (1350-1359; 1350 opens it with AwsAppSyncApi).
+- `AwsRdsProxy` -- An RDS Proxy - the managed connection pool between connection-hungry applications and a database - with its connection-pool tuning, additional endpoints, and database target managed in-line. AwsIamRole is a prerequisite because the proxy assumes a required role to read database credentials from Secrets Manager; AwsSubnet because the proxy's network interfaces require at least two subnets.
+- `AwsAuroraDsql` -- An Aurora DSQL cluster - serverless, PostgreSQL-compatible distributed SQL with active-active multi-region pairing managed in-line. No prerequisites: a single-region cluster deploys from defaults alone (the KMS and peer references are optional arms).
+- `AwsEcrRegistrySettings` -- Region settings singleton (one private ECR registry per account+region): the registry policy, scanning configuration, replication rules, pull-through cache rules, repository creation templates, account settings, and pull-time update exclusions. Repository-scoped surface stays on AwsEcrRepo.
+- `AwsPrivateCa` -- An AWS Private Certificate Authority with composed activation (a ROOT self-signs at apply; a subordinate activates from a parent AwsPrivateCa), issued certificates, the ACM renewal permission, and the resource policy managed in-line. No prerequisites: the S3 (CRL) and parent-CA references are optional arms.
+- `AwsSesAccountSettings` -- Account/region settings singleton (one SES account object per account+region): the suppression list and VDM posture. 1360 opens the SES P1 sub-band (1360-1369).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -5379,7 +5401,7 @@ Allowed values (use exactly as shown):
 - `AzureBackupPolicyVm` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules that govern IaaS VM backups.
 - `AzureBackupProtectedVm` -- An ARM child of its vault (.../protectedItems/...) -- the binding that puts one virtual machine under a backup policy's protection.
 - `AzureBackupPolicyFileShare` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules that govern Azure Files share backups (snapshot or vaulted).
-- `AzureBackupProtectedFileShare` -- An ARM child of its vault (.../protectedItems/AzureFileShare;...) -- the binding that puts one Azure Files share under a backup policy's protection. The share's storage account must already be registered with the vault (AzureBackupContainerStorageAccount).
+- `AzureBackupProtectedFileShare` -- An ARM child of its vault (.../protectedItems/AzureFileShare;...) -- the binding that puts one Azure Files share under a backup policy's protection. The share's storage account must already be registered with the vault (AzureBackupContainerStorageAccount). Prerequisite ORDER is load-bearing for teardown (destroy runs in reverse): the registration must list AFTER the share so it unregisters FIRST -- Azure Backup holds a DoNotDelete lock on a registered storage account, and a share delete under that lock fails ScopeLocked.
 - `AzureDataProtectionBackupVault` -- The Data Protection backup vault (Microsoft.DataProtection/ backupVaults) -- the safe that MODERN Azure Backup data lives in (managed disks, blob storage, AKS clusters, MySQL/PostgreSQL flexible servers, Data Lake storage). Backup policies and backup instances are ARM children of a vault.
 - `AzureDataProtectionBackupPolicy` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules for ONE Data Protection datasource type (blob storage, disk, Kubernetes cluster, MySQL/PostgreSQL flexible server, or Data Lake storage), modeled as one kind with variant blocks.
 - `AzureDataProtectionBackupInstance` -- An ARM child of its vault (.../backupInstances/{name}) -- the binding that puts ONE datasource (a managed disk, a storage account's blob services, an AKS cluster, a MySQL/PostgreSQL flexible server, or a Data Lake storage account) under a Data Protection backup policy, modeled as one kind with variant blocks. The vault's managed identity must hold the datasource roles Azure Backup requires BEFORE the instance is created.
@@ -5419,6 +5441,7 @@ Allowed values (use exactly as shown):
 - `AzureEventgridDomainTopic` -- One named event stream inside an Azure Event Grid domain ({domain_id}/topics/{name}) -- the per-tenant mailbox of the multi-tenant pattern: many per domain, each with its own subscriptions and lifecycle, tenants joining and leaving without touching the domain (which is why the domain topic is a standalone kind, exactly like AzureEventHubConsumerGroup on a shared hub). Part of the Event Grid family (2193-2194) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureEventgridNamespaceTopic` -- One named CloudEvents stream inside an Azure Event Grid namespace ({namespace_id}/topics/{name}) -- many per namespace, publishers and teams creating and deleting their own against the shared namespace (which is why the topic is a standalone kind, exactly like AzureEventgridDomainTopic and AzureEventHubConsumerGroup). Part of the Event Grid family (2193-2197) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureMongoClusterUser` -- Grants one Microsoft Entra principal access to an Azure Cosmos DB for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an access binding, not a password user: many per cluster, principals joining and leaving independently (which is why the grant is a standalone kind, the access-grant class of AzureRoleAssignment). Part of the Mongo vCore family (2211) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
+- `AzurePlantonRunner` -- AzureContainerAppEnvironment is a prerequisite because the runner appliance is a Container App, and every Container App runs inside an environment -- the environment reference must resolve before the appliance can deploy.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
@@ -5517,6 +5540,7 @@ Allowed values (use exactly as shown):
 - `GcpWorkflow`
 - `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
 - `GcpEventarcMessageBus`
+- `GcpPlantonRunner`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -5637,6 +5661,9 @@ Allowed values (use exactly as shown):
 - `KubernetesTemporal` -- 4170–4189: Kubernetes app platforms KubernetesPostgres is a prerequisite because the recommended (and E2E-proven) database composition backs Temporal's default and visibility stores with a CloudNativePG cluster.
 - `KubernetesNats`
 - `KubernetesLocust`
+- `KubernetesPlantonRunner`
+- `KubernetesPlantonOperator`
+- `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
 - `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
@@ -5668,18 +5695,6 @@ Allowed values (use exactly as shown):
 - `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
 - `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
 - `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
-- `CivoBucket` -- 6000–6999: Civo resources
-- `CivoCertificate`
-- `CivoComputeInstance`
-- `CivoDatabase`
-- `CivoDnsZone`
-- `CivoFirewall`
-- `CivoIpAddress`
-- `CivoKubernetesCluster`
-- `CivoKubernetesNodePool`
-- `CivoVolume`
-- `CivoVpc`
-- `CivoDnsRecord`
 - `CloudflareDnsZone` -- 7000–7999: Cloudflare resources
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
@@ -5719,128 +5734,6 @@ Allowed values (use exactly as shown):
 - `OpenFgaStore` -- 9000–9999: OpenFGA resources Note: OpenFGA is Terraform-only - there is no Pulumi provider available. Pulumi modules for OpenFGA resources are pass-through placeholders.
 - `OpenFgaAuthorizationModel`
 - `OpenFgaRelationshipTuple`
-- `OpenStackKeypair` -- 10000–10999: OpenStack resources
-- `OpenStackNetwork`
-- `OpenStackSubnet`
-- `OpenStackRouter`
-- `OpenStackRouterInterface`
-- `OpenStackSecurityGroup`
-- `OpenStackFloatingIp`
-- `OpenStackNetworkPort`
-- `OpenStackSecurityGroupRule`
-- `OpenStackFloatingIpAssociate`
-- `OpenStackInstance`
-- `OpenStackServerGroup`
-- `OpenStackVolume`
-- `OpenStackVolumeAttach`
-- `OpenStackProject`
-- `OpenStackApplicationCredential`
-- `OpenStackImage`
-- `OpenStackRoleAssignment`
-- `OpenStackLoadBalancer`
-- `OpenStackLoadBalancerListener`
-- `OpenStackLoadBalancerPool`
-- `OpenStackLoadBalancerMember`
-- `OpenStackLoadBalancerMonitor`
-- `OpenStackDnsZone`
-- `OpenStackDnsRecord`
-- `ScalewayVpc`
-- `ScalewayPrivateNetwork`
-- `ScalewayPublicGateway`
-- `ScalewayLoadBalancer`
-- `ScalewayInstanceSecurityGroup`
-- `ScalewayInstance`
-- `ScalewayKapsuleCluster`
-- `ScalewayKapsulePool`
-- `ScalewayRdbInstance`
-- `ScalewayRedisCluster`
-- `ScalewayMongodbInstance`
-- `ScalewayObjectBucket`
-- `ScalewayBlockVolume`
-- `ScalewayContainerRegistry`
-- `ScalewayDnsZone`
-- `ScalewayDnsRecord`
-- `ScalewayServerlessFunction`
-- `ScalewayServerlessContainer`
-- `AliCloudLogProject`
-- `AliCloudRamRole`
-- `AliCloudRamPolicy`
-- `AliCloudVpc`
-- `AliCloudVswitch`
-- `AliCloudSecurityGroup`
-- `AliCloudEipAddress`
-- `AliCloudNatGateway`
-- `AliCloudApplicationLoadBalancer`
-- `AliCloudNetworkLoadBalancer`
-- `AliCloudVpnGateway`
-- `AliCloudDnsZone`
-- `AliCloudDnsRecord`
-- `AliCloudPrivateDnsZone`
-- `AliCloudStorageBucket`
-- `AliCloudNasFileSystem`
-- `AliCloudKmsKey`
-- `AliCloudRdsInstance`
-- `AliCloudPolardbCluster`
-- `AliCloudRedisInstance`
-- `AliCloudMongodbInstance`
-- `AliCloudEcsInstance`
-- `AliCloudContainerRegistry`
-- `AliCloudKubernetesCluster`
-- `AliCloudKubernetesNodePool`
-- `AliCloudCdnDomain`
-- `AliCloudFunction`
-- `AliCloudSaeApplication`
-- `AliCloudRocketmqInstance`
-- `AliCloudCenInstance`
-- `OciVcn`
-- `OciSubnet`
-- `OciSecurityGroup`
-- `OciCompartment`
-- `OciIdentityPolicy`
-- `OciDynamicGroup`
-- `OciComputeInstance`
-- `OciContainerEngineCluster`
-- `OciContainerEngineNodePool`
-- `OciContainerInstance`
-- `OciApplicationLoadBalancer`
-- `OciNetworkLoadBalancer`
-- `OciDynamicRoutingGateway`
-- `OciPublicIp`
-- `OciAutonomousDatabase`
-- `OciDbSystem`
-- `OciMysqlDbSystem`
-- `OciPostgresqlDbSystem`
-- `OciRedisCluster`
-- `OciNosqlTable`
-- `OciObjectStorageBucket`
-- `OciFileSystem`
-- `OciBlockVolume`
-- `OciKmsVault`
-- `OciKmsKey`
-- `OciVaultSecret`
-- `OciBastion`
-- `OciFunctionsApplication`
-- `OciApiGateway`
-- `OciStreamPool`
-- `OciQueue`
-- `OciAlarm`
-- `OciLogGroup`
-- `OciDnsZone`
-- `OciDnsRecord`
-- `OciNetworkFirewall`
-- `OciDevopsProject`
-- `HetznerCloudSshKey`
-- `HetznerCloudPlacementGroup`
-- `HetznerCloudFirewall`
-- `HetznerCloudNetwork`
-- `HetznerCloudPrimaryIp`
-- `HetznerCloudFloatingIp`
-- `HetznerCloudServer`
-- `HetznerCloudVolume`
-- `HetznerCloudSnapshot`
-- `HetznerCloudCertificate`
-- `HetznerCloudLoadBalancer`
-- `HetznerCloudDnsZone`
 
 ### spec.jobTemplate.container.sidecars[].env.secrets[].valueFrom.env
 
@@ -6623,6 +6516,43 @@ For StatefulSets, this can be the name of a volumeClaimTemplate.
 Whether the PVC should be mounted read-only.
 Default is false.
 
+### spec.jobTemplate.container.sidecars[].volumeMounts[].serviceAccountToken
+
+`ServiceAccountTokenVolumeSource`
+
+Projected ServiceAccount token volume source.
+Use this to mount a short-lived, audience-bound identity token that the
+kubelet issues for the pod's ServiceAccount and rotates automatically.
+
+### spec.jobTemplate.container.sidecars[].volumeMounts[].serviceAccountToken.audience
+
+`string` · required
+
+Intended audience of the token. The receiving service must identify
+itself with this audience when verifying the token; a token minted for a
+different audience is rejected. Required: an audience-less token would be
+replayable against any service in the cluster.
+
+- rule: {"required":true}
+
+### spec.jobTemplate.container.sidecars[].volumeMounts[].serviceAccountToken.expirationSeconds
+
+`int64`
+
+Requested lifetime of the token in seconds. The kubelet starts rotating
+the token when it passes 80% of its lifetime or 24 hours, whichever is
+shorter. Defaults to 3600 (1 hour). The Kubernetes API enforces a
+minimum of 600 (10 minutes).
+
+- rule: Expiration must be at least 600 seconds (the Kubernetes API minimum)
+
+### spec.jobTemplate.container.sidecars[].volumeMounts[].serviceAccountToken.path
+
+`string`
+
+Filename for the token relative to the mount path.
+Defaults to "token".
+
 ### spec.jobTemplate.container.sidecars[].lifecycle
 
 `WorkloadContainerLifecycle`
@@ -7198,9 +7128,6 @@ Allowed values (use exactly as shown):
 - `unspecified` -- 0: Default/unspecified
 - `TestCloudResourceGeneric` -- 1–49: Test/dev/custom
 - `TestCloudResourceKubernetes`
-- `ConfluentKafka` -- 50–199: saas platform resources
-- `AtlasMongodb`
-- `SnowflakeDatabase`
 - `AwsAlb` -- 1000–1999: AWS resources AwsSubnet is a prerequisite because an ALB requires at least two subnets in different availability zones -- the spec's subnet references must resolve before the load balancer can be created.
 - `AwsCertManagerCert`
 - `AwsCloudFront`
@@ -7313,6 +7240,99 @@ Allowed values (use exactly as shown):
 - `AwsRoute53HealthCheck`
 - `AwsSesConfigurationSet` -- Both SES kinds are dependency-free leaves: an identity's configuration set is optional composition (scenarios declare it via the e2e-prerequisites annotation), and a configuration set's event destinations reference other kinds only optionally.
 - `AwsSesEmailIdentity`
+- `AwsSecretsManagerSecret` -- A dependency-free leaf: the KMS key, rotation Lambda, and external rotation role references are all optional composition -- scenarios declare them via the e2e-prerequisites annotation, never registry edges.
+- `AwsOpenSearchServerlessCollection` -- A dependency-free leaf: the collection-scoped encryption/network/ data-access/retention policies are module-rendered, and the KMS key and data-access principal references are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockGuardrail` -- A dependency-free leaf: the KMS key reference is optional composition (e2e-prerequisites annotation); published versions are folded satellites of the guardrail itself.
+- `AwsBedrockCustomModel` -- AwsIamRole is a prerequisite because Bedrock assumes the job role to read training data and write outputs; the S3 locations and KMS key are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockInferenceProfile` -- A dependency-free leaf: the model source is a foundation model or an AWS system-defined cross-region profile, never a customer resource.
+- `AwsBedrockProvisionedThroughput` -- A dependency-free leaf in the registry: capacity is typically bought for an AwsBedrockCustomModel (the default reference), but foundation model ARNs are equally legal, so the edge is optional composition.
+- `AwsBedrockModelAccess` -- A dependency-free leaf: the agreement covers an AWS-listed foundation model, never a customer resource.
+- `AwsBedrockInvocationLogging` -- Region settings singleton (one invocation-logging configuration per account+region; identity = the region). Delivery destinations are optional references (at least one of CloudWatch/S3, enforced by CEL), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsBedrockAgent` -- AwsIamRole is a prerequisite because the Bedrock service assumes the agent resource role to invoke models, action-group Lambdas, and knowledge bases; the guardrail, KMS key, provisioned throughput, and collaborator/knowledge-base edges are optional composition (e2e-prerequisites annotation). Action groups, aliases, collaborators, and knowledge-base associations are folded satellites of the agent.
+- `AwsBedrockKnowledgeBase` -- AwsIamRole is a prerequisite because the Bedrock service assumes the knowledge-base role to read data sources, call the embedding model, and read/write the vector store; the vector-store and data-source reference edges (OpenSearch, S3, Secrets Manager, ...) are optional composition (e2e-prerequisites annotation). Data sources are folded satellites of the knowledge base.
+- `AwsBedrockFlow` -- AwsIamRole is a prerequisite because the Bedrock service assumes the flow execution role to invoke the models, agents, knowledge bases, and Lambdas its nodes reference; the node-level reference edges are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockPrompt` -- A dependency-free leaf: variants target AWS-listed foundation models by ID; targeting another agent's alias is optional composition (e2e-prerequisites annotation).
+- `AwsBedrockAgentCoreRuntime` -- AwsIamRole is a prerequisite because the AgentCore service assumes the runtime role to pull the container image or read the S3 code bundle and to run the hosted agent; the code-bundle S3 bucket and VPC placement edges are optional composition (e2e-prerequisites annotation). Endpoints and the runtime's resource policy are folded satellites of the runtime.
+- `AwsBedrockAgentCoreGateway` -- AwsIamRole is a prerequisite because the gateway assumes its role to reach targets (invoke Lambdas, sign SigV4 requests); the target and credential-provider reference edges (runtime, Lambda, Identity providers, policy engine) are optional composition (e2e-prerequisites annotation). Targets are folded satellites of the gateway - AWS deletes them before the gateway at destroy.
+- `AwsBedrockAgentCoreMemory` -- A dependency-free leaf for built-in strategies: the execution role (custom strategies, Kinesis delivery), KMS key, and Kinesis stream edges are optional composition (e2e-prerequisites annotation). Strategies are folded satellites of the memory - AWS serializes their changes through the parent.
+- `AwsBedrockAgentCoreIdentity` -- A dependency-free leaf: workload identities, credential providers, and the Cedar policy engine with its policies are all name-keyed arms of one identity-and-access bundle; the KMS key edge is optional composition (e2e-prerequisites annotation). The account/region token-vault CMK is deliberately NOT modeled here (settings singleton).
+- `AwsBedrockAgentCoreTools` -- A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution role (recordings, certificates), S3, Secrets Manager, and VPC edges are optional composition (e2e-prerequisites annotation). Browsers, profiles, and code interpreters are name-keyed arms of one tools bundle; AWS exposes no update - every field change recreates the tool.
+- `AwsBedrockAgentCoreEvaluation` -- The AgentCore Evaluations bundle - evaluators (LLM-judge or Lambda scorers), harnesses (repeatable agent test benches), and online evaluation configs (continuous scoring of sampled production sessions). Deploys standalone - no arm requires an agent runtime to exist. No registry prerequisite: every arm is optional, so no dependency is required for the kind to function (scenarios compose IAM roles via annotations).
+- `AwsBedrockAgentCoreTokenVault` -- Account/region settings singleton: sets the KMS key on the ONE default AgentCore token vault. The KMS reference is conditional on key_type (CEL-enforced), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsSagemakerModel` -- The immutable serving definition (container image + artifacts + execution role) that endpoints deploy - one container or an inference pipeline.
+- `AwsSagemakerEndpoint` -- A real-time inference endpoint WITH its folded endpoint configuration - the configuration is immutable upstream, so the modules roll name-suffixed configurations create-before-destroy and repoint the endpoint.
+- `AwsSagemakerNotebookInstance` -- A managed Jupyter notebook EC2 instance with its folded lifecycle configuration (bootstrap scripts).
+- `AwsSagemakerFeatureGroup` -- A Feature Store feature group - online and/or offline stores over a declared feature schema.
+- `AwsSagemakerModelRegistry` -- A model registry package group with its folded resource policy - model package VERSIONS register into it imperatively (training pipelines), never declaratively.
+- `AwsSagemakerPipeline` -- An ML workflow DAG (the SageMaker pipeline-definition JSON) that executions run against - free to create, billed per execution.
+- `AwsSagemakerImage` -- A named registry entry exposing YOUR container images to Studio, with folded AWS-numbered versions (append-only by position).
+- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; Small ~$0.6/hour). The serverless successor is AwsSagemakerMlflowApp.
+- `AwsSagemakerMlflowApp` -- The serverless MLflow 3.x deployment (billed per use) - standalone, associating with SageMaker domains; NOT a tracking-server satellite.
+- `AwsRestApiGateway` -- A full REST API (API Gateway v1): the resource/method tree with inline integrations (or an imported OpenAPI document), one stage with an explicit hash-triggered deployment, and the API-scoped satellites (authorizers, models, validators, gateway responses, policy, documentation, client certificate). Self-contained: a MOCK-integration API needs no other resource.
+- `AwsRestApiDomain` -- A custom domain for REST APIs with base-path mappings and - for PRIVATE domains - VPC-endpoint access associations. AwsCertManagerCert is a prerequisite because the domain cannot be created without a TLS certificate covering it.
+- `AwsRestApiUsagePlan` -- A usage plan metering REST API consumers - stage coverage, quota, throttles, and the API keys it admits. No registry prerequisite: a plan is valid with no stage coverage (scenarios compose the REST API via annotations).
+- `AwsRestApiVpcLink` -- A REST API VPC link fronting an internal Network Load Balancer so REST integrations reach private services. AwsNlb is a prerequisite because AWS rejects link creation without the target balancer.
+- `AwsApiGatewayAccountSettings` -- Region settings singleton (one API Gateway account object per account+region; identity = the region). The CloudWatch role is an optional reference (unset = the explicit no-logging posture), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsCloudTrail` -- The account's API audit trail. AwsS3Bucket is a prerequisite because AWS rejects trail creation without a delivery bucket carrying the CloudTrail service-principal policy. 1240 opens the governance sub-band (1240-1249).
+- `AwsConfigRecorder` -- Region singleton (one AWS Config recorder per region, named "default" by AWS; identity = the region). AwsIamRole is a prerequisite because the recorder cannot exist without its service role.
+- `AwsConfigRule` -- One AWS Config compliance rule (managed, custom-lambda, or custom-policy; account- or organization-scoped) with optional auto-remediation. Managed rules need no prerequisites; the custom-lambda arm's function reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsGuardDuty` -- Region singleton (AWS allows one GuardDuty detector per account+region; the detector has no name - identity = the region). Satellite references (S3 export bucket, KMS key) are conditional, so E2E fixtures ride scenario annotations.
+- `AwsCloudTrailEventDataStore` -- CloudTrail Lake: a queryable, immutable event data store with its own retention and billing lifecycle - no trail required. The KMS key reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsConfigAggregator` -- AWS Config cross-account/cross-region aggregation: the aggregator (collector side) and/or the reciprocal authorization grants (source-account side). Works with zero recorders; the org-source role reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsConfigConformancePack` -- An AWS Config conformance pack (account- or organization-scoped): a template bundle that creates its own Config rules. Deployment requires an active Config recorder in the region (a service-side requirement, not a spec reference), so E2E fixtures ride scenario annotations.
+- `AwsGuardDutyMalwareProtectionPlan` -- GuardDuty Malware Protection for S3: scans new objects in one bucket - a standalone plan protecting a bucket, not a detector satellite (its schema carries no detector reference). The execution role and the protected bucket are required references.
+- `AwsBackupVault` -- An AWS Backup vault - the encrypted container recovery points live in, as either a standard vault (with its lock, access policy, and notification satellites) or a logically air-gapped vault (AWS's own VaultType discriminator). The KMS and SNS references are conditional, so E2E fixtures ride scenario annotations. 1250 opens the backup sub-band (1250-1259).
+- `AwsBackupPlan` -- An AWS Backup plan: scheduled backup rules plus the resource selections that assign resources to them. AwsBackupVault is a prerequisite because every rule requires a target vault; the selections' IAM role is conditional and rides scenario annotations.
+- `AwsBackupFramework` -- A Backup Audit Manager framework: compliance controls evaluating backup posture. No schema-required references (the Config recorder its evaluations need is a lane fixture, not a spec reference).
+- `AwsBackupReportPlan` -- A Backup Audit Manager report plan: scheduled compliance/job reports delivered to S3. AwsS3Bucket is a prerequisite because the delivery channel's bucket is required.
+- `AwsBackupRestoreTestingPlan` -- An AWS Backup restore testing plan with its folded selections: scheduled restore tests proving recovery points actually restore. Vault targeting accepts the "*" wildcard, so fixtures are conditional and ride scenario annotations.
+- `AwsBackupSettings` -- Account/region settings singleton for AWS Backup: the account's global settings (cross-account backup) and the region's resource-type opt-in/management preferences. Both provider deletes are no-ops - settings persist after destroy.
+- `AwsSsmParameter` -- An SSM Parameter Store entry (String/StringList/SecureString). The parameter's name is an explicit spec field - names are hierarchical paths ("/prod/db/url") metadata.name cannot carry. The KMS reference is conditional (SecureString only), so E2E fixtures ride scenario annotations. 1260 opens the SSM sub-band (1260-1269).
+- `AwsSsmDocument` -- A customer-owned SSM document (Command/Automation/Session/...): reusable action definitions managed nodes and automations execute. State Manager associations are their own AwsSsmAssociation kind - an association binds ANY document (AWS-managed included), so it is not this document's satellite.
+- `AwsSsmMaintenanceWindow` -- An SSM maintenance window with its folded target registrations and tasks (Run Command / Automation / Lambda / Step Functions) - the targets and tasks are true window satellites (ForceNew window_id edges). Identity is the AWS-generated "mw-..." id.
+- `AwsSsmPatchBaseline` -- An SSM patch baseline with its folded patch-group registrations and the account/region default-baseline designation (delete RESTORES AWS's own predefined default for the OS). Identity is the AWS-generated "pb-..." id.
+- `AwsSsmAssociation` -- A State Manager association: the binding of an SSM document to targets on a schedule. Split from the document kind because the document reference is a free string with no structural edge - associations routinely bind AWS-managed documents (AWS-RunShellScript, ...) with no user document anywhere, so no registry prerequisite either. Identity is the AWS-generated association UUID.
+- `AwsOrganization` -- THE AWS Organization of the deploying account - creating it makes the caller the management account. Trusted service access, delegated administrators, the org's singleton resource policy, and centralized root-access management (IAM's organizations features - a management-account act requiring iam.amazonaws.com trusted access) fold in (none has a life of its own; the standalone service-access resource fights the org's own argument with a perpetual diff). Deleting this deletes the entire organization. 1270 opens the Organizations sub-band (1270-1279).
+- `AwsOrganizationalUnit` -- An organizational unit in the org's OU tree. The display name is an explicit spec field (OU names allow spaces metadata.name cannot carry); the parent reference (root or parent OU) is required and immutable, so the organization is a registry prerequisite.
+- `AwsOrganizationAccount` -- A MEMBER account of the organization: creation, OU placement, and the account-level settings satellites (alternate/primary contacts, opt-in region enablement) fold onto the created account's ID. Destroy is never a clean delete (remove-from-org or ~90-day close) - taught on the spec. No registry prerequisite by the schema-required-only rule (the OU parent reference is optional).
+- `AwsOrganizationPolicy` -- An Organizations policy (SCP and its twelve sibling types) with its folded attachments to roots, OUs, and member accounts. The policy type must be enabled on the organization first; AWS-managed policies are never adopted. No registry prerequisite by the schema-required-only rule (attachments are optional).
+- `AwsBudget` -- A Budgets budget (COST/USAGE/RI/Savings Plans coverage and utilization) with its folded budget actions as name-keyed satellites - an action exists only on its budget and fires an IAM-policy application, an SCP attachment, or SSM instance stops when a threshold breaches. Budgets is account-global (served from us-east-1; the spec region is the provider endpoint). 1280 opens the cost-management sub-band (1280-1289).
+- `AwsCostAnomalyMonitor` -- A Cost Explorer anomaly monitor (DIMENSIONAL over one dimension, or CUSTOM over a CE expression) with its folded alert subscriptions - a subscription's monitor list is the structural edge that makes it this monitor's satellite. Account-global; AWS identifies both by ARN.
+- `AwsCostCategory` -- A Cost Explorer cost category: ordered rules (regular expression rules or inherited-value rules) over the recursive CE expression tree, plus split-charge rules. The account's cost-allocation-tag activation toggle is deliberately NOT folded here - it is a per-tag-key account feature with no edge to any category, so many category instances would fight over one account object.
+- `AwsIamGroup` -- An IAM group with its folded declarative membership (the authoritative users list) and group policies - name-keyed inline documents plus managed-policy attachments. IAM is global; identity is the group name (renames update in place, the ARN recomputes). 1290 opens the IAM P1 sub-band (1290-1299).
+- `AwsIamSamlProvider` -- An IAM SAML identity provider: the account's federation trust anchor, created from the IdP's metadata XML (a public document carrying certificates, not a secret). Identity is the provider ARN; the name is write-once.
+- `AwsIamAccountSettings` -- Account settings singleton for IAM (a GLOBAL service - one object per ACCOUNT, not per region): the sign-in alias, the password policy, and the STS global-endpoint token version. Destroy contracts DIFFER per arm (each taught on its arm): the alias truly deletes, the password policy resets to AWS defaults, the STS preference is a no-op delete that persists.
+- `AwsCloudwatchDashboard` -- A CloudWatch dashboard: one named dashboard whose widget layout is the dashboard-body JSON document (modeled as a typed Struct, the catalog's uniform policy-document idiom). Dashboards are untaggable at AWS. Identity is the dashboard name; every change is an in-place PutDashboard upsert. 1300 opens the CloudWatch observability P1 sub-band (1300-1309).
+- `AwsCloudwatchSynthetics` -- CloudWatch Synthetics: a canary (a scheduled scripted probe running from an S3-staged code bundle under an execution role, writing run artifacts to S3) plus the grouping surface - owned groups and the canary's group associations (joins by group NAME, so shared groups are referenced, never fought over). A groups-only instance manages shared groups with no canary.
+- `AwsCloudwatchLogDelivery` -- CloudWatch Logs delivery: the two ways logs leave CloudWatch. The vended-log arm pivots on a delivery SOURCE (one AWS resource whose service vends logs) with name-keyed deliveries fanning out to delivery destinations (S3 / CloudWatch Logs / Firehose / X-Ray), each created inline or referenced by ARN. The cross-account arm is the legacy Kinesis subscription destination with its access policy (whose delete is a no-op at AWS - the policy persists).
+- `AwsCloudwatchLogAccountPolicy` -- A CloudWatch Logs account-level policy: one policy object per (name, type) pair per region - data protection, subscription filter, field index, transformer, or metric extraction - applied account-wide, optionally narrowed by selection criteria. Standalone account configuration, never a per-log-group satellite.
+- `AwsCloudwatchLogAnomalyDetector` -- A CloudWatch Logs anomaly detector: one detector trains over a LIST of log groups (multi-parent scope - never a single group's satellite), surfacing anomalies on a chosen evaluation frequency with a bounded visibility window.
+- `AwsCloudwatchLogResourcePolicy` -- A CloudWatch Logs resource policy: the account-scoped named policy (or resource-scoped policy on one log group ARN) that grants AWS services permission to write logs - Route53 query logging, EventBridge, and friends. Exactly one scope per instance.
+- `AwsManagedPrometheus` -- An Amazon Managed Prometheus workspace with its folded satellites: workspace configuration (retention, label-set limits - a created-via-update singleton whose delete is a no-op at AWS), the alert manager definition (strictly one per workspace), name-keyed rule group namespaces, query logging, the workspace resource policy, and alias-keyed anomaly detectors. Scrapers are deliberately NOT folded here - a scraper can target CloudWatch with zero AMP workspaces, so it is its own kind.
+- `AwsManagedPrometheusScraper` -- An Amazon Managed Prometheus scraper: the agentless collector. Source is an EKS cluster or a bare VPC placement (both replace-on-change); destination is an AMP workspace or a CloudWatch dataset. Carries its own scraper logging configuration satellite. Scrape configuration is optional on the EKS arm (AWS publishes a default, resolved at deploy) and required on the VPC arm.
+- `AwsEventBridgePipe` -- An EventBridge Pipe: one point-to-point integration reading from one source (SQS, Kinesis, DynamoDB streams, MSK or self-managed Kafka, ActiveMQ/RabbitMQ), optionally filtering and enriching in-flight, and delivering to one target (ECS, Batch, Lambda, Step Functions, Kinesis, SQS, Redshift, SageMaker, CloudWatch Logs, EventBridge buses, HTTP via API destinations). The source is fixed for life (replace-on-change); the target swaps in place. 1310 opens the EventBridge extras P1 sub-band (1310-1319).
+- `AwsEventBridgeScheduler` -- An EventBridge Scheduler schedule: cron/rate/one-time invocation of one target under an execution role, with flexible time windows, retry policy, and a dead-letter queue. The schedule GROUP is folded own-XOR-existing (a name-and-tags container - the provider's own update path is tags-only); unset means AWS's default group.
+- `AwsEventBridgeApiDestination` -- An EventBridge API destination with its connection: the authenticated HTTP(S) endpoint rules, pipes, and schedules invoke. Two independently deployable arms - the CONNECTION (the shareable auth trust anchor: api-key, basic, or OAuth credentials that AWS stores in Secrets Manager) and the DESTINATION (endpoint + method + rate limit) whose connection is owned inline or referenced by ARN.
+- `AwsVpcPeering` -- A VPC peering connection, as a request-XOR-accept mode union: the REQUEST arm creates the peering from its VPC toward a peer VPC (same-account auto-accept supported; cross-account/cross-region stays pending until accepted), the ACCEPT arm adopts and accepts a pending connection by ID from the accepter side. DNS-resolution options fold into both arms. 1320 opens the VPC networking P1 sub-band (1320-1329).
+- `AwsNetworkAcl` -- A network ACL: the stateless subnet-level firewall - ordered ingress/egress rules (allow or deny, evaluated by rule number) and the subnet associations, all folded in-line as the single declarative owner (the standalone rule/association resources are the same payload and fight the in-line form).
+- `AwsManagedPrefixList` -- A customer-managed prefix list: a named, versioned set of CIDR blocks that security-group rules, NACL rules, and route tables reference as one object. Entries fold in-line; max_entries is the capacity contract (referencing consumes that many rule slots regardless of how many entries exist).
+- `AwsEbsVolume` -- A standalone EBS volume as a create-XOR-copy union (fresh in a zone, or cloned from another volume) with attachments managed in-line. 1330 opens the block & object storage sub-band (1330-1339).
+- `AwsEbsSnapshot` -- An EBS snapshot as a three-way source union (snapshot a volume, copy a snapshot, or import a disk image) with archive tiering, fast snapshot restore, and cross-account share grants in-line.
+- `AwsS3DirectoryBucket` -- An S3 directory bucket (S3 Express One Zone): single-AZ, single-digit-millisecond object storage. The modules derive the mandated "{name}--{zone_id}--x-s3" bucket name.
+- `AwsS3TableBucket` -- An S3 table bucket (S3 Tables - managed Apache Iceberg storage) with its namespaces, tables, policies, and replication folded in-line as the single declarative owner.
+- `AwsS3VectorBucket` -- An S3 vector bucket (AI embedding storage with similarity query) with its vector indexes folded in-line - the natural backend for Bedrock knowledge bases.
+- `AwsDlmLifecyclePolicy` -- A Data Lifecycle Manager policy: account-level, tag-targeted snapshot/AMI automation (create, retain, archive, copy cross-region, share, deprecate) as a default-XOR-custom mode union. AwsIamRole is a prerequisite because DLM acts through a required execution role.
+- `AwsRoute53ResolverEndpoint` -- A Route 53 Resolver endpoint (the hybrid-DNS bridge between a VPC and outside networks) with its forwarding rules and their VPC associations managed in-line. Subnets place the ENIs and security groups guard them - both schema-required. 1340 opens the DNS & service discovery sub-band (1340-1349).
+- `AwsRoute53ResolverFirewall` -- A Route 53 Resolver DNS Firewall rule group with its domain lists, filtering rules, and VPC associations managed in-line - the DNS-layer block/allow policy for VPC egress queries. AwsVpc is a prerequisite because the association arm filters a referenced VPC.
+- `AwsRoute53ResolverQueryLog` -- A Resolver query logging configuration (every DNS query VPCs make through the resolver, to CloudWatch Logs / S3 / Firehose) with its VPC associations managed in-line. AwsVpc is a prerequisite because the association arm logs a referenced VPC.
+- `AwsCloudMapNamespace` -- An AWS Cloud Map namespace (HTTP-XOR-private-DNS-XOR-public-DNS) with its discoverable services and statically registered instances managed in-line - the service-discovery registry ECS and custom applications look each other up in. AwsVpc is a prerequisite because the private-DNS arm binds its hosted zone to a referenced VPC.
+- `AwsAppSyncApi` -- An AppSync API - AWS's managed API service, as a GraphQL API (SDL schema, resolvers over data sources, caching, the MERGED federation variant) XOR an Events API (real-time pub/sub over channel namespaces) - with its data sources, resolvers, functions, types, API keys, and custom domain managed in-line. Every backend reference (data source targets, roles, the certificate) is optional, so no registry prerequisite - lanes exercise the fixture-free arms.
+- `AwsLambdaLayer` -- A Lambda layer version - a shared code archive (libraries, custom runtimes) functions attach by ARN - with its cross-account and organization share grants managed in-line. The archive lives in S3 (an optional reference, so no registry prerequisite - lanes compose their own bucket fixture). 1351 sits in the app & data services sub-band (1350-1359; 1350 opens it with AwsAppSyncApi).
+- `AwsRdsProxy` -- An RDS Proxy - the managed connection pool between connection-hungry applications and a database - with its connection-pool tuning, additional endpoints, and database target managed in-line. AwsIamRole is a prerequisite because the proxy assumes a required role to read database credentials from Secrets Manager; AwsSubnet because the proxy's network interfaces require at least two subnets.
+- `AwsAuroraDsql` -- An Aurora DSQL cluster - serverless, PostgreSQL-compatible distributed SQL with active-active multi-region pairing managed in-line. No prerequisites: a single-region cluster deploys from defaults alone (the KMS and peer references are optional arms).
+- `AwsEcrRegistrySettings` -- Region settings singleton (one private ECR registry per account+region): the registry policy, scanning configuration, replication rules, pull-through cache rules, repository creation templates, account settings, and pull-time update exclusions. Repository-scoped surface stays on AwsEcrRepo.
+- `AwsPrivateCa` -- An AWS Private Certificate Authority with composed activation (a ROOT self-signs at apply; a subordinate activates from a parent AwsPrivateCa), issued certificates, the ACM renewal permission, and the resource policy managed in-line. No prerequisites: the S3 (CRL) and parent-CA references are optional arms.
+- `AwsSesAccountSettings` -- Account/region settings singleton (one SES account object per account+region): the suppression list and VDM posture. 1360 opens the SES P1 sub-band (1360-1369).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -7457,7 +7477,7 @@ Allowed values (use exactly as shown):
 - `AzureBackupPolicyVm` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules that govern IaaS VM backups.
 - `AzureBackupProtectedVm` -- An ARM child of its vault (.../protectedItems/...) -- the binding that puts one virtual machine under a backup policy's protection.
 - `AzureBackupPolicyFileShare` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules that govern Azure Files share backups (snapshot or vaulted).
-- `AzureBackupProtectedFileShare` -- An ARM child of its vault (.../protectedItems/AzureFileShare;...) -- the binding that puts one Azure Files share under a backup policy's protection. The share's storage account must already be registered with the vault (AzureBackupContainerStorageAccount).
+- `AzureBackupProtectedFileShare` -- An ARM child of its vault (.../protectedItems/AzureFileShare;...) -- the binding that puts one Azure Files share under a backup policy's protection. The share's storage account must already be registered with the vault (AzureBackupContainerStorageAccount). Prerequisite ORDER is load-bearing for teardown (destroy runs in reverse): the registration must list AFTER the share so it unregisters FIRST -- Azure Backup holds a DoNotDelete lock on a registered storage account, and a share delete under that lock fails ScopeLocked.
 - `AzureDataProtectionBackupVault` -- The Data Protection backup vault (Microsoft.DataProtection/ backupVaults) -- the safe that MODERN Azure Backup data lives in (managed disks, blob storage, AKS clusters, MySQL/PostgreSQL flexible servers, Data Lake storage). Backup policies and backup instances are ARM children of a vault.
 - `AzureDataProtectionBackupPolicy` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules for ONE Data Protection datasource type (blob storage, disk, Kubernetes cluster, MySQL/PostgreSQL flexible server, or Data Lake storage), modeled as one kind with variant blocks.
 - `AzureDataProtectionBackupInstance` -- An ARM child of its vault (.../backupInstances/{name}) -- the binding that puts ONE datasource (a managed disk, a storage account's blob services, an AKS cluster, a MySQL/PostgreSQL flexible server, or a Data Lake storage account) under a Data Protection backup policy, modeled as one kind with variant blocks. The vault's managed identity must hold the datasource roles Azure Backup requires BEFORE the instance is created.
@@ -7497,6 +7517,7 @@ Allowed values (use exactly as shown):
 - `AzureEventgridDomainTopic` -- One named event stream inside an Azure Event Grid domain ({domain_id}/topics/{name}) -- the per-tenant mailbox of the multi-tenant pattern: many per domain, each with its own subscriptions and lifecycle, tenants joining and leaving without touching the domain (which is why the domain topic is a standalone kind, exactly like AzureEventHubConsumerGroup on a shared hub). Part of the Event Grid family (2193-2194) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureEventgridNamespaceTopic` -- One named CloudEvents stream inside an Azure Event Grid namespace ({namespace_id}/topics/{name}) -- many per namespace, publishers and teams creating and deleting their own against the shared namespace (which is why the topic is a standalone kind, exactly like AzureEventgridDomainTopic and AzureEventHubConsumerGroup). Part of the Event Grid family (2193-2197) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureMongoClusterUser` -- Grants one Microsoft Entra principal access to an Azure Cosmos DB for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an access binding, not a password user: many per cluster, principals joining and leaving independently (which is why the grant is a standalone kind, the access-grant class of AzureRoleAssignment). Part of the Mongo vCore family (2211) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
+- `AzurePlantonRunner` -- AzureContainerAppEnvironment is a prerequisite because the runner appliance is a Container App, and every Container App runs inside an environment -- the environment reference must resolve before the appliance can deploy.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
@@ -7595,6 +7616,7 @@ Allowed values (use exactly as shown):
 - `GcpWorkflow`
 - `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
 - `GcpEventarcMessageBus`
+- `GcpPlantonRunner`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -7715,6 +7737,9 @@ Allowed values (use exactly as shown):
 - `KubernetesTemporal` -- 4170–4189: Kubernetes app platforms KubernetesPostgres is a prerequisite because the recommended (and E2E-proven) database composition backs Temporal's default and visibility stores with a CloudNativePG cluster.
 - `KubernetesNats`
 - `KubernetesLocust`
+- `KubernetesPlantonRunner`
+- `KubernetesPlantonOperator`
+- `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
 - `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
@@ -7746,18 +7771,6 @@ Allowed values (use exactly as shown):
 - `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
 - `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
 - `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
-- `CivoBucket` -- 6000–6999: Civo resources
-- `CivoCertificate`
-- `CivoComputeInstance`
-- `CivoDatabase`
-- `CivoDnsZone`
-- `CivoFirewall`
-- `CivoIpAddress`
-- `CivoKubernetesCluster`
-- `CivoKubernetesNodePool`
-- `CivoVolume`
-- `CivoVpc`
-- `CivoDnsRecord`
 - `CloudflareDnsZone` -- 7000–7999: Cloudflare resources
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
@@ -7797,128 +7810,6 @@ Allowed values (use exactly as shown):
 - `OpenFgaStore` -- 9000–9999: OpenFGA resources Note: OpenFGA is Terraform-only - there is no Pulumi provider available. Pulumi modules for OpenFGA resources are pass-through placeholders.
 - `OpenFgaAuthorizationModel`
 - `OpenFgaRelationshipTuple`
-- `OpenStackKeypair` -- 10000–10999: OpenStack resources
-- `OpenStackNetwork`
-- `OpenStackSubnet`
-- `OpenStackRouter`
-- `OpenStackRouterInterface`
-- `OpenStackSecurityGroup`
-- `OpenStackFloatingIp`
-- `OpenStackNetworkPort`
-- `OpenStackSecurityGroupRule`
-- `OpenStackFloatingIpAssociate`
-- `OpenStackInstance`
-- `OpenStackServerGroup`
-- `OpenStackVolume`
-- `OpenStackVolumeAttach`
-- `OpenStackProject`
-- `OpenStackApplicationCredential`
-- `OpenStackImage`
-- `OpenStackRoleAssignment`
-- `OpenStackLoadBalancer`
-- `OpenStackLoadBalancerListener`
-- `OpenStackLoadBalancerPool`
-- `OpenStackLoadBalancerMember`
-- `OpenStackLoadBalancerMonitor`
-- `OpenStackDnsZone`
-- `OpenStackDnsRecord`
-- `ScalewayVpc`
-- `ScalewayPrivateNetwork`
-- `ScalewayPublicGateway`
-- `ScalewayLoadBalancer`
-- `ScalewayInstanceSecurityGroup`
-- `ScalewayInstance`
-- `ScalewayKapsuleCluster`
-- `ScalewayKapsulePool`
-- `ScalewayRdbInstance`
-- `ScalewayRedisCluster`
-- `ScalewayMongodbInstance`
-- `ScalewayObjectBucket`
-- `ScalewayBlockVolume`
-- `ScalewayContainerRegistry`
-- `ScalewayDnsZone`
-- `ScalewayDnsRecord`
-- `ScalewayServerlessFunction`
-- `ScalewayServerlessContainer`
-- `AliCloudLogProject`
-- `AliCloudRamRole`
-- `AliCloudRamPolicy`
-- `AliCloudVpc`
-- `AliCloudVswitch`
-- `AliCloudSecurityGroup`
-- `AliCloudEipAddress`
-- `AliCloudNatGateway`
-- `AliCloudApplicationLoadBalancer`
-- `AliCloudNetworkLoadBalancer`
-- `AliCloudVpnGateway`
-- `AliCloudDnsZone`
-- `AliCloudDnsRecord`
-- `AliCloudPrivateDnsZone`
-- `AliCloudStorageBucket`
-- `AliCloudNasFileSystem`
-- `AliCloudKmsKey`
-- `AliCloudRdsInstance`
-- `AliCloudPolardbCluster`
-- `AliCloudRedisInstance`
-- `AliCloudMongodbInstance`
-- `AliCloudEcsInstance`
-- `AliCloudContainerRegistry`
-- `AliCloudKubernetesCluster`
-- `AliCloudKubernetesNodePool`
-- `AliCloudCdnDomain`
-- `AliCloudFunction`
-- `AliCloudSaeApplication`
-- `AliCloudRocketmqInstance`
-- `AliCloudCenInstance`
-- `OciVcn`
-- `OciSubnet`
-- `OciSecurityGroup`
-- `OciCompartment`
-- `OciIdentityPolicy`
-- `OciDynamicGroup`
-- `OciComputeInstance`
-- `OciContainerEngineCluster`
-- `OciContainerEngineNodePool`
-- `OciContainerInstance`
-- `OciApplicationLoadBalancer`
-- `OciNetworkLoadBalancer`
-- `OciDynamicRoutingGateway`
-- `OciPublicIp`
-- `OciAutonomousDatabase`
-- `OciDbSystem`
-- `OciMysqlDbSystem`
-- `OciPostgresqlDbSystem`
-- `OciRedisCluster`
-- `OciNosqlTable`
-- `OciObjectStorageBucket`
-- `OciFileSystem`
-- `OciBlockVolume`
-- `OciKmsVault`
-- `OciKmsKey`
-- `OciVaultSecret`
-- `OciBastion`
-- `OciFunctionsApplication`
-- `OciApiGateway`
-- `OciStreamPool`
-- `OciQueue`
-- `OciAlarm`
-- `OciLogGroup`
-- `OciDnsZone`
-- `OciDnsRecord`
-- `OciNetworkFirewall`
-- `OciDevopsProject`
-- `HetznerCloudSshKey`
-- `HetznerCloudPlacementGroup`
-- `HetznerCloudFirewall`
-- `HetznerCloudNetwork`
-- `HetznerCloudPrimaryIp`
-- `HetznerCloudFloatingIp`
-- `HetznerCloudServer`
-- `HetznerCloudVolume`
-- `HetznerCloudSnapshot`
-- `HetznerCloudCertificate`
-- `HetznerCloudLoadBalancer`
-- `HetznerCloudDnsZone`
 
 ### spec.jobTemplate.pod.initContainers[].env.variables[].valueFrom.env
 
@@ -8087,9 +7978,6 @@ Allowed values (use exactly as shown):
 - `unspecified` -- 0: Default/unspecified
 - `TestCloudResourceGeneric` -- 1–49: Test/dev/custom
 - `TestCloudResourceKubernetes`
-- `ConfluentKafka` -- 50–199: saas platform resources
-- `AtlasMongodb`
-- `SnowflakeDatabase`
 - `AwsAlb` -- 1000–1999: AWS resources AwsSubnet is a prerequisite because an ALB requires at least two subnets in different availability zones -- the spec's subnet references must resolve before the load balancer can be created.
 - `AwsCertManagerCert`
 - `AwsCloudFront`
@@ -8202,6 +8090,99 @@ Allowed values (use exactly as shown):
 - `AwsRoute53HealthCheck`
 - `AwsSesConfigurationSet` -- Both SES kinds are dependency-free leaves: an identity's configuration set is optional composition (scenarios declare it via the e2e-prerequisites annotation), and a configuration set's event destinations reference other kinds only optionally.
 - `AwsSesEmailIdentity`
+- `AwsSecretsManagerSecret` -- A dependency-free leaf: the KMS key, rotation Lambda, and external rotation role references are all optional composition -- scenarios declare them via the e2e-prerequisites annotation, never registry edges.
+- `AwsOpenSearchServerlessCollection` -- A dependency-free leaf: the collection-scoped encryption/network/ data-access/retention policies are module-rendered, and the KMS key and data-access principal references are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockGuardrail` -- A dependency-free leaf: the KMS key reference is optional composition (e2e-prerequisites annotation); published versions are folded satellites of the guardrail itself.
+- `AwsBedrockCustomModel` -- AwsIamRole is a prerequisite because Bedrock assumes the job role to read training data and write outputs; the S3 locations and KMS key are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockInferenceProfile` -- A dependency-free leaf: the model source is a foundation model or an AWS system-defined cross-region profile, never a customer resource.
+- `AwsBedrockProvisionedThroughput` -- A dependency-free leaf in the registry: capacity is typically bought for an AwsBedrockCustomModel (the default reference), but foundation model ARNs are equally legal, so the edge is optional composition.
+- `AwsBedrockModelAccess` -- A dependency-free leaf: the agreement covers an AWS-listed foundation model, never a customer resource.
+- `AwsBedrockInvocationLogging` -- Region settings singleton (one invocation-logging configuration per account+region; identity = the region). Delivery destinations are optional references (at least one of CloudWatch/S3, enforced by CEL), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsBedrockAgent` -- AwsIamRole is a prerequisite because the Bedrock service assumes the agent resource role to invoke models, action-group Lambdas, and knowledge bases; the guardrail, KMS key, provisioned throughput, and collaborator/knowledge-base edges are optional composition (e2e-prerequisites annotation). Action groups, aliases, collaborators, and knowledge-base associations are folded satellites of the agent.
+- `AwsBedrockKnowledgeBase` -- AwsIamRole is a prerequisite because the Bedrock service assumes the knowledge-base role to read data sources, call the embedding model, and read/write the vector store; the vector-store and data-source reference edges (OpenSearch, S3, Secrets Manager, ...) are optional composition (e2e-prerequisites annotation). Data sources are folded satellites of the knowledge base.
+- `AwsBedrockFlow` -- AwsIamRole is a prerequisite because the Bedrock service assumes the flow execution role to invoke the models, agents, knowledge bases, and Lambdas its nodes reference; the node-level reference edges are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockPrompt` -- A dependency-free leaf: variants target AWS-listed foundation models by ID; targeting another agent's alias is optional composition (e2e-prerequisites annotation).
+- `AwsBedrockAgentCoreRuntime` -- AwsIamRole is a prerequisite because the AgentCore service assumes the runtime role to pull the container image or read the S3 code bundle and to run the hosted agent; the code-bundle S3 bucket and VPC placement edges are optional composition (e2e-prerequisites annotation). Endpoints and the runtime's resource policy are folded satellites of the runtime.
+- `AwsBedrockAgentCoreGateway` -- AwsIamRole is a prerequisite because the gateway assumes its role to reach targets (invoke Lambdas, sign SigV4 requests); the target and credential-provider reference edges (runtime, Lambda, Identity providers, policy engine) are optional composition (e2e-prerequisites annotation). Targets are folded satellites of the gateway - AWS deletes them before the gateway at destroy.
+- `AwsBedrockAgentCoreMemory` -- A dependency-free leaf for built-in strategies: the execution role (custom strategies, Kinesis delivery), KMS key, and Kinesis stream edges are optional composition (e2e-prerequisites annotation). Strategies are folded satellites of the memory - AWS serializes their changes through the parent.
+- `AwsBedrockAgentCoreIdentity` -- A dependency-free leaf: workload identities, credential providers, and the Cedar policy engine with its policies are all name-keyed arms of one identity-and-access bundle; the KMS key edge is optional composition (e2e-prerequisites annotation). The account/region token-vault CMK is deliberately NOT modeled here (settings singleton).
+- `AwsBedrockAgentCoreTools` -- A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution role (recordings, certificates), S3, Secrets Manager, and VPC edges are optional composition (e2e-prerequisites annotation). Browsers, profiles, and code interpreters are name-keyed arms of one tools bundle; AWS exposes no update - every field change recreates the tool.
+- `AwsBedrockAgentCoreEvaluation` -- The AgentCore Evaluations bundle - evaluators (LLM-judge or Lambda scorers), harnesses (repeatable agent test benches), and online evaluation configs (continuous scoring of sampled production sessions). Deploys standalone - no arm requires an agent runtime to exist. No registry prerequisite: every arm is optional, so no dependency is required for the kind to function (scenarios compose IAM roles via annotations).
+- `AwsBedrockAgentCoreTokenVault` -- Account/region settings singleton: sets the KMS key on the ONE default AgentCore token vault. The KMS reference is conditional on key_type (CEL-enforced), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsSagemakerModel` -- The immutable serving definition (container image + artifacts + execution role) that endpoints deploy - one container or an inference pipeline.
+- `AwsSagemakerEndpoint` -- A real-time inference endpoint WITH its folded endpoint configuration - the configuration is immutable upstream, so the modules roll name-suffixed configurations create-before-destroy and repoint the endpoint.
+- `AwsSagemakerNotebookInstance` -- A managed Jupyter notebook EC2 instance with its folded lifecycle configuration (bootstrap scripts).
+- `AwsSagemakerFeatureGroup` -- A Feature Store feature group - online and/or offline stores over a declared feature schema.
+- `AwsSagemakerModelRegistry` -- A model registry package group with its folded resource policy - model package VERSIONS register into it imperatively (training pipelines), never declaratively.
+- `AwsSagemakerPipeline` -- An ML workflow DAG (the SageMaker pipeline-definition JSON) that executions run against - free to create, billed per execution.
+- `AwsSagemakerImage` -- A named registry entry exposing YOUR container images to Studio, with folded AWS-numbered versions (append-only by position).
+- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; Small ~$0.6/hour). The serverless successor is AwsSagemakerMlflowApp.
+- `AwsSagemakerMlflowApp` -- The serverless MLflow 3.x deployment (billed per use) - standalone, associating with SageMaker domains; NOT a tracking-server satellite.
+- `AwsRestApiGateway` -- A full REST API (API Gateway v1): the resource/method tree with inline integrations (or an imported OpenAPI document), one stage with an explicit hash-triggered deployment, and the API-scoped satellites (authorizers, models, validators, gateway responses, policy, documentation, client certificate). Self-contained: a MOCK-integration API needs no other resource.
+- `AwsRestApiDomain` -- A custom domain for REST APIs with base-path mappings and - for PRIVATE domains - VPC-endpoint access associations. AwsCertManagerCert is a prerequisite because the domain cannot be created without a TLS certificate covering it.
+- `AwsRestApiUsagePlan` -- A usage plan metering REST API consumers - stage coverage, quota, throttles, and the API keys it admits. No registry prerequisite: a plan is valid with no stage coverage (scenarios compose the REST API via annotations).
+- `AwsRestApiVpcLink` -- A REST API VPC link fronting an internal Network Load Balancer so REST integrations reach private services. AwsNlb is a prerequisite because AWS rejects link creation without the target balancer.
+- `AwsApiGatewayAccountSettings` -- Region settings singleton (one API Gateway account object per account+region; identity = the region). The CloudWatch role is an optional reference (unset = the explicit no-logging posture), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsCloudTrail` -- The account's API audit trail. AwsS3Bucket is a prerequisite because AWS rejects trail creation without a delivery bucket carrying the CloudTrail service-principal policy. 1240 opens the governance sub-band (1240-1249).
+- `AwsConfigRecorder` -- Region singleton (one AWS Config recorder per region, named "default" by AWS; identity = the region). AwsIamRole is a prerequisite because the recorder cannot exist without its service role.
+- `AwsConfigRule` -- One AWS Config compliance rule (managed, custom-lambda, or custom-policy; account- or organization-scoped) with optional auto-remediation. Managed rules need no prerequisites; the custom-lambda arm's function reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsGuardDuty` -- Region singleton (AWS allows one GuardDuty detector per account+region; the detector has no name - identity = the region). Satellite references (S3 export bucket, KMS key) are conditional, so E2E fixtures ride scenario annotations.
+- `AwsCloudTrailEventDataStore` -- CloudTrail Lake: a queryable, immutable event data store with its own retention and billing lifecycle - no trail required. The KMS key reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsConfigAggregator` -- AWS Config cross-account/cross-region aggregation: the aggregator (collector side) and/or the reciprocal authorization grants (source-account side). Works with zero recorders; the org-source role reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsConfigConformancePack` -- An AWS Config conformance pack (account- or organization-scoped): a template bundle that creates its own Config rules. Deployment requires an active Config recorder in the region (a service-side requirement, not a spec reference), so E2E fixtures ride scenario annotations.
+- `AwsGuardDutyMalwareProtectionPlan` -- GuardDuty Malware Protection for S3: scans new objects in one bucket - a standalone plan protecting a bucket, not a detector satellite (its schema carries no detector reference). The execution role and the protected bucket are required references.
+- `AwsBackupVault` -- An AWS Backup vault - the encrypted container recovery points live in, as either a standard vault (with its lock, access policy, and notification satellites) or a logically air-gapped vault (AWS's own VaultType discriminator). The KMS and SNS references are conditional, so E2E fixtures ride scenario annotations. 1250 opens the backup sub-band (1250-1259).
+- `AwsBackupPlan` -- An AWS Backup plan: scheduled backup rules plus the resource selections that assign resources to them. AwsBackupVault is a prerequisite because every rule requires a target vault; the selections' IAM role is conditional and rides scenario annotations.
+- `AwsBackupFramework` -- A Backup Audit Manager framework: compliance controls evaluating backup posture. No schema-required references (the Config recorder its evaluations need is a lane fixture, not a spec reference).
+- `AwsBackupReportPlan` -- A Backup Audit Manager report plan: scheduled compliance/job reports delivered to S3. AwsS3Bucket is a prerequisite because the delivery channel's bucket is required.
+- `AwsBackupRestoreTestingPlan` -- An AWS Backup restore testing plan with its folded selections: scheduled restore tests proving recovery points actually restore. Vault targeting accepts the "*" wildcard, so fixtures are conditional and ride scenario annotations.
+- `AwsBackupSettings` -- Account/region settings singleton for AWS Backup: the account's global settings (cross-account backup) and the region's resource-type opt-in/management preferences. Both provider deletes are no-ops - settings persist after destroy.
+- `AwsSsmParameter` -- An SSM Parameter Store entry (String/StringList/SecureString). The parameter's name is an explicit spec field - names are hierarchical paths ("/prod/db/url") metadata.name cannot carry. The KMS reference is conditional (SecureString only), so E2E fixtures ride scenario annotations. 1260 opens the SSM sub-band (1260-1269).
+- `AwsSsmDocument` -- A customer-owned SSM document (Command/Automation/Session/...): reusable action definitions managed nodes and automations execute. State Manager associations are their own AwsSsmAssociation kind - an association binds ANY document (AWS-managed included), so it is not this document's satellite.
+- `AwsSsmMaintenanceWindow` -- An SSM maintenance window with its folded target registrations and tasks (Run Command / Automation / Lambda / Step Functions) - the targets and tasks are true window satellites (ForceNew window_id edges). Identity is the AWS-generated "mw-..." id.
+- `AwsSsmPatchBaseline` -- An SSM patch baseline with its folded patch-group registrations and the account/region default-baseline designation (delete RESTORES AWS's own predefined default for the OS). Identity is the AWS-generated "pb-..." id.
+- `AwsSsmAssociation` -- A State Manager association: the binding of an SSM document to targets on a schedule. Split from the document kind because the document reference is a free string with no structural edge - associations routinely bind AWS-managed documents (AWS-RunShellScript, ...) with no user document anywhere, so no registry prerequisite either. Identity is the AWS-generated association UUID.
+- `AwsOrganization` -- THE AWS Organization of the deploying account - creating it makes the caller the management account. Trusted service access, delegated administrators, the org's singleton resource policy, and centralized root-access management (IAM's organizations features - a management-account act requiring iam.amazonaws.com trusted access) fold in (none has a life of its own; the standalone service-access resource fights the org's own argument with a perpetual diff). Deleting this deletes the entire organization. 1270 opens the Organizations sub-band (1270-1279).
+- `AwsOrganizationalUnit` -- An organizational unit in the org's OU tree. The display name is an explicit spec field (OU names allow spaces metadata.name cannot carry); the parent reference (root or parent OU) is required and immutable, so the organization is a registry prerequisite.
+- `AwsOrganizationAccount` -- A MEMBER account of the organization: creation, OU placement, and the account-level settings satellites (alternate/primary contacts, opt-in region enablement) fold onto the created account's ID. Destroy is never a clean delete (remove-from-org or ~90-day close) - taught on the spec. No registry prerequisite by the schema-required-only rule (the OU parent reference is optional).
+- `AwsOrganizationPolicy` -- An Organizations policy (SCP and its twelve sibling types) with its folded attachments to roots, OUs, and member accounts. The policy type must be enabled on the organization first; AWS-managed policies are never adopted. No registry prerequisite by the schema-required-only rule (attachments are optional).
+- `AwsBudget` -- A Budgets budget (COST/USAGE/RI/Savings Plans coverage and utilization) with its folded budget actions as name-keyed satellites - an action exists only on its budget and fires an IAM-policy application, an SCP attachment, or SSM instance stops when a threshold breaches. Budgets is account-global (served from us-east-1; the spec region is the provider endpoint). 1280 opens the cost-management sub-band (1280-1289).
+- `AwsCostAnomalyMonitor` -- A Cost Explorer anomaly monitor (DIMENSIONAL over one dimension, or CUSTOM over a CE expression) with its folded alert subscriptions - a subscription's monitor list is the structural edge that makes it this monitor's satellite. Account-global; AWS identifies both by ARN.
+- `AwsCostCategory` -- A Cost Explorer cost category: ordered rules (regular expression rules or inherited-value rules) over the recursive CE expression tree, plus split-charge rules. The account's cost-allocation-tag activation toggle is deliberately NOT folded here - it is a per-tag-key account feature with no edge to any category, so many category instances would fight over one account object.
+- `AwsIamGroup` -- An IAM group with its folded declarative membership (the authoritative users list) and group policies - name-keyed inline documents plus managed-policy attachments. IAM is global; identity is the group name (renames update in place, the ARN recomputes). 1290 opens the IAM P1 sub-band (1290-1299).
+- `AwsIamSamlProvider` -- An IAM SAML identity provider: the account's federation trust anchor, created from the IdP's metadata XML (a public document carrying certificates, not a secret). Identity is the provider ARN; the name is write-once.
+- `AwsIamAccountSettings` -- Account settings singleton for IAM (a GLOBAL service - one object per ACCOUNT, not per region): the sign-in alias, the password policy, and the STS global-endpoint token version. Destroy contracts DIFFER per arm (each taught on its arm): the alias truly deletes, the password policy resets to AWS defaults, the STS preference is a no-op delete that persists.
+- `AwsCloudwatchDashboard` -- A CloudWatch dashboard: one named dashboard whose widget layout is the dashboard-body JSON document (modeled as a typed Struct, the catalog's uniform policy-document idiom). Dashboards are untaggable at AWS. Identity is the dashboard name; every change is an in-place PutDashboard upsert. 1300 opens the CloudWatch observability P1 sub-band (1300-1309).
+- `AwsCloudwatchSynthetics` -- CloudWatch Synthetics: a canary (a scheduled scripted probe running from an S3-staged code bundle under an execution role, writing run artifacts to S3) plus the grouping surface - owned groups and the canary's group associations (joins by group NAME, so shared groups are referenced, never fought over). A groups-only instance manages shared groups with no canary.
+- `AwsCloudwatchLogDelivery` -- CloudWatch Logs delivery: the two ways logs leave CloudWatch. The vended-log arm pivots on a delivery SOURCE (one AWS resource whose service vends logs) with name-keyed deliveries fanning out to delivery destinations (S3 / CloudWatch Logs / Firehose / X-Ray), each created inline or referenced by ARN. The cross-account arm is the legacy Kinesis subscription destination with its access policy (whose delete is a no-op at AWS - the policy persists).
+- `AwsCloudwatchLogAccountPolicy` -- A CloudWatch Logs account-level policy: one policy object per (name, type) pair per region - data protection, subscription filter, field index, transformer, or metric extraction - applied account-wide, optionally narrowed by selection criteria. Standalone account configuration, never a per-log-group satellite.
+- `AwsCloudwatchLogAnomalyDetector` -- A CloudWatch Logs anomaly detector: one detector trains over a LIST of log groups (multi-parent scope - never a single group's satellite), surfacing anomalies on a chosen evaluation frequency with a bounded visibility window.
+- `AwsCloudwatchLogResourcePolicy` -- A CloudWatch Logs resource policy: the account-scoped named policy (or resource-scoped policy on one log group ARN) that grants AWS services permission to write logs - Route53 query logging, EventBridge, and friends. Exactly one scope per instance.
+- `AwsManagedPrometheus` -- An Amazon Managed Prometheus workspace with its folded satellites: workspace configuration (retention, label-set limits - a created-via-update singleton whose delete is a no-op at AWS), the alert manager definition (strictly one per workspace), name-keyed rule group namespaces, query logging, the workspace resource policy, and alias-keyed anomaly detectors. Scrapers are deliberately NOT folded here - a scraper can target CloudWatch with zero AMP workspaces, so it is its own kind.
+- `AwsManagedPrometheusScraper` -- An Amazon Managed Prometheus scraper: the agentless collector. Source is an EKS cluster or a bare VPC placement (both replace-on-change); destination is an AMP workspace or a CloudWatch dataset. Carries its own scraper logging configuration satellite. Scrape configuration is optional on the EKS arm (AWS publishes a default, resolved at deploy) and required on the VPC arm.
+- `AwsEventBridgePipe` -- An EventBridge Pipe: one point-to-point integration reading from one source (SQS, Kinesis, DynamoDB streams, MSK or self-managed Kafka, ActiveMQ/RabbitMQ), optionally filtering and enriching in-flight, and delivering to one target (ECS, Batch, Lambda, Step Functions, Kinesis, SQS, Redshift, SageMaker, CloudWatch Logs, EventBridge buses, HTTP via API destinations). The source is fixed for life (replace-on-change); the target swaps in place. 1310 opens the EventBridge extras P1 sub-band (1310-1319).
+- `AwsEventBridgeScheduler` -- An EventBridge Scheduler schedule: cron/rate/one-time invocation of one target under an execution role, with flexible time windows, retry policy, and a dead-letter queue. The schedule GROUP is folded own-XOR-existing (a name-and-tags container - the provider's own update path is tags-only); unset means AWS's default group.
+- `AwsEventBridgeApiDestination` -- An EventBridge API destination with its connection: the authenticated HTTP(S) endpoint rules, pipes, and schedules invoke. Two independently deployable arms - the CONNECTION (the shareable auth trust anchor: api-key, basic, or OAuth credentials that AWS stores in Secrets Manager) and the DESTINATION (endpoint + method + rate limit) whose connection is owned inline or referenced by ARN.
+- `AwsVpcPeering` -- A VPC peering connection, as a request-XOR-accept mode union: the REQUEST arm creates the peering from its VPC toward a peer VPC (same-account auto-accept supported; cross-account/cross-region stays pending until accepted), the ACCEPT arm adopts and accepts a pending connection by ID from the accepter side. DNS-resolution options fold into both arms. 1320 opens the VPC networking P1 sub-band (1320-1329).
+- `AwsNetworkAcl` -- A network ACL: the stateless subnet-level firewall - ordered ingress/egress rules (allow or deny, evaluated by rule number) and the subnet associations, all folded in-line as the single declarative owner (the standalone rule/association resources are the same payload and fight the in-line form).
+- `AwsManagedPrefixList` -- A customer-managed prefix list: a named, versioned set of CIDR blocks that security-group rules, NACL rules, and route tables reference as one object. Entries fold in-line; max_entries is the capacity contract (referencing consumes that many rule slots regardless of how many entries exist).
+- `AwsEbsVolume` -- A standalone EBS volume as a create-XOR-copy union (fresh in a zone, or cloned from another volume) with attachments managed in-line. 1330 opens the block & object storage sub-band (1330-1339).
+- `AwsEbsSnapshot` -- An EBS snapshot as a three-way source union (snapshot a volume, copy a snapshot, or import a disk image) with archive tiering, fast snapshot restore, and cross-account share grants in-line.
+- `AwsS3DirectoryBucket` -- An S3 directory bucket (S3 Express One Zone): single-AZ, single-digit-millisecond object storage. The modules derive the mandated "{name}--{zone_id}--x-s3" bucket name.
+- `AwsS3TableBucket` -- An S3 table bucket (S3 Tables - managed Apache Iceberg storage) with its namespaces, tables, policies, and replication folded in-line as the single declarative owner.
+- `AwsS3VectorBucket` -- An S3 vector bucket (AI embedding storage with similarity query) with its vector indexes folded in-line - the natural backend for Bedrock knowledge bases.
+- `AwsDlmLifecyclePolicy` -- A Data Lifecycle Manager policy: account-level, tag-targeted snapshot/AMI automation (create, retain, archive, copy cross-region, share, deprecate) as a default-XOR-custom mode union. AwsIamRole is a prerequisite because DLM acts through a required execution role.
+- `AwsRoute53ResolverEndpoint` -- A Route 53 Resolver endpoint (the hybrid-DNS bridge between a VPC and outside networks) with its forwarding rules and their VPC associations managed in-line. Subnets place the ENIs and security groups guard them - both schema-required. 1340 opens the DNS & service discovery sub-band (1340-1349).
+- `AwsRoute53ResolverFirewall` -- A Route 53 Resolver DNS Firewall rule group with its domain lists, filtering rules, and VPC associations managed in-line - the DNS-layer block/allow policy for VPC egress queries. AwsVpc is a prerequisite because the association arm filters a referenced VPC.
+- `AwsRoute53ResolverQueryLog` -- A Resolver query logging configuration (every DNS query VPCs make through the resolver, to CloudWatch Logs / S3 / Firehose) with its VPC associations managed in-line. AwsVpc is a prerequisite because the association arm logs a referenced VPC.
+- `AwsCloudMapNamespace` -- An AWS Cloud Map namespace (HTTP-XOR-private-DNS-XOR-public-DNS) with its discoverable services and statically registered instances managed in-line - the service-discovery registry ECS and custom applications look each other up in. AwsVpc is a prerequisite because the private-DNS arm binds its hosted zone to a referenced VPC.
+- `AwsAppSyncApi` -- An AppSync API - AWS's managed API service, as a GraphQL API (SDL schema, resolvers over data sources, caching, the MERGED federation variant) XOR an Events API (real-time pub/sub over channel namespaces) - with its data sources, resolvers, functions, types, API keys, and custom domain managed in-line. Every backend reference (data source targets, roles, the certificate) is optional, so no registry prerequisite - lanes exercise the fixture-free arms.
+- `AwsLambdaLayer` -- A Lambda layer version - a shared code archive (libraries, custom runtimes) functions attach by ARN - with its cross-account and organization share grants managed in-line. The archive lives in S3 (an optional reference, so no registry prerequisite - lanes compose their own bucket fixture). 1351 sits in the app & data services sub-band (1350-1359; 1350 opens it with AwsAppSyncApi).
+- `AwsRdsProxy` -- An RDS Proxy - the managed connection pool between connection-hungry applications and a database - with its connection-pool tuning, additional endpoints, and database target managed in-line. AwsIamRole is a prerequisite because the proxy assumes a required role to read database credentials from Secrets Manager; AwsSubnet because the proxy's network interfaces require at least two subnets.
+- `AwsAuroraDsql` -- An Aurora DSQL cluster - serverless, PostgreSQL-compatible distributed SQL with active-active multi-region pairing managed in-line. No prerequisites: a single-region cluster deploys from defaults alone (the KMS and peer references are optional arms).
+- `AwsEcrRegistrySettings` -- Region settings singleton (one private ECR registry per account+region): the registry policy, scanning configuration, replication rules, pull-through cache rules, repository creation templates, account settings, and pull-time update exclusions. Repository-scoped surface stays on AwsEcrRepo.
+- `AwsPrivateCa` -- An AWS Private Certificate Authority with composed activation (a ROOT self-signs at apply; a subordinate activates from a parent AwsPrivateCa), issued certificates, the ACM renewal permission, and the resource policy managed in-line. No prerequisites: the S3 (CRL) and parent-CA references are optional arms.
+- `AwsSesAccountSettings` -- Account/region settings singleton (one SES account object per account+region): the suppression list and VDM posture. 1360 opens the SES P1 sub-band (1360-1369).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -8346,7 +8327,7 @@ Allowed values (use exactly as shown):
 - `AzureBackupPolicyVm` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules that govern IaaS VM backups.
 - `AzureBackupProtectedVm` -- An ARM child of its vault (.../protectedItems/...) -- the binding that puts one virtual machine under a backup policy's protection.
 - `AzureBackupPolicyFileShare` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules that govern Azure Files share backups (snapshot or vaulted).
-- `AzureBackupProtectedFileShare` -- An ARM child of its vault (.../protectedItems/AzureFileShare;...) -- the binding that puts one Azure Files share under a backup policy's protection. The share's storage account must already be registered with the vault (AzureBackupContainerStorageAccount).
+- `AzureBackupProtectedFileShare` -- An ARM child of its vault (.../protectedItems/AzureFileShare;...) -- the binding that puts one Azure Files share under a backup policy's protection. The share's storage account must already be registered with the vault (AzureBackupContainerStorageAccount). Prerequisite ORDER is load-bearing for teardown (destroy runs in reverse): the registration must list AFTER the share so it unregisters FIRST -- Azure Backup holds a DoNotDelete lock on a registered storage account, and a share delete under that lock fails ScopeLocked.
 - `AzureDataProtectionBackupVault` -- The Data Protection backup vault (Microsoft.DataProtection/ backupVaults) -- the safe that MODERN Azure Backup data lives in (managed disks, blob storage, AKS clusters, MySQL/PostgreSQL flexible servers, Data Lake storage). Backup policies and backup instances are ARM children of a vault.
 - `AzureDataProtectionBackupPolicy` -- An ARM child of its vault (.../backupPolicies/{name}) -- the schedule and retention rules for ONE Data Protection datasource type (blob storage, disk, Kubernetes cluster, MySQL/PostgreSQL flexible server, or Data Lake storage), modeled as one kind with variant blocks.
 - `AzureDataProtectionBackupInstance` -- An ARM child of its vault (.../backupInstances/{name}) -- the binding that puts ONE datasource (a managed disk, a storage account's blob services, an AKS cluster, a MySQL/PostgreSQL flexible server, or a Data Lake storage account) under a Data Protection backup policy, modeled as one kind with variant blocks. The vault's managed identity must hold the datasource roles Azure Backup requires BEFORE the instance is created.
@@ -8386,6 +8367,7 @@ Allowed values (use exactly as shown):
 - `AzureEventgridDomainTopic` -- One named event stream inside an Azure Event Grid domain ({domain_id}/topics/{name}) -- the per-tenant mailbox of the multi-tenant pattern: many per domain, each with its own subscriptions and lifecycle, tenants joining and leaving without touching the domain (which is why the domain topic is a standalone kind, exactly like AzureEventHubConsumerGroup on a shared hub). Part of the Event Grid family (2193-2194) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureEventgridNamespaceTopic` -- One named CloudEvents stream inside an Azure Event Grid namespace ({namespace_id}/topics/{name}) -- many per namespace, publishers and teams creating and deleting their own against the shared namespace (which is why the topic is a standalone kind, exactly like AzureEventgridDomainTopic and AzureEventHubConsumerGroup). Part of the Event Grid family (2193-2197) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureMongoClusterUser` -- Grants one Microsoft Entra principal access to an Azure Cosmos DB for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an access binding, not a password user: many per cluster, principals joining and leaving independently (which is why the grant is a standalone kind, the access-grant class of AzureRoleAssignment). Part of the Mongo vCore family (2211) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
+- `AzurePlantonRunner` -- AzureContainerAppEnvironment is a prerequisite because the runner appliance is a Container App, and every Container App runs inside an environment -- the environment reference must resolve before the appliance can deploy.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
@@ -8484,6 +8466,7 @@ Allowed values (use exactly as shown):
 - `GcpWorkflow`
 - `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
 - `GcpEventarcMessageBus`
+- `GcpPlantonRunner`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -8604,6 +8587,9 @@ Allowed values (use exactly as shown):
 - `KubernetesTemporal` -- 4170–4189: Kubernetes app platforms KubernetesPostgres is a prerequisite because the recommended (and E2E-proven) database composition backs Temporal's default and visibility stores with a CloudNativePG cluster.
 - `KubernetesNats`
 - `KubernetesLocust`
+- `KubernetesPlantonRunner`
+- `KubernetesPlantonOperator`
+- `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
 - `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
@@ -8635,18 +8621,6 @@ Allowed values (use exactly as shown):
 - `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
 - `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
 - `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
-- `CivoBucket` -- 6000–6999: Civo resources
-- `CivoCertificate`
-- `CivoComputeInstance`
-- `CivoDatabase`
-- `CivoDnsZone`
-- `CivoFirewall`
-- `CivoIpAddress`
-- `CivoKubernetesCluster`
-- `CivoKubernetesNodePool`
-- `CivoVolume`
-- `CivoVpc`
-- `CivoDnsRecord`
 - `CloudflareDnsZone` -- 7000–7999: Cloudflare resources
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
@@ -8686,128 +8660,6 @@ Allowed values (use exactly as shown):
 - `OpenFgaStore` -- 9000–9999: OpenFGA resources Note: OpenFGA is Terraform-only - there is no Pulumi provider available. Pulumi modules for OpenFGA resources are pass-through placeholders.
 - `OpenFgaAuthorizationModel`
 - `OpenFgaRelationshipTuple`
-- `OpenStackKeypair` -- 10000–10999: OpenStack resources
-- `OpenStackNetwork`
-- `OpenStackSubnet`
-- `OpenStackRouter`
-- `OpenStackRouterInterface`
-- `OpenStackSecurityGroup`
-- `OpenStackFloatingIp`
-- `OpenStackNetworkPort`
-- `OpenStackSecurityGroupRule`
-- `OpenStackFloatingIpAssociate`
-- `OpenStackInstance`
-- `OpenStackServerGroup`
-- `OpenStackVolume`
-- `OpenStackVolumeAttach`
-- `OpenStackProject`
-- `OpenStackApplicationCredential`
-- `OpenStackImage`
-- `OpenStackRoleAssignment`
-- `OpenStackLoadBalancer`
-- `OpenStackLoadBalancerListener`
-- `OpenStackLoadBalancerPool`
-- `OpenStackLoadBalancerMember`
-- `OpenStackLoadBalancerMonitor`
-- `OpenStackDnsZone`
-- `OpenStackDnsRecord`
-- `ScalewayVpc`
-- `ScalewayPrivateNetwork`
-- `ScalewayPublicGateway`
-- `ScalewayLoadBalancer`
-- `ScalewayInstanceSecurityGroup`
-- `ScalewayInstance`
-- `ScalewayKapsuleCluster`
-- `ScalewayKapsulePool`
-- `ScalewayRdbInstance`
-- `ScalewayRedisCluster`
-- `ScalewayMongodbInstance`
-- `ScalewayObjectBucket`
-- `ScalewayBlockVolume`
-- `ScalewayContainerRegistry`
-- `ScalewayDnsZone`
-- `ScalewayDnsRecord`
-- `ScalewayServerlessFunction`
-- `ScalewayServerlessContainer`
-- `AliCloudLogProject`
-- `AliCloudRamRole`
-- `AliCloudRamPolicy`
-- `AliCloudVpc`
-- `AliCloudVswitch`
-- `AliCloudSecurityGroup`
-- `AliCloudEipAddress`
-- `AliCloudNatGateway`
-- `AliCloudApplicationLoadBalancer`
-- `AliCloudNetworkLoadBalancer`
-- `AliCloudVpnGateway`
-- `AliCloudDnsZone`
-- `AliCloudDnsRecord`
-- `AliCloudPrivateDnsZone`
-- `AliCloudStorageBucket`
-- `AliCloudNasFileSystem`
-- `AliCloudKmsKey`
-- `AliCloudRdsInstance`
-- `AliCloudPolardbCluster`
-- `AliCloudRedisInstance`
-- `AliCloudMongodbInstance`
-- `AliCloudEcsInstance`
-- `AliCloudContainerRegistry`
-- `AliCloudKubernetesCluster`
-- `AliCloudKubernetesNodePool`
-- `AliCloudCdnDomain`
-- `AliCloudFunction`
-- `AliCloudSaeApplication`
-- `AliCloudRocketmqInstance`
-- `AliCloudCenInstance`
-- `OciVcn`
-- `OciSubnet`
-- `OciSecurityGroup`
-- `OciCompartment`
-- `OciIdentityPolicy`
-- `OciDynamicGroup`
-- `OciComputeInstance`
-- `OciContainerEngineCluster`
-- `OciContainerEngineNodePool`
-- `OciContainerInstance`
-- `OciApplicationLoadBalancer`
-- `OciNetworkLoadBalancer`
-- `OciDynamicRoutingGateway`
-- `OciPublicIp`
-- `OciAutonomousDatabase`
-- `OciDbSystem`
-- `OciMysqlDbSystem`
-- `OciPostgresqlDbSystem`
-- `OciRedisCluster`
-- `OciNosqlTable`
-- `OciObjectStorageBucket`
-- `OciFileSystem`
-- `OciBlockVolume`
-- `OciKmsVault`
-- `OciKmsKey`
-- `OciVaultSecret`
-- `OciBastion`
-- `OciFunctionsApplication`
-- `OciApiGateway`
-- `OciStreamPool`
-- `OciQueue`
-- `OciAlarm`
-- `OciLogGroup`
-- `OciDnsZone`
-- `OciDnsRecord`
-- `OciNetworkFirewall`
-- `OciDevopsProject`
-- `HetznerCloudSshKey`
-- `HetznerCloudPlacementGroup`
-- `HetznerCloudFirewall`
-- `HetznerCloudNetwork`
-- `HetznerCloudPrimaryIp`
-- `HetznerCloudFloatingIp`
-- `HetznerCloudServer`
-- `HetznerCloudVolume`
-- `HetznerCloudSnapshot`
-- `HetznerCloudCertificate`
-- `HetznerCloudLoadBalancer`
-- `HetznerCloudDnsZone`
 
 ### spec.jobTemplate.pod.initContainers[].env.secrets[].valueFrom.env
 
@@ -9589,6 +9441,43 @@ For StatefulSets, this can be the name of a volumeClaimTemplate.
 
 Whether the PVC should be mounted read-only.
 Default is false.
+
+### spec.jobTemplate.pod.initContainers[].volumeMounts[].serviceAccountToken
+
+`ServiceAccountTokenVolumeSource`
+
+Projected ServiceAccount token volume source.
+Use this to mount a short-lived, audience-bound identity token that the
+kubelet issues for the pod's ServiceAccount and rotates automatically.
+
+### spec.jobTemplate.pod.initContainers[].volumeMounts[].serviceAccountToken.audience
+
+`string` · required
+
+Intended audience of the token. The receiving service must identify
+itself with this audience when verifying the token; a token minted for a
+different audience is rejected. Required: an audience-less token would be
+replayable against any service in the cluster.
+
+- rule: {"required":true}
+
+### spec.jobTemplate.pod.initContainers[].volumeMounts[].serviceAccountToken.expirationSeconds
+
+`int64`
+
+Requested lifetime of the token in seconds. The kubelet starts rotating
+the token when it passes 80% of its lifetime or 24 hours, whichever is
+shorter. Defaults to 3600 (1 hour). The Kubernetes API enforces a
+minimum of 600 (10 minutes).
+
+- rule: Expiration must be at least 600 seconds (the Kubernetes API minimum)
+
+### spec.jobTemplate.pod.initContainers[].volumeMounts[].serviceAccountToken.path
+
+`string`
+
+Filename for the token relative to the mount path.
+Defaults to "token".
 
 ### spec.jobTemplate.pod.initContainers[].lifecycle
 

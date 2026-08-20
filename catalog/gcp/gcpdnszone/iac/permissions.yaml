@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpdnszone
+spec:
+  gcp:
+    groups:
+      - purpose: EnableDnsApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling dns.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageZone
+        permissions:
+          - dns.managedZones.create
+          - dns.managedZones.get
+          - dns.managedZones.update
+          - dns.managedZones.delete
+        provenance: derived
+        notes: Covers google_dns_managed_zone -- create, read/refresh, in-place updates (DNSSEC, logging, forwarding), and destroy.
+      - purpose: BindPrivateZoneNetworks
+        permissions:
+          - dns.networks.bindPrivateDNSZone
+        provenance: derived
+        notes: Required only for private zones -- binding the zone's resolution scope to the VPC networks in private_visibility_config demands this permission on each network's project. Peering zones additionally need dns.networks.targetWithPeeringZone on the target network.

@@ -1,0 +1,100 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azuremysqlflexibleserver
+spec:
+  presets:
+    - preset: 01-dev-burstable
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Database for MySQL
+          sku_meter: burstable server compute
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: the B_Standard_B1ms server bills its burstable B1ms compute every hour of the month (x 730) -- the B-series bills per server-hour, not per vCore
+          list_unit_price: "0.017"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for MySQL' and armRegionName eq 'eastus' and meterName eq 'B1MS' and productName eq 'Azure Database for MySQL Flexible Server Burstable BS Series Compute' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "12.4100"
+        - service_name: Azure Database for MySQL
+          sku_meter: server storage
+          pricing_unit: GB-months
+          pricing_quantity: "20"
+          quantity_basis: provisioned storage bills per GiB-month whether used or empty; when storage.size_gb is unset Azure provisions its documented default of 20 GiB
+          list_unit_price: "0.115"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for MySQL' and armRegionName eq 'eastus' and meterName eq 'Storage Data Stored' and productName eq 'Azure Database for MySQL Flexible Server Storage' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "2.3000"
+      total_list_cost: "14.7100"
+      exclusions:
+        - backup storage beyond the free allowance (100% of provisioned storage) follows database churn and retention settings
+        - network egress follows client placement
+    - preset: 02-production-private-ha
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Database for MySQL
+          sku_meter: server compute
+          pricing_unit: vCore-hours
+          pricing_quantity: "5840"
+          quantity_basis: GP_Standard_D4ds_v4 provisions 4 General Purpose Ddsv4 vCores x 730 hours at the series' per-vCore rate; the high-availability standby replica has the same compute configuration as the primary and bills the same 4 vCores x 730 hours -- Microsoft bills both replicas' provisioned compute
+          list_unit_price: "0.0855"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for MySQL' and armRegionName eq 'eastus' and armSkuName eq 'AzureDB_MySQL_Flexible_Server_General_Purpose_Ddsv4_Compute' and meterName eq 'vCore' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "499.3200"
+        - service_name: Azure Database for MySQL
+          sku_meter: server storage
+          pricing_unit: GB-months
+          pricing_quantity: "512"
+          quantity_basis: provisioned storage bills per GiB-month whether used or empty; when storage.size_gb is unset Azure provisions its documented default of 20 GiB; the high-availability standby replica has the same storage configuration as the primary and bills the same provisioned GiB -- Microsoft bills both replicas' provisioned storage
+          list_unit_price: "0.115"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for MySQL' and armRegionName eq 'eastus' and meterName eq 'Storage Data Stored' and productName eq 'Azure Database for MySQL Flexible Server Storage' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "58.8800"
+      total_list_cost: "558.2000"
+      exclusions:
+        - backup storage beyond the free allowance (100% of provisioned storage) follows database churn and retention settings
+        - geo-redundant backup storage bills consumed backup GiB at a higher rate than local backups and follows churn
+        - elastic IOPS scaling bills additional IO on demand as the workload bursts and cannot be known from the manifest
+        - network egress follows client placement
+      notes: High availability doubles the bill -- Microsoft's documentation states you pay for the provisioned compute and storage of both the primary and the standby replica, whether the mode is ZONE_REDUNDANT or SAME_ZONE.
+    - preset: 03-hardened-cmk-entra
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Database for MySQL
+          sku_meter: server compute
+          pricing_unit: vCore-hours
+          pricing_quantity: "2920"
+          quantity_basis: GP_Standard_D4ds_v4 provisions 4 General Purpose Ddsv4 vCores x 730 hours at the series' per-vCore rate
+          list_unit_price: "0.0855"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for MySQL' and armRegionName eq 'eastus' and armSkuName eq 'AzureDB_MySQL_Flexible_Server_General_Purpose_Ddsv4_Compute' and meterName eq 'vCore' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "249.6600"
+        - service_name: Azure Database for MySQL
+          sku_meter: server storage
+          pricing_unit: GB-months
+          pricing_quantity: "128"
+          quantity_basis: provisioned storage bills per GiB-month whether used or empty; when storage.size_gb is unset Azure provisions its documented default of 20 GiB
+          list_unit_price: "0.115"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for MySQL' and armRegionName eq 'eastus' and meterName eq 'Storage Data Stored' and productName eq 'Azure Database for MySQL Flexible Server Storage' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "14.7200"
+      total_list_cost: "264.3800"
+      exclusions:
+        - backup storage beyond the free allowance (100% of provisioned storage) follows database churn and retention settings
+        - network egress follows client placement

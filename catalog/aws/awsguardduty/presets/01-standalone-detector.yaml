@@ -1,0 +1,31 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsGuardDuty
+metadata:
+  name: guardduty
+spec:
+  region: <aws-region>
+  findingPublishingFrequency: FIFTEEN_MINUTES
+  features:
+    - name: S3_DATA_EVENTS
+    - name: RUNTIME_MONITORING
+      additionalConfiguration:
+        - name: EKS_ADDON_MANAGEMENT
+  filters:
+    - name: archive-low-severity
+      description: Archive findings below severity 4
+      action: ARCHIVE
+      rank: 1
+      criteria:
+        - field: severity
+          lessThan: "4"
+  publishingDestination:
+    bucketArn:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: <findings-archive-bucket>
+        fieldPath: status.outputs.bucket_arn
+    kmsKeyArn:
+      valueFrom:
+        kind: AwsKmsKey
+        name: <findings-export-key>
+        fieldPath: status.outputs.key_arn

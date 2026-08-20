@@ -1,0 +1,136 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsmskcluster
+spec:
+  aws:
+    statements:
+      - sid: ManageCluster
+        actions:
+          - kafka:CreateCluster
+          - kafka:DescribeCluster
+          - kafka:DescribeClusterV2
+          - kafka:DeleteCluster
+          - kafka:UpdateBrokerCount
+          - kafka:UpdateBrokerStorage
+          - kafka:UpdateBrokerType
+          - kafka:UpdateClusterConfiguration
+          - kafka:UpdateClusterKafkaVersion
+          - kafka:UpdateMonitoring
+          - kafka:UpdateSecurity
+          - kafka:UpdateConnectivity
+          - kafka:UpdateStorage
+          - kafka:UpdateRebalancing
+          - kafka:TagResource
+          - kafka:UntagResource
+          - kafka:ListTagsForResource
+        resources:
+          - arn:aws:kafka:*:*:cluster/*
+        provenance: derived
+        notes: Covers aws_msk_cluster across its lifecycle -- create, the granular in-place update operations (broker count/type/storage, Kafka version, configuration, monitoring levels, security settings, connectivity including public access and PrivateLink, storage mode, Express rebalancing), tagging, endpoint reads, and teardown.
+      - sid: ReadBootstrapBrokers
+        actions:
+          - kafka:GetBootstrapBrokers
+        resources:
+          - "*"
+        provenance: derived
+        notes: Endpoint reads after create and during refresh. The service reference lists NO resource types for kafka:GetBootstrapBrokers (unlike the cluster lifecycle actions, which scope to the cluster ARN), so IAM evaluates it against Resource "*" -- an ARN-scoped grant never matches. The wildcard is the narrowest possible scope.
+      - sid: PollClusterOperations
+        actions:
+          - kafka:DescribeClusterOperation
+          - kafka:DescribeClusterOperationV2
+        resources:
+          - "*"
+        provenance: derived
+        notes: Every aws_msk_cluster update is an asynchronous cluster operation the provider polls to completion; operation ARNs carry server-generated ids, so the wildcard is the practical scope.
+      - sid: ManageConfiguration
+        actions:
+          - kafka:CreateConfiguration
+          - kafka:DescribeConfiguration
+          - kafka:DescribeConfigurationRevision
+          - kafka:UpdateConfiguration
+          - kafka:DeleteConfiguration
+        resources:
+          - arn:aws:kafka:*:*:configuration/*
+        provenance: derived
+        notes: Covers the conditional aws_msk_configuration -- created only when the spec carries inline server_properties; property edits push a new revision the cluster follows.
+      - sid: ManageScramSecretAssociations
+        actions:
+          - kafka:BatchAssociateScramSecret
+          - kafka:BatchDisassociateScramSecret
+          - kafka:ListScramSecrets
+        resources:
+          - arn:aws:kafka:*:*:cluster/*
+        provenance: derived
+        notes: Covers aws_msk_single_scram_secret_association, one per scram_secret_arns entry. The Secrets Manager secrets themselves are managed outside this component.
+      - sid: ManageClusterPolicy
+        actions:
+          - kafka:PutClusterPolicy
+          - kafka:GetClusterPolicy
+          - kafka:DeleteClusterPolicy
+        resources:
+          - arn:aws:kafka:*:*:cluster/*
+        provenance: derived
+        notes: Covers the conditional aws_msk_cluster_policy -- the resource-based policy behind cross-account PrivateLink access, present only when spec.cluster_policy is set.
+      - sid: ManageTopics
+        actions:
+          - kafka:CreateTopic
+          - kafka:DescribeTopic
+          - kafka:UpdateTopic
+          - kafka:DeleteTopic
+          - kafka:ListTopics
+        resources:
+          - arn:aws:kafka:*:*:cluster/*
+          - arn:aws:kafka:*:*:topic/*
+        provenance: derived
+        notes: Covers aws_msk_topic, one per declared spec.topics entry -- the control-plane MSK topic API, no Kafka client connectivity or kafka-cluster data-plane actions involved.
+      - sid: DescribeVpcContext
+        actions:
+          - ec2:DescribeSubnets
+          - ec2:DescribeSecurityGroups
+          - ec2:DescribeVpcs
+          - ec2:DescribeVpcAttribute
+          - ec2:DescribeRouteTables
+          - ec2:DescribeVpcEndpoints
+        resources:
+          - "*"
+        provenance: derived
+        notes: Cluster creation validates the referenced subnets and security groups (the same EC2 reads AmazonMSKFullAccess documents as required for resource validation). EC2 Describe APIs support no resource-level scoping, so the wildcard is the narrowest possible scope.
+      - sid: UseCustomerManagedKeys
+        actions:
+          - kms:DescribeKey
+          - kms:CreateGrant
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Required only when kms_key_arn selects a customer-managed key -- MSK validates the key and creates grants against it during cluster create.
+      - sid: EnableBrokerLogDelivery
+        actions:
+          - logs:CreateLogDelivery
+          - logs:GetLogDelivery
+          - logs:UpdateLogDelivery
+          - logs:DeleteLogDelivery
+          - logs:ListLogDeliveries
+          - logs:PutResourcePolicy
+          - logs:DescribeResourcePolicies
+          - logs:DescribeLogGroups
+          - s3:GetBucketPolicy
+          - s3:PutBucketPolicy
+          - firehose:TagDeliveryStream
+        resources:
+          - "*"
+        provenance: derived
+        notes: Required only when spec.logging enables broker log delivery -- MSK validates and wires the CloudWatch Logs, S3, and Firehose destinations through the caller (the log-delivery and firehose-tagging permissions AmazonMSKFullAccess documents; s3:PutBucketPolicy per the MSK logging guide for S3 destinations). The log-delivery APIs support no resource scoping; scope the S3 actions to the destination bucket in a hardened deployment.
+      - sid: CreateServiceLinkedRoles
+        actions:
+          - iam:CreateServiceLinkedRole
+        resources:
+          - arn:aws:iam::*:role/aws-service-role/kafka.amazonaws.com/AWSServiceRoleForKafka*
+          - arn:aws:iam::*:role/aws-service-role/delivery.logs.amazonaws.com/AWSServiceRoleForLogDelivery*
+        provenance: derived
+        notes: The first MSK cluster in an account creates the Kafka service-linked role automatically, and the first log delivery creates the log-delivery role; scoped to exactly those role paths.

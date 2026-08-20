@@ -665,6 +665,12 @@ func TestKubernetesSuperset_Pulumi(t *testing.T) {
 func TestKubernetesGhaRunnerScaleSet_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesgharunnerscaleset", "pulumi")
 }
+func TestKubernetesPlantonRunner_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesplantonrunner", "pulumi")
+}
+func TestKubernetesPlantonPlatform_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesplantonplatform", "pulumi")
+}
 
 // ─── Tier 3 Terraform (operator-dependent) ──────────────────────────────────
 
@@ -737,6 +743,12 @@ func TestKubernetesSuperset_Terraform(t *testing.T) {
 func TestKubernetesGhaRunnerScaleSet_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesgharunnerscaleset", "terraform")
 }
+func TestKubernetesPlantonRunner_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesplantonrunner", "terraform")
+}
+func TestKubernetesPlantonPlatform_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesplantonplatform", "terraform")
+}
 
 // ─── Tier 4 Pulumi (operators, addons) ──────────────────────────────────────
 
@@ -775,6 +787,9 @@ func TestKubernetesOtelCollector_Pulumi(t *testing.T) {
 }
 func TestKubernetesTektonOperator_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetestektonoperator", "pulumi")
+}
+func TestKubernetesPlantonOperator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesplantonoperator", "pulumi")
 }
 func TestKubernetesIstio_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesistio", "pulumi")
@@ -820,6 +835,9 @@ func TestKubernetesOtelCollector_Terraform(t *testing.T) {
 }
 func TestKubernetesTektonOperator_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetestektonoperator", "terraform")
+}
+func TestKubernetesPlantonOperator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "kubernetesplantonoperator", "terraform")
 }
 func TestKubernetesIstioBaseCrds_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "kubernetesistiobasecrds", "terraform")

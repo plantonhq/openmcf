@@ -1,0 +1,29 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesPersistentVolumeClaim manifest's spec values into the storage
+# footprint it provisions. The estimate generator replays the catalog
+# presets through these rules to emit
+# ../estimates/kubernetespersistentvolumeclaim.yaml; a server-side
+# estimator can evaluate the same rules against live manifests. This is a
+# VOLUMES-ONLY workload: a claim reserves no CPU or memory, so the workload
+# binding carries no resources_path -- only the volume bound to
+# storage_request, at a constant single instance (one claim, one volume).
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetespersistentvolumeclaim
+spec:
+  workloads:
+    - label: claim
+      instances:
+        constant: "1"
+      volumes:
+        - label: volume
+          size_path: storage_request
+  exclusions:
+    - text: the price per GB is the StorageClass's backing driver and tier (block storage vs shared filesystem), which the manifest selects but cannot price
+    - text: with a WaitForFirstConsumer StorageClass, no volume exists until a pod first uses the claim -- the footprint states what provisioning WILL reserve
+    - applies_when:
+        - field_path: data_source
+          op: is_set
+      text: the volume is populated from an existing source (clone or snapshot restore) -- a full-size new volume is provisioned; the source and any snapshots bill separately

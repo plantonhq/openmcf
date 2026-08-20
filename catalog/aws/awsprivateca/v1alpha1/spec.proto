@@ -1,0 +1,457 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsprivateca.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsPrivateCaSpec defines one AWS Private Certificate Authority -
+// the managed CA that issues internal TLS certificates (mTLS
+// services, MSK/EKS client auth, service meshes, IoT fleets) - with
+// its activation, issued certificates, ACM renewal permission, and
+// resource policy managed in-line.
+//
+// ACTIVATION is composed, never user-choreographed: a ROOT CA
+// self-signs its own certificate at apply (the three-step
+// CSR->issue->install dance the raw provider makes you wire is done
+// by the modules), so a fresh ROOT CA comes up ACTIVE and issuing. A
+// SUBORDINATE CA activates when subordinate_activation names a
+// parent AwsPrivateCa in this account; without it the CA sits in
+// PENDING_CERTIFICATE (created, billed, not yet able to issue) until
+// its certificate is installed out of band - the posture for
+// external/offline parent CAs.
+//
+// COST is real and per-hour: a GENERAL_PURPOSE CA bills its monthly
+// fee (USD 400/month, prorated hourly) from creation to deletion;
+// SHORT_LIVED_CERTIFICATE mode bills USD 50/month prorated. Deleting
+// a CA parks it restorable for permanent_deletion_time_in_days
+// (billing stops at delete).
+message AwsPrivateCaSpec {
+  // AWS requires the signing family to match the key family.
+  option (buf.validate.message).cel = {
+    id: "spec.signing_algorithm_matches_key_family"
+    message: "signing_algorithm must match key_algorithm's family - RSA_* keys sign *WITHRSA, EC_* keys sign *WITHECDSA, ML_DSA_* keys sign with their exact ML_DSA level, SM2 signs SM3WITHSM2"
+    expression: "(this.key_algorithm.startsWith('RSA_') && this.signing_algorithm.endsWith('WITHRSA')) || (this.key_algorithm.startsWith('EC_') && this.signing_algorithm.endsWith('WITHECDSA')) || (this.key_algorithm.startsWith('ML_DSA') && this.signing_algorithm == this.key_algorithm) || (this.key_algorithm == 'SM2' && this.signing_algorithm == 'SM3WITHSM2')"
+  };
+  // Root validity shapes the self-signed ROOT certificate only.
+  option (buf.validate.message).cel = {
+    id: "spec.root_ca_validity_root_only"
+    message: "root_ca_validity applies only when type is ROOT - a subordinate's certificate validity comes from its parent via subordinate_activation.validity"
+    expression: "!has(this.root_ca_validity) || this.type == 'ROOT'"
+  };
+  // Only subordinates have a parent to activate from.
+  option (buf.validate.message).cel = {
+    id: "spec.subordinate_activation_subordinate_only"
+    message: "subordinate_activation applies only when type is SUBORDINATE - a ROOT CA self-activates"
+    expression: "!has(this.subordinate_activation) || this.type == 'SUBORDINATE'"
+  };
+  // Short-lived mode trades revocation away for 7-day certificates.
+  option (buf.validate.message).cel = {
+    id: "spec.short_lived_forbids_revocation"
+    message: "SHORT_LIVED_CERTIFICATE mode does not support revocation - drop the crl/ocsp configuration (short-lived certificates expire within 7 days instead of being revoked)"
+    expression: "this.usage_mode != 'SHORT_LIVED_CERTIFICATE' || (!has(this.revocation) || (!this.revocation.crl.enabled && !this.revocation.ocsp.enabled))"
+  };
+  // Certificate names key the for_each on both engines and the
+  // issued_certificate_arns output map.
+  option (buf.validate.message).cel = {
+    id: "spec.issued_certificate_names_unique"
+    message: "issued certificate names must be unique within the CA"
+    expression: "this.issued_certificates.map(c, c.name).unique()"
+  };
+
+  // The AWS region the CA lives in. Example: "us-west-2".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The CA's place in the hierarchy: "ROOT" (self-signed at apply -
+  // up and issuing in one deploy) or "SUBORDINATE" (signed by a
+  // parent CA - see subordinate_activation). Fixed for life.
+  string type = 2 [(buf.validate.field).string = {
+    in: [
+      "ROOT",
+      "SUBORDINATE"
+    ]
+  }];
+
+  // The CA key pair's algorithm. RSA_2048 is the broadly compatible
+  // default choice; EC keys are smaller and faster; ML_DSA_* are the
+  // post-quantum lattice algorithms (pair with the matching ML_DSA
+  // signing level); SM2 exists for China regions only. Fixed for
+  // life.
+  string key_algorithm = 3 [(buf.validate.field).string = {
+    in: [
+      "RSA_2048",
+      "RSA_3072",
+      "RSA_4096",
+      "EC_prime256v1",
+      "EC_secp384r1",
+      "EC_secp521r1",
+      "ML_DSA_44",
+      "ML_DSA_65",
+      "ML_DSA_87",
+      "SM2"
+    ]
+  }];
+
+  // The algorithm the CA signs issued certificates with. Must match
+  // the key family (the validation above). Fixed for life.
+  string signing_algorithm = 4 [(buf.validate.field).string = {
+    in: [
+      "SHA256WITHRSA",
+      "SHA384WITHRSA",
+      "SHA512WITHRSA",
+      "SHA256WITHECDSA",
+      "SHA384WITHECDSA",
+      "SHA512WITHECDSA",
+      "ML_DSA_44",
+      "ML_DSA_65",
+      "ML_DSA_87",
+      "SM3WITHSM2"
+    ]
+  }];
+
+  // The CA certificate's X.500 subject. Fixed for life.
+  AwsPrivateCaSubject subject = 5 [(buf.validate.field).required = true];
+
+  // What the CA issues: "GENERAL_PURPOSE" (any validity, revocation
+  // supported - USD 400/month) or "SHORT_LIVED_CERTIFICATE"
+  // (certificates capped at 7 days, no revocation - USD 50/month;
+  // the right mode for high-churn workload identity). Unset means
+  // GENERAL_PURPOSE (the AWS default). Fixed for life - the provider
+  // accepts a change plan but AWS never applies it.
+  string usage_mode = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "GENERAL_PURPOSE",
+        "SHORT_LIVED_CERTIFICATE"
+      ]
+    }
+  ];
+
+  // The HSM standard protecting the CA key. Unset takes the region's
+  // default (FIPS_140_2_LEVEL_3_OR_HIGHER in most regions; some
+  // regions only offer LEVEL_2). Fixed for life.
+  string key_storage_security_standard = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "FIPS_140_2_LEVEL_2_OR_HIGHER",
+        "FIPS_140_2_LEVEL_3_OR_HIGHER",
+        "CCPC_LEVEL_1_OR_HIGHER"
+      ]
+    }
+  ];
+
+  // How the CA publishes revocation state for the certificates it
+  // issued. Omit for no revocation infrastructure (fine for
+  // short-lived certificates and closed systems that distrust by
+  // rotation).
+  AwsPrivateCaRevocation revocation = 8;
+
+  // The validity of a ROOT CA's self-signed certificate. Unset means
+  // 10 years (the console's default posture). ROOT only.
+  AwsPrivateCaValidity root_ca_validity = 9;
+
+  // Activate a SUBORDINATE CA from a parent AwsPrivateCa in this
+  // account: the modules issue this CA's certificate from the parent
+  // (a CA-path-length template) and install it. Omit to leave the
+  // subordinate in PENDING_CERTIFICATE for out-of-band activation by
+  // an external parent.
+  AwsPrivateCaSubordinateActivation subordinate_activation = 10;
+
+  // Certificates issued directly from this CA at apply time, keyed
+  // by name - the declarative surface for long-lived internal
+  // certificates (service mTLS pairs, MSK client certs). Bring your
+  // own CSR (the private key never touches AWS or this manifest).
+  // The CA must be able to issue: a ROOT or activated SUBORDINATE.
+  repeated AwsPrivateCaIssuedCertificate issued_certificates = 11;
+
+  // Grant ACM permission to auto-renew the certificates it requested
+  // from this CA (the IssueCertificate/GetCertificate/
+  // ListPermissions grant to acm.amazonaws.com). Set this whenever
+  // AwsCertManagerCert resources are issued from this CA - without
+  // it their renewals fail silently at expiry.
+  bool acm_renewal_permission = 12;
+
+  // The CA's resource policy (JSON) - grants OTHER accounts or an
+  // organization the right to issue from this CA via RAM sharing.
+  string policy = 13 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "spec.policy_valid_json"
+      message: "policy must be a valid JSON policy document"
+      expression: "this == '' || (this.startsWith('{') && this.endsWith('}'))"
+    }
+  ];
+
+  // Days the deleted CA stays restorable, 7-30. Unset means 30 (the
+  // provider default). Billing stops at delete either way; a shorter
+  // window frees the CA's name-and-subject slot sooner. E2E and
+  // ephemeral environments should use 7.
+  int64 permanent_deletion_time_in_days = 14 [(buf.validate.field).cel = {
+    id: "spec.permanent_deletion_window_range"
+    message: "permanent_deletion_time_in_days must be between 7 and 30 (unset defaults to 30)"
+    expression: "this == 0 || (this >= 7 && this <= 30)"
+  }];
+
+  // Whether the CA accepts issue requests. Set false to PAUSE
+  // issuance without deleting (existing certificates stay valid and
+  // revocation keeps publishing; billing continues). Only an ACTIVE
+  // CA can be disabled.
+  optional bool enabled = 15 [(dev.planton.shared.options.default) = "true"];
+}
+
+// AwsPrivateCaSubject is the CA certificate's X.500 subject. Field
+// length caps are AWS's own.
+message AwsPrivateCaSubject {
+  // A CA needs an identity - AWS rejects an empty subject.
+  option (buf.validate.message).cel = {
+    id: "subject.at_least_one_field"
+    message: "set at least one subject field - common_name alone is the usual choice for an internal CA"
+    expression: "this.common_name != '' || this.organization != '' || this.organizational_unit != '' || this.country != '' || this.state != '' || this.locality != ''"
+  };
+
+  // The CA's common name, e.g. "corp-root-ca" or
+  // "Acme Internal Root CA G1".
+  string common_name = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 64
+  ];
+
+  // Legal organization name, e.g. "Acme Corp".
+  string organization = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 64
+  ];
+
+  // Division within the organization, e.g. "Platform Engineering".
+  string organizational_unit = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 64
+  ];
+
+  // Two-letter ISO country code, e.g. "US".
+  string country = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      len: 2
+      pattern: "^[A-Za-z]{2}$"
+    }
+  ];
+
+  // State or province, e.g. "California".
+  string state = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // City, e.g. "San Francisco".
+  string locality = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 128
+  ];
+}
+
+// AwsPrivateCaRevocation is how relying parties learn a certificate
+// was revoked before expiry.
+message AwsPrivateCaRevocation {
+  // Certificate Revocation Lists published to S3.
+  AwsPrivateCaCrl crl = 1;
+
+  // Online Certificate Status Protocol - AWS runs the responder.
+  AwsPrivateCaOcsp ocsp = 2;
+}
+
+// AwsPrivateCaCrl publishes signed revocation lists to an S3 bucket.
+message AwsPrivateCaCrl {
+  // An enabled CRL needs somewhere to publish and a refresh cadence.
+  option (buf.validate.message).cel = {
+    id: "crl.enabled_requires_bucket_and_expiration"
+    message: "an enabled CRL requires s3_bucket_name and expiration_in_days - AWS publishes the signed list to that bucket on that cadence"
+    expression: "!this.enabled || (has(this.s3_bucket_name) && this.expiration_in_days >= 1)"
+  };
+
+  // Publish CRLs for this CA. The bucket must grant the ACM PCA
+  // service the documented getBucketAcl/putObject permissions
+  // BEFORE the CA is created - AWS validates at create.
+  bool enabled = 1;
+
+  // Days each published CRL is valid before AWS publishes the next
+  // one (1-5000).
+  int64 expiration_in_days = 2 [(buf.validate.field).cel = {
+    id: "crl.expiration_range"
+    message: "expiration_in_days must be between 1 and 5000"
+    expression: "this == 0 || (this >= 1 && this <= 5000)"
+  }];
+
+  // The S3 bucket CRLs publish to. Reference an AwsS3Bucket
+  // bucket_id output or pass a literal bucket name.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef s3_bucket_name = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // The objects' ACL: "PUBLIC_READ" (relying parties fetch the CRL
+  // straight from S3) or "BUCKET_OWNER_FULL_CONTROL" (private
+  // bucket - pair with custom_cname fronting it, e.g. CloudFront).
+  // Unset takes AWS's default (PUBLIC_READ - which requires the
+  // bucket to allow public ACLs).
+  string s3_object_acl = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "PUBLIC_READ",
+        "BUCKET_OWNER_FULL_CONTROL"
+      ]
+    }
+  ];
+
+  // The hostname baked into issued certificates' CRL distribution
+  // point instead of the raw S3 URL (a CDN or vanity host fronting
+  // the bucket).
+  string custom_cname = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 253
+  ];
+
+  // A path prefix for the published objects within the bucket.
+  string custom_path = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 253
+  ];
+}
+
+// AwsPrivateCaOcsp turns on AWS's managed OCSP responder for this CA.
+message AwsPrivateCaOcsp {
+  // Enable OCSP - issued certificates then carry the responder URL
+  // and relying parties check revocation online.
+  bool enabled = 1;
+
+  // A vanity hostname for the OCSP responder (you run the
+  // DNS/proxy; AWS still answers).
+  string custom_cname = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 253
+  ];
+}
+
+// AwsPrivateCaValidity is a certificate validity period.
+message AwsPrivateCaValidity {
+  // END_DATE takes an RFC3339 timestamp; every other type takes a
+  // positive integer.
+  option (buf.validate.message).cel = {
+    id: "validity.value_matches_type"
+    message: "validity value must be a positive integer for DAYS/MONTHS/YEARS/ABSOLUTE, or an RFC3339 timestamp (e.g. \"2036-01-01T00:00:00Z\") for END_DATE"
+    expression: "this.type == 'END_DATE' ? this.value.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$') : this.value.matches('^[1-9][0-9]*$')"
+  };
+
+  // How the period is expressed: "YEARS", "MONTHS", "DAYS" (relative
+  // to issuance), "ABSOLUTE" (Unix epoch seconds), or "END_DATE"
+  // (an RFC3339 timestamp).
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "YEARS",
+      "MONTHS",
+      "DAYS",
+      "ABSOLUTE",
+      "END_DATE"
+    ]
+  }];
+
+  // The period's value, per type: "10" with YEARS, "398" with DAYS,
+  // "2036-01-01T00:00:00Z" with END_DATE.
+  string value = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsPrivateCaSubordinateActivation signs this subordinate CA from a
+// parent AwsPrivateCa and installs the resulting certificate.
+message AwsPrivateCaSubordinateActivation {
+  // The parent CA that signs this one. Reference another
+  // AwsPrivateCa certificate_authority_arn output or pass a literal
+  // ARN. The parent must be ACTIVE and in this account.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef parent_ca_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsPrivateCa,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.certificate_authority_arn"
+  ];
+
+  // How many MORE levels of CA may hang below this one (0-3; picks
+  // the SubordinateCACertificate_PathLen{N} template). 0 - the
+  // common case - means this CA signs only end-entity certificates.
+  int64 path_length = 2 [(buf.validate.field).cel = {
+    id: "activation.path_length_range"
+    message: "path_length must be between 0 and 3 - AWS templates cover path lengths 0 through 3"
+    expression: "this >= 0 && this <= 3"
+  }];
+
+  // The subordinate CA certificate's validity. Must end before the
+  // parent's own certificate expires.
+  AwsPrivateCaValidity validity = 3 [(buf.validate.field).required = true];
+}
+
+// AwsPrivateCaIssuedCertificate is one certificate issued from this
+// CA at apply time.
+message AwsPrivateCaIssuedCertificate {
+  // The certificate's name - the for_each key on both engines and
+  // the key in the issued_certificate_arns output map.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 63
+    pattern: "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+  }];
+
+  // The PEM certificate signing request. Generate it wherever the
+  // private key lives (openssl req -new ...) - the key itself never
+  // touches AWS or this manifest.
+  string csr = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).cel = {
+      id: "certificate.csr_is_pem"
+      message: "csr must be a PEM-encoded certificate signing request (-----BEGIN CERTIFICATE REQUEST-----)"
+      expression: "this.startsWith('-----BEGIN CERTIFICATE REQUEST-----') || this.startsWith('-----BEGIN NEW CERTIFICATE REQUEST-----')"
+    }
+  ];
+
+  // The signing algorithm for THIS certificate. Must match the CA
+  // key's family (same rule as the CA's own signing_algorithm).
+  string signing_algorithm = 3 [(buf.validate.field).string = {
+    in: [
+      "SHA256WITHRSA",
+      "SHA384WITHRSA",
+      "SHA512WITHRSA",
+      "SHA256WITHECDSA",
+      "SHA384WITHECDSA",
+      "SHA512WITHECDSA",
+      "ML_DSA_44",
+      "ML_DSA_65",
+      "ML_DSA_87",
+      "SM3WITHSM2"
+    ]
+  }];
+
+  // How long the certificate is valid. A SHORT_LIVED_CERTIFICATE
+  // CA caps this at 7 days.
+  AwsPrivateCaValidity validity = 4 [(buf.validate.field).required = true];
+
+  // The AWS certificate template shaping the certificate's X.509
+  // profile (key usages, path length). Unset means
+  // EndEntityCertificate/V1 - a plain TLS certificate. Templates are
+  // partition-scoped static ARNs like
+  // "arn:aws:acm-pca:::template/EndEntityClientAuthCertificate/V1".
+  string template_arn = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^arn:[a-z0-9-]+:acm-pca:::template/.+$"
+  ];
+
+  // Dynamic X.509 extensions (JSON ApiPassthrough document - SANs,
+  // custom key usages) for templates in the ApiPassthrough family.
+  string api_passthrough = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).cel = {
+      id: "certificate.api_passthrough_valid_json"
+      message: "api_passthrough must be a valid JSON ApiPassthrough document"
+      expression: "this == '' || (this.startsWith('{') && this.endsWith('}'))"
+    }
+  ];
+}

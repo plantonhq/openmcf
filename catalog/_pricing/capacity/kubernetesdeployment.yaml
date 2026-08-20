@@ -1,0 +1,33 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesDeployment manifest's spec values into the capacity footprint
+# it reserves from its target cluster. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/kubernetesdeployment.yaml; a server-side estimator can
+# evaluate the same rules against live manifests. Every replica is a full
+# pod carrying the app container's declared resources. The derivation
+# grammar cannot traverse the repeated sidecars list, so declared sidecar
+# reservations are named in the exclusions instead of silently ignored.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetesdeployment
+spec:
+  workloads:
+    - label: replica
+      resources_path: container.app.resources
+      instances:
+        field_value:
+          field_path: availability.replicas
+          default_when_unset: "1"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node economics
+    - applies_when:
+        - field_path: container.sidecars
+          op: is_set
+      text: declared sidecar containers add their own reservations in every replica; this footprint states the app container's
+    - applies_when:
+        - field_path: availability.horizontal_pod_autoscaling.enabled
+          op: equals
+          value: "true"
+      text: the footprint states the declared replica floor; horizontal pod autoscaling changes the replica count at runtime up to max_replicas

@@ -1,0 +1,111 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsneptunecluster
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: storage_encrypted
+      evidence:
+        type: spec_default
+        reference: Carries default=true (secure by default); a create-time-only decision -- an unencrypted cluster can never be encrypted in place. An explicit false exists only for restoring an unencrypted snapshot or joining an unencrypted global cluster, where encryption must match the source.
+      notes: Both presets set it true. Encryption covers the shared cluster volume, automated backups, and snapshots.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset means the AWS-managed aws/rds key; setting kms_key_id encrypts cluster storage under the referenced customer-managed key.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Neptune endpoints accept only TLS (HTTPS) connections -- engine 1.0.4.0 and above supports no plaintext path, with TLS 1.2 as the minimum version.
+      notes: AWS provides and rotates the endpoint certificates automatically.
+    - control_id: no-public-access
+      status: configurable
+      field_path: instances.publicly_accessible
+      evidence:
+        type: spec_default
+        reference: Defaults to false on every instances entry -- instances get no public IP and resolve only inside the VPC; a create-time-only choice per instance.
+      notes: Both presets leave it false on every instance; the spec doc says keep it that way for anything production-shaped.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_default
+        reference: The attached security groups are the complete inbound surface -- the cluster port opens only to the sources those groups declare; empty falls back to the VPC default group.
+      notes: Both presets attach an explicit database security group placeholder.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A database endpoint has no WAF attachment point; request filtering belongs to the application tier in front of it.
+    - control_id: rbac
+      status: configurable
+      field_path: iam_database_authentication_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to false (access is network reachability alone); true requires SigV4-signed requests from IAM identities, putting every data-plane call under IAM policy control -- Neptune's only credential mechanism.
+      notes: Both presets enable it. Neptune has no master username or password by design.
+    - control_id: workload-identity
+      status: configurable
+      field_path: iam_database_authentication_enabled
+      evidence:
+        type: spec_default
+        reference: With IAM database authentication on, workloads sign requests with short-lived SigV4 credentials from their IAM role -- no database password exists anywhere in the system to store or rotate.
+      notes: Both presets enable it; Neptune has no password mechanism at all, so this is the only authentication posture available beyond network reachability.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Neptune has no password-based or legacy authentication surface to disable -- access is network reachability plus optional SigV4-signed IAM requests.
+    - control_id: audit-logging
+      status: configurable
+      field_path: enabled_cloudwatch_logs_exports
+      evidence:
+        type: spec_default
+        reference: Empty exports nothing; listing "audit" streams the connection and query audit trail to CloudWatch Logs -- paired with the neptune_enable_audit_log cluster parameter, which actually turns event capture on.
+      notes: The production preset enables both halves (the audit export and the neptune_enable_audit_log parameter); "slowquery" adds slow-query capture the same two-part way.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Neptune publishes cluster and per-instance operational metrics (CPU, memory, queries, replication lag) to CloudWatch automatically; no configuration can disable the flow.
+      notes: enabled_cloudwatch_logs_exports adds security-relevant runtime signals (audit, slowquery) on top of the always-on metrics.
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cluster backups are continuous and cannot be disabled -- backup_retention_period is bounded 1-35 days (0 keeps the AWS default of 1), so point-in-time recovery always exists.
+      notes: Both presets extend retention to 7 days; skip_final_snapshot=false with a named final snapshot additionally protects teardown (CEL forces the name when not skipping).
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: backup_retention_period
+      evidence:
+        type: spec_validation
+        reference: The retention window is a first-class dial validated to 0-35 days, so organizational retention policy is expressed directly in the manifest.
+      notes: Final snapshots govern what survives cluster deletion.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: instances
+      evidence:
+        type: spec_default
+        reference: Each instances entry is its own DB instance; AWS spreads them across the cluster's zones automatically, so a writer plus at least one reader survives an AZ loss with automatic failover by promotion_tier.
+      notes: Cluster storage is always replicated across three AZs regardless of instance count. The production preset runs writer plus reader; the serverless preset runs a single instance.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_protection
+      evidence:
+        type: spec_default
+        reference: Defaults to false; when true, AWS refuses to delete the cluster until protection is explicitly lifted.
+      notes: The production preset enables it alongside final-snapshot protection.
+    - control_id: managed-patching
+      status: configurable
+      field_path: instances.auto_minor_version_upgrade
+      evidence:
+        type: spec_default
+        reference: Carries default=true per instance (mirroring AWS) -- minor engine versions patch automatically in the maintenance window; major upgrades remain deliberate manifest changes gated by allow_major_version_upgrade plus a required instance parameter group.
+      notes: Per-instance maintenance windows let readers patch at staggered times.

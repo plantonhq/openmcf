@@ -12,7 +12,6 @@ spec:
     protection and Cloud DNS wiring. Deploys a hello service by default,
     or fronts a Cloud Run service you already run.
   iconUrl: https://downloads.planton.dev/catalog/logos/gcp/gcpcloudrun/logo.svg
-  isReady: true
   webLinks:
     chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/gcp/cloud-run-https-lb
     readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/gcp/cloud-run-https-lb/README.md

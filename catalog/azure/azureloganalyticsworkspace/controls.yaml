@@ -1,0 +1,81 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureloganalyticsworkspace
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Log Analytics is a managed data platform -- Azure Monitor encrypts all ingested workspace data at rest with Microsoft-managed keys automatically; no configuration exists to disable it."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "Customer-managed keys for ingested log data require linking the workspace to a dedicated Log Analytics cluster (Microsoft's customer-managed-keys model) -- a separate resource outside this spec; the LACluster sku state is server-side and deliberately not modeled here. The spec's cmk_for_query_forced covers only query ARTIFACTS (saved queries, results), forcing them onto customer-managed linked storage -- it does not key the ingested data."
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Ingestion and query ride Azure Monitor's HTTPS endpoints -- TLS is the only transport the service offers, on public and private (AMPLS) paths alike."
+    - control_id: no-public-access
+      status: configurable
+      field_path: internet_ingestion_enabled
+      evidence:
+        type: spec_default
+        reference: "The field's declared default is true (Azure's own default: the workspace accepts ingestion from the public internet). Set false to force ingestion through Azure Monitor Private Link Scope (AMPLS) private endpoints only; the twin internet_query_enabled does the same for the query path -- false makes even the portal's Logs blade require private connectivity."
+      notes: "Preset 03-private-hardened disables both; presets 01 and 02 keep Azure's open defaults. The AMPLS scope and private endpoints that make the private path exist are separate resources."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: "The workspace offers no CIDR-level source filtering -- its network dial is binary per path (public internet or AMPLS private endpoints; see no-public-access). Finer scoping is the AMPLS side's composition. What gates WHO can write into an open workspace is authentication: shared keys or Entra identities (see no-legacy-auth)."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: "A log ingestion and query API, not a web application -- WAF belongs to request-serving tiers. The ingestion path's abuse controls are authentication and the daily quota, not request filtering."
+    - control_id: rbac
+      status: configurable
+      field_path: allow_resource_only_permissions
+      evidence:
+        type: spec_default
+        reference: "The field's declared default is true: Azure's resource-context model, where users query the data of resources their Azure RBAC already lets them see, with no workspace-level grant needed. False switches to workspace-context -- every query requires explicit workspace-level permissions, the stricter centralized model."
+      notes: "Preset 03-private-hardened sets false. Management-plane access is subscription/resource-group RBAC posture either way; this field decides how the DATA plane (query access) maps onto RBAC."
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: "Unset, the workspace holds no Azure identity. The identity block attaches a system-assigned OR user-assigned managed identity (exactly one model, spec-enforced) used when the workspace itself reads other resources -- a dedicated cluster's customer-managed key, or linked storage for query artifacts."
+      notes: "No committed preset attaches one -- the identity matters only for the cluster-CMK and linked-storage compositions, both outside these presets."
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: local_authentication_enabled
+      evidence:
+        type: spec_default
+        reference: "The field's declared default is true (Azure's own default: workspace shared keys work alongside Entra ID). Set false for the keyless posture -- agents and ingestion APIs must authenticate with Entra identities, and the workspace's shared-key outputs stop being usable credentials."
+      notes: "Preset 03-private-hardened sets false. Flip deliberately: legacy agents and some ingestion paths still require shared keys, which is why Azure ships them enabled."
+    - control_id: audit-logging
+      status: not_applicable
+      notes: "Control-plane changes land in the Azure Activity Log as subscription-level posture. The workspace's own query-audit trail (who ran what KQL) exists as an Azure Monitor diagnostic-settings category on the workspace -- a separate resource wired outside this spec."
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: "This component IS the monitoring system -- the destination Container Insights, Application Insights, diagnostic settings, and Sentinel export into. Its own operational telemetry (ingestion volume, latency, cap hits) surfaces as platform metrics and the _LogOperation table automatically, with no field here to wire."
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "Ingested log data has no backup/restore facility -- retention IS the durability model, and Microsoft stores the data redundantly service-side. The blast radius worth knowing: workspace_name is ForceNew, so a rename destroys the workspace and every byte it holds; immediate_data_purge_on_30_days_enabled additionally removes Azure's post-retention grace store for regulated estates."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: "No backups exist to retain (see backup-recovery). The dial usually sought under this heading is retention_in_days -- workspace-level data retention, 30 to 730 days, with per-table overrides managed in Azure directly."
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: "Zone resilience is decided by region and cluster placement, not by any field here: in some regions Azure protects all workspaces on shared clusters by default, elsewhere (including eastus, the presets' region) zone data-resilience requires linking the workspace to a dedicated cluster -- a separate resource with a 100 GB/day minimum commitment (Microsoft's availability-zones documentation for Azure Monitor Logs). Cross-region resilience is workspace replication, also outside this spec."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither Microsoft.OperationalInsights/workspaces nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. A deleted workspace enters Azure's 14-day soft-delete window during which the name stays reserved and the data is recoverable -- a service behavior, not a spec choice."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Fully managed data platform -- Microsoft operates and patches the ingestion pipeline, query engine, and storage beneath every workspace; no customer-visible patch surface exists."

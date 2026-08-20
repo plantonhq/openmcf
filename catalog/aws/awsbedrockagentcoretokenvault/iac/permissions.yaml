@@ -1,0 +1,20 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsbedrockagentcoretokenvault
+spec:
+  aws:
+    statements:
+      - sid: ManageTokenVaultKeySetting
+        actions:
+          - bedrock-agentcore:SetTokenVaultCMK
+          - bedrock-agentcore:GetTokenVault
+        resources:
+          - arn:aws:bedrock-agentcore:*:*:token-vault/*
+        provenance: derived
+        notes: "Covers aws_bedrockagentcore_token_vault_cmk / bedrock.AgentcoreTokenVaultCmk -- the module's ONLY resource. SetTokenVaultCMK applies the key_type/kms_key_arn pair at create AND update (and again on the revert-to-ServiceManagedKey apply the destroy-is-a-no-op lifecycle requires); GetTokenVault serves every plan/refresh. Both actions take resource-level scoping on the token-vault ARN per the bedrock-agentcore service reference -- with token_vault_id unset the module targets the account's one 'default' vault, so a hardened deployment can pin arn:aws:bedrock-agentcore:REGION:ACCOUNT:token-vault/default. Destroy calls no AWS API (the provider has no delete for this setting), so no delete grant exists to give. The AgentCore-side grants on a CustomerManagedKey are created by AWS when the setting applies; the key's policy permitting that is the referenced AwsKmsKey's contract, so the runner needs no kms grants here. No tagging actions: the provider resource carries no tags argument."

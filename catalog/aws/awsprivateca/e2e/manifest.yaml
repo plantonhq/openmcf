@@ -1,0 +1,25 @@
+# Canonical AwsPrivateCa example (hack/dev manifest and refgen
+# Example source): a self-activating internal root CA with the ACM
+# renewal permission granted and a 7-day restore window - the posture
+# for issuing internal TLS through AwsCertManagerCert.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsPrivateCa
+metadata:
+  name: corp-root-ca
+  id: corp-root-ca
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  type: ROOT
+  keyAlgorithm: RSA_2048
+  signingAlgorithm: SHA256WITHRSA
+  subject:
+    commonName: Corp Internal Root CA G1
+    organization: Test Org
+    country: US
+  rootCaValidity:
+    type: YEARS
+    value: "10"
+  acmRenewalPermission: true
+  permanentDeletionTimeInDays: 7

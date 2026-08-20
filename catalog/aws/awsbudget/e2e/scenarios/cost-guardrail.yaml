@@ -1,0 +1,74 @@
+# The full budget surface live: a fixed-limit monthly cost budget with
+# the modern metric + filter-expression generation, a forecast alert,
+# and one folded action (MANUAL approval, so the guardrail is staged
+# but never executes against the shared account; the AWSDenyAll target
+# is the AwsIamUser fixture). The execution role is the consumer-scoped
+# budgets-trusting fixture. Budgets is free; budget names free
+# immediately on delete, so the name is fixed. ~$0.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBudget
+metadata:
+  name: planton-oss-e2e-awsbud
+  id: planton-oss-e2e-awsbud
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbudget
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole,AwsIamUser"
+  tags:
+    - planton-e2e
+spec:
+  region: us-east-1
+  budgetName: Planton E2E Cost Guardrail
+  budgetType: COST
+  timeUnit: MONTHLY
+  limit:
+    amount: "10"
+    unit: USD
+  metric: UnblendedCost
+  filterExpression:
+    and:
+      - tag:
+          key: planton.ai/environment
+          values:
+            - e2e
+      - not:
+          dimension:
+            key: PURCHASE_TYPE
+            values:
+              - Reserved Instances
+  notifications:
+    - comparisonOperator: GREATER_THAN
+      notificationType: FORECASTED
+      threshold: 80
+      thresholdType: PERCENTAGE
+      subscriberEmailAddresses:
+        - finops-e2e@example.com
+  actions:
+    - name: stage-deny-guardrail
+      actionType: APPLY_IAM_POLICY
+      approvalModel: MANUAL
+      notificationType: ACTUAL
+      executionRoleArn:
+        valueFrom:
+          kind: AwsIamRole
+          name: planton-oss-e2e-awsbud-actions
+          fieldPath: status.outputs.role_arn
+      actionThreshold:
+        actionThresholdType: PERCENTAGE
+        actionThresholdValue: 100
+      subscribers:
+        - address:
+            value: finops-e2e@example.com
+          subscriptionType: EMAIL
+      iamActionDefinition:
+        policyArn:
+          value: arn:aws:iam::aws:policy/AWSDenyAll
+        users:
+          - valueFrom:
+              kind: AwsIamUser
+              name: planton-oss-e2e-awsiamuser-smoke
+              fieldPath: status.outputs.user_name

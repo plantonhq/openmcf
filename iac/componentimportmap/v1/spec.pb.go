@@ -318,6 +318,7 @@ type ImportValueDerivation struct {
 	//	*ImportValueDerivation_FromAddressKeySegment
 	//	*ImportValueDerivation_FromClusterSecretKey
 	//	*ImportValueDerivation_FromStackOutputKeyedByAddress
+	//	*ImportValueDerivation_FromMetadataNamePrefix
 	Source        isImportValueDerivation_Source `protobuf_oneof:"source"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -450,6 +451,15 @@ func (x *ImportValueDerivation) GetFromStackOutputKeyedByAddress() string {
 	return ""
 }
 
+func (x *ImportValueDerivation) GetFromMetadataNamePrefix() string {
+	if x != nil {
+		if x, ok := x.Source.(*ImportValueDerivation_FromMetadataNamePrefix); ok {
+			return x.FromMetadataNamePrefix
+		}
+	}
+	return ""
+}
+
 type isImportValueDerivation_Source interface {
 	isImportValueDerivation_Source()
 }
@@ -554,6 +564,17 @@ type ImportValueDerivation_FromStackOutputKeyedByAddress struct {
 	FromStackOutputKeyedByAddress string `protobuf:"bytes,10,opt,name=from_stack_output_keyed_by_address,json=fromStackOutputKeyedByAddress,proto3,oneof"`
 }
 
+type ImportValueDerivation_FromMetadataNamePrefix struct {
+	// This literal prefix plus metadata.name -- the mirror of
+	// from_metadata_name_suffix, for composed identifiers a provider
+	// builds by PREFIXING the parent's name (the canonical case:
+	// Application Auto Scaling's resource_id "table/<table_name>", where
+	// the module names the table after the Planton resource). Keeps
+	// provider-composed identifiers blind-derivable without exporting
+	// them as stack outputs.
+	FromMetadataNamePrefix string `protobuf:"bytes,11,opt,name=from_metadata_name_prefix,json=fromMetadataNamePrefix,proto3,oneof"`
+}
+
 func (*ImportValueDerivation_FromMetadataName) isImportValueDerivation_Source() {}
 
 func (*ImportValueDerivation_FromSpecField) isImportValueDerivation_Source() {}
@@ -573,6 +594,8 @@ func (*ImportValueDerivation_FromAddressKeySegment) isImportValueDerivation_Sour
 func (*ImportValueDerivation_FromClusterSecretKey) isImportValueDerivation_Source() {}
 
 func (*ImportValueDerivation_FromStackOutputKeyedByAddress) isImportValueDerivation_Source() {}
+
+func (*ImportValueDerivation_FromMetadataNamePrefix) isImportValueDerivation_Source() {}
 
 // FromClusterSecretKey locates one data key of a convention-named
 // Kubernetes Secret -- "<metadata.name><name_suffix>", the same naming
@@ -666,7 +689,7 @@ const file_iac_componentimportmap_v1_spec_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12^\n" +
 	"\vderivations\x18\x02 \x03(\v2<.dev.planton.iac.componentimportmap.v1.ImportValueDerivationR\vderivations\x12\"\n" +
 	"\rwhere_to_find\x18\x03 \x01(\tR\vwhereToFind\x12,\n" +
-	"\x12tofu_resource_name\x18\x04 \x01(\tR\x10tofuResourceName\"\xd2\x04\n" +
+	"\x12tofu_resource_name\x18\x04 \x01(\tR\x10tofuResourceName\"\x8f\x05\n" +
 	"\x15ImportValueDerivation\x12.\n" +
 	"\x12from_metadata_name\x18\x01 \x01(\bH\x00R\x10fromMetadataName\x12(\n" +
 	"\x0ffrom_spec_field\x18\x02 \x01(\tH\x00R\rfromSpecField\x12,\n" +
@@ -678,7 +701,8 @@ const file_iac_componentimportmap_v1_spec_proto_rawDesc = "" +
 	"\x18from_address_key_segment\x18\b \x01(\x05H\x00R\x15fromAddressKeySegment\x12t\n" +
 	"\x17from_cluster_secret_key\x18\t \x01(\v2;.dev.planton.iac.componentimportmap.v1.FromClusterSecretKeyH\x00R\x14fromClusterSecretKey\x12K\n" +
 	"\"from_stack_output_keyed_by_address\x18\n" +
-	" \x01(\tH\x00R\x1dfromStackOutputKeyedByAddressB\b\n" +
+	" \x01(\tH\x00R\x1dfromStackOutputKeyedByAddress\x12;\n" +
+	"\x19from_metadata_name_prefix\x18\v \x01(\tH\x00R\x16fromMetadataNamePrefixB\b\n" +
 	"\x06source\"z\n" +
 	"\x14FromClusterSecretKey\x12\x1f\n" +
 	"\vname_suffix\x18\x01 \x01(\tR\n" +
@@ -737,6 +761,7 @@ func file_iac_componentimportmap_v1_spec_proto_init() {
 		(*ImportValueDerivation_FromAddressKeySegment)(nil),
 		(*ImportValueDerivation_FromClusterSecretKey)(nil),
 		(*ImportValueDerivation_FromStackOutputKeyedByAddress)(nil),
+		(*ImportValueDerivation_FromMetadataNamePrefix)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

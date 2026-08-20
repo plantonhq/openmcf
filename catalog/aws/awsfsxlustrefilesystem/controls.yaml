@@ -1,0 +1,89 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsfsxlustrefilesystem
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All FSx for Lustre file systems are encrypted at rest -- when kms_key_id is omitted, AWS encrypts with the AWS-managed FSx key; there is no way to create an unencrypted file system.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: Omitted means the AWS-managed FSx key; setting kms_key_id upgrades encryption at rest to a customer-managed KMS key. ForceNew -- the key choice is fixed at creation.
+      notes: The key's policy must allow FSx to use it; the IaC runner also needs to create a grant against it (see the permissions profile).
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: FSx for Lustre encrypts data in transit automatically when the file system is accessed from EC2 instances that support in-transit encryption (current-generation Nitro instances); the spec carries no field because the capability is negotiated by the service, not configured.
+      notes: Clients on instance types without in-transit encryption support mount unencrypted -- the guarantee travels with the client fleet, not the file system.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The file system exists only as network interfaces inside the VPC subnet named by subnet_id -- no public endpoint exists and none can be created; clients must have VPC network connectivity to mount it.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_default
+        reference: When security_group_ids is empty, AWS attaches the VPC's default security group; attaching explicit groups restricts inbound traffic to declared sources on the Lustre ports (TCP 988 and 1018-1023). ForceNew.
+      notes: Every catalog preset attaches an explicit security group. EFA-enabled file systems additionally need an EFA-enabled group.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A POSIX parallel file system mounted over the Lustre protocol inside the VPC -- there is no HTTP surface for a web application firewall to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is AWS-account IAM posture, and data-plane access control is POSIX ownership and permissions on the file system's contents -- neither is a component-level role model. The closest spec-level hardening is root_squash_configuration, which strips automatic root access from mounting hosts.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The file system runs no workloads and holds no credentials of its own; S3-linked data repositories are accessed by the FSx service through its own service role.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Access is the single Lustre protocol with POSIX semantics -- no legacy or alternative authentication path exists to disable.
+    - control_id: audit-logging
+      status: configurable
+      field_path: log_configuration
+      evidence:
+        type: spec_default
+        reference: Unset means no event logging; configuring log_configuration delivers data-repository events (imports, exports, repository task activity) to the named CloudWatch log group at the chosen level (default WARN_ERROR).
+      notes: This covers data-repository events only -- per-file access is not logged by the service. Management API calls (create, update, delete) land in CloudTrail as account-level posture. The log group needs a resource policy allowing FSx to write, or delivery fails silently.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: FSx publishes file system metrics (throughput, IOPS, storage consumption) to CloudWatch automatically -- there is no opt-in and no way to disable it.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: automatic_backup_retention_days
+      evidence:
+        type: spec_default
+        reference: Defaults to 0 (no automatic backups); any value 1-90 enables daily automatic backups. Backups exist only on PERSISTENT deployments -- SCRATCH file systems are ephemeral by design and cannot be backed up.
+      notes: The 02-persistent-high-throughput, 03-persistent-capacity-datalake, and 04-intelligent-tiering-elastic presets enable automatic backups. backup_id restores a file system from any FSx backup, and skip_final_backup=false keeps a last-resort restore point on deletion.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: automatic_backup_retention_days
+      evidence:
+        type: spec_validation
+        reference: Retention is directly configurable from 0 to 90 days (int32 gte=0 lte=90); 0 disables automatic backups entirely.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Lustre file systems are single-AZ by design -- subnet_id takes exactly one subnet and AWS offers no multi-AZ deployment. Durability comes from within-AZ replication on PERSISTENT deployments, automatic backups, and S3 data repositories, not from zone redundancy.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: AWS offers no deletion-protection flag for FSx file systems -- deletion cannot be refused at the resource. The closest guard is skip_final_backup=false (the spec default is true), which makes deletion leave a restorable final backup rather than blocking it.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS patches the underlying Lustre servers during the weekly maintenance window (schedulable via weekly_maintenance_start_time); no customer-visible patch surface exists. Lustre version upgrades apply in place via file_system_type_version.

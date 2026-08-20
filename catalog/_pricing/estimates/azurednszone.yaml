@@ -1,0 +1,49 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azurednszone
+spec:
+  presets:
+    - preset: 01-public-zone
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure DNS
+          sku_meter: hosted zone
+          pricing_unit: zone-months
+          pricing_quantity: "1"
+          quantity_basis: one public zone billed per month at the first-25-zones list rate (the rate steps down from the 26th zone in the subscription)
+          list_unit_price: "0.5"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure DNS' and armRegionName eq 'Zone 1' and meterName eq 'Public Zone' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "0.5000"
+      total_list_cost: "0.5000"
+      exclusions:
+        - query volume bills per million queries answered and follows traffic
+      notes: The zone fee is the whole committed spend; queries are the variable the manifest cannot know.
+    - preset: 02-delegation-ready-zone
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure DNS
+          sku_meter: hosted zone
+          pricing_unit: zone-months
+          pricing_quantity: "1"
+          quantity_basis: one public zone billed per month at the first-25-zones list rate; SOA tuning changes resolver behavior, not the fee
+          list_unit_price: "0.5"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure DNS' and armRegionName eq 'Zone 1' and meterName eq 'Public Zone' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "0.5000"
+      total_list_cost: "0.5000"
+      exclusions:
+        - query volume bills per million queries answered and follows traffic
+      notes: Delegation readiness is configuration, not cost -- the fee is identical to the bare zone.

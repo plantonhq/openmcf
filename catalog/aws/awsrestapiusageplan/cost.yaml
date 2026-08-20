@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsrestapiusageplan
+spec:
+  billing_model: free
+  free_tier: Usage plans, API keys, and plan memberships carry no meter -- the AWS price list for API Gateway (offer AmazonApiGateway) meters API calls and caching, and none of its SKUs count plans or keys. A usage plan meters and throttles the traffic of the stages it covers; it never bills that traffic itself.
+  notes: "The covered REST API stages bill per request on their own components -- that is where every dollar in this picture lives. The quota and throttle fields are spend ceilings, not charges: a quota cap is the closest thing this catalog has to a hard budget on an API's request meter. API keys are free to create in any number, and the per-key usage records the plan accumulates are queryable at no charge. product_code connects the plan to an AWS Marketplace SaaS listing, which is the listing's own commerce (customer billing through Marketplace), not an infrastructure meter on this account."

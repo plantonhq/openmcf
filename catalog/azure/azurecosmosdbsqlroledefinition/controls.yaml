@@ -1,0 +1,64 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurecosmosdbsqlroledefinition
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A role definition is authorization metadata inside a Cosmos DB account; the documents whose access it governs -- and their at-rest encryption -- belong to the AzureCosmosdbAccount kind's posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to key (see enc-at-rest); customer-managed keys are an account-level choice on the AzureCosmosdbAccount kind.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The definition carries no traffic of its own; client connections to the account are TLS-enforced as that kind's posture.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A permission-bundle record has no network endpoint; the account's network exposure is the AzureCosmosdbAccount kind's posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: The resource is the authoring surface of Cosmos DB's own data-plane RBAC -- every deployment defines a role. The required permissions blocks name the exact data actions the role allows (item reads, queries, change feed, the four write operations, each grantable individually -- Cosmos supports allow rules only), and the required assignable_scopes bound where grants may be created, down to a single database or container path.
+      notes: A definition grants nothing by itself -- binding it to an Entra principal is the separate AzureCosmosdbSqlRoleAssignment kind. Together they are how data access works with the account's key authentication disabled -- every grant explicit and auditable.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A definition names no principal -- it defines WHAT a role allows; WHO holds it (and whether that holder is a keyless managed identity) is the AzureCosmosdbSqlRoleAssignment kind's choice.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The switch that disables key-based (legacy) authentication lives on the AzureCosmosdbAccount kind's spec, not here -- though these role definitions are what makes running keyless practical, since Entra principals need roles once keys are off.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Creation, update, and deletion of definitions land in the Azure Activity Log as subscription-level posture; data-plane request auditing is the account's diagnostic-settings surface, outside this spec.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A permission-bundle record emits no metrics or runtime signals.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless authorization configuration -- nothing to back up; the manifest recreates the definition declaratively (the spec's role_definition_id field can even pin the GUID so recreated definitions keep their ARM ID for existing assignments). Document backups belong to the account kind.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A definition has no runtime footprint with a zonal failure mode; it replicates with the account's Microsoft-operated metadata store.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a Cosmos role definition (Azure resource locks are subscription-side governance outside the manifest); the manifest recreates it declaratively.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Cosmos DB RBAC engine that stores and evaluates role definitions is part of the Microsoft-operated Cosmos service; no customer-visible patch surface exists.

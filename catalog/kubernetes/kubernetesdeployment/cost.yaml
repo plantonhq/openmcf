@@ -1,0 +1,27 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesdeployment
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: availability.replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Every replica is a full pod carrying the declared container resources -- three replicas reserve three times the capacity. Defaults to 1.
+    - field_path: container.app.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The app container's CPU and memory requests are what the scheduler reserves on the cluster's nodes per replica -- the capacity is claimed whether the service is busy or idle. Limits set the burst ceiling, not the reservation.
+    - field_path: container.sidecars
+      sku_meter: cluster CPU and memory reservations
+      impact: Each declared sidecar runs in every replica and adds its own requests and limits on top of the app container's.
+    - field_path: availability.horizontal_pod_autoscaling
+      sku_meter: cluster CPU and memory reservations
+      impact: When enabled, the autoscaler moves the live replica count between the declared replicas floor and max_replicas at runtime -- the reservation follows the autoscaler, not the manifest.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - declared sidecar containers add their own reservations on top of the app container's
+    - when horizontal pod autoscaling is enabled, the live replica count moves between the declared floor and max_replicas at runtime
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: replicas x the app container's requests."

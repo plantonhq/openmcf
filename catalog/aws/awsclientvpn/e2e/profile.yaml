@@ -18,14 +18,21 @@ spec:
   # DescribeClientVpnEndpoints keyed on the endpoint ID, state-aware
   # (deleting counts as absent).
   #
-  # pending_proof: the recorded owner deferral (association cost, ~25-35
-  # minutes per engine) was REOPENED by owner decision at the depth closure
-  # -- trivial dollars, wall-clock-moderate only (the OpenSearch-reopen
-  # class). The closure healed the three option blocks' un-disable trap
-  # (connect hook / login banner / route enforcement now always send the
-  # explicit state on both engines), converged disconnect_on_session_timeout
-  # cross-engine, and added the provider-mirrored CELs (canonical satellite
-  # CIDRs, comma-free group id, SAML ARN shapes, client CIDR /12-/22).
+  # Proven live 2026-08-13, both engines, both scenarios (the reopened
+  # owner deferral closed). Observed timings: composed lane ~16 min
+  # (Pulumi) / ~29 min (Terraform) per engine end-to-end; the association
+  # attach/detach ran ~5-7 min each way (faster than the historical ~10).
+  # ONE live catch, fixed at the full bar: AWS deletes a route through the
+  # associated target network SLOWLY — 'deleting' past the provider's
+  # 4-minute default delete timeout (twice) — both modules now pin the
+  # route's create/delete timeouts at 10m. The un-disable heal is
+  # live-proven three ways: the endpoint-only lane echoed the connect
+  # hook explicitly disabled (applied) beside the enabled banner; the
+  # composed lane echoed connect AND banner explicitly disabled; and a
+  # two-apply revert probe on BOTH engines flipped an enabled banner to
+  # a removed block with AWS reporting Enabled=false after the second
+  # apply (pre-heal: a silent no-op).
   tier: 2
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 60

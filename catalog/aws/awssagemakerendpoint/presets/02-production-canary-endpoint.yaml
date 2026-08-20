@@ -1,0 +1,40 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerEndpoint
+metadata:
+  name: my-production-endpoint
+spec:
+  region: us-west-2
+  productionVariants:
+    - variantName: stable
+      model:
+        value: my-model-v1
+      instanceType: ml.m5.large
+      initialInstanceCount: 2
+      initialVariantWeight: 0.9
+      routingStrategy: LEAST_OUTSTANDING_REQUESTS
+    - variantName: canary
+      model:
+        value: my-model-v2
+      instanceType: ml.m5.large
+      initialInstanceCount: 1
+      initialVariantWeight: 0.1
+  dataCapture:
+    destinationS3Uri: s3://my-bucket/endpoint-capture/
+    initialSamplingPercentage: 20
+    captureModes:
+      - Input
+      - Output
+    enableCapture: true
+    jsonContentTypes:
+      - application/json
+  deployment:
+    blueGreen:
+      trafficRoutingType: CANARY
+      waitIntervalSeconds: 300
+      canarySize:
+        type: CAPACITY_PERCENT
+        value: 20
+      terminationWaitSeconds: 300
+      maximumExecutionTimeoutSeconds: 3600
+    autoRollbackAlarmNames:
+      - my-production-endpoint-5xx

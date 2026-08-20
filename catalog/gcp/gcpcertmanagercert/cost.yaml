@@ -1,0 +1,27 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpcertmanagercert
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Certificate Manager
+      sku_meter: certificates per month
+      pricing_unit: certificate-months
+      description: Every Certificate Manager certificate counts toward a per-project meter billed hourly and prorated by existence, in tiers -- the project's first 100 certificates are free, certificates 101 through 2,000 bill $0.000273973 per hour each (about $0.20 per month), and certificates beyond 2,000 bill $0.000136986 per hour (about $0.10 per month). Regional certificates pay the same rates but are counted and tiered separately from global ones.
+  cost_drivers:
+    - field_path: self_managed
+      sku_meter: TLS connections with large-key certificates
+      pricing_unit: connections
+      impact: Uploading a certificate keyed with RSA-3072 or RSA-4096 adds $0.45 per million TLS connections established with it; RSA-2048, ECDSA P-256, and ECDSA P-384 keys carry no per-connection charge, and Google-managed certificates use the chargeless key types.
+    - field_path: location
+      sku_meter: certificates per month
+      impact: Regional and global certificates pay identical tiered rates, but regional certificates (summed across all regions) are counted and tiered separately from global ones -- the field decides which per-project counter this certificate increments, not the rate schedule.
+  free_tier: The first 100 Certificate Manager certificates in a project are free -- the per-certificate meter's first tier is $0.00, so a project holding 100 or fewer certificates pays nothing for them. The 101st certificate starts the paid tiers for every certificate above the allotment.
+  estimate_exclusions:
+    - which tier this certificate lands in depends on how many other Certificate Manager certificates the project already holds
+    - per-connection charges for RSA-3072/RSA-4096 self-managed certificates follow TLS handshake volume no manifest can predict
+  notes: "This is the METERED certificate kind -- the contrast matters: a classic Google-managed compute certificate (GcpManagedSslCertificate) carries no per-certificate fee at all, so a handful of certificates directly attached to a global load balancer is cheaper classic, while wildcards, pre-issuance validation, certificate maps, and regional load balancers need Certificate Manager and its meter. An issuance_config pointing at Certificate Authority Service adds CAS's own charges on top of this meter; certificates from Certificate Manager's Public CA are free to issue but still count toward the meter like any other certificate. DNS authorizations and certificate maps are separate chargeless kinds, and the load balancer serving the certificate bills on its own meters as its own kinds."

@@ -1,0 +1,34 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpiamoauthclient
+spec:
+  gcp:
+    groups:
+      - purpose: EnableIamApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling iam.googleapis.com on the target project. The Terraform module sets disable_on_destroy false explicitly and the Pulumi module leaves it unset -- the provider documents that unset means the service is left enabled on destroy -- so the disable permission is never needed.
+      - purpose: ManageOauthClient
+        permissions:
+          - iam.oauthClients.create
+          - iam.oauthClients.get
+          - iam.oauthClients.update
+          - iam.oauthClients.delete
+        provenance: derived
+        notes: Covers google_iam_oauth_client (Pulumi iam.OauthClient) -- create, read/refresh, in-place updates (display name, description, disabled, grant types, scopes, redirect URIs; oauth_client_id, location, and client_type are ForceNew), and the soft delete on destroy. All grants are project-scoped; together with the credentials group below they are the contents of roles/iam.oauthClientAdmin, IAM's purpose-built role for this surface.
+      - purpose: ManageOauthClientCredentials
+        permissions:
+          - iam.oauthClientCredentials.create
+          - iam.oauthClientCredentials.get
+          - iam.oauthClientCredentials.update
+          - iam.oauthClientCredentials.delete
+        provenance: derived
+        notes: Covers google_iam_oauth_client_credential (Pulumi iam.OauthClientCredential), one per spec.credentials entry -- create (GCP generates the secret server-side), read/refresh, update (including the disable-before-delete transition GCP requires), and delete. Required only when credentials are declared, which is the operating norm for a CONFIDENTIAL_CLIENT.

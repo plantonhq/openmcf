@@ -1,0 +1,39 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurefirewall
+spec:
+  azure:
+    groups:
+      - purpose: ManageFirewall
+        actions:
+          - Microsoft.Network/azurefirewalls/read
+          - Microsoft.Network/azurefirewalls/write
+          - Microsoft.Network/azurefirewalls/delete
+        provenance: derived
+        notes: Covers azurerm_firewall / network.NewFirewall -- create, refresh, in-place updates (tags, DNS settings, threat-intel mode, added public-IP configurations), and destroy. Microsoft's providerOperations inventory spells the CRUD operations all-lowercase ("azurefirewalls"), unlike the camelCase rule-collection sub-operations -- the spelling here matches the inventory exactly. Applies run 10-20+ minutes each way.
+      - purpose: JoinFirewallSubnets
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/join/action
+        provenance: derived
+        notes: The modules never mutate the subnets -- they pass the resolved subnet IDs in the firewall payload -- but ARM authorizes placing the firewall into the "AzureFirewallSubnet" (and, for forced tunneling, the "AzureFirewallManagementSubnet") with join/action on each subnet's scope at create (service-side).
+      - purpose: JoinPublicAddresses
+        actions:
+          - Microsoft.Network/publicIPAddresses/join/action
+        provenance: derived
+        notes: Every data-path and management IP configuration referencing a Standard public IP is authorized by ARM with join/action on the IP's scope (service-side; the modules only pass the resolved IDs).
+      - purpose: AttachFirewallPolicy
+        actions:
+          - Microsoft.Network/firewallPolicies/join/action
+        provenance: derived
+        notes: Required only when firewall_policy_id is set -- ARM authorizes associating the referenced policy with join/action on the policy's scope (service-side). The policy's rules never pass through the runner; they live on the policy's own component.
+      - purpose: ReadVirtualHub
+        actions:
+          - Microsoft.Network/virtualHubs/read
+        provenance: derived
+        notes: Required only for the AZFW_HUB model -- the firewall payload references the Virtual WAN hub's ARM id. Microsoft defines no join/action for virtual hubs (verified against the providerOperations inventory), so read on the hub's scope is the reference authorization the deployment exercises.

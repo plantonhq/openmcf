@@ -1,0 +1,17 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpplantonrunner
+spec:
+  # A runner appliance under live E2E: deploy -> service-exists verify ->
+  # destroy -> verify-absent on both provisioners. Cloud Run v2 gates
+  # service CREATION on the first revision becoming ready, and the runner
+  # only stays up after a successful control-plane join -- so the lane
+  # needs an owner-arranged real runner token (the scenario's fenced
+  # PLANTON_E2E_RUNNER_TOKEN env; lanes SKIP with the reason when it is
+  # absent). This is a substrate property, not a module gap: the same
+  # module deploys cleanly the moment the token is real.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 30

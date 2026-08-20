@@ -1,0 +1,7 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamAccountSettings
+metadata:
+  name: iam-account-alias
+spec:
+  region: us-east-1
+  accountAlias: <your-company-prod>

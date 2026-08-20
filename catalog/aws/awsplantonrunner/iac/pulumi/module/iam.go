@@ -30,10 +30,10 @@ const ecsTasksTrustPolicy = `{
 const ecsTaskExecutionManagedPolicyArn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 
 // executionRole creates the SETUP identity: the role the ECS agent (not
-// the runner) assumes to pull the image, write logs, and read the
-// credentials secret at task start. Secret access is an inline policy
-// scoped to exactly the one secret ARN -- the managed execution policy
-// deliberately grants no secret permissions.
+// the runner) assumes to pull the image, write logs, and read the token
+// secret at task start. Secret access is an inline policy scoped to
+// exactly the one secret ARN -- the managed execution policy deliberately
+// grants no secret permissions.
 func executionRole(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, createdSecret *secretsmanager.Secret) (*iam.Role, error) {
 	runnerName := locals.AwsPlantonRunner.Metadata.Name
 
@@ -78,7 +78,7 @@ func executionRole(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, 
 	_, err = iam.NewRolePolicy(ctx,
 		"execution-role-secret-read",
 		&iam.RolePolicyArgs{
-			Name:   pulumi.String("credentials-secret-read"),
+			Name:   pulumi.String("token-secret-read"),
 			Role:   createdRole.Name,
 			Policy: secretsReadPolicy,
 		},

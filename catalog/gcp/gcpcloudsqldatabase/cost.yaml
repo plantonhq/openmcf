@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpcloudsqldatabase
+spec:
+  billing_model: free
+  free_tier: A logical database inside a Cloud SQL instance carries no meter of its own -- Cloud SQL bills the vCPUs, memory, and provisioned storage of the INSTANCE, plus network egress and any assigned IP addresses, and none of those dimensions count how many databases the instance hosts. Creating, naming, or dropping databases moves nothing on the invoice.
+  notes: "No field of this spec buys anything: database_name, charset, and collation are catalog entries in the engine's system tables. The real spend is the parent GcpCloudSql instance this database lives on -- its vCPU-hours and memory-hours run around the clock (doubled by REGIONAL high availability), its provisioned SSD or HDD storage bills per GiB-month, and its backups bill per GiB beyond the included point-in-time-recovery logs. The one indirect coupling is capacity, not price. Data written INTO this database consumes the instance's provisioned (or auto-growing) storage, and that storage bills on the instance's meter, priced in the covered GcpCloudSql cost profile."

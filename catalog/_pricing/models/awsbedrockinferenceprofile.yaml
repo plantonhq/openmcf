@@ -1,0 +1,33 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Both presets are zero-committed: an application inference
+# profile is a free routing-and-attribution handle (AWS documents no
+# additional routing cost for cross-region inference, priced from the
+# calling region), so the only meter -- the underlying model's tokens --
+# starts with the first invocation -- stated in exclusions, never padded
+# into fabricated dollars.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awsbedrockinferenceprofile
+spec:
+  presets:
+    - preset: 01-per-application-tracking
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - every invocation through the profile bills tokens at Amazon Nova Micro's published per-1M rate via the inherited us. cross-region profile -- no routing premium, priced from us-west-2, entirely workload-driven with no free allotment
+        - the profile itself, its tags, and the checkout-service attribution it provides carry no meter
+      notes: Zero committed cost -- the attribution handle bills nothing at rest; the token meter starts with the checkout service's first model call, which the manifest cannot see.
+    - preset: 02-cross-region-routing
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - assistant traffic bills tokens at Claude 3.5 Haiku's published per-1M rate through the inherited us. geographic cross-region profile -- AWS documents no additional routing cost, and the price is calculated from us-west-2 regardless of which US region serves each request
+        - cross-region routing buys throughput resilience, not a discount -- only GLOBAL profiles carry AWS's ~10% price reduction, and this preset pins the US geography
+      notes: Zero committed cost -- the routing profile bills nothing at rest, and the zero is commitment-absence; spend is the assistant's token volume at the underlying model's rate.

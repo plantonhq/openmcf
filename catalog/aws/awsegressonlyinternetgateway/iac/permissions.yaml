@@ -1,0 +1,29 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsegressonlyinternetgateway
+spec:
+  aws:
+    statements:
+      - sid: ManageEgressOnlyInternetGateway
+        actions:
+          - ec2:CreateEgressOnlyInternetGateway
+          - ec2:DeleteEgressOnlyInternetGateway
+          - ec2:CreateTags
+          - ec2:DeleteTags
+        resources:
+          - arn:aws:ec2:*:*:egress-only-internet-gateway/*
+        provenance: derived
+        notes: Covers aws_egress_only_internet_gateway / ec2.EgressOnlyInternetGateway, the only resource either module manages. Creation binds the VPC in the same call -- AWS provides no separate attach or detach API for this gateway kind, which is why vpc_id is ForceNew (a VPC change is delete-plus-create under these same grants). CreateTags rides the create call and later tag reconciliation on the gateway ARN. All lifecycle actions authorize on the egress-only-internet-gateway ARN format alone.
+      - sid: DescribeEgressOnlyInternetGateways
+        actions:
+          - ec2:DescribeEgressOnlyInternetGateways
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side during plan/refresh. EC2 Describe APIs support no resource-level scoping (empty Resources lists in the service reference), so the wildcard is the narrowest possible scope.

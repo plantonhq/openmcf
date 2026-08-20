@@ -1,0 +1,34 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsrestapidomain
+spec:
+  values:
+    - name: domain_name
+      derivations:
+        - from_stack_output: domain_name
+      where_to_find: >-
+        API Gateway console -> Custom domain names (the hostname), or
+        `aws apigateway get-domain-names` (domainName).
+    - name: domain_name_id
+      derivations:
+        - from_stack_output: domain_name_id
+      where_to_find: >-
+        `aws apigateway get-domain-name --domain-name <name>`
+        (domainNameId) -- required to disambiguate PRIVATE domains that
+        share a hostname.
+    - name: basepath
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        Each spec.base_path_mappings entry's base_path. The empty
+        (root) path is keyed "(none)" -- AWS's own empty-base-path
+        sentinel, which the provider's import parser accepts verbatim
+        -- so the address key IS the placeholder for every mapping.
+    - name: arn
+      derivations:
+        - from_stack_output_keyed_by_address: access_association_arns
+      where_to_find: >-
+        `aws apigateway get-domain-name-access-associations` (arn) --
+        PRIVATE domains only; matched to each access_associations
+        entry by VPC endpoint id.

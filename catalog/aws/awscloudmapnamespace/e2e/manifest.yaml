@@ -1,0 +1,36 @@
+# Canonical AwsCloudMapNamespace example (hack/dev manifest and refgen
+# Example source): a private DNS namespace with one A-record service
+# carrying a statically registered instance, and one CNAME service
+# aliasing a database endpoint.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudMapNamespace
+metadata:
+  name: corp.internal
+  id: corp-internal
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  type: PRIVATE_DNS
+  vpcId:
+    value: vpc-0123456789abcdef0
+  description: Service discovery for the corp platform
+  services:
+    - name: api
+      dnsConfig:
+        records:
+          - type: A
+            ttl: 10
+      healthCheckCustomConfig: {}
+      instances:
+        - instanceId: static-api-1
+          ip: 10.0.1.10
+          port: 8080
+    - name: db
+      dnsConfig:
+        records:
+          - type: CNAME
+            ttl: 30
+      instances:
+        - instanceId: primary
+          cname: mydb.cluster-abc.us-west-2.rds.amazonaws.com

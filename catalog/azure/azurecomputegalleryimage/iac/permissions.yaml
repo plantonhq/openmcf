@@ -1,0 +1,39 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurecomputegalleryimage
+spec:
+  azure:
+    groups:
+      - purpose: ManageImageDefinition
+        actions:
+          - Microsoft.Compute/galleries/images/read
+          - Microsoft.Compute/galleries/images/write
+          - Microsoft.Compute/galleries/images/delete
+        provenance: derived
+        notes: "Covers azurerm_shared_image / compute.NewSharedImage -- create under the referenced gallery (ARM authorizes the write on the gallery's images child path; the modules never read the gallery itself), refresh, the small in-place update set (description, sizing, disk-type exclusions, release notes, end-of-life, tags), and destroy. Azure refuses to delete a definition that still has versions -- destroy order is versions first, which the modules' dependency graph handles."
+      - purpose: ManageImageVersions
+        actions:
+          - Microsoft.Compute/galleries/images/versions/read
+          - Microsoft.Compute/galleries/images/versions/write
+          - Microsoft.Compute/galleries/images/versions/delete
+        provenance: derived
+        notes: "One ARM child per versions entry, keyed by version name -- azurerm_shared_image_version and its Pulumi twin create each version from its single source, poll reads through the (potentially hours-long) regional replication, update target-region membership and exclude-from-latest in place, and destroy. Version writes are the expensive, slow operations in this component's lifecycle; the runner holds these on the gallery's scope."
+      - purpose: ReadVersionSources
+        actions:
+          - Microsoft.Compute/snapshots/read
+          - Microsoft.Compute/images/read
+          - Microsoft.Compute/virtualMachines/read
+          - Microsoft.Storage/storageAccounts/read
+        provenance: derived
+        notes: "The modules never call the source APIs -- each version's single source rides the payload as a resolved ARM ID -- but ARM authorizes reading the REFERENCED source on its own scope at version-create time (service-side): snapshots/read for os_disk_snapshot_id (the Image With Version preset's shape), images/read or virtualMachines/read for managed_image_id (which admits a legacy managed image OR a VM to capture), and storageAccounts/read for blob_uri's account (storage_account_id carries the read grant). Grant only the entries matching the source kinds a pipeline actually uses."
+      - purpose: ReadRegionEncryption
+        actions:
+          - Microsoft.Compute/diskEncryptionSets/read
+        provenance: derived
+        notes: "Only when a target region sets disk_encryption_set_id: ARM validates the referenced disk encryption set service-side at version create. The DES's own key-access plumbing (its identity's wrap/unwrap on the vault) belongs to the AzureDiskEncryptionSet component, not the deploying principal."

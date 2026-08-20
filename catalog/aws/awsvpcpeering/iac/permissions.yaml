@@ -1,0 +1,32 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsvpcpeering
+spec:
+  aws:
+    statements:
+      - sid: ManagePeeringConnection
+        actions:
+          - ec2:CreateVpcPeeringConnection
+          - ec2:AcceptVpcPeeringConnection
+          - ec2:DeleteVpcPeeringConnection
+          - ec2:ModifyVpcPeeringConnectionOptions
+          - ec2:CreateTags
+          - ec2:DeleteTags
+        resources:
+          - arn:aws:ec2:*:*:vpc-peering-connection/*
+          - arn:aws:ec2:*:*:vpc/*
+        provenance: derived
+        notes: Covers BOTH arms of the mode union -- aws_vpc_peering_connection / ec2.VpcPeeringConnection (request) and aws_vpc_peering_connection_accepter / ec2.VpcPeeringConnectionAccepter (accept); the spec's CEL guarantees exactly one renders. The service reference authorizes CreateVpcPeeringConnection and AcceptVpcPeeringConnection on BOTH the vpc-peering-connection and vpc ARN formats (an under-scoped grant denies provisioning); Delete and ModifyVpcPeeringConnectionOptions scope to the connection ARN alone. AcceptVpcPeeringConnection serves the request arm's auto_accept AND the accept arm's acceptance; ModifyVpcPeeringConnectionOptions reconciles the DNS-resolution flags on either arm. DeleteVpcPeeringConnection runs only on the request arm's destroy (the accept arm's destroy abandons management without an AWS call). CreateTags runs tag-on-create on both arms; DeleteTags later tag reconciliation.
+      - sid: DescribePeeringConnections
+        actions:
+          - ec2:DescribeVpcPeeringConnections
+        resources:
+          - "*"
+        provenance: derived
+        notes: Read-side during plan/refresh for the connection's status, requester/accepter details, options, and tags -- both arms poll it while waiting for the active state. EC2 Describe APIs support no resource-level scoping (empty Resources list in the service reference), so the wildcard is the narrowest possible scope.

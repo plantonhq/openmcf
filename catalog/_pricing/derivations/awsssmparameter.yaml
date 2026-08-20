@@ -1,0 +1,68 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsSsmParameter manifest's spec values into metered quantities and
+# price choices. The estimate generator replays the catalog presets
+# through these rules to emit ../estimates/awsssmparameter.yaml; a
+# server-side estimator evaluates the same rules against live manifests.
+# Prices live in the provider's price book (../pricebook/). The one
+# committed meter is the Advanced tier's per-parameter charge ($0.05 per
+# parameter per month, billed as an hourly proration in the offer
+# document); Standard-tier parameters -- both catalog presets -- commit
+# nothing on existence, and that zero is a real free tier, not
+# commitment-absence. Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsssmparameter
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  refusals:
+    - when:
+        - field_path: tier
+          op: equals
+          value: Intelligent-Tiering
+      reason: AWS resolves Intelligent-Tiering to a concrete tier server-side on every write (reads report Standard or Advanced, never Intelligent-Tiering), so whether the Advanced per-parameter-month meter runs is unknowable from the manifest alone
+  lines:
+    - sku_meter: advanced parameter storage
+      applies_when:
+        - field_path: tier
+          op: equals
+          value: Advanced
+      quantity:
+        - constant: "1"
+        - hours_in_month: true
+      price_slug: ssm-advanced-parameter-hours-us-east-1
+      basis: one Advanced parameter bills every hour it exists at the offer's hourly proration of AWS's stated $0.05 per advanced parameter per month; priced at the us-east-1 rate -- assumed when the manifest leaves region as a placeholder
+  exclusions:
+    - applies_when:
+        - field_path: tier
+          op: equals
+          value: Advanced
+      text: every API interaction with an Advanced parameter bills $0.05 per 10,000 from the first read or write (each parameter a request touches counts as one interaction) -- read frequency is workload-driven and invisible to this manifest
+    - applies_when:
+        - field_path: tier
+          op: not_equals
+          value: Advanced
+      text: Standard-tier API interactions are free at standard throughput; flipping the ACCOUNT-level higher-throughput switch (not a field of this manifest) makes every interaction bill $0.05 per 10,000
+    - applies_when:
+        - field_path: key_id
+          op: is_set
+      text: the customer-managed KMS key bills its monthly fee and per-request encrypt/decrypt charges on the referenced AwsKmsKey component -- the AWS-managed aws/ssm default carries no monthly fee
+  notes:
+    - applies_when:
+        - field_path: tier
+          op: is_unset
+      text: Tier unset means Standard -- permanently free of charge per the AWS Systems Manager pricing page; the zero here is a real free tier, not commitment-absence.
+    - applies_when:
+        - field_path: tier
+          op: equals
+          value: Standard
+      text: Standard-tier parameters are permanently free of charge per the AWS Systems Manager pricing page; the zero here is a real free tier, not commitment-absence.
+    - applies_when:
+        - field_path: tier
+          op: equals
+          value: Advanced
+      text: Charges for Advanced parameters stored less than a month are prorated hourly per AWS's published terms, and a later Advanced-to-Standard downgrade forces replacement (AWS forbids it in place).

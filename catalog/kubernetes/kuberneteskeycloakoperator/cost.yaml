@@ -1,0 +1,17 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kuberneteskeycloakoperator
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The operator runs as a single controller pod; these requests are what the scheduler reserves for it. Empty does NOT mean unbounded -- the spec DECLARES upstream's own defaults (requests 300m CPU / 450Mi memory, limits 700m CPU / 450Mi), applied whenever the manifest omits resources.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - "the Keycloak servers this operator reconciles -- StatefulSets, their databases, realm imports -- reserve their own capacity on their KubernetesKeycloak resources, never this footprint"
+  notes: "This component installs the ENGINE, not the identity servers: its footprint is the single operator pod. Keycloak servers are declared through KubernetesKeycloak resources, each carrying its own capacity footprint. The spec-declared default resources make the honest manifest-time statement a hand-computed footprint: the declared resources, or the spec's defaults when omitted. There is no helm_values overlay -- Keycloak ships no Helm chart; the operator installs from the first-party release manifests, applied per document."

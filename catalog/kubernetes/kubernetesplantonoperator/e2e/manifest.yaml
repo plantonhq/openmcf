@@ -1,0 +1,41 @@
+# Full-surface hack manifest for the offline plan/preview proofs — every
+# typed field exercised with realistic values. The operator itself needs
+# almost nothing: it is a single small manager pod whose real work is
+# reconciling PlantonPlatform declarations (deployed separately as
+# KubernetesPlantonPlatform resources).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPlantonOperator
+metadata:
+  name: planton-operator
+spec:
+  namespace:
+    value: planton-operator
+  create_namespace: true
+  chart_version: 0.7.1
+  replicas: 2
+  leader_election: true
+  resources:
+    requests:
+      cpu: 10m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  service_account:
+    annotations:
+      example.com/team: platform
+  common_labels:
+    team: platform
+  pod_annotations:
+    example.com/inject: "false"
+  node_selector:
+    kubernetes.io/os: linux
+  tolerations:
+    - key: platform
+      operator: Exists
+      effect: NoSchedule
+  image_pull_secrets:
+    - mirror-pull
+  image:
+    repository: ghcr.io/plantonhq/planton/operator
+    tag: v0.0.41-selfhosted-preview

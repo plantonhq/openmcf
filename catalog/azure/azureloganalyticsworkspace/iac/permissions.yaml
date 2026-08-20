@@ -1,0 +1,34 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureloganalyticsworkspace
+spec:
+  azure:
+    groups:
+      - purpose: ManageWorkspace
+        actions:
+          - Microsoft.OperationalInsights/workspaces/read
+          - Microsoft.OperationalInsights/workspaces/write
+          - Microsoft.OperationalInsights/workspaces/delete
+        provenance: derived
+        notes: "Covers azurerm_log_analytics_workspace / operationalinsights.NewAnalyticsWorkspace -- create, refresh, in-place updates (sku PerGB2018 <-> CapacityReservation, retention, quota, access posture, tags; the provider applies data_collection_rule_id and allow_resource_only_permissions via follow-up update calls ARM rejects at create), and destroy. Microsoft.OperationalInsights is ABSENT from the committed action inventory snapshot; action names verified against Microsoft's live provider-operations documentation and built-in roles (Log Analytics Contributor, retrieved 2026-08-18)."
+      - purpose: ReadWorkspaceSharedKeys
+        actions:
+          - Microsoft.OperationalInsights/workspaces/sharedKeys/action
+        provenance: derived
+        notes: "The workspace's primary/secondary shared keys are sensitive module outputs -- azurerm's Read path calls SharedKeysGetSharedKeys on every refresh (log_analytics_workspace_resource.go line 598, verified in provider source); pulumi-azure is bridged from azurerm and shares the behavior. Needed on every refresh even when local_authentication_enabled is false (the keys still exist as outputs; they are just inert as credentials)."
+      - purpose: AssociateDefaultDataCollectionRule
+        actions:
+          - Microsoft.Insights/DataCollectionRules/Read
+        provenance: derived
+        notes: "Required only when data_collection_rule_id is set -- the modules pass the resolved DCR ARM id in the workspace's follow-up update payload with no client-side DCR API call; ARM authorizes the association against the REFERENCED rule's scope service-side (the JoinVirtualNetwork pattern applied to the default DCR). Action present in the committed inventory (Microsoft.Insights, inventory casing DataCollectionRules/Read)."
+      - purpose: AssignUserManagedIdentities
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: "Required only when identity carries a USER_ASSIGNED identity -- ARM checks assign/action on the identity referenced in the workspace payload, service-side; the modules only pass the resolved identity id. Present in the committed inventory (Microsoft.ManagedIdentity)."

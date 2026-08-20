@@ -1,0 +1,40 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsredshiftserverlessworkgroup
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: base_capacity
+      sku_meter: RPU-hours
+      pricing_unit: RPU-hours
+      impact: "The baseline sets the RATE, not a reservation: RPU-hours accrue per second (60-second minimum per query) only while queries execute, at the base capacity or whatever AWS scales to above it. AWS's pricing page is verbatim: 'no charges during idle periods' -- and warehouse start-up time is not charged either. A higher base means every second of execution burns more RPUs; 0 keeps AWS's 128-RPU default, a 16x rate difference from the 8-RPU dev preset."
+    - field_path: max_capacity
+      sku_meter: RPU-hours
+      pricing_unit: RPU-hours
+      impact: The scaling ceiling bounds worst-case spend -- AWS autoscales the workgroup up to this many RPUs when the query mix demands it, and every scaled RPU accrues RPU-hours at the same rate. 0 leaves scaling UNCAPPED (the AWS default), which means an unbounded burst is an unbounded bill.
+    - field_path: price_performance_target
+      sku_meter: RPU-hours
+      pricing_unit: RPU-hours
+      impact: Hands the capacity baseline to AWS's optimizer against a cost/speed dial -- level 1 leans cheapest, 100 fastest. The meter is unchanged (RPU-hours while active); what moves is how many RPUs each query burns, learned from the workload rather than pinned by you.
+    - field_path: usage_limits
+      sku_meter: RPU-hours
+      pricing_unit: RPU-hours
+      impact: "The spend governor rather than a spender: a serverless-compute limit caps RPU-hours per day/week/month, and breach_action 'deactivate' stops queries until the period resets -- converting a runaway workload into a hard budget. A cross-region-datasharing limit does the same for terabytes shared to consumers in other regions, which bill at AWS's inter-region transfer rates."
+    - field_path: config_parameters
+      sku_meter: RPU-hours
+      pricing_unit: RPU-hours
+      impact: The max_query_* workload limits (execution time, CPU, scanned rows) kill or bound expensive queries before they burn RPU-hours at scale -- query-level cost defense, free in itself.
+  free_tier: "A TRIAL, not a permanent tier: first-time Redshift Serverless users get a $300 credit that expires after 90 days, consumed at the rate of actual compute and storage use. After it is exhausted or expired, every RPU-hour bills."
+  estimate_exclusions:
+    - RPU-hours are entirely workload-driven -- billed per second with a 60-second minimum per query (AWS's us-east-1 example rate is $0.375 per RPU-hour); an idle workgroup meters zero, verbatim per the pricing page
+    - the data itself bills on the attached AwsRedshiftServerlessNamespace -- Redshift Managed Storage GB-month, snapshots, and recovery points retained beyond 24 hours all live there, not here
+    - queries over open file formats in S3 (Spectrum-style) and concurrency scaling are INCLUDED in the RPU-hour price -- no separate meters, but they add RPU-hours
+    - cross-region datasharing bills per-terabyte transfer in addition to compute; same-region datasharing is free
+    - data transfer out of AWS and cross-AZ zero-ETL movement bill at standard AWS transfer rates
+    - Serverless Reservations (1- or 3-year, payer-account level) can discount RPU-hours up to 45 percent -- a billing-account decision outside this manifest
+    - Redshift ML model training bills SageMaker meters after its own free tier
+  notes: "The workgroup is the COMPUTE plane and the only place RPU meters run; the attached namespace carries the storage meters. Nothing on this spec commits spend on existence -- AWS states 'no charges during idle periods' verbatim, so a provisioned-but-quiet workgroup bills $0.00 regardless of base_capacity. The pinned baseline is a rate-setter while queries run, which is why the capped dev preset (base 8) and the governed preset (base 32, daily 200 RPU-hour deactivate limit) are cost postures, not commitments."

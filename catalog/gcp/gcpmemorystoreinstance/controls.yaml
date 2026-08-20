@@ -1,0 +1,108 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpmemorystoreinstance
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Memorystore encrypts persisted data (RDB snapshots, AOF logs, backups) at rest with Google-managed keys on every instance without configuration.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key
+      evidence:
+        type: spec_default
+        reference: Unset means Google-managed encryption; naming a Cloud KMS key at creation encrypts the instance's data at rest with the customer-managed key. Immutable after creation.
+      notes: The 03-enterprise-cluster preset sets it. The Memorystore service agent needs encrypt/decrypt on the key as a prerequisite.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: transit_encryption_mode
+      evidence:
+        type: spec_default
+        reference: Unset means TRANSIT_ENCRYPTION_DISABLED -- client traffic is cleartext inside the VPC; SERVER_AUTHENTICATION enables TLS with server identity verification. Immutable after creation.
+      notes: Presets 02 and 03 enable SERVER_AUTHENTICATION; server_ca_mode / server_ca_pool choose which CA signs the server certificate.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The instance is reachable only through Private Service Connect endpoints placed in consumer VPCs -- no public endpoint exists on the service, and the spec offers no public-IP surface.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: psc_auto_connections
+      evidence:
+        type: spec_default
+        reference: Each PSC connection names exactly one consumer VPC (and project) that may reach the instance -- the connection list IS the ingress allowlist, and an instance with no connections is reachable by nothing. Immutable after creation.
+      notes: Every preset places one endpoint in its own VPC. A GcpServiceConnectionPolicy for the gcp-memorystore class must exist on each network first.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A managed in-memory data store on private PSC endpoints is protected by network scoping, TLS, and IAM rather than a WAF; no request-filtering attachment point exists.
+    - control_id: rbac
+      status: configurable
+      field_path: authorization_mode
+      evidence:
+        type: spec_default
+        reference: Management-plane access is always governed by Cloud IAM roles; the data plane defaults to AUTH_DISABLED (any client reaching a PSC endpoint may issue commands), and IAM_AUTH puts data-plane access under IAM as well. Immutable after creation.
+      notes: The 03-enterprise-cluster preset sets IAM_AUTH; presets 01 and 02 rely on network scoping alone for the data plane.
+    - control_id: workload-identity
+      status: configurable
+      field_path: authorization_mode
+      evidence:
+        type: spec_default
+        reference: IAM_AUTH lets workloads authenticate to the data plane with short-lived IAM credentials instead of shared secrets; the unset default (AUTH_DISABLED) uses no credentials at all.
+      notes: Preset 03 enables it. There is no password-based mode -- the choice is IAM identities or open-inside-the-network.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: authorization_mode
+      evidence:
+        type: spec_default
+        reference: The weak path is AUTH_DISABLED (the unset default) -- unauthenticated command access for anything reaching an endpoint; IAM_AUTH retires it. Immutable after creation.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Administrative operations on the instance land in Cloud Audit Logs (Admin Activity) unconditionally.
+      notes: Data-plane commands are not audit-logged -- a caveat for reviewers weighing AUTH_DISABLED deployments.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Memorystore publishes instance metrics (memory usage, connections, operations, replication) to Cloud Monitoring for every instance without configuration.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: automated_backup_config
+      evidence:
+        type: spec_default
+        reference: Absent means no scheduled backups; configuring it takes daily backups at start_hour with the declared retention, and persistence_config (RDB or AOF) separately makes data survive restarts and failovers.
+      notes: Preset 03 enables daily backups (35-day retention) plus AOF persistence; preset 02 uses RDB persistence without scheduled backups. managed_backup_source and gcs_source are the restore paths at creation.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: automated_backup_config.retention
+      evidence:
+        type: spec_default
+        reference: Sets how long each backup is kept, from 1 to 365 days (preset 03 keeps 35 days as "3024000s").
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: zone_distribution_config.mode
+      evidence:
+        type: spec_default
+        reference: MULTI_ZONE (GCP's default when the block is absent) spreads nodes across zones; SINGLE_ZONE is the explicit single-zone opt-down. Immutable after creation.
+      notes: Presets 02 and 03 pin MULTI_ZONE and add replica_count 1 and 2 for per-shard failover; zone spreading without replicas narrows the blast radius but does not fail over.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_protection_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to true -- destroying the instance fails until the flag is explicitly set false; both engines send the value explicitly so the spec is the single source of truth.
+      notes: The dev preset opts out; presets 02 and 03 keep it on. deletion_policy PREVENT is a second, independent guard.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Memorystore applies engine and security patches through GCP's managed maintenance rollout; maintenance_policy only steers when, and maintenance_version can pull a patch forward -- neither opts out.

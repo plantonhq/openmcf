@@ -1,0 +1,24 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureservicebustopic
+spec:
+  azure:
+    groups:
+      - purpose: ManageTopic
+        actions:
+          - Microsoft.ServiceBus/namespaces/topics/read
+          - Microsoft.ServiceBus/namespaces/topics/write
+          - Microsoft.ServiceBus/namespaces/topics/Delete
+        provenance: derived
+        notes: Covers azurerm_servicebus_topic -- create, read/refresh, in-place updates, and destroy, addressed under the parent namespace resolved from namespace_id. Azure's operation inventory spells the delete action with a capital D.
+      - purpose: ReadParentNamespace
+        actions:
+          - Microsoft.ServiceBus/namespaces/read
+        provenance: derived
+        notes: The provider Gets the parent namespace on EVERY create and update to read the SKU and premium partition layout -- it requires partitioning_enabled to match the namespace's partition mode on PREMIUM and gates max_message_size_in_kilobytes to PREMIUM -- and again on read/refresh whenever partitioning is enabled, to normalize the 16x size that Azure reports for partitioned non-PREMIUM topics.

@@ -1,0 +1,70 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awscognitouserpool
+spec:
+  aws:
+    statements:
+      - sid: ManageUserPool
+        actions:
+          - cognito-idp:DescribeUserPool
+          - cognito-idp:UpdateUserPool
+          - cognito-idp:DeleteUserPool
+          - cognito-idp:GetUserPoolMfaConfig
+          - cognito-idp:SetUserPoolMfaConfig
+          - cognito-idp:TagResource
+          - cognito-idp:UntagResource
+          - cognito-idp:ListTagsForResource
+        resources:
+          - arn:aws:cognito-idp:*:*:userpool/*
+        provenance: derived
+        notes: Covers aws_cognito_user_pool / cognito.UserPool after creation. The provider splits MFA state onto its own API pair -- mfa_configuration, software-token MFA, email MFA, and the WebAuthn relying-party block all flow through SetUserPoolMfaConfig, read back by GetUserPoolMfaConfig -- so a pool with any MFA or passkey surface fails without them. Tag reconciliation rides the tagging trio on the pool ARN.
+      - sid: CreatePoolAndReadDomains
+        actions:
+          - cognito-idp:CreateUserPool
+          - cognito-idp:DescribeUserPoolDomain
+        resources:
+          - "*"
+        provenance: derived
+        notes: The service reference lists NO resource type for either action, so IAM evaluates them against Resource "*" and an ARN-scoped grant would deny them at runtime -- CreateUserPool because the pool ID it authorizes against exists only after the call, and DescribeUserPoolDomain because domain lookups are keyed by the domain STRING, not a pool ARN. The wildcard is the narrowest possible scope.
+      - sid: ManageHostedUiDomain
+        actions:
+          - cognito-idp:CreateUserPoolDomain
+          - cognito-idp:UpdateUserPoolDomain
+          - cognito-idp:DeleteUserPoolDomain
+        resources:
+          - arn:aws:cognito-idp:*:*:userpool/*
+        provenance: derived
+        notes: Covers aws_cognito_user_pool_domain / cognito.UserPoolDomain, the folded one-per-pool hosted-UI domain. Update handles in-place certificate rotation and managed_login_version changes; switching between prefix and custom domain shapes is a delete-and-create. Cognito provisions and owns the CloudFront distribution for custom domains itself -- the runner needs no cloudfront permissions.
+      - sid: ManageUserGroups
+        actions:
+          - cognito-idp:CreateGroup
+          - cognito-idp:GetGroup
+          - cognito-idp:UpdateGroup
+          - cognito-idp:DeleteGroup
+        resources:
+          - arn:aws:cognito-idp:*:*:userpool/*
+        provenance: derived
+        notes: Covers the aws_cognito_user_group / cognito.UserGroup resources folded per user_groups entry -- group names, descriptions, precedence, and IAM role claims. Group actions authorize on the owning pool's ARN; membership assignment is a runtime admin API outside these modules.
+      - sid: ManageThreatProtectionAndLogs
+        actions:
+          - cognito-idp:SetRiskConfiguration
+          - cognito-idp:DescribeRiskConfiguration
+          - cognito-idp:SetLogDeliveryConfiguration
+          - cognito-idp:GetLogDeliveryConfiguration
+        resources:
+          - arn:aws:cognito-idp:*:*:userpool/*
+        provenance: derived
+        notes: Covers aws_cognito_risk_configuration (pool-wide threat-protection responses and IP exceptions) and aws_cognito_log_delivery_configuration (event-log routing to CloudWatch, Firehose, or S3). Destination-side write access is granted service-side (log-group resource policies, bucket policies) -- Cognito delivers as itself, not as the runner.
+      - sid: PassSmsAndGroupRoles
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: Creating or updating a pool with sms_configuration passes sns_caller_arn -- the role Cognito assumes (with the spec's required external_id as confused-deputy guard) to publish SMS through SNS -- and user_groups entries reference the role_arn whose ARN lands in members' token claims. Add an iam:PassedToService=cognito-idp.amazonaws.com condition and narrow to the actual role ARNs in a hardened deployment.

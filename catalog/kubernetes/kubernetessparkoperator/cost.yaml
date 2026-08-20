@@ -1,0 +1,24 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetessparkoperator
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Each replica is a full operator pod (a JVM) carrying the effective resource sizing. More than 1 turns on module-rendered leader election -- one active reconciler, warm standbys -- so extra replicas buy failover, each reserving its own capacity.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The reservation per replica. Empty means the chart's REAL defaults stand -- 1 CPU / 2Gi with requests equal to limits, the upstream-tested JVM sizing -- so even an empty manifest reserves a full CPU and 2Gi per replica.
+    - field_path: workload.namespaces
+      sku_meter: cluster CPU and memory reservations
+      impact: The fenced posture makes the chart CREATE these namespaces and fences Spark workloads into them -- it changes where Spark jobs may reserve capacity, not what this operator's pods reserve.
+  estimate_exclusions:
+    - the Spark driver and executor pods are the real capacity story -- they are created per SparkApplication/SparkCluster CR at runtime with sizing declared on those CRs, never on this component
+    - "helm_values merges LAST over the typed rendering and can override modeled values, including resources and replicas -- this profile describes the spec's declaration"
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster its operator pods reserve, realized on the cluster's bill. The operator is the control plane, not the workload: Spark drivers and executors ride the SparkApplication and SparkCluster declarations it reconciles (typically submitted per pipeline run), and their capacity is declared there."

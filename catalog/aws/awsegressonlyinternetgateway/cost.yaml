@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsegressonlyinternetgateway
+spec:
+  billing_model: free
+  free_tier: An egress-only internet gateway carries no meter -- AWS charges nothing to create it, attach it to a VPC, or push any volume of IPv6 traffic through it. This is its sharpest contrast with the NAT gateway it functionally mirrors -- a NAT gateway bills per hour and per GB processed for the same outbound-only guarantee on IPv4, while the IPv6 egress-only gateway does the job for nothing because globally-routable IPv6 addresses need no translation layer.
+  notes: "No field of this spec buys anything: the VPC attachment is free configuration. The real spend rides the traffic, billed elsewhere -- IPv6 data transfer OUT to the internet lands on the EC2 data-transfer meters of the instances and services sending it, exactly as it would through a full internet gateway. Teams paying NAT-gateway hourly and per-GB fees for outbound-only IPv4 can often move IPv6-capable traffic here and pay only the transfer."

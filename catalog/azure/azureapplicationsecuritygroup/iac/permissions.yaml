@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureapplicationsecuritygroup
+spec:
+  azure:
+    groups:
+      - purpose: ManageApplicationSecurityGroup
+        actions:
+          - Microsoft.Network/applicationSecurityGroups/read
+          - Microsoft.Network/applicationSecurityGroups/write
+          - Microsoft.Network/applicationSecurityGroups/delete
+        provenance: derived
+        notes: Covers azurerm_application_security_group -- create, read/refresh, tag updates (the only in-place change), and destroy. Held via Network Contributor, Contributor, or narrower custom roles.

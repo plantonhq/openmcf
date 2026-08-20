@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsecrregistrysettings.v1alpha1;
+
+import "catalog/aws/awsecrregistrysettings/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// AwsEcrRegistrySettingsStackInput is the input for the IaC modules
+// that manage a region's ECR registry-level configuration.
+message AwsEcrRegistrySettingsStackInput {
+  // target is the AwsEcrRegistrySettings resource to deploy.
+  AwsEcrRegistrySettings target = 1;
+  // provider_config contains the AWS provider credentials and configuration.
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

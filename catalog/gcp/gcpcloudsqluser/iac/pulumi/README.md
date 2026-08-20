@@ -13,7 +13,7 @@ This directory contains the Pulumi implementation for deploying database users o
    ```bash
    gcloud auth application-default login
    ```
-5. **IAM permissions**: `roles/cloudsql.admin` on the target project
+5. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set
 6. **For IAM users on PostgreSQL**: the instance must set the database flag `cloudsql.iam_authentication = "on"`
 
 ## Directory Structure

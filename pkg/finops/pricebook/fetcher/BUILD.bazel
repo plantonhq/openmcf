@@ -1,0 +1,25 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "fetcher_lib",
+    srcs = [
+        "azure.go",
+        "fetch.go",
+        "gcp.go",
+        "main.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/finops/pricebook/fetcher",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//finops/pricebook/v1:pricebook",
+        "//pkg/finops/pricebook",
+        "//pkg/yamlemit",
+        "@com_github_pkg_errors//:errors",
+    ],
+)
+
+go_binary(
+    name = "fetcher",
+    embed = [":fetcher_lib"],
+    visibility = ["//visibility:public"],
+)

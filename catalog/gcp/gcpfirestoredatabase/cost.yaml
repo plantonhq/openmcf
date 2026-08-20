@@ -1,0 +1,39 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpfirestoredatabase
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: database_edition
+      sku_meter: document operations
+      pricing_unit: operations
+      impact: STANDARD (the default) bills per document operation -- $0.03 per 100,000 reads, $0.09 per 100,000 writes, $0.01 per 100,000 deletes in us-central1, with stored data at $0.000205479/GiB-hour. ENTERPRISE switches to size-based units (read units per 4 KiB at $0.05/million, write units per 1 KiB at $0.26/million) and a higher storage rate of $0.000328767/GiB-hour. Immutable -- the meter family is fixed at creation.
+    - field_path: location_id
+      sku_meter: document operations
+      pricing_unit: operations
+      impact: Every meter's rate varies by location, and the immutable choice between a single region and a multi-region (nam5, eur3) trades cost for availability -- multi-region locations carry higher rates for the same operations and bytes.
+    - field_path: database_name
+      sku_meter: document operations
+      pricing_unit: operations
+      impact: Google grants free daily quota (1 GiB stored, 50,000 reads, 20,000 writes, 20,000 deletes) to exactly one database per project -- named databases beyond it get no free quota and bill from the first operation.
+    - field_path: point_in_time_recovery_enablement
+      sku_meter: PITR data
+      pricing_unit: GiB-months
+      impact: Enabling PITR bills a second storage meter at $0.000205479/GiB-hour, separate from database storage -- Google's own guidance is that PITR data storage costs about as much as the database itself, and it has no free quota.
+    - field_path: realtime_updates_mode
+      sku_meter: real-time update units
+      pricing_unit: units
+      impact: On ENTERPRISE databases, live query subscriptions bill real-time update units at $0.30 per million (one unit per 4 KiB of updated data pushed to a listener) on top of the initial query's read units.
+    - field_path: kms_key_name
+      sku_meter: Cloud KMS key usage
+      impact: CMEK itself adds no Firestore charge; the key's version storage and per-operation charges bill on the GcpKmsKey component protecting the database.
+  estimate_exclusions:
+    - an empty database bills nothing -- document reads, writes, and deletes accrue per operation (STANDARD) or per data-sized unit (ENTERPRISE) as applications use it, and stored data bills per GiB-month including index and metadata overhead
+    - TTL deletes bill like ordinary deletes and have no free quota
+    - scheduled backups bill their own storage meter on the GcpFirestoreBackupSchedule that creates them; restore and clone operations bill $0.20 per GiB when run
+    - network egress beyond the free allowance follows read traffic (first 10 GiB per month free to worldwide destinations)
+  notes: "A Firestore database is a serverless meter bank: creation is free and there is no always-on charge -- every dollar follows operations performed, bytes stored (indexes included), and bytes served. The edition picks the meter family, the location prices it, and PITR is the one field that doubles the storage bill on data-heavy databases. Prices echoed from the Firestore Standard and Enterprise pricing pages (us-central1)."

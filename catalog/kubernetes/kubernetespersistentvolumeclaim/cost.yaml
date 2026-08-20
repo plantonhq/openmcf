@@ -1,0 +1,27 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetespersistentvolumeclaim
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: storage_request
+      sku_meter: provisioned storage capacity
+      impact: The quantity the driver provisions -- the entire footprint of this component. Growing later requires the StorageClass to allow expansion, and Kubernetes never shrinks a volume, so capacity (and its cost) only ratchets upward.
+    - field_path: storage_class_name
+      sku_meter: provisioned storage capacity
+      impact: Selects WHICH driver and tier provision the volume -- the price per GB is the class's property (gp3 vs io2, SSD vs shared filesystem), not the claim's. Omitted means the cluster's default class.
+    - field_path: access_modes
+      sku_meter: provisioned storage capacity
+      impact: ReadWriteMany requires a shared-filesystem backend (EFS, Filestore, Azure Files) whose per-GB economics differ substantially from block storage -- the 100Gi shared preset costs a different rate than the 50Gi block preset, not just double.
+    - field_path: data_source
+      sku_meter: provisioned storage capacity
+      impact: Cloning a claim or restoring a snapshot provisions a full-size new volume -- the copy costs the same per GB as an empty volume of the same request.
+  estimate_exclusions:
+    - the price per GB is the StorageClass's backing driver and tier, which this catalog cannot know
+    - with a WaitForFirstConsumer StorageClass, no volume exists (and nothing is billed) until a pod first uses the claim
+    - Kubernetes never shrinks a volume -- capacity growth is one-way
+  notes: "This component reserves storage capacity, not CPU or memory -- its footprint is exactly the requested quantity, provisioned by the claim's StorageClass and realized on the cluster's storage bill. storage_limit is advisory (most drivers provision exactly the request) and does not change the footprint."

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <title>AWS Planton Runner</title>
+  <desc>A standing Planton runner appliance in an AWS VPC: an outbound-only worker, drawn as a pull loop around a worker core.</desc>
+  <defs>
+    <linearGradient x1="0%" y1="100%" x2="100%" y2="0%" id="awsPlantonRunnerBg">
+      <stop stop-color="#232F3E" offset="0%"></stop>
+      <stop stop-color="#31465F" offset="100%"></stop>
+    </linearGradient>
+  </defs>
+  <g fill="none" fill-rule="evenodd">
+    <rect fill="url(#awsPlantonRunnerBg)" x="4" y="4" width="72" height="72" rx="14"></rect>
+    <!-- The pull loop: the worker polls its queue; nothing dials in. -->
+    <path d="M 40 24 A 16 16 0 1 1 24 40" stroke="#FF9900" stroke-width="5" stroke-linecap="round"></path>
+    <!-- Arrowhead continuing the loop's clockwise motion at its open end. -->
+    <polygon fill="#FF9900" points="24,28 17.5,41 30.5,41"></polygon>
+    <!-- The worker core. -->
+    <circle fill="#FF9900" cx="40" cy="40" r="6"></circle>
+  </g>
+</svg>

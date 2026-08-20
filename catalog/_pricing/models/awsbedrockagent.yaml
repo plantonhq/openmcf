@@ -1,0 +1,34 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Both presets are zero-committed: an agent's existence is
+# free (the Bedrock pricing page publishes no per-agent meter), and every
+# meter a preset can start -- model-inference tokens, guardrail text units,
+# retrieval queries -- bills as conversations happen -- stated in
+# exclusions, never padded into fabricated dollars.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awsbedrockagent
+spec:
+  presets:
+    - preset: 01-support-agent-with-tools
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - every InvokeAgent request bills on-demand tokens at amazon.nova-micro-v1:0's published per-1M rate, multiplied by the orchestration fan-out (pre-processing, tool-calling loops, post-processing) -- entirely conversation-driven, and Bedrock on-demand inference carries no free allotment
+        - the orders action group uses return_control, so tool execution happens in YOUR application and starts no AWS meter; the reserved user-input group publishes no meter of its own
+        - the live alias serves on-demand -- no provisioned throughput is routed, so no hourly capacity commits
+      notes: Zero committed cost -- the agent, its alias snapshot, and both action groups bill nothing at rest; the token meter starts with the first user conversation, which the manifest cannot see.
+    - preset: 02-supervisor-with-collaborators
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - supervisor traffic bills on-demand tokens at amazon.nova-lite-v1:0's rate, and every delegation to the billing collaborator additionally runs THAT agent's model with the relayed conversation history inflating its input tokens -- fan-out spend lands on the collaborator agent's own account meters
+        - session memory (storageDays 30) adds a summarization model call per session at the same token rate; the summary storage itself has no published meter
+        - knowledge-base retrieval embeds each query at the KB's embedding model and searches the vector store, which bills on the referenced AwsBedrockKnowledgeBase's backing component
+      notes: Zero committed cost -- supervisor, memory, collaborator wiring, and the knowledge-base association are all free at rest; the zero is commitment-absence, and the real spend fans out across token meters the first delegated conversation starts.

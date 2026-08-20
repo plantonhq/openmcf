@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kuberneteskafkatopic
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The topic's messages rest on the Kafka brokers' persistent volumes; encryption of that storage is the Kafka cluster's and its storage classes' property, owned by the KubernetesKafka component, not a seam of this spec.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for the brokers' volumes are configured on the cluster's storage (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Client connections to the topic run over the Kafka cluster's listeners, whose TLS posture is declared on the KubernetesKafka resource; a topic has no transport configuration of its own.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A topic is not network-addressable; reachability is the Kafka cluster's listener exposure (internal versus external listeners), owned by that component.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: There is no network surface on this object to restrict. Who may produce to or consume from the topic is governed by the cluster's authorizer through KafkaUser ACLs -- a separate catalog kind.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A Kafka topic serves no HTTP edge traffic -- web application firewalls do not apply.
+    - control_id: rbac
+      status: not_applicable
+      notes: Managing the KafkaTopic resource is the target cluster's Kubernetes RBAC; access to the topic's DATA is Kafka ACLs granted per principal on KafkaUser resources against the cluster's simple authorizer -- both owned outside this spec.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The topic authenticates to nothing -- it holds no credentials and calls no cloud APIs.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Authentication mechanisms live on the Kafka cluster's listeners and its users, not on topics; no legacy path exists in this contract to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the topic resource are Kubernetes API operations, captured by the target cluster's audit policy; data-plane access auditing is a Kafka broker concern owned by the cluster component.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Per-topic metrics (size, throughput, under-replicated partitions) are exported by the Kafka brokers and the topic operator, owned by the KubernetesKafka component; this resource only surfaces reconcile status.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The resource is declarative, but the DATA it names is not backed up through any seam here -- Kafka's native durability is replication (see multi-zone-ha), and topic-level backup (MirrorMaker replication, sink connectors to object storage) is separate machinery.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist through this spec (see backup-recovery). The config entry retention.ms governs how long LIVE messages are kept before Kafka discards them -- a data-lifecycle setting, not backup retention.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replicas
+      evidence:
+        type: spec_default
+        reference: Empty inherits the cluster's default.replication.factor; setting 3 hosts each partition on three brokers with automatic leader failover, the production norm paired with min.insync.replicas=2 in config to survive one broker loss without losing acknowledged writes. The topic operator rejects a factor exceeding the broker count at reconcile time.
+      notes: Replication counts BROKERS; whether those brokers sit in distinct zones is the Kafka cluster's placement (rack awareness, broker anti-affinity), owned by the KubernetesKafka component. The 03-high-throughput preset runs replicas 3.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor Strimzi offers a deletion-protection flag on KafkaTopic -- and deleting the resource propagates deletion of the TOPIC AND ITS DATA through the topic operator, which makes operational protection (namespace RBAC, change review) genuinely load-bearing here.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Nothing runs here to patch. Broker and operator versions are the Kafka cluster's; declarative topic-configuration changes are applied by the topic operator as ordinary reconciliation, not patching.

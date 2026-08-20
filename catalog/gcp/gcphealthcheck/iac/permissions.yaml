@@ -1,0 +1,36 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcphealthcheck
+spec:
+  gcp:
+    groups:
+      - purpose: EnableComputeApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers the google_project_service resource that enables compute.googleapis.com on the target project before the health check is created (disable_on_destroy is false, so teardown never disables the API).
+      - purpose: ManageGlobalHealthCheck
+        permissions:
+          - compute.healthChecks.create
+          - compute.healthChecks.get
+          - compute.healthChecks.update
+          - compute.healthChecks.delete
+          - compute.globalOperations.get
+        provenance: derived
+        notes: Covers google_compute_health_check, created when spec.region is empty -- create, read/refresh, in-place updates (intervals, thresholds, probe request fields, logging, and description are mutable; only name, project, scope, and protocol force replacement), destroy, and polling the global operation every mutation returns.
+      - purpose: ManageRegionalHealthCheck
+        permissions:
+          - compute.regionHealthChecks.create
+          - compute.regionHealthChecks.get
+          - compute.regionHealthChecks.update
+          - compute.regionHealthChecks.delete
+          - compute.regionOperations.get
+        provenance: derived
+        notes: Covers google_compute_region_health_check, created when spec.region is set -- GCP authorizes regional health checks under their own compute.regionHealthChecks permission family, distinct from the global compute.healthChecks family, so a deployer scoped to only one family cannot manage the other scope. Mutations return region-scoped operations, hence regionOperations.get. The legacy compute.httpHealthChecks/httpsHealthChecks families are separate API surfaces the modules never touch.

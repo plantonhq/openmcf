@@ -1,0 +1,64 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awss3bucket
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: versioning_status
+      sku_meter: object storage
+      pricing_unit: GB-months
+      impact: Enabling versioning accrues storage for every superseded object version until a lifecycle rule expires it -- the essential companion is noncurrent_version_expiration.
+    - field_path: lifecycle_rules
+      sku_meter: object storage
+      pricing_unit: GB-months
+      impact: The primary cost-control levers -- transitions move objects to cheaper storage classes on schedule (each transition bills a request), expirations delete them, and noncurrent-version rules bound versioned-storage growth.
+    - field_path: encryption.sse_algorithm
+      sku_meter: KMS requests
+      pricing_unit: requests
+      impact: AES256 (SSE-S3) is free; aws:kms bills a KMS request per object operation -- encryption.bucket_key_enabled cuts those calls by up to 99%.
+    - field_path: replication
+      sku_meter: replicated storage and transfer
+      impact: Replication duplicates storage at the destination and bills inter-region transfer; replication_time_control_enabled adds a per-GB surcharge for the 15-minute SLA.
+    - field_path: intelligent_tiering_configurations
+      sku_meter: Intelligent-Tiering monitoring
+      pricing_unit: objects
+      impact: INTELLIGENT_TIERING bills a small monthly monitoring fee per object in exchange for automatic tiering; archive access tiers change retrieval economics.
+    - field_path: analytics_configurations
+      sku_meter: storage class analysis
+      pricing_unit: objects monitored
+      impact: Each analysis configuration bills per million objects monitored.
+    - field_path: inventory_configurations
+      sku_meter: inventory reports
+      pricing_unit: objects listed
+      impact: Each inventory bills per million objects listed per run, plus storage for the report files at the destination.
+    - field_path: metrics_configurations
+      sku_meter: request metrics
+      impact: Each request-metrics configuration bills at CloudWatch's standard per-metric rate.
+    - field_path: metadata_configuration
+      sku_meter: metadata table storage
+      impact: S3 Metadata journal and inventory tables bill table storage and updates at S3 Tables pricing; journal_record_expiration is the required cost control.
+    - field_path: object_lock_enabled
+      sku_meter: object storage
+      pricing_unit: GB-months
+      impact: Locked versions cannot be deleted until retention lapses -- a storage-cost floor for the retention window, absolute under COMPLIANCE mode.
+    - field_path: acceleration_status
+      sku_meter: accelerated transfer
+      pricing_unit: GB
+      impact: Transfer Acceleration bills an extra per-GB rate for edge-routed uploads and downloads.
+    - field_path: request_payer
+      sku_meter: request charges
+      impact: Requester shifts request and transfer costs to callers -- a cost-allocation switch, not a discount.
+    - field_path: logging
+      sku_meter: object storage
+      pricing_unit: GB-months
+      impact: Server access logs consume storage in the target bucket, growing with request volume.
+  free_tier: An empty bucket costs nothing -- every S3 charge starts when objects arrive or requests flow.
+  estimate_exclusions:
+    - storage bills per GB-month by storage class and grows with the data written
+    - requests and data transfer are entirely traffic-dependent
+    - configuration-attached fees (KMS requests, Intelligent-Tiering monitoring, analytics, inventory, request metrics, metadata tables) activate only once objects exist
+  notes: "S3 has no committed spend at manifest time: applying even the fully-loaded data-lake preset provisions only control-plane configuration. The spec's fields shape how usage will bill -- storage class economics, version retention, replication multipliers -- rather than creating charges of their own."

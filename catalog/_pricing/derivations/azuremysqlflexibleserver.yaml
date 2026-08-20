@@ -1,0 +1,105 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureMysqlFlexibleServer manifest's spec values into metered quantities
+# and price choices -- the compute SKU's hourly rate, provisioned storage
+# per GiB-month, and the high-availability standby that doubles both
+# (Microsoft bills the standby's provisioned compute and storage at the
+# primary's rates). The estimate generator replays the catalog presets
+# through these rules; a server-side estimator evaluates the same rules
+# against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azuremysqlflexibleserver
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  refusals:
+    - when:
+        - field_path: sku_name
+          op: is_unset
+      reason: an unset sku_name is delegated -- replica and restore servers inherit the source server's SKU, which is invisible in this manifest
+    - when:
+        - field_path: sku_name
+          op: not_equals
+          value: B_Standard_B1ms
+        - field_path: sku_name
+          op: not_equals
+          value: GP_Standard_D4ds_v4
+        - field_path: sku_name
+          op: is_set
+      reason: only the B_Standard_B1ms and GP_Standard_D4ds_v4 compute skus are pinned in the price book -- pricing any other sku would guess its rate
+    - when:
+        - field_path: storage.iops
+          op: is_set
+      reason: provisioned IOPS above the storage size's included default bill a per-IOPS meter that is not yet in the price book -- pricing without it would understate the bill
+  lines:
+    - sku_meter: burstable server compute
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: B_Standard_B1ms
+      quantity:
+        - hours_in_month: true
+      price_slug: mysql-flexible-b1ms-eastus
+      basis: the B_Standard_B1ms server bills its burstable B1ms compute every hour of the month (x 730) -- the B-series bills per server-hour, not per vCore
+    - sku_meter: server compute
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: GP_Standard_D4ds_v4
+      quantity:
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: mysql-flexible-gp-ddsv4-vcore-eastus
+      basis: GP_Standard_D4ds_v4 provisions 4 General Purpose Ddsv4 vCores x 730 hours at the series' per-vCore rate
+    - sku_meter: server compute
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: GP_Standard_D4ds_v4
+        - field_path: high_availability
+          op: is_set
+      quantity:
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: mysql-flexible-gp-ddsv4-vcore-eastus
+      basis: the high-availability standby replica has the same compute configuration as the primary and bills the same 4 vCores x 730 hours -- Microsoft bills both replicas' provisioned compute
+    - sku_meter: server storage
+      quantity:
+        - field_value:
+            field_path: storage.size_gb
+            default_when_unset: "20"
+      price_slug: mysql-flexible-storage-eastus
+      basis: provisioned storage bills per GiB-month whether used or empty; when storage.size_gb is unset Azure provisions its documented default of 20 GiB
+    - sku_meter: server storage
+      applies_when:
+        - field_path: high_availability
+          op: is_set
+      quantity:
+        - field_value:
+            field_path: storage.size_gb
+            default_when_unset: "20"
+      price_slug: mysql-flexible-storage-eastus
+      basis: the high-availability standby replica has the same storage configuration as the primary and bills the same provisioned GiB -- Microsoft bills both replicas' provisioned storage
+  exclusions:
+    - text: backup storage beyond the free allowance (100% of provisioned storage) follows database churn and retention settings
+    - applies_when:
+        - field_path: geo_redundant_backup_enabled
+          op: equals
+          value: "true"
+      text: geo-redundant backup storage bills consumed backup GiB at a higher rate than local backups and follows churn
+    - applies_when:
+        - field_path: storage.io_scaling_enabled
+          op: equals
+          value: "true"
+      text: elastic IOPS scaling bills additional IO on demand as the workload bursts and cannot be known from the manifest
+    - text: network egress follows client placement
+  notes:
+    - applies_when:
+        - field_path: high_availability
+          op: is_set
+      text: High availability doubles the bill -- Microsoft's documentation states you pay for the provisioned compute and storage of both the primary and the standby replica, whether the mode is ZONE_REDUNDANT or SAME_ZONE.

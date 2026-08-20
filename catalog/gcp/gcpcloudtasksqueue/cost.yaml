@@ -1,0 +1,34 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpcloudtasksqueue
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: rate_limits.max_dispatches_per_second
+      sku_meter: billable operations
+      pricing_unit: operations per million
+      impact: The dispatch-rate ceiling is also the spend ceiling on the operations meter -- every push delivery attempt is a billable operation ($0.40 per million past the first free million, chunked at 32 KB), so 500 dispatches/second sustained is what a maxed-out meter looks like.
+    - field_path: retry_config.max_attempts
+      sku_meter: billable operations
+      pricing_unit: operations per million
+      impact: Every retry is a fresh push delivery attempt and a fresh billable operation -- a failing target with generous retries multiplies the operation count of each task by up to max_attempts.
+    - field_path: desired_state
+      sku_meter: billable operations
+      impact: PAUSED stops dispatch attempts (and their operations) but not enqueues -- producers' CreateTask calls keep billing as API operations while the backlog grows, and the paused dispatches bill later when the queue resumes.
+    - field_path: stackdriver_logging_config.sampling_ratio
+      sku_meter: Cloud Logging ingestion
+      pricing_unit: GiB
+      impact: Each sampled dispatch operation writes a Cloud Logging entry billed on Cloud Logging's ingestion meter -- 1.0 on a high-throughput queue is a real log bill; the 02 preset's 0.1 is the deliberate middle ground.
+    - field_path: http_target
+      sku_meter: billable operations
+      impact: The target choice moves the real spend downstream -- whatever compute serves the dispatched requests (Cloud Run, Cloud Functions, custom endpoints) bills there, and Google notes regular network costs apply to HTTP target tasks. The queue's own meter is the same regardless of target.
+  estimate_exclusions:
+    - an idle queue bills nothing -- billable operations (every API call and every push delivery attempt, chunked at 32 KB) follow the tasks producers enqueue, with the first 1 million operations each month free and $0.40 per million up to 5 billion after that
+    - oversized payloads multiply the meter -- a 96 KB task bills as 3 operations, and list calls bill per task returned
+    - the dispatched-to service's compute and the network transfer of HTTP dispatches bill on their own meters
+    - Cloud Logging ingestion for sampled dispatch logs bills on the project's logging meter
+  notes: "A queue is a dispatch contract with a rate card, not a resource with a standing fee: Cloud Tasks publishes exactly one meter -- billable operations, defined as an API call or push delivery attempt, chunked at 32 KB ($0.40 per million after the first free million each month; beyond 5 billion, contact sales). Creation, existence, and even a large paused backlog cost nothing until operations touch them."

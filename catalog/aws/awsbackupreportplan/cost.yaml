@@ -1,0 +1,28 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbackupreportplan
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: delivery_channel.s3_bucket_name
+      sku_meter: S3 storage
+      pricing_unit: GB-months
+      impact: Every daily report run drops CSV/JSON files into the referenced bucket, and nothing in this spec ever prunes them -- the files accumulate and bill S3 storage (plus the service's PUT requests) on the AwsS3Bucket component until a bucket-side lifecycle rule expires them.
+    - field_path: delivery_channel.formats
+      sku_meter: S3 storage
+      pricing_unit: GB-months
+      impact: Requesting both CSV and JSON delivers two files per report run instead of one -- a direct multiplier on the delivered volume.
+    - field_path: report_setting.report_template
+      sku_meter: backup evaluations
+      pricing_unit: evaluations
+      impact: The two *_COMPLIANCE templates report on Audit Manager framework evaluations, which bill per evaluation on the referenced AwsBackupFramework components; the three job templates (backup, copy, restore) read job history that carries no meter of its own.
+  free_tier: AWS Backup's pricing page carries no meter for report plans at all -- report generation and delivery are uncharged by the Backup service; the spend this component creates is S3-side, for the files it delivers.
+  estimate_exclusions:
+    - report file size scales with fleet activity and coverage -- widening report_setting.accounts, organization_units, or regions widens every report
+    - S3 storage and request charges for the delivered files bill on the referenced bucket component
+    - the compliance templates' underlying evaluations (and their AWS Config configuration items) bill on the framework components and AWS Config, not here
+  notes: "A report plan is metering-free by verified absence: the AWS Backup pricing page prices backup storage, restores, transfer, evaluations, restore testing, and search -- and says nothing about reports, because generating and delivering them costs nothing at the Backup service. The cadence is AWS-managed (daily) with no schedule dial in the spec, so the only spend decisions here are how many formats to deliver and where the files land. The quietly accumulating S3 bill is the one to watch: a report plan left running for years writes thousands of files nobody reads, and retention is entirely the bucket's problem."

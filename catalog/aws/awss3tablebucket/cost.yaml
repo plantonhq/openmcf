@@ -1,0 +1,43 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awss3tablebucket
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: namespaces
+      sku_meter: S3 Tables Standard storage
+      pricing_unit: GB-month
+      impact: The bucket, its namespaces, and even empty tables carry no fee -- storage meters per GB-month from the first byte written into any table ($0.0265 per GB for the first 50 TB per month in the pricing page's US-West Oregon example, tiering down above that). Query engines write the bytes; the manifest only shapes where they land.
+    - field_path: namespaces.tables
+      sku_meter: S3 Tables object monitoring
+      pricing_unit: per 1,000 objects-month
+      impact: The always-on maintenance meter -- every object stored in a table bucket pays a monthly monitoring fee ($0.025 per 1,000 objects on the pricing page) so AWS can watch for optimization work. Exactly zero when tables are empty, and object COUNT is the lever, which is why compaction (fewer, larger objects) feeds back into a smaller monitoring bill.
+    - field_path: namespaces.tables.compaction
+      sku_meter: S3 Tables compaction - objects processed
+      pricing_unit: per 1,000 objects
+      impact: On at AWS by default -- background compaction bills for the objects it processes ($0.002 per 1,000 objects for default binpack). Zero when nothing needs compacting; disabling it zeroes this meter but lets small-file buildup degrade queries and inflate the per-object monitoring meter instead.
+    - field_path: namespaces.tables.compaction
+      sku_meter: S3 Tables compaction - data processed
+      pricing_unit: GB
+      impact: The second half of the compaction bill -- the bytes rewritten during compaction meter per GB ($0.005 per GB processed for default binpack). target_file_size_mb tunes how much rewriting a pass does; the meter follows ingest churn, not table size at rest.
+    - field_path: replication
+      sku_meter: S3 Tables replication table updates
+      pricing_unit: per 1,000 table updates
+      impact: "Turning replication on starts a meter family: each table update replicates for $0.010 per 1,000 updates, every replicated data file bills a destination PUT request, cross-region destinations add inter-Region Data Transfer OUT per GB, and the replica bucket runs its OWN storage and monitoring meters. Zero while no writes happen; the referenced IAM role is free."
+    - field_path: unreferenced_file_removal
+      sku_meter: S3 Tables Standard storage
+      pricing_unit: GB-month
+      impact: A storage-accumulation lever, not a meter of its own -- this cleanup is on at AWS by default and unbilled; DISABLING it means files no snapshot references stay on the storage meter forever. The same logic applies to per-table snapshot_management, whose expiry keeps old snapshots from pinning dead bytes.
+  free_tier: "No permanent free tier exists for S3 Tables -- storage, requests, monitoring, and compaction all meter from the first object. What IS permanently free: the table bucket itself (the pricing page's bucket-types table prints 'Table buckets: Free' verbatim), namespaces, empty tables, and the maintenance FEATURES (compaction, snapshot expiry, unreferenced-file removal bill only for work actually processed -- zero on an idle lake). New-account AWS Free Tier credits are a time-boxed trial, not an S3 Tables allotment."
+  estimate_exclusions:
+    - S3 Tables Standard storage bills per GB-month from the first byte ($0.0265/GB first 50 TB in US-West Oregon) -- entirely driven by what query engines write
+    - PUT requests bill at $0.005 per 1,000 and GET requests at $0.0004 per 1,000 (S3 Tables - Standard, US-West Oregon) -- ETL jobs and query traffic the manifest cannot see
+    - object monitoring bills $0.025 per 1,000 objects-month -- zero when empty, proportional to object count as data lands
+    - compaction bills $0.002 per 1,000 objects and $0.005 per GB processed (default binpack) -- zero until there are small files to combine
+    - replication (when configured) bills destination PUT requests, $0.010 per 1,000 table updates, inter-Region Data Transfer OUT per GB for cross-region destinations, and the destination bucket's own storage and monitoring
+    - an aws:kms encryption choice routes KMS request and key charges to the referenced AwsKmsKey -- including the maintenance service's GenerateDataKey/Decrypt calls during compaction
+  notes: "The maintenance meters are the class's signature: AWS continuously optimizes the lake (compaction, snapshot expiry, orphan removal) and bills per unit of work processed -- so the bill tracks ingest churn, not just size at rest, and every maintenance meter is exactly zero on an empty or idle bucket. Both presets create empty tables, so committed cost is zero; the KMS key and replication role the second preset references bill and are authored as their own kinds."

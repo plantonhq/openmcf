@@ -1205,6 +1205,19 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsAppSyncApi | `spec.graphql.auth.lambda.authorizerUri` | `status.outputs.function_arn` |
+| AwsAppSyncApi | `spec.graphql.additionalAuthProviders[].lambda.authorizerUri` | `status.outputs.function_arn` |
+| AwsAppSyncApi | `spec.graphql.functions[].syncConfig.lambdaConflictHandlerArn` | `status.outputs.function_arn` |
+| AwsAppSyncApi | `spec.graphql.resolvers[].syncConfig.lambdaConflictHandlerArn` | `status.outputs.function_arn` |
+| AwsAppSyncApi | `spec.events.authProviders[].lambda.authorizerUri` | `status.outputs.function_arn` |
+| AwsAppSyncApi | `spec.datasources[].lambda.functionArn` | `status.outputs.function_arn` |
+| AwsBedrockAgent | `spec.promptOverride.overrideLambda` | `status.outputs.function_arn` |
+| AwsBedrockAgent | `spec.actionGroups[].executor.lambda` | `status.outputs.function_arn` |
+| AwsBedrockAgentCoreEvaluation | `spec.evaluators[].codeBased.lambdaArn` | `status.outputs.function_arn` |
+| AwsBedrockAgentCoreGateway | `spec.interceptors[].lambdaArn` | `status.outputs.function_arn` |
+| AwsBedrockAgentCoreGateway | `spec.targets[].backend.lambda.lambdaArn` | `status.outputs.function_arn` |
+| AwsBedrockFlow | `spec.definition.nodes[].lambdaFunction.lambdaArn` | `status.outputs.function_arn` |
+| AwsBedrockKnowledgeBase | `spec.dataSources[].vectorIngestion.customTransformation.lambdaArn` | `status.outputs.function_arn` |
 | AwsClientVpn | `spec.clientConnectOptions.lambdaFunctionArn` | `status.outputs.function_arn` |
 | AwsCognitoUserPool | `spec.lambdaConfig.preSignUp` | `status.outputs.function_arn` |
 | AwsCognitoUserPool | `spec.lambdaConfig.preAuthentication` | `status.outputs.function_arn` |
@@ -1219,6 +1232,7 @@ Fields on other kinds that can point at this resource:
 | AwsCognitoUserPool | `spec.lambdaConfig.verifyAuthChallengeResponse` | `status.outputs.function_arn` |
 | AwsCognitoUserPool | `spec.lambdaConfig.customEmailSender.lambdaArn` | `status.outputs.function_arn` |
 | AwsCognitoUserPool | `spec.lambdaConfig.customSmsSender.lambdaArn` | `status.outputs.function_arn` |
+| AwsConfigRule | `spec.customLambda.functionArn` | `status.outputs.function_arn` |
 | AwsHttpApiGateway | `spec.routes[].integration.integrationUri` | `status.outputs.function_arn` |
 | AwsHttpApiGateway | `spec.authorizers[].authorizerUri` | `status.outputs.function_arn` |
 | AwsKinesisFirehose | `spec.extendedS3.processing.processors[].lambda.lambdaArn` | `status.outputs.function_arn` |
@@ -1230,7 +1244,10 @@ Fields on other kinds that can point at this resource:
 | AwsKinesisFirehose | `spec.snowflake.processing.processors[].lambda.lambdaArn` | `status.outputs.function_arn` |
 | AwsKinesisFirehose | `spec.iceberg.processing.processors[].lambda.lambdaArn` | `status.outputs.function_arn` |
 | AwsLambdaEventSourceMapping | `spec.functionArn` | `status.outputs.function_arn` |
+| AwsRestApiGateway | `spec.routes[].integration.uri` | `status.outputs.invoke_arn` |
+| AwsRestApiGateway | `spec.authorizers[].lambdaInvokeUri` | `status.outputs.invoke_arn` |
 | AwsS3Bucket | `spec.notification.lambdaFunctions[].lambdaFunctionArn` | `status.outputs.function_arn` |
+| AwsSecretsManagerSecret | `spec.rotation.rotationLambdaArn` | `status.outputs.function_arn` |
 
 ## See Also
 

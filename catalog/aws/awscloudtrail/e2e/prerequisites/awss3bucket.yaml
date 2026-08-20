@@ -1,0 +1,41 @@
+# Consumer-scoped AwsS3Bucket install profile for the trail: the
+# delivery bucket with the CloudTrail service-principal policy AWS
+# validates at trail creation (GetBucketAcl on the bucket, PutObject
+# under AWSLogs/) -- without it, CreateTrail fails with "Incorrect S3
+# bucket policy is detected". (Production deployments add
+# aws:SourceArn conditions; the fixture's fixed bucket name in the
+# dedicated test account keeps this minimal.)
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3Bucket
+metadata:
+  name: planton-oss-e2e-awstrail-logs
+  id: planton-oss-e2e-awstrail-logs
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awss3bucket
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  policy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: AWSCloudTrailAclCheck
+        Effect: Allow
+        Principal:
+          Service: cloudtrail.amazonaws.com
+        Action: s3:GetBucketAcl
+        Resource: arn:aws:s3:::planton-oss-e2e-awstrail-logs
+      - Sid: AWSCloudTrailWrite
+        Effect: Allow
+        Principal:
+          Service: cloudtrail.amazonaws.com
+        Action: s3:PutObject
+        Resource: arn:aws:s3:::planton-oss-e2e-awstrail-logs/*
+        Condition:
+          StringEquals:
+            s3:x-amz-acl: bucket-owner-full-control

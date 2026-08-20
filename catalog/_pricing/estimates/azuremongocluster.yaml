@@ -1,0 +1,51 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azuremongocluster
+spec:
+  presets:
+    - preset: 01-production-cluster
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Cosmos DB
+          sku_meter: shard compute
+          pricing_unit: vCore-hours
+          pricing_quantity: "2920"
+          quantity_basis: an M30 shard provisions 2 vCores, x shard_count shards x 730 hours -- the published per-node price is exactly the vCore count times the general-purpose per-vCore meter; high availability runs one standby shard per primary with the same compute configuration, billing the same 2 vCores x shard_count x 730 hours again
+          list_unit_price: "0.068961"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Cosmos DB' and armRegionName eq 'eastus' and armSkuName eq 'Azure_Cosmos_DB_for_MongoDB_Coordinator_Node_1vCore' and productName eq 'Azure DocumentDB' and skuName eq 'Coordinator Node 1 vCore' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "201.36612"
+        - service_name: Azure Cosmos DB
+          sku_meter: shard storage
+          pricing_unit: GB-months
+          pricing_quantity: "256"
+          quantity_basis: every physical shard carries the same provisioned storage, so storage_size_in_gb x shard_count bills per GiB-month whether used or empty; high availability runs one standby shard per primary with the same storage configuration, billing the same provisioned GiB again
+          list_unit_price: "0.115"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Cosmos DB' and armRegionName eq 'eastus' and armSkuName eq 'Azure_Cosmos_DB_for_MongoDB_General_Purpose_Storage' and meterName eq 'General Purpose Storage Data Stored' and productName eq 'Azure DocumentDB' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-16"
+          list_cost: "29.4400"
+      total_list_cost: "230.80612"
+      exclusions:
+        - network egress follows client placement and cross-region replication topology
+      notes: High availability doubles the bill -- Microsoft's documentation states every primary shard gets a standby shard with the same compute and storage configuration, and both bill. Automated backups carry no separate charge -- Microsoft's pricing page states there is no additional cost for backups up to 35 days.
+    - preset: 02-free-sandbox
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - network egress follows client placement and cross-region replication topology
+      notes: The Free tier bills nothing for the life of the cluster -- its retail meters are published at 0.00 -- within its sandbox walls of one free cluster per subscription, a single shard, and no zone-redundant high availability (limits this spec's validation also enforces). Automated backups carry no separate charge -- Microsoft's pricing page states there is no additional cost for backups up to 35 days.

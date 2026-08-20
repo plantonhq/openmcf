@@ -1,0 +1,67 @@
+# AwsRestApiGateway full-surface scenario: a Lambda AWS_PROXY route
+# composing the existing AwsLambda smoke fixture plus a MOCK health
+# route and a TOKEN authorizer pointing at the same Lambda (create of
+# the authorizer does not invoke it). Method settings prove the
+# PATCH-view satellite. Deliberately not exercised live: the OpenAPI
+# body arm (XOR with typed routes -- proven by spec tests and the
+# offline manifest's typed form), the stage cache cluster (bills hourly
+# and waits up to 90 minutes), VPC_LINK integrations (the
+# AwsRestApiVpcLink lane covers the link), generated client
+# certificates, and documentation publishing -- all offline-proven via
+# e2e/manifest.yaml.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRestApiGateway
+metadata:
+  name: planton-oss-e2e-awsrestgw-full
+  id: planton-oss-e2e-awsrestgw-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsrestapigateway
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsLambda"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E REST API over the Lambda fixture
+  stage:
+    name: prod
+    methodSettings:
+      - methodPath: "*/*"
+        metricsEnabled: true
+        loggingLevel: "OFF"
+        throttlingBurstLimit: 50
+        throttlingRateLimit: 25
+  authorizers:
+    - name: e2e-token
+      type: TOKEN
+      lambdaInvokeUri:
+        valueFrom:
+          kind: AwsLambda
+          name: planton-oss-e2e-lambda-smoke
+          fieldPath: status.outputs.invoke_arn
+  routes:
+    - path: /health
+      method: GET
+      integration:
+        type: MOCK
+        requestTemplates:
+          application/json: '{"statusCode": 200}'
+      responses:
+        - statusCode: "200"
+          integrationResponseTemplates:
+            application/json: '{"ok": true}'
+    - path: /orders
+      method: GET
+      authorization: CUSTOM
+      authorizerName: e2e-token
+      integration:
+        type: AWS_PROXY
+        uri:
+          valueFrom:
+            kind: AwsLambda
+            name: planton-oss-e2e-lambda-smoke
+            fieldPath: status.outputs.invoke_arn

@@ -1,0 +1,35 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcplogmetric
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: filter
+      sku_meter: Monitoring metric ingestion
+      pricing_unit: MiB
+      impact: The meter's aperture -- every matching entry writes a point into the user-defined metric, and user-defined log-based metrics are chargeable Cloud Monitoring custom metrics ($0.2580/MiB past the billing account's first free 150 MiB, cheaper above 100,000 MiB). A broad filter on a chatty service is the classic runaway; a tight one meters pennies.
+    - field_path: metric_descriptor.value_type
+      sku_meter: Monitoring metric ingestion
+      pricing_unit: MiB
+      impact: Ingestion volume is computed per point -- 8 bytes for a scalar (the INT64 counter form) and 80 bytes for a DISTRIBUTION point, so a latency histogram ingests ten times the bytes of a counter over the same matching entries.
+    - field_path: label_extractors
+      sku_meter: Monitoring metric ingestion
+      pricing_unit: MiB
+      impact: The cardinality multiplier -- each distinct label-value combination is its own time series writing its own points, so a label carrying raw status codes multiplies ingestion by the number of distinct values, and unbounded labels (user IDs, request IDs) both inflate the bill and get the metric throttled.
+    - field_path: disabled
+      sku_meter: Monitoring metric ingestion
+      pricing_unit: MiB
+      impact: The pause switch -- a disabled metric keeps its configuration and history but ingests no new points, so its Monitoring spend stops while the definition (free either way) stays in place.
+    - field_path: bucket_name
+      sku_meter: Monitoring metric ingestion
+      pricing_unit: MiB
+      impact: Scoping the metric to a specific log bucket changes which entries feed it -- points are written as entries land in that bucket rather than from the project's default flow. An aperture control like filter, not a separate meter.
+  estimate_exclusions:
+    - the metric DEFINITION is free -- Google prices only the data, and points accrue under Monitoring solely as matching entries arrive
+    - the underlying log entries bill under Cloud Logging on whichever buckets store them, with or without this metric -- the metric neither adds to nor reduces that bill
+    - alerting policies watching the metric bill $0.35 per month per metric reference, on the alerting-policy resources, not here
+  notes: "Google's pricing page draws the line this component sits on: system-defined log-based metrics are non-chargeable, but 'User-defined logs-based metrics are a class of Cloud Monitoring custom metrics and are chargeable' (Cloud Logging pricing, logs-based metrics section). So the object costs nothing and its OUTPUT is the meter -- points bill as Monitoring byte ingestion (8 bytes per counter point, 80 per distribution point) against the account-wide 150 MiB monthly free allotment. deletion_policy ABANDON leaves the metric ingesting -- and billing -- after it is unmanaged."

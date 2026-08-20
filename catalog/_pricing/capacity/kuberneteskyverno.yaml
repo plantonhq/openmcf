@@ -1,0 +1,76 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesKyverno manifest's spec values into the capacity footprint
+# it reserves from its target cluster. Kyverno runs four fixed pod
+# classes -- the admission controller (always installed) and the
+# background, cleanup, and reports controllers (each enabled by
+# default) -- every one with its own replica count and resources block.
+# The policies the engine enforces are separate resources costing
+# engine CPU and memory, never new pods.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kuberneteskyverno
+spec:
+  workloads:
+    - label: admission controller replica
+      resources_path: admission_controller.resources
+      instances:
+        field_value:
+          field_path: admission_controller.replicas
+          default_when_unset: "1"
+    - label: background controller replica
+      resources_path: background_controller.resources
+      instances:
+        field_value:
+          field_path: background_controller.replicas
+          default_when_unset: "1"
+    - label: cleanup controller replica
+      resources_path: cleanup_controller.resources
+      instances:
+        field_value:
+          field_path: cleanup_controller.replicas
+          default_when_unset: "1"
+    - label: reports controller replica
+      resources_path: reports_controller.resources
+      instances:
+        field_value:
+          field_path: reports_controller.replicas
+          default_when_unset: "1"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node economics
+    - text: "the chart's hook Jobs (pre-delete webhook cleanup, post-upgrade CRD migration) are ephemeral -- capacity only while running"
+    - applies_when:
+        - field_path: admission_controller.autoscaling
+          op: is_set
+      text: "the admission controller's HPA owns its replica count between min_replicas and max_replicas -- the fixed admission term here understates whatever the autoscaler adds under load"
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: "the helm_values overlay merges LAST over the typed rendering and can override modeled values, including resources and replicas -- this footprint states the spec's declaration"
+  notes:
+    - applies_when:
+        - field_path: admission_controller.resources
+          op: is_unset
+      text: "the admission controller declares no resources -- the CHART then applies its own default requests and limits, a reservation this manifest-value footprint cannot state"
+    - applies_when:
+        - field_path: background_controller.enabled
+          op: is_set
+        - field_path: background_controller.enabled
+          op: equals
+          value: "false"
+      text: "the background controller is disabled -- no background pods run, so any background term in this footprint overstates by that amount"
+    - applies_when:
+        - field_path: cleanup_controller.enabled
+          op: is_set
+        - field_path: cleanup_controller.enabled
+          op: equals
+          value: "false"
+      text: "the cleanup controller is disabled -- no cleanup pods run, so any cleanup term in this footprint overstates by that amount"
+    - applies_when:
+        - field_path: reports_controller.enabled
+          op: is_set
+        - field_path: reports_controller.enabled
+          op: equals
+          value: "false"
+      text: "the reports controller is disabled -- no reports pods run, so any reports term in this footprint overstates by that amount"

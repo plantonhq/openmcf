@@ -1,0 +1,35 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# azurerm provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# AzurePlantonRunner is the Planton-internal runner APPLIANCE: exactly one
+# provider resource (a single-replica Container App) whose spec deliberately
+# models INTENT — placement, sizing, version, the runner token — and not the
+# underlying resource. The consumed resource is module-shaped plumbing (the
+# internal judgment); every spec field drives it and is accounted below.
+# Adopters who want first-class Container App configuration (ingress,
+# scaling rules, Dapr, volumes) use the AzureContainerApp kind.
+
+resources:
+  azurerm_container_app:
+    internal: module-shaped appliance plumbing -- the always-on single-replica app running the runner; spec.resource_group/spec.container_app_environment_id place it, spec.cpu/spec.memory size it, spec.image_repository + spec.runner_version compose its container image, spec.token rides its own secret store; everything else (Single revision mode, the 1..1 replica pins, the startup probe, no ingress) is a module decision
+
+specExclusions:
+  # Every spec field drives the internal appliance resource (judged above);
+  # none is a 1:1 provider-argument pass-through surface.
+  - field: spec.resource_group
+    reason: places the internal azurerm_container_app
+  - field: spec.container_app_environment_id
+    reason: places the internal azurerm_container_app inside its environment (the network boundary)
+  - field: spec.token
+    reason: the runner token, stored in the internal app's own secret store and referenced by name from the container env -- never a plain provider argument
+  - field: spec.control_plane_endpoint
+    reason: the control-plane coordinate injected into the internal app's container environment -- never a provider argument
+  - field: spec.runner_version
+    reason: composes the internal app's container image tag
+  - field: spec.image_repository
+    reason: composes the internal app's container image repository
+  - field: spec.cpu
+    reason: sizes the internal app's container (the spec CEL enforces the Consumption pairing law)
+  - field: spec.memory
+    reason: sizes the internal app's container (the spec CEL enforces the Consumption pairing law)

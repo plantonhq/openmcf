@@ -1,0 +1,45 @@
+# Canonical AwsOrganizationAccount example (hack/dev manifest and
+# refgen Example source): a member account placed in an OU with a
+# custom bootstrap role, root-only billing access, billing/security
+# alternate contacts, primary contact information, and one opt-in
+# region enabled. Literal values stand in for composed references so
+# the offline `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsOrganizationAccount
+metadata:
+  name: workloads-prod
+  id: workloads-prod
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  accountName: Workloads Production
+  email: aws-workloads-prod@example.com
+  parentId:
+    value: ou-e2e1-workload1
+  roleName: OrgBootstrapRole
+  iamUserAccessToBilling: DENY
+  closeOnDeletion: true
+  alternateContacts:
+    billing:
+      name: Jane Doe
+      title: Finance Lead
+      emailAddress: billing@example.com
+      phoneNumber: "+1 555 0100"
+    security:
+      name: Security Team
+      title: CISO
+      emailAddress: security@example.com
+      phoneNumber: "+1 555 0101"
+  primaryContact:
+    fullName: Jane Doe
+    companyName: Acme Corp
+    addressLine1: 1 Main St
+    city: Seattle
+    stateOrRegion: WA
+    postalCode: "98101"
+    countryCode: US
+    phoneNumber: "+1 555 0100"
+  regions:
+    - regionName: ap-southeast-3
+      enabled: true

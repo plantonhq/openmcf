@@ -1,0 +1,37 @@
+# AwsSagemakerFeatureGroup minimal scenario: an online-only group with
+# the smallest valid schema (the two special features plus one value).
+# The Standard online store has no at-rest floor cost worth naming for
+# a minutes-scale lane.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerFeatureGroup
+metadata:
+  name: planton-oss-e2e-awssgmfg-min
+  id: planton-oss-e2e-awssgmfg-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssagemakerfeaturegroup
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  recordIdentifierFeatureName: customer_id
+  eventTimeFeatureName: event_time
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-sagemaker-execution-role
+      fieldPath: status.outputs.role_arn
+  featureDefinitions:
+    - name: customer_id
+      type: String
+    - name: event_time
+      type: Fractional
+    - name: lifetime_value
+      type: Fractional
+  onlineStore:
+    enabled: true

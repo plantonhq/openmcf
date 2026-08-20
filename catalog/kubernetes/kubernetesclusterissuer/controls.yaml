@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesclusterissuer
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The issuer stores no data of its own; the credential Secrets the module materializes (API tokens, static keys) and cert-manager's ACME account key rest in the cluster's etcd, whose encryption at rest belongs to the cluster component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for etcd (where the credential Secrets rest) belong to the cluster component; this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: config.acme.skip_tls_verify
+      evidence:
+        type: spec_default
+        reference: skip_tls_verify defaults to false -- cert-manager's connections to the ACME server are TLS-verified out of the box, with config.acme.ca_bundle available for private ACME CAs whose certificate is not in the system trust store. Setting skip_tls_verify true is an explicit, spec-marked-INSECURE opt-out for lab environments.
+      notes: A Vault backend equally validates the server certificate, with config.vault.ca_bundle for private CAs. The issuer's PRODUCT is in-transit encryption for consumers -- it makes signed TLS certificates issuable cluster-wide. None of the four presets weakens TLS verification.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The ClusterIssuer is not a network endpoint -- it is configuration the cert-manager controller acts on. Its connections (ACME server, DNS APIs, Vault) are outbound.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: There is no inbound traffic to restrict; the resource only drives outbound issuance flows.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The issuer serves no traffic; web application firewalls have no meaning for a signing-backend configuration record.
+    - control_id: rbac
+      status: not_applicable
+      notes: The ClusterIssuer has no access-control surface of its own. Being cluster-scoped, any namespace's Certificates may request signatures from it by name -- fencing who may create Certificates is the target cluster's Kubernetes RBAC, and the credential Secrets are readable only in cert-manager's cluster-resource namespace.
+    - control_id: workload-identity
+      status: configurable
+      field_path: config.acme.solvers
+      evidence:
+        type: spec_default
+        reference: DNS-01 solvers authenticate keylessly when their static credential fields stay empty -- Route53 uses the controller's ambient IRSA identity or a dedicated per-issuer ServiceAccount, Azure DNS uses managed identity or AKS Workload Identity, and GCP Cloud DNS uses GKE Workload Identity; static keys are the explicit alternative.
+      notes: The 02-gcp-cloud-dns and 03-aws-route53 presets configure no static credentials (ambient keyless auth); 04-vault authenticates through Vault's Kubernetes auth method with a ServiceAccount token (config.vault.kubernetes_auth); 01-cloudflare necessarily uses a static API token (Cloudflare offers no workload identity).
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: config.acme.solvers
+      evidence:
+        type: spec_default
+        reference: Where a provider has both a modern and a legacy credential, the spec models them as an explicit exclusive choice -- Cloudflare accepts a scoped api_token (recommended) or the legacy account-wide api_key, exactly one of which must be set.
+      notes: The 01-cloudflare preset uses the scoped api_token, not the legacy key. Other solvers carry a single credential model with no legacy path.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the ClusterIssuer and its credential Secrets are Kubernetes API operations captured by the target cluster's audit policy; issuance events are visible as CertificateRequest resources owned by cert-manager, not as a provider audit log of this resource.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The issuer emits no metrics of its own; issuance and ACME metrics come from the cert-manager controller's Prometheus endpoint, owned by the KubernetesCertManager component.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The issuer is stateless declarative configuration reproducible from its manifest; the ACME account key cert-manager stores in the cluster-resource namespace is regenerated on a fresh registration. There is no data whose loss is unrecoverable.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The ClusterIssuer is an API-server record replicated by the cluster's control plane; there is no per-resource replication or zonal knob.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor cert-manager offers a deletion-protection flag on ClusterIssuer; protection is operational (RBAC on cluster-scoped resources, change review). Deleting the issuer stops renewals for every Certificate that references it, cluster-wide.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software here to patch -- the resource is data. cert-manager itself is patched through the KubernetesCertManager component.

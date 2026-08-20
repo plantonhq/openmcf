@@ -16,7 +16,7 @@ Nothing else in the policy is read as owned or modified — grants made by other
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **An existing crypto key** — referenced via `cryptoKeyId`
-- **IAM permissions** — `roles/cloudkms.admin` on the target key (or its ring/project)
+- **IAM permissions** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 - **The member must exist** — a service agent email, or reference a GcpServiceAccount
 
 ## Quick Start

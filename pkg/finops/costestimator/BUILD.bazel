@@ -1,0 +1,32 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "costestimator",
+    srcs = ["costestimator.go"],
+    importpath = "github.com/plantonhq/planton/pkg/finops/costestimator",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//finops/componentcostderivation/v1:componentcostderivation",
+        "//finops/componentcostestimatemodel/v1:componentcostestimatemodel",
+        "//finops/pricebook/v1:pricebook",
+        "//pkg/finops/pricebook",
+        "//pkg/specpath",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
+    ],
+)
+
+go_test(
+    name = "costestimator_test",
+    srcs = ["costestimator_test.go"],
+    embed = [":costestimator"],
+    deps = [
+        "//catalog/aws/awsalb/v1alpha1",
+        "//catalog/aws/awseksnodegroup/v1alpha1",
+        "//catalog/aws/awselasticip/v1alpha1",
+        "//catalog/aws/awsrdsinstance/v1alpha1",
+        "//finops/componentcostderivation/v1:componentcostderivation",
+        "//finops/pricebook/v1:pricebook",
+        "//shared/foreignkey/v1:foreignkey",
+    ],
+)

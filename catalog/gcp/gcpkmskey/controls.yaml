@@ -1,0 +1,90 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpkmskey
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The data this component stores is key material, and Cloud KMS never persists it in plaintext -- SOFTWARE versions live in Google's hardened keystore and HSM versions never leave FIPS 140-2 Level 3 validated hardware. version_template.protection_level chooses how strong the vault is, never whether material is protected.
+      notes: The 02-hsm-symmetric-encryption preset raises the floor to HSM protection, which is immutable for the key's life.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: import_only
+      evidence:
+        type: spec_default
+        reference: The stored data is the key material itself, and its provenance is the customer-vs-provider choice -- unset (false) means Google generates the material; import_only=true makes the key a BYOK container that only ever holds customer-supplied versions, so no Google-generated material ever exists in it.
+      notes: The 04-import-only-byok preset takes the BYOK posture (with the required skip_initial_version_creation). For every other GCP service this component IS the customer-managed key they reference.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation against the key travels TLS-encrypted through the cloudkms.googleapis.com API; no plaintext transport to Cloud KMS exists, and key material itself is never returned by any API call.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A crypto key is an API object with no network placement of its own -- it is reachable only through the IAM-gated Cloud KMS API, so exposure is an identity question (see rbac), not a network one. Org-level VPC Service Controls can add an API perimeter, but that lives outside this spec.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network ingress surface exists to restrict -- callers reach the key only through the Cloud KMS API, where IAM bindings (not network sources) decide who gets in.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: There is no request-filtering attachment point on a KMS key; the Cloud KMS API front end is Google-operated infrastructure.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation -- administrative and cryptographic -- is authorized by IAM roles bindable at the individual key, ring, project, or folder level; a principal without an explicit grant can do nothing with the key. CMEK consumers must be granted roles/cloudkms.cryptoKeyEncrypterDecrypter on the key before they can use it.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The key issues no credentials of its own and accepts only IAM-authenticated callers with short-lived OAuth tokens -- service agents and workload identities are the only way workloads use the key; there is no static-secret path to it.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The Cloud KMS API has exactly one authentication path -- IAM with OAuth 2.0 -- so no legacy or weaker path exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Administrative actions on the key (create, update, rotate, version destroy-schedule, IAM changes) land in Cloud Audit Logs Admin Activity logs unconditionally. Per-operation Data Access logs for encrypt/decrypt calls are a project-level audit-config toggle outside this spec.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloud KMS publishes request counts and latency metrics for the key's operations to Cloud Monitoring for every key without configuration.
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Key material is deliberately non-exportable, so the recovery mechanism is the destroy-scheduled window -- a destroyed version spends destroy_scheduled_duration (default 30 days) in DESTROY_SCHEDULED state, during which a restore call brings it back intact. Google stores active material redundantly as part of the managed service.
+      notes: For import_only keys the customer's externally held material is an additional recovery path -- a destroyed imported version can be re-imported.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: destroy_scheduled_duration
+      evidence:
+        type: spec_default
+        reference: Sets how long destroyed versions remain recoverable before permanent destruction -- unset means the 30-day GCP default; longer windows protect data-encrypting keys against accidental destruction. Immutable after creation.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloud KMS replicates key material and serving capacity across zones within the key's location (inherited from the key ring via key_ring_id); single-zone operation is unrepresentable, and multi-region locations extend the same guarantee across regions.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Unset means DELETE -- destroy schedules every key version for destruction, making data encrypted under them unrecoverable once the window elapses. PREVENT makes the destroy fail until the policy is deliberately lifted; ABANDON removes the key from management with all versions intact.
+      notes: All four presets pin PREVENT -- the right posture for any key real data depends on, since a key name is never reusable within its ring.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Google operates and patches the keystore and HSM fleet; no customer-visible patch surface or maintenance window exists on a key.

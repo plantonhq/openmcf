@@ -9,8 +9,17 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
+	controlprofilev1 "github.com/plantonhq/planton/compliance/componentcontrolprofile/v1"
+	controlcatalogv1 "github.com/plantonhq/planton/compliance/controlcatalog/v1"
+	frameworkcrosswalkv1 "github.com/plantonhq/planton/compliance/frameworkcrosswalk/v1"
+	derivationv1 "github.com/plantonhq/planton/finops/componentcostderivation/v1"
+	costestimatev1 "github.com/plantonhq/planton/finops/componentcostestimate/v1"
+	costprofilev1 "github.com/plantonhq/planton/finops/componentcostprofile/v1"
+	pricebookv1 "github.com/plantonhq/planton/finops/pricebook/v1"
+	permissionsv1 "github.com/plantonhq/planton/iac/componentpermissions/v1"
 	"github.com/plantonhq/planton/pkg/conversion"
 	"github.com/plantonhq/planton/pkg/crkreflect"
+	"github.com/plantonhq/planton/pkg/protobufyaml"
 	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
@@ -28,6 +37,12 @@ import (
 //     version whose schema the bundle carries AND has an authored
 //     conversion path to the served version -- a deprecation without a
 //     way out is a dead end this gate refuses to release.
+//  6. the fact-sheet cargo is internally coherent: every cargo document
+//     parses against its schema and is keyed by a user-facing kind,
+//     coverage is whole-or-not-at-all per component, the central documents
+//     ride with the component cargo, and every entry's projected summaries
+//     recompute exactly from the cargo aboard -- a price tag that disagrees
+//     with its own source document is unshippable.
 //
 // This is the gate between "we built a zip" and "a runtime may trust this
 // zip instead of its compiled classes". It runs in CI against the buf-built
@@ -80,6 +95,7 @@ func CheckConformance(bundle *Bundle) error {
 
 	problems = append(problems, entryProblems(bundle)...)
 	problems = append(problems, deprecationProblems(bundle)...)
+	problems = append(problems, cargoProblems(bundle)...)
 
 	if checked == 0 {
 		return fmt.Errorf("conformance checked zero kinds -- the walk is broken")
@@ -210,6 +226,202 @@ func deprecationProblems(bundle *Bundle) []string {
 			}
 		}
 	}
+	return problems
+}
+
+// cargoProblems checks the bundle's fact-sheet cargo for internal
+// coherence. Tree-to-bundle completeness is the BUILDER's duty (it fails
+// when a sidecar cannot be packed); this gate owns what only the finished
+// artifact can prove: every aboard document parses against its schema and
+// names a user-facing kind, coverage is whole-or-not-at-all per component,
+// the central documents ride with the component cargo, every control claim
+// cites a control the aboard catalog defines, and every entry's projected
+// summaries recompute exactly from the aboard cargo.
+func cargoProblems(bundle *Bundle) []string {
+	var problems []string
+
+	// The kind directory index, user-facing kinds only -- cargo keys use
+	// the same <providerDir>/<kindDir> vocabulary as entry documents.
+	dirToKind := map[string]string{}
+	kindToDir := map[string]string{}
+	for _, kind := range crkreflect.KindsList() {
+		provider := crkreflect.GetProvider(kind)
+		if provider.String() == testProviderName {
+			continue
+		}
+		kindName := crkreflect.ExtractKindNameByKind(kind)
+		key := strings.ReplaceAll(provider.String(), "_", "") + "/" + strings.ToLower(kindName)
+		dirToKind[key] = kindName
+		kindToDir[kindName] = key
+	}
+
+	aboard := map[string]*componentCargo{}
+	cargoAt := func(key string) *componentCargo {
+		if aboard[key] == nil {
+			aboard[key] = &componentCargo{}
+		}
+		return aboard[key]
+	}
+	parseTree := func(prefix string, docFor func(key string) proto.Message) {
+		for name, content := range bundle.subtree(prefix) {
+			key := strings.TrimSuffix(strings.TrimPrefix(name, prefix), ".yaml")
+			if _, userFacing := dirToKind[key]; !userFacing || !strings.HasSuffix(name, ".yaml") {
+				problems = append(problems, fmt.Sprintf(
+					"%s: not keyed by a user-facing registry kind (%s<provider>/<kind>.yaml)", name, prefix))
+				continue
+			}
+			if err := protobufyaml.LoadYamlBytes(content, docFor(key)); err != nil {
+				problems = append(problems, fmt.Sprintf("%s: does not parse against its schema: %v", name, err))
+			}
+		}
+	}
+	parseTree(costsPrefix, func(key string) proto.Message {
+		cargoAt(key).cost = &costprofilev1.ComponentCostProfile{}
+		return cargoAt(key).cost
+	})
+	parseTree(controlsPrefix, func(key string) proto.Message {
+		cargoAt(key).controls = &controlprofilev1.ComponentControlProfile{}
+		return cargoAt(key).controls
+	})
+	parseTree(permissionsPrefix, func(key string) proto.Message {
+		cargoAt(key).permissions = &permissionsv1.ComponentPermissions{}
+		return cargoAt(key).permissions
+	})
+	parseTree(estimatesPrefix, func(key string) proto.Message {
+		cargoAt(key).estimate = &costestimatev1.ComponentCostEstimate{}
+		return cargoAt(key).estimate
+	})
+	parseTree(derivationsPrefix, func(key string) proto.Message {
+		cargoAt(key).derivation = &derivationv1.ComponentCostDerivation{}
+		return cargoAt(key).derivation
+	})
+
+	// Whole-or-not-at-all per component, and estimates only for covered
+	// components.
+	for key, c := range aboard {
+		var missing []string
+		for _, sidecar := range []struct {
+			label  string
+			absent bool
+		}{
+			{"costs", c.cost == nil},
+			{"controls", c.controls == nil},
+			{"permissions", c.permissions == nil},
+		} {
+			if sidecar.absent {
+				missing = append(missing, sidecar.label)
+			}
+		}
+		if len(missing) > 0 {
+			problems = append(problems, fmt.Sprintf(
+				"%s: fact-sheet cargo is aboard without its %s document(s) -- coverage is whole-or-not-at-all",
+				key, strings.Join(missing, ", ")))
+		}
+	}
+
+	if len(aboard) > 0 {
+		problems = append(problems, centralCargoProblems(bundle, aboard)...)
+	}
+
+	// Every entry's projected summaries recompute exactly from the cargo
+	// aboard -- and an entry without cargo claims nothing.
+	for _, entry := range bundle.CatalogEntries() {
+		key, registered := kindToDir[entry.Kind]
+		if !registered {
+			// A stray entry is entryProblems' finding, not this one's.
+			continue
+		}
+		c := aboard[key]
+		if c == nil || c.cost == nil || c.controls == nil || c.permissions == nil {
+			if entry.CostSummary != nil || entry.ControlSummary != nil || entry.PermissionsProvenance != "" {
+				problems = append(problems, fmt.Sprintf(
+					"%s: the catalog entry carries fact-sheet summaries but the bundle carries no complete cargo for it", entry.Kind))
+			}
+			continue
+		}
+		wantCost, err := computeCostSummary(c.cost, c.estimate)
+		if err != nil {
+			problems = append(problems, fmt.Sprintf("%s: recomputing the cost summary from the aboard cargo: %v", entry.Kind, err))
+			continue
+		}
+		if (entry.CostSummary == nil) != (wantCost == nil) ||
+			(entry.CostSummary != nil && *entry.CostSummary != *wantCost) {
+			problems = append(problems, fmt.Sprintf(
+				"%s: the entry's cost summary does not recompute from the aboard cargo -- entry %+v, cargo %+v",
+				entry.Kind, entry.CostSummary, wantCost))
+		}
+		if wantControls := computeControlSummary(c.controls); entry.ControlSummary == nil || *entry.ControlSummary != *wantControls {
+			problems = append(problems, fmt.Sprintf(
+				"%s: the entry's control summary does not recompute from the aboard cargo -- entry %+v, cargo %+v",
+				entry.Kind, entry.ControlSummary, wantControls))
+		}
+		if wantProvenance := computePermissionsProvenance(c.permissions); entry.PermissionsProvenance != wantProvenance {
+			problems = append(problems, fmt.Sprintf(
+				"%s: the entry's permissions provenance %q does not recompute from the aboard cargo (%q)",
+				entry.Kind, entry.PermissionsProvenance, wantProvenance))
+		}
+	}
+
+	return problems
+}
+
+// centralCargoProblems checks the central documents that must ride with any
+// component cargo: the control catalog every control profile cites (with
+// every cited control id resolving in it), at least one framework
+// crosswalk, and at least one price book -- each parsing against its
+// schema.
+func centralCargoProblems(bundle *Bundle, aboard map[string]*componentCargo) []string {
+	var problems []string
+
+	compliance := bundle.Compliance()
+	catalogRaw, ok := compliance[controlsCatalogEntryName]
+	if !ok {
+		problems = append(problems, fmt.Sprintf(
+			"component fact-sheet cargo is aboard but %s is not -- control claims without their catalog are unreadable", controlsCatalogEntryName))
+	} else {
+		controlCatalog := &controlcatalogv1.ControlCatalog{}
+		if err := protobufyaml.LoadYamlBytes(catalogRaw, controlCatalog); err != nil {
+			problems = append(problems, fmt.Sprintf("%s: does not parse against its schema: %v", controlsCatalogEntryName, err))
+		} else {
+			knownControls := map[string]bool{}
+			for _, control := range controlCatalog.GetSpec().GetControls() {
+				knownControls[control.GetId()] = true
+			}
+			for key, c := range aboard {
+				for _, posture := range c.controls.GetSpec().GetControls() {
+					if !knownControls[posture.GetControlId()] {
+						problems = append(problems, fmt.Sprintf(
+							"%s: claims control %q which the aboard control catalog does not define", key, posture.GetControlId()))
+					}
+				}
+			}
+		}
+	}
+
+	crosswalks := 0
+	for name, content := range compliance {
+		if !strings.HasPrefix(name, frameworksEntryPrefix) {
+			continue
+		}
+		crosswalks++
+		if err := protobufyaml.LoadYamlBytes(content, &frameworkcrosswalkv1.FrameworkCrosswalk{}); err != nil {
+			problems = append(problems, fmt.Sprintf("%s: does not parse against its schema: %v", name, err))
+		}
+	}
+	if crosswalks == 0 {
+		problems = append(problems, "component fact-sheet cargo is aboard but no framework crosswalk is")
+	}
+
+	priceBooks := bundle.PriceBooks()
+	for name, content := range priceBooks {
+		if err := protobufyaml.LoadYamlBytes(content, &pricebookv1.PriceBook{}); err != nil {
+			problems = append(problems, fmt.Sprintf("%s: does not parse against its schema: %v", name, err))
+		}
+	}
+	if len(priceBooks) == 0 {
+		problems = append(problems, "component fact-sheet cargo is aboard but no price book is")
+	}
+
 	return problems
 }
 

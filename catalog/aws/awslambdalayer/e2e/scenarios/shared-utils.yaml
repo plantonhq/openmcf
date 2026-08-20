@@ -1,0 +1,47 @@
+# A layer published from the S3 object-set fixture's staged zip (the
+# same archive the Lambda lanes deploy as function code - a zip is a
+# zip to PublishLayerVersion), with runtimes/architectures metadata
+# and one self-account share grant (the grant machinery proven
+# without touching a second account). Free at AWS - dormant layer
+# versions bill nothing.
+#
+# The e2e-prerequisites annotation composes the object-set fixture,
+# which pulls in its bucket through its own registry prerequisite
+# (AwsS3Bucket).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsLambdaLayer
+metadata:
+  name: planton-oss-e2e-awslayer-utils
+  id: planton-oss-e2e-awslayer-utils
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awslambdalayer
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsS3ObjectSet"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  code:
+    bucket:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: planton-oss-e2e-awss3bucket-prereq
+        fieldPath: status.outputs.bucket_id
+    key: e2e/lambda.zip
+  description: Planton E2E shared utilities layer
+  compatibleRuntimes:
+    - nodejs22.x
+    - nodejs20.x
+  compatibleArchitectures:
+    - x86_64
+    - arm64
+  licenseInfo: Apache-2.0
+  permissions:
+    # Self-account grant: proves the permission machinery (statement,
+    # policy revision, import composite) without a second account.
+    - statementId: e2e-self-share
+      principal: "859666865785"

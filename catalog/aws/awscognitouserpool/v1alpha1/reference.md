@@ -1584,6 +1584,9 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsAppSyncApi | `spec.graphql.auth.userPool.userPoolId` | `status.outputs.user_pool_id` |
+| AwsAppSyncApi | `spec.graphql.additionalAuthProviders[].userPool.userPoolId` | `status.outputs.user_pool_id` |
+| AwsAppSyncApi | `spec.events.authProviders[].cognito.userPoolId` | `status.outputs.user_pool_id` |
 | AwsCognitoIdentityProvider | `spec.userPoolId` | `status.outputs.user_pool_id` |
 | AwsCognitoResourceServer | `spec.userPoolId` | `status.outputs.user_pool_id` |
 | AwsCognitoUserPoolClient | `spec.userPoolId` | `status.outputs.user_pool_id` |
@@ -1593,6 +1596,7 @@ Fields on other kinds that can point at this resource:
 | AwsLbListenerRule | `spec.actions[].authenticateCognito.userPoolArn` | `status.outputs.user_pool_arn` |
 | AwsLbListenerRule | `spec.actions[].authenticateCognito.userPoolDomain` | `status.outputs.user_pool_domain` |
 | AwsOpenSearchDomain | `spec.cognitoOptions.userPoolId` | `status.outputs.user_pool_id` |
+| AwsRestApiGateway | `spec.authorizers[].providerArns` | `status.outputs.user_pool_arn` |
 
 ## See Also
 

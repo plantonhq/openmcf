@@ -1,0 +1,63 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awscloudwatchsynthetics
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: AmazonCloudWatch
+      sku_meter: canary runs
+      pricing_unit: runs
+      description: A canary created with start_canary true commits its schedule's full cadence from apply -- every scheduled run bills $0.0012 (us-east-1), pass or fail, so rate(5 minutes) is ~8,760 runs (~$10.51) a month before anyone looks at a dashboard. The per-run Lambda/Logs/S3 cascade bills on those services' own meters.
+  cost_drivers:
+    - field_path: canary.schedule.expression
+      sku_meter: canary runs
+      pricing_unit: runs
+      impact: "The cadence IS the committed bill: every scheduled run bills $0.0012 (us-east-1, from the AmazonCloudWatch offer) whether the probe passes or fails. rate(5 minutes) on a running canary is ~8,760 runs a month (~$10.51); rate(1 hour) is 730. rate(0 minute) runs only on manual starts -- zero committed runs."
+    - field_path: canary.start_canary
+      sku_meter: canary runs
+      pricing_unit: runs
+      impact: The commitment switch -- false creates the canary READY but not running, so the run meter (and the whole Lambda/Logs/S3 cascade behind it) stays at zero until someone starts it; true commits the schedule's full cadence from apply.
+    - field_path: canary.schedule.duration_in_seconds
+      sku_meter: canary runs
+      pricing_unit: runs
+      impact: Keeps the canary re-running for this many seconds per schedule activation instead of once -- multiplying billed runs per activation by a factor the script's own runtime decides.
+    - field_path: canary.schedule.max_retries
+      sku_meter: canary runs
+      pricing_unit: runs
+      impact: Each automatic retry after a failed run is itself a billed run (plus its Lambda/Logs/S3 cascade) -- failure-driven and invisible to this manifest.
+    - field_path: canary.run_config.memory_in_mb
+      sku_meter: Lambda duration
+      pricing_unit: GB-seconds
+      impact: Every run executes the Synthetics-managed Lambda, billed on Lambda's request and GB-second meters in this account -- memory scales the GB-second cost of every single run linearly.
+    - field_path: canary.run_config.active_tracing
+      sku_meter: X-Ray traces
+      pricing_unit: traces
+      impact: Adds X-Ray tracing to every run's Lambda execution, billing X-Ray trace recording beyond its free allowance.
+    - field_path: canary.artifact_bucket
+      sku_meter: S3 storage
+      pricing_unit: GB-months
+      impact: Every run writes artifacts (screenshots, HAR files, reports) to the referenced bucket -- PUT requests per run plus storage that accrues with every run, billed on that AwsS3Bucket component.
+    - field_path: canary.success_retention_period
+      sku_meter: S3 storage
+      pricing_unit: GB-months
+      impact: How long successful-run artifacts keep occupying the bucket (default 31 days; failure_retention_period likewise for failures) -- shorter retention caps the artifact storage the run cadence otherwise grows without bound.
+    - field_path: canary.artifact_encryption_kms_key_arn
+      sku_meter: KMS requests
+      pricing_unit: requests
+      impact: SSE_KMS artifact encryption under a customer-managed key spends KMS requests on every artifact write -- billed with the key's monthly fee on the referenced AwsKmsKey component.
+    - field_path: region
+      sku_meter: canary runs
+      pricing_unit: runs
+      impact: The per-run rate and every cascade meter behind it are published per region.
+  free_tier: "100 canary runs per month are free as a permanent part of the CloudWatch free tier (the pricing page's Synthetics allowance) -- about 8 hours of a rate(5 minutes) canary, so any always-running canary blows through it in the first day. The allowance is account-level, invisible to a single manifest."
+  estimate_exclusions:
+    - "every run executes the Synthetics-managed Lambda in this account: Lambda request and GB-second duration charges follow run count, script runtime, and memory_in_mb"
+    - every run writes logs to CloudWatch Logs (ingestion per GB plus storage) and artifacts to the referenced S3 bucket (PUT requests plus GB-month storage governed by the retention periods)
+    - the canary emits CloudWatch custom metrics per run, and executeStep()/executeHttpStep() instrumentation adds more, all at custom-metric rates
+    - retries after failed runs bill as additional runs -- failure frequency is the monitored endpoint's behavior, not this manifest's
+    - alarms watching canary metrics bill on their own AwsCloudwatchAlarm components; SSE_KMS key charges bill on the referenced AwsKmsKey
+  notes: "The per-run fee is the visible meter, but AWS's own pricing example shows the cascade routinely costing more than the runs: for five 5-minute canaries the page works out $53.57 of runs against $14.89 Lambda + $3.55 Logs + $1.25 S3 a month. Synthetics GROUPS carry no meter at all -- they are name-and-tags containers, so a groups-only instance of this component is genuinely free. The committed run count lives inside schedule.expression (a rate or cron string), which is why this component is hand-modeled: deriving runs per month requires interpreting that expression, arithmetic the derivation grammar cannot do."

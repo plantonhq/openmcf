@@ -1,0 +1,39 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbedrockinferenceprofile
+spec:
+  # A Bedrock application inference profile under live E2E: one free,
+  # seconds-scale lane (the profile is pure metadata; invocations bill at
+  # the underlying model's rates and the lane never invokes). The lane
+  # routes to a foundation model directly. Verification is
+  # GetInferenceProfile keyed on inference_profile_id (status ACTIVE, type
+  # APPLICATION, the resolved models list naming the source model) plus
+  # per-engine tag echoes (ListTagsForResource -- the canonical six-key
+  # identity map including Name).
+  #
+  # The system-defined cross-region source shape (copy_from =
+  # arn:...:inference-profile/us.<model>) is NOT a separate lane:
+  # copy_from is a single string both modules forward verbatim, so the
+  # foundation-model lane proves the forwarding path, and the cross-region
+  # ARN embeds the caller's account id, which a committed manifest cannot
+  # carry honestly.
+  #
+  # Proven live 2026-08-13, both engines, with the IDEMPOTENCY phase and
+  # the blind import round-trip green (imported by the AWS-generated
+  # profile id; model_source tolerated as the provider's own importIgnore
+  # fact). Per-engine watcher evidence (distinct profile ids attribute
+  # the windows): status ACTIVE, type APPLICATION, the resolved models
+  # list naming titan-embed-text-v2, and ListTagsForResource echoing the
+  # canonical six-key identity map INCLUDING Name.
+  # ONE live catch fixed at the full bar this session: the scenario's
+  # original source (nova-micro) supports only INFERENCE_PROFILE
+  # invocation and CreateInferenceProfile rejects it on the
+  # foundation-model ARN shape -- the scenario now rides ON_DEMAND-capable
+  # titan-embed-text-v2, and the truth (profile-only models must use the
+  # system-profile ARN form) is taught on the spec field, GUIDE, presets,
+  # and the harness manual.
+  tier: 1
+  status: green
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 30

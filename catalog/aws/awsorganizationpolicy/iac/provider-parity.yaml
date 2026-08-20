@@ -1,0 +1,45 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_organizations_policy:
+    mappings:
+      # The display name is an explicit spec field (policy names allow
+      # spaces metadata.name cannot carry).
+      - arg: name
+        spec: spec.policy_name
+      # The policy document is the structured spec.content (serialized
+      # to JSON by the modules).
+      - arg: content
+        spec: spec.content
+    exclusions:
+      # The leave-it-behind destroy escape hatch -- the IAM-policy
+      # delay-knob class: engine apply/destroy behavior, never policy
+      # configuration. Destroy means detach and delete.
+      - arg: skip_destroy
+        reason: leave-the-policy-on-destroy engine escape hatch -- apply/destroy behavior (the recorded apply-behavior exclusion class), not policy configuration
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_organizations_policy_attachment:
+    # Each attachment is one spec.attachments entry.
+    specRoot: spec.attachments
+    exclusions:
+      - arg: policy_id
+        reason: module-derived from the folded pivot -- always the created policy's ID, never user surface
+      - arg: skip_destroy
+        reason: leave-the-attachment-on-destroy engine escape hatch -- apply/destroy behavior (the recorded apply-behavior exclusion class), not attachment configuration
+
+specExclusions:
+  # Organizations is a GLOBAL service: neither consumed resource
+  # carries a region argument. The spec's region drives only the
+  # provider connection.
+  - field: spec.region
+    reason: provider-connection region only -- Organizations is global and neither consumed resource carries a region argument

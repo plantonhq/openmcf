@@ -1,0 +1,41 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awslambdaeventsourcemapping
+spec:
+  aws:
+    statements:
+      - sid: ManageEventSourceMapping
+        actions:
+          - lambda:GetEventSourceMapping
+          - lambda:UpdateEventSourceMapping
+          - lambda:DeleteEventSourceMapping
+          - lambda:TagResource
+          - lambda:UntagResource
+          - lambda:ListTags
+        resources:
+          - arn:aws:lambda:*:*:event-source-mapping:*
+          - arn:aws:lambda:*:*:function:*
+        provenance: derived
+        notes: The module is a single aws_lambda_event_source_mapping resource. Get/update/delete/tag act on the mapping ARN; the function ARN rides the same statement because updates authorize against it as well. Create and List cannot be resource-scoped and live in their own statement.
+      - sid: CreateAndListEventSourceMappings
+        actions:
+          - lambda:CreateEventSourceMapping
+          - lambda:ListEventSourceMappings
+        resources:
+          - "*"
+        provenance: derived
+        notes: The service reference lists NO resource types for CreateEventSourceMapping (the mapping UUID does not exist until the call returns) or ListEventSourceMappings, so IAM evaluates both against Resource "*" -- ARN-scoped grants never match and would deny provisioning and plan/refresh at runtime. The wildcard is the narrowest possible scope.
+      - sid: UseCustomerManagedKey
+        actions:
+          - kms:DescribeKey
+          - kms:CreateGrant
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Required only when kms_key_arn references a customer-managed key for filter-criteria encryption -- Lambda grants itself decrypt access through the configuring principal. Scope to the actual key ARN in a hardened deployment.

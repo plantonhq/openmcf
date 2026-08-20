@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockinferenceprofile.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/aws/awsbedrockinferenceprofile/v1alpha1/outputs.proto";
+import "catalog/aws/awsbedrockinferenceprofile/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AwsBedrockInferenceProfile is a component for creating and managing
+// Amazon Bedrock application inference profiles - named, taggable,
+// IAM-scopeable handles over foundation models (or AWS cross-region
+// profiles) for per-application usage tracking and cost allocation.
+message AwsBedrockInferenceProfile {
+  // api_version specifies the API version for this resource.
+  string api_version = 1 [(buf.validate.field).string.const = 'aws.planton.dev/v1alpha1'];
+
+  // kind identifies this resource type.
+  string kind = 2 [(buf.validate.field).string.const = 'AwsBedrockInferenceProfile'];
+
+  // metadata contains standard resource metadata including name, labels, and annotations.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec defines the desired state of the inference profile.
+  AwsBedrockInferenceProfileSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status contains the observed state and outputs from the deployment.
+  AwsBedrockInferenceProfileStatus status = 5;
+}
+
+// AwsBedrockInferenceProfileStatus contains the status and outputs for the
+// inference profile.
+message AwsBedrockInferenceProfileStatus {
+  // outputs contains the values exported from the IaC stack after deployment.
+  AwsBedrockInferenceProfileStackOutputs outputs = 1;
+}

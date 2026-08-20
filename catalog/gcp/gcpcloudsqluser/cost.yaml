@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpcloudsqluser
+spec:
+  billing_model: free
+  free_tier: A Cloud SQL user is a login identity on an instance, and Cloud SQL has no meter for identities -- the service bills the instance's vCPUs, memory, provisioned storage, network egress, and assigned IP addresses, and none of those dimensions count users. An instance can carry one application's login or fifty and the bill does not move.
+  notes: "No field of this spec buys anything: the user name, password, authentication type, MySQL host scoping, per-user password policy, and creation-time database roles are all access-control configuration stored by the Cloud SQL control plane and the engine's system tables. The real spend is the parent GcpCloudSql instance this user logs into -- vCPU-hours and memory-hours around the clock (doubled by REGIONAL high availability), provisioned storage per GiB-month, backups beyond the included point-in-time-recovery logs -- priced in the covered GcpCloudSql cost profile. IAM authentication (the CLOUD_IAM_* types) is likewise free: logins ride short-lived tokens from the caller's existing IAM identity, no meter attached."

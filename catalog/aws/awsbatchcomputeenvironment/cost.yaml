@@ -1,0 +1,46 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbatchcomputeenvironment
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: compute_resources.type
+      sku_meter: EC2 instance hours / Fargate compute
+      pricing_unit: instance-hours
+      impact: The type selects WHOSE meter the launched capacity bills -- EC2 and SPOT launch instances that bill as plain EC2 usage (Spot interruptible at steep discounts), while FARGATE and FARGATE_SPOT bill per-vCPU and per-GB duration as plain Fargate usage. Batch adds nothing on top, and Reserved Instances, Savings Plans, and Spot discounts apply to the launched capacity at billing time.
+    - field_path: compute_resources.min_vcpus
+      sku_meter: EC2 instance hours
+      pricing_unit: instance-hours
+      impact: The one field that turns this component into an always-billing shape -- a non-zero vCPU floor keeps that many instances warm around the clock, jobs or no jobs. The default 0 lets the environment scale to zero when idle, which is the whole usage-based claim; every shipped preset keeps it at 0.
+    - field_path: compute_resources.max_vcpus
+      sku_meter: EC2 instance hours / Fargate compute
+      pricing_unit: instance-hours
+      impact: The hard spend ceiling -- Batch never scales past this many concurrent vCPUs, so a queue flood bills at most this much capacity at once.
+    - field_path: compute_resources.desired_vcpus
+      sku_meter: EC2 instance hours
+      pricing_unit: instance-hours
+      impact: The initial capacity target at creation only -- Batch continuously re-adjusts actual capacity between the floor and ceiling from queue demand, so this shapes the first bill, not the steady state.
+    - field_path: compute_resources.instance_types
+      sku_meter: EC2 instance hours
+      pricing_unit: instance-hours
+      impact: Which EC2 rate cards apply -- "optimal" lets Batch pick from the C, M, and R families per job's requirements; pinning large or GPU types pins their rates.
+    - field_path: compute_resources.allocation_strategy
+      sku_meter: EC2 instance hours
+      pricing_unit: instance-hours
+      impact: The price-versus-reliability dial for scale-out -- BEST_FIT chases only the cheapest fitting type and can stall on capacity, BEST_FIT_PROGRESSIVE falls forward to pricier types to keep jobs moving, and the Spot strategies trade price against pool depth (fewer interruptions means fewer re-run jobs re-billing their runtime).
+    - field_path: compute_resources.bid_percentage
+      sku_meter: EC2 Spot instance hours
+      pricing_unit: instance-hours
+      impact: The Spot price cap as a percentage of On-Demand -- omitted defaults to 100%, and under capacity-optimized strategies the paid price usually sits far below the cap anyway.
+  free_tier: AWS Batch itself is free -- there is no Batch meter to have a free tier. The launched compute bills as ordinary EC2 or Fargate usage, where those services' own free tiers and purchased discounts (Reserved Instances, Savings Plans) apply.
+  estimate_exclusions:
+    - every real dollar is the launched compute, billing as plain EC2 or Fargate usage driven entirely by submitted job volume and duration -- an environment with no runnable jobs and a zero vCPU floor bills nothing
+    - EBS volumes attached through launch templates and custom AMI storage bill on their own meters
+    - job container logs bill CloudWatch ingestion via the job definitions, and job-level spend attribution lives on the AwsBatchJobQueue / AwsBatchJobDefinition components
+    - Batch-on-EKS environments launch nodes into the referenced EKS cluster, whose control-plane hourly rate bills on that component
+    - data transfer between zones and out of AWS bills at EC2 rates -- multi-AZ subnet spreads trade transfer cost for capacity diversity
+  notes: "Batch is free orchestration -- AWS's pricing page says it plainly: there is no additional charge for AWS Batch; you pay for the resources you create to run your application. This environment is therefore best read as a scaling policy over OTHER meters: it decides what kind of capacity launches (type), how much may exist at once (max_vcpus), and -- the critical dial -- whether any capacity exists while idle (min_vcpus). At the default floor of 0, capacity scales to zero between jobs and the component honestly bills nothing on existence; a non-zero floor is a standing EC2 bill wearing Batch's clothes. Spot environments cut the rate up to roughly 90% at the price of interruptions, which re-run (and re-bill) unfinished jobs -- the capacity-optimized allocation strategies exist to keep that tax down."

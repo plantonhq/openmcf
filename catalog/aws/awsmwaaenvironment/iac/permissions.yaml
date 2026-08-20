@@ -1,0 +1,76 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsmwaaenvironment
+spec:
+  aws:
+    statements:
+      - sid: ManageEnvironment
+        actions:
+          - airflow:CreateEnvironment
+          - airflow:GetEnvironment
+          - airflow:UpdateEnvironment
+          - airflow:DeleteEnvironment
+          - airflow:TagResource
+          - airflow:UntagResource
+          - airflow:ListTagsForResource
+        resources:
+          - arn:aws:airflow:*:*:environment/*
+        provenance: derived
+        notes: Covers aws_mwaa_environment -- the module's single resource -- across create, in-place update of sizing/logging/artifacts, tagging, and teardown.
+      - sid: PassExecutionRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: CreateEnvironment passes execution_role_arn to MWAA, which assumes it for S3, CloudWatch Logs, and SQS access. Add an iam:PassedToService=airflow.amazonaws.com condition and narrow the role ARN in a hardened deployment.
+      - sid: CreateMwaaServiceLinkedRole
+        actions:
+          - iam:CreateServiceLinkedRole
+        resources:
+          - arn:aws:iam::*:role/aws-service-role/airflow.amazonaws.com/AWSServiceRoleForAmazonMWAA
+        provenance: derived
+        notes: The first environment in an account creates the MWAA service-linked role automatically; scoped to exactly that role, matching AWS's own MWAA API-access policy.
+      - sid: ReadSourceBucketEncryption
+        actions:
+          - s3:GetEncryptionConfiguration
+        resources:
+          - arn:aws:s3:::*
+        provenance: derived
+        notes: CreateEnvironment verifies the DAG source bucket's encryption configuration with the caller's credentials and fails without this read. The bucket name is manifest data (source_bucket_arn), so the pattern stays wide here -- narrow it to the bucket in a hardened deployment.
+      - sid: DescribeVpcContext
+        actions:
+          - ec2:DescribeSecurityGroups
+          - ec2:DescribeSubnets
+          - ec2:DescribeVpcs
+          - ec2:DescribeRouteTables
+        resources:
+          - "*"
+        provenance: derived
+        notes: Environment creation validates the referenced subnets and security groups (including the private-subnet requirement via route tables). EC2 Describe APIs support no resource-level scoping, so the wildcard is the narrowest possible scope.
+      - sid: ProvisionServiceVpcEndpoints
+        actions:
+          - ec2:CreateVpcEndpoint
+          - ec2:CreateNetworkInterface
+        resources:
+          - arn:aws:ec2:*:*:vpc-endpoint/*
+          - arn:aws:ec2:*:*:vpc/*
+          - arn:aws:ec2:*:*:subnet/*
+          - arn:aws:ec2:*:*:security-group/*
+          - arn:aws:ec2:*:*:network-interface/*
+        provenance: derived
+        notes: With SERVICE endpoint management (the default when endpoint_management is unset), environment creation provisions the webserver/database VPC endpoints and network interfaces in the customer VPC under the caller's permissions -- the same statements AWS's MWAA API-access policy carries.
+      - sid: UseCustomerManagedKeys
+        actions:
+          - kms:DescribeKey
+          - kms:CreateGrant
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Required only when kms_key_arn selects a customer-managed key -- MWAA acquires grants against the key at environment create so it can encrypt the metadata database, logs, and queue. Narrow the key ARN in a hardened deployment.

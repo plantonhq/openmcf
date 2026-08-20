@@ -1,0 +1,43 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpbackendbucket
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: enable_cdn
+      sku_meter: cache data transfer out
+      pricing_unit: GiB
+      impact: The master switch. Off, the backend bucket is free routing configuration and every request proxies to the origin (billing as load-balancer data processing and bucket egress on those components). On, three Cloud CDN meters start -- cache data transfer out at $0.02-$0.20/GiB by destination (North America and Europe $0.08/GiB for the first 10 TiB, cheaper above), cache fill, and cache lookups at $0.0075 per 10,000 GET/HEAD requests.
+    - field_path: cdn_policy.cache_mode
+      sku_meter: cache fill
+      pricing_unit: GiB
+      impact: What fraction of responses the edge may cache decides the fill-versus-egress split -- FORCE_CACHE_ALL maximizes hits, USE_ORIGIN_HEADERS caches only what the origin marks cacheable, and every miss adds cache fill ($0.01/GiB within North America or Europe, $0.02 within other continents, $0.04 inter-region) plus Cloud Storage operation charges on the origin bucket.
+    - field_path: cdn_policy.default_ttl
+      sku_meter: cache fill
+      pricing_unit: GiB
+      impact: Longer edge lifetimes mean fewer origin refetches -- for typical popular-content workloads Google notes cache fill is often under 10% of total data transfer, and generous TTLs on fingerprinted assets are what keep it there.
+    - field_path: cdn_policy.cache_key_policy
+      sku_meter: cache fill
+      pricing_unit: GiB
+      impact: Narrower cache keys let equivalent requests share one cache entry -- ignoring query strings and headers (the unset default) gives the best hit rate; every whitelisted parameter or included header multiplies cache entries and the fills that populate them.
+    - field_path: cdn_policy.negative_caching
+      sku_meter: cache fill
+      pricing_unit: GiB
+      impact: Caching 404s and redirects at the edge absorbs missing-asset storms that would otherwise refetch from the origin on every request -- each avoided miss saves fill bytes and a billable Cloud Storage read on the origin bucket.
+    - field_path: cdn_policy.request_coalescing
+      sku_meter: cache fill
+      pricing_unit: GiB
+      impact: Collapses concurrent cache-miss requests for one object into a single origin fetch -- on cache expiry of a popular object this turns a thundering herd of fills into one.
+    - field_path: compression_mode
+      sku_meter: cache data transfer out
+      pricing_unit: GiB
+      impact: AUTOMATIC compresses compressible responses at the load balancer, and Cloud CDN meters bytes after compression -- fewer GiB billed on every cache hit for text-like content, at no charge for the compression itself.
+  estimate_exclusions:
+    - the backend bucket carries no hourly or per-object charge -- all three Cloud CDN meters (cache data transfer out, cache fill, cache lookups) follow request volume
+    - with CDN off, requests proxy to the origin and bill as load-balancer data processing and Cloud Storage egress on those components
+    - forwarding-rule hours and data processing bill on the load balancer components; origin storage and operations bill on the GCS bucket component
+  notes: "A backend bucket is a routing-and-caching policy object with no meter of its own: creating and holding it costs nothing, signed-URL keys and custom response headers are free, and every charge follows traffic. With enable_cdn on, the bill is Cloud CDN's three meters -- cache egress per GiB by destination, cache fill per GiB by source-destination pair, lookups per 10,000 requests -- and cache misses additionally incur Cloud Storage operation charges on the origin bucket. The cdn_policy fields are the economics levers: they trade fill against egress by deciding what caches, for how long, and under which key."

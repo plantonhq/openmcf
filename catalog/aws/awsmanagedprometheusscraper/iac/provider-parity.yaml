@@ -1,0 +1,43 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_prometheus_scraper:
+    mappings:
+      # The source union's arms are top-level spec messages (the spec's
+      # exactly-one CEL mirrors the provider's ExactlyOneOfChildren).
+      - arg: source.eks
+        spec: spec.source_eks
+      - arg: source.vpc
+        spec: spec.source_vpc
+      # The destination union flattens onto two chart-wireable ARN
+      # fields.
+      - arg: destination.amp.workspace_arn
+        spec: spec.amp_workspace_arn
+      - arg: destination.cloudwatch.dataset_arn
+        spec: spec.cloudwatch_dataset_arn
+    exclusions:
+      # Plugin Framework resource: tags_all is computed-only at the pin.
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+  aws_prometheus_scraper_logging_configuration:
+    specRoot: spec.logging
+    mappings:
+      - arg: region
+        spec: spec.region
+      # The provider's destination wrapper flattens onto the spec's
+      # logging message.
+      - arg: logging_destination.cloudwatch_logs.log_group_arn
+        spec: spec.logging.log_group_arn
+      - arg: scraper_components
+        spec: spec.logging.components
+    exclusions:
+      # The fold's parent linkage: the logging configuration always
+      # targets this instance's scraper.
+      - arg: scraper_id
+        reason: module-wired parent linkage (the folded configuration always targets this instance's scraper)

@@ -15,7 +15,7 @@ You bring the PEM certificate chain and private key; the load balancer presents 
    ```bash
    gcloud auth application-default login
    ```
-5. **IAM permissions**: any role carrying `compute.sslCertificates.*` on the target project
+5. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs
 6. **PEM material**: a certificate chain (leaf first, then intermediates) and its matching unencrypted private key
 
 ## Directory Structure

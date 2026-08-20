@@ -1,0 +1,47 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsredshiftserverlessworkgroup
+spec:
+  presets:
+    - preset: 01-capped-dev
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - RPU-hours bill per second (60-second minimum per query) only while queries run, at the pinned 8-RPU baseline up to the 32-RPU cap -- AWS's published example rate is $0.375 per RPU-hour (US East N. Virginia); an idle workgroup meters zero, verbatim per the pricing page
+        - the first-time-user free offer is a $300 TRIAL credit expiring after 90 days, not a recurring tier
+        - warehouse data bills Redshift Managed Storage GB-month on the attached AwsRedshiftServerlessNamespace (my-analytics-data), never here
+        - data transfer out of AWS bills at standard transfer rates
+      notes: "Zero committed cost -- commitment-absence, not a free service. The low pins are a RATE posture: base 8 makes every execution second cheap, max 32 bounds the burst; neither reserves capacity nor accrues while quiet."
+    - preset: 02-price-performance-production
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - RPU-hours bill per second while queries run, with AWS's optimizer choosing the baseline against the balanced (level 50) price-performance dial, scaling up to the 512-RPU cap -- AWS's published example rate is $0.375 per RPU-hour (US East N. Virginia); idle meters zero
+        - queries over open file formats in S3 and concurrency scaling are included in the RPU-hour price but add RPU-hours as they run
+        - warehouse data bills Redshift Managed Storage GB-month on the attached AwsRedshiftServerlessNamespace, never here
+        - Serverless Reservations (payer-account level, 1- or 3-year) can discount RPU-hours up to 45 percent -- a billing decision outside this manifest
+        - data transfer out of AWS bills at standard transfer rates
+      notes: Zero committed cost -- commitment-absence, not a free service. Handing the baseline to AWS's optimizer changes who picks the rate, not the billing shape; the 512-RPU cap is this preset's only worst-case bound, and the enhanced VPC routing and require_ssl pins carry no meters of their own.
+    - preset: 03-private-endpoint-domain
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - RPU-hours bill per second while queries run at the pinned 32-RPU baseline up to the 128-RPU cap -- AWS's published example rate is $0.375 per RPU-hour (US East N. Virginia); idle meters zero, and the daily 200 RPU-hour deactivate limit HARD-CAPS the compute bill by turning queries off at the breach until the day resets
+        - cross-region datasharing bills per terabyte transferred to consumers in other regions -- this preset's monthly 5 TB limit only LOGS at breach, so the transfer meter keeps running past it
+        - the managed VPC endpoint (bi-tools-vpc) and the ACM-fronted custom domain appear on no meter of the Redshift pricing page; the referenced ACM certificate is free public ACM issuance on its own component
+        - warehouse data bills Redshift Managed Storage GB-month on the attached namespace, never here
+      notes: Zero committed cost -- commitment-absence, not a free service. This is the governed shape; the deactivate usage limit converts the workload's worst case into a hard daily budget (200 RPU-hours), which is a CEILING on spend, not a commitment of it. The RPU-hour rate is regional -- the pricing page publishes $0.375 (US East N. Virginia) as its worked example.

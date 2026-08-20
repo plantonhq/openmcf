@@ -164,8 +164,12 @@ its endpoint's own region. Fixed at creation.
 The compute pool jobs run on, by ARM ID
 (.../workspaces/{ws}/computes/{name}) -- typically an
 AzureMachineLearningComputeCluster that scales to zero between
-jobs. Unset lets the service run jobs on serverless compute
-(where the workspace supports it).
+jobs. REQUIRED for a Model-type recipe despite the ARM schema
+marking it optional: the service validates the create
+synchronously and rejects an empty compute with 400
+Code="UserError", "'Compute Id' must not be empty."
+(ArgumentNullOrEmpty; live-proven). A pipeline-component recipe
+carries its compute in the component's own settings instead.
 
 - references: AzureMachineLearningComputeCluster (`status.outputs.machine_learning_compute_cluster_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureMachineLearningComputeCluster, name: <that resource's name>, fieldPath: status.outputs.machine_learning_compute_cluster_id}} -- a bare string does not parse
@@ -201,9 +205,14 @@ compute -- a cluster pool already fixes its VM size.
 `AzureMachineLearningBatchDeploymentModel`
 
 The model the recipe runs -- a registered model asset referenced
-one of three ways (exactly one when the block is present). Unset
-is legal at the ARM layer for recipes whose environment embeds
-the model or whose pipeline component carries it.
+one of three ways (exactly one when the block is present).
+REQUIRED for a Model-type recipe despite the ARM schema marking
+it optional: the service validates the create synchronously and
+rejects an empty model with 400 Code="UserError", "'Model
+Reference' must not be empty." (ArgumentNullOrEmpty;
+live-proven -- an environment image cannot stand in for it).
+Only a pipeline-component recipe omits it: the component
+carries its own steps.
 
 - rule: exactly one of id, data_path or output_path must be set
 
@@ -459,6 +468,10 @@ Free-form tags applied to the deployment, merged over the
 Planton-derived resource tags (organization, environment,
 resource id); a user tag with the same key wins. Updatable in
 place.
+
+## Validation Rules
+
+- `ml_batch_deployment_model_type_requires_model_and_compute`: a model-type recipe (no pipeline_component) requires both model and compute_id -- the batch service rejects a create missing either
 
 ## Outputs
 

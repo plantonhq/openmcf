@@ -1,0 +1,28 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurekeyvaultsecret
+spec:
+  azure:
+    groups:
+      - purpose: ReadVaultContext
+        actions:
+          - Microsoft.KeyVault/vaults/read
+        provenance: derived
+        notes: "The modules receive the vault as an ARM resource ID (key_vault_id) and resolve its data-plane URI with an ARM read before any secret call -- the only management-plane touch this component makes."
+      - purpose: ManageSecretDataPlane
+        data_actions:
+          - Microsoft.KeyVault/vaults/secrets/setSecret/action
+          - Microsoft.KeyVault/vaults/secrets/getSecret/action
+          - Microsoft.KeyVault/vaults/secrets/readMetadata/action
+          - Microsoft.KeyVault/vaults/secrets/update/action
+          - Microsoft.KeyVault/vaults/secrets/delete
+          - Microsoft.KeyVault/vaults/secrets/recover/action
+          - Microsoft.KeyVault/vaults/secrets/purge/action
+        provenance: derived
+        notes: "A Key Vault secret is a data-plane object -- azurerm_key_vault_secret / keyvault.NewSecret talk to {name}.vault.azure.net, not ARM, which is why creation fails with a 403 when the principal lacks these grants even if it owns the subscription. setSecret covers create and every value change (each a new version); getSecret and readMetadata cover refresh reads of the value and attributes; update covers attribute-only changes (content type, expiry, tags) without minting a version; delete covers destroy. The azurerm provider's default features add the last two: a name-colliding create against a soft-deleted secret auto-RECOVERS it (recover_soft_deleted_secrets, default true), and destroy PURGES the soft-deleted secret so the name frees immediately (purge_soft_deleted_secrets_on_destroy, default true -- inert when the vault's purge protection is on). Held via the Key Vault Administrator or Key Vault Secrets Officer role on the vault, or equivalent secret permissions in a legacy access policy. Migrated from the module READMEs' Required Permissions sections."

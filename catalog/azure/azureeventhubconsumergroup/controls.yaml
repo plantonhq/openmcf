@@ -1,0 +1,61 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureeventhubconsumergroup
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A consumer group stores no event data -- it is a named offset cursor; the events it reads rest encrypted on the parent namespace's storage.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to key; customer-managed keys apply to the namespace via the AzureEventHubNamespaceCustomerManagedKey kind.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Consumers connect to the namespace endpoint, where TLS is enforced -- transport posture belongs to the parent AzureEventHubNamespace.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A consumer group has no endpoint; network exposure is the namespace's posture (public network access, private endpoints, IP rules).
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound restriction lives on the namespace's network rule sets, not on a read cursor.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No traffic terminates at a consumer group; there is no request-filtering attachment point.
+    - control_id: rbac
+      status: not_applicable
+      notes: The group declares no access rules, but its ARM ID is a valid data-plane RBAC grant scope -- "Azure Event Hubs Data Receiver" can be granted on exactly this group via AzureRoleAssignment, confining an application to its own cursor. The granting is that separate kind's posture.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The group runs no workloads and holds no credentials of its own; consumer applications authenticate through Entra data-plane roles or SAS rules, both separate kinds.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own; the SAS-versus-Entra switch is the namespace's local_authentication_enabled.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Group creation and deletion land in the Azure Activity Log as subscription-level posture; runtime access logging is namespace diagnostic-settings territory.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A read cursor emits no metrics of its own; consumer lag and throughput are observed through the namespace's metrics and the consuming application's checkpoint store.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless declarative configuration -- the manifest recreates the group. Consumer OFFSETS are checkpointed by consumer applications in their own stores (typically a blob container), outside this resource; recreating the group resets nothing the service holds.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Consumer groups are namespace metadata stored in the service's replicated control plane, inheriting the namespace's zone posture; they also replicate to the geo-DR partner when a pairing exists.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a consumer group (Azure resource locks are subscription-side governance outside the manifest).
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed PaaS -- Microsoft operates and patches the Event Hubs control plane holding the group; no customer-visible patch surface exists.

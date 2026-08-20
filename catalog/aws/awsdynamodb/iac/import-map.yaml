@@ -48,3 +48,40 @@ spec:
         Kinesis console -> Data streams -> <stream> (the ARN), or
         `aws kinesis describe-stream-summary --stream-name <stream>`
         (StreamARN).
+    # The capacity fold's scalers (autoscaling.tf): every provisioned table
+    # registers one Application Auto Scaling target per dimension, and real
+    # autoscaling adds the tracking policies. Their composed import IDs are
+    # config-time facts of THIS module: the namespace is the DynamoDB
+    # constant, the scaling resource id prefixes the table name (which is
+    # metadata.name), and each dimension/policy-name pair is pinned by the
+    # logical resource ("read"/"write" -- targets and policies share those
+    # names, so one scoped declaration serves both types). The scheduled
+    # action needs no values: it is not importable upstream (see the
+    # provider catalog's recorded reason).
+    - name: service_namespace
+      derivations:
+        - literal: dynamodb
+    - name: scaling_resource_id
+      derivations:
+        - from_metadata_name_prefix: "table/"
+      where_to_find: >-
+        "table/" followed by the table name, e.g. "table/orders" --
+        Application Auto Scaling's resource-id shape for DynamoDB
+        (`aws application-autoscaling describe-scalable-targets
+        --service-namespace dynamodb` shows it as ResourceId).
+    - name: scalable_dimension
+      tofu_resource_name: read
+      derivations:
+        - literal: "dynamodb:table:ReadCapacityUnits"
+    - name: scalable_dimension
+      tofu_resource_name: write
+      derivations:
+        - literal: "dynamodb:table:WriteCapacityUnits"
+    - name: policy_name
+      tofu_resource_name: read
+      derivations:
+        - from_metadata_name_suffix: "-read-utilization"
+    - name: policy_name
+      tofu_resource_name: write
+      derivations:
+        - from_metadata_name_suffix: "-write-utilization"

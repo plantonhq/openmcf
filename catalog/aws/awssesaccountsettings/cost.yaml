@@ -1,0 +1,31 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awssesaccountsettings
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: vdm.enabled
+      sku_meter: VDM per-email fee
+      pricing_unit: emails
+      impact: The billing decision on this spec -- flipping VDM on starts metering every email the account sends in the region at the Virtual Deliverability Manager per-email rate ($0.07 per 1,000 for the first 10M a month, stepping down to $0.05 and $0.02 at higher tiers, a la carte). No fixed monthly charge rides the switch itself; the meter is proportional to send volume and reads zero in an account that sends nothing.
+    - field_path: vdm.engagement_metrics
+      sku_meter: VDM dashboard queries
+      pricing_unit: queries
+      impact: Open/click engagement tracking feeds the VDM dashboard, and the dashboard's queries have their own meter -- $0.0005 per 1,000 queries after a permanent 5,000-free-queries-per-month allotment. The emails carrying the engagement data already bill on the per-email fee; this meter counts people looking at the results.
+    - field_path: vdm.optimized_shared_delivery
+      sku_meter: VDM per-email fee
+      pricing_unit: emails
+      impact: Guardian's delivery optimization is a feature of the same VDM subscription, not a separate line item -- it rides the per-email fee vdm.enabled already started, adding no meter of its own.
+  free_tier: "SES a la carte publishes no permanent free sending allotment -- the pricing page's only free tier is the new-account AWS Free Tier credit ($200, usable for 6-12 months), a trial, not a permanent allowance. The one permanent free allotment touching this spec is VDM's first 5,000 dashboard queries per month. The suppression arm is entirely free: no meter counts suppression-list entries or the sends they block."
+  estimate_exclusions:
+    - the account's outbound sending bills on its own meters regardless of these settings -- $0.10 per 1,000 emails a la carte plus $0.12 per GB of attachment data -- and starts with the first send, not with this manifest
+    - the VDM per-email fee is proportional to send volume this manifest cannot see -- the same vdm.enabled costs nothing in a quiet account and real money at 10M sends a month
+    - VDM dashboard queries beyond the permanent 5,000-per-month free allotment bill per 1,000 queries
+    - "VDM Global deliverability is a separate $1,250-per-month add-on purchased outside this API -- vdm.enabled turns on SES deliverability (the per-email tier), never the flat-fee add-on"
+    - "SES pricing plans (Pro $105, Enterprise $500 per account per region per month) are an account-level plan election made in the console, not a field of this spec -- a la carte accounts carry no fixed charge"
+    - dedicated IP addresses ($24.95 per month standard, $15 per month plus per-email fees managed) bill on the components that create the pools and assignments, not on this settings object
+  notes: "The settings singleton itself is free -- AWS keeps one SES account object per account+region whether or not this component manages it, and no meter counts its existence. The suppression arm only ever saves money: suppressed addresses are skipped before the send, so bounces that would damage reputation (and the sends that would bill) never happen. The VDM arm is the one field that starts a meter, and it is honest usage-based -- a per-email fee on the account's sending with no committed monthly minimum, so enabling it in an idle account commits nothing. The real spend an SES estate carries -- per-1,000 outbound sending, attachment data, dedicated IPs -- belongs to the account's send activity and its other SES components, not to this object."

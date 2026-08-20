@@ -1,0 +1,50 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awssagemakerendpoint
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon SageMaker
+      sku_meter: hosting instance hours
+      pricing_unit: hours
+      description: Every dedicated-instance variant bills its instance_type's hosting rate per instance, every hour from endpoint creation -- an endpoint whose variants are all serverless carries no hourly baseline at all.
+  cost_drivers:
+    - field_path: production_variants.instance_type
+      sku_meter: hosting instance hours
+      pricing_unit: hours
+      impact: The instance type picks the hourly hosting rate -- the spread from a small CPU type to a large GPU type is orders of magnitude, and every instance of the variant bills it.
+    - field_path: production_variants.initial_instance_count
+      sku_meter: hosting instance hours
+      pricing_unit: hours
+      impact: A straight multiplier on the variant's hourly rate. With managed_instance_scaling or application auto-scaling this is the starting fleet, and the bill follows the scaled fleet, not this number.
+    - field_path: shadow_variants
+      sku_meter: hosting instance hours
+      pricing_unit: hours
+      impact: A shadow variant is a full second fleet billed exactly like production -- it receives copied traffic and returns nothing, so every shadow instance-hour is pure testing spend.
+    - field_path: production_variants.serverless
+      sku_meter: serverless inference duration
+      pricing_unit: seconds
+      impact: Switches the variant from hourly instances to per-invocation metering priced by memory_size_mb -- zero when idle, unless provisioned_concurrency is set.
+    - field_path: production_variants.serverless.provisioned_concurrency
+      sku_meter: serverless provisioned concurrency
+      pricing_unit: seconds
+      impact: Pre-warmed concurrency bills per second for every provisioned unit from the moment it is configured, traffic or not -- the one serverless setting that converts $0-idle into a standing charge.
+    - field_path: production_variants.volume_size_gb
+      sku_meter: endpoint ML storage
+      pricing_unit: GB-months
+      impact: Each instance's ML storage volume bills per GB-month on EBS-backed instance families (nitro-local-storage families reject the field and carry no volume charge).
+    - field_path: deployment.blue_green
+      sku_meter: hosting instance hours
+      pricing_unit: hours
+      impact: Every blue/green update provisions a full parallel fleet and keeps the old one through the traffic shift and termination wait -- roughly double the hourly rate for the deployment window. The rolling policy replaces in batches and avoids the parallel-fleet cost.
+  estimate_exclusions:
+    - endpoint data processing bills per GB in and per GB out of the endpoint on top of instance-hours, following invocation payload volume
+    - serverless inference duration and provisioned-concurrency seconds follow traffic and configuration windows
+    - data_capture stores sampled payloads in the destination S3 bucket, which bills its own storage and requests
+    - async_inference output, failure, and notification deliveries bill on the referenced S3 buckets and SNS topics
+    - CloudWatch ingestion for container logs follows model output volume
+  notes: The endpoint configuration is immutable upstream, so every capacity change rolls a new configuration -- the modules mint the new one before destroying the old, which briefly doubles nothing by itself, but a blue/green deployment does run two fleets for the update window. The referenced SageMaker models and their S3 artifacts bill on their own components.

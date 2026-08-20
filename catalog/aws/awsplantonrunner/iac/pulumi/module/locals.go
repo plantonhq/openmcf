@@ -11,11 +11,19 @@ import (
 )
 
 // Locals defines local variables used throughout the Pulumi module: the
-// target AwsPlantonRunner resource and the resource-identity tags applied
-// to everything the module creates.
+// target AwsPlantonRunner resource, the resource-identity tags applied to
+// everything the module creates, and the runner's registration name.
 type Locals struct {
 	AwsPlantonRunner *awsplantonrunnerv1alpha1.AwsPlantonRunner
 	AwsTags          map[string]string
+
+	// RegistrationName is the name the runner registers itself under when
+	// it joins the control plane: "<env>-<metadata.name>" (metadata.name
+	// outside an environment) -- the SAME derivation the platform uses for
+	// records that reference this runner (its minted token, its managed
+	// destroy); changing this formula breaks arrival attribution and
+	// managed teardown.
+	RegistrationName string
 }
 
 // initializeLocals pulls values from the stack input and populates the
@@ -23,6 +31,11 @@ type Locals struct {
 func initializeLocals(ctx *pulumi.Context, stackInput *awsplantonrunnerv1alpha1.AwsPlantonRunnerStackInput) *Locals {
 	locals := &Locals{
 		AwsPlantonRunner: stackInput.Target,
+	}
+
+	locals.RegistrationName = locals.AwsPlantonRunner.Metadata.Name
+	if locals.AwsPlantonRunner.Metadata.Env != "" {
+		locals.RegistrationName = locals.AwsPlantonRunner.Metadata.Env + "-" + locals.AwsPlantonRunner.Metadata.Name
 	}
 
 	// Resource-identity tags match the Terraform module key-for-key.

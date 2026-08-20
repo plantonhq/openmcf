@@ -1,0 +1,38 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesKafkaUi manifest's spec values into the capacity footprint it
+# reserves from its target cluster. The estimate generator replays the
+# catalog presets through these rules to emit
+# ../estimates/kuberneteskafkaui.yaml; a server-side estimator can
+# evaluate the same rules against live manifests. Every replica is a
+# stateless console pod carrying the declared resources -- no persistent
+# volumes are bound, and one console observes many Kafka clusters
+# without growing its own footprint.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kuberneteskafkaui
+spec:
+  workloads:
+    - label: console
+      resources_path: resources
+      instances:
+        field_value:
+          field_path: replicas
+          default_when_unset: "1"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node economics
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: "the helm_values overlay merges LAST over the typed rendering and can override modeled values, including resources and replica count (and can enable the chart's autoscaling, which changes the replica count at runtime) -- this footprint states the spec's declaration"
+    - applies_when:
+        - field_path: service_type
+          op: equals
+          value: LoadBalancer
+      text: the LoadBalancer service_type provisions a provider-billed load balancer outside this capacity statement
+  notes:
+    - applies_when:
+        - field_path: resources
+          op: is_unset
+      text: "the manifest declares no resource requests or limits -- the console pods schedule unbounded and the cluster reserves nothing for them"

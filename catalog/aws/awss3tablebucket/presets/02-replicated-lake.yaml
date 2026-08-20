@@ -1,0 +1,26 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3TableBucket
+metadata:
+  name: analytics-lake-primary
+spec:
+  region: us-east-1
+  encryption:
+    sseAlgorithm: aws:kms
+    kmsKeyArn:
+      value: arn:aws:kms:us-east-1:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab
+  replication:
+    role:
+      value: arn:aws:iam::123456789012:role/s3tables-replication
+    destinationTableBucketArns:
+      - arn:aws:s3tables:us-west-2:123456789012:bucket/analytics-lake-replica
+  namespaces:
+    - name: analytics
+      tables:
+        - name: events
+          icebergSchema:
+            fields:
+              - name: event_id
+                type: string
+                required: true
+              - name: occurred_at
+                type: timestamp

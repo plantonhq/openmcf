@@ -1,0 +1,61 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuredatafactorydataset
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A dataset stores only addressing metadata (paths, table names, format settings) and carries no secret material by design -- the connection and its credentials live on the linked service. The data it points at rests in the external system, which owns that posture; the definition itself is stored by Data Factory under the factory's encryption.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest of its own to key (see enc-at-rest); the customer-managed-key lever for stored factory definitions lives on the AzureDataFactory kind.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The dataset moves no data by itself; at run time, transport to the underlying store rides the linked service's connection and the integration runtime, which own that posture. Managing the definition flows through ARM's TLS-only management API.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A metadata record has no network endpoint -- nothing exists to reach from the internet.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface to restrict (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path exists to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: The dataset is a data view, not an access grant; authoring it is governed by ARM RBAC on the factory (Data Factory Contributor is the canonical role), which is platform posture for every factory entity.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The dataset authenticates nobody -- it references a linked service by name (or ARM ID for azure_sql_table), and the identity-versus-secret choice is made there, on the AzureDataFactoryLinkedService kind.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The dataset exposes no authentication path of its own; the login recipe lives entirely on the linked service it references.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Authoring operations on datasets land in the Azure Activity Log automatically, and the factory's own diagnostic settings capture pipeline/activity telemetry -- both are factory-level posture with no toggle on the dataset.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A metadata record emits no metrics or runtime signals; run telemetry belongs to the factory and its pipelines.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative definition -- nothing to back up; the manifest recreates the dataset in the factory's dataset namespace.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A dataset has no runtime footprint with a zonal failure mode; definitions are held by the Microsoft-operated Data Factory service.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a dataset; deleting one breaks the pipelines that reference it at their next run and is recreated declaratively.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The service that stores dataset definitions and resolves them at run time is Microsoft-operated Azure Data Factory; no customer-visible patch surface exists on the entity.

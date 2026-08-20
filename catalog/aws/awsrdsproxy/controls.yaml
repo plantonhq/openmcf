@@ -1,0 +1,77 @@
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsrdsproxy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The proxy is a stateless connection multiplexer -- it stores no data. The credentials it uses live in Secrets Manager (encrypted there, on that component); the data lives in the fronted database.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: require_tls
+      evidence:
+        type: spec_default
+        reference: require_tls forces TLS on every client connection to the proxy (AWS leaves it off when unset, and IAM authentication refuses to work without it). Both catalog presets pin require_tls true.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: RDS Proxy endpoints are VPC-interface endpoints reachable only inside the VPC's network -- the service offers no publicly-addressable option at all.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: vpc_security_group_ids
+      evidence:
+        type: spec_default
+        reference: The security groups on the proxy's network interfaces decide which applications reach it; leaving the list empty falls back to the VPC's default security group, so pinning purpose-built groups (as preset 01 does) is the hardened posture.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A database-protocol endpoint inside the VPC -- no HTTP surface, no WAF attachment point.
+    - control_id: rbac
+      status: configurable
+      field_path: auth
+      evidence:
+        type: spec_default
+        reference: Each auth entry decides how clients authenticate through the proxy -- iam_auth REQUIRED admits only IAM-token holders (preset 01's posture), ENABLED accepts either, and DISABLED (the AWS default) admits native database credentials alone. Management-plane operations are always IAM-authorized.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: role_arn is required by the spec -- the proxy always fetches database credentials by assuming an IAM role against Secrets Manager, never by holding passwords itself.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: auth
+      evidence:
+        type: spec_default
+        reference: iam_auth REQUIRED shuts the password path at the proxy's front door entirely; client_password_auth_type can additionally pin the stronger password hash (POSTGRES_SCRAM_SHA_256, MYSQL_CACHING_SHA2_PASSWORD) where passwords remain.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Management operations land in account-level AWS CloudTrail; query-level auditing belongs to the fronted database engine. debug_logging is connection troubleshooting output, not an audit trail.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: debug_logging
+      evidence:
+        type: spec_default
+        reference: The proxy publishes connection metrics to CloudWatch automatically; debug_logging additionally streams detailed connection/session diagnostics to CloudWatch Logs (off by default -- AWS recommends it only during troubleshooting since statements can appear in logs).
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless -- the proxy is fully re-creatable from the manifest; backups belong to the fronted database.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: vpc_subnet_ids requires at least 2 entries (mirroring AWS's own two-AZ minimum), so every proxy spans multiple availability zones by construction.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: RDS Proxy has no deletion-protection flag -- a delete call tears the proxy down immediately (the fronted database's own deletion protection lives on its component).
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the proxy fleet; no customer-visible patch surface exists.

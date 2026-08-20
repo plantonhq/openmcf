@@ -1,0 +1,92 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesopensearch
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Index data rests on the PersistentVolumes the target cluster's storage class provisions (one per node); encryption at rest is a property of that storage (cloud-managed disks typically encrypt by default), owned by the cluster and its storage classes, not by this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for the underlying volumes are configured on the cluster's storage class or the cloud disk encryption set (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The HTTP API serves https in EVERY posture -- even without a security block the image's demo security config is active (verified in the operator source, per the spec contract). Declaring security with generated TLS makes the operator issue a real CA and certificates for both layers; the component defaults per_node transport certificates to true (hostname-pinned, stronger than the operator's own shared-certificate default).
+      notes: All three presets declare generated TLS on both layers. dashboards.tls extends https to the console.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The cluster and Dashboards Services are ClusterIP by design and the modules render no ingress -- the cluster is reachable solely inside the cluster network. Exposure composes from first-class kinds over the exported service handles.
+      notes: dashboards.service.type is the one deliberate opt-out (NodePort/LoadBalancer for the console only, with load_balancer_source_ranges as its fence); the cluster API itself has no exposure surface in this spec.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: dashboards.service.load_balancer_source_ranges
+      evidence:
+        type: spec_default
+        reference: When the Dashboards Service opts into LoadBalancer, load_balancer_source_ranges restricts which CIDRs may reach it; empty admits any source the cloud LB accepts. The cluster API has no exposure surface to restrict.
+      notes: Kubernetes NetworkPolicies (separate resources) restrict the in-cluster network path itself.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The modules create no ingress or edge -- when exposure is composed from KubernetesIngress or Gateway API kinds, request filtering rides those components.
+    - control_id: rbac
+      status: configurable
+      field_path: security.config
+      evidence:
+        type: spec_default
+        reference: The security plugin governs every API call through its users and roles. Empty security.config means the operator bootstraps the plugin with the image's WELL-KNOWN demo admin credentials in the `<name>-admin-password` Secret -- it does not generate a random password at this release (verified in the operator source, per the spec contract). Bringing security.config seeds your own internal_users.yml, roles, and admin credentials.
+      notes: "For anything real: bring a custom security.config or rotate the admin password through the security API immediately after install -- every preset carries this warning."
+    - control_id: workload-identity
+      status: configurable
+      field_path: keystore
+      evidence:
+        type: spec_default
+        reference: Snapshot-repository credentials load into the OpenSearch keystore from an existing Secret (static keys). On identity-enabled nodes (e.g. EKS with IRSA), omitting the keystore entirely makes the s3 client fall back to the ambient workload identity -- no static credential exists anywhere.
+      notes: The 03-s3-snapshots preset documents both paths -- static keystore keys by default, delete-the-keystore for the keyless posture.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The security plugin authenticates over TLS against its internal users; no separate legacy or weaker protocol path is modeled in this spec to disable. The known weakness at this release is the demo admin bootstrap (see rbac), which is default credentials rather than a legacy mechanism.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The security plugin's audit-log configuration is not modeled in this spec; node logs stream to stdout for the cluster's log collector. Changes to the cluster's own configuration are Kubernetes API operations, captured by the target cluster's audit policy.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: monitoring
+      evidence:
+        type: spec_default
+        reference: Unset exports nothing; monitoring.enabled installs the Aiven prometheus-exporter plugin and renders a ServiceMonitor -- which requires the Prometheus Operator CRDs on the cluster (reconciliation fails without them, so compose with the metrics stack).
+    - control_id: backup-recovery
+      status: configurable
+      field_path: snapshot_repositories
+      evidence:
+        type: spec_default
+        reference: Empty means no snapshot surface exists; declaring a repository (type s3/gcs/azure/fs with its settings, the matching repository plugin in plugins_list, credentials in the keystore or ambient identity) registers it on the cluster for snapshot and restore API calls.
+      notes: The 03-s3-snapshots preset registers an S3 repository. Registration is the surface this spec models -- actual snapshots are API calls or snapshot-management policies against the registered repository.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Snapshot retention lives in OpenSearch snapshot-management policies configured through the cluster's API, not in this spec -- the spec registers repositories (see backup-recovery), it does not schedule or prune snapshots.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: node_pools
+      evidence:
+        type: spec_default
+        reference: Pool replicas carry the redundancy -- three dedicated cluster managers tolerate one loss (the spec refuses single-manager topologies outright), and per-pool node_selector/tolerations place pools across failure domains. Per-pool pdb bounds voluntary disruption during drains and upgrades.
+      notes: The 02-production-cluster preset runs 3 dedicated managers and 3 data nodes, each pool with max_unavailable 1. Zone-aware shard allocation is OpenSearch configuration (additional_config), not a typed field.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the OpenSearch operator offers a deletion-protection flag on the OpenSearchCluster; protection is operational (namespace RBAC, change review).
+    - control_id: managed-patching
+      status: configurable
+      field_path: version
+      evidence:
+        type: spec_default
+        reference: version is required and pinned -- upgrades are deliberate spec changes the operator rolls through the pools with safe ordering; drain_data_nodes additionally drains data off each node before stopping it, for data nodes where replica recovery is slower than draining.
+      notes: Check the operator's compatibility table before crossing a major line -- the pinned stable operator supports OpenSearch 2.19.x through 3.x.

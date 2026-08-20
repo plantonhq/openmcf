@@ -1,0 +1,39 @@
+# Canonical AwsSagemakerNotebookInstance example (hack/dev manifest and
+# refgen Example source): a VPC-confined GPU notebook exercising every
+# arm - private networking, KMS, code repositories, IMDSv2, root
+# lockdown, and both lifecycle scripts. Literal ARNs stand in for
+# composed references so the offline `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerNotebookInstance
+metadata:
+  name: research-notebook
+  id: research-notebook
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  instanceType: ml.g4dn.xlarge
+  roleArn:
+    value: arn:aws:iam::123456789012:role/sagemaker-execution
+  volumeSizeGb: 100
+  subnetId:
+    value: subnet-0a1b2c3d4e5f60001
+  securityGroupIds:
+    - value: sg-0a1b2c3d4e5f60001
+  kmsKeyArn:
+    value: arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab
+  directInternetAccess: Disabled
+  rootAccess: Disabled
+  platformIdentifier: notebook-al2023-v1
+  defaultCodeRepository: https://github.com/example/research-notebooks.git
+  additionalCodeRepositories:
+    - https://github.com/example/shared-utils.git
+  imdsMinimumVersion: "2"
+  lifecycleConfig:
+    onCreate: |
+      #!/bin/bash
+      set -e
+      pip install --quiet pandas scikit-learn
+    onStart: |
+      #!/bin/bash
+      echo "notebook started at $(date)" >> /home/ec2-user/SageMaker/.start-log

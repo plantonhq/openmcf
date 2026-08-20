@@ -1,0 +1,30 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpdnszone
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Cloud DNS
+      sku_meter: managed zone
+      pricing_unit: zone-months
+      description: Every managed zone -- public or private -- bills a flat monthly fee from creation, prorated by the fraction of the month it exists. The rate steps down after the 25th zone in the project.
+  cost_drivers:
+    - field_path: cloud_logging_config.enable_logging
+      sku_meter: Cloud Logging ingestion
+      pricing_unit: GiB
+      impact: Off by default; enabling writes one log entry per answered query to Cloud Logging, billed at Logging's per-GiB ingestion rates -- on a busy public zone this dwarfs the zone fee.
+    - field_path: forwarding_config
+      sku_meter: forwarded queries
+      impact: Configuring forwarding sends matching queries to the declared on-premises or third-party name servers; forwarded queries bill at Cloud DNS's forwarding rates, above the standard query rate.
+    - field_path: visibility
+      sku_meter: managed zone
+      impact: Public and private zones pay the same zone fee; the choice moves who can resolve the zone, not what it costs.
+  estimate_exclusions:
+    - query volume bills per million queries answered and is entirely traffic-dependent
+    - Cloud Logging ingestion volume when query logging is enabled depends on query rate
+    - forwarded-query rates apply only to forwarding-configured zones and follow their traffic
+  notes: "The zone fee is the certainty; queries are the variable. DNSSEC signing (dnssec_config) adds no charge -- Google signs at no cost -- so the only levers that move money are logging and forwarding."

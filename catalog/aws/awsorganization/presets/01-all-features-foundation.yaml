@@ -1,0 +1,14 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsOrganization
+metadata:
+  name: all-features-foundation
+spec:
+  region: <aws-region>
+  featureSet: ALL
+  awsServiceAccessPrincipals:
+    - cloudtrail.amazonaws.com
+    - config.amazonaws.com
+    - account.amazonaws.com
+  enabledPolicyTypes:
+    - SERVICE_CONTROL_POLICY
+    - TAG_POLICY

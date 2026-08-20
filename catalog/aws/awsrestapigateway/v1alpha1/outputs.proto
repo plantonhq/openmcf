@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsrestapigateway.v1alpha1;
+
+// AwsRestApiGatewayStackOutputs captures observable identifiers from a
+// provisioned REST API. Downstream resources (custom domains' base-path
+// mappings, usage plans' api_stages) wire dependencies via
+// StringValueOrRef.
+message AwsRestApiGatewayStackOutputs {
+  // The REST API ID (the {restapi-id} in invoke URLs and import IDs).
+  string rest_api_id = 1;
+
+  // The REST API ARN.
+  string rest_api_arn = 2;
+
+  // The execution ARN prefix
+  // (arn:aws:execute-api:{region}:{account}:{restapi-id}) - the base
+  // Lambda resource policies and IAM invoke statements scope to.
+  string execution_arn = 3;
+
+  // The root ("/") resource ID - the parent new resources attach
+  // under.
+  string root_resource_id = 4;
+
+  // The stage name serving the API.
+  string stage_name = 5;
+
+  // The stage ARN (the WAF web-ACL association target).
+  string stage_arn = 6;
+
+  // The stage invoke URL
+  // (https://{restapi-id}.execute-api.{region}.amazonaws.com/{stage}).
+  string invoke_url = 7;
+
+  // The deployment ID the stage currently serves.
+  string deployment_id = 8;
+
+  // The generated client certificate's ID (set only when
+  // stage.client_certificate.generate is true).
+  string client_certificate_id = 9;
+
+  // The generated client certificate's PEM body - backends add it to
+  // their trust store to verify calls come through the API.
+  string client_certificate_pem = 10;
+
+  // API Gateway resource IDs keyed by route path (every derived tree
+  // node, e.g. "/users" and "/users/{id}").
+  map<string, string> resource_ids = 11;
+
+  // Authorizer IDs keyed by each `authorizers` entry's name.
+  map<string, string> authorizer_ids = 12;
+
+  // Model IDs keyed by each `models` entry's name.
+  map<string, string> model_ids = 13;
+
+  // Request validator IDs keyed by each `request_validators` entry's
+  // name.
+  map<string, string> request_validator_ids = 14;
+
+  // Documentation part IDs keyed by each `documentation.parts` entry's
+  // position ("0", "1", ...) - the order they are declared in the spec.
+  map<string, string> documentation_part_ids = 15;
+
+  // API Gateway resource IDs keyed by ROUTE key ("GET /users/{id}") -
+  // the same keys the method and integration instances use, so import
+  // derivations (and chart wiring) can resolve each route's resource ID
+  // blind. Root-path routes map to the root resource ID.
+  map<string, string> route_resource_ids = 16;
+
+  // Each route's HTTP method keyed by route key ("GET /users/{id}" ->
+  // "GET"). A config echo: the route key is composite, so import
+  // derivations need the method as its own addressable value.
+  map<string, string> route_methods = 17;
+
+  // API Gateway resource IDs keyed by ROUTE-RESPONSE key
+  // ("GET /users/{id}|200") - the method-response and
+  // integration-response instances' keys.
+  map<string, string> response_resource_ids = 18;
+
+  // Each route-response's HTTP method keyed by route-response key
+  // ("GET /users/{id}|200" -> "GET"). A config echo for import
+  // derivations.
+  map<string, string> response_methods = 19;
+
+  // Each route-response's status code keyed by route-response key
+  // ("GET /users/{id}|200" -> "200"). A config echo for import
+  // derivations.
+  map<string, string> response_status_codes = 20;
+}

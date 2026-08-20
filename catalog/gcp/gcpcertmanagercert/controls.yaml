@@ -1,0 +1,73 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpcertmanagercert
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Certificate Manager stores certificate material -- including the private key of a self_managed upload and the keys Google generates for managed certificates -- under Google Cloud's default encryption at rest; no configuration can weaken it.
+      notes: The self_managed private key is additionally marked sensitive in the spec, so it is masked in outputs and never logged by the platform.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Certificate Manager exposes no customer-managed-key surface for certificates -- there is no field, API argument, or module input that swaps the storage key for a Cloud KMS key.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: The spec.exactly_one_arm validation forces every certificate to resolve to servable TLS material -- either Google-managed issuance (managed) or an uploaded PEM chain (self_managed). The resource's only function is encrypting client connections at the proxy or certificate map that serves it; it cannot be configured into a non-TLS shape.
+      notes: The TLS protocol floor (minimum version, cipher suites) is the SSL policy on the serving proxy, not this resource. Wildcard and pre-traffic issuance require dns_authorizations -- the managed.wildcards_need_dns_auth validation refuses a wildcard the chosen authorization mode cannot validate.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A certificate has no network endpoint of its own -- public exposure belongs to the forwarding rule and proxy that serve it, each a separate catalog kind with its own posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; the certificate is control-plane configuration consumed by load balancer proxies.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Request filtering (Cloud Armor) attaches to the load balancer's backend services, not to the certificate the proxy presents.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is project IAM posture (Certificate Manager roles), not a component choice; the certificate exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The certificate runs no workloads and calls no APIs; it holds TLS key material, not cloud credentials.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own exist to retire; TLS version floors are the serving proxy's SSL policy.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. Control-plane changes to the certificate land in Cloud Audit Logs as project-level posture, not per-certificate configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Neither the spec nor the modules expose a monitoring surface; provisioning and renewal state surfaces as resource status (the managed_state output), and TLS serving metrics belong to the load balancer kinds.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration with nothing to back up -- a managed certificate re-issues from the spec's domains and authorizations, and a self_managed certificate re-uploads from the operator's source of truth.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A certificate does not run anywhere -- it is control-plane material Google serves through the load-balancing fabric with no zonal placement to configure. scope ALL_REGIONS widens where the certificate is SERVED from (cross-region internal load balancers), which is serving surface, not replication of this object.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Unset defaults to DELETE; setting deletion_policy=PREVENT makes destroy fail before touching the certificate. GCP separately refuses to delete a certificate a proxy or certificate map still references -- dependency ordering that protects live TLS, not a configurable control.
+      notes: No preset sets PREVENT; ABANDON exists for mid-rotation handoffs where the certificate must outlive its manifest.
+    - control_id: managed-patching
+      status: configurable
+      field_path: managed
+      evidence:
+        type: spec_default
+        reference: Renewal is the certificate's only patch-like surface. Choosing the managed arm puts issuance AND renewal on Google's managed channel -- the certificate rotates before expiry with no operator action -- while self_managed leaves renewal to the operator, who rotates by updating the PEM pair in place.
+      notes: Presets 01 and 02 use the managed arm; preset 03 is the self-managed shape whose renewal discipline is the operator's.

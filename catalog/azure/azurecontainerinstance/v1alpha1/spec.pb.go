@@ -1226,8 +1226,12 @@ type AzureContainerInstanceProbeHttpGet struct {
 	Path string `protobuf:"bytes,1,opt,name=path,proto3" json:"path,omitempty"`
 	// The port to probe (1-65535).
 	Port int32 `protobuf:"varint,2,opt,name=port,proto3" json:"port,omitempty"`
-	// The scheme: unset rides Azure's default, "http"; "https" is the
-	// other choice (the provider's own lowercase vocabulary).
+	// The scheme: unset means "http" (Azure's default); "https" is the
+	// other choice (the provider's own lowercase vocabulary). The
+	// modules SEND "http" explicitly when unset -- ARM materializes the
+	// scheme on reads and the provider treats it as replace-forcing, so
+	// omitting it on the wire would make every re-apply propose a
+	// destroy+create (live-proven).
 	Scheme string `protobuf:"bytes,3,opt,name=scheme,proto3" json:"scheme,omitempty"`
 	// Extra HTTP headers sent with each probe request, name to value.
 	HttpHeaders   map[string]string `protobuf:"bytes,4,rep,name=http_headers,json=httpHeaders,proto3" json:"http_headers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
@@ -1466,11 +1470,28 @@ type AzureContainerInstanceLogAnalytics struct {
 	// schema) or "ContainerInstanceLogs" (plain per-container logs).
 	// Unset rides Azure's default.
 	//
+	// "ContainerInstanceLogs" cannot currently be DEPLOYED: whenever a
+	// log type is set the provider unconditionally attaches a metadata
+	// object (even empty), and ARM rejects metadata for this log type
+	// with LogAnalyticsMetadataNotAllowed (live-proven). A CEL rejects
+	// the value with the same teaching so the failure surfaces at
+	// validation, not mid-deploy; leave log_type unset for plain log
+	// shipping (Azure's server-side default) or use "ContainerInsights".
+	// Lift the CEL when the pinned provider stops sending empty
+	// metadata.
+	//
 	// **ForceNew**: changing this destroys and recreates the group.
 	LogType string `protobuf:"bytes,3,opt,name=log_type,json=logType,proto3" json:"log_type,omitempty"`
 	// Extra metadata attached to every log record. Requires log_type --
 	// the provider only sends metadata alongside a log type and silently
 	// discards it otherwise, so the pairing is enforced here.
+	//
+	// The keys are a CLOSED vocabulary ARM validates server-side
+	// (live-proven, InvalidLogAnalyticsMetadataKeys): only "pod-uuid",
+	// "cluster-resource-id", and "node-name" are accepted -- the
+	// Kubernetes-shaped tags Container Insights understands. Values are
+	// free strings. A CEL enforces the key set so the failure surfaces
+	// at validation, not mid-deploy.
 	//
 	// **ForceNew**: changing this destroys and recreates the group.
 	Metadata      map[string]string `protobuf:"bytes,4,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
@@ -1748,7 +1769,7 @@ const file_catalog_azure_azurecontainerinstance_v1alpha1_spec_proto_rawDesc = ""
 	"\x1eAzureContainerInstanceIdentity\x12q\n" +
 	"\x04type\x18\x01 \x01(\x0e2U.dev.planton.azure.azurecontainerinstance.v1alpha1.AzureContainerInstanceIdentityTypeB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12z\n" +
 	"\fidentity_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\videntityIds:\x85\x02\xbaH\x81\x02\x1a\xfe\x01\n" +
-	"*container_instance_identity_ids_match_type\x12midentity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED\x1aa(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0\"\xb4\x06\n" +
+	"*container_instance_identity_ids_match_type\x12midentity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED\x1aa(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0\"\xc2\v\n" +
 	"\"AzureContainerInstanceLogAnalytics\x12\x8a\x01\n" +
 	"\fworkspace_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\x82\x10\x92\xd4a$status.outputs.workspace_customer_idR\vworkspaceId\x12\x8d\x01\n" +
 	"\rworkspace_key\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01\x88\xd4a\x82\x10\x92\xd4a!status.outputs.primary_shared_keyR\fworkspaceKey\x12L\n" +
@@ -1756,8 +1777,10 @@ const file_catalog_azure_azurecontainerinstance_v1alpha1_spec_proto_rawDesc = ""
 	"\bmetadata\x18\x04 \x03(\v2c.dev.planton.azure.azurecontainerinstance.v1alpha1.AzureContainerInstanceLogAnalytics.MetadataEntryR\bmetadata\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xe4\x01\xbaH\xe0\x01\x1a\xdd\x01\n" +
-	"1container_instance_log_metadata_requires_log_type\x12vmetadata requires log_type -- the provider only sends metadata alongside a log type and silently discards it otherwise\x1a0this.metadata.size() == 0 || this.log_type != ''\"\xb0\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xf2\x06\xbaH\xee\x06\x1a\xdd\x01\n" +
+	"1container_instance_log_metadata_requires_log_type\x12vmetadata requires log_type -- the provider only sends metadata alongside a log type and silently discards it otherwise\x1a0this.metadata.size() == 0 || this.log_type != ''\x1a\xec\x02\n" +
+	"6container_instance_log_type_instance_logs_undeployable\x12\x87\x02log_type ContainerInstanceLogs cannot be deployed: the provider always sends a metadata object alongside a log type and ARM rejects metadata for this log type (LogAnalyticsMetadataNotAllowed) -- leave log_type unset for plain log shipping or use ContainerInsights\x1a(this.log_type != 'ContainerInstanceLogs'\x1a\x9c\x02\n" +
+	"5container_instance_log_metadata_closed_key_vocabulary\x12\x95\x01metadata keys are a closed vocabulary ARM validates (InvalidLogAnalyticsMetadataKeys): only pod-uuid, cluster-resource-id, and node-name are accepted\x1aKthis.metadata.all(k, k in ['pod-uuid', 'cluster-resource-id', 'node-name'])\"\xb0\x01\n" +
 	"\x1fAzureContainerInstanceDnsConfig\x120\n" +
 	"\vnameservers\x18\x01 \x03(\tB\x0e\xbaH\v\x92\x01\b\b\x01\"\x04r\x02\x10\x01R\vnameservers\x123\n" +
 	"\x0esearch_domains\x18\x02 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\rsearchDomains\x12&\n" +

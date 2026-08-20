@@ -1514,10 +1514,10 @@ const file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDesc = "" +
 	",reservation_preference_requires_requirements\x12areservation_preference 'RESERVATIONS_ONLY' or 'RESERVATIONS_FIRST' requires instance_requirements\x1a\xaa\x01!has(this.capacity_reservations) || !(this.capacity_reservations.reservation_preference in ['RESERVATIONS_ONLY', 'RESERVATIONS_FIRST']) || has(this.instance_requirements)\x1a\x88\x01\n" +
 	"\x10monitoring_valid\x121monitoring must be 'BASIC' or 'DETAILED' when set\x1aAthis.monitoring == '' || this.monitoring in ['BASIC', 'DETAILED']\x1a\x7f\n" +
 	"\x15storage_size_positive\x12,storage_size_gib must be at least 1 when set\x1a8this.storage_size_gib == 0 || this.storage_size_gib >= 1B\x14\n" +
-	"\x12_use_local_storage\"\xcb\x02\n" +
+	"\x12_use_local_storage\"\xc7\x02\n" +
 	"1AwsEcsClusterManagedInstancesNetworkConfiguration\x12~\n" +
-	"\asubnets\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\asubnets\x12\x95\x01\n" +
-	"\x0fsecurity_groups\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB8\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_id\x98\xd4a\x01R\x0esecurityGroups\"\x99\x05\n" +
+	"\asubnets\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\asubnets\x12\x91\x01\n" +
+	"\x0fsecurity_groups\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB4\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x0esecurityGroups\"\x99\x05\n" +
 	"1AwsEcsClusterManagedInstancesCapacityReservations\x125\n" +
 	"\x16reservation_preference\x18\x01 \x01(\tR\x15reservationPreference\x122\n" +
 	"\x15reservation_group_arn\x18\x02 \x01(\tR\x13reservationGroupArn:\xf8\x03\xbaH\xf4\x03\x1a\x98\x02\n" +

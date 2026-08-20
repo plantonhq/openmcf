@@ -1,0 +1,21 @@
+target:
+    apiVersion: aws.planton.dev/v1alpha1
+    kind: AwsConfigAggregator
+    metadata:
+        env: dev
+        id: org-config-rollup
+        name: org-config-rollup
+        org: test-org
+    spec:
+        aggregation:
+            accountSource:
+                accountIds:
+                    - "123456789012"
+                    - "210987654321"
+                regions:
+                    - us-west-2
+                    - us-east-1
+        authorizations:
+            - accountId: "310987654321"
+              authorizedAwsRegion: us-west-2
+        region: us-west-2

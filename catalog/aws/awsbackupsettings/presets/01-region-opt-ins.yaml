@@ -1,0 +1,20 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupSettings
+metadata:
+  name: backup-region-settings
+spec:
+  region: <aws-region>
+  regionSettings:
+    resourceTypeOptInPreference:
+      Aurora: true
+      DocumentDB: false
+      DynamoDB: true
+      EBS: true
+      EC2: true
+      EFS: true
+      FSx: true
+      Neptune: false
+      RDS: true
+      S3: true
+      Storage Gateway: false
+      VirtualMachine: false

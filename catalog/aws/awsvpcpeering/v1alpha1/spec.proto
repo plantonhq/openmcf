@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsvpcpeering.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsVpcPeeringSpec defines one side of a VPC peering connection, as a
+// request-XOR-accept mode union:
+//
+// The REQUEST arm creates the peering from its VPC toward a peer VPC.
+// Same-account, same-region peerings can auto-accept and go active in
+// one deploy. Cross-account or cross-region peerings stay
+// pending-acceptance until the accepter side accepts - that side is a
+// second instance of THIS kind running the accept arm.
+//
+// The ACCEPT arm adopts an existing pending connection by its pcx- id
+// and accepts it. Destroying an accept-arm instance abandons
+// management WITHOUT deleting the peering (AWS only lets Terraform
+// delete from the requester side) - the requester instance owns the
+// delete.
+//
+// Peering is non-transitive and route-less by itself: after the
+// connection goes active, each side still adds routes (and security
+// group rules) toward the peer CIDR. One VPC pair supports at most one
+// peering - AWS returns the EXISTING connection id for a duplicate
+// request, so never declare the same pair twice.
+message AwsVpcPeeringSpec {
+  // Exactly one arm: this instance either requests or accepts.
+  option (buf.validate.message).cel = {
+    id: "spec.exactly_one_arm"
+    message: "configure exactly one of request (create a peering from your VPC) and accept (accept a pending peering by id)"
+    expression: "has(this.request) != has(this.accept)"
+  };
+
+  // The AWS region this side of the peering operates in. Example:
+  // "us-east-1". For the request arm this is the requester VPC's
+  // region; for the accept arm the accepter VPC's region.
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The request arm: create the peering from this VPC.
+  AwsVpcPeeringRequest request = 2;
+
+  // The accept arm: accept a pending peering from the accepter side.
+  AwsVpcPeeringAccept accept = 3;
+}
+
+// AwsVpcPeeringRequest creates a peering connection from a VPC this
+// instance's credentials own.
+message AwsVpcPeeringRequest {
+  // Auto-accept is same-region only: AWS activates cross-region
+  // peerings only from the accepter region (the provider rejects the
+  // combination outright).
+  option (buf.validate.message).cel = {
+    id: "request.auto_accept_same_region_only"
+    message: "auto_accept cannot be combined with peer_region - a cross-region peering is accepted from the accepter side (a second instance running the accept arm)"
+    expression: "!this.auto_accept || this.peer_region == ''"
+  };
+  // Auto-accept requires authority over the accepter VPC.
+  option (buf.validate.message).cel = {
+    id: "request.auto_accept_same_account_only"
+    message: "auto_accept cannot be combined with peer_owner_id - a cross-account peering is accepted by the peer account (a second instance running the accept arm)"
+    expression: "!this.auto_accept || this.peer_owner_id == ''"
+  };
+  // The accepter-side option needs accepter authority, which the
+  // requester only has when the connection auto-accepts same-account.
+  option (buf.validate.message).cel = {
+    id: "request.accepter_option_requires_auto_accept"
+    message: "accepter_allow_remote_vpc_dns_resolution from the request arm requires auto_accept (same-account) - in cross-account/cross-region topologies the accept-arm instance sets it"
+    expression: "!this.accepter_allow_remote_vpc_dns_resolution || this.auto_accept"
+  };
+
+  // The requester VPC - the side this instance's credentials own.
+  // Fixed for life. Reference an AwsVpc vpc_id output or pass a
+  // literal vpc-... id.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
+  ];
+
+  // The accepter VPC. Fixed for life. Same-account peers reference an
+  // AwsVpc vpc_id output; cross-account peers pass the literal peer
+  // vpc-... id (with peer_owner_id).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef peer_vpc_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
+  ];
+
+  // The AWS account that owns the peer VPC. Unset means this account.
+  // Fixed for life.
+  string peer_owner_id = 3 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // The region the peer VPC lives in, for cross-region peering. Unset
+  // means this region. Fixed for life. Cross-region peerings never
+  // auto-accept.
+  string peer_region = 4 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Accept the peering immediately after creating it. Only possible
+  // when both VPCs are in this account and region - anything else
+  // leaves the connection pending-acceptance for the accepter side's
+  // instance.
+  bool auto_accept = 5;
+
+  // Let instances in the peer VPC resolve THIS VPC's private DNS
+  // hostnames to private IPs. Requires enable_dns_hostnames on the
+  // participating VPCs, and an ACTIVE connection - on a pending
+  // cross-account peering AWS rejects the modification until accepted
+  // (deploy again after acceptance, or set it from the accept arm's
+  // side).
+  bool requester_allow_remote_vpc_dns_resolution = 6;
+
+  // Let instances in THIS VPC resolve the peer VPC's private DNS
+  // hostnames. From the request arm this is settable only on an
+  // auto-accepted (same-account) connection; cross-account topologies
+  // set it on the accept-arm instance.
+  bool accepter_allow_remote_vpc_dns_resolution = 7;
+}
+
+// AwsVpcPeeringAccept adopts and accepts a pending peering connection
+// from the accepter side.
+message AwsVpcPeeringAccept {
+  // The pending connection to accept (pcx-...). Fixed for life.
+  // Reference the requester instance's peering_connection_id output
+  // (same-account request→accept wiring) or pass the literal id
+  // shared by the requesting account.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_peering_connection_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpcPeering,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.peering_connection_id"
+  ];
+
+  // Accept the pending connection on deploy. Leave true - false only
+  // adopts the connection into management without accepting it (it
+  // stays pending).
+  bool auto_accept = 2;
+
+  // Let instances in the requester VPC resolve THIS (accepter) VPC's
+  // private DNS hostnames. Requires enable_dns_hostnames on the
+  // participating VPCs and an active connection.
+  bool accepter_allow_remote_vpc_dns_resolution = 3;
+}

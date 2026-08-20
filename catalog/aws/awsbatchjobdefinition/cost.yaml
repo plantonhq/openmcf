@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbatchjobdefinition
+spec:
+  billing_model: free
+  free_tier: AWS Batch itself carries no charge -- AWS's own pricing statement is that there is no additional charge for Batch and you pay only for the resources that store and run your workloads. A job definition is the registered blueprint half of that bargain, pure control-plane metadata; registering one revision or a thousand adds nothing to the bill, and an ACTIVE definition nobody submits jobs from meters nothing anywhere.
+  notes: "No field of this spec buys anything at registration, but nearly every sizing field prices the jobs SUBMITTED from it: container.vcpus, memory_mib, and gpus decide how much of the compute environment's capacity each job consumes, and that capacity is where the real spend lives -- EC2 instances, Fargate vCPU-seconds and GB-seconds, or EKS cluster nodes billed on their own meters through the AwsBatchComputeEnvironment's resources (retry_strategy.attempts multiplies a failing job's consumption up to tenfold). Adjacent conditional meters ride the referenced services, not this resource: container logs land in CloudWatch Logs (ingestion and storage billed there -- the awslogs default applies even with no log_configuration), EFS-backed volumes bill their storage and throughput on the file system, Secrets Manager secrets referenced by container.secrets bill per secret on Secrets Manager, and Fargate ephemeral_storage_gib above the included 20 GiB bills per GiB on Fargate when jobs run."

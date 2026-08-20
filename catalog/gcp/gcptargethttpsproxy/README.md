@@ -12,7 +12,7 @@ A single global target HTTPS proxy in the chosen project. Global forwarding rule
 - **An existing GCP project** — referenced via `projectId` (or the provider's default project)
 - **A URL map** — a `GcpUrlMap` (or its self-link) for the proxy to route through
 - **A certificate source** — typically one or more `GcpManagedSslCertificate` resources
-- **IAM permissions** — any role carrying `compute.targetHttpsProxies.*` on the target project
+- **IAM permissions** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Quick Start
 

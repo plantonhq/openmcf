@@ -1,0 +1,32 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kuberneteslocust
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: workers.replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Each worker is one Python load-generating process (roughly one CPU core of load generation) carrying the declared resources -- worker count bounds the load you can generate and multiplies the reservation. 1 when unset; ignored when an autoscaling arm is set.
+    - field_path: workers.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: What the scheduler reserves per worker. Empty means NO requests (the chart default) -- the pods reserve nothing schedulable; a worker saturates around one CPU core, and the HPA arm additionally requires CPU requests to compute utilization against.
+    - field_path: master.resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The master (web UI, REST API, worker coordination) runs exactly one replica -- the chart's fixed shape, with no typed replica knob. Empty means no requests; size it for real tests, since the master aggregates stats from every worker.
+    - field_path: workers.hpa
+      sku_meter: cluster CPU and memory reservations
+      impact: The HPA owns the worker count between min_replicas and max_replicas on CPU utilization -- the runtime reservation floats with the load being generated.
+    - field_path: workers.keda
+      sku_meter: cluster CPU and memory reservations
+      impact: KEDA owns the worker count between min_replicas and max_replicas, scaling on the live simulated-user count the master reports -- more users, more workers, more reservation.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - the stack reserves its capacity continuously while deployed, tests running or not -- tear it down between test campaigns to release it
+    - autoscaling arms (workers.hpa, workers.keda) change the worker count at runtime; a manifest-time footprint states the declared reservation
+    - the load the workers generate lands on load_test.target_host -- the target's capacity and cost under test are its own, and load-testing a metered service drives that service's bill
+    - the helm_values overlay merges last over the typed rendering and can override modeled values, including resources and replica counts
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: one master + workers x requests, no volumes (the stack is stateless -- scripts ride ConfigMaps, results live in the master's memory for the run)."

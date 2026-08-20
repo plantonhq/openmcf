@@ -1,0 +1,30 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kuberneteskafka
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: node_pools
+      sku_meter: cluster CPU and memory reservations
+      impact: Every pool contributes replicas x its declared resources -- controllers and brokers each reserve their requests on the cluster's nodes whether traffic flows or not. Each node also provisions its pool's storage (a single persistent volume, or one volume per JBOD entry), and the sizes can only grow.
+    - field_path: listeners
+      sku_meter: cloud load balancers
+      impact: A loadbalancer-type listener provisions one cloud LoadBalancer per broker PLUS one for bootstrap -- a 3-broker cluster orders four cloud load balancers, billed by the cloud provider outside the cluster's capacity. Internal listeners add nothing.
+    - field_path: entity_operator
+      sku_meter: cluster CPU and memory reservations
+      impact: The per-cluster entity operator pod (topic + user operators) deploys by default. This spec offers no resources surface for it, so it consumes cluster capacity without a declared reservation.
+    - field_path: cruise_control
+      sku_meter: cluster CPU and memory reservations
+      impact: When enabled, Cruise Control runs its own pod beside the cluster; its resources field is the only reservation it declares.
+    - field_path: kafka_exporter
+      sku_meter: cluster CPU and memory reservations
+      impact: When enabled, the Kafka Exporter runs its own pod for consumer-lag metrics; its resources field is the only reservation it declares.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - the entity operator pod (enabled by default) has no resources surface in this spec, and the Cruise Control and Kafka Exporter pods reserve capacity only when their resources fields are set -- undeclared companion pods consume real capacity without reserving it
+    - loadbalancer-type listeners provision cloud load balancers (one per broker plus bootstrap) billed on the cloud provider's account, not the cluster's capacity
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint summed over node pools: for each pool, replicas x (requests + storage volumes). The Strimzi cluster operator that reconciles this cluster is its own component (kubernetesstrimzikafkaoperator) and carries its own footprint."

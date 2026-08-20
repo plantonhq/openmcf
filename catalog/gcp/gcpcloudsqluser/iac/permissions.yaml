@@ -1,0 +1,20 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpcloudsqluser
+spec:
+  gcp:
+    groups:
+      - purpose: ManageUser
+        permissions:
+          - cloudsql.users.create
+          - cloudsql.users.list
+          - cloudsql.users.update
+          - cloudsql.users.delete
+        provenance: derived
+        notes: Covers google_sql_user -- create, refresh, in-place updates (password rotation, password policy), and the drop at destroy (deletion_policy PREVENT and ABANDON are client-side and never call the API). The list permission, not get, backs refresh -- the SQL Admin API has no per-user GET method, so the provider reads a user by listing the instance's users; cloudsql.users.get exists in GCP's IAM inventory but the module never issues a call that needs it. No serviceusage group either -- the module deliberately enables no API (the parent instance's module already enabled sqladmin.googleapis.com).

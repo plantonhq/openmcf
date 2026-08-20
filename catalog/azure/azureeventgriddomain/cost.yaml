@@ -1,0 +1,31 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. This component deliberately ships no
+# estimate quantities: an Event Grid domain is free at rest -- the Basic
+# tier's single meter bills OPERATIONS (publishes across all domain topics,
+# delivery attempts, advanced filtering), and the count of domain topics
+# behind the endpoint never appears on the invoice.
+# Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureeventgriddomain
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: auto_create_topic_with_first_subscription
+      sku_meter: Event Grid Basic operations
+      pricing_unit: 1M operations
+      impact: "A governance switch, not a meter: domain topics are free whether Azure materializes them on first subscription (true, the default) or a pinned posture declares each one -- a domain with ten thousand topics holds them for nothing, and only the operations flowing through them bill."
+    - field_path: input_schema
+      sku_meter: Event Grid Basic operations
+      pricing_unit: 1M operations
+      impact: "Shape, never price: the schema every domain topic shares changes the envelope publishers send, and operations still count in 64 KB units at 0.60 USD per million -- larger envelopes tip multi-unit events sooner, which is the only cost edge a schema choice has."
+  free_tier: "The Event Grid Basic tier's first 100,000 operations per month are free (published on the Event Grid pricing page and visible as the zero-priced first tier of the Standard Operations meter in the Retail Prices API); beyond the grant, operations bill 0.60 USD per million."
+  estimate_exclusions:
+    - "every event published to the domain endpoint -- regardless of which domain topic it names -- is a billed operation at 0.60 USD per million past the monthly 100,000-operation free grant, counted in 64 KB units"
+    - "every delivery attempt an event subscription makes from any domain topic is another billed operation on the same meter, retries included -- the multi-tenant fan-out is where the volume multiplies"
+    - "advanced filtering (data-payload conditions) and subject-ends-with filtering bill one operation per evaluation on the attached subscriptions; event-type matching and subject-begins-with are free"
+    - "rejected events that require dead-lettering bill as delivery operations, and the dead-letter blobs land storage charges on the destination storage account's own component"
+    - "domain topics themselves -- auto-managed or pinned AzureEventgridDomainTopic resources -- carry no meter at any count"
+  notes: "The domain is the multi-tenant shape of the same free-at-rest pattern as a custom topic: one endpoint, one key pair, many streams, no meter for existing. Microsoft's Basic-tier operations meter names domains explicitly alongside custom and system topics, so the bill is publishes plus delivery attempts plus billable filter evaluations at 0.60 USD per million -- and consolidating a thousand tenants behind one domain costs exactly what the same traffic through a thousand custom topics would; the domain buys operational simplicity, not a rate. Security knobs (Entra-only auth, IP rules, identity) move nothing. Rates are eastus retail, retrieved 2026-08-18 from the Azure Retail Prices API and the Event Grid pricing page."

@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.aws.awscloudmapnamespace.v1alpha1;
+
+// AwsCloudMapNamespaceStackOutputs captures the observable state of
+// the Cloud Map namespace after apply.
+message AwsCloudMapNamespaceStackOutputs {
+  // The namespace's id (ns-...) - the provider's import ID (a
+  // PRIVATE_DNS namespace imports as "{namespace_id}:{vpc_id}").
+  string namespace_id = 1;
+
+  // The namespace's ARN.
+  string namespace_arn = 2;
+
+  // The Route 53 hosted zone Cloud Map created for a DNS namespace -
+  // what record-level tooling and zone delegations reference.
+  string hosted_zone_id = 3;
+
+  // The name an HTTP namespace's DiscoverInstances calls use.
+  string http_name = 4;
+
+  // AWS-generated service IDs (srv-...) keyed by service name - what
+  // instance registrations and imports reference.
+  map<string, string> service_ids = 5;
+
+  // Service ARNs keyed by service name - what ECS service
+  // registries wire as the registry_arn.
+  map<string, string> service_arns = 6;
+
+  // Each registration's owning service ID keyed by
+  // "{service_name}//{instance_id}" - the first half of the
+  // instance's composite import ID.
+  map<string, string> instance_service_ids = 7;
+}

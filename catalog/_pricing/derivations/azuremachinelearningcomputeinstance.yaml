@@ -1,0 +1,38 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureMachineLearningComputeInstance manifest's spec values into metered
+# quantities and price choices. The instance is one always-on VM billing
+# its size's plain compute rate -- Azure Machine Learning adds no
+# surcharge for the instance itself (the service's standard vCPU
+# surcharge meter is published at zero) -- so the single line is the VM
+# hour rate selected by the manifest's own virtual_machine_size through
+# the price book's attribute identities. The estimate generator replays
+# the catalog presets through these rules to emit
+# ../estimates/azuremachinelearningcomputeinstance.yaml; a server-side
+# estimator evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azuremachinelearningcomputeinstance
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    assumption: eastus
+  lines:
+    - sku_meter: instance VM hours
+      quantity:
+        - hours_in_month: true
+      price_lookup:
+        service_name: Virtual Machines
+        pricing_unit: hours
+        attributes:
+          - key: vm_size
+            from_field: virtual_machine_size
+      basis: one always-on VM x 730 hours at the virtual_machine_size's Linux pay-as-you-go rate -- the whole committed bill, since the Machine Learning service's own surcharge meter for standard compute is published at zero
+  exclusions:
+    - text: hours while the instance is stopped bill no VM hours -- the spec carries no schedule or idle-shutdown field, so the estimate assumes 24x7 running and stopping is the out-of-band savings lever
+    - text: network egress follows what the workstation's code moves
+    - text: the workspace's companion resources (storage account, container registry, Key Vault, Application Insights) bill on their own components
+  notes:
+    - text: The instance runs in its workspace's region -- a reference these rules cannot read, so prices assume eastus.

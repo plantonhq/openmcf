@@ -147,6 +147,7 @@ var verifiers = map[string]Verifier{
 	"gcpgkenodepool":                         &gkeNodePoolVerifier{},
 	"gcpcloudrun":                            &cloudRunVerifier{},
 	"gcpcloudrundomainmapping":               &cloudRunDomainMappingVerifier{},
+	"gcpplantonrunner":                       &plantonRunnerVerifier{},
 	"gcpalloydbcluster":                      &alloydbClusterVerifier{},
 	"gcpalloydbinstance":                     &alloydbInstanceVerifier{},
 	"gcpalloydbuser":                         &alloydbUserVerifier{},

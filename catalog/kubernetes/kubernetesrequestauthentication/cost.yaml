@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesrequestauthentication
+spec:
+  billing_model: free
+  free_tier: A RequestAuthentication is an Istio policy object -- a declaration of which JWTs the sidecars of the selected workloads accept. The custom resource itself reserves no node capacity and no cloud SKU bills for it.
+  notes: "No field of this spec buys anything: jwt_rules (issuers, audiences, JWKS locations, token extraction points) configure validation logic that runs inside the Istio sidecar proxies already attached to the workloads. That mesh compute -- istiod and the sidecars -- and the workloads behind it are where real spend lives, in separate catalog kinds with their own cost profiles."

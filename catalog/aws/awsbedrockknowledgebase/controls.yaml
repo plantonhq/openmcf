@@ -1,0 +1,83 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbedrockknowledgebase
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Bedrock encrypts knowledge-base resources and transient ingestion data at rest with AWS-managed keys by default; for the vector type the embedded corpus itself rests in the referenced storage backend under THAT component's encryption posture (OpenSearch, Aurora, S3 Vectors each enforce their own at-rest encryption).
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: managed.kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Unset by default -- the managed vector store is encrypted with an AWS-managed key; setting a customer-managed KMS key here switches the managed store to your key. The parallel data_sources.kms_key_arn field applies a CMK to transient ingestion data per data source. For the vector type, CMK posture over the corpus belongs to the referenced storage backend.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All knowledge-base APIs (build-time and runtime Retrieve/RetrieveAndGenerate) are HTTPS-only SigV4 endpoints, and Bedrock's connections to data sources and vector stores ride TLS; no plaintext path is offered.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A knowledge base is reachable only through IAM-authorized Bedrock APIs -- there is no anonymous endpoint, no resource policy, and no public-exposure switch. Reachability of the underlying stores is governed on those referenced components.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The knowledge base has no network placement -- no VPC, subnets, or security groups. Network posture questions belong to the referenced stores (an OpenSearch domain's VPC options, Aurora's subnet groups), not to this object.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No public request-serving surface exists to put a WAF in front of; retrieval traffic enters through AWS's own API endpoints.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation authorizes through IAM, and the knowledge-base ARN is a first-class scoping instrument -- Retrieve, ingestion-job, and management actions all take the knowledge-base resource type per the bedrock service reference, so per-KB least privilege is expressible directly in policy. The one exception is RetrieveAndGenerate, for which the reference lists NO resource types -- it authorizes only on Resource "*", so scope the per-KB grant through Retrieve and the model grant separately.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The spec's required role_arn is a service role trusting bedrock.amazonaws.com that Bedrock assumes with short-lived credentials to read data sources, call the embedding model, and read/write the vector store -- no long-lived credential is stored in the knowledge base. SaaS connector and store credentials (Confluence, Pinecone, Atlas, Redis) are referenced as Secrets Manager ARNs, never inlined.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The service offers a single authentication path -- SigV4-signed IAM requests; there is no legacy or weaker protocol to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All knowledge-base management operations (create, update, delete, data-source changes, ingestion-job starts) are control-plane calls CloudTrail records unconditionally as management events -- who changed the corpus configuration and when is always answerable.
+      notes: Runtime query capture (which questions were asked) is Bedrock model-invocation-logging territory on the AwsBedrockInvocationLogging component, not this object's.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: "Bedrock's monitoring documentation enumerates metric namespaces for model invocations (AWS/Bedrock), agents (AWS/Bedrock/Agents), and AgentCore -- none covers knowledge bases, and this spec carries no metrics or log-delivery surface. Ingestion-job outcomes are visible through the job APIs and console, and AWS offers account-level vended-log delivery for knowledge bases configured outside this component; neither amounts to default CloudWatch metrics on the object."
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The knowledge base holds derived data -- vectors are recomputable by re-ingesting from the data sources, which remain the durable system of record (your S3 buckets, sites, SaaS systems). Recreating the object from this manifest and re-syncing restores the corpus; there is nothing unique to back up here.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery). The nearest analogue -- what happens to already-ingested vectors when a data source is removed -- is the per-data-source data_deletion_policy (RETAIN or DELETE), a lifecycle choice rather than a retention schedule.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Bedrock is a regional managed service operated across availability zones with no zonal placement surface on the knowledge base; availability of the corpus itself follows the referenced store's own HA posture (OpenSearch Serverless replicates automatically, Aurora per its cluster topology).
+    - control_id: deletion-protection
+      status: configurable
+      field_path: data_sources.managed_connector.deletion_protection
+      evidence:
+        type: spec_default
+        reference: Unset leaves the ingestion guard off. Enabling it (with threshold_percent) makes Bedrock ABORT any managed-connector sync that would delete more than the threshold percent of already-ingested documents -- the spec-carried protection against an upstream mistake mass-purging the corpus.
+      notes: "The guard covers managed-connector data-source syncs -- the knowledge-base OBJECT itself carries no delete-protection flag, so deleting it drops the retrieval capability immediately (vectors in a customer-owned store survive per that store's lifecycle; the managed store's index is gone). Adjacent lever: data_sources.data_deletion_policy decides whether a deleted DATA SOURCE purges or retains its vectors."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates the ingestion pipeline, embedding integration, and retrieval APIs with no runtime, version, or maintenance surface exposed; self-managed stores you point at (an OpenSearch domain, an Aurora cluster) carry their own patching posture on their own components.

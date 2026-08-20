@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsssmpatchbaseline
+spec:
+  billing_model: free
+  free_tier: "A patch baseline is free -- the Systems Manager pricing page's entry for Patch Manager reads \"No additional charges for usage on Amazon EC2 instances. Limits may apply.\" No charge counts baselines, approval rules, patch-group registrations, or the default-baseline designation, and the patch scans and installs the baseline governs are free on every EC2 instance in the fleet."
+  notes: "The conditional charges live where patching leaves the free EC2 path, quoted from the same page. (1) Patching HYBRID and multicloud nodes relies on Run Command, which bills $0.002 per invocation starting September 30, 2026 (unbilled during AWS's June 30 - September 30, 2026 transition; the old advanced-instances tier was removed June 30, 2026). (2) \"If you use the Generate Report option, it will execute an Automation document, which will be charged based on pricing for the Automation feature\" -- $0.002 per step plus $0.00003 per second for aws:executeScript steps. (3) Alternative repositories (sources) make instances download packages from the named repos -- any data transfer bills on the instances' own network meters. The execution machinery that applies this baseline on a schedule is the AwsSsmAssociation or AwsSsmMaintenanceWindow running AWS-RunPatchBaseline, both free on EC2; the fleet being patched bills as its own compute either way."

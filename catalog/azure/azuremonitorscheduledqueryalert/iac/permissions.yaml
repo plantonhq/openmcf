@@ -1,0 +1,34 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremonitorscheduledqueryalert
+spec:
+  azure:
+    groups:
+      - purpose: ManageScheduledQueryRule
+        actions:
+          - Microsoft.Insights/ScheduledQueryRules/Read
+          - Microsoft.Insights/ScheduledQueryRules/Write
+          - Microsoft.Insights/ScheduledQueryRules/Delete
+        provenance: derived
+        notes: Covers azurerm_monitor_scheduled_query_rules_alert_v2 / monitoring.NewScheduledQueryRulesAlertV2 -- create in the resource group, refresh, in-place updates (query, thresholds, frequency, enabled), and destroy. Typically held via Monitoring Contributor, Contributor, or Owner on the resource group.
+      - purpose: ReadScopedWorkspace
+        actions:
+          - Microsoft.OperationalInsights/workspaces/read
+        provenance: derived
+        notes: The modules never call the workspace API -- the resolved scope ARM ID rides the rule payload -- but ARM validates the KQL query against the SCOPED workspace at create time (unless skip_query_validation), which reads the workspace on its own scope (service-side). Scopes in other resource groups need this read there. The Microsoft.OperationalInsights namespace is absent from the committed action-inventory snapshot; the action name is verified against Microsoft's Azure built-in roles reference (Log Analytics Reader carries Microsoft.OperationalInsights/workspaces/read).
+      - purpose: AssignUserIdentity
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: Only when identity.type is USER_ASSIGNED -- ARM authorizes binding each referenced AzureUserAssignedIdentity to the rule with assign/action on the IDENTITY's scope at create/update time (service-side). SYSTEM_ASSIGNED identities are created by ARM with the rule and need no extra grant.
+      - purpose: ReadReferencedActionGroups
+        actions:
+          - Microsoft.Insights/ActionGroups/Read
+        provenance: derived
+        notes: Each action.action_group_ids entry references an action group by resolved ARM ID; ARM authorizes wiring the rule to the REFERENCED group by reading it on the group's scope (service-side).

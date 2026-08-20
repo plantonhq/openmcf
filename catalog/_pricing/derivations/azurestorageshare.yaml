@@ -1,0 +1,100 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureStorageShare manifest's spec values into metered quantities and
+# price choices -- the tier/protocol shape is the committed-spend flip.
+# Premium shares (access_tier PREMIUM, or NFS protocol, which requires a
+# premium FileStorage account) bill the PROVISIONED quota on existence:
+# quantity is quota_gb GB-months at the pinned Premium LRS rate, with the
+# LRS redundancy assumption stated (the account's redundancy is invisible
+# in this manifest). Standard-tier shares emit no lines -- their quota is
+# an enforcement limit, and used capacity plus transactions bill on the
+# account's pay-as-you-go meters, excluded honestly. The estimate
+# generator replays the catalog presets through these rules to emit
+# ../estimates/azurestorageshare.yaml; a server-side estimator evaluates
+# the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azurestorageshare
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    assumption: eastus
+  lines:
+    - sku_meter: provisioned share capacity
+      applies_when:
+        - field_path: access_tier
+          op: equals
+          value: PREMIUM
+      quantity:
+        - field_value:
+            field_path: quota_gb
+      price_slug: files-premium-lrs-provisioned-gb-month-eastus
+      basis: "the premium provisioned model bills every provisioned GB per month from the moment the share exists, used or not -- quota_gb GB-months at the Premium LRS rate; LRS is a stated assumption (the referenced account's redundancy is invisible in this manifest; ZRS bills 0.20 USD/GB-month in eastus)"
+    - sku_meter: provisioned share capacity
+      applies_when:
+        - field_path: enabled_protocol
+          op: equals
+          value: NFS
+        - field_path: access_tier
+          op: not_equals
+          value: PREMIUM
+      quantity:
+        - field_value:
+            field_path: quota_gb
+      price_slug: files-premium-lrs-provisioned-gb-month-eastus
+      basis: "NFS shares exist only on premium FileStorage accounts, where Premium is Azure's default -- and only legal -- tier, so an NFS share with access_tier unset still bills its provisioned quota_gb GB-months at the Premium LRS rate; LRS assumed as in the premium arm"
+  exclusions:
+    - applies_when:
+        - field_path: access_tier
+          op: equals
+          value: PREMIUM
+      text: "share snapshots bill their differential used GB at 0.136 USD/GB-month (Premium LRS, eastus), following snapshot cadence and churn; an account on the provisioned v2 billing model bills separately provisioned storage/IOPS/throughput meters on its own rate card instead of the pinned v1 rate"
+    - applies_when:
+        - field_path: enabled_protocol
+          op: equals
+          value: NFS
+        - field_path: access_tier
+          op: not_equals
+          value: PREMIUM
+      text: "share snapshots bill their differential used GB at 0.136 USD/GB-month (Premium LRS, eastus), following snapshot cadence and churn; an account on the provisioned v2 billing model bills separately provisioned storage/IOPS/throughput meters on its own rate card instead of the pinned v1 rate"
+    - applies_when:
+        - field_path: access_tier
+          op: equals
+          value: COOL
+      text: "used capacity bills 0.0228 USD/GB-month (Cool LRS, eastus) plus metadata at 0.0297, and every touch bills transactions (writes 0.13, reads 0.013, lists 0.065 per 10K) plus 0.01 USD/GB cool data retrieval -- all following what workloads store and do on the account's meters"
+    - applies_when:
+        - field_path: access_tier
+          op: equals
+          value: HOT
+      text: "used capacity bills 0.0287 USD/GB-month (Hot LRS, eastus) plus metadata at 0.0297, and transactions bill 0.065 per 10K writes and lists, 0.0052 per 10K reads -- all following what workloads store and do on the account's meters"
+    - applies_when:
+        - field_path: access_tier
+          op: not_equals
+          value: PREMIUM
+        - field_path: access_tier
+          op: not_equals
+          value: HOT
+        - field_path: access_tier
+          op: not_equals
+          value: COOL
+        - field_path: enabled_protocol
+          op: not_equals
+          value: NFS
+      text: "used capacity bills 0.06 USD/GB-month (transaction-optimized Standard LRS, eastus -- Azure's default tier on standard accounts), and transactions bill 0.015 per 10K writes and lists, 0.0015 per 10K reads and protocol operations -- all following what workloads store and do on the account's meters"
+    - text: "geo-redundant replication, data transfer, and private-endpoint hours bill on the account and networking components, not the share; snapshot-management backup fees are the AzureBackupProtectedFileshare component's"
+  notes:
+    - applies_when:
+        - field_path: access_tier
+          op: equals
+          value: PREMIUM
+      text: "The committed figure is the provisioned floor: growing quota_gb grows the bill in place, and premium FileStorage floors at 100 GB. The rate is keyed to the ACCOUNT's redundancy, which this manifest sees only as a reference -- Premium LRS 0.16 USD/GB-month is assumed and stated; a ZRS account bills 0.20."
+    - applies_when:
+        - field_path: access_tier
+          op: equals
+          value: azure_storage_share_access_tier_unspecified
+        - field_path: enabled_protocol
+          op: not_equals
+          value: NFS
+      text: "Zero committed is real but rests on a stated assumption: with the tier unset, Azure defaults the share by ACCOUNT kind (TransactionOptimized on standard accounts, Premium on FileStorage) -- this derivation reads the share as standard, and a FileStorage parent would make the provisioned billing apply instead; the account kind is invisible in this manifest."

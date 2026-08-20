@@ -1,0 +1,23 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamGroup
+metadata:
+  name: developers
+spec:
+  region: us-east-1
+  path: /teams/
+  users:
+    - value: <developer-user-1>
+    - value: <developer-user-2>
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/PowerUserAccess
+  inlinePolicies:
+    deny-billing:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Deny
+          Action:
+            - aws-portal:*
+            - budgets:Modify*
+            - ce:Update*
+            - ce:Delete*
+          Resource: "*"

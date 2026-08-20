@@ -41,11 +41,19 @@ const (
 // runner, the cluster is destroyed by the AWS path, and the runner itself
 // is destroyed last.
 //
+// ENROLLMENT IS TOKEN-FIRST: the runner is born with a runner TOKEN, never
+// an identity. On first boot it presents the token to the control plane,
+// registers ITSELF, and receives its own individually revocable identity.
+// Task replacement re-joins with the same token (the token's lineage
+// re-admits the runner it originally admitted -- no other token can). The
+// token lives in a module-created Secrets Manager secret; the ECS agent
+// injects it at task start, never as plaintext in any task definition.
+//
 // The spec models intent -- where the runner lives (subnets), how big it is
-// (cpu/memory), which build it runs (runner_version), how it executes work
-// (execution_mode), and who it is (credentials). The compute substrate is
-// an implementation detail of the IaC modules (see the component README);
-// it deliberately has no representation here.
+// (cpu/memory), which build it runs (runner_version), and the token it
+// joins with. The compute substrate is an implementation detail of the IaC
+// modules (see the component README); it deliberately has no
+// representation here.
 type AwsPlantonRunnerSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The AWS region the runner is deployed in. Deploy the runner in the
@@ -99,28 +107,27 @@ type AwsPlantonRunnerSpec struct {
 	// only for air-gapped or mirrored registries hosting a copy of the
 	// official image; the digest-identical mirror is your responsibility.
 	ImageRepository *string `protobuf:"bytes,8,opt,name=image_repository,json=imageRepository,proto3,oneof" json:"image_repository,omitempty"`
-	// How the runner executes work:
-	//
-	//   - "temporal" (the default): a pull-based worker -- the runner polls
-	//     its queue for deploy operations and needs NO inbound path at all.
-	//     The right mode for private-endpoint deployments.
-	//   - "dual": temporal PLUS the real-time CloudOps channel (live
-	//     resource browsing through the runner). The CloudOps channel
-	//     reaches the runner through an outbound-initiated tunnel, so the
-	//     network posture stays outbound-only; the runner's credentials
-	//     must carry tunnel material (they do when the registration was
-	//     created for a tunneled runner).
-	//   - "grpc": CloudOps only, no deploy operations. Rarely what you want
-	//     for a standing appliance; prefer dual.
-	ExecutionMode *string `protobuf:"bytes,9,opt,name=execution_mode,json=executionMode,proto3,oneof" json:"execution_mode,omitempty"`
-	// The runner's credentials document: the JSON issued when the runner
-	// registration is created (planton runner generate-credentials). It
-	// carries the runner's identity, its API key, and the connectivity
-	// endpoints -- everything the runner needs to introduce itself to the
-	// control plane. This is a secret: supply it as a managed-secret
-	// reference, never inline plaintext; it reaches the runner through the
-	// platform's secret store, not through any launch configuration.
-	Credentials string `protobuf:"bytes,10,opt,name=credentials,proto3" json:"credentials,omitempty"`
+	// The control-plane endpoint the runner joins, as host:port. Leave
+	// unset for Planton's hosted control plane (the runner's built-in
+	// default); set it for a self-hosted instance (e.g.
+	// "planton.example.com:443"). This is the one bootstrap coordinate the
+	// join cannot deliver -- everything else (work queue, execution mode,
+	// tunnel, API endpoints) arrives in the join response, so the runner
+	// self-configures on arrival and no mode knob exists here.
+	ControlPlaneEndpoint string `protobuf:"bytes,9,opt,name=control_plane_endpoint,json=controlPlaneEndpoint,proto3" json:"control_plane_endpoint,omitempty"`
+	// The runner token that authorizes this runner to JOIN the control
+	// plane. Create one with `planton runner token create` (or in the
+	// console under Organization Settings -> Runner Tokens); on Planton, the
+	// platform mints a token and writes it at exactly the managed-secret
+	// reference this field names, before the infrastructure applies -- there
+	// is no manual credential step. The token only gates joining and is
+	// never the runner's identity: the runner receives its own individually
+	// revocable identity when it registers itself on arrival, and revoking
+	// this token never touches runners it already admitted. This is a
+	// secret: supply it as a managed-secret reference, never inline
+	// plaintext; it reaches the runner through Secrets Manager, not through
+	// any launch configuration.
+	Token string `protobuf:"bytes,10,opt,name=token,proto3" json:"token,omitempty"`
 	// The IAM role the runner itself holds at runtime -- its AWS identity
 	// when cloud operations or IaC runs use role-based (keyless) access
 	// instead of injected keys. Compose an AwsIamRole with a trust policy
@@ -226,16 +233,16 @@ func (x *AwsPlantonRunnerSpec) GetImageRepository() string {
 	return ""
 }
 
-func (x *AwsPlantonRunnerSpec) GetExecutionMode() string {
-	if x != nil && x.ExecutionMode != nil {
-		return *x.ExecutionMode
+func (x *AwsPlantonRunnerSpec) GetControlPlaneEndpoint() string {
+	if x != nil {
+		return x.ControlPlaneEndpoint
 	}
 	return ""
 }
 
-func (x *AwsPlantonRunnerSpec) GetCredentials() string {
+func (x *AwsPlantonRunnerSpec) GetToken() string {
 	if x != nil {
-		return x.Credentials
+		return x.Token
 	}
 	return ""
 }
@@ -258,7 +265,7 @@ var File_catalog_aws_awsplantonrunner_v1alpha1_spec_proto protoreflect.FileDescr
 
 const file_catalog_aws_awsplantonrunner_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"0catalog/aws/awsplantonrunner/v1alpha1/spec.proto\x12)dev.planton.aws.awsplantonrunner.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xbf\x16\n" +
+	"0catalog/aws/awsplantonrunner/v1alpha1/spec.proto\x12)dev.planton.aws.awsplantonrunner.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xc3\x15\n" +
 	"\x14AwsPlantonRunnerSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12u\n" +
 	"\asubnets\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\asubnets\x12\x86\x01\n" +
@@ -268,22 +275,21 @@ const file_catalog_aws_awsplantonrunner_v1alpha1_spec_proto_rawDesc = "" +
 	"\x06memory\x18\x06 \x01(\x05B\b\x8a\xa6\x1d\x041024H\x01R\x06memory\x88\x01\x01\x126\n" +
 	"\x0erunner_version\x18\a \x01(\tB\n" +
 	"\x8a\xa6\x1d\x06latestH\x02R\rrunnerVersion\x88\x01\x01\x12T\n" +
-	"\x10image_repository\x18\b \x01(\tB$\x8a\xa6\x1d ghcr.io/plantonhq/planton/runnerH\x03R\x0fimageRepository\x88\x01\x01\x128\n" +
-	"\x0eexecution_mode\x18\t \x01(\tB\f\x8a\xa6\x1d\btemporalH\x04R\rexecutionMode\x88\x01\x01\x12,\n" +
-	"\vcredentials\x18\n" +
+	"\x10image_repository\x18\b \x01(\tB$\x8a\xa6\x1d ghcr.io/plantonhq/planton/runnerH\x03R\x0fimageRepository\x88\x01\x01\x12\xe8\x01\n" +
+	"\x16control_plane_endpoint\x18\t \x01(\tB\xb1\x01\xbaH\xad\x01\xba\x01\xa6\x01\n" +
+	"\x1dcontrol_plane_endpoint_format\x12\\control plane endpoint must be host:port, e.g. \"planton.example.com:443\" -- no scheme prefix\x1a'this.matches('^[a-zA-Z0-9.-]+:[0-9]+$')\xd8\x01\x01R\x14controlPlaneEndpoint\x12 \n" +
+	"\x05token\x18\n" +
 	" \x01(\tB\n" +
-	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\vcredentials\x12q\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\x05token\x12q\n" +
 	"\ttask_role\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\btaskRole\x129\n" +
-	"\x12log_retention_days\x18\f \x01(\x05B\x06\x8a\xa6\x1d\x0230H\x05R\x10logRetentionDays\x88\x01\x01:\x8b\x0f\xbaH\x87\x0f\x1a\xcb\x01\n" +
+	"\x12log_retention_days\x18\f \x01(\x05B\x06\x8a\xa6\x1d\x0230H\x04R\x10logRetentionDays\x88\x01\x01:\xfd\f\xbaH\xf9\f\x1a\xcb\x01\n" +
 	"\tcpu_valid\x12ucpu must be one of the serverless compute sizes: 256, 512, 1024, 2048, 4096, 8192, or 16384 CPU units (1024 = 1 vCPU)\x1aG!has(this.cpu) || this.cpu in [256, 512, 1024, 2048, 4096, 8192, 16384]\x1a\xa9\b\n" +
-	"\x16cpu_memory_combination\x12\xee\x02cpu and memory must form a valid serverless compute pairing -- cpu 256 pairs with memory 512, 1024, or 2048; cpu 512 with 1024-4096 in steps of 1024; cpu 1024 with 2048-8192 in steps of 1024; cpu 2048 with 4096-16384 in steps of 1024; cpu 4096 with 8192-30720 in steps of 1024; cpu 8192 with 16384-61440 in steps of 4096; cpu 16384 with 32768-122880 in steps of 8192\x1a\x9d\x05!has(this.cpu) || !has(this.memory) || (this.cpu == 256 && this.memory in [512, 1024, 2048]) || (this.cpu == 512 && this.memory >= 1024 && this.memory <= 4096 && this.memory % 1024 == 0) || (this.cpu == 1024 && this.memory >= 2048 && this.memory <= 8192 && this.memory % 1024 == 0) || (this.cpu == 2048 && this.memory >= 4096 && this.memory <= 16384 && this.memory % 1024 == 0) || (this.cpu == 4096 && this.memory >= 8192 && this.memory <= 30720 && this.memory % 1024 == 0) || (this.cpu == 8192 && this.memory >= 16384 && this.memory <= 61440 && this.memory % 4096 == 0) || (this.cpu == 16384 && this.memory >= 32768 && this.memory <= 122880 && this.memory % 8192 == 0)\x1a\x8b\x02\n" +
-	"\x14execution_mode_valid\x12\xa0\x01execution_mode must be 'temporal' (pull-based deploy worker, the default), 'dual' (deploy worker plus the real-time CloudOps channel), or 'grpc' (CloudOps only)\x1aP!has(this.execution_mode) || this.execution_mode in ['temporal', 'dual', 'grpc']\x1a\xfc\x02\n" +
+	"\x16cpu_memory_combination\x12\xee\x02cpu and memory must form a valid serverless compute pairing -- cpu 256 pairs with memory 512, 1024, or 2048; cpu 512 with 1024-4096 in steps of 1024; cpu 1024 with 2048-8192 in steps of 1024; cpu 2048 with 4096-16384 in steps of 1024; cpu 4096 with 8192-30720 in steps of 1024; cpu 8192 with 16384-61440 in steps of 4096; cpu 16384 with 32768-122880 in steps of 8192\x1a\x9d\x05!has(this.cpu) || !has(this.memory) || (this.cpu == 256 && this.memory in [512, 1024, 2048]) || (this.cpu == 512 && this.memory >= 1024 && this.memory <= 4096 && this.memory % 1024 == 0) || (this.cpu == 1024 && this.memory >= 2048 && this.memory <= 8192 && this.memory % 1024 == 0) || (this.cpu == 2048 && this.memory >= 4096 && this.memory <= 16384 && this.memory % 1024 == 0) || (this.cpu == 4096 && this.memory >= 8192 && this.memory <= 30720 && this.memory % 1024 == 0) || (this.cpu == 8192 && this.memory >= 16384 && this.memory <= 61440 && this.memory % 4096 == 0) || (this.cpu == 16384 && this.memory >= 32768 && this.memory <= 122880 && this.memory % 8192 == 0)\x1a\xfc\x02\n" +
 	"\x13log_retention_valid\x12\xbc\x01log_retention_days must be one of the retention periods CloudWatch supports: 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, or 3653 days\x1a\xa5\x01!has(this.log_retention_days) || this.log_retention_days in [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1096, 1827, 2192, 2557, 2922, 3288, 3653]B\x06\n" +
 	"\x04_cpuB\t\n" +
 	"\a_memoryB\x11\n" +
 	"\x0f_runner_versionB\x13\n" +
-	"\x11_image_repositoryB\x11\n" +
-	"\x0f_execution_modeB\x15\n" +
+	"\x11_image_repositoryB\x15\n" +
 	"\x13_log_retention_daysB\xe0\x02\n" +
 	"-com.dev.planton.aws.awsplantonrunner.v1alpha1B\tSpecProtoP\x01Z[github.com/plantonhq/planton/catalog/aws/awsplantonrunner/v1alpha1;awsplantonrunnerv1alpha1\xa2\x02\x04DPAA\xaa\x02)Dev.Planton.Aws.Awsplantonrunner.V1alpha1\xca\x02)Dev\\Planton\\Aws\\Awsplantonrunner\\V1alpha1\xe2\x025Dev\\Planton\\Aws\\Awsplantonrunner\\V1alpha1\\GPBMetadata\xea\x02-Dev::Planton::Aws::Awsplantonrunner::V1alpha1b\x06proto3"
 

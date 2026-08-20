@@ -1,0 +1,42 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azuredatafactory
+spec:
+  presets:
+    - preset: 01-data-platform-workspace
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - "every pipeline run bills the managed-VNET meter class this preset opts into: 1.00 USD per 1,000 activity runs, 0.25 USD per DIU-hour of data movement, 1.00 USD/hour of pipeline activity -- all following what the pipelines inside actually execute"
+        - factory operations (0.50 USD per 50,000 read/write entities, 0.25 USD per 50,000 monitoring records) and any inactive-pipeline fees (0.80 USD/month each) follow authoring and workload churn
+      notes: "Genuinely zero-committed: the factory object carries no meter, and enabling the managed virtual network alone adds none -- Azure charges nothing until pipelines run or private endpoints exist. Enabled up front deliberately: adding the managed VNet later is in-place, but managed private endpoints require it and removing it replaces the factory."
+    - preset: 02-private-etl-workspace
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Virtual Network
+          sku_meter: standard private endpoint
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: the managedPrivateEndpoints list pins exactly one endpoint (datalake-blob); a private endpoint bills every hour it exists, so one endpoint is 730 endpoint-hours a month -- accruing from creation whether or not the target has approved the connection
+          list_unit_price: "0.01"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Network' and armRegionName eq 'Global' and meterName eq 'Standard Private Endpoint' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-18"
+          list_cost: "7.3000"
+      total_list_cost: "7.3000"
+      exclusions:
+        - per-GB data processed through the endpoint (0.01 USD/GB inbound and outbound) follows ETL volume
+        - pipeline execution bills the managed-VNET meter class (1.00 USD per 1,000 activity runs, 0.25 USD per DIU-hour of movement, 1.00 USD/hour of pipeline activity) on the pipeline components and their runs
+        - the target storage account, and everything else the private endpoint reaches, bills on its own component
+      notes: "The committed floor is Private Link custody: 730 hours x 0.01 USD ~ 7.30 USD/month for the one pinned endpoint. publicNetworkEnabled false closes the public path but carries no meter of its own -- the endpoints ARE the private path's cost."

@@ -1,0 +1,80 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurevpngatewayconnection
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A connection stores no customer data -- it is tunnel configuration on the managed gateway. Its one secret, the per-link pre-shared key, is held by Azure's control plane (and deliberately unreadable back through this resource), not on any storage this manifest governs.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With no data store there is no encryption key to bring -- the vpnConnections API carries no customer-managed-key surface.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every tunnel this connection defines is an IKE-negotiated IPsec security association -- there is no unencrypted transport option anywhere in the API. Azure's default proposal set applies unless a link pins its own via ipsec_policies.
+      notes: The 02-pinned-ipsec-connection preset pins AES256/SHA256 with DH group 14 and PFS 2048 end to end.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The connection is not an endpoint -- it is the binding between a gateway and a branch. The internet-facing termination points are the gateway's instance public IPs, governed on the AzureVpnGateway component.
+    - control_id: restricted-ingress
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Each tunnel is pinned at creation to ONE declared branch endpoint -- the site link named by vpn_site_link_id (ARM cannot repoint a tunnel) -- so traffic enters the hub only from endpoints this connection declares, after successful IKE negotiation.
+      notes: traffic_selector_policies can restrict the tunnels further, to named local/remote CIDR pairs; most connections leave routing to the site's prefixes or BGP.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A VPN tunnel is not an HTTP surface -- there is no request stream for a web application firewall to filter.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane operation on the connection -- create, retune, delete -- is authorized by Azure RBAC unconditionally. Tunnel establishment itself is authenticated by the per-link pre-shared keys, not by Azure identities.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A connection runs no workloads and calls no cloud APIs -- there is nothing here that could hold or replace a credential.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: vpn_links.protocol
+      evidence:
+        type: spec_default
+        reference: Unspecified deploys IKEv2 (ARM's default); IKE_V1 exists only for legacy branch devices, and choosing it reopens the weaker legacy negotiation on that tunnel.
+      notes: Both presets ride the IKEv2 default.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management-plane action on the connection lands in the Azure Activity Log unconditionally. Tunnel-level IKE diagnostics are opt-in via the owning gateway's Azure Monitor diagnostic settings, outside this spec.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Tunnel health and throughput surface as the owning gateway's Azure Monitor platform metrics, dimensioned per tunnel, with no configuration on this resource -- what a Succeeded-but-Connecting tunnel is diagnosed from.
+      notes: Provisioned is not connected -- the deployment succeeding proves the parameters were valid, and the metrics are where the negotiation's actual state lives.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: There is no data to back up -- the connection is regenerable configuration, restored by redeploying the manifest; tunnels renegotiate live.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility there is no retention to configure.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: vpn_links
+      evidence:
+        type: spec_default
+        reference: One vpn_link per site link is the spec's shape -- a two-link site gets a two-link connection, Virtual WAN's active-active branch pattern, spreading tunnels across the branch's redundant links and the gateway's managed instance pair. A single-link connection has no tunnel redundancy.
+      notes: Both presets carry one link; branch-side redundancy starts at the AzureVpnSite's link inventory.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the vpnConnections API nor this spec offers a deletion-protection flag; Azure resource locks are subscription-side governance outside the manifest. Replacement is cheap by design -- the tunnels renegotiate, the gateway stays.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A connection is configuration on the managed gateway -- it has no software surface of its own to patch; the gateway appliance's patching is Microsoft-managed and examined on the AzureVpnGateway component.

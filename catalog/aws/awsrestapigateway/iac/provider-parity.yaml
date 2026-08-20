@@ -1,0 +1,305 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_api_gateway_rest_api:
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The OpenAPI definition arm: the document and its import knobs.
+      - arg: body
+        spec: spec.openapi.body
+      - arg: fail_on_warnings
+        spec: spec.openapi.fail_on_warnings
+      - arg: parameters
+        spec: spec.openapi.parameters
+      - arg: put_rest_api_mode
+        spec: spec.openapi.mode
+      # The provider's max-1 types list is a singular choice.
+      - arg: endpoint_configuration.types
+        spec: spec.endpoint_configuration.type
+    exclusions:
+      - arg: name
+        reason: metadata.name is the naming basis on both engines -- never free-form spec surface
+      - arg: policy
+        reason: the standalone aws_api_gateway_rest_api_policy resource owns spec.policy (clean PATCH updates; delete resets the policy instead of touching the API) -- rendering both would fight
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_api_gateway_rest_api_policy:
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: policy
+        spec: spec.policy
+    exclusions:
+      - arg: rest_api_id
+        reason: module-wired parent linkage to the API created in the same plan
+
+  # The resource tree is DERIVED: the module computes every node from the
+  # route paths ("/users/{id}" implies "/users"), so the resource's
+  # arguments are module decisions, not spec surface.
+  aws_api_gateway_resource:
+    internal: module-shaped plumbing derived from spec.routes[].path -- the module computes the tree nodes (parent/path_part per level) from the declared route paths
+
+  aws_api_gateway_method:
+    specRoot: spec.routes
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: http_method
+        spec: spec.routes.method
+      # Routes reference satellites by NAME; the module resolves the IDs.
+      - arg: authorizer_id
+        spec: spec.routes.authorizer_name
+      - arg: request_validator_id
+        spec: spec.routes.request_validator_name
+    exclusions:
+      - arg: rest_api_id
+        reason: module-wired parent linkage to the API created in the same plan
+      - arg: resource_id
+        reason: module-wired to the tree node derived from the route's path
+
+  aws_api_gateway_integration:
+    specRoot: spec.routes.integration
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: integration_http_method
+        spec: spec.routes.integration.http_method
+      - arg: credentials
+        spec: spec.routes.integration.credentials_arn
+      - arg: connection_id
+        spec: spec.routes.integration.vpc_link_id
+      # The single-flag TLS wrapper flattens to its one leaf.
+      - arg: tls_config
+        spec: spec.routes.integration.tls_insecure_skip_verification
+      - arg: tls_config.insecure_skip_verification
+        spec: spec.routes.integration.tls_insecure_skip_verification
+    exclusions:
+      - arg: rest_api_id
+        reason: module-wired parent linkage to the API created in the same plan
+      - arg: resource_id
+        reason: module-wired to the tree node derived from the route's path
+      - arg: http_method
+        reason: module-wired to the route's own method -- the integration always belongs to the method declared beside it
+      - arg: integration_target
+        reason: the provider's ARN-typed alternate spelling of the same backend target uri carries -- one spec field covers both arguments
+
+  aws_api_gateway_method_response:
+    specRoot: spec.routes.responses
+    mappings:
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: rest_api_id
+        reason: module-wired parent linkage to the API created in the same plan
+      - arg: resource_id
+        reason: module-wired to the tree node derived from the route's path
+      - arg: http_method
+        reason: module-wired to the route's own method -- responses always belong to the route declared around them
+
+  aws_api_gateway_integration_response:
+    specRoot: spec.routes.responses
+    mappings:
+      - arg: region
+        spec: spec.region
+      # The method response and its integration response mapping travel as
+      # ONE spec entry; the integration side's maps carry the prefix.
+      - arg: response_parameters
+        spec: spec.routes.responses.integration_response_parameters
+      - arg: response_templates
+        spec: spec.routes.responses.integration_response_templates
+    exclusions:
+      - arg: rest_api_id
+        reason: module-wired parent linkage to the API created in the same plan
+      - arg: resource_id
+        reason: module-wired to the tree node derived from the route's path
+      - arg: http_method
+        reason: module-wired to the route's own method -- responses always belong to the route declared around them
+
+  aws_api_gateway_model:
+    specRoot: spec.models
+    mappings:
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: rest_api_id
+        reason: module-wired parent linkage to the API created in the same plan
+
+  aws_api_gateway_request_validator:
+    specRoot: spec.request_validators
+    mappings:
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: rest_api_id
+        reason: module-wired parent linkage to the API created in the same plan
+
+  aws_api_gateway_authorizer:
+    specRoot: spec.authorizers
+    mappings:
+      - arg: region
+        spec: spec.region
+      # The Lambda's API Gateway invoke ARN and the assumable role.
+      - arg: authorizer_uri
+        spec: spec.authorizers.lambda_invoke_uri
+      - arg: authorizer_credentials
+        spec: spec.authorizers.credentials_arn
+      - arg: authorizer_result_ttl_in_seconds
+        spec: spec.authorizers.result_ttl_seconds
+    exclusions:
+      - arg: rest_api_id
+        reason: module-wired parent linkage to the API created in the same plan
+
+  aws_api_gateway_gateway_response:
+    specRoot: spec.gateway_responses
+    mappings:
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: rest_api_id
+        reason: module-wired parent linkage to the API created in the same plan
+
+  aws_api_gateway_documentation_part:
+    specRoot: spec.documentation.parts
+    mappings:
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: rest_api_id
+        reason: module-wired parent linkage to the API created in the same plan
+
+  aws_api_gateway_documentation_version:
+    specRoot: spec.documentation.published_version
+    mappings:
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: rest_api_id
+        reason: module-wired parent linkage to the API created in the same plan
+
+  aws_api_gateway_deployment:
+    specRoot: spec.stage
+    mappings:
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: rest_api_id
+        reason: module-wired parent linkage to the API created in the same plan
+      - arg: triggers
+        reason: module-computed definition hash -- the redeploy-on-change mechanism, never user surface
+      - arg: description
+        reason: deployments are module-rolled snapshots; the stage carries the human description
+      - arg: variables
+        reason: legacy stage-variables-on-deployment; spec.stage.stage_variables owns the surface on the stage itself
+
+  aws_api_gateway_stage:
+    specRoot: spec.stage
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: stage_name
+        spec: spec.stage.name
+      - arg: variables
+        spec: spec.stage.stage_variables
+      - arg: cache_cluster_enabled
+        spec: spec.stage.cache_cluster.enabled
+      - arg: cache_cluster_size
+        spec: spec.stage.cache_cluster.size
+      # Generated with the API or referenced by ID -- one spec choice; the
+      # reference arm is the mapped leaf, the generate arm drives the
+      # created certificate the module wires in.
+      - arg: client_certificate_id
+        spec: spec.stage.client_certificate.existing_certificate_id
+      - arg: access_log_settings
+        spec: spec.stage.access_log
+      - arg: access_log_settings.destination_arn
+        spec: spec.stage.access_log.destination_arn
+      - arg: access_log_settings.format
+        spec: spec.stage.access_log.format
+    exclusions:
+      - arg: rest_api_id
+        reason: module-wired parent linkage to the API created in the same plan
+      - arg: deployment_id
+        reason: module-wired to the hash-triggered deployment created in the same plan
+      - arg: canary_settings
+        reason: canary traffic shifting needs TWO live deployments -- a deploy-workflow surface, not declarative single-deployment state (revisit on demand)
+      - arg: canary_settings.deployment_id
+        reason: canary traffic shifting needs TWO live deployments -- a deploy-workflow surface (see canary_settings)
+      - arg: canary_settings.percent_traffic
+        reason: canary traffic shifting needs TWO live deployments -- a deploy-workflow surface (see canary_settings)
+      - arg: canary_settings.stage_variable_overrides
+        reason: canary traffic shifting needs TWO live deployments -- a deploy-workflow surface (see canary_settings)
+      - arg: canary_settings.use_stage_cache
+        reason: canary traffic shifting needs TWO live deployments -- a deploy-workflow surface (see canary_settings)
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_api_gateway_method_settings:
+    specRoot: spec.stage.method_settings
+    mappings:
+      - arg: region
+        spec: spec.region
+      # The provider's settings wrapper; the spec names the knobs directly.
+      - arg: settings
+        spec: spec.stage.method_settings
+      - arg: settings.metrics_enabled
+        spec: spec.stage.method_settings.metrics_enabled
+      - arg: settings.logging_level
+        spec: spec.stage.method_settings.logging_level
+      - arg: settings.data_trace_enabled
+        spec: spec.stage.method_settings.data_trace_enabled
+      - arg: settings.throttling_burst_limit
+        spec: spec.stage.method_settings.throttling_burst_limit
+      - arg: settings.throttling_rate_limit
+        spec: spec.stage.method_settings.throttling_rate_limit
+      - arg: settings.caching_enabled
+        spec: spec.stage.method_settings.caching_enabled
+      - arg: settings.cache_ttl_in_seconds
+        spec: spec.stage.method_settings.cache_ttl_in_seconds
+      - arg: settings.cache_data_encrypted
+        spec: spec.stage.method_settings.cache_data_encrypted
+      - arg: settings.require_authorization_for_cache_control
+        spec: spec.stage.method_settings.require_authorization_for_cache_control
+      - arg: settings.unauthorized_cache_control_header_strategy
+        spec: spec.stage.method_settings.unauthorized_cache_control_header_strategy
+    exclusions:
+      - arg: rest_api_id
+        reason: module-wired parent linkage to the API created in the same plan
+      - arg: stage_name
+        reason: module-wired to the stage created in the same plan
+
+  aws_api_gateway_client_certificate:
+    specRoot: spec.stage.client_certificate
+    mappings:
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+specExclusions:
+  # The definition-source discriminators and reference names the modules
+  # resolve to provider IDs.
+  - field: spec.routes.path
+    reason: drives the DERIVED aws_api_gateway_resource tree (module plumbing above) and each method's resource placement
+  - field: spec.routes.authorizer_name
+    reason: resolved by the module to the created authorizer's ID (mapped on aws_api_gateway_method.authorizer_id)
+  - field: spec.routes.request_validator_name
+    reason: resolved by the module to the created validator's ID (mapped on aws_api_gateway_method.request_validator_id)
+  - field: spec.stage.client_certificate.generate
+    reason: drives whether the module creates aws_api_gateway_client_certificate or references an existing one

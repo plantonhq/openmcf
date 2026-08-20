@@ -1,0 +1,15 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsbackupvault
+spec:
+  # Every backup-vault resource imports by the VAULT NAME - both vault
+  # arms (metadata.name is the name on either) and all three standard
+  # satellites (they attach by name).
+  values:
+    - name: vault_name
+      derivations:
+        - from_metadata_name: true
+      where_to_find: >-
+        AWS Backup console -> Backup vaults (the vault's name), or
+        `aws backup list-backup-vaults` (BackupVaultName).

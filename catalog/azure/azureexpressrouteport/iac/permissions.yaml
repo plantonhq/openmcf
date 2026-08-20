@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureexpressrouteport
+spec:
+  azure:
+    groups:
+      - purpose: ManageExpressRoutePort
+        actions:
+          - Microsoft.Network/expressRoutePorts/read
+          - Microsoft.Network/expressRoutePorts/write
+          - Microsoft.Network/expressRoutePorts/delete
+        provenance: derived
+        notes: Covers azurerm_express_route_port / network.NewExpressRoutePort -- create, refresh (the port GET also returns the link pair's letter-of-authorization facts the modules export), in-place updates (billing type, link admin state, MACsec, tags), and destroy. Broad roles like Network Contributor, Contributor, or Owner carry these actions, but the enumerated set is the least-privilege grant. Two prerequisites are deliberately NOT runner permissions -- the subscription's one-time AllowExpressRoutePorts feature enrollment (Microsoft.Features registration, subscription onboarding done once by an administrator), and Key Vault secret access for MACsec, which belongs to the PORT'S own user-assigned identity (secret GET on the CAK/CKN secrets, granted before enabling MACsec), never to the deploying principal.
+      - purpose: ManagePortAuthorizations
+        actions:
+          - Microsoft.Network/expressRoutePorts/authorizations/read
+          - Microsoft.Network/expressRoutePorts/authorizations/write
+          - Microsoft.Network/expressRoutePorts/authorizations/delete
+        provenance: derived
+        notes: Required only when the spec issues authorizations -- one azurerm_express_route_port_authorization / network.NewExpressRoutePortAuthorization per entry, an ARM child of the port. The write returns the generated key the modules surface as a sensitive output; deleting an entry revokes it. The REDEEMING side (a circuit in another subscription being built on this port) needs no permission on this port's scope at all -- the authorization key IS its credential.
+      - purpose: AssignUserManagedIdentities
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: Required only when identity carries USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED identities (which MACsec mandates) -- ARM checks assign/action on every identity referenced in the port payload (service-side; the modules only pass the resolved identity IDs).

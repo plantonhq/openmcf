@@ -1,0 +1,34 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awssagemakerpipeline
+spec:
+  presets:
+    - preset: 01-inline-training-pipeline
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the preset's inline definition is a deliberate single-node Fail-step placeholder that launches no compute even when executed -- once replaced with a real pipeline.definition() output, every training/processing/transform step bills its declared instances per second while it runs
+        - execution frequency is the multiplier -- a scheduled DAG bills its full step compute every run
+        - step inputs, outputs, and artifacts bill as S3 storage and requests on their buckets; step containers pull from ECR; step logs bill CloudWatch ingestion
+      notes: Zero committed cost -- the pipeline object and its orchestration are permanently free, and this placeholder DAG cannot spend; the zero is the service's own pricing for the object at rest, with all real spend inside the future definition's step declarations.
+    - preset: 02-s3-definition-pipeline
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - "the DAG lives in s3://my-pipeline-definitions/pipelines/nightly-training.json -- its step instance declarations are invisible to this manifest, and they are the entire bill: each training/processing/transform step bills its declared instances per second per execution"
+        - the display name ("nightly-training") signals a scheduled cadence -- roughly 30 executions a month, each billing the whole DAG's step compute
+        - parallelism_max_steps 4 caps concurrent step spend, never an execution's total instance-hours
+        - step data bills as S3 storage and requests on its buckets; step logs bill CloudWatch ingestion; any registered model packages are free registry entries
+      notes: Zero committed cost -- commitment-absence, never free-to-run; the pipeline layer itself carries no fee, and everything an execution spends is declared inside the S3 definition object where no field-level estimate can reach it.

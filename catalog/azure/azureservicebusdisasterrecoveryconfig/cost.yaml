@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureservicebusdisasterrecoveryconfig
+spec:
+  billing_model: free
+  free_tier: The geo-DR pairing itself -- the failover-stable alias DNS name and the continuous metadata replication between the two namespaces -- never bills. Azure has no meter for Service Bus disaster recovery configs; the pairing, failovers, and break-pairs all cost nothing, and this metadata-only replication carries no per-GB charge (unlike Service Bus's separate full-data Geo-Replication feature, which meters replicated gigabytes).
+  notes: "The real spend is the PARTNER namespace this pairing requires: geo-DR is a PREMIUM-only feature, so a second PREMIUM AzureServiceBusNamespace must stand by in a different region, billing its full flat daily messaging-unit rate the whole time it idles -- effectively doubling the namespace-level spend for the paired workload. Both namespace references in this spec (primary_namespace_id, partner_namespace_id) point at that separate catalog kind, where the cost profile lives; alias_authorization_rule_id points at an AzureServiceBusAuthorizationRule, also free."

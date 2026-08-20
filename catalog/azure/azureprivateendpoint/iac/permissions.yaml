@@ -1,0 +1,48 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureprivateendpoint
+spec:
+  azure:
+    groups:
+      - purpose: ManagePrivateEndpoint
+        actions:
+          - Microsoft.Network/privateEndpoints/read
+          - Microsoft.Network/privateEndpoints/write
+          - Microsoft.Network/privateEndpoints/delete
+        provenance: derived
+        notes: Covers azurerm_private_endpoint / privatelink.NewEndpoint -- create with the inline private service connection and any static ip_configurations, refresh (the private-IP and NIC outputs are read off the endpoint body), tag updates, and destroy. The application-security-group association resource PATCHes the same endpoint, so associating and dissociating ASGs also land on privateEndpoints/write.
+      - purpose: ManageDnsZoneGroup
+        actions:
+          - Microsoft.Network/privateEndpoints/privateDnsZoneGroups/read
+          - Microsoft.Network/privateEndpoints/privateDnsZoneGroups/write
+          - Microsoft.Network/privateEndpoints/privateDnsZoneGroups/delete
+        provenance: derived
+        notes: The DNS zone group is its own ARM child resource beneath the endpoint -- both engines issue it as a separate PUT after the endpoint create whenever private_dns_zone_ids is non-empty, and emptying the list deletes it. The registration A records themselves are platform-managed inside the referenced zones; no record-level permission is exercised by the modules.
+      - purpose: JoinSubnet
+        actions:
+          - Microsoft.Network/virtualNetworks/read
+          - Microsoft.Network/virtualNetworks/subnets/read
+          - Microsoft.Network/virtualNetworks/subnets/join/action
+        provenance: derived
+        notes: The modules never call the subnet API -- the resolved subnet_id rides the endpoint payload -- but ARM authorizes drawing the endpoint's private address with subnets/join/action on the SUBNET's scope at create time (service-side). The read pair mirrors Microsoft's own granular private-endpoint role reference, which the platform exercises when resolving the reference.
+      - purpose: JoinPrivateDnsZones
+        actions:
+          - Microsoft.Network/privateDnsZones/join/action
+        provenance: derived
+        notes: Creating the DNS zone group is authorized service-side against every REFERENCED zone with join/action on that zone's scope -- the modules pass only resolved zone IDs and never touch the zone API themselves. Needed only when private_dns_zone_ids is non-empty.
+      - purpose: JoinApplicationSecurityGroups
+        actions:
+          - Microsoft.Network/applicationSecurityGroups/joinIpConfiguration/action
+        provenance: derived
+        notes: Required only when application_security_group_ids is set -- ARM's service-side check for joining the endpoint's IP configurations to each referenced group is joinIpConfiguration/action on the GROUP's scope; the association resource itself writes through the endpoint (see ManagePrivateEndpoint).
+      - purpose: ApproveTargetConnection
+        actions:
+          - Microsoft.Sql/servers/privateEndpointConnectionsApproval/action
+        provenance: derived
+        notes: An auto-approved connection (is_manual_connection false, the default) is authorized on the TARGET resource's scope with the target namespace's privateEndpointConnectionsApproval action -- the action name follows the target type, so this list carries the one matching the catalog's SQL Server preset. Some namespaces (Microsoft.Storage, Microsoft.KeyVault) define no such enumerated action in Microsoft's providerOperations inventory; their approval check is satisfied only through wildcard grants on the target (e.g. Contributor). Manual connections (is_manual_connection true) skip this entirely deploy-side -- the target's owner approves the pending connection afterward.

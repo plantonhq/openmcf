@@ -1,0 +1,24 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurevirtualnetwork
+spec:
+  azure:
+    groups:
+      - purpose: ManageVirtualNetwork
+        actions:
+          - Microsoft.Network/virtualNetworks/read
+          - Microsoft.Network/virtualNetworks/write
+          - Microsoft.Network/virtualNetworks/delete
+        provenance: derived
+        notes: Covers azurerm_virtual_network -- create, read/refresh, in-place updates (address spaces, DNS, encryption), and destroy. Held via Network Contributor, Contributor, or narrower custom roles, matching the module README's prose.
+      - purpose: AttachDdosPlan
+        actions:
+          - Microsoft.Network/ddosProtectionPlans/join/action
+        provenance: derived
+        notes: Required only when ddos_protection_plan attaches a plan -- associating a network to a DDoS plan demands join on the plan resource, which may live in another resource group. Not needed otherwise.

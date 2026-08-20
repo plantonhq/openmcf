@@ -1,0 +1,21 @@
+# Canonical AwsManagedPrefixList example (hack/dev manifest and refgen
+# Example source): an IPv4 list of office CIDRs with headroom for two
+# more entries.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsManagedPrefixList
+metadata:
+  name: office-cidrs
+  id: office-cidrs
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  addressFamily: IPv4
+  maxEntries: 5
+  entries:
+    - cidr: 203.0.113.0/24
+      description: hq office
+    - cidr: 198.51.100.0/24
+      description: branch office
+    - cidr: 192.0.2.0/24
+      description: vpn egress

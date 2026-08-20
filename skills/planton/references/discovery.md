@@ -20,6 +20,9 @@ are read-only and fast (see `planton-cli.md` for exact commands):
   built, and did it succeed?
 - Available provider connections (which clouds, which Kubernetes clusters).
 - Environments in the org.
+- The organization's catalog availability — which kinds its catalog policy
+  disables (`catalog-availability.md`: check here, design complete anyway,
+  disclose before deploy).
 
 What you find shapes the BUILD, not a question: an existing green cluster is
 something to build on, not duplicate; a connection to exactly one cloud
@@ -105,10 +108,10 @@ draft. The assumption goes into the register with its consequence attached:
 and roughly $Y." That one sentence does what the old motive question did —
 without making the user answer a form before seeing anything.
 
-Recommend with reasons — "for a dev environment I'd use a single NAT gateway
-because it saves ~$65/month over per-AZ and you don't need the redundancy" —
-never a neutral menu of options. You are the experienced partner, not a
-form.
+Recommend with reasons — "for a dev environment I'd use a single NAT gateway:
+each extra gateway bills around the clock (the exact monthly figure is in its
+cost fact-sheet) and you don't need the redundancy" — never a neutral menu of
+options. You are the experienced partner, not a form.
 
 ## 4. The refinement conversation (after delivery — where questions belong)
 

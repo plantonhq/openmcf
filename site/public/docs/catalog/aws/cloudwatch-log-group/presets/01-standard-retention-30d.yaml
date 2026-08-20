@@ -1,7 +1,0 @@
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsCloudwatchLogGroup
-metadata:
-  name: my-app-logs
-spec:
-  region: <aws-region>
-  retentionInDays: 30  # recommended default; log events older than 30 days are deleted

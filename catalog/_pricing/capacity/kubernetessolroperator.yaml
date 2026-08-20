@@ -1,0 +1,45 @@
+# Capacity derivation: the machine-executable rules turning any
+# KubernetesSolrOperator manifest's spec values into the capacity
+# footprint it reserves from its target cluster. The estimate generator
+# replays the catalog presets through these rules to emit
+# ../estimates/kubernetessolroperator.yaml; a server-side estimator can
+# evaluate the same rules against live manifests. The footprint is the
+# Solr operator replicas alone -- the bundled zookeeper-operator pod
+# (installed by default) carries subchart sizing this spec does not
+# model, and the Solr clusters the operator reconciles reserve their
+# own capacity on their KubernetesSolr resources.
+# Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kubernetessolroperator
+spec:
+  workloads:
+    - label: operator replica
+      resources_path: resources
+      instances:
+        field_value:
+          field_path: replicas
+          default_when_unset: "1"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node economics
+    - text: "the Solr clusters this operator reconciles reserve their own capacity -- each rides its KubernetesSolr resource"
+    - applies_when:
+        - field_path: zookeeper_operator.install
+          op: is_unset
+      text: the bundled zookeeper-operator pod (installed by default) carries subchart-default sizing this spec does not model
+    - applies_when:
+        - field_path: zookeeper_operator.install
+          op: equals
+          value: "true"
+      text: the bundled zookeeper-operator pod (installed by default) carries subchart-default sizing this spec does not model
+    - applies_when:
+        - field_path: helm_values
+          op: is_set
+      text: the helm_values overlay merges last and can override the modeled values, including resources and the zookeeper-operator subchart's own values
+  notes:
+    - applies_when:
+        - field_path: resources
+          op: is_unset
+      text: the operator container declares no requests or limits (the chart ships no defaults -- the operator is lightweight), so it schedules unbounded and reserves nothing
+    - text: extra operator replicas are leader-elected warm standbys -- one active reconciler, instant takeover when the leader's node dies

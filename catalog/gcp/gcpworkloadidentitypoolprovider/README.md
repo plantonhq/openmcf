@@ -14,7 +14,7 @@ One pool holds many providers — one per issuer (a GitHub org, an AWS account, 
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **An existing Workload Identity Pool** — referenced via `workloadIdentityPoolId` (typically a GcpWorkloadIdentityPool resource)
-- **IAM permissions** — `roles/iam.workloadIdentityPoolAdmin` on the target project
+- **IAM permissions** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Quick Start
 

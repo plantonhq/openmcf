@@ -1,0 +1,40 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. The container itself is free to hold --
+# Azure's Blob Storage price list has no meter for the container object;
+# every charge it shapes (capacity, operations, retrieval) bills on the
+# parent storage account's meters, keyed by the ACCOUNT's access tier and
+# redundancy. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurestoragecontainer
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: storage_account_id
+      sku_meter: blob data stored
+      pricing_unit: GB-month
+      impact: "Every GB written into this container bills the referenced account's blob capacity meter -- rated by the ACCOUNT's access tier (hot, cool, cold, archive) and redundancy (LRS through RA-GZRS), with tiered price breaks at 50 TB and 500 TB per month. The container is the namespace; the account is the invoice."
+    - field_path: storage_account_id
+      sku_meter: blob operations
+      pricing_unit: per 10,000 operations
+      impact: "Every request against the container's blobs bills the account's operation meters -- write operations, read operations, list-and-create-container operations, and all-other operations each per 10,000 (delete is free) -- at rates keyed by the account's tier, plus per-GB data retrieval on cool, cold, and archive reads."
+    - field_path: container_access_type
+      sku_meter: read operations
+      pricing_unit: per 10,000 operations
+      impact: "BLOB or CONTAINER opens anonymous reads -- every anonymous GET still bills the account's read-operations meter and egress, so a public CDN-origin container lets the whole internet generate metered traffic. The posture changes who can create spend, never the rates."
+    - field_path: default_encryption_scope
+      sku_meter: named encryption scopes
+      pricing_unit: scope-months
+      impact: "Binding a scope adds nothing to the container's bill, but the REFERENCED AzureStorageEncryptionScope bills a flat monthly fee on its own component from the moment it is enabled, and a Key Vault-keyed scope adds per-transaction wrap/unwrap operations on the key's vault."
+  estimate_exclusions:
+    - "blob data stored bills per GB-month on the account at the account's tier-and-redundancy rate with 50 TB / 500 TB price breaks -- volume no manifest can know"
+    - "write operations, read operations, list-and-create-container operations, and all-other operations each bill per 10,000 on the account (delete is free); cool, cold, and archive reads add per-GB data retrieval, and archive adds high-priority read and retrieval meters"
+    - "early-deletion penalties apply to blobs removed from cool, cold, or archive before their minimum retention days"
+    - "blob index tags bill per 10,000 tags per month -- only blobs actually carrying tags create the charge"
+    - "soft-deleted data bills at the same rate as active data for the account's retention window (Microsoft's soft-delete billing rule), and undelete calls bill at the write-operation rate"
+    - "account-level blob features the container's data participates in bill on the account -- blob versioning (versions bill capacity), change feed (per 10,000 changes), blob inventory (per million objects per report), lifecycle tiering transitions (operations), and SFTP (hourly when enabled)"
+    - "geo-redundant accounts add geo-replication data transfer per GB, and reads served to the internet add standard bandwidth egress"
+    - "the named encryption scope's monthly fee bills on the referenced AzureStorageEncryptionScope component, not here"
+  notes: "The container is the free half of a paid pattern: it scopes access posture, RBAC grants, and encryption keys, while every dollar bills on the parent account's meters. An empty private container holds for exactly nothing, and a busy one costs whatever its blobs and traffic cost AT THE ACCOUNT'S RATES -- which is why the account's tier and redundancy choices, made on the AzureStorageAccount component, are the real price levers. Deleting the container deletes its blobs and with them the capacity charge (soft-delete retention on the account can extend billing past the delete)."

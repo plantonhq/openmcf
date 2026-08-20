@@ -1,0 +1,44 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its capacity derivation
+# (../capacity/, the machine-executable value-to-capacity rules): each
+# preset states the CPU/memory requests and limits and the persistent
+# volume storage it reserves from its target cluster, with a basis sentence
+# tracing every total back to the manifest's values. Cluster-capacity
+# components carry no priced lines -- the dollar value of the reservation
+# is the target cluster's node and storage-class economics, which this
+# catalog cannot know. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetespersistentvolumeclaim
+spec:
+  presets:
+    - preset: 01-dynamic-default-class
+      capacity_footprint:
+        persistent_storage: 10Gi
+        basis: "1 claim: 1 x 10Gi volume volume"
+      exclusions:
+        - the price per GB is the StorageClass's backing driver and tier (block storage vs shared filesystem), which the manifest selects but cannot price
+        - with a WaitForFirstConsumer StorageClass, no volume exists until a pod first uses the claim -- the footprint states what provisioning WILL reserve
+    - preset: 02-pinned-class
+      capacity_footprint:
+        persistent_storage: 50Gi
+        basis: "1 claim: 1 x 50Gi volume volume"
+      exclusions:
+        - the price per GB is the StorageClass's backing driver and tier (block storage vs shared filesystem), which the manifest selects but cannot price
+        - with a WaitForFirstConsumer StorageClass, no volume exists until a pod first uses the claim -- the footprint states what provisioning WILL reserve
+    - preset: 03-shared-rwm
+      capacity_footprint:
+        persistent_storage: 100Gi
+        basis: "1 claim: 1 x 100Gi volume volume"
+      exclusions:
+        - the price per GB is the StorageClass's backing driver and tier (block storage vs shared filesystem), which the manifest selects but cannot price
+        - with a WaitForFirstConsumer StorageClass, no volume exists until a pod first uses the claim -- the footprint states what provisioning WILL reserve
+    - preset: 04-clone-from-claim
+      capacity_footprint:
+        persistent_storage: 50Gi
+        basis: "1 claim: 1 x 50Gi volume volume"
+      exclusions:
+        - the price per GB is the StorageClass's backing driver and tier (block storage vs shared filesystem), which the manifest selects but cannot price
+        - with a WaitForFirstConsumer StorageClass, no volume exists until a pod first uses the claim -- the footprint states what provisioning WILL reserve
+        - the volume is populated from an existing source (clone or snapshot restore) -- a full-size new volume is provisioned; the source and any snapshots bill separately

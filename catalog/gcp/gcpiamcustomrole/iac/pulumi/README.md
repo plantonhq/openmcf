@@ -15,7 +15,7 @@ A custom role is a named, least-privilege permission bundle: define it once, gra
    ```bash
    gcloud auth application-default login
    ```
-5. **IAM permissions**: `roles/iam.roleAdmin` on the target project
+5. **IAM permissions**: the deploying principal's permissions are listed in [`../permissions.yaml`](../permissions.yaml)
 
 ## Directory Structure
 

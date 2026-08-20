@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurekeyvault
+spec:
+  azure:
+    groups:
+      - purpose: ManageVault
+        actions:
+          - Microsoft.KeyVault/vaults/read
+          - Microsoft.KeyVault/vaults/write
+          - Microsoft.KeyVault/vaults/delete
+        provenance: derived
+        notes: "Covers azurerm_key_vault / keyvault.NewKeyVault -- create with inline access policies, refresh, in-place updates (tier, network rules, integration switches, tags), and destroy. Both modules read the deploying credential's tenant from the ambient client configuration (no RBAC action -- an identity-token claim, not an ARM call). Access policies are declared inline in the vault payload, so the standalone Microsoft.KeyVault/vaults/accessPolicies/write child action is never needed."
+      - purpose: PurgeOrRecoverSoftDeletedVault
+        actions:
+          - Microsoft.KeyVault/locations/deletedVaults/read
+          - Microsoft.KeyVault/locations/deletedVaults/purge/action
+          - Microsoft.KeyVault/locations/operationResults/read
+        provenance: derived
+        notes: "Soft delete is always on, and the azurerm provider's default features act on it twice: on destroy it PURGES the soft-deleted vault so the globally unique name frees immediately (purge_soft_delete_on_destroy, default true -- skipped when purge protection is on, where destroy becomes a scheduled deletion), and on a name-colliding create it reads the soft-deleted record and auto-recovers the vault instead of failing (recover_soft_deleted_key_vaults, default true; the recovery itself is a vaults/write with createMode recover). Purges are long-running and polled through the location's operation results."
+      - purpose: SwitchAuthorizationMode
+        actions:
+          - Microsoft.Authorization/roleAssignments/write
+        provenance: derived
+        notes: "Conditional -- needed only when an UPDATE flips rbac_authorization_enabled on a live vault: ARM authorizes the enableRbacAuthorization change service-side by requiring Microsoft.Authorization write permission on the vault's scope (held via Owner or User Access Administrator), on top of the vaults/write that carries it. Steady-state creates and destroys never touch this namespace. Migrated from the module READMEs' operational notes."

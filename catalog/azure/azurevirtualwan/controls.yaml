@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurevirtualwan
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The WAN is a policy container for managed hub-and-spoke networking; it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: disable_vpn_encryption
+      evidence:
+        type: spec_default
+        reference: Unset (false) keeps IPsec encryption ON for VPN traffic transiting the WAN -- the default posture; setting the switch disables it, a niche performance trade the spec reserves for private-circuit-only topologies.
+      notes: The switch governs VPN transit through the WAN fabric; the tunnels themselves (IPsec parameters, per-connection policy) live on the hubs' gateways and connections, separate resources.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The WAN object has no reachable endpoint of its own -- public surfaces (VPN and ExpressRoute gateway endpoints) belong to the hubs and the gateways on them, separate resources with their own posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Ingress restriction lives on the hubs' gateways, firewalls, and route tables -- separate resources. The WAN's allow_branch_to_branch_traffic (default true) shapes REACHABILITY between connected sites -- set it false to force hub-and-spoke-only topologies where branches must not see each other -- but it is transit policy, not an ingress filter on this object.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Request-level filtering (Azure Firewall in secured hubs, WAFs in front of applications) belongs to the resources deployed onto the WAN's hubs, separate kinds.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the WAN exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The WAN runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Control-plane changes land in the Azure Activity Log as subscription-level posture; traffic and tunnel diagnostics are configured on the hubs and gateways, separate resources.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The WAN container publishes no metrics of its own; routing and tunnel observability lives on the hubs and gateways, separate resources.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless policy configuration -- nothing to back up; the manifest recreates the WAN declaratively.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The WAN is a policy umbrella spanning regions -- its region field is ARM metadata placement only, hubs choose their own regions, and the object itself has no single-zone failure mode. Zonal and regional resilience of the actual data path is the hubs' and gateways' posture.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a Virtual WAN (Azure resource locks are subscription-side governance outside the manifest). ARM refuses to delete a WAN that still has hubs, but that is dependency ordering, not a control.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed networking -- Microsoft operates and patches the Virtual WAN control plane and the hub routers that enforce the WAN's policy; no customer-visible patch surface exists.

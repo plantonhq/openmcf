@@ -1,0 +1,49 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbedrockknowledgebase
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: vector.embedding_model_arn
+      sku_meter: Bedrock model inference input tokens
+      pricing_unit: 1M tokens
+      impact: Every ingestion sync embeds the changed documents and every retrieval query embeds the question -- both bill the named embedding model's per-1M-token input rate. Ingestion is the spike (a full re-sync re-embeds the corpus); queries are the steady drip. The rate belongs to the model chosen here, so swapping embedding models repricess both.
+    - field_path: storage
+      sku_meter: vector store backend meters
+      pricing_unit: backend-specific
+      impact: "The vector type's real monthly bill usually lives HERE, on whichever backend this block selects -- and the backends differ by orders of magnitude: OpenSearch Serverless bills always-on OCUs from creation, Aurora bills cluster hours, S3 Vectors bills only per-GB stored and per-query, and Pinecone/MongoDB/Redis bill on their own SaaS contracts entirely outside AWS. Each referenced store meters on ITS component; this manifest only decides which meter starts."
+    - field_path: managed
+      sku_meter: Managed Knowledge Base index storage
+      pricing_unit: GB-month
+      impact: "The managed arm trades backend ops for two AWS meters: index storage at $5.00 per GB of raw data per month, and Standard Retrieval at $1.00 per 1,000 Retrieve API calls (Agentic Retrieval $4.00 per 1,000 calls plus the underlying retrieves). Parsing, built-in embedding, and built-in re-ranking are included at $0 -- so the bill tracks exactly two things: how much you store and how often you retrieve."
+    - field_path: data_sources
+      sku_meter: Bedrock model inference input tokens
+      pricing_unit: 1M tokens
+      impact: Each connector decides how much content each sync pulls through the embedding meter -- an S3 prefix is bounded by what you put there, but a web crawl grows with the site (max_pages and rate_limit are the cost brakes), and SaaS connectors ingest whatever their filters admit. Syncs are started explicitly (StartIngestionJob); an unsynced data source costs nothing.
+    - field_path: data_sources.vector_ingestion.parsing
+      sku_meter: Bedrock Data Automation standard output pages
+      pricing_unit: pages
+      impact: "Upgrading from the free default parser changes ingestion economics: BEDROCK_DATA_AUTOMATION bills per page ($0.010 per standard-output page via the Knowledge Bases integration -- AWS's own example prices a 1,000-page document at $10), while BEDROCK_FOUNDATION_MODEL bills the parsing model's input AND output tokens per document. Both re-bill on every re-ingestion of changed content."
+    - field_path: sql
+      sku_meter: Structured Data Retrieval SQL generation
+      pricing_unit: requests
+      impact: The SQL type bills per query-generation request (the region rate table on the Bedrock pricing page), and the generated query then runs on the referenced Redshift compute -- provisioned cluster hours or serverless RPU-hours -- which bills on ITS component. No embedding or vector meters exist on this arm at all.
+    - field_path: kendra
+      sku_meter: Amazon Kendra index hours
+      pricing_unit: index-hours
+      impact: The Kendra type delegates retrieval to an index that bills ALWAYS-ON hourly on Amazon Kendra's own pricing (Developer/Enterprise edition rates) regardless of query volume -- the knowledge base adds no meter of its own on top, but the referenced index is committed spend that exists whether or not anyone queries.
+  free_tier: "Creating a knowledge base is free -- the Bedrock pricing page hangs every knowledge-base charge on storage, retrieval, parsing, and model usage, never on the object's existence, and none of those meters has a free allotment: embedding tokens bill from the first document, managed-KB index storage bills from the first GB, and Retrieve API calls bill from the first thousand. This is permanent pricing structure, not a trial."
+  estimate_exclusions:
+    - embedding-token volume is corpus- and traffic-driven -- ingestion syncs re-embed changed content and every query embeds the question, at the chosen embedding model's own rate
+    - the vector store bills on its referenced backend component (OpenSearch Serverless OCUs, Aurora cluster hours, S3 Vectors storage/queries) or on an external SaaS contract (Pinecone, MongoDB Atlas, Redis Enterprise Cloud) this estimate cannot see
+    - managed-type index storage ($5.00 per GB raw data per month) and Retrieve API calls ($1.00 per 1,000; Agentic $4.00 per 1,000 plus underlying retrieves) start with the first sync and the first query
+    - RetrieveAndGenerate answers add generation-model tokens on top of retrieval -- billed at whatever model the caller selects, invisible to this manifest
+    - premium parsing (Bedrock Data Automation per page, foundation-model parsing per token) bills on every ingestion of changed documents
+    - rerank models, when callers apply them at query time, bill per query on the Bedrock rerank rate card
+    - the SQL type's Redshift compute and the Kendra type's index hours bill always-on on their referenced components
+    - source-side reads during sync (S3 GET requests, SaaS API calls) bill on the source systems
+  notes: "A knowledge base is free plumbing wrapped around three real meters -- embed, store, retrieve -- and the type arm decides who owns them. The vector type keeps AWS's meters small (embedding tokens) and pushes the recurring bill into your chosen store, where the spread is enormous: S3 Vectors idles near zero while OpenSearch Serverless bills OCUs around the clock. The managed type flips that: AWS owns storage at $5.00 per GB-month and retrieval at $1.00 per 1,000 calls, with parsing and built-in embedding thrown in at $0. The sql and kendra types have no vectors at all -- they ride always-on warehouses and indexes that bill whether or not anyone asks a question. The one habit that controls all four: syncs are explicit, so ingest deliberately -- every re-sync of changed content re-runs the embedding and parsing meters."

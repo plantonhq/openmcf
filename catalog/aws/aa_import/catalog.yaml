@@ -240,6 +240,34 @@ spec:
         ("name:tbl/index:/123456789012") -- the optional marker renders it
         as such.
 
+    # --- Application Auto Scaling (the DynamoDB capacity fold's scalers) ------
+    - terraform_type: aws_appautoscaling_target
+      pulumi_type: aws:appautoscaling/target:Target
+      id_format: "{service_namespace}/{scaling_resource_id}/{scalable_dimension}"
+      notes: >-
+        The provider's documented format is
+        service-namespace/resource-id/scalable-dimension. The resource-id may
+        itself contain slashes (DynamoDB's "table/<table_name>") -- the
+        provider's parser re-joins the middle segments, so the composed ID
+        stays unambiguous.
+    - terraform_type: aws_appautoscaling_policy
+      pulumi_type: aws:appautoscaling/policy:Policy
+      id_format: "{service_namespace}/{scaling_resource_id}/{scalable_dimension}/{policy_name}"
+      notes: >-
+        The target's composed identity plus the policy name. For DynamoDB the
+        parser special-cases the resource-id's known "table/<name>" (and
+        "table/<name>/index/<name>") shapes, so the slash inside
+        {scaling_resource_id} is safe here too.
+    - terraform_type: aws_appautoscaling_scheduled_action
+      pulumi_type: aws:appautoscaling/scheduledAction:ScheduledAction
+      not_importable_upstream_reason: >-
+        The upstream resource ships no importer at v6.58.0 (its target and
+        policy siblings both carry one; the scheduled action does not).
+        PutScheduledAction is an idempotent upsert keyed by
+        service-namespace/resource-id/scalable-dimension/name, so an
+        adopter's first apply takes ownership by re-putting the same action
+        -- the round-trip lane proves exactly that path.
+
     # --- SQS -------------------------------------------------------------------
     - terraform_type: aws_sqs_queue
       pulumi_type: aws:sqs/queue:Queue
@@ -282,3 +310,1938 @@ spec:
       notes: >-
         The full alias name including the "alias/" prefix
         (e.g. "alias/my-key-alias").
+
+    # --- Secrets Manager -------------------------------------------------------
+    # The secret and its satellites all import by the secret ARN (the
+    # provider's ArnIdentity); only the version adds its own segment.
+    - terraform_type: aws_secretsmanager_secret
+      pulumi_type: aws:secretsmanager/secret:Secret
+      id_format: "{secret_arn}"
+      cloud_control_type_name: AWS::SecretsManager::Secret
+      # recovery_window_in_days is delete-time scheduling input and
+      # force_overwrite_replica_secret is replication apply behavior --
+      # DescribeSecret reports neither back.
+      config_only_attributes: [recovery_window_in_days, force_overwrite_replica_secret]
+    - terraform_type: aws_secretsmanager_secret_policy
+      pulumi_type: aws:secretsmanager/secretPolicy:SecretPolicy
+      id_format: "{secret_arn}"
+      cloud_control_type_name: AWS::SecretsManager::ResourcePolicy
+      # block_public_policy is PutResourcePolicy validation input;
+      # GetResourcePolicy never echoes it.
+      config_only_attributes: [block_public_policy]
+    - terraform_type: aws_secretsmanager_secret_version
+      pulumi_type: aws:secretsmanager/secretVersion:SecretVersion
+      id_format: "{secret_arn}|{version_id}"
+      notes: >-
+        Secret ARN and version id separated by a pipe
+        (`aws secretsmanager list-secret-version-ids --secret-id <arn>`
+        shows each version's VersionId).
+    - terraform_type: aws_secretsmanager_secret_rotation
+      pulumi_type: aws:secretsmanager/secretRotation:SecretRotation
+      id_format: "{secret_arn}"
+      cloud_control_type_name: AWS::SecretsManager::RotationSchedule
+      # rotate_immediately is RotateSecret invocation input; DescribeSecret
+      # never reports it back.
+      config_only_attributes: [rotate_immediately]
+
+    # --- OpenSearch Serverless -------------------------------------------------
+    # The collection imports by its service-generated id; the three policy
+    # objects import by "{name}/{type}" (the provider's composite identity;
+    # types: encryption|network for security policies, data for access
+    # policies, retention for lifecycle policies). The policy types are not
+    # Cloud Control-listable without type-scoping input, so only the
+    # collection carries a scan correspondence.
+    - terraform_type: aws_opensearchserverless_collection
+      pulumi_type: aws:opensearch/serverlessCollection:ServerlessCollection
+      id_format: "{collection_id}"
+      cloud_control_type_name: AWS::OpenSearchServerless::Collection
+      notes: >-
+        The service-generated collection id (the leading label of the
+        collection endpoint; `aws opensearchserverless list-collections`
+        shows it as id), never the collection name.
+    - terraform_type: aws_opensearchserverless_security_policy
+      pulumi_type: aws:opensearch/serverlessSecurityPolicy:ServerlessSecurityPolicy
+      id_format: "{policy_name}/{security_policy_type}"
+    - terraform_type: aws_opensearchserverless_access_policy
+      pulumi_type: aws:opensearch/serverlessAccessPolicy:ServerlessAccessPolicy
+      id_format: "{policy_name}/{access_policy_type}"
+    - terraform_type: aws_opensearchserverless_lifecycle_policy
+      pulumi_type: aws:opensearch/serverlessLifecyclePolicy:ServerlessLifecyclePolicy
+      id_format: "{policy_name}/{lifecycle_policy_type}"
+
+    # --- Bedrock ----------------------------------------------------------------
+    # The guardrail imports by "{id},{version}" (DRAFT for the managed
+    # draft); its published versions by "{arn},{version}". The custom model
+    # imports by its JOB ARN (the provider's ArnIdentity -- the job is the
+    # tracked object), provisioned throughput by the provisioned-model ARN,
+    # the agreement by the bare model id, and the account use-case form by
+    # the account id (a singleton). None of the Bedrock control-plane types
+    # are Cloud Control-listable at the pin, so no scan correspondences.
+    - terraform_type: aws_bedrock_guardrail
+      pulumi_type: aws:bedrock/guardrail:Guardrail
+      id_format: "{guardrail_id},{version}"
+      notes: >-
+        Guardrail id and version separated by a comma; the mutable working
+        draft imports with the literal version DRAFT
+        (`aws bedrock list-guardrails` shows each guardrail's id).
+      # timeouts is Terraform plan/apply scheduling input, never echoed.
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrock_guardrail_version
+      pulumi_type: aws:bedrock/guardrailVersion:GuardrailVersion
+      id_format: "{guardrail_arn},{version}"
+      notes: >-
+        Guardrail ARN and the published version number separated by a comma
+        (`aws bedrock list-guardrails --guardrail-identifier <arn>` lists
+        the numbered versions).
+      # skip_destroy is delete-time behavior input; GetGuardrail never
+      # reports it.
+      config_only_attributes: [skip_destroy, timeouts]
+    - terraform_type: aws_bedrock_custom_model
+      pulumi_type: aws:bedrock/customModel:CustomModel
+      id_format: "{job_arn}"
+      notes: >-
+        The model-customization JOB ARN, not the model ARN
+        (`aws bedrock list-model-customization-jobs` shows jobArn). The
+        provider re-derives the model from the job.
+      # base_model_identifier is create-request input; the job echo carries
+      # the resolved base model ARN instead (the provider importIgnores it).
+      config_only_attributes: [base_model_identifier, timeouts]
+    - terraform_type: aws_bedrock_inference_profile
+      pulumi_type: aws:bedrock/inferenceProfile:InferenceProfile
+      id_format: "{inference_profile_id}"
+      notes: >-
+        The application inference profile's id/name
+        (`aws bedrock list-inference-profiles
+        --type-equals APPLICATION` shows inferenceProfileId).
+      # model_source is create input AWS never echoes back (GetInferenceProfile
+      # reports the resolved models list); the provider importIgnores it.
+      config_only_attributes: [model_source, timeouts]
+    - terraform_type: aws_bedrock_provisioned_model_throughput
+      pulumi_type: aws:bedrock/provisionedModelThroughput:ProvisionedModelThroughput
+      id_format: "{provisioned_model_arn}"
+      notes: >-
+        The provisioned model ARN
+        (`aws bedrock list-provisioned-model-throughputs` shows
+        provisionedModelArn).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrock_foundation_model_agreement
+      pulumi_type: aws:bedrockfoundation/modelAgreement:ModelAgreement
+      id_format: "{model_id}"
+      notes: >-
+        The bare foundation model id the agreement covers (e.g.
+        "mistral.mistral-7b-instruct-v0:2").
+      # offer_token is a short-lived create-request credential; nothing
+      # echoes it back (the provider importIgnores it).
+      config_only_attributes: [offer_token, timeouts]
+    - terraform_type: aws_bedrock_use_case_for_model_access
+      pulumi_type: aws:bedrock/useCaseForModelAccess:UseCaseForModelAccess
+      id_format: "{aws_account_id}"
+      notes: >-
+        The 12-digit AWS account id -- the form is an account-global
+        singleton.
+    - terraform_type: aws_bedrock_model_invocation_logging_configuration
+      pulumi_type: aws:bedrockmodel/invocationLoggingConfiguration:InvocationLoggingConfiguration
+      id_format: "{region}"
+      notes: >-
+        The region name itself -- the configuration is a region
+        singleton (one per account+region; the provider's identity IS
+        the region).
+    # --- Bedrock Agents --------------------------------------------------------
+    # The agent-family composites join parts with a comma; satellites of the
+    # agent all address the DRAFT version. None of the bedrockagent
+    # control-plane types are Cloud Control-listable at the pin, so no scan
+    # correspondences.
+    - terraform_type: aws_bedrockagent_agent
+      pulumi_type: aws:bedrock/agentAgent:AgentAgent
+      id_format: "{agent_id}"
+      notes: >-
+        The bare agent id (`aws bedrock-agent list-agents` shows agentId).
+      # prepare_agent and skip_resource_in_use_check are apply/delete-time
+      # behavior inputs; GetAgent never reports them (the provider force-sets
+      # prepare_agent on import and its tests importIgnore the skip flag).
+      config_only_attributes: [prepare_agent, skip_resource_in_use_check, timeouts]
+    - terraform_type: aws_bedrockagent_agent_action_group
+      pulumi_type: aws:bedrock/agentAgentActionGroup:AgentAgentActionGroup
+      id_format: "{action_group_id},{agent_id},{agent_version}"
+      notes: >-
+        Action group id, agent id, and the version (DRAFT for
+        platform-managed groups) separated by commas
+        (`aws bedrock-agent list-agent-action-groups --agent-id <id>
+        --agent-version DRAFT` shows actionGroupId).
+      config_only_attributes: [prepare_agent, skip_resource_in_use_check, timeouts]
+    - terraform_type: aws_bedrockagent_agent_alias
+      pulumi_type: aws:bedrock/agentAgentAlias:AgentAgentAlias
+      id_format: "{agent_alias_id},{agent_id}"
+      notes: >-
+        Alias id and agent id separated by a comma
+        (`aws bedrock-agent list-agent-aliases --agent-id <id>` shows
+        agentAliasId).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagent_agent_collaborator
+      pulumi_type: aws:bedrock/agentAgentCollaborator:AgentAgentCollaborator
+      id_format: "{agent_id},{agent_version},{collaborator_id}"
+      notes: >-
+        Agent id, version (DRAFT for platform-managed collaborators), and
+        collaborator id separated by commas
+        (`aws bedrock-agent list-agent-collaborators --agent-id <id>
+        --agent-version DRAFT` shows collaboratorId).
+      config_only_attributes: [prepare_agent, timeouts]
+    - terraform_type: aws_bedrockagent_agent_knowledge_base_association
+      pulumi_type: aws:bedrock/agentAgentKnowledgeBaseAssociation:AgentAgentKnowledgeBaseAssociation
+      id_format: "{agent_id},{agent_version},{knowledge_base_id}"
+      notes: >-
+        Agent id, version (always DRAFT -- the provider only manages draft
+        associations), and knowledge base id separated by commas.
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagent_knowledge_base
+      pulumi_type: aws:bedrock/agentKnowledgeBase:AgentKnowledgeBase
+      id_format: "{knowledge_base_id}"
+      notes: >-
+        The bare knowledge base id
+        (`aws bedrock-agent list-knowledge-bases` shows knowledgeBaseId).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagent_data_source
+      pulumi_type: aws:bedrock/agentDataSource:AgentDataSource
+      id_format: "{data_source_id},{knowledge_base_id}"
+      notes: >-
+        Data source id and knowledge base id separated by a comma
+        (`aws bedrock-agent list-data-sources --knowledge-base-id <id>`
+        shows dataSourceId).
+      # connector_parameters is a Smithy JSON document that does not
+      # round-trip byte-for-byte (the provider's tests importIgnore it).
+      config_only_attributes: [connector_parameters, timeouts]
+    - terraform_type: aws_bedrockagent_flow
+      pulumi_type: aws:bedrock/agentFlow:AgentFlow
+      id_format: "{flow_id}"
+      notes: >-
+        The bare flow id (`aws bedrock-agent list-flows` shows id).
+      # timeouts is declared but unconsumed by the provider at the pin;
+      # still plan-side-only input.
+      config_only_attributes: [timeouts]
+      # Same float32 class as aws_bedrockagent_prompt: Bedrock stores
+      # node inference floats as float32, so a value that is not
+      # float32-exact (0.2, 0.9) reads back widened and a blind import
+      # plans a one-time in-place update on exactly these leaves
+      # (live-caught 2026-08-14: knowledge-base node temperature 0.2).
+      # Post-APPLY state keeps the config value (idempotency holds).
+      write_normalized_attributes:
+        - definition.node.configuration.prompt.source_configuration.inline.inference_configuration.text.temperature
+        - definition.node.configuration.prompt.source_configuration.inline.inference_configuration.text.top_p
+        - definition.node.configuration.knowledge_base.inference_configuration.text.temperature
+        - definition.node.configuration.knowledge_base.inference_configuration.text.top_p
+    - terraform_type: aws_bedrockagent_prompt
+      pulumi_type: aws:bedrock/agentPrompt:AgentPrompt
+      id_format: "{prompt_id}"
+      notes: >-
+        The bare prompt id (`aws bedrock-agent list-prompts` shows id).
+      # Bedrock stores variant inference floats as float32: a value that is
+      # not float32-exact (0.9, 0.7, ...) reads back widened
+      # (0.8999999761581421), and the pinned provider has no semantic float
+      # equality on the import path, so a blind import plans a one-time
+      # in-place update on exactly these leaves (live-caught 2026-08-14:
+      # top_p 0.9). Post-APPLY state keeps the config value (idempotency
+      # holds), and the reconcile apply is a server-side no-op -- the wart
+      # is import-only.
+      write_normalized_attributes:
+        - variant.inference_configuration.text.temperature
+        - variant.inference_configuration.text.top_p
+    # --- Bedrock AgentCore -----------------------------------------------------
+    # The AgentCore composites join parts with a comma (formats read from the
+    # provider's ImportState parsers). None of the bedrockagentcore
+    # control-plane types are Cloud Control-listable at the pin, so no scan
+    # correspondences.
+    - terraform_type: aws_bedrockagentcore_agent_runtime
+      pulumi_type: aws:bedrock/agentcoreAgentRuntime:AgentcoreAgentRuntime
+      id_format: "{agent_runtime_id}"
+      notes: >-
+        The bare runtime id (`aws bedrock-agentcore-control
+        list-agent-runtimes` shows agentRuntimeId).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagentcore_agent_runtime_endpoint
+      pulumi_type: aws:bedrock/agentcoreAgentRuntimeEndpoint:AgentcoreAgentRuntimeEndpoint
+      id_format: "{agent_runtime_id},{endpoint_name}"
+      notes: >-
+        Runtime id and the endpoint NAME (its AWS identity -- there is no
+        separate endpoint id) separated by a comma
+        (`aws bedrock-agentcore-control list-agent-runtime-endpoints
+        --agent-runtime-id <id>` shows name).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagentcore_resource_policy
+      pulumi_type: aws:bedrock/agentcoreResourcePolicy:AgentcoreResourcePolicy
+      id_format: "{resource_arn}"
+      notes: >-
+        The ARN of the AgentCore resource the policy is attached to.
+      # The provider does not normalize the policy JSON during attribute
+      # comparison (its own import test ignores "policy" for exactly this
+      # reason), so a blind re-import diffs on formatting-only rewrites of
+      # the same document. Post-APPLY state keeps the config value
+      # (idempotency holds); the wart is import-only. Live-proven by the
+      # AwsBedrockAgentCoreRuntime blind round-trip (2026-08-14).
+      write_normalized_attributes: [policy]
+    - terraform_type: aws_bedrockagentcore_gateway
+      pulumi_type: aws:bedrock/agentcoreGateway:AgentcoreGateway
+      id_format: "{gateway_id}"
+      notes: >-
+        The bare gateway id (`aws bedrock-agentcore-control list-gateways`
+        shows gatewayId).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagentcore_gateway_target
+      pulumi_type: aws:bedrock/agentcoreGatewayTarget:AgentcoreGatewayTarget
+      id_format: "{gateway_id},{target_id}"
+      notes: >-
+        Gateway id and target id separated by a comma
+        (`aws bedrock-agentcore-control list-gateway-targets
+        --gateway-identifier <id>` shows targetId).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagentcore_memory
+      pulumi_type: aws:bedrock/agentcoreMemory:AgentcoreMemory
+      id_format: "{memory_id}"
+      notes: >-
+        The bare memory id (`aws bedrock-agentcore-control list-memories`
+        shows id).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagentcore_memory_strategy
+      pulumi_type: aws:bedrock/agentcoreMemoryStrategy:AgentcoreMemoryStrategy
+      id_format: "{memory_id},{memory_strategy_id}"
+      notes: >-
+        Memory id and strategy id separated by a comma
+        (`aws bedrock-agentcore-control get-memory --memory-id <id>` lists
+        strategies with strategyId).
+      config_only_attributes: [timeouts]
+      # The provider's import/read does not round-trip an EPISODIC
+      # strategy's reflection_configuration: a freshly imported state
+      # lacks the block and the first plan re-ADDS it (live-caught
+      # 2026-08-14 by the blind round-trip; post-APPLY state keeps the
+      # config value, so idempotency holds -- the wart is import-only,
+      # and the reconcile apply is a server-side no-op). Upstream note
+      # filed; nothing to revert when it fixes.
+      write_normalized_attributes: [reflection_configuration]
+    - terraform_type: aws_bedrockagentcore_workload_identity
+      pulumi_type: aws:bedrock/agentcoreWorkloadIdentity:AgentcoreWorkloadIdentity
+      id_format: "{name}"
+      notes: >-
+        The identity NAME (its AWS identity --
+        `aws bedrock-agentcore-control list-workload-identities` shows
+        name).
+    - terraform_type: aws_bedrockagentcore_api_key_credential_provider
+      pulumi_type: aws:bedrock/agentcoreApiKeyCredentialProvider:AgentcoreApiKeyCredentialProvider
+      id_format: "{name}"
+      notes: >-
+        The provider NAME (its AWS identity --
+        `aws bedrock-agentcore-control list-api-key-credential-providers`
+        shows name).
+      # The vaulted key value is never read back -- GetApiKeyCredentialProvider
+      # returns only the secret's location, so a post-import plan showing only
+      # api_key is clean.
+      config_only_attributes: [api_key]
+    - terraform_type: aws_bedrockagentcore_oauth2_credential_provider
+      pulumi_type: aws:bedrock/agentcoreOauth2CredentialProvider:AgentcoreOauth2CredentialProvider
+      id_format: "{name}"
+      notes: >-
+        The provider NAME (its AWS identity --
+        `aws bedrock-agentcore-control list-oauth2-credential-providers`
+        shows name).
+      # The vaulted client credentials are never read back -- a post-import
+      # plan showing only the client_id/client_secret pair is clean.
+      config_only_attributes: [oauth2_provider_config]
+    - terraform_type: aws_bedrockagentcore_policy_engine
+      pulumi_type: aws:bedrock/agentcorePolicyEngine:AgentcorePolicyEngine
+      id_format: "{policy_engine_id}"
+      notes: >-
+        The bare engine id (`aws bedrock-agentcore-control
+        list-policy-engines` shows policyEngineId).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagentcore_policy
+      pulumi_type: aws:bedrock/agentcorePolicy:AgentcorePolicy
+      id_format: "{policy_engine_id},{policy_id}"
+      notes: >-
+        Engine id and policy id separated by a comma
+        (`aws bedrock-agentcore-control list-policies --policy-engine-id
+        <id>` shows policyId).
+      # validation_mode is a create/update-time behavior input; GetPolicy
+      # never reports it.
+      config_only_attributes: [validation_mode, timeouts]
+    - terraform_type: aws_bedrockagentcore_browser
+      pulumi_type: aws:bedrock/agentcoreBrowser:AgentcoreBrowser
+      id_format: "{browser_id}"
+      notes: >-
+        The bare browser id (`aws bedrock-agentcore-control list-browsers`
+        shows browserId).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagentcore_browser_profile
+      pulumi_type: aws:bedrock/agentcoreBrowserProfile:AgentcoreBrowserProfile
+      id_format: "{profile_id}"
+      notes: >-
+        The bare profile id (`aws bedrock-agentcore-control
+        list-browser-profiles` shows profileId).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagentcore_code_interpreter
+      pulumi_type: aws:bedrock/agentcoreCodeInterpreter:AgentcoreCodeInterpreter
+      id_format: "{code_interpreter_id}"
+      notes: >-
+        The bare interpreter id (`aws bedrock-agentcore-control
+        list-code-interpreters` shows codeInterpreterId).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagentcore_evaluator
+      pulumi_type: aws:bedrock/agentcoreEvaluator:AgentcoreEvaluator
+      id_format: "{evaluator_id}"
+      notes: >-
+        The bare evaluator id (`aws bedrock-agentcore-control
+        list-evaluators` shows evaluatorId). Import is by evaluator_id,
+        not ARN.
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagentcore_harness
+      pulumi_type: aws:bedrock/agentcoreHarness:AgentcoreHarness
+      id_format: "{harness_id}"
+      notes: >-
+        The bare harness id (`aws bedrock-agentcore-control list-harnesses`
+        shows harnessId). Import is by harness_id, not ARN.
+      # Float32-backed inference leaves (temperature/top_p/summary_ratio/
+      # relevance_score) can widen on the import path the same way the
+      # bedrockagent prompt variant floats do -- prune them from the
+      # blind round-trip until upstream applies Float32 semantics.
+      config_only_attributes: [timeouts]
+      write_normalized_attributes:
+        - model.bedrock_model_config.temperature
+        - model.bedrock_model_config.top_p
+        - model.gemini_model_config.temperature
+        - model.gemini_model_config.top_p
+        - model.openai_model_config.temperature
+        - model.openai_model_config.top_p
+        - truncation.config.summarization.summary_ratio
+        - memory.agentcore_memory_configuration.retrieval_config.relevance_score
+    - terraform_type: aws_bedrockagentcore_online_evaluation_config
+      pulumi_type: aws:bedrock/agentcoreOnlineEvaluationConfig:AgentcoreOnlineEvaluationConfig
+      id_format: "{online_evaluation_config_id}"
+      notes: >-
+        The bare config id (`aws bedrock-agentcore-control
+        list-online-evaluation-configs` shows onlineEvaluationConfigId).
+        Import is by id, not ARN. enable_on_create is create-time intent
+        the API never echoes.
+      config_only_attributes: [enable_on_create, timeouts]
+    - terraform_type: aws_bedrockagentcore_token_vault_cmk
+      pulumi_type: aws:bedrock/agentcoreTokenVaultCmk:AgentcoreTokenVaultCmk
+      id_format: "{token_vault_id}"
+      notes: >-
+        The vault id ("default" -- AWS provisions exactly one vault per
+        account+region under that name).
+
+    # --- API Gateway v1 (REST) ---------------------------------------------------
+    # Composite ids join with "/" (formats read from the provider's
+    # Importer parsers). rest_api itself is a custom importer that also
+    # sets put_rest_api_mode = overwrite. None of these types are Cloud
+    # Control-listable at the pin, so no scan correspondences.
+    - terraform_type: aws_api_gateway_rest_api
+      pulumi_type: aws:apigateway/restApi:RestApi
+      id_format: "{rest_api_id}"
+      notes: >-
+        The REST API id (`aws apigateway get-rest-apis` shows id). The
+        provider's importer also sets put_rest_api_mode = overwrite.
+    - terraform_type: aws_api_gateway_rest_api_policy
+      pulumi_type: aws:apigateway/restApiPolicy:RestApiPolicy
+      id_format: "{rest_api_id}"
+      notes: >-
+        The REST API id -- the policy is 1:1 with the API.
+    - terraform_type: aws_api_gateway_resource
+      pulumi_type: aws:apigateway/resource:Resource
+      id_format: "{rest_api_id}/{resource_id}"
+      notes: >-
+        REST API id and resource id separated by a slash
+        (`aws apigateway get-resources --rest-api-id <id>` shows id).
+    - terraform_type: aws_api_gateway_method
+      pulumi_type: aws:apigateway/method:Method
+      id_format: "{rest_api_id}/{resource_id}/{http_method}"
+      notes: >-
+        REST API id, resource id, and HTTP method separated by slashes.
+    - terraform_type: aws_api_gateway_method_response
+      pulumi_type: aws:apigateway/methodResponse:MethodResponse
+      id_format: "{rest_api_id}/{resource_id}/{http_method}/{status_code}"
+      notes: >-
+        REST API id, resource id, HTTP method, and status code.
+    - terraform_type: aws_api_gateway_integration
+      pulumi_type: aws:apigateway/integration:Integration
+      id_format: "{rest_api_id}/{resource_id}/{http_method}"
+      notes: >-
+        Same composite as the method (one integration per method).
+    - terraform_type: aws_api_gateway_integration_response
+      pulumi_type: aws:apigateway/integrationResponse:IntegrationResponse
+      id_format: "{rest_api_id}/{resource_id}/{http_method}/{status_code}"
+      notes: >-
+        Same composite as the method response.
+    - terraform_type: aws_api_gateway_deployment
+      pulumi_type: aws:apigateway/deployment:Deployment
+      id_format: "{rest_api_id}/{deployment_id}"
+      notes: >-
+        REST API id and deployment id separated by a slash.
+    - terraform_type: aws_api_gateway_stage
+      pulumi_type: aws:apigateway/stage:Stage
+      id_format: "{rest_api_id}/{stage_name}"
+      notes: >-
+        REST API id and stage name separated by a slash.
+    - terraform_type: aws_api_gateway_method_settings
+      pulumi_type: aws:apigateway/methodSettings:MethodSettings
+      id_format: "{rest_api_id}/{stage_name}/{method_path}"
+      notes: >-
+        REST API id, stage name, and method path (the path may contain
+        slashes; the importer splits into three).
+    - terraform_type: aws_api_gateway_authorizer
+      pulumi_type: aws:apigateway/authorizer:Authorizer
+      id_format: "{rest_api_id}/{authorizer_id}"
+      notes: >-
+        REST API id and authorizer id separated by a slash.
+    - terraform_type: aws_api_gateway_model
+      pulumi_type: aws:apigateway/model:Model
+      id_format: "{rest_api_id}/{model_name}"
+      notes: >-
+        REST API id and model NAME (the importer resolves the name to
+        a model id via the API).
+    - terraform_type: aws_api_gateway_request_validator
+      pulumi_type: aws:apigateway/requestValidator:RequestValidator
+      id_format: "{rest_api_id}/{request_validator_id}"
+      notes: >-
+        REST API id and request-validator id separated by a slash.
+    - terraform_type: aws_api_gateway_gateway_response
+      pulumi_type: aws:apigateway/response:Response
+      id_format: "{rest_api_id}/{response_type}"
+      notes: >-
+        REST API id and gateway-response type (DEFAULT_4XX, ...)
+        separated by a slash.
+    - terraform_type: aws_api_gateway_documentation_part
+      pulumi_type: aws:apigateway/documentationPart:DocumentationPart
+      id_format: "{rest_api_id}/{documentation_part_id}"
+      notes: >-
+        REST API id and documentation-part id separated by a slash.
+    - terraform_type: aws_api_gateway_documentation_version
+      pulumi_type: aws:apigateway/documentationVersion:DocumentationVersion
+      id_format: "{rest_api_id}/{version}"
+      notes: >-
+        REST API id and documentation version string separated by a
+        slash.
+    - terraform_type: aws_api_gateway_client_certificate
+      pulumi_type: aws:apigateway/clientCertificate:ClientCertificate
+      id_format: "{client_certificate_id}"
+      notes: >-
+        The client-certificate id (`aws apigateway
+        get-client-certificates` shows clientCertificateId).
+    - terraform_type: aws_api_gateway_domain_name
+      pulumi_type: aws:apigateway/domainName:DomainName
+      id_format: "{domain_name}"
+      notes: >-
+        The domain hostname. PRIVATE domains that share a hostname
+        import as DOMAIN-NAME/DOMAIN-NAME-ID.
+    - terraform_type: aws_api_gateway_base_path_mapping
+      pulumi_type: aws:apigateway/basePathMapping:BasePathMapping
+      id_format: "{domain_name}/{basepath}"
+      notes: >-
+        Domain name and base path separated by a slash (empty base path
+        imports as "example.com/").
+    - terraform_type: aws_api_gateway_domain_name_access_association
+      pulumi_type: aws:apigateway/domainNameAccessAssociation:DomainNameAccessAssociation
+      id_format: "{arn}"
+      notes: >-
+        The association ARN (Plugin Framework identity).
+    - terraform_type: aws_api_gateway_usage_plan
+      pulumi_type: aws:apigateway/usagePlan:UsagePlan
+      id_format: "{usage_plan_id}"
+      notes: >-
+        The usage-plan id (`aws apigateway get-usage-plans` shows id).
+    - terraform_type: aws_api_gateway_usage_plan_key
+      pulumi_type: aws:apigateway/usagePlanKey:UsagePlanKey
+      id_format: "{usage_plan_id}/{usage_plan_key_id}"
+      notes: >-
+        Usage-plan id and attached key id separated by a slash.
+    - terraform_type: aws_api_gateway_api_key
+      pulumi_type: aws:apigateway/apiKey:ApiKey
+      id_format: "{api_key_id}"
+      notes: >-
+        The API key id (`aws apigateway get-api-keys` shows id). The
+        key VALUE is sensitive and never an import identity.
+    - terraform_type: aws_api_gateway_vpc_link
+      pulumi_type: aws:apigateway/vpcLink:VpcLink
+      id_format: "{vpc_link_id}"
+      notes: >-
+        The VPC-link id (`aws apigateway get-vpc-links` shows id).
+    - terraform_type: aws_api_gateway_account
+      pulumi_type: aws:apigateway/account:Account
+      id_format: "{account_id}"
+      notes: >-
+        The 12-digit AWS account id -- the account object is a region
+        singleton (top-right account menu, or `aws sts
+        get-caller-identity`).
+
+    # --- SageMaker (models, serving, MLOps) --------------------------------------
+    # Every SDKv2 SageMaker resource here imports by plain name
+    # passthrough; image versions compose a two-part comma id and the
+    # MLflow app imports by its ARN (the Plugin Framework identity).
+    - terraform_type: aws_sagemaker_model
+      pulumi_type: aws:sagemaker/model:Model
+      id_format: "{model_name}"
+      notes: >-
+        The bare model name (`aws sagemaker list-models` shows
+        ModelName).
+    - terraform_type: aws_sagemaker_endpoint
+      pulumi_type: aws:sagemaker/endpoint:Endpoint
+      id_format: "{endpoint_name}"
+      notes: >-
+        The bare endpoint name (`aws sagemaker list-endpoints` shows
+        EndpointName). deployment_config reads back from the LAST
+        applied deployment.
+    - terraform_type: aws_sagemaker_endpoint_configuration
+      pulumi_type: aws:sagemaker/endpointConfiguration:EndpointConfiguration
+      id_format: "{endpoint_config_name}"
+      notes: >-
+        The bare configuration name (`aws sagemaker
+        list-endpoint-configs` shows EndpointConfigName); the provider
+        back-fills name_prefix from the resolved name on read.
+    - terraform_type: aws_sagemaker_notebook_instance
+      pulumi_type: aws:sagemaker/notebookInstance:NotebookInstance
+      id_format: "{notebook_instance_name}"
+      notes: >-
+        The bare instance name (`aws sagemaker list-notebook-instances`
+        shows NotebookInstanceName).
+    - terraform_type: aws_sagemaker_notebook_instance_lifecycle_configuration
+      pulumi_type: aws:sagemaker/notebookInstanceLifecycleConfiguration:NotebookInstanceLifecycleConfiguration
+      id_format: "{lifecycle_config_name}"
+      notes: >-
+        The bare configuration name (`aws sagemaker
+        list-notebook-instance-lifecycle-configs` shows
+        NotebookInstanceLifecycleConfigName).
+    - terraform_type: aws_sagemaker_feature_group
+      pulumi_type: aws:sagemaker/featureGroup:FeatureGroup
+      id_format: "{feature_group_name}"
+      notes: >-
+        The bare group name (`aws sagemaker list-feature-groups` shows
+        FeatureGroupName).
+    - terraform_type: aws_sagemaker_model_package_group
+      pulumi_type: aws:sagemaker/modelPackageGroup:ModelPackageGroup
+      id_format: "{model_package_group_name}"
+      notes: >-
+        The bare group name (`aws sagemaker list-model-package-groups`
+        shows ModelPackageGroupName).
+    - terraform_type: aws_sagemaker_model_package_group_policy
+      pulumi_type: aws:sagemaker/modelPackageGroupPolicy:ModelPackageGroupPolicy
+      id_format: "{model_package_group_name}"
+      notes: >-
+        The policy's ID IS the group name (one policy per group;
+        GetModelPackageGroupPolicy keys on it).
+    - terraform_type: aws_sagemaker_pipeline
+      pulumi_type: aws:sagemaker/pipeline:Pipeline
+      id_format: "{pipeline_name}"
+      notes: >-
+        The bare pipeline name (`aws sagemaker list-pipelines` shows
+        PipelineName).
+      # DescribePipeline returns only the RESOLVED definition, never the
+      # S3 location -- a post-import plan on the S3 form showing only
+      # this block is clean.
+      config_only_attributes: [pipeline_definition_s3_location]
+    - terraform_type: aws_sagemaker_image
+      pulumi_type: aws:sagemaker/image:Image
+      id_format: "{image_name}"
+      notes: >-
+        The bare image name (`aws sagemaker list-images` shows
+        ImageName).
+    - terraform_type: aws_sagemaker_image_version
+      pulumi_type: aws:sagemaker/imageVersion:ImageVersion
+      id_format: "{image_name},{version}"
+      notes: >-
+        Image name and AWS-assigned version number separated by a comma
+        (`aws sagemaker list-image-versions --image-name <name>` shows
+        Version).
+    - terraform_type: aws_sagemaker_mlflow_tracking_server
+      pulumi_type: aws:sagemaker/mlflowTrackingServer:MlflowTrackingServer
+      id_format: "{tracking_server_name}"
+      notes: >-
+        The bare server name (`aws sagemaker
+        list-mlflow-tracking-servers` shows TrackingServerName).
+    - terraform_type: aws_sagemaker_mlflow_app
+      pulumi_type: aws:sagemaker/mlflowApp:MlflowApp
+      id_format: "{app_arn}"
+      notes: >-
+        The app's ARN - its AWS identity (`aws sagemaker
+        list-mlflow-apps` shows Arn); names are mutable and never the
+        import key.
+      config_only_attributes: [timeouts]
+
+    # --- SES (SESv2 account-level settings) --------------------------------------
+    # Both account-attribute resources are account/region singletons; the
+    # suppression form imports by the account id, the VDM form by the
+    # provider's documented literal word.
+    - terraform_type: aws_sesv2_account_suppression_attributes
+      pulumi_type: aws:sesv2/accountSuppressionAttributes:AccountSuppressionAttributes
+      id_format: "{account_id}"
+      notes: >-
+        The 12-digit AWS account id (top-right account menu, or `aws
+        sts get-caller-identity`).
+    - terraform_type: aws_sesv2_account_vdm_attributes
+      pulumi_type: aws:sesv2/accountVdmAttributes:AccountVdmAttributes
+      id_format: "ses-account-vdm-attributes"
+      notes: >-
+        The literal word "ses-account-vdm-attributes" -- the provider's
+        documented import id for this singleton; no placeholder to
+        resolve.
+
+    # --- CloudTrail ----------------------------------------------------------
+    - terraform_type: aws_cloudtrail
+      pulumi_type: aws:cloudtrail/trail:Trail
+      id_format: "{trail_arn}"
+      cloud_control_type_name: AWS::CloudTrail::Trail
+      notes: >-
+        The trail's ARN (v6 moved trail identity from name to ARN;
+        `aws cloudtrail describe-trails` shows TrailARN).
+    - terraform_type: aws_cloudtrail_organization_delegated_admin_account
+      pulumi_type: aws:cloudtrail/organizationDelegatedAdminAccount:OrganizationDelegatedAdminAccount
+      id_format: "{delegated_admin_account_id}"
+      notes: >-
+        The delegated administrator's 12-digit AWS account id (`aws
+        organizations list-delegated-administrators
+        --service-principal cloudtrail.amazonaws.com`).
+    - terraform_type: aws_cloudtrail_event_data_store
+      pulumi_type: aws:cloudtrail/eventDataStore:EventDataStore
+      id_format: "{event_data_store_arn}"
+      # "suspend" is write-only at AWS (never returned by the API, never
+      # set during the provider's Read) -- a freshly imported store shows
+      # it unset and the first apply re-asserts it as a server-side no-op.
+      config_only_attributes:
+        - suspend
+      notes: >-
+        The event data store's ARN (`aws cloudtrail
+        list-event-data-stores` shows EventDataStoreArn). A store
+        created WITHOUT explicit selectors carries the server-default
+        all-management-events selector after import (the argument is
+        Optional+Computed -- no drift).
+
+    # --- AWS Config (recorder posture) --------------------------------------
+    # The recorder family are region singletons importing by their
+    # conventional name ("default").
+    - terraform_type: aws_config_configuration_recorder
+      pulumi_type: aws:cfg/recorder:Recorder
+      id_format: "{recorder_name}"
+      cloud_control_type_name: AWS::Config::ConfigurationRecorder
+    - terraform_type: aws_config_configuration_recorder_status
+      pulumi_type: aws:cfg/recorderStatus:RecorderStatus
+      id_format: "{recorder_name}"
+    - terraform_type: aws_config_delivery_channel
+      pulumi_type: aws:cfg/deliveryChannel:DeliveryChannel
+      id_format: "{delivery_channel_name}"
+      cloud_control_type_name: AWS::Config::DeliveryChannel
+    - terraform_type: aws_config_retention_configuration
+      pulumi_type: aws:cfg/retentionConfiguration:RetentionConfiguration
+      id_format: "{retention_configuration_name}"
+      notes: >-
+        AWS names the retention singleton "default"; the name is
+        API-computed and never chosen.
+
+    # --- AWS Config (rules) --------------------------------------------------
+    # Every rule shape imports by the rule name; the remediation
+    # configuration attaches by (and imports by) the same name.
+    - terraform_type: aws_config_config_rule
+      pulumi_type: aws:cfg/rule:Rule
+      id_format: "{rule_name}"
+      cloud_control_type_name: AWS::Config::ConfigRule
+    - terraform_type: aws_config_organization_managed_rule
+      pulumi_type: aws:cfg/organizationManagedRule:OrganizationManagedRule
+      id_format: "{rule_name}"
+    - terraform_type: aws_config_organization_custom_rule
+      pulumi_type: aws:cfg/organizationCustomRule:OrganizationCustomRule
+      id_format: "{rule_name}"
+    - terraform_type: aws_config_organization_custom_policy_rule
+      pulumi_type: aws:cfg/organizationCustomPolicyRule:OrganizationCustomPolicyRule
+      id_format: "{rule_name}"
+    - terraform_type: aws_config_remediation_configuration
+      pulumi_type: aws:cfg/remediationConfiguration:RemediationConfiguration
+      id_format: "{rule_name}"
+      notes: >-
+        The remediation imports by its rule's name (`aws configservice
+        describe-remediation-configurations --config-rule-names ...`).
+
+    # --- AWS Config (aggregation) ---------------------------------------------
+    - terraform_type: aws_config_configuration_aggregator
+      pulumi_type: aws:cfg/configurationAggregator:ConfigurationAggregator
+      id_format: "{aggregator_name}"
+      notes: >-
+        The aggregator's name (`aws configservice
+        describe-configuration-aggregators`).
+    - terraform_type: aws_config_aggregate_authorization
+      pulumi_type: aws:cfg/aggregateAuthorization:AggregateAuthorization
+      # The provider composes "{account_id}:{authorized_aws_region}" --
+      # exactly the key the modules give each grant instance, so the
+      # address key IS the import ID.
+      id_format: "{authorization_key}"
+      notes: >-
+        The aggregator's 12-digit account id and home region, joined by
+        ":" (`aws configservice describe-aggregation-authorizations` in
+        the SOURCE account shows both).
+
+    # --- AWS Config (conformance packs) ----------------------------------------
+    # Both scopes import by the pack name. AWS never reports the
+    # template back (the provider's own importIgnore) -- the first
+    # post-import apply re-asserts it as a server-side no-op.
+    - terraform_type: aws_config_conformance_pack
+      pulumi_type: aws:cfg/conformancePack:ConformancePack
+      id_format: "{pack_name}"
+      config_only_attributes:
+        - template_body
+        - template_s3_uri
+    - terraform_type: aws_config_organization_conformance_pack
+      pulumi_type: aws:cfg/organizationConformancePack:OrganizationConformancePack
+      id_format: "{pack_name}"
+      config_only_attributes:
+        - template_body
+        - template_s3_uri
+      notes: >-
+        The organization pack's name (`aws configservice
+        describe-organization-conformance-packs`, from the management
+        or delegated-admin account).
+
+    # --- GuardDuty -----------------------------------------------------------
+    # The detector id is the composition key for every satellite; the
+    # feature resources (detector, organization, member) have NO importer
+    # upstream -- they are patches, re-assertable by a plain apply.
+    - terraform_type: aws_guardduty_detector
+      pulumi_type: aws:guardduty/detector:Detector
+      id_format: "{detector_id}"
+      cloud_control_type_name: AWS::GuardDuty::Detector
+    - terraform_type: aws_guardduty_detector_feature
+      pulumi_type: aws:guardduty/detectorFeature:DetectorFeature
+      not_importable_upstream_reason: >-
+        The provider ships no importer -- the resource is a PATCH onto
+        the detector (Create and Update are the same UpdateDetector
+        call; Delete is a no-op), re-assertable by a plain apply after
+        importing the detector.
+    - terraform_type: aws_guardduty_organization_configuration_feature
+      pulumi_type: aws:guardduty/organizationConfigurationFeature:OrganizationConfigurationFeature
+      not_importable_upstream_reason: >-
+        The provider ships no importer -- the resource is a PATCH onto
+        the organization configuration (Delete is a no-op),
+        re-assertable by a plain apply.
+    - terraform_type: aws_guardduty_member_detector_feature
+      pulumi_type: aws:guardduty/memberDetectorFeature:MemberDetectorFeature
+      not_importable_upstream_reason: >-
+        The provider ships no importer -- the resource is a PATCH onto
+        the member's detector (Plugin Framework WithNoOpDelete),
+        re-assertable by a plain apply.
+    - terraform_type: aws_guardduty_filter
+      pulumi_type: aws:guardduty/filter:Filter
+      id_format: "{detector_id}:{filter_name}"
+      cloud_control_type_name: AWS::GuardDuty::Filter
+    - terraform_type: aws_guardduty_ipset
+      pulumi_type: aws:guardduty/iPSet:IPSet
+      id_format: "{detector_id}:{ip_set_id}"
+      cloud_control_type_name: AWS::GuardDuty::IPSet
+    - terraform_type: aws_guardduty_threatintelset
+      pulumi_type: aws:guardduty/threatIntelSet:ThreatIntelSet
+      id_format: "{detector_id}:{threat_intel_set_id}"
+      cloud_control_type_name: AWS::GuardDuty::ThreatIntelSet
+    - terraform_type: aws_guardduty_publishing_destination
+      pulumi_type: aws:guardduty/publishingDestination:PublishingDestination
+      id_format: "{detector_id}:{destination_id}"
+      notes: >-
+        `aws guardduty list-publishing-destinations --detector-id ...`
+        shows DestinationId.
+    - terraform_type: aws_guardduty_member
+      pulumi_type: aws:guardduty/member:Member
+      id_format: "{detector_id}:{member_account_id}"
+      cloud_control_type_name: AWS::GuardDuty::Member
+    - terraform_type: aws_guardduty_invite_accepter
+      pulumi_type: aws:guardduty/inviteAccepter:InviteAccepter
+      id_format: "{detector_id}"
+      notes: >-
+        The MEMBER account's own detector id -- the accepter is
+        member-side state over the invitation relationship.
+    - terraform_type: aws_guardduty_organization_admin_account
+      pulumi_type: aws:guardduty/organizationAdminAccount:OrganizationAdminAccount
+      id_format: "{admin_account_id}"
+    - terraform_type: aws_guardduty_organization_configuration
+      pulumi_type: aws:guardduty/organizationConfiguration:OrganizationConfiguration
+      id_format: "{detector_id}"
+    - terraform_type: aws_guardduty_malware_protection_plan
+      pulumi_type: aws:guardduty/malwareProtectionPlan:MalwareProtectionPlan
+      id_format: "{malware_protection_plan_id}"
+      notes: >-
+        The plan's generated id -- NOT a detector satellite (`aws
+        guardduty list-malware-protection-plans` shows
+        MalwareProtectionPlanId).
+    # --- AWS Backup ------------------------------------------------------------
+    # The vault NAME is the import identity for both vault types and all
+    # three standard-vault satellites (they attach by name). Plans are the
+    # one UUID-identified surface; restore testing is name-identified with
+    # a REVERSED composite on its selections.
+    - terraform_type: aws_backup_vault
+      pulumi_type: aws:backup/vault:Vault
+      id_format: "{vault_name}"
+      # force_destroy is deploy-side delete behavior, never returned by
+      # AWS or set during the provider's Read -- a freshly imported vault
+      # always shows it false.
+      config_only_attributes:
+        - force_destroy
+      notes: >-
+        The vault's name (`aws backup list-backup-vaults` shows
+        BackupVaultName).
+    - terraform_type: aws_backup_logically_air_gapped_vault
+      pulumi_type: aws:backup/logicallyAirGappedVault:LogicallyAirGappedVault
+      id_format: "{vault_name}"
+      notes: >-
+        The vault's name (`aws backup list-backup-vaults
+        --by-vault-type LOGICALLY_AIR_GAPPED_BACKUP_VAULT` shows
+        BackupVaultName).
+    - terraform_type: aws_backup_vault_lock_configuration
+      pulumi_type: aws:backup/vaultLockConfiguration:VaultLockConfiguration
+      id_format: "{vault_name}"
+      # changeable_for_days (the compliance-mode opt-in) is write-only at
+      # AWS -- never returned, never set during Read; a freshly imported
+      # lock shows it unset and the first apply re-asserts it.
+      config_only_attributes:
+        - changeable_for_days
+      notes: >-
+        The locked vault's name (`aws backup describe-backup-vault`
+        shows Locked/MinRetentionDays/MaxRetentionDays).
+    - terraform_type: aws_backup_vault_policy
+      pulumi_type: aws:backup/vaultPolicy:VaultPolicy
+      id_format: "{vault_name}"
+      notes: >-
+        The vault's name (`aws backup get-backup-vault-access-policy`
+        shows the policy).
+    - terraform_type: aws_backup_vault_notifications
+      pulumi_type: aws:backup/vaultNotifications:VaultNotifications
+      id_format: "{vault_name}"
+      notes: >-
+        The vault's name (`aws backup get-backup-vault-notifications`
+        shows SNSTopicArn/BackupVaultEvents).
+    - terraform_type: aws_backup_plan
+      pulumi_type: aws:backup/plan:Plan
+      id_format: "{plan_id}"
+      notes: >-
+        The plan's AWS-generated UUID, not its name (`aws backup
+        list-backup-plans` shows BackupPlanId).
+    - terraform_type: aws_backup_selection
+      pulumi_type: aws:backup/selection:Selection
+      id_format: "{plan_id}|{selection_id}"
+      notes: >-
+        Pipe-separated plan id and selection id (`aws backup
+        list-backup-selections --backup-plan-id <id>` shows
+        SelectionId).
+    - terraform_type: aws_backup_framework
+      pulumi_type: aws:backup/framework:Framework
+      id_format: "{framework_name}"
+      notes: >-
+        The framework's name (`aws backup list-frameworks` shows
+        FrameworkName).
+    - terraform_type: aws_backup_report_plan
+      pulumi_type: aws:backup/reportPlan:ReportPlan
+      id_format: "{report_plan_name}"
+      notes: >-
+        The report plan's name (`aws backup list-report-plans` shows
+        ReportPlanName).
+    - terraform_type: aws_backup_restore_testing_plan
+      pulumi_type: aws:backup/restoreTestingPlan:RestoreTestingPlan
+      id_format: "{restore_testing_plan_name}"
+      notes: >-
+        The plan's name (`aws backup list-restore-testing-plans` shows
+        RestoreTestingPlanName).
+    - terraform_type: aws_backup_restore_testing_selection
+      pulumi_type: aws:backup/restoreTestingSelection:RestoreTestingSelection
+      id_format: "{selection_name}:{restore_testing_plan_name}"
+      notes: >-
+        Colon-separated selection name and plan name -- REVERSED
+        relative to the parent (`aws backup
+        list-restore-testing-selections` shows
+        RestoreTestingSelectionName).
+    - terraform_type: aws_backup_global_settings
+      pulumi_type: aws:backup/globalSettings:GlobalSettings
+      id_format: "{account_id}"
+      notes: >-
+        The AWS account ID -- the account-wide singleton's identity
+        (`aws sts get-caller-identity` shows Account).
+    - terraform_type: aws_backup_region_settings
+      pulumi_type: aws:backup/regionSettings:RegionSettings
+      id_format: "{region}"
+      notes: >-
+        The region string (e.g. us-west-2) -- the regional singleton's
+        identity.
+    # --- SSM ---------------------------------------------------------------------
+    - terraform_type: aws_ssm_parameter
+      pulumi_type: aws:ssm/parameter:Parameter
+      id_format: "{parameter_name}"
+      # overwrite is deploy-side first-create behavior, never returned by
+      # AWS or set during the provider's Read -- a freshly imported
+      # parameter always shows it false.
+      config_only_attributes:
+        - overwrite
+      notes: >-
+        The parameter's name including any hierarchical path (`aws ssm
+        describe-parameters` shows Name); a full parameter ARN imports
+        too.
+    - terraform_type: aws_ssm_document
+      pulumi_type: aws:ssm/document:Document
+      id_format: "{document_name}"
+      # No SSM API returns attachment metadata -- a freshly imported
+      # document shows no attachments_source and the first apply
+      # re-asserts it (the provider's own import test ignores it).
+      config_only_attributes:
+        - attachments_source
+      notes: >-
+        The document's name (`aws ssm list-documents` shows Name).
+    - terraform_type: aws_ssm_association
+      pulumi_type: aws:ssm/association:Association
+      id_format: "{association_id}"
+      # wait_for_success_timeout_seconds is a create-time wait never read
+      # back. AWS materializes the document's declared parameter defaults
+      # into the stored parameters map, so a faithful import plans a
+      # semantically identical parameters reconcile (the provider's own
+      # import test ignores both).
+      config_only_attributes:
+        - wait_for_success_timeout_seconds
+      write_normalized_attributes:
+        - parameters
+      notes: >-
+        The association's AWS-generated UUID (`aws ssm
+        list-associations` shows AssociationId) -- the document name is
+        NOT the identity.
+    - terraform_type: aws_ssm_maintenance_window
+      pulumi_type: aws:ssm/maintenanceWindow:MaintenanceWindow
+      id_format: "{window_id}"
+      notes: >-
+        The window's AWS-generated ID (`aws ssm
+        describe-maintenance-windows` shows WindowId, "mw-...").
+    - terraform_type: aws_ssm_maintenance_window_target
+      pulumi_type: aws:ssm/maintenanceWindowTarget:MaintenanceWindowTarget
+      id_format: "{window_id}/{target_id}"
+      notes: >-
+        Slash-separated window id and target registration id (`aws ssm
+        describe-maintenance-window-targets --window-id <id>` shows
+        WindowTargetId).
+    - terraform_type: aws_ssm_maintenance_window_task
+      pulumi_type: aws:ssm/maintenanceWindowTask:MaintenanceWindowTask
+      id_format: "{window_id}/{task_id}"
+      notes: >-
+        Slash-separated window id and task registration id (`aws ssm
+        describe-maintenance-window-tasks --window-id <id>` shows
+        WindowTaskId).
+    - terraform_type: aws_ssm_patch_baseline
+      pulumi_type: aws:ssm/patchBaseline:PatchBaseline
+      id_format: "{baseline_id}"
+      notes: >-
+        The baseline's AWS-generated ID (`aws ssm
+        describe-patch-baselines` shows BaselineId, "pb-...").
+    - terraform_type: aws_ssm_patch_group
+      pulumi_type: aws:ssm/patchGroup:PatchGroup
+      id_format: "{patch_group},{baseline_id}"
+      notes: >-
+        Comma-separated patch-group name and baseline id -- the GROUP
+        comes first (`aws ssm describe-patch-groups` shows PatchGroup +
+        BaselineIdentity).
+    - terraform_type: aws_ssm_default_patch_baseline
+      pulumi_type: aws:ssm/defaultPatchBaseline:DefaultPatchBaseline
+      id_format: "{operating_system}"
+      notes: >-
+        The operating-system string (e.g. AMAZON_LINUX_2023) -- the
+        designation's stable identity (a baseline id or ARN imports
+        too; `aws ssm get-default-patch-baseline
+        --operating-system <os>` shows the holder).
+
+    # --- Organizations & Account Management (management-account scope;
+    # all global -- the provider validates the org import against the
+    # caller's own organization) ---
+    - terraform_type: aws_organizations_organization
+      pulumi_type: aws:organizations/organization:Organization
+      id_format: "{organization_id}"
+      notes: >-
+        The organization's ID ("o-..."; `aws organizations
+        describe-organization` shows Id) -- the importer hard-errors
+        unless it matches the organization the credentials belong to.
+    - terraform_type: aws_organizations_organizational_unit
+      pulumi_type: aws:organizations/organizationalUnit:OrganizationalUnit
+      id_format: "{ou_id}"
+      notes: >-
+        The OU's ID ("ou-..."; `aws organizations
+        list-organizational-units-for-parent --parent-id <root>` shows
+        Id).
+    - terraform_type: aws_organizations_account
+      pulumi_type: aws:organizations/account:Account
+      id_format: "{account_id}"
+      # close_on_deletion and create_govcloud are engine/creation
+      # behavior never returned by AWS, and role_name has NO read API
+      # at all (the provider's own import test ignores all three; both
+      # engines additionally ignore role_name changes so an import
+      # never plans a destructive replacement).
+      config_only_attributes:
+        - close_on_deletion
+        - create_govcloud
+        - role_name
+      notes: >-
+        The member account's 12-digit ID (`aws organizations
+        list-accounts` shows Id). An underscore-suffixed form
+        "{account_id}_{ALLOW|DENY}" also imports, seeding
+        iam_user_access_to_billing (itself unreadable after creation).
+    - terraform_type: aws_organizations_policy
+      pulumi_type: aws:organizations/policy:Policy
+      id_format: "{policy_id}"
+      # skip_destroy is destroy-time engine behavior, never returned by
+      # AWS (the provider's own import test ignores it).
+      config_only_attributes:
+        - skip_destroy
+      notes: >-
+        The policy's ID ("p-..."; `aws organizations list-policies
+        --filter SERVICE_CONTROL_POLICY` shows Id). AWS-managed
+        policies (FullAWSAccess, ...) refuse to import by design.
+    - terraform_type: aws_organizations_policy_attachment
+      pulumi_type: aws:organizations/policyAttachment:PolicyAttachment
+      id_format: "{target_id}:{policy_id}"
+      config_only_attributes:
+        - skip_destroy
+      notes: >-
+        Colon-separated target and policy -- the TARGET comes first
+        (`aws organizations list-targets-for-policy --policy-id <id>`
+        shows TargetId).
+    - terraform_type: aws_organizations_resource_policy
+      pulumi_type: aws:organizations/resourcePolicy:ResourcePolicy
+      id_format: "{resource_policy_id}"
+      notes: >-
+        The resource policy's ID ("rp-..."; `aws organizations
+        describe-resource-policy` shows ResourcePolicySummary.Id) --
+        the organization's singleton, so the ID is informational.
+    - terraform_type: aws_organizations_delegated_administrator
+      pulumi_type: aws:organizations/delegatedAdministrator:DelegatedAdministrator
+      id_format: "{account_id}/{service_principal}"
+      notes: >-
+        Slash-separated member account ID and service principal (`aws
+        organizations list-delegated-administrators` shows Id per
+        principal).
+    - terraform_type: aws_account_alternate_contact
+      pulumi_type: aws:account/alternativeContact:AlternativeContact
+      id_format: "{account_id}/{alternate_contact_type}"
+      notes: >-
+        Slash-separated account ID and contact type
+        (BILLING|OPERATIONS|SECURITY). A bare contact type imports the
+        caller's own account's contact instead.
+    - terraform_type: aws_account_primary_contact
+      pulumi_type: aws:account/primaryContact:PrimaryContact
+      id_format: "{account_id}"
+      notes: >-
+        The target account's 12-digit ID (`aws account
+        get-contact-information --account-id <id>` shows the contact).
+    - terraform_type: aws_account_region
+      pulumi_type: aws:account/region:Region
+      id_format: "{account_id},{region_name}"
+      notes: >-
+        Comma-separated account ID and region name (`aws account
+        list-regions --account-id <id>` shows RegionName + opt
+        status). A bare region name imports the caller's own account's
+        region instead.
+
+    # --- Budgets (budget + folded actions) -------------------------------------
+    - terraform_type: aws_budgets_budget
+      pulumi_type: aws:budgets/budget:Budget
+      id_format: "{account_id}:{budget_name}"
+      notes: >-
+        Colon-separated account ID and budget name (`aws budgets
+        describe-budgets --account-id <id>` shows BudgetName).
+    - terraform_type: aws_budgets_budget_action
+      pulumi_type: aws:budgets/budgetAction:BudgetAction
+      id_format: "{account_id}:{action_id}:{budget_name}"
+      notes: >-
+        Colon-separated account ID, AWS-generated action ID, and budget
+        name (`aws budgets describe-budget-actions-for-budget
+        --account-id <id> --budget-name <name>` shows ActionId).
+
+    # --- Cost Explorer (anomaly detection + cost categories) ------------------
+    - terraform_type: aws_ce_anomaly_monitor
+      pulumi_type: aws:costexplorer/anomalyMonitor:AnomalyMonitor
+      id_format: "{monitor_arn}"
+      notes: >-
+        The monitor's ARN (`aws ce get-anomaly-monitors` shows
+        MonitorArn).
+    - terraform_type: aws_ce_anomaly_subscription
+      pulumi_type: aws:costexplorer/anomalySubscription:AnomalySubscription
+      id_format: "{subscription_arn}"
+      notes: >-
+        The subscription's ARN (`aws ce get-anomaly-subscriptions`
+        shows SubscriptionArn).
+    - terraform_type: aws_ce_cost_category
+      pulumi_type: aws:costexplorer/costCategory:CostCategory
+      id_format: "{cost_category_arn}"
+      notes: >-
+        The category's ARN (`aws ce list-cost-category-definitions`
+        shows CostCategoryArn).
+
+    # --- IAM group (group + membership + group policies) ----------------------
+    - terraform_type: aws_iam_group
+      pulumi_type: aws:iam/group:Group
+      id_format: "{group_name}"
+      cloud_control_type_name: AWS::IAM::Group
+    - terraform_type: aws_iam_group_membership
+      pulumi_type: aws:iam/groupMembership:GroupMembership
+      # The provider ships no importer for the group-centric membership
+      # resource at the pin (its user-centric sibling
+      # aws_iam_user_group_membership has one; this one has neither an
+      # Importer nor an identity handler). The round-trip skips the
+      # address and proves the adopter's contract instead: the
+      # post-import plan re-creates exactly this membership, an
+      # idempotent PutGroupMembership-equivalent reconcile.
+      not_importable_upstream_reason: >-
+        aws_iam_group_membership ships no import handler at the pinned
+        provider version -- adopters re-apply the declarative users
+        list (idempotent; membership is add/remove reconciliation, not
+        a stateful object).
+    - terraform_type: aws_iam_group_policy
+      pulumi_type: aws:iam/groupPolicy:GroupPolicy
+      id_format: "{group_name}:{inline_policy_name}"
+    - terraform_type: aws_iam_group_policy_attachment
+      pulumi_type: aws:iam/groupPolicyAttachment:GroupPolicyAttachment
+      id_format: "{group_name}/{managed_policy_arn}"
+
+    # --- IAM SAML provider -----------------------------------------------------
+    - terraform_type: aws_iam_saml_provider
+      pulumi_type: aws:iam/samlProvider:SamlProvider
+      id_format: "{provider_arn}"
+      cloud_control_type_name: AWS::IAM::SAMLProvider
+      notes: >-
+        The provider's ARN (`aws iam list-saml-providers` shows Arn).
+
+    # --- IAM account settings (singletons) -------------------------------------
+    - terraform_type: aws_iam_account_alias
+      pulumi_type: aws:iam/accountAlias:AccountAlias
+      id_format: "{account_alias}"
+      notes: >-
+        The alias string itself (`aws iam list-account-aliases` shows
+        it; an account has at most one).
+    - terraform_type: aws_iam_account_password_policy
+      pulumi_type: aws:iam/accountPasswordPolicy:AccountPasswordPolicy
+      # The singleton imports by the provider's literal word (no
+      # placeholder at all) -- the account has exactly one policy.
+      id_format: "iam-account-password-policy"
+    - terraform_type: aws_iam_security_token_service_preferences
+      pulumi_type: aws:iam/securityTokenServicePreferences:SecurityTokenServicePreferences
+      # The provider ships no importer at the pin (SDKv2 resource with
+      # neither an Importer nor an identity handler). The round-trip
+      # skips the address and proves the adopter's contract instead:
+      # the post-import plan re-puts the token version, an idempotent
+      # SetSecurityTokenServicePreferences.
+      not_importable_upstream_reason: >-
+        aws_iam_security_token_service_preferences ships no import
+        handler at the pinned provider version -- adopters re-apply the
+        token version (idempotent set-preferences call, no stateful
+        object to adopt).
+
+    # --- IAM organization features (rides AwsOrganization) ---------------------
+    - terraform_type: aws_iam_organizations_features
+      pulumi_type: aws:iam/organizationsFeatures:OrganizationsFeatures
+      id_format: "{organization_id}"
+      notes: >-
+        The organization's ID ("o-..."; `aws organizations
+        describe-organization` shows Id) -- the resource is the org's
+        root-access-management singleton.
+
+    # --- CloudWatch dashboards --------------------------------------------------
+    - terraform_type: aws_cloudwatch_dashboard
+      pulumi_type: aws:cloudwatch/dashboard:Dashboard
+      id_format: "{dashboard_name}"
+      notes: >-
+        The dashboard's name (`aws cloudwatch list-dashboards` shows
+        DashboardName).
+
+    # --- CloudWatch Synthetics (canary + groups + joins) -----------------------
+    - terraform_type: aws_synthetics_canary
+      pulumi_type: aws:synthetics/canary:Canary
+      id_format: "{canary_name}"
+      # delete_lambda is delete-time engine behavior (whether teardown
+      # also removes the Synthetics-managed Lambda), never a canary
+      # property AWS returns.
+      config_only_attributes: [delete_lambda]
+      notes: >-
+        The canary's name (`aws synthetics describe-canaries` shows
+        Name).
+    - terraform_type: aws_synthetics_group
+      pulumi_type: aws:synthetics/group:Group
+      id_format: "{group_name}"
+      notes: >-
+        The group's name (`aws synthetics list-groups` shows Name).
+    - terraform_type: aws_synthetics_group_association
+      pulumi_type: aws:synthetics/groupAssociation:GroupAssociation
+      id_format: "{canary_arn},{group_name}"
+      notes: >-
+        Comma-separated canary ARN and group name (`aws synthetics
+        list-group-resources --group-identifier <name>` shows the
+        joined canary ARNs).
+
+    # --- CloudWatch Logs delivery (vended pipeline + legacy destination) -------
+    - terraform_type: aws_cloudwatch_log_delivery_source
+      pulumi_type: aws:cloudwatch/logDeliverySource:LogDeliverySource
+      id_format: "{source_name}"
+      notes: >-
+        The delivery source's name (`aws logs describe-delivery-sources`
+        shows name).
+    - terraform_type: aws_cloudwatch_log_delivery_destination
+      pulumi_type: aws:cloudwatch/logDeliveryDestination:LogDeliveryDestination
+      id_format: "{destination_name}"
+      notes: >-
+        The delivery destination's name (`aws logs
+        describe-delivery-destinations` shows name).
+    - terraform_type: aws_cloudwatch_log_delivery_destination_policy
+      pulumi_type: aws:cloudwatch/logDeliveryDestinationPolicy:LogDeliveryDestinationPolicy
+      id_format: "{destination_name}"
+      # The Get response does not round-trip the document; the
+      # post-import plan re-puts it (idempotent).
+      config_only_attributes: [delivery_destination_policy]
+      notes: >-
+        The owning delivery destination's name (one policy per
+        destination).
+    - terraform_type: aws_cloudwatch_log_delivery
+      pulumi_type: aws:cloudwatch/logDelivery:LogDelivery
+      id_format: "{delivery_id}"
+      # field_delimiter and the S3 layout members are not round-tripped
+      # by GetDelivery for every source type; post-import plans showing
+      # only them are clean (the provider's own import test ignores
+      # them).
+      config_only_attributes: [field_delimiter, s3_delivery_configuration]
+      notes: >-
+        The AWS-generated delivery ID (`aws logs describe-deliveries`
+        shows id).
+    - terraform_type: aws_cloudwatch_log_destination
+      pulumi_type: aws:cloudwatch/logDestination:LogDestination
+      id_format: "{cross_account_destination_name}"
+      notes: >-
+        The destination's name (`aws logs describe-destinations` shows
+        destinationName).
+    - terraform_type: aws_cloudwatch_log_destination_policy
+      pulumi_type: aws:cloudwatch/logDestinationPolicy:LogDestinationPolicy
+      id_format: "{cross_account_destination_name}"
+      notes: >-
+        The owning destination's name (`aws logs describe-destinations`
+        shows accessPolicy on the destination).
+
+    # --- CloudWatch Logs account-level policies --------------------------------
+    - terraform_type: aws_cloudwatch_log_account_policy
+      pulumi_type: aws:cloudwatch/logAccountPolicy:LogAccountPolicy
+      id_format: "{policy_name}:{policy_type}"
+      notes: >-
+        Colon-separated policy name and policy type (`aws logs
+        describe-account-policies --policy-type <type>` shows
+        policyName).
+
+    # --- CloudWatch Logs anomaly detectors -------------------------------------
+    - terraform_type: aws_cloudwatch_log_anomaly_detector
+      pulumi_type: aws:cloudwatch/logAnomalyDetector:LogAnomalyDetector
+      id_format: "{anomaly_detector_arn}"
+      # The Get response does not reliably round-trip the enabled flag;
+      # the provider's own import test ignores it.
+      config_only_attributes: [enabled]
+      notes: >-
+        The detector's ARN (`aws logs list-log-anomaly-detectors` shows
+        anomalyDetectorArn).
+
+    # --- CloudWatch Logs resource policies -------------------------------------
+    - terraform_type: aws_cloudwatch_log_resource_policy
+      pulumi_type: aws:cloudwatch/logResourcePolicy:LogResourcePolicy
+      id_format: "{policy_id}"
+      notes: >-
+        The policy's name for account-scoped policies (`aws logs
+        describe-resource-policies` shows policyName) or the target
+        resource ARN for resource-scoped ones -- an ARN-shaped import
+        ID selects the resource scope.
+
+    # --- Managed Prometheus (workspace + satellites) ---------------------------
+    - terraform_type: aws_prometheus_workspace
+      pulumi_type: aws:amp/workspace:Workspace
+      id_format: "{workspace_id}"
+      notes: >-
+        The workspace's ID ("ws-..."; `aws amp list-workspaces` shows
+        workspaceId).
+    - terraform_type: aws_prometheus_workspace_configuration
+      pulumi_type: aws:amp/workspaceConfiguration:WorkspaceConfiguration
+      id_format: "{workspace_id}"
+      notes: >-
+        The owning workspace's ID (one configuration per workspace).
+    - terraform_type: aws_prometheus_alert_manager_definition
+      pulumi_type: aws:amp/alertManagerDefinition:AlertManagerDefinition
+      id_format: "{workspace_id}"
+      notes: >-
+        The owning workspace's ID (one definition per workspace).
+    - terraform_type: aws_prometheus_rule_group_namespace
+      pulumi_type: aws:amp/ruleGroupNamespace:RuleGroupNamespace
+      id_format: "{namespace_arn}"
+      notes: >-
+        The namespace's ARN
+        ("...rulegroupsnamespace/{workspace_id}/{name}"; `aws amp
+        list-rule-groups-namespaces --workspace-id <id>` shows arn).
+    - terraform_type: aws_prometheus_query_logging_configuration
+      pulumi_type: aws:amp/queryLoggingConfiguration:QueryLoggingConfiguration
+      id_format: "{workspace_id}"
+      notes: >-
+        The owning workspace's ID (one query-logging configuration per
+        workspace).
+    - terraform_type: aws_prometheus_resource_policy
+      pulumi_type: aws:amp/resourcePolicy:ResourcePolicy
+      id_format: "{workspace_id}"
+      notes: >-
+        The owning workspace's ID (one resource policy per workspace).
+    - terraform_type: aws_prometheus_anomaly_detector
+      pulumi_type: aws:amp/anomalyDetector:AnomalyDetector
+      id_format: "{anomaly_detector_id},{workspace_id}"
+      notes: >-
+        Comma-separated detector ID and workspace ID (`aws amp
+        list-anomaly-detectors --workspace-id <id>` shows
+        anomalyDetectorId).
+
+    # --- Managed Prometheus scrapers --------------------------------------------
+    - terraform_type: aws_prometheus_scraper
+      pulumi_type: aws:amp/scraper:Scraper
+      id_format: "{scraper_id}"
+      notes: >-
+        The scraper's AWS-generated ID ("s-..."; `aws amp list-scrapers`
+        shows scraperId).
+    - terraform_type: aws_prometheus_scraper_logging_configuration
+      pulumi_type: aws:amp/scraperLoggingConfiguration:ScraperLoggingConfiguration
+      id_format: "{scraper_id}"
+      notes: >-
+        The owning scraper's ID (one logging configuration per scraper).
+
+    # --- EventBridge Pipes -------------------------------------------------------
+    - terraform_type: aws_pipes_pipe
+      pulumi_type: aws:pipes/pipe:Pipe
+      id_format: "{pipe_name}"
+      cloud_control_type_name: AWS::Pipes::Pipe
+      notes: >-
+        The pipe's name (`aws pipes list-pipes` shows Name).
+
+    # --- EventBridge Scheduler ---------------------------------------------------
+    - terraform_type: aws_scheduler_schedule
+      pulumi_type: aws:scheduler/schedule:Schedule
+      id_format: "{group_name}/{schedule_name}"
+      cloud_control_type_name: AWS::Scheduler::Schedule
+      notes: >-
+        Slash-separated group and schedule names ("default" for ungrouped
+        schedules; `aws scheduler list-schedules` shows GroupName and Name).
+    - terraform_type: aws_scheduler_schedule_group
+      pulumi_type: aws:scheduler/scheduleGroup:ScheduleGroup
+      id_format: "{group_name}"
+      cloud_control_type_name: AWS::Scheduler::ScheduleGroup
+
+    # --- EventBridge API destinations --------------------------------------------
+    - terraform_type: aws_cloudwatch_event_connection
+      pulumi_type: aws:cloudwatch/eventConnection:EventConnection
+      id_format: "{connection_name}"
+      cloud_control_type_name: AWS::Events::Connection
+      # AWS never returns credential values (DescribeConnection masks them;
+      # they live in the AWS-owned Secrets Manager secret), so the provider
+      # reads secrets back from prior state and a fresh import cannot
+      # recover them - the first post-import plan re-sends the configured
+      # credentials. The provider's own import test ignores the basic-auth
+      # password for the same reason.
+      write_normalized_attributes:
+        - auth_parameters
+    - terraform_type: aws_cloudwatch_event_api_destination
+      pulumi_type: aws:cloudwatch/eventApiDestination:EventApiDestination
+      id_format: "{api_destination_name}"
+      cloud_control_type_name: AWS::Events::ApiDestination
+
+    # --- VPC peering --------------------------------------------------------------
+    - terraform_type: aws_vpc_peering_connection
+      pulumi_type: aws:ec2/vpcPeeringConnection:VpcPeeringConnection
+      id_format: "{peering_connection_id}"
+      cloud_control_type_name: AWS::EC2::VPCPeeringConnection
+    - terraform_type: aws_vpc_peering_connection_accepter
+      pulumi_type: aws:ec2/vpcPeeringConnectionAccepter:VpcPeeringConnectionAccepter
+      id_format: "{peering_connection_id}"
+      notes: >-
+        The same pcx- id as the connection (the accepter adopts it from
+        the accepter side).
+
+    # --- Network ACLs --------------------------------------------------------------
+    - terraform_type: aws_network_acl
+      pulumi_type: aws:ec2/networkAcl:NetworkAcl
+      id_format: "{network_acl_id}"
+      cloud_control_type_name: AWS::EC2::NetworkAcl
+      notes: >-
+        Default NACLs refuse this import path at the provider (use
+        aws_default_network_acl, which the catalog deliberately does not
+        model - adopting AWS defaults is an anti-pattern).
+
+    # --- Managed prefix lists -------------------------------------------------------
+    - terraform_type: aws_ec2_managed_prefix_list
+      pulumi_type: aws:ec2/managedPrefixList:ManagedPrefixList
+      id_format: "{prefix_list_id}"
+      cloud_control_type_name: AWS::EC2::PrefixList
+
+    # --- EBS volumes ---------------------------------------------------------------
+    - terraform_type: aws_ebs_volume
+      pulumi_type: aws:ebs/volume:Volume
+      id_format: "{volume_id}"
+      cloud_control_type_name: AWS::EC2::Volume
+      # final_snapshot is engine behavior (snapshot-before-delete), never
+      # readable from EC2 -- same class as S3's force_destroy.
+      config_only_attributes: [final_snapshot]
+    - terraform_type: aws_ebs_volume_copy
+      pulumi_type: aws:ebs/volumeCopy:VolumeCopy
+      id_format: "{volume_id}"
+      notes: >-
+        Imports as a plain volume by vol- id; the copy lineage
+        (source_volume_id) is create-time-only and not recoverable from
+        EC2, so adopt copies through the create arm's surface.
+    - terraform_type: aws_volume_attachment
+      pulumi_type: aws:ec2/volumeAttachment:VolumeAttachment
+      id_format: "{device_name}:{volume_id}:{instance_id}"
+      cloud_control_type_name: AWS::EC2::VolumeAttachment
+      # The detach-behavior flags are engine-only (how to detach), never
+      # readable from EC2.
+      config_only_attributes: [force_detach, skip_destroy, stop_instance_before_detaching]
+      notes: >-
+        Colon-separated device:volume:instance composite (`aws ec2
+        describe-volumes` shows Attachments per volume).
+
+    # --- EBS snapshots ---------------------------------------------------------------
+    - terraform_type: aws_ebs_snapshot
+      pulumi_type: aws:ebs/snapshot:Snapshot
+      id_format: "{snapshot_id}"
+    - terraform_type: aws_ebs_snapshot_copy
+      pulumi_type: aws:ebs/snapshotCopy:SnapshotCopy
+      not_importable_upstream_reason: >-
+        The upstream resource ships no importer at v6.58.0 (its plain
+        snapshot sibling carries one; the copy does not) -- the copy
+        lineage (source_snapshot_id/source_region) is create-time-only
+        and not recoverable from EC2. Adopt existing copies as plain
+        snapshots through the volume arm's import path.
+    - terraform_type: aws_ebs_snapshot_import
+      pulumi_type: aws:ebs/snapshotImport:SnapshotImport
+      not_importable_upstream_reason: >-
+        The upstream resource ships no importer at v6.58.0 -- the VM
+        Import/Export task inputs (disk_container, role_name) are
+        create-time-only and not recoverable from EC2. Adopt imported
+        snapshots as plain snapshots through the volume arm's import
+        path.
+    - terraform_type: aws_ebs_fast_snapshot_restore
+      pulumi_type: aws:ebs/fastSnapshotRestore:FastSnapshotRestore
+      id_format: "{availability_zone},{snapshot_id}"
+      notes: >-
+        Comma-separated zone,snapshot composite (`aws ec2
+        describe-fast-snapshot-restores` lists both).
+    - terraform_type: aws_snapshot_create_volume_permission
+      pulumi_type: aws:ec2/snapshotCreateVolumePermission:SnapshotCreateVolumePermission
+      not_importable_upstream_reason: >-
+        The upstream resource ships no importer at v6.58.0.
+        ModifySnapshotAttribute is an idempotent grant keyed by
+        snapshot+account, so an adopter's first apply takes ownership by
+        re-granting the same permission.
+
+    # --- Data Lifecycle Manager -------------------------------------------------------
+    - terraform_type: aws_dlm_lifecycle_policy
+      pulumi_type: aws:dlm/lifecyclePolicy:LifecyclePolicy
+      id_format: "{policy_id}"
+      cloud_control_type_name: AWS::DLM::LifecyclePolicy
+      notes: >-
+        The policy-... id (`aws dlm get-lifecycle-policies` shows
+        PolicyId).
+
+    # --- S3 directory buckets ----------------------------------------------------------
+    - terraform_type: aws_s3_directory_bucket
+      pulumi_type: aws:s3/directoryBucket:DirectoryBucket
+      id_format: "{bucket_name}"
+      cloud_control_type_name: AWS::S3Express::DirectoryBucket
+      # force_destroy is engine behavior (empty-before-delete), never
+      # readable from S3.
+      config_only_attributes: [force_destroy]
+      notes: >-
+        The FULL bucket name ("{base}--{zone_id}--x-s3" - the modules
+        derive it; `aws s3api list-directory-buckets` shows it).
+
+    # --- S3 table buckets ---------------------------------------------------------------
+    - terraform_type: aws_s3tables_table_bucket
+      pulumi_type: aws:s3tables/tableBucket:TableBucket
+      id_format: "{table_bucket_arn}"
+      cloud_control_type_name: AWS::S3Tables::TableBucket
+      config_only_attributes: [force_destroy]
+    - terraform_type: aws_s3tables_table_bucket_policy
+      pulumi_type: aws:s3tables/tableBucketPolicy:TableBucketPolicy
+      id_format: "{table_bucket_arn}"
+      # AWS normalizes policy JSON on read; the provider's own import
+      # test ignores the raw text for the same reason.
+      write_normalized_attributes:
+        - resource_policy
+    - terraform_type: aws_s3tables_table_bucket_replication
+      pulumi_type: aws:s3tables/tableBucketReplication:TableBucketReplication
+      id_format: "{table_bucket_arn}"
+    - terraform_type: aws_s3tables_namespace
+      pulumi_type: aws:s3tables/namespace:Namespace
+      id_format: "{table_bucket_arn};{namespace}"
+      cloud_control_type_name: AWS::S3Tables::Namespace
+      notes: >-
+        Semicolon-separated bucket-ARN;namespace composite (the
+        provider's hand-written import path).
+    - terraform_type: aws_s3tables_table
+      pulumi_type: aws:s3tables/table:Table
+      id_format: "{table_bucket_arn};{namespace};{table_name}"
+      # The Iceberg schema and properties (metadata) are CREATE-ONLY
+      # input the provider never reads back - a fresh import lacks them
+      # and the first plan re-asserts; post-apply idempotency holds
+      # (schema evolution happens through query engines).
+      write_normalized_attributes:
+        - metadata
+      notes: >-
+        Semicolon-separated bucket-ARN;namespace;table composite (the
+        provider's hand-written import path).
+    - terraform_type: aws_s3tables_table_policy
+      pulumi_type: aws:s3tables/tablePolicy:TablePolicy
+      id_format: "{table_bucket_arn};{namespace};{table_name}"
+      write_normalized_attributes:
+        - resource_policy
+    - terraform_type: aws_s3tables_table_replication
+      pulumi_type: aws:s3tables/tableReplication:TableReplication
+      id_format: "{table_arn}"
+
+    # --- S3 vector buckets ---------------------------------------------------------------
+    - terraform_type: aws_s3vectors_vector_bucket
+      pulumi_type: aws:s3/vectorsVectorBucket:VectorsVectorBucket
+      id_format: "{vector_bucket_arn}"
+      cloud_control_type_name: AWS::S3Vectors::VectorBucket
+      config_only_attributes: [force_destroy]
+    - terraform_type: aws_s3vectors_vector_bucket_policy
+      pulumi_type: aws:s3/vectorsVectorBucketPolicy:VectorsVectorBucketPolicy
+      id_format: "{vector_bucket_arn}"
+      write_normalized_attributes:
+        - policy
+    - terraform_type: aws_s3vectors_index
+      pulumi_type: aws:s3/vectorsIndex:VectorsIndex
+      id_format: "{index_arn}"
+      cloud_control_type_name: AWS::S3Vectors::Index
+
+    # --- Route 53 Resolver ---------------------------------------------------
+    - terraform_type: aws_route53_resolver_endpoint
+      pulumi_type: aws:route53/resolverEndpoint:ResolverEndpoint
+      id_format: "{endpoint_id}"
+      notes: >-
+        The endpoint's AWS-generated ID (`aws route53resolver
+        list-resolver-endpoints` shows Id, "rslvr-in-..."/"rslvr-out-...").
+    - terraform_type: aws_route53_resolver_rule
+      pulumi_type: aws:route53/resolverRule:ResolverRule
+      id_format: "{rule_id}"
+      notes: >-
+        The rule's AWS-generated ID (`aws route53resolver
+        list-resolver-rules` shows Id, "rslvr-rr-..."). Tags on a
+        RAM-shared rule are never read back by the provider.
+    - terraform_type: aws_route53_resolver_rule_association
+      pulumi_type: aws:route53/resolverRuleAssociation:ResolverRuleAssociation
+      id_format: "{rule_association_id}"
+      notes: >-
+        The association's AWS-generated ID (`aws route53resolver
+        list-resolver-rule-associations` shows Id, "rslvr-rrassoc-...").
+    - terraform_type: aws_route53_resolver_firewall_rule_group
+      pulumi_type: aws:route53/resolverFirewallRuleGroup:ResolverFirewallRuleGroup
+      id_format: "{rule_group_id}"
+      notes: >-
+        The rule group's AWS-generated ID (`aws route53resolver
+        list-firewall-rule-groups` shows Id, "rslvr-frg-...").
+    - terraform_type: aws_route53_resolver_firewall_domain_list
+      pulumi_type: aws:route53/resolverFirewallDomainList:ResolverFirewallDomainList
+      id_format: "{domain_list_id}"
+      notes: >-
+        The domain list's AWS-generated ID (`aws route53resolver
+        list-firewall-domain-lists` shows Id, "rslvr-fdl-...").
+    - terraform_type: aws_route53_resolver_firewall_rule
+      pulumi_type: aws:route53/resolverFirewallRule:ResolverFirewallRule
+      id_format: "{rule_group_id}:{rule_match_id}"
+      notes: >-
+        Colon-separated rule group ID and the rule's match identity --
+        the domain list ID ("rslvr-fdl-...") for standard rules, the
+        threat-protection ID ("rslvr-ftp-...") for DNS Firewall Advanced
+        rules (`aws route53resolver list-firewall-rules
+        --firewall-rule-group-id <id>`).
+    - terraform_type: aws_route53_resolver_firewall_rule_group_association
+      pulumi_type: aws:route53/resolverFirewallRuleGroupAssociation:ResolverFirewallRuleGroupAssociation
+      id_format: "{firewall_association_id}"
+      notes: >-
+        The association's AWS-generated ID (`aws route53resolver
+        list-firewall-rule-group-associations` shows Id,
+        "rslvr-frgassoc-...").
+    - terraform_type: aws_route53_resolver_query_log_config
+      pulumi_type: aws:route53/resolverQueryLogConfig:ResolverQueryLogConfig
+      id_format: "{query_log_config_id}"
+      notes: >-
+        The configuration's AWS-generated ID (`aws route53resolver
+        list-resolver-query-log-configs` shows Id, "rqlc-...").
+    - terraform_type: aws_route53_resolver_query_log_config_association
+      pulumi_type: aws:route53/resolverQueryLogConfigAssociation:ResolverQueryLogConfigAssociation
+      id_format: "{query_log_association_id}"
+      notes: >-
+        The association's AWS-generated ID (`aws route53resolver
+        list-resolver-query-log-config-associations` shows Id,
+        "rqlca-...").
+
+    # --- Cloud Map (service discovery) ----------------------------------------
+    - terraform_type: aws_service_discovery_http_namespace
+      pulumi_type: aws:servicediscovery/httpNamespace:HttpNamespace
+      id_format: "{namespace_id}"
+      notes: >-
+        The namespace's AWS-generated ID (`aws servicediscovery
+        list-namespaces` shows Id, "ns-...").
+    - terraform_type: aws_service_discovery_private_dns_namespace
+      pulumi_type: aws:servicediscovery/privateDnsNamespace:PrivateDnsNamespace
+      id_format: "{namespace_id}:{vpc_id}"
+      notes: >-
+        Colon-separated namespace ID and VPC ID -- the provider never
+        reads the VPC back from AWS, so the import ID must carry it.
+    - terraform_type: aws_service_discovery_public_dns_namespace
+      pulumi_type: aws:servicediscovery/publicDnsNamespace:PublicDnsNamespace
+      id_format: "{namespace_id}"
+      notes: >-
+        The namespace's AWS-generated ID (`aws servicediscovery
+        list-namespaces` shows Id, "ns-...").
+    - terraform_type: aws_service_discovery_service
+      pulumi_type: aws:servicediscovery/service:Service
+      id_format: "{service_id}"
+      # force_destroy is engine behavior (deregister-everything-before-
+      # delete), never read back -- post-import plans showing only this
+      # attribute are clean.
+      config_only_attributes: [force_destroy]
+      notes: >-
+        The service's AWS-generated ID (`aws servicediscovery
+        list-services` shows Id, "srv-...").
+    - terraform_type: aws_service_discovery_instance
+      pulumi_type: aws:servicediscovery/instance:Instance
+      id_format: "{instance_service_id}/{instance_id}"
+      notes: >-
+        Slash-separated service ID and the user-chosen instance ID
+        (`aws servicediscovery list-instances --service-id <id>`).
+    # --- Lambda layers ---------------------------------------------------------
+    - terraform_type: aws_lambda_layer_version
+      pulumi_type: aws:lambda/layerVersion:LayerVersion
+      id_format: "{layer_version_arn}"
+      # The archive location (s3_bucket/s3_key/s3_object_version) and the
+      # change-detector hash are never returned by the API (the provider
+      # suppresses their post-import diffs); skip_destroy is engine
+      # behavior. None can ride an import.
+      config_only_attributes: [skip_destroy, source_code_hash]
+      notes: >-
+        The full layer-version ARN
+        (arn:...:layer:{name}:{version}) - `aws lambda list-layer-versions
+        --layer-name <name>` (LayerVersionArn). The provider also accepts
+        "{name}/{version}".
+    - terraform_type: aws_lambda_layer_version_permission
+      pulumi_type: aws:lambda/layerVersionPermission:LayerVersionPermission
+      id_format: "{layer_arn},{layer_version}"
+      config_only_attributes: [skip_destroy]
+      notes: >-
+        Comma-separated layer name-or-ARN and version number. The
+        provider's importer reads only the FIRST policy statement - a
+        version carrying several grants round-trips lossily upstream
+        (each imported permission reflects statement one).
+    # --- RDS Proxy -------------------------------------------------------------
+    - terraform_type: aws_db_proxy
+      pulumi_type: aws:rds/proxy:Proxy
+      id_format: "{db_proxy_name}"
+      notes: >-
+        The proxy's name (`aws rds describe-db-proxies` shows
+        DBProxyName) - the API has no ARN-addressed reads.
+    - terraform_type: aws_db_proxy_default_target_group
+      pulumi_type: aws:rds/proxyDefaultTargetGroup:ProxyDefaultTargetGroup
+      id_format: "{db_proxy_name}"
+      notes: >-
+        The owning proxy's name - the default target group has no id of
+        its own (its name is always "default").
+    - terraform_type: aws_db_proxy_endpoint
+      pulumi_type: aws:rds/proxyEndpoint:ProxyEndpoint
+      id_format: "{db_proxy_name}/{db_proxy_endpoint_name}"
+      notes: >-
+        Slash-separated proxy name and endpoint name (`aws rds
+        describe-db-proxy-endpoints --db-proxy-name <name>`).
+    - terraform_type: aws_db_proxy_target
+      pulumi_type: aws:rds/proxyTarget:ProxyTarget
+      id_format: "{db_proxy_name}/{target_group_name}/{target_type}/{target_rds_resource_id}"
+      notes: >-
+        Four slash-separated parts - proxy name, target group name
+        (always "default"), target type (RDS_INSTANCE or
+        TRACKED_CLUSTER), and the RDS resource id (`aws rds
+        describe-db-proxy-targets --db-proxy-name <name>` shows Type and
+        RdsResourceId).
+    # --- Aurora DSQL -----------------------------------------------------------
+    - terraform_type: aws_dsql_cluster
+      pulumi_type: aws:dsql/cluster:Cluster
+      id_format: "{dsql_cluster_identifier}"
+      # force_destroy is engine behavior (disable-protection-then-delete);
+      # the provider forces it false on import.
+      config_only_attributes: [force_destroy]
+      notes: >-
+        The AWS-generated cluster identifier (`aws dsql list-clusters`
+        shows identifier) - the tail of the cluster ARN.
+    - terraform_type: aws_dsql_cluster_peering
+      pulumi_type: aws:dsql/clusterPeering:ClusterPeering
+      id_format: "{dsql_cluster_identifier}"
+      notes: >-
+        The owning cluster's identifier - the peering is state ON the
+        cluster (an UpdateCluster call), not an object of its own.
+    # --- ECR registry plane ----------------------------------------------------
+    - terraform_type: aws_ecr_registry_policy
+      pulumi_type: aws:ecr/registryPolicy:RegistryPolicy
+      id_format: "{registry_id}"
+      notes: >-
+        The registry id - the account's 12-digit id (`aws ecr
+        describe-registry` shows registryId).
+    - terraform_type: aws_ecr_registry_scanning_configuration
+      pulumi_type: aws:ecr/registryScanningConfiguration:RegistryScanningConfiguration
+      id_format: "{registry_id}"
+      notes: >-
+        The registry id - the account's 12-digit id.
+    - terraform_type: aws_ecr_replication_configuration
+      pulumi_type: aws:ecr/replicationConfiguration:ReplicationConfiguration
+      id_format: "{registry_id}"
+      notes: >-
+        The registry id - the account's 12-digit id.
+    - terraform_type: aws_ecr_pull_through_cache_rule
+      pulumi_type: aws:ecr/pullThroughCacheRule:PullThroughCacheRule
+      id_format: "{ecr_repository_prefix}"
+      notes: >-
+        The rule's repository prefix (`aws ecr
+        describe-pull-through-cache-rules` shows ecrRepositoryPrefix).
+    - terraform_type: aws_ecr_repository_creation_template
+      pulumi_type: aws:ecr/repositoryCreationTemplate:RepositoryCreationTemplate
+      id_format: "{template_prefix}"
+      notes: >-
+        The template's prefix (`aws ecr
+        describe-repository-creation-templates` shows prefix; "ROOT" for
+        the catch-all template).
+    - terraform_type: aws_ecr_account_setting
+      pulumi_type: aws:ecr/accountSetting:AccountSetting
+      id_format: "{account_setting_name}"
+      notes: >-
+        The setting's name - BASIC_SCAN_TYPE_VERSION, BLOB_MOUNTING, or
+        REGISTRY_POLICY_SCOPE (`aws ecr get-account-setting --name <name>`).
+    - terraform_type: aws_ecr_pull_time_update_exclusion
+      pulumi_type: aws:ecr/pullTimeUpdateExclusion:PullTimeUpdateExclusion
+      id_format: "{exclusion_principal_arn}"
+      notes: >-
+        The excluded IAM principal's ARN (`aws ecr
+        list-pull-time-update-exclusions`).
+    # --- ACM Private CA --------------------------------------------------------
+    - terraform_type: aws_acmpca_certificate_authority
+      pulumi_type: aws:acmpca/certificateAuthority:CertificateAuthority
+      id_format: "{certificate_authority_arn}"
+      # The restore window is never returned by the API - the provider
+      # stuffs its default back on import.
+      config_only_attributes: [permanent_deletion_time_in_days]
+      notes: >-
+        The CA's ARN (`aws acm-pca list-certificate-authorities` shows
+        Arn).
+    - terraform_type: aws_acmpca_certificate
+      pulumi_type: aws:acmpca/certificate:Certificate
+      id_format: "{issued_certificate_arn}"
+      # The issue-request arguments are never returned by the API - an
+      # import carries only the issued PEM, so the request fields are
+      # config-only by upstream design (the provider's own import test
+      # ignores all four).
+      config_only_attributes: [certificate_signing_request, signing_algorithm, template_arn, validity]
+      notes: >-
+        The certificate's full ARN
+        (arn:...:certificate-authority/{ca_id}/certificate/{cert_id}).
+        Issued certificates are not listable via the CLI - take the ARN
+        from the issue call's output or the CA's audit report.
+    - terraform_type: aws_acmpca_certificate_authority_certificate
+      pulumi_type: aws:acmpca/certificateAuthorityCertificate:CertificateAuthorityCertificate
+      id_format: "{certificate_authority_arn}"
+      notes: >-
+        The CA's ARN - the installed certificate is state ON the CA, not
+        an object of its own.
+    - terraform_type: aws_acmpca_permission
+      pulumi_type: aws:acmpca/permission:Permission
+      not_importable_upstream_reason: >-
+        The provider ships no importer at v6.58.0 (the internal composite
+        id exists but no import path is wired). The grant is a single
+        three-action statement to acm.amazonaws.com; an adopter
+        re-creates it with one apply after importing the CA.
+    - terraform_type: aws_acmpca_policy
+      pulumi_type: aws:acmpca/policy:Policy
+      id_format: "{certificate_authority_arn}"
+      notes: >-
+        The CA's ARN (the policy attaches to the CA; `aws acm-pca
+        get-policy --resource-arn <arn>`).
+    # --- AppSync -----------------------------------------------------------------
+    - terraform_type: aws_appsync_graphql_api
+      pulumi_type: aws:appsync/graphQLApi:GraphQLApi
+      id_format: "{api_id}"
+      # The schema applies via async StartSchemaCreation and the provider
+      # performs NO drift detection on it - an import carries whatever
+      # AWS returns, and out-of-band schema edits are invisible either
+      # way (upstream-documented).
+      config_only_attributes: [schema]
+      notes: >-
+        The bare GraphQL API id (`aws appsync list-graphql-apis` shows
+        apiId).
+    - terraform_type: aws_appsync_api
+      pulumi_type: aws:appsync/api:Api
+      id_format: "{api_id}"
+      notes: >-
+        The bare Events API id (`aws appsync list-apis` shows apiId).
+    - terraform_type: aws_appsync_datasource
+      pulumi_type: aws:appsync/dataSource:DataSource
+      id_format: "{api_id}-{datasource_name}"
+      notes: >-
+        Hyphen-joined API id and data source name; the parser splits on
+        the FIRST hyphen only, and data source names are hyphen-free by
+        AWS's own charset.
+    - terraform_type: aws_appsync_type
+      pulumi_type: aws:appsync/type:Type
+      id_format: "{api_id}:{type_format}:{type_name}"
+      notes: >-
+        Colon-joined API id, format (SDL/JSON), and the type's name as
+        AWS derives it from the definition (`aws appsync list-types
+        --api-id <id> --format SDL`).
+    - terraform_type: aws_appsync_function
+      pulumi_type: aws:appsync/function:Function
+      id_format: "{api_id}-{function_id}"
+      notes: >-
+        Hyphen-joined API id and the cloud-generated function id
+        (`aws appsync list-functions --api-id <id>` shows functionId).
+    - terraform_type: aws_appsync_resolver
+      pulumi_type: aws:appsync/resolver:Resolver
+      id_format: "{api_id}-{resolver_type}-{resolver_field}"
+      notes: >-
+        Hyphen-joined API id, type, and field; type and field names are
+        hyphen-free by AWS's GraphQL charset, so the three-way split is
+        unambiguous.
+    - terraform_type: aws_appsync_api_cache
+      pulumi_type: aws:appsync/apiCache:ApiCache
+      id_format: "{api_id}"
+      notes: >-
+        The API id - the cache is one-per-API (its AWS id IS the API
+        id).
+    - terraform_type: aws_appsync_api_key
+      pulumi_type: aws:appsync/apiKey:ApiKey
+      id_format: "{api_id}:{api_key_id}"
+      # AWS returns a key's secret only at creation; after an import the
+      # provider's key attribute holds the key ID, never the secret.
+      config_only_attributes: [key]
+      notes: >-
+        Colon-joined API id and key id (`aws appsync list-api-keys
+        --api-id <id>` shows id - the "da2-..." key id).
+    - terraform_type: aws_appsync_channel_namespace
+      pulumi_type: aws:appsync/channelNamespace:ChannelNamespace
+      id_format: "{api_id},{channel_namespace_name}"
+      notes: >-
+        Comma-joined Events API id and namespace name (`aws appsync
+        list-channel-namespaces --api-id <id>`).
+    - terraform_type: aws_appsync_domain_name
+      pulumi_type: aws:appsync/domainName:DomainName
+      id_format: "{custom_domain_name}"
+      notes: >-
+        The domain name itself (`aws appsync list-domain-names` shows
+        domainName).
+    - terraform_type: aws_appsync_domain_name_api_association
+      pulumi_type: aws:appsync/domainNameApiAssociation:DomainNameApiAssociation
+      id_format: "{custom_domain_name}"
+      notes: >-
+        The domain name - the association is 1:1 with the domain (its
+        AWS id IS the domain name).
+    - terraform_type: aws_appsync_source_api_association
+      pulumi_type: aws:appsync/sourceApiAssociation:SourceApiAssociation
+      id_format: "{api_id},{source_api_association_id}"
+      notes: >-
+        Comma-joined MERGED API id and association id, in CODE order -
+        the provider docs' prose reads them reversed, but InitFromID
+        assigns parts[0] to merged_api_id (`aws appsync
+        list-source-api-associations --api-id <merged-id>` shows
+        associationId).
+    - terraform_type: aws_wafv2_web_acl_association
+      pulumi_type: aws:wafv2/webAclAssociation:WebAclAssociation
+      id_format: "{web_acl_arn},{api_arn}"
+      notes: >-
+        Comma-joined web ACL ARN and protected-resource ARN (here the
+        GraphQL API's ARN) - `aws wafv2 list-web-acls --scope REGIONAL`
+        for the ACL, the API's arn output for the resource.

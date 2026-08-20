@@ -1,0 +1,36 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsvpcendpoint
+spec:
+  aws:
+    statements:
+      - sid: ManageVpcEndpoint
+        actions:
+          - ec2:CreateVpcEndpoint
+          - ec2:ModifyVpcEndpoint
+          - ec2:DeleteVpcEndpoints
+          - ec2:CreateTags
+          - ec2:DeleteTags
+        resources:
+          - arn:aws:ec2:*:*:vpc-endpoint/*
+          - arn:aws:ec2:*:*:vpc/*
+          - arn:aws:ec2:*:*:subnet/*
+          - arn:aws:ec2:*:*:security-group/*
+          - arn:aws:ec2:*:*:route-table/*
+        provenance: derived
+        notes: Covers aws_vpc_endpoint / ec2.VpcEndpoint -- the single resource both modules manage. The service reference authorizes CreateVpcEndpoint on the endpoint ARN AND the referenced vpc, subnet, security-group, and route-table ARNs (create-time multi-ARN scoping -- an endpoint-only grant denies provisioning), and ModifyVpcEndpoint on the endpoint plus whichever attachment resources a change touches (route tables on Gateway, subnets and security groups on Interface, all updatable in place). DeleteVpcEndpoints scopes to the endpoint ARN alone. CreateTags rides the create call; DeleteTags serves tag reconciliation.
+      - sid: ReadEndpointState
+        actions:
+          - ec2:DescribeVpcEndpoints
+          - ec2:DescribePrefixLists
+          - ec2:DescribeNetworkInterfaces
+        resources:
+          - "*"
+        provenance: derived
+        notes: Plan/refresh reads and the create/delete wait loops (the provider polls DescribeVpcEndpoints until available, then until deleted). DescribePrefixLists populates the Gateway-relevant prefix_list_id and cidr_blocks attributes on every endpoint that targets a service_name, and DescribeNetworkInterfaces reads the endpoint ENIs to reconstruct subnet_configuration state -- both are unconditional reads in the provider's read path. EC2 Describe APIs support no resource-level scoping (the service reference lists no resource types for any of the three), so the wildcard is the narrowest possible scope.

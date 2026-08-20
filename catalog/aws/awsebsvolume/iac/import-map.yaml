@@ -1,0 +1,29 @@
+# Where each placeholder in this component's import-ID formats comes
+# from (the formats themselves live in aa_import/catalog.yaml).
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsebsvolume
+spec:
+  values:
+    - name: volume_id
+      derivations:
+        - from_stack_output: volume_id
+        - from_arn_part: resource_id
+      where_to_find: >-
+        EC2 console -> Volumes (the vol-... ID column), or
+        `aws ec2 describe-volumes` (VolumeId).
+    # Attachments key their module instances "device//instance", so
+    # both placeholders derive from the address key's segments.
+    - name: device_name
+      derivations:
+        - from_address_key_segment: 0
+      where_to_find: >-
+        The device name declared on the attachment ("/dev/sdf");
+        `aws ec2 describe-volumes` shows Attachments[].Device.
+    - name: instance_id
+      derivations:
+        - from_address_key_segment: 1
+      where_to_find: >-
+        EC2 console -> Instances (the i-... ID column), or
+        `aws ec2 describe-volumes` (Attachments[].InstanceId).

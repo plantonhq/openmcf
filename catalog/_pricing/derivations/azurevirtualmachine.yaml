@@ -1,0 +1,91 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureVirtualMachine manifest's spec values into metered quantities and
+# price choices -- the size's hourly compute rate and the inline OS
+# disk's managed-disk tier. Spot capacity and pay-as-you-go Windows
+# licensing are refusals: both re-price the compute meter in ways no
+# list price commits to. The estimate generator replays the catalog
+# presets through these rules to emit
+# ../estimates/azurevirtualmachine.yaml; a server-side estimator
+# evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azurevirtualmachine
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  refusals:
+    - when:
+        - field_path: spot
+          op: is_set
+      reason: spot capacity bills at Azure's fluctuating market rate at allocation time, capped only by max_bid_price -- an on-demand list figure would misstate an evictable machine's bill
+    - when:
+        - field_path: os_profile.windows
+          op: is_set
+        - field_path: os_profile.windows.license_type
+          op: not_equals
+          value: WINDOWS_SERVER
+        - field_path: os_profile.windows.license_type
+          op: not_equals
+          value: WINDOWS_CLIENT
+      reason: a pay-as-you-go Windows VM adds a per-core Windows Server license meter on top of the base compute rate, and that meter is not yet in the price book -- only fleets bringing their own license (Azure Hybrid Benefit) price at the base rate
+  lines:
+    - sku_meter: VM compute
+      quantity:
+        - hours_in_month: true
+      price_lookup:
+        service_name: Virtual Machines
+        pricing_unit: hours
+        attributes:
+          - key: vm_size
+            from_field: size
+      basis: one VM x 730 hours at the size's base pay-as-you-go rate (the Linux rate; Windows fleets reach this line only with Azure Hybrid Benefit, whose license travels with the customer, not the meter)
+    - sku_meter: OS disk storage
+      applies_when:
+        - field_path: os_disk.storage_account_type
+          op: equals
+          value: PREMIUM_LRS
+        - field_path: os_disk.disk_size_gb
+          op: equals
+          value: "128"
+      quantity:
+        - constant: "1"
+      price_slug: managed-disk-p10-eastus
+      basis: a 128 GiB Premium SSD OS disk is exactly the P10 tier, billed per disk-month
+  exclusions:
+    - applies_when:
+        - field_path: os_disk.diff_disk_settings
+          op: is_unset
+        - field_path: os_disk.disk_size_gb
+          op: is_unset
+      text: the OS disk bills at the managed-disk tier matching the image's inherited size, which the manifest does not carry
+    - applies_when:
+        - field_path: os_disk.disk_size_gb
+          op: is_set
+        - field_path: os_disk.disk_size_gb
+          op: not_equals
+          value: "128"
+      text: explicit OS disk sizes other than 128 GiB map to managed-disk tiers not yet in the price book
+    - applies_when:
+        - field_path: os_disk.disk_size_gb
+          op: equals
+          value: "128"
+        - field_path: os_disk.storage_account_type
+          op: not_equals
+          value: PREMIUM_LRS
+      text: a 128 GiB OS disk on a non-Premium storage SKU bills a tier not yet in the price book
+    - text: referenced data disks, network interfaces, and public IPs are first-class components billing on their own lines
+    - text: network egress follows traffic and client placement
+  notes:
+    - applies_when:
+        - field_path: os_disk.diff_disk_settings
+          op: is_set
+      text: The ephemeral OS disk lives on the VM's local storage and adds no managed-disk charge.
+    - applies_when:
+        - field_path: os_profile.windows
+          op: is_set
+      text: Azure Hybrid Benefit prices the machine at the base compute rate; the Windows Server license obligation is carried by the customer's own licensing, not this bill.

@@ -1,0 +1,24 @@
+# The peering scenario's SECOND VPC - an extra instance beyond the
+# chain's install profile (the harness's manifest-path prerequisites
+# seam exists precisely for peering-to-a-second-network shapes). A
+# non-overlapping CIDR (peering rejects overlaps) with DNS hostnames
+# enabled so the DNS-resolution options are exercisable.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsVpc
+metadata:
+  name: planton-oss-e2e-awsvpcpeer-b
+  id: planton-oss-e2e-awsvpcpeer-b
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsvpc
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  cidrBlock: 10.1.0.0/16
+  enableDnsHostnames: true
+  enableDnsSupport: true

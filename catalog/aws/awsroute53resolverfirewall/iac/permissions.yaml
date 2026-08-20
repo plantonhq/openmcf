@@ -1,0 +1,64 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsroute53resolverfirewall
+spec:
+  aws:
+    statements:
+      - sid: ManageFirewallRuleGroup
+        actions:
+          - route53resolver:CreateFirewallRuleGroup
+          - route53resolver:GetFirewallRuleGroup
+          - route53resolver:DeleteFirewallRuleGroup
+        resources:
+          - arn:aws:route53resolver:*:*:firewall-rule-group/*
+        provenance: derived
+        notes: Covers aws_route53_resolver_firewall_rule_group -- the pivot resource. All three scope to the firewall-rule-group ARN per the service reference.
+      - sid: ManageFirewallDomainLists
+        actions:
+          - route53resolver:CreateFirewallDomainList
+          - route53resolver:GetFirewallDomainList
+          - route53resolver:DeleteFirewallDomainList
+          - route53resolver:UpdateFirewallDomains
+          - route53resolver:ListFirewallDomains
+        resources:
+          - arn:aws:route53resolver:*:*:firewall-domain-list/*
+        provenance: derived
+        notes: Needed only when domain_lists are configured -- covers aws_route53_resolver_firewall_domain_list, one per entry. UpdateFirewallDomains writes the domains onto the list (create and every edit); ListFirewallDomains reads them back on refresh. All scope to the firewall-domain-list ARN.
+      - sid: ManageFirewallRules
+        actions:
+          - route53resolver:CreateFirewallRule
+          - route53resolver:UpdateFirewallRule
+          - route53resolver:DeleteFirewallRule
+          - route53resolver:ListFirewallRules
+        resources:
+          - arn:aws:route53resolver:*:*:firewall-rule-group/*
+          - arn:aws:route53resolver:*:*:firewall-domain-list/*
+        provenance: derived
+        notes: Covers aws_route53_resolver_firewall_rule, one per rules entry. Rule create/update/delete authorize against BOTH the rule group and (for list-matching rules) the domain-list ARN per the service reference; ListFirewallRules (scoped to the rule group) backs the provider's reads.
+      - sid: ManageVpcAssociations
+        actions:
+          - route53resolver:AssociateFirewallRuleGroup
+          - route53resolver:GetFirewallRuleGroupAssociation
+          - route53resolver:UpdateFirewallRuleGroupAssociation
+          - route53resolver:DisassociateFirewallRuleGroup
+        resources:
+          - arn:aws:route53resolver:*:*:firewall-rule-group-association/*
+        provenance: derived
+        notes: Covers aws_route53_resolver_firewall_rule_group_association, one per vpc_associations entry -- associate on create, Get on refresh, Update for priority/mutation-protection changes, Disassociate on destroy. All scope to the firewall-rule-group-association ARN.
+      - sid: TagFirewallResources
+        actions:
+          - route53resolver:TagResource
+          - route53resolver:UntagResource
+          - route53resolver:ListTagsForResource
+        resources:
+          - arn:aws:route53resolver:*:*:firewall-rule-group/*
+          - arn:aws:route53resolver:*:*:firewall-domain-list/*
+          - arn:aws:route53resolver:*:*:firewall-rule-group-association/*
+        provenance: derived
+        notes: The rule group, each owned domain list, and each association are tagged (tags = local.aws_tags) -- tag-on-create plus reconciliation and the tag read on every refresh, scoped per the service reference.

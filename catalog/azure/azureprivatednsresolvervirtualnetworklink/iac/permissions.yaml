@@ -1,0 +1,24 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureprivatednsresolvervirtualnetworklink
+spec:
+  azure:
+    groups:
+      - purpose: ManageLink
+        actions:
+          - Microsoft.Network/dnsForwardingRulesets/virtualNetworkLinks/read
+          - Microsoft.Network/dnsForwardingRulesets/virtualNetworkLinks/write
+          - Microsoft.Network/dnsForwardingRulesets/virtualNetworkLinks/delete
+        provenance: derived
+        notes: Covers azurerm_private_dns_resolver_virtual_network_link -- create, read/refresh, in-place metadata updates, and destroy. The link is an ARM child of the ruleset, so these are needed in the ruleset's scope; Network Contributor covers them.
+      - purpose: JoinLinkedNetwork
+        actions:
+          - Microsoft.Network/virtualNetworks/join/action
+        provenance: derived
+        notes: The link references the target network by ARM ID (spec.virtual_network_id); ARM authorizes the reference through the network's join action, in the NETWORK's scope -- for cross-subscription links (which the service allows), the principal needs it in each subscription. Verified against the live Microsoft.Network operation inventory.

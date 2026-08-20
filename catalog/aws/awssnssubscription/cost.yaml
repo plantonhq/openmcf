@@ -1,0 +1,42 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awssnssubscription
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: protocol
+      sku_meter: notification deliveries
+      pricing_unit: notifications
+      impact: The protocol IS the meter -- SQS and Lambda deliveries carry no per-message charge at all, while HTTP/S, email, mobile push, and Firehose deliveries each bill at their own per-message rate and SMS bills per-country rates through AWS End User Messaging. The same topic traffic costs nothing or real money depending on this one field.
+    - field_path: filter_policy
+      sku_meter: notification deliveries
+      pricing_unit: notifications
+      impact: Attribute-based filtering is free and every message it filters out is a delivery never billed -- the cheapest cost control on a noisy topic.
+    - field_path: filter_policy_scope
+      sku_meter: payload filtering data scanned
+      pricing_unit: GB
+      impact: MessageBody scope switches to payload-based filtering, billed per GB of outbound payload scanned with a 1 KB minimum per message -- and BOTH matched and filtered-out messages count toward the scanned volume, so filtering aggressively still scans everything.
+    - field_path: delivery_policy
+      sku_meter: notification deliveries
+      pricing_unit: notifications
+      impact: The HTTP retry policy multiplies delivery attempts to failing endpoints -- every retry is a billed delivery.
+    - field_path: dead_letter_config.dead_letter_target_arn
+      sku_meter: SQS requests
+      pricing_unit: requests
+      impact: Messages that exhaust retries land in the referenced dead-letter queue, whose request and storage charges bill on that AwsSqsQueue component.
+    - field_path: replay_policy
+      sku_meter: archive processing
+      pricing_unit: GB
+      impact: Replaying a FIFO topic's archive into this subscription bills per GB of archive processed plus the normal FIFO subscription-message rates -- backfilling a new consumer is a real, one-time metered event.
+  free_tier: The first 100,000 HTTP/S deliveries and the first 1,000 email deliveries each month are free -- permanent rate tiers, not 12-month trials. SQS and Lambda deliveries are free at any volume.
+  estimate_exclusions:
+    - delivery volume is the topic's publish traffic times this subscription's filter -- entirely workload-driven
+    - the topic's publish-side meters (requests, payload, archive storage, data protection) bill on the AwsSnsTopic component
+    - SMS rates vary by destination country and bill through AWS End User Messaging -- unknowable from the manifest
+    - data transfer out bills per GB at internet rates even for SQS and Lambda deliveries, whose per-message rate is zero
+    - the endpoint's own processing (Lambda invocations, SQS storage, Firehose ingestion) bills on the endpoint's component
+  notes: "A subscription's existence is free -- it is the delivery-side billing point for the topic's traffic, and the protocol field decides whether that traffic is free or metered. SQS and Lambda deliveries carry no per-message charge (the reason queue-and-function fan-out is the cheap SNS pattern), though AWS still bills the data transferred to them per GB. HTTP/S, email, mobile push, and Firehose deliveries are each their own per-message meter, and 64 KB chunking means one large notification can bill as several. The quiet meter is filter_policy_scope: MessageBody turns SNS's free attribute filtering into a per-GB payload scan of every message the topic sends this subscription, filtered out or not. Publish-side spend lives on the AwsSnsTopic component."

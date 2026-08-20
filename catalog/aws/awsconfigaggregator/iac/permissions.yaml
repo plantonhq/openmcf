@@ -1,0 +1,53 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsconfigaggregator
+spec:
+  aws:
+    statements:
+      - sid: ManageAggregator
+        actions:
+          - config:PutConfigurationAggregator
+          - config:DeleteConfigurationAggregator
+        resources:
+          - arn:aws:config:*:*:config-aggregator/*
+        provenance: derived
+        notes: Covers aws_config_configuration_aggregator (the aggregation arm). Put creates AND updates -- source-block content changes apply in place; a source block appearing on an existing aggregator replaces it, still through Put. Both actions scope to the config-aggregator ARN per the service reference.
+      - sid: ManageAggregationGrants
+        actions:
+          - config:PutAggregationAuthorization
+          - config:DeleteAggregationAuthorization
+        resources:
+          - arn:aws:config:*:*:aggregation-authorization/*/*
+        provenance: derived
+        notes: Covers aws_config_aggregate_authorization (the authorizations arm, one resource per grant). The ARN format embeds the authorized aggregator account and region (aggregation-authorization/<aggregatorAccount>/<aggregatorRegion>), so a tightened grant can pin exactly which aggregator this runner may authorize.
+      - sid: ReadAggregationState
+        actions:
+          - config:DescribeConfigurationAggregators
+          - config:DescribeAggregationAuthorizations
+        resources:
+          - "*"
+        provenance: derived
+        notes: The read-back both arms need on every plan/refresh. Both Describe actions publish NO resource types in the Config service reference -- an ARN-scoped grant would be a runtime DENY -- so the wildcard is the narrowest possible scope.
+      - sid: PassOrganizationCollectionRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: "Needed only when aggregation.organization_source is used: PutConfigurationAggregator hands role_arn to config.amazonaws.com, and IAM requires the caller to hold iam:PassRole on that role. Tighten the resource to the specific role ARN in hardened deployments (optionally with iam:PassedToService = config.amazonaws.com). Account-list aggregators and the grants arm never pass a role. Note the role itself (not the runner) carries the organizations read permissions, and organization-sourced aggregators must run from the management account or a Config delegated administrator."
+      - sid: TagAggregationResources
+        actions:
+          - config:TagResource
+          - config:UntagResource
+          - config:ListTagsForResource
+        resources:
+          - arn:aws:config:*:*:config-aggregator/*
+          - arn:aws:config:*:*:aggregation-authorization/*/*
+        provenance: derived
+        notes: Both resources tag with the platform's standard tags; ListTagsForResource serves every plan/refresh read-back. All three actions scope to both ARN formats per the service reference.

@@ -1,0 +1,25 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetessolroperator
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Each operator replica carries the declared resources. Extra replicas are leader-elected warm standbys -- one active reconciler, instant takeover when the leader's node dies.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The CPU and memory requests are what the scheduler reserves per operator replica. The chart ships no default requests or limits (the operator is lightweight) -- empty means the operator schedules unbounded.
+    - field_path: zookeeper_operator
+      sku_meter: cluster CPU and memory reservations
+      impact: The bundled zookeeper-operator (installed by default) runs its own controller Deployment beside the Solr operator -- a second standing pod whose sizing follows its subchart (overridable only via helm_values). The ZooKeeper ENSEMBLES it provisions ride the KubernetesSolr resources that declare them.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - "the Solr clusters this operator reconciles -- SolrCloud nodes, their volumes, provided ZooKeeper ensembles -- reserve their own capacity on their KubernetesSolr resources, never this footprint"
+    - the bundled zookeeper-operator pod (installed by default) carries subchart-default sizing this spec does not model
+    - the helm_values overlay merges last and can override the modeled values, including resources and the zookeeper-operator subchart's own values
+  notes: "This component installs the ENGINE, not the search clusters: its footprint is the Solr operator pod(s) plus the bundled zookeeper-operator pod when installed. Everything the operators manage is declared through KubernetesSolr resources, which carry their own capacity footprints."

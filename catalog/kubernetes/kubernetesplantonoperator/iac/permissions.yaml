@@ -1,0 +1,102 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources plus the
+# pinned 0.7.1 chart's template census, cited in notes) until the live
+# capture lane upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+#
+# NOTE the asymmetry with what the OPERATOR ITSELF needs: the chart grants
+# the operator a broad ClusterRole (it deploys entire platforms). The
+# runner's principal below only needs to CREATE that grant — Kubernetes
+# requires the granting principal to already hold (or be allowed to
+# escalate to) the permissions it grants, so in practice the runner runs
+# with cluster-admin on the target cluster, as any operator-installing
+# principal must.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesplantonoperator
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1 — the optional installation namespace (create_namespace), created before the release and deleted with the resource.
+      - api_groups:
+          - apiextensions.k8s.io
+        resources:
+          - customresourcedefinitions
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubectl_manifest.crds — the module-owned plantonplatforms.planton.ai CRD, applied server-side BEFORE the release (the release installs with skip_crds). No delete verb by design — the CRD is retained on destroy (apply_only / retainOnDelete), so the principal never deletes it.
+      - api_groups:
+          - ""
+        resources:
+          - serviceaccounts
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's ServiceAccount for the operator pod (serviceaccount.yaml in the 0.7.1 template census; skipped when service_account.create is false).
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's single manager Deployment (deployment.yaml in the 0.7.1 template census; replicas/leaderElection/resources/scheduling patched from the typed spec).
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart's manager ClusterRole/ClusterRoleBinding pair (clusterrole.yaml, clusterrolebinding.yaml) — the operator's cluster-wide platform-reconciliation grant. Creating it requires the runner's principal to already hold what it grants (Kubernetes escalation prevention), which is why operator installation is a cluster-admin act.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's namespaced leader-election Role/RoleBinding pair (leader-election-role.yaml, leader-election-rolebinding.yaml) in the installation namespace.

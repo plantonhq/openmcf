@@ -1,0 +1,24 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurefrontdoorprofile
+spec:
+  azure:
+    groups:
+      - purpose: ManageFrontDoorProfile
+        actions:
+          - Microsoft.Cdn/profiles/read
+          - Microsoft.Cdn/profiles/write
+          - Microsoft.Cdn/profiles/delete
+        provenance: derived
+        notes: Covers azurerm_cdn_frontdoor_profile / cdn.NewFrontdoorProfile -- the single ARM resource either module creates -- through create, refresh, in-place updates (response timeout, identity, log scrubbing, tags), and destroy. Front Door Standard/Premium lives under the Microsoft.Cdn namespace, NOT Microsoft.Network -- the classic Microsoft.Network/frontDoors provider is a different product this component never touches. Endpoints, origin groups, origins, and routes are separate kinds nesting under this profile in ARM; their principals need the corresponding Microsoft.Cdn child-resource operations, not this manifest.
+      - purpose: AssignUserManagedIdentities
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: Required only when identity carries USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED identities -- ARM checks assign/action on every identity referenced in the profile payload (service-side; the modules only pass the resolved identity IDs). A SYSTEM_ASSIGNED identity needs no extra permission -- and note the deploying principal does NOT need Key Vault access -- certificate reads are performed later by the profile's own identity, whose vault grants compose separately via AzureRoleAssignment.

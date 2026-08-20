@@ -1,0 +1,32 @@
+# A custom CloudFormation-Guard policy rule -- custom compliance logic
+# with zero compute fixtures (the Guard engine runs inside AWS Config).
+# Proves the custom_policy source arm live under the same fixture
+# recorder as the managed-rule scenario.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsConfigRule
+metadata:
+  name: planton-oss-e2e-awscfgrl-guard
+  id: planton-oss-e2e-awscfgrl-guard
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsconfigrule
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole,AwsS3Bucket,AwsConfigRecorder"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E Guard rule - S3 buckets must carry the managed-by tag
+  customPolicy:
+    policyRuntime: guard-2.x.x
+    policyText: |
+      rule check_bucket_tagged when
+        resourceType == "AWS::S3::Bucket" {
+          configuration.tags exists
+      }
+  scope:
+    complianceResourceTypes:
+      - AWS::S3::Bucket

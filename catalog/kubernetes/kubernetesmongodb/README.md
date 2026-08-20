@@ -14,8 +14,8 @@ Also not the right component when:
   Percona Operator for MongoDB (watch scope, reconcile concurrency,
   telemetry) is KubernetesPerconaMongoOperator; this component is one
   MongoDB cluster it manages.
-- **You want a managed cloud MongoDB** — use AtlasMongodb for a
-  MongoDB Atlas cluster the vendor operates; this component is for
+- **You want a managed cloud MongoDB** — use a vendor-operated service
+  such as MongoDB Atlas; this component is for
   running MongoDB ON the Kubernetes cluster itself.
 - **You want a single throwaway pod** — a replica set, an operator,
   and per-member PVCs are the wrong tool for a scratch database that

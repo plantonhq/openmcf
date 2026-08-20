@@ -1,0 +1,47 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbedrockagentcoreidentity
+spec:
+  # An AgentCore identity bundle under live E2E: two free, fixture-free
+  # lanes (identity resources are control-plane objects; the vaulted
+  # secrets bill Secrets Manager pennies while alive). The minimal lane
+  # proves one workload identity. The full-surface lane proves every arm:
+  # the vaulting mechanics (CreateApiKeyCredentialProvider /
+  # CreateOauth2CredentialProvider store throwaway test literals in
+  # Secrets Manager under the token vault -- the output maps carry the
+  # secret ARNs), a CUSTOM OAuth vendor discovering against Google's
+  # public OIDC document, and the Cedar policy engine with one policy
+  # (created after the engine, destroyed before it). Verification is the
+  # per-arm Get/List echoes keyed on the output maps.
+  #
+  # Deliberately not exercised live: the well-known OAuth vendors
+  # (GITHUB/GOOGLE/MICROSOFT/SALESFORCE/SLACK differ from CUSTOM only in
+  # AWS-known endpoints -- one vendor block proves the union; the
+  # manifest covers the shape), authorization_server_metadata discovery
+  # (the discovery_url arm proves the union; offline-proven), and
+  # FAIL_ON_ANY_FINDINGS validation (the lane's permissive test policy
+  # uses IGNORE_ALL_FINDINGS so Cedar analysis findings never flake the
+  # lane; the strict mode is a pass-through enum).
+  #
+  # PROVEN live 2026-08-14 (Q35 proof session): minimal + full-surface
+  # green on BOTH engines under the armed apply-idempotency gate, with
+  # the Terraform blind import round-trip re-importing all five
+  # full-surface resources (workload identity / api-key provider /
+  # oauth2 provider by NAME via the from_address_key arm's first live
+  # use; policy engine by id; policy by the {engine_id},{policy_id}
+  # composite) at zero real change -- only the three DECLARED config-only
+  # attributes tolerated (api_key, oauth2_provider_config,
+  # validation_mode). TWO live catches fixed at the full bar: AWS
+  # rejects reserved/documentation TLDs in OAuth return URLs ("Invalid
+  # redirect url" -- .test rejected, real TLDs and localhost accepted,
+  # CLI-probed), and CreatePolicy rejects fully-wildcard Cedar resources
+  # (statements must constrain to AgentCore::Gateway -- type constraint
+  # probed accepted). Both truths live on the spec field comments, the
+  # scenario/manifest/preset examples, and GUIDE.md.
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 30

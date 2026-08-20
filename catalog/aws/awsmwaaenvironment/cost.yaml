@@ -1,0 +1,51 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsmwaaenvironment
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Amazon Managed Workflows for Apache Airflow
+      sku_meter: environment instance hours
+      pricing_unit: hours
+      description: The environment bills hourly at its class rate from creation whether or not a single DAG runs; the fee includes one worker, two schedulers, and two web servers (mw1.micro runs a single combined worker/scheduler and one web server).
+  cost_drivers:
+    - field_path: environment_class
+      sku_meter: environment instance hours
+      pricing_unit: hours
+      impact: The class sets the hourly environment rate and every additional-instance rate with it -- the dominant term of the bill, from mw1.micro up to mw1.2xlarge (AWS defaults to mw1.small when unset).
+    - field_path: min_workers
+      sku_meter: additional worker instance hours
+      pricing_unit: hours
+      impact: Every worker beyond the one included in the environment fee that min_workers holds always-on bills per hour around the clock -- the workers floor is committed spend.
+    - field_path: max_workers
+      sku_meter: additional worker instance hours
+      pricing_unit: hours
+      impact: Autoscaled workers between the floor and this ceiling bill per hour only while task queue depth demands them -- the ceiling caps the surge bill.
+    - field_path: schedulers
+      sku_meter: additional scheduler instance hours
+      pricing_unit: hours
+      impact: Schedulers beyond the two included in the environment fee bill per hour for the environment's full lifetime -- schedulers do not autoscale, so a third or fourth scheduler is committed spend.
+    - field_path: min_webservers
+      sku_meter: additional web server instance hours
+      pricing_unit: hours
+      impact: Web servers beyond the two included that min_webservers holds always-on bill per hour around the clock.
+    - field_path: max_webservers
+      sku_meter: additional web server instance hours
+      pricing_unit: hours
+      impact: Autoscaled web servers between the floor and this ceiling bill per hour only while UI and REST-API load demands them.
+    - field_path: logging_configuration
+      sku_meter: log ingestion
+      pricing_unit: GB
+      impact: Each enabled Airflow log module (DAG processing, scheduler, task, webserver, worker) streams to CloudWatch Logs, billed as ingestion and storage at the chosen log level -- DEBUG on a busy fleet is real money.
+  free_tier: ""
+  estimate_exclusions:
+    - autoscaled workers and web servers between their floors and ceilings follow task queue depth and UI load
+    - metadata database storage bills per GB-month and grows with workflow history
+    - CloudWatch Logs ingestion and storage for the enabled log modules depend on log level and DAG volume
+    - the DAG source bucket, execution role, and KMS key bill on their own components
+    - data transfer for DAG tasks that reach services in other AZs or regions
+  notes: "The environment fee and the scaling floors (min_workers beyond the included one, schedulers beyond the included two, min_webservers beyond the included two) are the certainties at manifest time -- everything else follows the workload. Environment creation commonly runs tens of minutes; the meter starts when the environment becomes available."

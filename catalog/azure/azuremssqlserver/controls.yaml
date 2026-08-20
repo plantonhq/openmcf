@@ -1,0 +1,100 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremssqlserver
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Transparent data encryption is on by default for every database created on the server -- Azure encrypts data, logs, and backups at rest with a service-managed key unless the server pins its own; the logical server itself stores only metadata, held in the same encrypted service.
+      notes: The server is where the estate-wide TDE protector is set (see enc-at-rest-cmk); per-database TDE toggles belong to the AzureMssqlDatabase kind.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: transparent_data_encryption_key_vault_key_id
+      evidence:
+        type: spec_default
+        reference: Unset leaves every database's TDE protector on Azure's service-managed key; setting a versioned Key Vault key ID makes that key the server-level protector for every database. The spec's CEL requires an identity block alongside it -- the server's managed identity is what unwraps the key, and it needs wrap/unwrap access on the vault.
+      notes: ARM pins the exact key VERSION at the server level, so key rotation is an explicit manifest update to the new version.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      field_path: minimum_tls_version
+      evidence:
+        type: spec_default
+        reference: All TDS client connections to {server_name}.database.windows.net are TLS-encrypted -- Azure SQL offers no plaintext listener -- and minimum_tls_version defaults to "1.2", the only value current API versions accept (older floors are retired; ARM rejects removing the floor once set).
+      notes: connection_policy shapes the connection path (gateway proxy versus node redirect), not whether it is encrypted.
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_network_access_enabled
+      evidence:
+        type: spec_default
+        reference: Unset applies Azure's default of true -- the server answers on its public endpoint, gated by the firewall and virtual-network allowlists. Setting false closes the public endpoint entirely, leaving AzurePrivateEndpoint as the only path in.
+      notes: Azure SQL does not support VNet injection -- private connectivity is exclusively Private Link, a separate kind referencing this server's server_id.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: firewall_rules
+      evidence:
+        type: spec_default
+        reference: The public endpoint is deny-by-default -- with public network access enabled, no client connects until a firewall_rules entry admits its IPv4 range or a virtual_network_rules entry admits its subnet through the Microsoft.Sql service endpoint. The special 0.0.0.0-0.0.0.0 rule admits Azure-internal services only, not the internet.
+      notes: outbound_network_restriction_enabled plus outbound_firewall_rules restrict the reverse direction -- which FQDNs the server may reach OUT to for elastic queries and linked external tables.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The server speaks TDS, not HTTP -- no WAF or request-filter attachment point exists for a SQL endpoint.
+    - control_id: rbac
+      status: configurable
+      field_path: azuread_administrator
+      evidence:
+        type: spec_default
+        reference: Declaring azuread_administrator grants a Microsoft Entra principal (use a group to admit a team) the server administrator role, bringing directory-governed, role-based access to the estate; omitting it leaves only the standalone SQL administrator login. Inside the engine, access is then delegated through SQL roles and database users mapped to Entra principals.
+      notes: The spec's CEL enforces ARM's real contract -- at least one of administrator_login or an Entra-only administrator must be configured, so the server can never deploy with no administrative access model at all.
+    - control_id: workload-identity
+      status: configurable
+      field_path: identity
+      evidence:
+        type: spec_default
+        reference: Unset means the server itself holds no identity and must be given storage keys for auditing exports; declaring identity attaches a system-assigned or user-assigned managed identity that authenticates the SERVER keylessly to Azure APIs -- unwrapping the TDE customer-managed key in Key Vault and writing audit logs to storage without an access key. azuread_administrator.object_id defaults to an AzureUserAssignedIdentity's principal id, so deployment workloads can administer with tokens too.
+      notes: Applications connecting to databases go keyless via Entra authentication -- their identities are admitted through the azuread_administrator (or database-level users), not through fields here.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: azuread_administrator.azuread_authentication_only
+      evidence:
+        type: spec_default
+        reference: Default false -- SQL password logins stay accepted alongside Entra. Setting true disables SQL authentication server-wide, making directory tokens the ONLY way in; the spec's CELs then force the SQL credentials (administrator_login/administrator_password) to be omitted entirely, so no password exists even in configuration.
+      notes: Azure's recommended posture for passwordless estates, and the switch auditors look for -- ARM also rejects password changes while it is true.
+    - control_id: audit-logging
+      status: configurable
+      field_path: extended_auditing
+      evidence:
+        type: spec_default
+        reference: Omitted means no SQL auditing -- only control-plane changes land in the Azure Activity Log. Declaring extended_auditing turns on server-level auditing for EVERY database on the server, writing authentication and batch events to blob storage (storage_endpoint) and/or Azure Monitor (log_monitoring_enabled, default true), with retention_in_days and audit_actions_and_groups tuning what is kept.
+      notes: Server-level auditing covers databases created later automatically -- the reason to configure it here rather than per database.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: security_alert_policy
+      evidence:
+        type: spec_default
+        reference: Omitted leaves threat detection unconfigured. Declaring security_alert_policy with state ENABLED turns on Microsoft Defender for SQL's advanced threat protection at the server scope -- runtime alerts for SQL injection, anomalous access, data exfiltration, and unsafe actions, routed to email_addresses and optionally the subscription admins. express_vulnerability_assessment_enabled adds agentless vulnerability scanning.
+      notes: Performance metrics and diagnostic-setting export are per-database surfaces on the AzureMssqlDatabase kind; this server-scope control covers the security-signal half.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The logical server holds no user data to back up -- automated backups with point-in-time restore are built into every AzureMssqlDatabase as that kind's posture. The server manifest itself is recreated declaratively.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Backup retention windows are configured per database (AzureMssqlDatabase), not on the server; retention_in_days under extended_auditing governs AUDIT LOG retention, which audit-logging covers.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The server has no compute with a zonal failure mode -- zone redundancy is a per-database and per-elastic-pool choice on those kinds, and cross-region failover is AzureMssqlFailoverGroup's posture. The server endpoint itself is Microsoft-operated regional infrastructure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a logical server (Azure resource locks are subscription-side governance outside the manifest); deleting the server deletes the databases on it, which is where the real risk lives.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed PaaS -- Microsoft patches and upgrades the SQL engine and gateway fleet continuously; the version field's "12.0" is the evergreen identifier tracking the current Azure SQL engine, not a pinnable engine version.

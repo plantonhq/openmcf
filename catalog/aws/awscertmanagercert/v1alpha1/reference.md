@@ -72,7 +72,7 @@ spec:
 | `spec.imported.certificateBody` | `string` | yes |  |  |
 | `spec.imported.privateKey` | `string` (sensitive) | yes |  |  |
 | `spec.imported.certificateChain` | `string` |  |  |  |
-| `spec.certificateAuthorityArn` | `string` |  |  |  |
+| `spec.certificateAuthorityArn` | `string \| valueFrom` |  |  | AwsPrivateCa (`status.outputs.certificate_authority_arn`) |
 | `spec.earlyRenewalDuration` | `string` |  |  |  |
 
 ## Field Details
@@ -273,16 +273,19 @@ well-known public CAs. Public material, not a secret.
 
 ### spec.certificateAuthorityArn
 
-`string`
+`string | valueFrom`
 
-The ARN of an AWS Private Certificate Authority (ACM-PCA).
-Setting this together with primary_domain_name selects the
-private mode: the CA issues the certificate directly, no public
-validation happens, and validation_method must stay unset.
-Private certificates are for internal TLS (service meshes,
-internal ALBs) where clients trust your private root.
+The AWS Private Certificate Authority (ACM-PCA) that issues this
+certificate. Setting this together with primary_domain_name
+selects the private mode: the CA issues the certificate directly,
+no public validation happens, and validation_method must stay
+unset. Private certificates are for internal TLS (service meshes,
+internal ALBs) where clients trust your private root. Can
+reference an AwsPrivateCa resource or pass a literal
+certificate-authority ARN.
 
-- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^arn:aws[a-zA-Z-]*:acm-pca:[a-z0-9-]+:[0-9]{12}:certificate-authority/.+$"}}
+- references: AwsPrivateCa (`status.outputs.certificate_authority_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsPrivateCa, name: <that resource's name>, fieldPath: status.outputs.certificate_authority_arn}} -- a bare string does not parse
 
 ### spec.earlyRenewalDuration
 
@@ -305,6 +308,7 @@ imported certificates never renew.
 - `private_ca_excludes_validation`: private (ACM-PCA) certificates are issued without public validation -- remove validation_method, validation_options, and route53_hosted_zone_id when certificate_authority_arn is set
 - `route53_zone_requires_dns_validation`: route53_hosted_zone_id automates DNS validation records -- it cannot be combined with validation_method EMAIL or HTTP
 - `early_renewal_requires_private_ca`: early_renewal_duration drives managed renewal of private (ACM-PCA) certificates -- it requires certificate_authority_arn
+- `certificate_authority_arn_format`: certificate_authority_arn must be an ACM-PCA certificate-authority ARN (arn:aws:acm-pca:region:account:certificate-authority/...)
 
 ## Outputs
 
@@ -330,6 +334,7 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.route53HostedZoneId` | AwsRoute53Zone | `status.outputs.zone_id` |
+| `spec.certificateAuthorityArn` | AwsPrivateCa | `status.outputs.certificate_authority_arn` |
 
 ## Referenced By
 
@@ -337,6 +342,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsAppSyncApi | `spec.customDomain.certificateArn` | `status.outputs.cert_arn` |
 | AwsClientVpn | `spec.authenticationOptions[].rootCertificateChainArn` | `status.outputs.cert_arn` |
 | AwsClientVpn | `spec.serverCertificateArn` | `status.outputs.cert_arn` |
 | AwsCloudFront | `spec.origins[].customOrigin.mtlsClientCertificateArn` | `status.outputs.cert_arn` |
@@ -348,6 +354,8 @@ Fields on other kinds that can point at this resource:
 | AwsLbListener | `spec.additionalCertificateArns` | `status.outputs.cert_arn` |
 | AwsOpenSearchDomain | `spec.domainEndpointOptions.customEndpointCertificateArn` | `status.outputs.cert_arn` |
 | AwsRedshiftServerlessWorkgroup | `spec.customDomain.certificateArn` | `status.outputs.cert_arn` |
+| AwsRestApiDomain | `spec.certificateArn` | `status.outputs.cert_arn` |
+| AwsRestApiDomain | `spec.ownershipVerificationCertificateArn` | `status.outputs.cert_arn` |
 
 ## See Also
 

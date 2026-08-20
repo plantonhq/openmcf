@@ -1,0 +1,38 @@
+# Consumer-scoped fixture: the IAM role the pull-time update
+# exclusion excludes (a stand-in for a CI/CD push role whose pulls
+# should not refresh last-pull metrics). Referenced by path from the
+# scenario's e2e-prerequisites annotation.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-awsecrrs-ci-role
+  id: planton-oss-e2e-awsecrrs-ci-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E stand-in CI role for the ECR pull-time exclusion
+  inlinePolicies:
+    ecrPull:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - ecr:GetAuthorizationToken
+            - ecr:BatchGetImage
+            - ecr:GetDownloadUrlForLayer
+          Resource: "*"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: codebuild.amazonaws.com
+        Action: sts:AssumeRole

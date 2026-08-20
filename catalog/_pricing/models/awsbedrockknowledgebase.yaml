@@ -1,0 +1,38 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Both presets are zero-committed: creating a knowledge base
+# is free (the Bedrock pricing page hangs every knowledge-base charge on
+# storage, retrieval, parsing, and model usage -- never on existence), and
+# ingestion syncs are explicit acts, so nothing meters until the first sync
+# or query -- stated in exclusions, never padded into fabricated dollars.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awsbedrockknowledgebase
+spec:
+  presets:
+    - preset: 01-s3-docs-on-s3-vectors
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - each ingestion sync embeds the changed manuals at amazon.titan-embed-text-v2:0's per-1M-input-token rate, and every retrieval query embeds the question at the same rate -- corpus- and traffic-driven, with no free allotment
+        - the S3 Vectors index (addressed by ARN, outside this manifest) bills per-GB vector storage and per-query on Amazon S3 Vectors' own pricing -- the lowest-idle store, but not this component's meter
+        - sync-time S3 GET requests against the referenced product-manuals bucket bill on that AwsS3Bucket
+        - RetrieveAndGenerate answers add generation-model tokens at whatever model the caller selects
+        - the default parser is free; upgrading this data source to Bedrock Data Automation or foundation-model parsing would start per-page or per-token parsing meters on every re-ingestion
+      notes: Zero committed cost -- the knowledge base and its S3 data source bill nothing at existence, and the zero is commitment-absence; the embedding meter starts with the first explicit sync, and the recurring store cost rides the external S3 Vectors index.
+    - preset: 02-managed-store-web-crawl
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - the first crawl sync starts the managed store's index-storage meter at $5.00 per GB of raw data per month -- capped in practice by the crawl's maxPages 1000, but page weight decides the GB
+        - every retrieval bills Standard Retrieve API calls at $1.00 per 1,000 (Agentic Retrieval, if callers use it, $4.00 per 1,000 plus the underlying retrieves)
+        - managed parsing, built-in embedding, and built-in re-ranking are included at $0 on the managed arm -- no token meter starts unless a custom embedding model is brought
+        - RetrieveAndGenerate answers add generation-model tokens at the caller's chosen model
+        - the web crawler publishes no meter of its own; its cost effect is entirely the content volume it feeds into index storage
+      notes: Zero committed cost -- an uncrawled managed knowledge base stores nothing and bills nothing; the zero is commitment-absence, and the two managed-arm meters (GB-month storage, per-1,000 retrieves) start with the first sync and the first query respectively.

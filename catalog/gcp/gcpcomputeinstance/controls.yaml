@@ -1,0 +1,99 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpcomputeinstance
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Compute Engine encrypts every persistent disk -- boot and attached alike -- at rest with Google-managed keys without configuration.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: boot_disk.kms_key
+      evidence:
+        type: spec_default
+        reference: Unset means Google-managed encryption; naming a Cloud KMS key at creation encrypts the boot disk with the customer-managed key. Attached disks carry their own keys on their GcpComputeDisk resources, and instance_encryption_key extends CMEK to instance-level state (memory contents).
+      notes: No preset enables CMEK. The Compute Engine service agent needs roles/cloudkms.cryptoKeyEncrypterDecrypter on the key before create.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Google encrypts VM traffic at the network layer whenever it crosses a physical boundary outside Google's control, on every instance without configuration.
+      notes: Application-level TLS for the workload's own listeners is the guest's responsibility -- the platform cannot see or configure it.
+    - control_id: no-public-access
+      status: configurable
+      field_path: network_interfaces.access_configs
+      evidence:
+        type: spec_default
+        reference: An empty access_configs list means the interface gets no external IPv4 -- the VM is unreachable from the internet (pair with Cloud NAT for egress). Adding an access config is the explicit public opt-in.
+      notes: The 02-hardened-web-server and 03-stateful-data-vm presets carry no access configs; 01-dev-spot-vm deliberately takes an ephemeral external IP for zero-prerequisite shell access.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound scoping lives on VPC firewall rules -- separate resources that select this VM by its network tags (the spec's tags field is the selector, not an allowlist). The instance spec carries no ingress rule surface of its own.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A raw VM has no WAF attachment point; Cloud Armor policies attach to the load balancer fronting it, a separate resource.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management-plane access (create, reconfigure, start/stop, delete) is governed by Compute Engine IAM roles on every instance; enabling OS Login moves SSH access under those same IAM identities.
+      notes: The 02-hardened-web-server preset sets the enable-oslogin metadata key so SSH follows IAM instead of static keys.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every VM authenticates to Google APIs as its attached service account through short-lived metadata-server tokens -- no static credentials are ever provisioned by the platform.
+      notes: service_account.email pins a dedicated least-privilege identity (the 02 preset does); when omitted, the Compute Engine default service account is used -- functional, but broader than production deserves.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: metadata
+      evidence:
+        type: spec_default
+        reference: The legacy path is static SSH keys managed through instance metadata (the ssh_keys field feeds it); setting the enable-oslogin metadata key to TRUE retires metadata-managed keys in favor of IAM-governed OS Login.
+      notes: The 02-hardened-web-server preset enables OS Login; the other presets leave GCP's default (metadata keys honored).
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every administrative action on the instance (create, reconfigure, start/stop, delete) lands in Cloud Audit Logs' Admin Activity stream unconditionally.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Compute Engine publishes hypervisor-visible instance metrics (CPU, network, disk I/O) to Cloud Monitoring for every VM without an agent.
+      notes: Guest-level metrics (memory, processes) need the Ops Agent inside the image -- outside this spec's surface.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: boot_disk.resource_policies
+      evidence:
+        type: spec_default
+        reference: Unset means no automated snapshots; attaching a snapshot-schedule resource policy to the boot disk backs it up on a calendar. Attached data disks schedule their own snapshots on their GcpComputeDisk resources.
+      notes: No preset attaches a snapshot schedule -- the policy is a separate resource referenced by self link.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Snapshot retention is a property of the referenced snapshot-schedule resource policy, configured on that separate resource -- this spec only attaches the policy and carries no retention field.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: boot_disk.replica_zones
+      evidence:
+        type: spec_default
+        reference: Unset means a zonal boot disk; naming exactly two zones converts it to a regional disk synchronously replicated across both (requires a source_snapshot boot source), letting the VM be re-created in the surviving zone with its data.
+      notes: The VM itself is a single-zone resource -- replicated compute across zones is GcpComputeMig's job. No preset enables replica zones.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_protection
+      evidence:
+        type: spec_default
+        reference: Off by default; when set, the Compute Engine API refuses to delete the instance until the flag is lifted. deletion_policy PREVENT additionally fails the IaC destroy itself.
+      notes: The 03-stateful-data-vm preset sets it. Both guards protect the VM object only -- data protection lives on the disks (boot auto_delete, each GcpComputeDisk's lifecycle).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Guest OS patching on a raw VM is customer-owned -- VM Manager patch jobs are separate resources outside this spec. Only host-level maintenance is Google-managed, and scheduling.on_host_maintenance steers when, never whether.

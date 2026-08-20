@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesgateway
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The Gateway stores no data of its own -- it is a Kubernetes API object persisted in the cluster's etcd, whose encryption at rest is a property of the target cluster's control plane. The TLS Secrets its listeners reference rest under the same cluster posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); customer-managed keys for etcd belong to the cluster component.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: listeners
+      evidence:
+        type: spec_validation
+        reference: Listener CEL rules bind encryption to protocol -- an HTTPS listener may only Terminate TLS, a TLS-protocol listener MUST declare its mode (Terminate or Passthrough), and tls is forbidden on plaintext protocols (HTTP, TCP, UDP), so an operator's protocol choice IS the encryption choice, with certificate references wired to cert-manager-issued Secrets.
+      notes: Both presets terminate TLS on 443 (01-https-tls-terminate exclusively; 02-multi-protocol alongside an HTTP listener). Gateway-wide tls.frontend adds client-certificate validation (mTLS) for inbound HTTPS, and tls.backend supplies a client certificate for backend connections; verification of backend certificates is KubernetesBackendTlsPolicy's job.
+    - control_id: no-public-access
+      status: configurable
+      field_path: infrastructure.annotations
+      evidence:
+        type: spec_default
+        reference: The controller propagates these annotations to the LoadBalancer Service (or equivalent) it creates, selecting internal vs internet-facing exposure exactly as on a Service of type LoadBalancer -- the cloud-specific internal-LB annotation keeps the Gateway off the public internet.
+      notes: With no annotations, exposure follows the implementing controller's default, which for cloud clusters is typically an internet-facing load balancer -- a Gateway usually exists to accept outside traffic. Both presets configure no addresses or exposure annotations.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The standard-channel Gateway spec models no source-IP allow-list -- listeners restrict by port, protocol, and hostname, and allowed_routes/allowed_listeners fence which ROUTE resources may attach, not which network sources may connect. Source restriction belongs to the implementing infrastructure (cloud LB source ranges) or mesh policy (AuthorizationPolicy).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The Gateway API models no web application firewall; request filtering is the implementing controller's extension surface or dedicated edge infrastructure in front of the load balancer.
+    - control_id: rbac
+      status: not_applicable
+      notes: The Gateway has no identity-based access control of its own -- access to the object is the target cluster's Kubernetes RBAC. Its attachment fences (allowed_routes per listener, allowed_listeners for ListenerSets, defaulting to none) are namespace-trust boundaries between resources, not role-based control of a management or data plane.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The Gateway calls no cloud APIs -- the implementing controller does, under its own identity, owned by that controller's component.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The Gateway has no authentication path of its own to harden. Its one weaker-mode knob is tls.frontend validation mode, where "AllowValidOnly" is the default and "AllowInsecureFallback" (accepting connections without a valid client certificate) is an explicit spec-marked-risk opt-in.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the Gateway are Kubernetes API operations captured by the target cluster's audit policy; access logs for the traffic it carries belong to the implementing controller and its infrastructure.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The Gateway emits no metrics of its own; listener and traffic telemetry come from the implementing controller's data plane, owned by that component.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The Gateway is stateless declarative configuration fully reproducible from its manifest -- there is no data to back up or restore.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The Gateway is an API-server record; availability of the data plane serving its listeners (proxy replicas, cloud LB zonal spread) is the implementing controller's posture, owned by its own components.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the Gateway API offers a deletion-protection flag on Gateway; protection is operational (namespace RBAC, change review). Deleting the Gateway tears down the provisioned load balancer and its addresses -- traffic impact is immediate.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software here to patch -- the resource is data. The implementing controller and its proxies are patched through their own components' lifecycles.

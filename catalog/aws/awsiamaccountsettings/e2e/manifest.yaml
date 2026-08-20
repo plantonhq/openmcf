@@ -1,0 +1,25 @@
+# Canonical AwsIamAccountSettings example (hack/dev manifest and
+# refgen Example source): a hardened password policy plus the v2 STS
+# token version. The alias arm is deliberately omitted here - applying
+# an alias REPLACES whatever alias the account already had, which
+# changes the sign-in URL everyone uses (see the spec comment).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamAccountSettings
+metadata:
+  name: iam-account-baseline
+  id: iam-account-baseline
+  org: test-org
+  env: dev
+spec:
+  region: us-east-1
+  passwordPolicy:
+    minimumPasswordLength: 14
+    requireLowercaseCharacters: true
+    requireNumbers: true
+    requireSymbols: true
+    requireUppercaseCharacters: true
+    allowUsersToChangePassword: true
+    maxPasswordAge: 90
+    passwordReusePrevention: 24
+  sts:
+    globalEndpointTokenVersion: v2Token

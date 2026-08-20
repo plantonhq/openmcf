@@ -1,0 +1,80 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesotelcollector
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The collector is a stateless pipeline -- telemetry rests in the backends it exports to (Loki, Tempo, cloud vendors), whose encryption at rest rides those resources. The only local state is the filelog receiver's checkpoint files on node-local hostPath/emptyDir volumes.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No durable storage seam exists on this component (see enc-at-rest); customer-managed keys apply to the telemetry backends, owned elsewhere.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: config_yaml
+      evidence:
+        type: spec_default
+        reference: Transport security is configured per receiver and exporter inside the collector's own configuration document -- TLS settings on OTLP receivers, exporter tls blocks for backends. The committed presets ship in-cluster plaintext deliberately (the 02 preset's Tempo exporter sets tls.insecure true) -- traffic never leaves the cluster network there.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The operator creates only in-cluster Services for the collector -- the receiver-port Service, headless, and monitoring Services are ClusterIP; nothing the modules or the operator render is reachable from outside the cluster network.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress seam exists on this spec -- the collector's Services are in-cluster only, and narrowing which workloads may push telemetry to it is a Kubernetes NetworkPolicy (a separate resource), not a field here.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The collector serves no HTTP edge traffic -- its receivers are in-cluster telemetry endpoints. Web application firewalls do not apply.
+    - control_id: rbac
+      status: configurable
+      field_path: service_account
+      evidence:
+        type: spec_default
+        reference: Empty means the operator creates a default ServiceAccount with no cluster-read access -- least privilege for push-only pipelines. Pipelines that read cluster state (k8s_events, kubeletstats, k8s_cluster, filelog with Kubernetes enrichment) need real RBAC -- compose a KubernetesServiceAccount + KubernetesRbac and set service_account to the composed account.
+      notes: The 01-cluster-logs-to-loki preset runs as a composed otel-logs-collector account for its filelog + k8sattributes pipeline. Management-plane access to the CR itself is the target cluster's Kubernetes RBAC.
+    - control_id: workload-identity
+      status: configurable
+      field_path: service_account
+      evidence:
+        type: spec_default
+        reference: Exporter credentials normally ride env_from_secrets Secret references (expanded as ${env:VAR} at start, never landing in the rendered ConfigMap). Pointing service_account at a cloud-annotated account (EKS IRSA, GKE Workload Identity) lets exporters reach cloud backends keylessly instead.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The collector carries no authentication surface of its own -- receiver/exporter auth is per-component configuration inside config_yaml, and the spec's credential path keeps secrets as environment references rather than inline config. There is no legacy path to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the collector are Kubernetes API operations on the CR, captured by the target cluster's audit policy. The collector's own logs stream to stdout for the cluster's log collector; a provider-style audit trail is not modeled.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The operator renders a monitoring Service for the collector's internal telemetry alongside the workload -- the collector's own health and pipeline metrics are scrapeable by default, and the config document's service.telemetry section tunes them.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The collector holds no data to back up -- it is a forwarding pipeline, and durable telemetry lives in the export backends. The filelog receiver's hostPath checkpoint directory survives pod restarts per node so log shipping resumes without duplication.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist on this component (see backup-recovery); telemetry retention is the export backends' policy.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replicas
+      evidence:
+        type: spec_default
+        reference: In deployment/statefulset modes replicas defaults to 1 (no redundancy); more replicas spread the gateway across nodes and zones per the cluster's topology, and autoscaler manages the count dynamically. In daemonset mode coverage is inherent -- one collector on every node.
+      notes: The 02-traces-gateway-to-tempo preset runs 2 replicas; 03-otlp-fanin autoscales between 2 and 5.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the operator offers a deletion-protection flag on the OpenTelemetryCollector CR -- deleting it cascades the workload, Services, and ConfigMap through the operator's ownership references. Telemetry already exported is unaffected.
+    - control_id: managed-patching
+      status: configurable
+      field_path: image
+      evidence:
+        type: spec_default
+        reference: Empty means the operator injects its paired default collector image -- the collector then upgrades in lockstep with the operator's chart version (fleet-wide overrides ride the operator kind's default_collector_image). Setting image pins a custom distribution, making its patch cadence this manifest's responsibility.

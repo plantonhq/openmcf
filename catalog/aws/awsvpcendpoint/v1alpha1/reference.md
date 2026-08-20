@@ -395,6 +395,8 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | AwsAppRunnerService | `spec.vpcIngressConnections[].vpcEndpointId` | `status.outputs.vpc_endpoint_id` |
+| AwsRestApiDomain | `spec.accessAssociations[].vpcEndpointId` | `status.outputs.vpc_endpoint_id` |
+| AwsRestApiGateway | `spec.endpointConfiguration.vpcEndpointIds` | `status.outputs.vpc_endpoint_id` |
 
 ## See Also
 

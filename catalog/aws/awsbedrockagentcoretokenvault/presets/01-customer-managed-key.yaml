@@ -1,0 +1,12 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreTokenVault
+metadata:
+  name: agentcore-vault-cmk
+spec:
+  region: <aws-region>
+  keyType: CustomerManagedKey
+  kmsKeyArn:
+    valueFrom:
+      kind: AwsKmsKey
+      name: <agentcore-vault-key>
+      fieldPath: status.outputs.key_arn

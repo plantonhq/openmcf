@@ -1,0 +1,92 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremanagedredis
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure Managed Redis encrypts data at rest -- including persistence files -- with platform-managed keys on every instance without configuration.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: customer_managed_key
+      evidence:
+        type: spec_default
+        reference: Unset means platform-managed encryption; configuring the block encrypts the instance's disk with a Key Vault key accessed through the named user-assigned identity.
+      notes: No preset enables CMK; the identity block must carry the CMK identity when set.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure Managed Redis serves TLS-encrypted endpoints; the client_protocol choice selects ENCRYPTED (TLS) versus PLAINTEXT for cluster-internal compatibility, and the default posture is encrypted.
+      notes: The presets leave client_protocol at its encrypted default.
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_network_access_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to true (a public endpoint gated by TLS and authentication); setting it false removes the public endpoint so only private endpoints reach the instance.
+      notes: The 02-search-json-enterprise preset disables public access. Private endpoints themselves are separate resources.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The instance offers no CIDR allowlist of its own -- network scoping is the public-access switch plus private endpoints (separate kinds); authentication gates every connection either way.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A cache endpoint is protected by TLS and authentication rather than a WAF; no request-filtering attachment point exists.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: Entra-based access policies are the default data-plane authentication -- access_keys_authentication_enabled defaults to false, so connections authenticate as directory identities with role-scoped data access rather than a shared secret.
+      notes: The 01-keyless-balanced preset is exactly this posture; management-plane access is always Azure RBAC.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: With keyless (Entra) authentication as the default, workloads holding managed identities connect with short-lived directory tokens instead of stored credentials.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: Access keys -- the shared-secret legacy path -- are off unless access_keys_authentication_enabled explicitly opts in; the default instance accepts only Entra identities.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Administrative actions on the instance land in the Azure Activity Log unconditionally; connection audit logs are available through Azure Monitor diagnostic settings.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure Managed Redis publishes cache metrics (memory, connections, operations, latency) to Azure Monitor for every instance without configuration.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: default_database.persistence_redis_database_backup_frequency
+      evidence:
+        type: spec_default
+        reference: Unset keeps the cache purely in memory; setting an RDB frequency (1h/6h/12h) snapshots to managed storage for recovery after restarts, and the AOF sibling field persists every write with 1s granularity.
+      notes: Persistence is durability for a cache, not a browsable backup; AOF and RDB are mutually exclusive.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Persistence keeps the latest snapshot or append-only log for recovery; there is no retention schedule to configure on this API (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: high_availability_enabled defaults to true -- the instance runs a replicated pair with automatic failover, placed zone-redundantly in regions with zones; disabling it is an explicit single-copy opt-out.
+      notes: default_database.geo_replication_group_name extends availability across regions with active geo-replication (the 03-geo-replicated preset).
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Managed Redis API nor this spec offers a deletion-protection flag (Azure resource locks are subscription-side governance outside the manifest); a cache's contents are reconstructable by design.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Microsoft operates and patches the Redis Enterprise engine underneath the service; upgrades roll through the replicated pair without a customer patch surface.

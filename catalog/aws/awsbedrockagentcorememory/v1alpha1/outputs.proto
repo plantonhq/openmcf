@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockagentcorememory.v1alpha1;
+
+// AwsBedrockAgentCoreMemoryStackOutputs captures observable identifiers
+// from a provisioned AgentCore memory. Downstream resources (evaluation
+// harnesses reading memory, agent code writing events) wire dependencies
+// via StringValueOrRef.
+message AwsBedrockAgentCoreMemoryStackOutputs {
+  // The unique memory identifier (e.g. "my_memory-AbC1dEf2Gh").
+  string memory_id = 1;
+
+  // The Amazon Resource Name of the memory - the canonical key for IAM
+  // policies and harness memory configuration.
+  string memory_arn = 2;
+
+  // Strategy IDs keyed by each `strategies` entry's name.
+  map<string, string> strategy_ids = 3;
+}

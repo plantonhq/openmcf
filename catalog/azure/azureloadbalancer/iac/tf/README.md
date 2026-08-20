@@ -137,10 +137,5 @@ module "load_balancer" {
 
 ## Required Permissions
 
-The deploying credential needs `Microsoft.Network/loadBalancers/write`
-(and the sub-resource write permissions beneath it) on the resource
-group, plus join rights on the referenced subnets, public IPs, and
-public IP prefixes -- held via Network Contributor, Contributor, or
-Owner. The GATEWAY SKU additionally requires the
-`Microsoft.Network/AllowGatewayLoadBalancer` feature registered on the
-subscription (via an Azure support ticket).
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege
+action manifest the deploying credential needs.

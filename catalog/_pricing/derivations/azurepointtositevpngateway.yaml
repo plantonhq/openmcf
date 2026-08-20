@@ -1,0 +1,33 @@
+# Cost derivation: the machine-executable rules turning any
+# AzurePointToSiteVpnGateway manifest's spec values into metered
+# quantities and price choices -- the point-to-site scale-unit meter,
+# multiplied by the manifest's scale units, every hour of the month.
+# The bill's other half, connection units, follows how many remote
+# users are actually connected each hour -- usage no manifest can know,
+# so it rides the exclusions instead of a line. The estimate generator
+# replays the catalog presets through these rules; a server-side
+# estimator evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azurepointtositevpngateway
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  lines:
+    - sku_meter: VPN P2S scale units
+      quantity:
+        - field_value:
+            field_path: scale_unit
+            default_when_unset: "1"
+        - hours_in_month: true
+      price_slug: vwan-vpn-p2s-scale-unit-eastus
+      basis: the gateway bills its scale units (capacity across the managed instance pair; unset applies the provider's default of 1) x 730 hours at the flat per-unit rate, connected users or none
+  exclusions:
+    - text: connection units bill per concurrently connected remote user per hour -- attendance the manifest cannot know; the address pools bound it without fixing it
+    - text: data leaving Azure through client tunnels bills at standard data-transfer rates and follows traffic
+    - text: the hub's deployment hours and per-GB data processing bill on the AzureVirtualHub component

@@ -1,0 +1,26 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsbackuprestoretestingplan
+spec:
+  # The plan imports by its AWS name - the explicit spec field (AWS
+  # restore testing names forbid hyphens and periods, so metadata.name
+  # never reaches AWS). Selections compose their own name (the
+  # module's for_each address key) with the plan name, REVERSED
+  # relative to the parent: "{selection_name}:{plan_name}".
+  values:
+    - name: restore_testing_plan_name
+      derivations:
+        - from_spec_field: plan_name
+      where_to_find: >-
+        AWS Backup console -> Restore testing (the plan's name), or
+        `aws backup list-restore-testing-plans`
+        (RestoreTestingPlanName).
+    - name: selection_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The selection name IS its AWS identity -- each spec.selections
+        entry's name (`aws backup list-restore-testing-selections
+        --restore-testing-plan-name <name>` shows
+        RestoreTestingSelectionName).

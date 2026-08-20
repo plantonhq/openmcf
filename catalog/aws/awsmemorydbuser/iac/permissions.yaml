@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsmemorydbuser
+spec:
+  aws:
+    statements:
+      - sid: CreateUser
+        actions:
+          - memorydb:CreateUser
+        resources:
+          - "*"
+        provenance: derived
+        notes: Creation for aws_memorydb_user. Unlike every other user-lifecycle action, memorydb:CreateUser declares NO resource types in the MemoryDB service reference -- it cannot be resource-scoped, so the wildcard is the narrowest possible scope (it does support the memorydb:UserAuthenticationMode and tagging condition keys for policies that want to constrain it further).
+      - sid: ManageUser
+        actions:
+          - memorydb:UpdateUser
+          - memorydb:DeleteUser
+          - memorydb:DescribeUsers
+          - memorydb:TagResource
+          - memorydb:UntagResource
+          - memorydb:ListTags
+        resources:
+          - arn:aws:memorydb:*:*:user/*
+        provenance: derived
+        notes: The rest of the aws_memorydb_user lifecycle -- in-place updates to the access string and authentication mode (UpdateUser), reads during plan/refresh (DescribeUsers and ListTags are resource-scoped to the user ARN format arn:...:user/{UserName}), tagging, and deletion. Both modules create the same single resource (tf aws_memorydb_user; pulumi memorydb.NewUser) with tags.

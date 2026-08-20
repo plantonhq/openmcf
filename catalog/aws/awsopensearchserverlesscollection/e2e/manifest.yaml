@@ -1,0 +1,41 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsOpenSearchServerlessCollection
+metadata:
+  name: test-app-search
+  id: test-app-search
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  description: Full-surface OpenSearch Serverless hack manifest
+  type: SEARCH
+  standbyReplicas: DISABLED
+  encryption:
+    kmsKeyArn:
+      value: arn:aws:kms:us-west-2:123456789012:key/abc-123
+  network:
+    allowFromPublic: true
+    includeDashboards: true
+  dataAccess:
+    - principals:
+        - value: arn:aws:iam::123456789012:role/app-role
+      indexPermissions:
+        - aoss:ReadDocument
+        - aoss:WriteDocument
+        - aoss:CreateIndex
+        - aoss:DescribeIndex
+      indexPatterns:
+        - "*"
+    - principals:
+        - value: arn:aws:iam::123456789012:role/admin-role
+      collectionPermissions:
+        - "aoss:*"
+      indexPermissions:
+        - "aoss:*"
+  retentionRules:
+    - indexPatterns:
+        - "logs-*"
+      minIndexRetention: 30d
+    - indexPatterns:
+        - "audit-*"
+      unlimited: true

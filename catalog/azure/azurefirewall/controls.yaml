@@ -1,0 +1,74 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurefirewall
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A stateful packet filter inspects traffic in flight and stores no customer data at rest; its configuration lives in Azure's control plane under Microsoft-managed encryption.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The firewall forwards and inspects traffic without originating encryption of its own -- payload encryption is end-to-end between the workloads. Premium-tier TLS inspection (decrypt, inspect, re-encrypt) is configured on the attached AzureFirewallPolicy, a separate kind whose tier must match sku_tier.
+    - control_id: no-public-access
+      status: configurable
+      field_path: ip_configurations
+      evidence:
+        type: spec_default
+        reference: The data path normally fronts a referenced Standard public IP (Azure's create contract requires one) -- but with a management_ip_configuration providing the management path, the data path may carry no public IP at all, leaving the firewall privately addressed for forced tunneling. Spec validation encodes exactly this contract.
+      notes: The forced-tunneling preset is the fully private shape -- its single data-path configuration carries only the subnet, and 0.0.0.0/0 egress heads on-premises. A public IP on the firewall is egress SNAT and DNAT surface, not an open door -- see restricted-ingress.
+    - control_id: restricted-ingress
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure Firewall is default-deny in both directions -- no traffic crosses it until rules in the attached policy explicitly allow it, and unsolicited inbound traffic to its public IP is dropped unless a DNAT rule declares a destination. The firewall IS the ingress/egress restriction point for the networks routing through it.
+      notes: The rules themselves (network, application, DNAT collections) live on the referenced AzureFirewallPolicy; a firewall with no policy attached passes nothing.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A layer 3/4 (plus FQDN and TLS-aware) network firewall, not a web application firewall -- it filters flows, not HTTP request payloads. Request-level filtering composes in front of web workloads via Application Gateway WAF_V2 or Front Door; Premium-tier IDPS (signature-based intrusion detection) is the attached policy's capability.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the firewall exposes no authentication plane of its own toward the traffic it filters.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The firewall runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Management-plane changes land in the Azure Activity Log automatically as subscription-level posture. Rule-hit, DNS-proxy, and threat-intelligence logs are emitted through a diagnostic setting on the firewall -- a separate kind targeting the firewall's ARM id.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure publishes firewall metrics -- throughput, health state, SNAT port utilization, rule hit counts -- to Azure Monitor automatically for every firewall; SNAT-exhaustion visibility (the signal for adding public IPs) needs no configuration.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless declarative configuration -- nothing to back up; the manifest recreates the firewall, and the rules live on the referenced policy. Provisioning runs 10-20+ minutes, which is recovery time, not data risk.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: zones
+      evidence:
+        type: spec_default
+        reference: Listing zones (e.g. ["1", "2", "3"]) spreads the firewall across availability zones -- and zone redundancy is free on Azure Firewall, so the production posture costs exactly what a zonal deployment costs. An empty list deploys with no zone guarantee. Fixed at creation.
+      notes: The hub-spoke egress preset pins all three zones; the forced-tunneling preset omits zones, accepting regional posture.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Network API nor this spec offers a deletion-protection flag for a firewall; Azure resource locks are subscription-side governance outside the manifest. Deletion is slow (10-20+ minutes) but unguarded -- and it leaves the referenced subnets, public IPs, and policy intact.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Microsoft operates, scales, and patches the firewall data plane and its threat-intelligence feed; no customer-visible patch surface exists.

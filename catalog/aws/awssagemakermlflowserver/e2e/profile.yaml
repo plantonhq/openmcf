@@ -1,0 +1,29 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awssagemakermlflowserver
+spec:
+  # An MLflow tracking server under live E2E: ONE lane, deliberately -
+  # creation takes ~25 minutes and deletion similar (the provider's own
+  # timeouts are 45m per operation), and the server bills ~$0.6/hour
+  # (Small) from Created onward, so the single full-surface lane
+  # carries every cheap arm (Small size, auto-registration ON, explicit
+  # maintenance window, the shared-bucket artifact store).
+  # Per-engine-pair budget: ~50-60 min wall clock, ~$0.6-1 spend - THE
+  # cost and wall-clock driver of the whole queue entry. Verification
+  # is DescribeMlflowTrackingServer keyed on tracking_server_name
+  # (status Created) plus the tracking_server_url output and the
+  # window/registration echoes.
+  #
+  # Deliberately not exercised live: Medium/Large sizes (pure billing)
+  # and the mlflow_version pin (AWS picks the latest when omitted;
+  # pinning is ForceNew) - offline-proven via e2e/manifest.yaml. The
+  # auto-registration un-disable trap (an upstream update-guard gap) is
+  # taught on the spec field - the lane never attempts the un-disable.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q36
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 90

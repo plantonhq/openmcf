@@ -1199,6 +1199,125 @@ var _ = ginkgo.Describe("AwsSagemakerDomain folded satellites and promotions", f
 		gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 	})
 
+	// The CreateSpace server contract (live-caught 2026-08-13): a space idle
+	// timeout is rejected wherever idle shutdown resolves DISABLED for the
+	// space. The CELs enforce the in-manifest half — an owner profile that
+	// explicitly disables the plane.
+	ginkgo.It("rejects a space idle timeout owned by a DISABLED-lifecycle profile (JupyterLab)", func() {
+		input := validMinimalSpec()
+		input.Spec.UserProfiles = []*AwsSagemakerDomainUserProfile{{
+			UserProfileName: "quiet-owner",
+			UserSettings: &AwsSagemakerDomainUserSettings{
+				ExecutionRoleArn: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/Owner"},
+				},
+				JupyterLabAppSettings: &AwsSagemakerDomainJupyterLabAppSettings{
+					IdleSettings: &AwsSagemakerDomainIdleSettings{
+						LifecycleManagement:     proto.String("DISABLED"),
+						IdleTimeoutInMinutes:    120,
+						MinIdleTimeoutInMinutes: 60,
+						MaxIdleTimeoutInMinutes: 240,
+					},
+				},
+			},
+		}}
+		input.Spec.Spaces = []*AwsSagemakerDomainSpace{{
+			SpaceName:            "contradiction",
+			OwnershipSettings:    &AwsSagemakerDomainSpaceOwnership{OwnerUserProfileName: "quiet-owner"},
+			SpaceSharingSettings: &AwsSagemakerDomainSpaceSharing{SharingType: "Private"},
+			SpaceSettings: &AwsSagemakerDomainSpaceSettings{
+				JupyterLabAppSettings: &AwsSagemakerDomainSpaceJupyterLabAppSettings{
+					DefaultResourceSpec: &AwsSagemakerDomainResourceSpec{InstanceType: "ml.t3.medium"},
+					IdleSettings:        &AwsSagemakerDomainSpaceIdleSettings{IdleTimeoutInMinutes: proto.Int32(60)},
+				},
+			},
+		}}
+		gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a space idle timeout owned by a DISABLED-lifecycle profile (Code Editor)", func() {
+		input := validMinimalSpec()
+		input.Spec.UserProfiles = []*AwsSagemakerDomainUserProfile{{
+			UserProfileName: "quiet-owner",
+			UserSettings: &AwsSagemakerDomainUserSettings{
+				ExecutionRoleArn: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/Owner"},
+				},
+				CodeEditorAppSettings: &AwsSagemakerDomainCodeEditorAppSettings{
+					IdleSettings: &AwsSagemakerDomainIdleSettings{
+						LifecycleManagement:     proto.String("DISABLED"),
+						IdleTimeoutInMinutes:    120,
+						MinIdleTimeoutInMinutes: 60,
+						MaxIdleTimeoutInMinutes: 240,
+					},
+				},
+			},
+		}}
+		input.Spec.Spaces = []*AwsSagemakerDomainSpace{{
+			SpaceName:            "contradiction",
+			OwnershipSettings:    &AwsSagemakerDomainSpaceOwnership{OwnerUserProfileName: "quiet-owner"},
+			SpaceSharingSettings: &AwsSagemakerDomainSpaceSharing{SharingType: "Private"},
+			SpaceSettings: &AwsSagemakerDomainSpaceSettings{
+				CodeEditorAppSettings: &AwsSagemakerDomainSpaceCodeEditorAppSettings{
+					DefaultResourceSpec: &AwsSagemakerDomainResourceSpec{InstanceType: "ml.t3.medium"},
+					IdleSettings:        &AwsSagemakerDomainSpaceIdleSettings{IdleTimeoutInMinutes: proto.Int32(60)},
+				},
+			},
+		}}
+		gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a space idle timeout under an ENABLED-lifecycle owner profile", func() {
+		input := validMinimalSpec()
+		input.Spec.UserProfiles = []*AwsSagemakerDomainUserProfile{{
+			UserProfileName: "active-owner",
+			UserSettings: &AwsSagemakerDomainUserSettings{
+				ExecutionRoleArn: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/Owner"},
+				},
+				JupyterLabAppSettings: &AwsSagemakerDomainJupyterLabAppSettings{
+					IdleSettings: &AwsSagemakerDomainIdleSettings{
+						LifecycleManagement:     proto.String("ENABLED"),
+						IdleTimeoutInMinutes:    120,
+						MinIdleTimeoutInMinutes: 60,
+						MaxIdleTimeoutInMinutes: 240,
+					},
+				},
+			},
+		}}
+		input.Spec.Spaces = []*AwsSagemakerDomainSpace{{
+			SpaceName:            "productive",
+			OwnershipSettings:    &AwsSagemakerDomainSpaceOwnership{OwnerUserProfileName: "active-owner"},
+			SpaceSharingSettings: &AwsSagemakerDomainSpaceSharing{SharingType: "Private"},
+			SpaceSettings: &AwsSagemakerDomainSpaceSettings{
+				JupyterLabAppSettings: &AwsSagemakerDomainSpaceJupyterLabAppSettings{
+					DefaultResourceSpec: &AwsSagemakerDomainResourceSpec{InstanceType: "ml.t3.medium"},
+					IdleSettings:        &AwsSagemakerDomainSpaceIdleSettings{IdleTimeoutInMinutes: proto.Int32(60)},
+				},
+			},
+		}}
+		gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a space idle timeout whose owner profile is outside the manifest", func() {
+		// Enablement inherited from default_user_settings or from profiles
+		// provisioned outside the manifest resolves server-side — the CEL
+		// must not reject what it cannot see.
+		input := validMinimalSpec()
+		input.Spec.Spaces = []*AwsSagemakerDomainSpace{{
+			SpaceName:            "external-owner",
+			OwnershipSettings:    &AwsSagemakerDomainSpaceOwnership{OwnerUserProfileName: "sso-provisioned"},
+			SpaceSharingSettings: &AwsSagemakerDomainSpaceSharing{SharingType: "Private"},
+			SpaceSettings: &AwsSagemakerDomainSpaceSettings{
+				JupyterLabAppSettings: &AwsSagemakerDomainSpaceJupyterLabAppSettings{
+					DefaultResourceSpec: &AwsSagemakerDomainResourceSpec{InstanceType: "ml.t3.medium"},
+					IdleSettings:        &AwsSagemakerDomainSpaceIdleSettings{IdleTimeoutInMinutes: proto.Int32(60)},
+				},
+			},
+		}}
+		gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+	})
+
 	ginkgo.It("accepts the defined-but-disabled idle settings state", func() {
 		input := validMinimalSpec()
 		input.Spec.DefaultUserSettings.JupyterLabAppSettings = &AwsSagemakerDomainJupyterLabAppSettings{

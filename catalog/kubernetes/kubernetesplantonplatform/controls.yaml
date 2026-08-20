@@ -1,0 +1,84 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesplantonplatform
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The platform's data lives on Kubernetes persistent volumes whose encryption is the STORAGE CLASS's posture (spec.storage.storage_class_name selects it; e.g. gp3 volumes encrypt when the class says so) — the platform neither adds nor removes volume encryption.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: bootstrap.secret_backend.aws_secrets_manager.kms_key_arn
+      evidence:
+        type: spec_default
+        reference: The managed-secret store is the one surface with a first-class CMK seam — the awsSecretsManager backend requires a KMS key ARN. Volume-level CMKs ride the chosen StorageClass.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: ingress.tls
+      evidence:
+        type: spec_default
+        reference: External traffic is HTTPS when ingress.tls is set (brought certificate or cert-manager issuer; TLS-at-the-edge postures like ACM ride ingress.annotations). The zero-config port-forward door is a kubectl tunnel — encrypted by the Kubernetes API server's TLS end to end.
+      notes: In-cluster traffic between platform components rides ClusterIP services in one namespace.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Ingress is OFF by default — a zero-config platform is reachable only through kubectl port-forward (cluster-credential holders). Exposure is a deliberate ingress.enabled=true.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: ingress.ingress_class_name
+      evidence:
+        type: spec_default
+        reference: When exposed, the platform rides the cluster's ingress controller — class selection and controller-specific fencing (internal schemes, allow-lists) ride ingress.ingress_class_name and ingress.annotations.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Web application firewalls live on the cluster's edge (the ingress controller or the cloud load balancer in front of it), outside this spec — ingress.annotations carries controller-specific wiring where the edge supports it.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The module creates the CR and (optionally) its namespace; every platform workload runs with namespace-scoped identities the operator creates per platform. The platform's own user-facing access control is its identity server (Keycloak) with org-role authorization; the opt-in components.authorization arm (OpenFGA) adds fine-grained relationship authorization.
+    - control_id: workload-identity
+      status: configurable
+      field_path: runner.service_account_annotations
+      evidence:
+        type: spec_default
+        reference: The runner's cloud identity is keyless workload identity (EKS role-arn / GKE service-account / AKS client-id annotations) or a customer-owned credentials Secret — the platform stores no cloud credentials either way. The control plane's OWN cloud identity (for cloud secret backends and KMS) is the sibling control_plane.service_account_annotations.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Sign-in is OIDC against the platform's own identity server — there is no native-password API path. The first-run door is a one-time setup code (read from a Secret by a cluster-credential holder) that self-disables after the first admin exists.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Platform-level audit surfaces belong to the deployed product (its own activity/audit records), versioned with spec.version — not modeled as installation configuration. Operator mutations are Kubernetes API operations captured by the cluster's audit policy.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No monitoring seam is modeled on this spec — the operator publishes per-component health in the CR's status (phase, per-component messages, the Ready condition), which cluster monitoring can watch; metrics endpoints are a product surface versioned with spec.version.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Not modeled on this spec yet — the platform's PostgreSQL is CloudNativePG-managed, whose object-store backup path exists upstream, but the PlantonPlatform schema carries no backup block at this catalog release. Until it does, backups are the cluster owner's volume-snapshot posture. The honest reinstall guidance — credentials and database volumes share one lifecycle and die together — is taught in the GUIDE.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist on this spec (see backup-recovery), so no retention policy applies.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: database.postgresql.replicas
+      evidence:
+        type: spec_default
+        reference: replicas 2+ grows the platform's database into a streaming-replication pair with automatic failover (a LIVE edit); control_plane.replicas and console.replicas add stateless copies. Zone spread follows the cluster's scheduler defaults.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Kubernetes nor the operator offers a deletion-protection flag; protection is operational (namespace RBAC, change review). Deleting the resource tears the whole platform down — databases included — through Kubernetes garbage collection of the owner-referenced objects.
+    - control_id: managed-patching
+      status: configurable
+      field_path: version
+      evidence:
+        type: spec_default
+        reference: version is REQUIRED and never defaulted — the platform version is always a deliberate pin, and upgrades are a deliberate one-line edit the operator rolls out. Nothing in the module or catalog can silently move a running platform's version.

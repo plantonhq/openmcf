@@ -1,0 +1,88 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpvertexaiendpoint
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Vertex AI encrypts endpoint data and metadata at rest with Google-managed keys on every endpoint without configuration.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_name
+      evidence:
+        type: spec_default
+        reference: Unset means Google-managed encryption; naming a Cloud KMS key at creation encrypts the endpoint and all its sub-resources under the customer-managed key. Immutable for the endpoint's life.
+      notes: The 02-private-vpc-peered and 03-private-psc presets both reference a key. The Vertex AI service agent needs encrypt/decrypt on the key as a prerequisite.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Prediction traffic reaches the endpoint over Google's TLS-only API surfaces on every connectivity arm -- the shared regional DNS, the dedicated DNS name, and the private paths alike; no cleartext prediction protocol exists.
+    - control_id: no-public-access
+      status: configurable
+      field_path: network
+      evidence:
+        type: spec_default
+        reference: Unset (with no PSC block) serves predictions on the public regional DNS behind IAM; declaring a peered network makes the endpoint reachable only inside that VPC, and the private_service_connect_config block reaches the same goal through a service attachment instead of peering.
+      notes: The 02-private-vpc-peered preset takes the peering arm and 03-private-psc the PSC arm; 01-basic-public deliberately stays public behind IAM. The three arms are mutually exclusive by CEL validation.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: private_service_connect_config.project_allowlist
+      evidence:
+        type: spec_default
+        reference: On a PSC endpoint, the allowlist names the only projects that may create forwarding rules targeting the endpoint's service attachment; empty admits any project in the same organization.
+      notes: The 03-private-psc preset allowlists two named consumer projects. On the public arm, ingress restriction is IAM-only; on the peered arm it is the VPC's own topology.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A model-serving API endpoint is fronted by Google's API infrastructure and protected by TLS and IAM; no WAF or request-filter attachment point exists for Vertex AI endpoints.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Managing the endpoint and calling predictions are both governed by Vertex AI IAM permissions (the aiplatform.endpoints.* family, prediction included) on every endpoint -- no anonymous data plane exists.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The prediction data plane authenticates callers with short-lived IAM credentials -- no static endpoint key, connection string, or shared secret exists anywhere on this resource for a workload to hold.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No legacy or weaker authentication path exists to disable -- the data plane accepts only IAM-authenticated HTTPS calls (see workload-identity).
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management operations on the endpoint (create, update, deploy, undeploy, delete) land in Cloud Audit Logs' always-on Admin Activity log unconditionally.
+      notes: Prediction calls are Data Access log entries, an opt-in at the project level. request_response_logging_config adds payload-level capture to BigQuery on top -- drift and audit material, sampled by sampling_rate.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Vertex AI publishes endpoint metrics -- prediction counts, latencies, error rates, and per-deployment replica usage -- to Cloud Monitoring for every endpoint without configuration.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: An endpoint holds no data to back up -- models live in the Model Registry and the endpoint is declarative configuration re-creatable from the manifest (mind the endpoint-ID reservation window on recreate).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at the endpoint level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Serving redundancy is a property of each DEPLOYED MODEL's replica configuration -- an operational step outside this resource; the endpoint object itself is a regional routing surface with no replica count of its own.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Unset means DELETE -- and GCP itself refuses to delete an endpoint while models are still deployed to it, so a serving endpoint cannot vanish in one step; PREVENT makes any destroying plan fail; ABANDON removes it from management while it keeps serving (and its deployments keep billing).
+      notes: No preset sets it.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The endpoint is a fully managed serving surface with no software of its own to patch; the serving infrastructure under deployed models is Google-managed.

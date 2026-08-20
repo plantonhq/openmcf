@@ -1,0 +1,80 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesexternaldns
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: ExternalDNS stores no data of its own -- provider credentials the modules materialize live in Kubernetes Secrets in etcd, whose encryption at rest is the cluster control plane's property; record state lives in the DNS provider.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys apply to the cluster's etcd encryption and the DNS provider's own storage (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: Every connection the controller makes is a TLS API call -- the Kubernetes API server and the DNS providers' APIs (Route 53, Cloud DNS, Azure DNS, Cloudflare) are all HTTPS endpoints; the webhook arm's provider sidecar is reached on localhost inside the same pod.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart renders no external exposure -- only a ClusterIP Service for the metrics endpoint (port 7979), reachable solely inside the cluster network.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing accepts inbound traffic -- the controller only watches the Kubernetes API and calls the DNS provider outbound. There is no ingress surface to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The controller serves no HTTP edge traffic of its own. cloudflare.proxied puts Cloudflare's CDN/WAF in front of the PUBLISHED records' traffic -- protection for the workloads behind those names, not for this controller.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart creates a dedicated ServiceAccount bound to a ClusterRole scoped to reading the watched source types (Services, Ingresses, Gateway API routes, ...) -- the controller can read what it publishes, nothing more.
+      notes: namespaced switches the chart to a namespaced Role watching only its own namespace -- the multi-tenant least-privilege posture.
+    - control_id: workload-identity
+      status: configurable
+      field_path: workload_identity
+      evidence:
+        type: spec_default
+        reference: Unset means provider arms fall back to static credentials or the node's ambient identity; workload_identity annotates the controller ServiceAccount for keyless provider access -- Route 53 via EKS IRSA, Cloud DNS via GKE Workload Identity, Azure DNS via AKS Workload Identity.
+      notes: The 01-aws-route53-eks-keyless, 02-google-cloud-dns-gke, and 03-azure-dns-aks presets are all keyless; 04-cloudflare-any-cluster is token-based by provider necessity (Cloudflare has no workload-identity federation).
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: aws_route53.access_key_id
+      evidence:
+        type: spec_default
+        reference: Unset means no static AWS credential exists (the keyless posture); the static key pair is the deliberate fallback for clusters without ambient AWS identity, and validation requires both halves together. google_cloud_dns.service_account_key_json and azure_dns.client_secret are the analogous static arms.
+      notes: The modules materialize declared credentials as Kubernetes Secrets wired into the controller environment -- they never appear in chart values or pod specs. No committed preset stores cloud keys.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Record changes stream to stdout for the cluster's log collector (log_format json for pipelines); administrative changes to the component are Kubernetes API operations captured by the target cluster's audit policy, and the DNS provider's own audit trail records the zone mutations.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: prometheus.service_monitor
+      evidence:
+        type: spec_default
+        reference: The controller always serves Prometheus metrics on port 7979 (sync results, provider API errors, managed record counts); unset means no scrape discovery, and service_monitor creates a ServiceMonitor -- requiring the Prometheus operator CRDs on the cluster.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The controller holds no data to back up -- every sync loop re-derives the desired records from live cluster state, and the ownership registry (TXT records) lives in the DNS zone itself.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backup surface exists (see backup-recovery), so retention does not apply.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The spec exposes no replica surface -- the chart runs a single controller pod (extras would need leader election configured via helm_values). Published DNS records keep resolving during controller downtime; an outage only delays reconciliation of new changes.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the chart nor the modules offer a deletion-protection flag on the release. The records have their own guard -- policy defaults to "upsert-only", which never deletes a DNS record; destructive full reconciliation requires deliberately choosing "sync", and the TXT registry with a distinct txt_owner_id stops one instance from deleting another's records even then.
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: chart_version pins the installed release (default 1.21.1; the chart's appVersion decides the controller image unless image_tag overrides it); changing it re-runs the Helm release deliberately through the module.

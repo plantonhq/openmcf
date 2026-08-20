@@ -1,0 +1,613 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockflow.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsBedrockFlowSpec defines the desired configuration for an Amazon
+// Bedrock flow - a node graph that orchestrates prompts, agents, knowledge
+// bases, Lambda functions, and control-flow logic into one invocable
+// generative-AI pipeline.
+//
+// The flow's name is taken from `metadata.name` (letters, digits, hyphen,
+// underscore; AWS rejects spaces and dots).
+//
+// A flow is a directed graph: `definition.nodes` declares the steps (every
+// flow needs one Input and at least one Output node) and
+// `definition.connections` wires node outputs to node inputs. AWS
+// validates the graph server-side (unreachable nodes, type mismatches,
+// missing connections) at create/update time. Flows are free to create -
+// the nodes' model/agent invocations bill at runtime.
+message AwsBedrockFlowSpec {
+  // The AWS region where the flow will be created.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Human-readable description shown in the Bedrock console (1-200
+  // characters when set). Updates in place.
+  string description = 2 [(buf.validate.field).string.max_len = 200];
+
+  // IAM role the Bedrock service assumes to run the flow (invoke models,
+  // agents, knowledge bases, and Lambdas the nodes reference). The role
+  // must trust bedrock.amazonaws.com.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef execution_role_arn = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Customer-managed KMS key ARN for encrypting the flow at rest.
+  // Without it, AWS uses a Bedrock-managed key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef customer_encryption_key_arn = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // The node graph. A flow created without a definition is an empty shell
+  // you fill in later (the console flow builder writes the same shape).
+  AwsBedrockFlowDefinition definition = 5;
+}
+
+// AwsBedrockFlowDefinition is the flow's node graph.
+message AwsBedrockFlowDefinition {
+  // The graph's steps.
+  repeated AwsBedrockFlowNode nodes = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // Directed edges wiring node outputs to node inputs.
+  repeated AwsBedrockFlowConnection connections = 2;
+
+  // Node names are the connection endpoints' identity.
+  option (buf.validate.message).cel = {
+    id: "node_names_unique"
+    message: "node names must be unique"
+    expression: "this.nodes.map(n, n.name).unique()"
+  };
+
+  // Connection names are identity within the flow.
+  option (buf.validate.message).cel = {
+    id: "connection_names_unique"
+    message: "connection names must be unique"
+    expression: "this.connections.map(c, c.name).unique()"
+  };
+}
+
+// AwsBedrockFlowNode is one step in the graph. `type` names the node
+// class; classes with configuration carry exactly their matching arm
+// (Agent -> agent, Prompt -> prompt, ...) while the structural classes
+// (Input, Output, Iterator, Collector and the Loop family) carry none -
+// the modules render each class's AWS union member from `type`.
+//
+// The Loop family (Loop, LoopInput, LoopController) is accepted by AWS but
+// its configuration is not yet expressible through the pinned provider -
+// loop bodies beyond the structural markers are a provider gap, not a
+// platform decision.
+message AwsBedrockFlowNode {
+  // Node name (1-50 characters; must start with a letter;
+  // letters/digits/single underscores) - the identity connections
+  // reference.
+  string name = 1 [(buf.validate.field).string.pattern = "^[a-zA-Z]([_]?[0-9a-zA-Z]){0,49}$"];
+
+  // The node class.
+  string type = 2 [(buf.validate.field).string = {
+    in: [
+      "Input",
+      "Output",
+      "Prompt",
+      "Agent",
+      "KnowledgeBase",
+      "LambdaFunction",
+      "Lex",
+      "Condition",
+      "InlineCode",
+      "Iterator",
+      "Collector",
+      "Retrieval",
+      "Storage",
+      "Loop",
+      "LoopInput",
+      "LoopController"
+    ]
+  }];
+
+  // The node's input sockets (at most 20). Each maps an upstream value
+  // into this node via an expression.
+  repeated AwsBedrockFlowNodeInput inputs = 3 [(buf.validate.field).repeated.max_items = 20];
+
+  // The node's output sockets (at most 5).
+  repeated AwsBedrockFlowNodeOutput outputs = 4 [(buf.validate.field).repeated.max_items = 5];
+
+  // ---------------------------------------------------------------------------
+  // Per-class configuration (exactly the arm matching `type`)
+  // ---------------------------------------------------------------------------
+
+  // Agent node: delegate to a Bedrock agent.
+  AwsBedrockFlowAgentNode agent = 5;
+
+  // Prompt node: run a prompt (from Prompt Management or inline).
+  AwsBedrockFlowPromptNode prompt = 6;
+
+  // KnowledgeBase node: query a knowledge base.
+  AwsBedrockFlowKnowledgeBaseNode knowledge_base = 7;
+
+  // LambdaFunction node: call a Lambda.
+  AwsBedrockFlowLambdaNode lambda_function = 8;
+
+  // Lex node: classify the input with an Amazon Lex bot.
+  AwsBedrockFlowLexNode lex = 9;
+
+  // Condition node: branch on input values.
+  AwsBedrockFlowConditionNode condition = 10;
+
+  // InlineCode node: run a code snippet.
+  AwsBedrockFlowInlineCodeNode inline_code = 11;
+
+  // Retrieval node: fetch data from S3.
+  AwsBedrockFlowRetrievalNode retrieval = 12;
+
+  // Storage node: write data to S3.
+  AwsBedrockFlowStorageNode storage = 13;
+
+  // Each configurable class carries exactly its own arm; structural
+  // classes carry none.
+  option (buf.validate.message).cel = {
+    id: "node_config_matches_type"
+    message: "configure exactly the arm matching the node type (Agent -> agent, Prompt -> prompt, KnowledgeBase -> knowledge_base, LambdaFunction -> lambda_function, Lex -> lex, Condition -> condition, InlineCode -> inline_code, Retrieval -> retrieval, Storage -> storage); Input/Output/Iterator/Collector/Loop nodes take no configuration arm"
+    expression: "has(this.agent) == (this.type == 'Agent') && has(this.prompt) == (this.type == 'Prompt') && has(this.knowledge_base) == (this.type == 'KnowledgeBase') && has(this.lambda_function) == (this.type == 'LambdaFunction') && has(this.lex) == (this.type == 'Lex') && has(this.condition) == (this.type == 'Condition') && has(this.inline_code) == (this.type == 'InlineCode') && has(this.retrieval) == (this.type == 'Retrieval') && has(this.storage) == (this.type == 'Storage')"
+  };
+}
+
+// AwsBedrockFlowNodeInput is one input socket.
+message AwsBedrockFlowNodeInput {
+  // Socket name (1-50 characters; must start with a letter;
+  // letters/digits/single underscores).
+  string name = 1 [(buf.validate.field).string.pattern = "^[a-zA-Z]([_]?[0-9a-zA-Z]){0,49}$"];
+
+  // Expression selecting the value from the connected upstream output
+  // (1-64 characters; "$.data" passes it through unchanged).
+  string expression = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+
+  // The value type this socket expects.
+  string type = 3 [(buf.validate.field).string = {
+    in: [
+      "String",
+      "Number",
+      "Boolean",
+      "Object",
+      "Array"
+    ]
+  }];
+
+  // Loop-specific role of this input (only on Loop-family nodes):
+  // LoopCondition, ReturnValueToLoopStart, or ExitLoop.
+  string category = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "LoopCondition",
+        "ReturnValueToLoopStart",
+        "ExitLoop"
+      ]
+    }
+  ];
+}
+
+// AwsBedrockFlowNodeOutput is one output socket.
+message AwsBedrockFlowNodeOutput {
+  // Socket name (1-50 characters; must start with a letter;
+  // letters/digits/single underscores).
+  string name = 1 [(buf.validate.field).string.pattern = "^[a-zA-Z]([_]?[0-9a-zA-Z]){0,49}$"];
+
+  // The value type this socket produces.
+  string type = 2 [(buf.validate.field).string = {
+    in: [
+      "String",
+      "Number",
+      "Boolean",
+      "Object",
+      "Array"
+    ]
+  }];
+}
+
+// AwsBedrockFlowConnection wires one node to another. Exactly one
+// configuration arm - `data` moves a value between sockets, `conditional`
+// activates the edge when a Condition node's condition fires (the modules
+// derive AWS's connection type from which arm is set).
+message AwsBedrockFlowConnection {
+  // Connection name (1-100 characters; must start with a letter;
+  // letters/digits/single underscores).
+  string name = 1 [(buf.validate.field).string.pattern = "^[a-zA-Z]([_]?[0-9a-zA-Z]){1,100}$"];
+
+  // Source node name.
+  string source = 2 [(buf.validate.field).string.pattern = "^[a-zA-Z]([_]?[0-9a-zA-Z]){1,50}$"];
+
+  // Target node name.
+  string target = 3 [(buf.validate.field).string.pattern = "^[a-zA-Z]([_]?[0-9a-zA-Z]){1,50}$"];
+
+  // Data edge: move source's output into target's input.
+  AwsBedrockFlowDataConnection data = 4;
+
+  // Conditional edge: activate when the source Condition node's named
+  // condition fires.
+  AwsBedrockFlowConditionalConnection conditional = 5;
+
+  // Exactly one edge shape.
+  option (buf.validate.message).cel = {
+    id: "connection_exactly_one"
+    message: "set exactly one of data or conditional"
+    expression: "has(this.data) != has(this.conditional)"
+  };
+}
+
+// AwsBedrockFlowDataConnection names the sockets a data edge joins.
+message AwsBedrockFlowDataConnection {
+  // Output socket on the source node.
+  string source_output = 1 [(buf.validate.field).string.pattern = "^[a-zA-Z]([_]?[0-9a-zA-Z]){1,50}$"];
+
+  // Input socket on the target node.
+  string target_input = 2 [(buf.validate.field).string.pattern = "^[a-zA-Z]([_]?[0-9a-zA-Z]){1,50}$"];
+}
+
+// AwsBedrockFlowConditionalConnection names the condition that activates
+// this edge.
+message AwsBedrockFlowConditionalConnection {
+  // The condition name on the source Condition node (use "default" for
+  // the else-branch).
+  string condition = 1 [(buf.validate.field).string.pattern = "^[a-zA-Z]([_]?[0-9a-zA-Z]){1,50}$"];
+}
+
+// AwsBedrockFlowAgentNode delegates to a Bedrock agent.
+message AwsBedrockFlowAgentNode {
+  // ARN of the agent's alias to invoke. Reference an AwsBedrockAgent's
+  // `alias_arns` output map entry, e.g. valueFrom: {kind: AwsBedrockAgent,
+  // name: <agent>, fieldPath: "status.outputs.alias_arns.<alias-name>"}.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef agent_alias_arn = 1 [(buf.validate.field).required = true];
+}
+
+// AwsBedrockFlowKnowledgeBaseNode queries a knowledge base.
+message AwsBedrockFlowKnowledgeBaseNode {
+  // The knowledge base to query.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef knowledge_base_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsBedrockKnowledgeBase,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.knowledge_base_id"
+  ];
+
+  // Model that generates the answer from retrieved chunks. Omitted = the
+  // node returns the retrieved chunks themselves.
+  string model_id = 2;
+
+  // How many chunks to retrieve (1-100). Omitted = AWS default.
+  int32 number_of_results = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 100
+    }
+  ];
+
+  // Apply a guardrail to the generation.
+  AwsBedrockFlowGuardrail guardrail = 4;
+
+  // Model sampling parameters for the generation.
+  AwsBedrockFlowInferenceConfiguration inference_configuration = 5;
+}
+
+// AwsBedrockFlowGuardrail pins a guardrail (at a version) onto a node.
+message AwsBedrockFlowGuardrail {
+  // The guardrail to apply.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef guardrail_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsBedrockGuardrail,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.guardrail_id"
+  ];
+
+  // The guardrail version to pin: "DRAFT" or a published number.
+  string version = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsBedrockFlowLambdaNode calls a Lambda function.
+message AwsBedrockFlowLambdaNode {
+  // The Lambda to invoke.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef lambda_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+}
+
+// AwsBedrockFlowLexNode classifies input with an Amazon Lex bot.
+message AwsBedrockFlowLexNode {
+  // ARN of the Lex bot ALIAS to invoke.
+  string bot_alias_arn = 1 [(buf.validate.field).string.pattern = "^arn:aws[a-z-]*:lex:[a-z0-9-]+:[0-9]{12}:bot-alias/.+$"];
+
+  // Locale the bot converses in (e.g. "en_US").
+  string locale_id = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsBedrockFlowConditionNode branches the flow on input values.
+message AwsBedrockFlowConditionNode {
+  // The branch conditions (1-5). Conditional connections reference these
+  // by name; an edge with condition "default" fires when none match.
+  repeated AwsBedrockFlowCondition conditions = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 5
+  }];
+
+  // Condition names are the conditional edges' identity.
+  option (buf.validate.message).cel = {
+    id: "condition_names_unique"
+    message: "condition names must be unique"
+    expression: "this.conditions.map(c, c.name).unique()"
+  };
+}
+
+// AwsBedrockFlowCondition is one branch condition.
+message AwsBedrockFlowCondition {
+  // Condition name (1-50 characters; must start with a letter).
+  string name = 1 [(buf.validate.field).string.pattern = "^[a-zA-Z]([_]?[0-9a-zA-Z]){0,49}$"];
+
+  // Boolean expression over the node's inputs (1-64 characters, e.g.
+  // "categoryLetter == \"A\""). Omit for the default (else) condition.
+  string expression = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 64
+    }
+  ];
+}
+
+// AwsBedrockFlowInlineCodeNode runs a code snippet (Python 3 - the only
+// language AWS defines; the modules send the constant).
+message AwsBedrockFlowInlineCodeNode {
+  // The code body (up to 5,000,000 characters).
+  string code = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 5000000
+  }];
+}
+
+// AwsBedrockFlowRetrievalNode fetches data from S3 (the only retrieval
+// service AWS defines; the modules send the S3 union member).
+message AwsBedrockFlowRetrievalNode {
+  // Bucket to read from.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+}
+
+// AwsBedrockFlowStorageNode writes data to S3 (the only storage service
+// AWS defines; the modules send the S3 union member).
+message AwsBedrockFlowStorageNode {
+  // Bucket to write to.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+}
+
+// AwsBedrockFlowPromptNode runs a prompt - from Prompt Management
+// (`prompt_arn`) or defined inline. Exactly one source arm.
+message AwsBedrockFlowPromptNode {
+  // Run a prompt resource from Prompt Management.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef prompt_arn = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsBedrockPrompt,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.prompt_arn"
+  ];
+
+  // OR: define the prompt inline on the node.
+  AwsBedrockFlowInlinePrompt inline = 2;
+
+  // Apply a guardrail to the prompt's model I/O.
+  AwsBedrockFlowGuardrail guardrail = 3;
+
+  // Exactly one source.
+  option (buf.validate.message).cel = {
+    id: "prompt_source_exactly_one"
+    message: "set exactly one of prompt_arn or inline"
+    expression: "has(this.prompt_arn) != has(this.inline)"
+  };
+}
+
+// AwsBedrockFlowInlinePrompt defines a prompt directly on the node.
+// Exactly one template shape (`text` or `chat` - the modules derive AWS's
+// template_type from which one is set).
+message AwsBedrockFlowInlinePrompt {
+  // The model that executes the prompt: a foundation-model ID, model ARN,
+  // or inference-profile ID/ARN.
+  string model_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Single-string template with {{variable}} placeholders.
+  AwsBedrockFlowPromptTextTemplate text = 2;
+
+  // Multi-turn chat template.
+  AwsBedrockFlowPromptChatTemplate chat = 3;
+
+  // Model sampling parameters.
+  AwsBedrockFlowInferenceConfiguration inference_configuration = 4;
+
+  // Model-specific request parameters outside the standard inference set,
+  // as a JSON document.
+  google.protobuf.Struct additional_model_request_fields = 5;
+
+  // Exactly one template shape.
+  option (buf.validate.message).cel = {
+    id: "inline_template_exactly_one"
+    message: "set exactly one of text or chat"
+    expression: "has(this.text) != has(this.chat)"
+  };
+}
+
+// AwsBedrockFlowPromptTextTemplate is a single-string prompt template
+// (mirrors the AwsBedrockPrompt kind's text template).
+message AwsBedrockFlowPromptTextTemplate {
+  // The template body. Reference variables as {{name}} and declare them
+  // in input_variables.
+  string text = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Names of the {{variables}} the template expects.
+  repeated string input_variables = 2 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Cache everything up to this point of the prompt across invocations
+  // (prompt caching; the model must support it).
+  bool cache_point = 3;
+}
+
+// AwsBedrockFlowPromptChatTemplate is a multi-turn chat template (mirrors
+// the AwsBedrockPrompt kind's chat template).
+message AwsBedrockFlowPromptChatTemplate {
+  // The conversation turns (at least one).
+  repeated AwsBedrockFlowPromptMessage messages = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // System-level context blocks prepended to the conversation.
+  repeated AwsBedrockFlowPromptSystemBlock system = 2;
+
+  // Names of the {{variables}} used across the messages (at most 20).
+  repeated string input_variables = 3 [(buf.validate.field).repeated = {
+    max_items: 20
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // Tools the model may call while executing this prompt.
+  AwsBedrockFlowPromptToolConfiguration tool_configuration = 4;
+}
+
+// AwsBedrockFlowPromptMessage is one conversation turn - text content or
+// a cache checkpoint.
+message AwsBedrockFlowPromptMessage {
+  // Who speaks this turn.
+  string role = 1 [(buf.validate.field).string = {
+    in: [
+      "user",
+      "assistant"
+    ]
+  }];
+
+  // The turn's text (may contain {{variables}}).
+  string text = 2;
+
+  // OR: mark a prompt-caching checkpoint at this turn instead of text.
+  bool cache_point = 3;
+
+  // Exactly one content shape.
+  option (buf.validate.message).cel = {
+    id: "message_content_exactly_one"
+    message: "set exactly one of text or cache_point"
+    expression: "(this.text != '') != this.cache_point"
+  };
+}
+
+// AwsBedrockFlowPromptSystemBlock is one system-context block - text or a
+// cache checkpoint.
+message AwsBedrockFlowPromptSystemBlock {
+  // System instruction text.
+  string text = 1;
+
+  // OR: mark a prompt-caching checkpoint.
+  bool cache_point = 2;
+
+  // Exactly one content shape.
+  option (buf.validate.message).cel = {
+    id: "system_content_exactly_one"
+    message: "set exactly one of text or cache_point"
+    expression: "(this.text != '') != this.cache_point"
+  };
+}
+
+// AwsBedrockFlowPromptToolConfiguration exposes tools to the model.
+message AwsBedrockFlowPromptToolConfiguration {
+  // The tool catalog (at least one entry).
+  repeated AwsBedrockFlowPromptTool tools = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // How the model chooses among the tools. Omitted = the model decides
+  // freely.
+  AwsBedrockFlowPromptToolChoice tool_choice = 2;
+}
+
+// AwsBedrockFlowPromptTool is one tool catalog entry - a tool
+// specification or a cache checkpoint.
+message AwsBedrockFlowPromptTool {
+  // The tool's callable specification.
+  AwsBedrockFlowPromptToolSpec spec = 1;
+
+  // OR: mark a prompt-caching checkpoint in the tool list.
+  bool cache_point = 2;
+
+  // Exactly one entry shape.
+  option (buf.validate.message).cel = {
+    id: "tool_entry_exactly_one"
+    message: "set exactly one of spec or cache_point"
+    expression: "has(this.spec) != this.cache_point"
+  };
+}
+
+// AwsBedrockFlowPromptToolSpec describes one callable tool.
+message AwsBedrockFlowPromptToolSpec {
+  // Tool name the model calls.
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // What the tool does, shown to the model.
+  string description = 2;
+
+  // The tool's input parameters as a JSON Schema document.
+  google.protobuf.Struct input_schema = 3;
+}
+
+// AwsBedrockFlowPromptToolChoice forces or frees the model's tool
+// selection - exactly one arm.
+message AwsBedrockFlowPromptToolChoice {
+  // The model decides whether and which tool to call.
+  bool auto = 1;
+
+  // The model MUST call some tool (its choice which).
+  bool any = 2;
+
+  // The model MUST call this named tool.
+  string tool_name = 3;
+
+  // Exactly one selection mode.
+  option (buf.validate.message).cel = {
+    id: "tool_choice_exactly_one"
+    message: "set exactly one of auto, any, or tool_name"
+    expression: "[this.auto, this.any, this.tool_name != ''].filter(x, x).size() == 1"
+  };
+}
+
+// AwsBedrockFlowInferenceConfiguration tunes model sampling for a node.
+// Every field is optional; explicit zeros are sent (0 is a meaningful
+// temperature).
+message AwsBedrockFlowInferenceConfiguration {
+  // Maximum number of tokens in the model response.
+  optional int32 max_tokens = 1 [(buf.validate.field).int32.gte = 1];
+
+  // Sequences that stop generation when the model emits them.
+  repeated string stop_sequences = 2 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Sampling temperature (0 = deterministic, 1 = most random). Bedrock
+  // stores it as a 32-bit float: a value that is not float32-exact (0.2,
+  // 0.9) reads back slightly widened (0.20000000298023224) from the API -
+  // harmless for deploys (state keeps your value), visible only when
+  // importing a pre-existing flow.
+  optional double temperature = 3 [(buf.validate.field).double = {
+    gte: 0
+    lte: 1
+  }];
+
+  // Nucleus sampling - consider tokens covering the top P probability
+  // mass (0-1). Same float32 storage as temperature.
+  optional double top_p = 4 [(buf.validate.field).double = {
+    gte: 0
+    lte: 1
+  }];
+}

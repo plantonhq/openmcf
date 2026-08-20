@@ -1,0 +1,53 @@
+# Consumer-scoped AwsIamRole install profile for the Bedrock agents
+# family. The shared IAM-role profile ships ~16 roles (EKS, ECS, SageMaker,
+# AgentCore, ...); this family references exactly one -- the role that
+# trusts bedrock.amazonaws.com and carries model-invoke + S3 read +
+# s3vectors data-plane verbs. Scoping the fixture to that role keeps the
+# chain off the shared fixed-name set (the concurrent-session collision
+# class) and drops DEPENDENCIES-UP from minutes of unused role creates
+# to one role.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-bedrock-agents-role
+  id: planton-oss-e2e-bedrock-agents-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for the Bedrock agents family
+  inlinePolicies:
+    bedrockAgentsE2E:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - bedrock:InvokeModel
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - s3:ListBucket
+            - s3:GetObject
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - s3vectors:GetIndex
+            - s3vectors:QueryVectors
+            - s3vectors:PutVectors
+            - s3vectors:GetVectors
+            - s3vectors:DeleteVectors
+          Resource: "*"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: bedrock.amazonaws.com
+        Action: sts:AssumeRole

@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package dev.planton.aws.awss3tablebucket.v1alpha1;
+
+// AwsS3TableBucketStackOutputs captures the observable state of the
+// table bucket and its contents after apply.
+message AwsS3TableBucketStackOutputs {
+  // The table bucket's ARN - what catalog integrations, policies,
+  // and replication destinations reference, and the provider's
+  // import ID.
+  string table_bucket_arn = 1;
+
+  // The AWS account that owns the bucket.
+  string owner_account_id = 2;
+
+  // Each table's ARN, keyed "namespace//table" (the module's
+  // instance key) - what per-table policies and table-level
+  // replication reference.
+  map<string, string> table_arns = 3;
+
+  // Each table's warehouse location (s3://... metadata root), keyed
+  // "namespace//table" - what query engines configured manually
+  // point at.
+  map<string, string> table_warehouse_locations = 4;
+}

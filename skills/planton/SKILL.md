@@ -101,6 +101,21 @@ postures:
   from git, a scaffold, a folder the user picked: compose in place at its
   root, exactly as the anatomy above shows.
 
+**Will this turn write files? Then declare the span in the same breath as
+the check.** The identity check just told you where files go; when the turn
+will write any (the prime directive's build-it decision), your very next
+shell command is the declaration:
+
+```
+mkdir -p .planton && printf 'state: composing\n' > .planton/composing.yaml
+```
+
+Run it at the root of the folder you were given, BEFORE grounding lookups
+and scaffolding -- it is how the user's canvas presents your work honestly
+(Phase 2's step 1 says why; Phase 4 rewrites it to `state: done` at the
+finish). A declaration written after your first chart file defeats it: the
+user watches error flashes from half-written work you meant to spare them.
+
 ## Know your instruments (check once, first)
 
 The craft is the same everywhere; only the instruments differ by where you
@@ -166,8 +181,10 @@ step here is a lookup, not a question (read `references/discovery.md` for
 the full protocol):
 
 1. Look up their Planton (context, charts, projects and their deploy status,
-   connections — `references/planton-cli.md`). What you find shapes the
-   build: an existing green cluster is something to build ON, not duplicate.
+   connections — `references/planton-cli.md`; the organization's catalog
+   availability — `references/catalog-availability.md`). What you find
+   shapes the build: an existing green cluster is something to build ON,
+   not duplicate.
 2. Read the PERSON — the profile fact sheet first, their words second. The
    fact sheet (standing session context, when present) carries what no
    message reveals: companion mode, per-area experience numbers, the goal,
@@ -214,9 +231,13 @@ taken is a bug; an assumption named is an invitation to refine.
    skill is your research layer here: its provider indexes answer what
    exists (400+ kinds, PascalCase like `AwsVpc`, `AwsEksCluster`,
    `KubernetesCertManager`), its per-component pages answer what a kind
-   requires and exports, and its reference graph answers what can wire to
+   requires and exports, and its reference graph answers    what can wire to
    what — usually in one or two file reads. `planton explain --list` is the
-   offline fallback when no pack is reachable.
+   offline fallback when no pack is reachable. Map to the RIGHT kind even
+   when Phase 0's availability check showed the organization's catalog
+   policy disables it — availability never truncates a design; the
+   disclosure happens before deploy, not here
+   (`references/catalog-availability.md`).
 3. Ground every kind you are not certain about BEFORE writing YAML — the
    component's reference page first (the catalog skill names the reading
    order), and `planton explain` for the drill-down:
@@ -238,7 +259,10 @@ taken is a bug; an assumption named is an invitation to refine.
    infrastructure produces, run the cross-boundary check in
    `references/dependencies.md`: the producer may be in this chart, in a
    sibling chart of this workspace, or already deployed in the org — wire
-   `valueFrom` and that param never exists. What remains a param is only
+   `valueFrom` and that param never exists. Credential-shaped values
+   (passwords, API keys, tokens) are never params at all: they become
+   `$secret/` references, looked up or declared per
+   `references/config-references.md`. What remains a param is only
    what the person deploying genuinely decides (image, hostname, region,
    CIDRs, sizing, feature toggles); everything else is hardcoded or
    defaulted in the template. Prefer few, meaningful params with safe
@@ -258,35 +282,52 @@ Write PROGRESSIVELY: the studio renders the architecture live from the
 folder, so author in an order where **every finished file leaves the folder
 buildable** -- producers before consumers (network before cluster before
 workloads), one complete resource file at a time. Each write then grows the
-user's canvas by a node instead of flashing errors at them. Never invent a
-build-suppression mechanism (a marker file, batched writes) -- the live
-canvas absorbing each finished write IS the experience. Narrate in the
+user's canvas by a node. Never batch or delay writes to polish the picture
+-- the live canvas absorbing each finished write IS the experience, and the
+composing declaration (step 1) is the only status channel there is; never
+invent another. Narrate in the
 person's register as the canvas grows: a learning profile gets each node's
 one-line why as it lands ("adding the NAT gateway -- the one-way door your
 workers use to reach the internet"); an expert gets the resource name and
 moves on (`references/personalization.md`).
 
-1. Scaffold `Chart.yaml`, `values.yaml`, `templates/` per
+1. **Declare the authoring span -- ALWAYS your first write.** Write
+   `.planton/composing.yaml` at the root of the folder you were given,
+   containing exactly:
+
+   ```yaml
+   state: composing
+   ```
+
+   This is your charter's live-screen declaration: the canvas keeps its
+   composition animation alive across your thinking gaps and holds your
+   iteration loop's interim build errors out of the user's face until you
+   declare the finish (Phase 4 rewrites this file to `state: done`).
+   Rewrite, never delete, never mention it in prose. It applies to EVERY
+   turn that writes files -- the first composition, refinements, loose
+   manifests alike -- and suppresses nothing on your side: builds run on
+   every write exactly as below.
+2. Scaffold `Chart.yaml`, `values.yaml`, `templates/` per
    `references/chart-format.md` -- at the folder's root when the folder IS
    the chart, inside a fresh chart-named subfolder when the folder is your
    workspace (the identity check above decides).
-2. Group templates into subfolders by concern with ONE resource per file
+3. Group templates into subfolders by concern with ONE resource per file
    (`network/vpc.yaml`, `network/subnets-public.yaml`, `cluster/eks.yaml`,
    `cluster/node-group.yaml`, `kubernetes/addons/cert-manager.yaml`): the
    file tree reads as the architecture, diffs stay reviewable, and clicking
    a canvas node lands on exactly its file. A resource that only exists as a
    `---` sibling inside a grab-bag file has none of that.
-3. Name resources with the environment prefix so deployments never collide:
+4. Name resources with the environment prefix so deployments never collide:
    `name: "{{ values.env }}-vpc"`. The variables `values.env` and
    `values.org` are always available -- users never define them.
-4. Wire dependencies with `valueFrom` references -- never paste literal IDs
+5. Wire dependencies with `valueFrom` references -- never paste literal IDs
    between resources, and never expose a param for a value another resource
    produces. References cross chart boundaries: a producer in a sibling
    chart of this workspace, or already deployed in the org, is wired with
    the same block. Read `references/dependencies.md` for the reference
    syntax, the cross-boundary check, how to find valid output field paths,
    and when to use `metadata.relationships` instead.
-5. **Chart contains any `Kubernetes*` kind?** Read
+6. **Chart contains any `Kubernetes*` kind?** Read
    `references/kubernetes-on-cluster.md` BEFORE writing those manifests --
    the one decision is whether the cluster is IN this chart. Same chart:
    every workload needs the provider-connection annotation and an ordering
@@ -294,11 +335,11 @@ moves on (`references/personalization.md`).
    deployed cluster's connection is the platform's default binding. The
    build cannot catch connection mistakes either way (the failure only
    appears at deploy).
-6. Make optional resources conditional with `{% if values.flag | bool %}` …
+7. Make optional resources conditional with `{% if values.flag | bool %}` …
    `{% endif %}` around the whole document. Read
    `references/templating.md` for the template language subset and its
    context variables.
-7. Never delete or rename existing files while composing -- deletions freeze
+8. Never delete or rename existing files while composing -- deletions freeze
    the whole session for a human approval while the canvas sits mid-thought
    (see "Rules that prevent whole failure classes"). Scaffolding keep-files
    (`.gitkeep`) stay exactly where they are.
@@ -354,6 +395,10 @@ file. Check it against the Phase 1 plan:
 
 **Done means:** exit code 0, the resources array matches the intended
 architecture, and every param has a description and a sensible default.
+Then declare it: rewrite `.planton/composing.yaml` to `state: done` (the
+Phase 2 declaration) -- the canvas shows the final verdict only when you
+say the work is finished, so forgetting this leaves the user watching an
+animation for work that already ended.
 
 ### Phase 4a — Explain, then refine (the collaboration begins HERE)
 
@@ -369,6 +414,11 @@ every "Always keep in mind" line applies to this reply like any other.
    user's own vocabulary (application language for developers).
 2. **The cost picture**: rough monthly total, what dominates it, the levers
    that lower it (`references/cost-transparency.md`) — unasked, always.
+   When Phase 0's availability check found kinds this design uses disabled
+   by the organization's catalog policy, the disclosure rides this same
+   block (`references/catalog-availability.md`) — which components, that
+   the rest can deploy now, and that an Infrastructure Admin can enable
+   them; silence when the policy touches nothing the design uses.
 3. **The assumption register**: every default you took because the user did
    not say — purpose, region, sizing, redundancy — each phrased as an
    invitation: "I assumed dev-scale to keep this near $X/month; if this is
@@ -402,7 +452,10 @@ shared state and needs the user's explicit go-ahead:
   performed as part of composition -- and on the user's EXPLICIT ask you
   perform it yourself (`planton chart install`, one confirmation, then
   narrate the pipeline; `references/machine-deploy.md` has the command and
-  the follow-through). This is also the moment to notice the machine: on a
+  the follow-through). The availability disclosure is a precondition of the
+  deploy act: when the organization's catalog policy disables kinds this
+  chart uses, the user hears it BEFORE the deploy starts, never from the
+  refusal (`references/catalog-availability.md`). This is also the moment to notice the machine: on a
   signed-in instance, when the machine carries a login for the chart's
   cloud, the deploy offer takes its strongest form -- deploying from THIS
   machine with the login already here. The probe, the offer's grammar, and
@@ -423,6 +476,16 @@ shared state and needs the user's explicit go-ahead:
   org's deployed estate (`references/dependencies.md`, the cross-boundary
   check). A `vpc_id`-shaped param asks the user to hand-copy what the
   platform already knows; that hand-off is the failure, not a convenience.
+- **Sensitive fields hold `$secret/` references — never plaintext, never a
+  paste-your-credential param.** A password, API key, token, or private-key
+  field accepts ONLY a reference to a managed secret; the control plane
+  rejects plaintext before anything deploys. Scope lives in the reference
+  itself (`$secret/<slug>` org-wide, `$secret/@<env>/<slug>` per
+  environment — no fallback between them), so look up the real slug and
+  scope before writing (`planton secret list -o json`), and when the secret
+  does not exist yet, write the reference anyway and hand the user the
+  create command in the explain-after — never an invented value
+  (`references/config-references.md`).
 - **Cluster-scoped, shared-by-design components live in the shared chart.**
   Operators, CRDs, and controllers (Istio, cert-manager, external-dns, the
   gateway CRDs) belong in the shared-infrastructure chart, exactly once —
@@ -475,6 +538,7 @@ shared state and needs the user's explicit go-ahead:
 | `references/chart-format.md` | Writing Chart.yaml or values.yaml; naming things |
 | `references/templating.md` | Writing template expressions, conditionals, loops |
 | `references/dependencies.md` | Wiring resources together, in-chart and ACROSS charts; the references-before-params check; valueFrom or relationships |
+| `references/config-references.md` | A field needs a credential or operator-managed config value; the `$var`/`$secret` grammar (org- and env-scoped); looking up or creating secrets and variables |
 | `references/kubernetes-on-cluster.md` | The chart has Kubernetes-kind resources; wiring workloads to a cluster |
 | `references/discovery.md` | Starting a conversation; learning the person, their Planton, and the motive |
 | `references/personalization.md` | A profile fact sheet is present; shaping ANY explanation — the explain-after, refinement answers, live narration |
@@ -488,7 +552,8 @@ shared state and needs the user's explicit go-ahead:
 | `references/aws-architecture.md` | Choosing AWS service combinations; security and network defaults |
 | `references/kubernetes-architecture.md` | What runs on the cluster: the Istio/external-dns paved road; the shared-infra vs environment-chart split |
 | `references/environments.md` | The user mentions environments; how many clusters; cross-env connection authorization |
-| `references/cost-transparency.md` | Estimating monthly cost; the always-on charges; saving levers |
+| `references/cost-transparency.md` | The monthly cost picture from the catalog's verified estimates (read, never recalled); honesty rules for money; saving levers |
+| `references/catalog-availability.md` | Working in an organization's context; which kinds its catalog policy disables; the check-design-disclose law; a deploy refused naming the catalog policy |
 | `references/filing-platform-gaps.md` | Planton fell short of a need; filing the gap as a GitHub issue |
 | `references/build-contract.md` | Parsing build output; exit codes; CI usage; endpoint pinning |
 | `references/issue-catalog.md` | A build failed and you need the fix pattern for an error |

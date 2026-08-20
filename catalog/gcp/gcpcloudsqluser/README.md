@@ -14,7 +14,7 @@ No API enablement is needed: the instance the user lives on cannot exist without
 
 - **An existing Cloud SQL instance** — referenced via `instance` (a [GcpCloudSql](/docs/catalog/gcp/gcpcloudsql) resource or a literal instance name)
 - **For IAM users on PostgreSQL** — the instance must set the database flag `cloudsql.iam_authentication = "on"`
-- **GCP credentials** with `roles/cloudsql.admin` on the project
+- **GCP credentials** — [`iac/permissions.yaml`](iac/permissions.yaml) lists the exact least-privilege permissions
 
 ## Quick Start
 

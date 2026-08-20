@@ -1,36 +1,97 @@
-SHELL := /bin/bash
+# Makefile for Next.js project
 
-.PHONY: deps dev build start run lint clean preview-site export-static copy-docs generate-structure
-
+YARN := yarn
 PORT ?= 3000
+# Use venv Python if available, otherwise fall back to python3
+PYTHON := $(shell [ -f .venv/bin/python ] && echo ".venv/bin/python" || echo "python3")
 
-deps:
-	yarn install
+# R2 Configuration
+R2_BUCKET := planton-assets
+R2_ENDPOINT := https://074755a78d8e8f77c119a90a125e8a06.r2.cloudflarestorage.com
+R2_PROFILE := r2
 
-generate-structure: copy-docs
-	yarn generate-structure
+.PHONY: deps install lint build run dev devs clean clean-build preview-site sync-assets process-images check-images inbox
 
-dev: generate-structure
-	yarn dev --port $(PORT)
+deps: install
 
-run: dev
+install:
+	$(YARN) install
 
-copy-docs:
-	yarn copy-docs
+lint: install
+	$(YARN) lint
 
-build: deps
-	yarn build
+build: install lint
+	NODE_NO_WARNINGS=1 NEXT_TELEMETRY_DISABLED=1 $(YARN) build
+	mkdir -p out/_site && cp -r out/_next out/_site/_next
 
-start:
-	yarn start
+# Development server
+devs: run
+	
+# Alias for convenience
+dev: run
 
-lint:
-	yarn lint
-
-export-static: build
-
-preview-site: export-static
-	yarn serve -s out -l $(PORT)
+run:
+	$(YARN) dev
 
 clean:
-	rm -rf .next out public/docs-structure.json
+	rm -rf .next node_modules .yarn dist out .pnp.cjs .pnp.loader.mjs
+	rm -rf packages/website-shell/dist packages/website-shell/node_modules
+
+clean-build: clean install build
+
+preview: preview-site
+
+# Build and locally preview the static export from ./out
+preview-site: build
+	cd out && npx --yes serve -l $(PORT)
+
+# =============================================================================
+# Image Processing & Assets Sync
+# =============================================================================
+
+# Sync assets folder to Cloudflare R2
+# Mirrors content/assets/ to assets.planton.ai/site/
+sync-assets:
+	aws s3 sync content/assets/ s3://$(R2_BUCKET)/site/ \
+		--profile $(R2_PROFILE) \
+		--endpoint-url $(R2_ENDPOINT) \
+		--delete \
+		--exclude "_inbox/*" \
+		--exclude "_rules/*" \
+		--exclude "*.md" \
+		--exclude ".gitignore" \
+		--exclude ".gitkeep" \
+		--exclude ".DS_Store"
+
+# Process images from inbox (interactive - prompts for context)
+# Usage: make process-images CONTEXT="service-hub" DESC="feature-overview"
+process-images:
+	@if [ -z "$(CONTEXT)" ]; then \
+		echo "Usage: make process-images CONTEXT=\"service-hub\" DESC=\"description\""; \
+		exit 1; \
+	fi
+	$(PYTHON) -m tools.image_processor process --context "$(CONTEXT)" --description "$(DESC)"
+
+# Check if all required tools are installed
+check-images:
+	$(PYTHON) -m tools.image_processor check
+
+# List images in inbox
+inbox:
+	$(PYTHON) -m tools.image_processor inbox
+
+# Install Python dependencies for image processor
+install-image-tools:
+	pip install -r tools/image_processor/requirements.txt
+
+# =============================================================================
+# Legacy (deprecated - use sync-assets instead)
+# =============================================================================
+
+# Sync media assets in content/media to Cloudflare R2 via rclone
+# DEPRECATED: Use sync-assets instead
+sync-media:
+	@echo "WARNING: sync-media is deprecated. Use sync-assets instead."
+	@echo "The new workflow uses content/assets/ instead of content/media/"
+	@echo ""
+	rclone sync content/media/ r2:planton-ai-media --progress --transfers 8 --checkers 16 --s3-acl private

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremachinelearningbatchendpoint
+spec:
+  billing_model: free
+  free_tier: A batch endpoint is the stable address batch scoring jobs are submitted to -- a routing object on the workspace with a default-deployment pointer. It carries no meter under Azure Machine Learning's no-additional-charge model; nothing runs and nothing bills while no job is active.
+  notes: "No field of this spec buys anything: the name, auth_mode, identity, and default_deployment_name are job-routing metadata. The real spend materializes only when the endpoint is INVOKED -- each invocation creates a job that runs a deployment's recipe on pooled compute, and that compute (the cluster or serverless nodes behind the deployment, a separate catalog kind) is metered for the job's duration at plain VM rates. Idle endpoints cost exactly nothing, which is the batch pattern's whole appeal."

@@ -1,0 +1,43 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurednsrecord
+spec:
+  azure:
+    groups:
+      - purpose: ManageRecordSets
+        actions:
+          - Microsoft.Network/dnszones/A/read
+          - Microsoft.Network/dnszones/A/write
+          - Microsoft.Network/dnszones/A/delete
+          - Microsoft.Network/dnszones/AAAA/read
+          - Microsoft.Network/dnszones/AAAA/write
+          - Microsoft.Network/dnszones/AAAA/delete
+          - Microsoft.Network/dnszones/CNAME/read
+          - Microsoft.Network/dnszones/CNAME/write
+          - Microsoft.Network/dnszones/CNAME/delete
+          - Microsoft.Network/dnszones/MX/read
+          - Microsoft.Network/dnszones/MX/write
+          - Microsoft.Network/dnszones/MX/delete
+          - Microsoft.Network/dnszones/SRV/read
+          - Microsoft.Network/dnszones/SRV/write
+          - Microsoft.Network/dnszones/SRV/delete
+          - Microsoft.Network/dnszones/CAA/read
+          - Microsoft.Network/dnszones/CAA/write
+          - Microsoft.Network/dnszones/CAA/delete
+          - Microsoft.Network/dnszones/TXT/read
+          - Microsoft.Network/dnszones/TXT/write
+          - Microsoft.Network/dnszones/TXT/delete
+          - Microsoft.Network/dnszones/NS/read
+          - Microsoft.Network/dnszones/NS/write
+          - Microsoft.Network/dnszones/NS/delete
+          - Microsoft.Network/dnszones/PTR/read
+          - Microsoft.Network/dnszones/PTR/write
+          - Microsoft.Network/dnszones/PTR/delete
+        provenance: derived
+        notes: Covers the module's nine count-gated azurerm_dns_*_record resources -- exactly one materializes per deployment (the spec's exactly-one-payload rule), but the grant spans all nine record types so one profile serves any manifest. Azure spells public-zone record operations with lowercase "dnszones" (verified against the live Microsoft.Network operation inventory). Held via DNS Zone Contributor on the zone's resource group, or a narrower custom role.

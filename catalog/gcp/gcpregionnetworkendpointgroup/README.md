@@ -15,7 +15,7 @@ A single regional NEG in the chosen region. What it points at is decided by `net
 
 - **GCP credentials** configured via environment variables or Planton provider config
 - **An existing GCP project** — referenced via `projectId` (or the provider's default project)
-- **IAM permissions** — any role carrying `compute.regionNetworkEndpointGroups.*` on the target project
+- **IAM permissions** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 - For a serverless NEG, the Cloud Run/Functions/App Engine workload should live in the **same region** (it need not exist yet — GCP resolves endpoints at serving time)
 
 ## Quick Start

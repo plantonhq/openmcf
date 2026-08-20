@@ -1,0 +1,29 @@
+# Canonical AwsIamGroup example (hack/dev manifest and refgen Example
+# source): a developers group with declarative membership, an
+# AWS-managed policy attachment, and one inline policy. Literal user
+# names stand in for composed references so the offline `tofu plan`
+# renders the membership path.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamGroup
+metadata:
+  name: developers
+  id: developers
+  org: test-org
+  env: dev
+spec:
+  region: us-east-1
+  path: /teams/
+  users:
+    - value: alice
+    - value: bob
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/ReadOnlyAccess
+  inlinePolicies:
+    deploy-artifacts:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+          Resource: arn:aws:s3:::example-artifacts/*

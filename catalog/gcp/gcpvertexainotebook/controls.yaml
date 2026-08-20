@@ -1,0 +1,93 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpvertexainotebook
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Both the boot disk and the data disk are encrypted at rest with Google-managed keys without configuration, like every Compute Engine persistent disk.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: boot_disk.kms_key
+      evidence:
+        type: spec_default
+        reference: Unset means Google-managed encryption; setting kms_key re-keys the boot disk to a customer-managed Cloud KMS key. The data disk carries its own independent data_disk.kms_key. Immutable after creation.
+      notes: The 03-secure-private-notebook preset keys both disks to a referenced GcpKmsKey.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: JupyterLab access rides the Workbench proxy over HTTPS, and all Notebooks API calls are TLS-only; no plaintext listener is exposed by the service.
+    - control_id: no-public-access
+      status: configurable
+      field_path: disable_public_ip
+      evidence:
+        type: spec_default
+        reference: "False (the default) assigns the VM an external IP reachable from the internet, subject to VPC firewall rules; true removes the public IP entirely -- the notebook is then reachable only through the Workbench proxy or from inside the VPC. Immutable after creation."
+      notes: The 03-secure-private-notebook preset disables the public IP.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: tags
+      evidence:
+        type: spec_default
+        reference: Network tags are what VPC firewall rules target -- tagging the instance lets ingress be scoped to it specifically instead of riding network-wide rules. Empty means only untargeted rules apply. Immutable after creation.
+      notes: Placement into a specific VPC and subnet (network_interface) decides which firewall perimeter governs the instance at all.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A single-user workstation VM behind the Workbench proxy has no load-balancer attachment point -- Cloud Armor attaches to load balancers, and none fronts a notebook instance.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Managing the instance requires Notebooks IAM permissions, and opening JupyterLab through the Workbench proxy requires IAM authorization on the instance -- both planes are IAM-gated with no anonymous path.
+      notes: enable_managed_euc goes further -- JupyterLab runs as the accessing user's own identity, so notebook code sees only that user's IAM permissions.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Notebook code reaches GCP APIs with short-lived tokens the metadata server issues for the VM's service account -- no static keys are provisioned. The service_account field pins WHICH identity; unset falls to the project's default compute service account.
+      notes: The 03-secure-private-notebook preset pins a dedicated GcpServiceAccount, and enable_managed_euc swaps the VM identity for the signed-in user's own credentials inside JupyterLab.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every access path authenticates with tokens or keys, never passwords: the Workbench proxy requires a Google identity over OAuth, and SSH uses IAM-governed keys. enable_third_party_identity extends access to federated workforce identities -- still token-based."
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every administrative action on the instance (create, start, stop, upgrade, delete) lands in Cloud Audit Logs unconditionally as Notebooks API admin activity.
+      notes: With enable_managed_euc, data-plane actions attribute to the individual user rather than a shared VM identity.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The underlying Compute Engine VM exports infrastructure metrics (CPU, disk, network) to Cloud Monitoring without an agent; guest-level metrics can be added through the metadata field's install-monitoring-agent key.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The component exposes no backup facility -- notebook work on the boot and data disks is not automatically backed up. Durable work belongs in git or GCS, and disk snapshot schedules are Compute Engine constructs outside this manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A Workbench instance is a single zonal VM by design (location is a zone) -- a personal workstation with no replica or failover arm to configure.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: "Unset means DELETE -- destroy removes the instance and both disks, losing any unsynced notebook work. PREVENT makes the destroy fail until protection is lifted; ABANDON removes the instance from management but leaves it running with its disks intact."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Patching flows only through the Workbench managed channel -- Google maintains the workbench-instances image family and the service applies environment upgrades through its managed upgrade operation; there is no self-managed patch pipeline. Upgrades of a running instance are operator-initiated through that channel.

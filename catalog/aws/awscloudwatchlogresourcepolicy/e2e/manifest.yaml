@@ -1,0 +1,23 @@
+# Canonical AwsCloudwatchLogResourcePolicy example (hack/dev manifest
+# and refgen Example source): the account-scope grant letting Route53
+# write query logs.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchLogResourcePolicy
+metadata:
+  name: route53-query-logging
+  id: route53-query-logging
+  org: test-org
+  env: dev
+spec:
+  region: us-east-1
+  policyName: route53-query-logging
+  policyDocument:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: route53.amazonaws.com
+        Action:
+          - logs:CreateLogStream
+          - logs:PutLogEvents
+        Resource: arn:aws:logs:us-east-1:123456789012:log-group:/aws/route53/*

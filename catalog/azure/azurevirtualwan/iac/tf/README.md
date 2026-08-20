@@ -63,5 +63,4 @@ module "global_wan" {
 
 ## Required Permissions
 
-The deploying credential needs `Microsoft.Network/virtualWans/write` --
-held via Network Contributor, Contributor, or Owner.
+Least-privilege runner permissions for this component are declared in [`../permissions.yaml`](../permissions.yaml).

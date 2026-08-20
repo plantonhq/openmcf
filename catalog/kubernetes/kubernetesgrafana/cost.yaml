@@ -1,0 +1,27 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesgrafana
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Each replica is a full Grafana pod carrying the declared resource requests. More than one replica REQUIRES the database block (spec-enforced) -- the embedded SQLite state cannot be shared between pods.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The CPU and memory requests are what the scheduler reserves per replica. Empty means no requests or limits (the chart default) -- the pods schedule unbounded and the cluster reserves nothing for them.
+    - field_path: storage.size
+      sku_meter: persistent volume storage
+      impact: Declaring storage binds one ReadWriteOnce PersistentVolumeClaim carrying the embedded SQLite state (dashboards, users, preferences). Empty storage means EPHEMERAL state -- nothing reserved, and everything hand-built vanishes on pod restart.
+    - field_path: database
+      sku_meter: cluster CPU and memory reservations
+      impact: Pointing state at an external Postgres or MySQL moves every byte off this component -- the database's capacity and storage ride its own resource (a KubernetesPostgres composes naturally), and storage becomes unnecessary here.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - "the external database's capacity and storage ride its own component when the database block is declared"
+    - "helm_values merges LAST over the typed rendering and can override modeled values, including resources, replicas, and persistence -- estimates state the spec's declaration"
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster its pods and volume reserve, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: replicas x requests plus the storage volume when declared."

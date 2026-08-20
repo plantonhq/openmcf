@@ -1,0 +1,293 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsssmpatchbaseline.v1alpha1;
+
+import "buf/validate/validate.proto";
+
+// AwsSsmPatchBaselineSpec defines the desired configuration for one
+// AWS Systems Manager patch baseline: which patches get auto-approved
+// for one operating system, the patch groups the baseline governs, and
+// optionally the account/region default-baseline designation for that
+// OS.
+//
+// The baseline's name is metadata.name (3-128 characters of letters,
+// digits, underscores, hyphens, and periods). AWS identifies the
+// baseline as "pb-..." (the import ID). Patch groups fold in as
+// registrations keyed by the group name (each imports as
+// "{patch_group},{baseline_id}"), and the default designation folds in
+// as set_as_default_baseline - both hang off the baseline's ID and
+// have no life of their own.
+message AwsSsmPatchBaselineSpec {
+  // The AWS region the baseline lives in.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The operating system the baseline approves patches for. Unset =
+  // WINDOWS (the provider default). Changing it forces replacement.
+  string operating_system = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "WINDOWS",
+        "AMAZON_LINUX",
+        "AMAZON_LINUX_2",
+        "AMAZON_LINUX_2022",
+        "AMAZON_LINUX_2023",
+        "UBUNTU",
+        "REDHAT_ENTERPRISE_LINUX",
+        "SUSE",
+        "CENTOS",
+        "ORACLE_LINUX",
+        "DEBIAN",
+        "MACOS",
+        "RASPBIAN",
+        "ROCKY_LINUX",
+        "ALMA_LINUX"
+      ]
+    }
+  ];
+
+  // Human description of the baseline, up to 1024 characters.
+  string description = 3 [(buf.validate.field).string.max_len = 1024];
+
+  // Auto-approval rules: each rule's filters select patches and its
+  // approval arm (days-after-release or a fixed cutoff date) schedules
+  // approval. On Debian and Ubuntu, approve_after_days is not
+  // supported by AWS - rules there typically carry neither arm and
+  // approve by filter alone.
+  repeated AwsSsmPatchBaselineApprovalRule approval_rules = 4;
+
+  // Filters narrowing which patches the whole baseline considers,
+  // applied on top of every approval rule (up to 4).
+  repeated AwsSsmPatchBaselinePatchFilter global_filters = 5 [(buf.validate.field).repeated.max_items = 4];
+
+  // Explicitly approved patches (IDs, KBs, or package names - up to
+  // 50), independent of the approval rules.
+  repeated string approved_patches = 6 [(buf.validate.field).repeated = {
+    max_items: 50
+    items: {
+      string: {
+        min_len: 1
+        max_len: 100
+      }
+    }
+  }];
+
+  // Compliance level reported for approved-patches entries when a
+  // managed node misses one. Unset = UNSPECIFIED.
+  string approved_patches_compliance_level = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "CRITICAL",
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+        "INFORMATIONAL",
+        "UNSPECIFIED"
+      ]
+    }
+  ];
+
+  // Treat the approved_patches list as including non-security updates
+  // (Linux only - Windows patches are always security-classified).
+  bool approved_patches_enable_non_security = 8;
+
+  // Explicitly rejected patches (up to 50).
+  repeated string rejected_patches = 9 [(buf.validate.field).repeated = {
+    max_items: 50
+    items: {
+      string: {
+        min_len: 1
+        max_len: 100
+      }
+    }
+  }];
+
+  // What happens when a rejected patch is a dependency of an approved
+  // one: install it anyway (ALLOW_AS_DEPENDENCY) or block it and
+  // report noncompliance (BLOCK). Unset = ALLOW_AS_DEPENDENCY (AWS's
+  // default, echoed back on read).
+  string rejected_patches_action = 10 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "ALLOW_AS_DEPENDENCY",
+        "BLOCK"
+      ]
+    }
+  ];
+
+  // Compliance status reported for AVAILABLE security updates that are
+  // not yet approved (Windows Server managed nodes only, per AWS).
+  // Unset = AWS's default posture.
+  string available_security_updates_compliance_status = 11 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "COMPLIANT",
+        "NON_COMPLIANT"
+      ]
+    }
+  ];
+
+  // Alternative patch source repositories for Linux instances (up to
+  // 20), each a yum/apt repo definition patching pulls from instead of
+  // the OS defaults.
+  repeated AwsSsmPatchBaselineSource sources = 12 [(buf.validate.field).repeated.max_items = 20];
+
+  // Patch groups this baseline governs: each entry registers the named
+  // group (the "Patch Group" tag value on managed nodes) with this
+  // baseline. A group can be registered with only ONE baseline per OS
+  // account-wide - AWS state, not validation, is the referee.
+  repeated string patch_groups = 13 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        min_len: 1
+        max_len: 256
+      }
+    }
+  }];
+
+  // Designate this baseline as the account/region DEFAULT for its
+  // operating system: nodes whose patch group is registered with no
+  // baseline patch against the default. One default exists per OS per
+  // region - claiming it silently displaces whichever baseline held
+  // the designation, at most one baseline per OS should set it
+  // (documents cannot see each other, so AWS state - not validation -
+  // is the referee), and un-setting the flag (or deleting this
+  // resource) RESTORES AWS's own predefined default baseline for the
+  // OS (the provider records and reverts to it).
+  bool set_as_default_baseline = 14;
+}
+
+// AwsSsmPatchBaselineApprovalRule auto-approves the patches its
+// filters select, on a schedule.
+message AwsSsmPatchBaselineApprovalRule {
+  // The two approval arms are mutually exclusive (the provider does
+  // not pre-check this; AWS rejects rules carrying both).
+  option (buf.validate.message).cel = {
+    id: "approval_rule.approval_arms_mutually_exclusive"
+    message: "approve_after_days and approve_until_date are mutually exclusive"
+    expression: "!(has(this.approve_after_days) && this.approve_until_date != '')"
+  };
+
+  // Filters selecting which patches this rule approves (1-10; keys
+  // valid per the baseline's operating system).
+  repeated AwsSsmPatchBaselinePatchFilter patch_filters = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 10
+  }];
+
+  // Days after a patch's release before this rule approves it (0-360;
+  // 0 = approve immediately on release). Mutually exclusive with
+  // approve_until_date. Not supported by AWS on Debian or Ubuntu.
+  optional int32 approve_after_days = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 360
+  }];
+
+  // Approve every selected patch released on or before this date
+  // (YYYY-MM-DD). Mutually exclusive with approve_after_days.
+  string approve_until_date = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[12][0-9]{3}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+  ];
+
+  // Compliance level reported when a node misses a patch this rule
+  // approved. Unset = UNSPECIFIED.
+  string compliance_level = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "CRITICAL",
+        "HIGH",
+        "MEDIUM",
+        "LOW",
+        "INFORMATIONAL",
+        "UNSPECIFIED"
+      ]
+    }
+  ];
+
+  // Include non-security updates in what this rule approves (Linux
+  // only).
+  bool enable_non_security = 5;
+}
+
+// AwsSsmPatchBaselinePatchFilter selects patches by one property.
+message AwsSsmPatchBaselinePatchFilter {
+  // The patch property to filter on. Which keys are valid depends on
+  // the baseline's operating system (PRODUCT/CLASSIFICATION/
+  // MSRC_SEVERITY for Windows; PRODUCT/CLASSIFICATION/SEVERITY for
+  // most Linux; SECTION/PRIORITY for Debian/Ubuntu; ...).
+  string key = 1 [(buf.validate.field).string = {
+    in: [
+      "ARCH",
+      "ADVISORY_ID",
+      "BUGZILLA_ID",
+      "PATCH_SET",
+      "PRODUCT",
+      "PRODUCT_FAMILY",
+      "CLASSIFICATION",
+      "CVE_ID",
+      "EPOCH",
+      "MSRC_SEVERITY",
+      "NAME",
+      "PATCH_ID",
+      "SECTION",
+      "PRIORITY",
+      "REPOSITORY",
+      "RELEASE",
+      "SEVERITY",
+      "SECURITY",
+      "VERSION"
+    ]
+  }];
+
+  // The values to match ("*" matches everything the key can hold; up
+  // to 20 values).
+  repeated string values = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 20
+    items: {
+      string: {
+        min_len: 1
+        max_len: 64
+      }
+    }
+  }];
+}
+
+// AwsSsmPatchBaselineSource is one alternative patch repository
+// (Linux).
+message AwsSsmPatchBaselineSource {
+  // The source's name (3-50 characters of letters, digits, hyphens,
+  // underscores, and periods).
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 50
+    pattern: "^[0-9A-Za-z_.-]{3,50}$"
+  }];
+
+  // The repo definition in the OS package manager's own syntax (a yum
+  // .repo section or an apt source line).
+  string configuration = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 1024
+  }];
+
+  // The OS product versions the source applies to (up to 20, e.g.
+  // "AmazonLinux2023.3" or "*").
+  repeated string products = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 20
+    items: {
+      string: {
+        min_len: 1
+        max_len: 128
+      }
+    }
+  }];
+}

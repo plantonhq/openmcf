@@ -28,4 +28,4 @@ Creates a Data Protection backup policy -- the schedule and retention rules for 
 
 ## Required Permissions
 
-The deploying principal needs `Microsoft.DataProtection/backupVaults/backupPolicies/*` on the vault's resource group (Contributor covers it).
+Least-privilege runner permissions for this component are declared in [`../permissions.yaml`](../permissions.yaml).

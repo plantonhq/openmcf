@@ -1,0 +1,41 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kuberneteskarpenternodepool
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: template.requirements
+      sku_meter: cloud instance hours
+      pricing_unit: hours
+      impact: WHAT may launch -- instance families, generations, architecture, and above all karpenter.sh/capacity-type (spot runs the same machines at a deep, interruptible discount to on-demand). Every node Karpenter provisions from this pool bills the cloud's per-hour rate for whatever instance type it picked within these constraints.
+    - field_path: template.node_class_ref
+      sku_meter: cloud instance hours
+      pricing_unit: hours
+      impact: The machine template each node launches through -- AMI, subnets, security groups, IAM, and the node's EBS volumes all ride the referenced KubernetesKarpenterEc2NodeClass, and the per-node storage charge is declared THERE.
+    - field_path: limits
+      sku_meter: cloud instance hours
+      pricing_unit: hours
+      impact: "THE SPEND CEILING LEVER: provisioning stops when the pool's aggregate reaches these quantities (cpu, memory, nodes, or accelerator counts like nvidia.com/gpu). Empty = no ceiling -- pod demand alone bounds what the pool may spend."
+    - field_path: disruption
+      sku_meter: cloud instance hours
+      pricing_unit: hours
+      impact: "THE OPTIMIZATION LEVER: consolidation_policy WhenEmptyOrUnderutilized (the CRD default) actively replaces under-used nodes with cheaper capacity that still fits the pods; WhenEmpty and Never-style consolidate_after values trade savings for stability; budgets bound how much of the pool may churn at once."
+    - field_path: template.expire_after
+      sku_meter: cloud instance hours
+      pricing_unit: hours
+      impact: Maximum node lifetime (CRD default 720h). Shorter values recycle nodes more often -- fresh AMIs and drift correction at the price of churn; the replacement node bills the same rates.
+    - field_path: replicas
+      sku_meter: cloud instance hours
+      pricing_unit: hours
+      impact: "ALPHA static capacity: a FIXED node count held around the clock regardless of pod demand -- the one mode where this pool carries COMMITTED spend (consolidation and weight are disabled; only limits.nodes applies)."
+  estimate_exclusions:
+    - "the NodePool object itself is a cluster-scoped Kubernetes declaration that costs nothing -- ALL real spend is the cloud instances Karpenter launches from it, billed by the cloud provider at its per-instance-type rates (on-demand or spot per capacity-type), which ride the free-form requirements and the referenced node class and cannot be priced from this manifest"
+    - node counts follow POD DEMAND -- Karpenter launches machines when pods go pending and consolidates them away when they empty, so the fleet (and the bill) tracks the cluster's workloads, not this declaration
+    - each node's EBS volumes, network placement, and AMI economics are declared on the referenced KubernetesKarpenterEc2NodeClass
+    - when the ALPHA replicas field is set the pool becomes COMMITTED spend -- a fixed number of nodes held continuously at cloud rates
+    - the Karpenter controller doing the provisioning carries its own in-cluster footprint on KubernetesKarpenter
+  notes: "This pool is a fleet SHAPE, not a fleet: it answers what nodes MAY exist. The dials that govern real spend are requirements (what machines, at what capacity-type rates), limits (the hard ceiling), and disruption (how aggressively under-used capacity is reclaimed). Clusters routinely run several pools ranked by weight -- a default on-demand pool, a discounted spot pool, a tainted GPU pool -- and Karpenter picks the cheapest that fits."

@@ -1,0 +1,35 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awscloudwatchlogaccountpolicy
+spec:
+  aws:
+    statements:
+      - sid: ManageAccountPolicy
+        actions:
+          - logs:PutAccountPolicy
+          - logs:DeleteAccountPolicy
+          - logs:DescribeAccountPolicies
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_cloudwatch_log_account_policy / cloudwatch.LogAccountPolicy -- the module's only resource. DescribeAccountPolicies serves every plan/refresh (the provider reads the (policy_name, policy_type) pair back by listing the account's policies of that type). None of the three actions takes resource-level scoping -- the CloudWatch Logs service reference lists no resource types for any of them, so "*" is the narrowest possible grant; an ARN-scoped grant here would be a runtime DENY. The object is account-wide by nature, which is also why AWS's own API documentation frames logs:PutAccountPolicy as an administrator-only grant. No tagging actions exist to grant -- account policies are untaggable at AWS (the provider resource has no tags argument, a recorded exclusion in both modules).
+      - sid: PolicyTypeCompanions
+        actions:
+          - logs:PutDataProtectionPolicy
+          - logs:DeleteDataProtectionPolicy
+          - logs:PutSubscriptionFilter
+          - logs:DeleteSubscriptionFilter
+          - logs:PutTransformer
+          - logs:DeleteTransformer
+          - logs:PutIndexPolicy
+          - logs:DeleteIndexPolicy
+        resources:
+          - "*"
+        provenance: derived
+        notes: "PutAccountPolicy and DeleteAccountPolicy each enforce a second, type-specific permission at the API (per their API reference pages): DATA_PROTECTION_POLICY demands logs:PutDataProtectionPolicy / logs:DeleteDataProtectionPolicy, SUBSCRIPTION_FILTER_POLICY demands logs:PutSubscriptionFilter / logs:DeleteSubscriptionFilter, TRANSFORMER_POLICY demands logs:PutTransformer / logs:DeleteTransformer, FIELD_INDEX_POLICY demands logs:PutIndexPolicy / logs:DeleteIndexPolicy, and METRIC_EXTRACTION_POLICY demands logs:PutMetricExtractionPolicy (its Delete companion is API-enforced but not yet in the published service-reference inventory -- an inventory-lag teach-in). The wildcard is deliberate even for the companions the reference scopes to log-group ARNs (PutDataProtectionPolicy, PutSubscriptionFilter, PutTransformer): in the account-policy call there is no single log-group ARN to scope to -- the policy applies account-wide or by selection_criteria -- so the log-group wildcard inside \"*\" is the working grant. Tightening path: a runner pinned to one policy_type needs only that type's pair. A SUBSCRIPTION_FILTER_POLICY whose document names a non-Lambda destination additionally requires iam:PassRole on the delivery role it carries -- grant it on that role's ARN only when that type is in play."

@@ -1,0 +1,25 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBudget
+metadata:
+  name: monthly-cost-guardrail
+spec:
+  region: us-east-1
+  budgetName: Monthly Cost Guardrail
+  budgetType: COST
+  timeUnit: MONTHLY
+  limit:
+    amount: "1000"
+    unit: USD
+  notifications:
+    - comparisonOperator: GREATER_THAN
+      notificationType: ACTUAL
+      threshold: 80
+      thresholdType: PERCENTAGE
+      subscriberEmailAddresses:
+        - <finops-team@your-company.com>
+    - comparisonOperator: GREATER_THAN
+      notificationType: FORECASTED
+      threshold: 100
+      thresholdType: PERCENTAGE
+      subscriberEmailAddresses:
+        - <finops-team@your-company.com>

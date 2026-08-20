@@ -73,7 +73,4 @@ module "subnet" {
 
 ## Required Permissions
 
-The deploying credential needs
-`Microsoft.Network/virtualNetworks/subnets/write` on the parent network,
-plus join rights on any attached route table, NSG, or NAT gateway --
-held via Network Contributor, Contributor, or Owner.
+See [`../permissions.yaml`](../permissions.yaml) for the least-privilege action set the deploying principal needs.

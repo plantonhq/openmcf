@@ -1,0 +1,73 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureeventhubcluster
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Event Hubs encrypts all stored event data at rest with service-managed keys on every tier, dedicated clusters included; encryption cannot be disabled.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed-key encryption is configured per namespace through AzureEventHubNamespaceCustomerManagedKey -- a kind that REQUIRES the namespace to sit on a dedicated cluster. The cluster is the eligibility gate for CMK, not the configuration point; this spec carries no key or identity surface.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The cluster is a capacity container with no data-plane endpoint of its own -- clients connect to the namespaces placed on it, and TLS posture lives there (Event Hubs endpoints require TLS on every tier).
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The cluster exposes no reachable endpoint; network exposure is decided per namespace (public_network_access_enabled and network_rule_sets on AzureEventHubNamespace).
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No traffic terminates at the cluster; ingress scoping (IP rules, VNet rules, private endpoints) is namespace-level configuration on AzureEventHubNamespace.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: There is no request surface to front with a WAF -- the cluster serves no requests, and the namespaces on it speak AMQP/Kafka/HTTPS event protocols protected by TLS, authentication, and network scoping rather than request filtering.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management operation on the cluster (create, scale, delete) is authorized by Azure RBAC unconditionally; the cluster has no data plane of its own, so no other access path exists.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The cluster carries no identity attachment point and no data plane to authenticate to. Keyless data-plane authentication is a namespace concern (local_authentication_enabled plus Entra data-plane roles on AzureEventHubNamespace).
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The cluster exposes no authentication path to harden -- SAS-versus-Entra posture lives on the namespaces placed on it (local_authentication_enabled on AzureEventHubNamespace).
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: ARM writes every cluster management operation (create, capacity scale, delete) to the Azure Activity Log unconditionally.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The cluster publishes capacity metrics (CPU, ingest/egress load) to Azure Monitor for every cluster without configuration -- the clusters resource type carries its own Azure Monitor metric definitions.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Event Hubs is a retention-window stream, not a backed-up store -- events age out by per-hub retention and are not restorable from backup. The geo-DR pairing (AzureEventHubDisasterRecoveryConfig) replicates namespace metadata, not event data.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain. Message retention is a per-hub setting on AzureEventHub (up to 90 days for hubs on a dedicated cluster) -- a streaming window, not a backup policy.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: capacity_units
+      evidence:
+        type: provider_default
+        reference: Event Hubs enables zone redundancy automatically in availability-zone regions at no extra cost, but the Dedicated tier supports it only at a minimum of three capacity units -- sizing the cluster at 3+ CUs in a zoned region is what makes it (and every namespace on it) zone-redundant, with synchronous replication and automatic failover.
+      notes: The 01-dedicated-cluster preset is 1 CU -- the entry size, below the zone-redundancy floor by design; scale capacity_units to 3 for zone resilience.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Event Hubs cluster API nor this spec offers a deletion-protection flag (Azure resource locks are subscription-side governance outside the manifest). The service's 4-hour post-creation deletion moratorium is a creation-window rule, not a protection an operator can hold.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The cluster is fully managed PaaS -- Microsoft patches and upgrades the single-tenant infrastructure behind it; the spec exposes no version or maintenance surface because none exists.

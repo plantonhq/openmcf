@@ -16,7 +16,7 @@ No additional supporting resources (API enablement, labels on the firewall, etc.
 - **An existing GCP project** — referenced via `projectId`
 - **An existing VPC network** — referenced via `network` (name or self-link)
 - **Compute Engine API enabled** (`compute.googleapis.com`) on the target project
-- **IAM permissions** — `roles/compute.securityAdmin` or `roles/compute.networkAdmin` on the target project
+- **IAM permissions** — see [`iac/permissions.yaml`](iac/permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Quick Start
 

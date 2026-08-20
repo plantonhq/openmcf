@@ -1,0 +1,84 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsecrrepo
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every ECR repository encrypts image layers at rest -- the default is server-side encryption with Amazon S3-managed keys (AES-256) on the managed storage ECR operates, and it cannot be disabled.
+      notes: encryption_type upgrades the default to KMS or dual-layer KMS_DSSE; the whole encryption configuration is create-time (ForceNew), so the posture is fixed when the repository is born.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset means Amazon-managed keys (AES256's S3-managed key, or the AWS-managed aws/ecr key when encryption_type is KMS without a key). Referencing an AwsKmsKey with encryption_type KMS or KMS_DSSE encrypts image layers under a key you own and can revoke -- ECR grants itself use of the key at creation and retires the grants at deletion.
+      notes: Spec validation blocks kms_key_id with AES256. Changing the key replaces the repository, and images are not migrated.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The registry speaks HTTPS only -- docker push and pull, layer transfers, and every ECR API call ride TLS endpoints. There is no plaintext listener to disable.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A private ECR registry has no anonymous surface -- every layer pull and API call must be signed by an IAM principal. Unauthenticated public distribution exists only in Amazon ECR Public, a separate registry this resource is not part of.
+      notes: repository_policy widens WHICH authenticated principals may pull (cross-account, service principals like Lambda) but cannot open anonymous access. Keeping pull traffic off the public internet entirely is a VPC interface-endpoint composition on the consuming VPC, outside this spec.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The repository has no network ingress to restrict -- no security groups, no CIDR allow-lists. Access is decided by IAM identity and the folded repository_policy, never by network source; source-network restrictions are composed as VPC endpoint policies on the consuming side.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: ECR's registry endpoints are AWS-operated shared infrastructure with no per-repository WAF attachment point -- request filtering in front of the registry is neither possible nor needed at this resource's level.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management and data-plane call -- repository creation, image push, image pull -- authorizes through IAM unconditionally. The folded repository_policy adds resource-side grants for principals outside the owning account.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The repository authenticates callers; it never authenticates AS anything. Keyless pull access for workloads (ECS task roles, EKS IRSA or Pod Identity, Lambda execution roles) is configured on the consuming components, which is where the short-lived-credential story lives.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: There is no legacy path to disable -- registry authentication has always been the IAM-signed authorization-token exchange over TLS. The token a docker login uses is itself short-lived (12 hours) and derives from IAM credentials.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every ECR API call -- repository management and image push/pull alike -- lands in AWS CloudTrail. When a KMS key encrypts the repository, ECR's grant and data-key calls also surface in CloudTrail carrying an aws:ecr:arn encryption context that ties them to this repository.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: scan_on_push
+      evidence:
+        type: spec_default
+        reference: The spec default (true) scans every pushed image for known CVEs, and scan-completed findings emit as EventBridge events that route to alerting -- the security signal this resource can export. Setting it false silences push-time findings.
+      notes: If the account has registry-level enhanced scanning (Amazon Inspector) configured, that account-wide setting supersedes this toggle.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: ECR has no backup facility -- durability comes from the multi-AZ managed storage, and disaster recovery for images is registry replication (an account-level registry configuration deliberately outside this repository-scoped spec) or a re-push from CI. force_delete's default guards the only-copy risk at deletion time.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility there is no backup retention to configure. lifecycle_rules retention governs LIVE image expiry -- a storage cost control, not a backup policy.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: ECR is a regional managed service that stores image layers in S3-backed storage replicated across availability zones -- there is no single-AZ mode to opt out of, and no zone placement to configure.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: force_delete
+      evidence:
+        type: spec_default
+        reference: The default (false) makes deletion refuse while any image is present -- AWS rejects the delete unless force is set, so a populated production repository cannot vanish in a routine destroy. Setting force_delete true lifts the guard and deletes the images along with the repository.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A fully managed registry -- AWS patches the service, and there is no customer-visible runtime to patch. The image CONTENTS are the consumer's to patch, which is exactly the debt scan_on_push surfaces.

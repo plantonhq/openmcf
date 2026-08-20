@@ -1,0 +1,46 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsssmparameter
+spec:
+  aws:
+    statements:
+      - sid: ManageParameter
+        actions:
+          - ssm:PutParameter
+          - ssm:GetParameter
+          - ssm:DeleteParameter
+        resources:
+          - arn:aws:ssm:*:*:parameter/*
+        provenance: derived
+        notes: Covers aws_ssm_parameter / ssm.Parameter. PutParameter creates and updates (the module renders overwrite only when the spec sets it -- the provider's own update path always overwrites); GetParameter serves every plan/refresh read of the value and version; DeleteParameter destroys. All three take resource-level scoping on the parameter ARN per the service reference, whose format drops the name's leading slash (arn:...:parameter/prod/db/url).
+      - sid: DescribeParameterMetadata
+        actions:
+          - ssm:DescribeParameters
+        resources:
+          - "*"
+        provenance: derived
+        notes: The provider reads parameter metadata (tier, type, allowed pattern, data type) through DescribeParameters on every refresh. The service reference lists no resource types for DescribeParameters, so the wildcard is the narrowest possible scope -- an ARN-scoped grant on this action would be a runtime DENY.
+      - sid: TagParameter
+        actions:
+          - ssm:AddTagsToResource
+          - ssm:RemoveTagsFromResource
+          - ssm:ListTagsForResource
+        resources:
+          - arn:aws:ssm:*:*:parameter/*
+        provenance: derived
+        notes: Tag-on-create plus later tag reconciliation and the tag read on every refresh. The service reference scopes all three tagging actions to the parameter ARN format (they also accept other SSM resource types this component never touches).
+      - sid: UseCustomerManagedKey
+        actions:
+          - kms:Encrypt
+          - kms:GenerateDataKey
+          - kms:Decrypt
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Needed only when spec.key_id references a customer-managed key on a SecureString parameter -- Parameter Store authorizes the CALLING principal for the key operations it performs on that key (Encrypt on standard-tier writes, GenerateDataKey on advanced-tier envelope-encrypted writes, Decrypt on the provider's value read-back at refresh). The default AWS-managed aws/ssm key requires no caller-side KMS grant.

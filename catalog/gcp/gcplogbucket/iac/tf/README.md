@@ -12,7 +12,7 @@ This directory contains the Terraform/OpenTofu implementation for deploying a Cl
    ```bash
    gcloud auth application-default login
    ```
-4. **IAM permissions**: `roles/logging.configWriter` on the scope (folder/org scopes need it at that level)
+4. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Module Files
 

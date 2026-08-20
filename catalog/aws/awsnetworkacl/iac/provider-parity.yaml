@@ -1,0 +1,57 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_network_acl:
+    mappings:
+      # ingress/egress are ATTRIBUTE-mode sets at the pin (ConfigMode
+      # attr) - each censuses as ONE object-typed leaf. The spec models
+      # the rule members honestly; every member maps onto its set (the
+      # FAN-IN idiom: the argument counts once, every mapped field is
+      # covered in reverse).
+      - arg: ingress
+        spec: spec.ingress.rule_no
+      - arg: ingress
+        spec: spec.ingress.action
+      - arg: ingress
+        spec: spec.ingress.protocol
+      - arg: ingress
+        spec: spec.ingress.cidr_block
+      - arg: ingress
+        spec: spec.ingress.ipv6_cidr_block
+      - arg: ingress
+        spec: spec.ingress.from_port
+      - arg: ingress
+        spec: spec.ingress.to_port
+      - arg: ingress
+        spec: spec.ingress.icmp_type
+      - arg: ingress
+        spec: spec.ingress.icmp_code
+      - arg: egress
+        spec: spec.egress.rule_no
+      - arg: egress
+        spec: spec.egress.action
+      - arg: egress
+        spec: spec.egress.protocol
+      - arg: egress
+        spec: spec.egress.cidr_block
+      - arg: egress
+        spec: spec.egress.ipv6_cidr_block
+      - arg: egress
+        spec: spec.egress.from_port
+      - arg: egress
+        spec: spec.egress.to_port
+      - arg: egress
+        spec: spec.egress.icmp_type
+      - arg: egress
+        spec: spec.egress.icmp_code
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

@@ -1,0 +1,67 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurenetworksecuritygroup
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An NSG is packet-filtering configuration on the software-defined network fabric; it stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The group filters traffic; it does not encrypt it. Transport encryption belongs to the workloads it guards and to the parent network's encryption posture.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The group itself has no reachability -- it is the enforcement point for OTHER resources' exposure, worn under restricted-ingress. It attaches through AzureSubnet's network_security_group_id, and internet exposure is created by public IPs, load balancers, and gateways, each a separate catalog kind.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_rules
+      evidence:
+        type: spec_default
+        reference: An empty security_rules list leaves Azure's implicit default rules governing -- allow VNet-internal traffic and load-balancer probes, deny all other inbound (defaults sit at priorities 65000-65500). Every authored rule is an explicit 5-tuple decision -- source as a CIDR, service tag, or application security group membership; destination; ports; protocol; ALLOW or DENY -- evaluated lowest-priority-first with first match deciding, which is exactly the declared-source ingress restriction this control asks for.
+      notes: This is the component's whole purpose -- the stateful firewall for everything in the subnets and NICs it guards. Application-security-group addressing (source_application_security_group_ids / destination_application_security_group_ids) follows workloads as they scale instead of pinning CIDRs.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: An NSG filters at layers 3-4 (addresses, ports, protocols); request-level filtering (WAF) belongs to application gateways and Front Door, separate kinds.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the group exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The group runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Traffic audit (NSG flow logs) is a separate Network Watcher resource, not a field of this spec; rule changes land in the Azure Activity Log as subscription-level posture.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The group publishes no metrics of its own; flow logs and Traffic Analytics are configured through Network Watcher resources, separate kinds.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless filtering configuration -- nothing to back up; the manifest recreates the group and its rules declaratively.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: An NSG is a regional software-defined construct enforced uniformly across every availability zone its guarded subnets and NICs span; it has no single-zone failure mode of its own.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for an NSG (Azure resource locks are subscription-side governance outside the manifest). Azure refuses to delete a group still associated with subnets or NICs, but that is dependency ordering, not a control.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed software-defined networking -- Microsoft operates and patches the filtering fabric that evaluates NSG rules; no customer-visible patch surface exists.

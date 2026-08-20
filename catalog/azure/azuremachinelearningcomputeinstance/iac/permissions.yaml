@@ -1,0 +1,30 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremachinelearningcomputeinstance
+spec:
+  azure:
+    groups:
+      - purpose: ManageComputeInstance
+        actions:
+          - Microsoft.MachineLearningServices/workspaces/computes/read
+          - Microsoft.MachineLearningServices/workspaces/computes/write
+          - Microsoft.MachineLearningServices/workspaces/computes/delete
+          - Microsoft.MachineLearningServices/workspaces/read
+        provenance: derived
+        notes: Covers azurerm_machine_learning_compute_instance (and the Pulumi module's machinelearning.ComputeInstance) -- create, read/refresh, and destroy; the provider has no update path for this resource, so every change is a delete-and-recreate under these same actions. workspaces/read is needed because the resource carries no location argument -- the provider resolves the parent workspace to place the compute in its region. Provisioning also consumes regional dedicated-vCPU quota for the chosen VM size, a subscription capacity concern rather than an RBAC action.
+      - purpose: AttachUserAssignedIdentities
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/assign/action
+        provenance: derived
+        notes: Required only when identity.identity_ids attaches user-assigned identities. A SERVICE-side need -- the provider only carries the identity IDs in the compute payload, and Azure checks assign on each referenced identity's own scope when the compute write attaches it.
+      - purpose: JoinSubnet
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/join/action
+        provenance: derived
+        notes: Required only when subnet_id places the instance in a subnet (legal only when the workspace does NOT run a managed network). A SERVICE-side need -- the provider only carries the subnet ID, and Azure checks join on the subnet's own scope when the service wires the instance's NIC into it.

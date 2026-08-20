@@ -1,12 +1,21 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  reactStrictMode: true,
-  // Export as a fully static site (for GitHub Pages)
-  output: "export",
+  output: 'export',
+  assetPrefix: '/_site',
   images: {
-    // Static export requires unoptimized images
     unoptimized: true,
+  },
+  outputFileTracingExcludes: {
+    '/*': ['./next.config.ts'],
+  },
+  turbopack: {
+    rules: {
+      '*.svg': {
+        loaders: ['@svgr/webpack'],
+        as: '*.js',
+      },
+    },
   },
 };
 

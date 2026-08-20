@@ -1,0 +1,24 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesperconamysqloperator
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Each operator replica carries the declared (or chart-default) resources. Extra replicas are leader-elected warm standbys for the OPERATOR itself -- they add no reconciliation throughput, just standby capacity.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The CPU and memory requests are what the scheduler reserves per operator replica. Empty does NOT mean unbounded here -- the chart ships default requests and limits (100m/20Mi requests, 200m/500Mi limits), applied whenever the manifest omits resources.
+    - field_path: xtrabackup_sidecar
+      sku_meter: cluster CPU and memory reservations
+      impact: Enabling the gate runs XtraBackup as a sidecar of every managed DATABASE pod instead of separate backup jobs -- capacity that lands on the database pods, accounted on their KubernetesMysql resources, never on this operator's footprint.
+  estimate_exclusions:
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+    - "the MySQL clusters this operator reconciles -- Galera nodes, HAProxy or ProxySQL routers, backup jobs -- reserve their own capacity on their KubernetesMysql resources, never this footprint"
+    - the helm_values overlay merges last and can override the modeled values, including resources
+  notes: "This component installs the ENGINE, not the databases: its footprint is the operator pod(s) alone. MySQL clusters are declared through KubernetesMysql resources, each carrying its own capacity footprint -- including the object storage its XtraBackup backups consume."

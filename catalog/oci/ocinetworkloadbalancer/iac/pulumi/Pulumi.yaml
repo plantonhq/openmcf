@@ -1,3 +1,0 @@
-name: ocinetworkloadbalancer-pulumi-project
-runtime:
-  name: go

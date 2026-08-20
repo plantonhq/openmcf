@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurefederatedidentitycredential
+spec:
+  azure:
+    groups:
+      - purpose: ManageFederatedCredential
+        actions:
+          - Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials/read
+          - Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials/write
+          - Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials/delete
+        provenance: derived
+        notes: Covers azurerm_federated_identity_credential -- create, read/refresh, in-place updates (issuer, subject, audience), and destroy, all on the parent identity's child path (the resource group is derived from the identity's ARM ID, so no separate resolution happens). Held via Managed Identity Contributor, Contributor, or Owner on the parent identity's scope. The provider serializes writes per parent identity because ARM rejects concurrent credential writes on one identity -- a behavior, not an extra permission.

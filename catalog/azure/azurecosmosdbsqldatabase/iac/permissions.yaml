@@ -1,0 +1,25 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurecosmosdbsqldatabase
+spec:
+  azure:
+    groups:
+      - purpose: ManageSqlDatabase
+        actions:
+          - Microsoft.DocumentDB/databaseAccounts/sqlDatabases/read
+          - Microsoft.DocumentDB/databaseAccounts/sqlDatabases/write
+          - Microsoft.DocumentDB/databaseAccounts/sqlDatabases/delete
+        provenance: derived
+        notes: "Covers azurerm_cosmosdb_sql_database / cosmosdb.NewSqlDatabase -- create, refresh, and destroy of the one resource each module manages. Both modules parse the resource group and account names locally from the resolved cosmosdb_account_id -- no API call reads the parent account -- and Cosmos child operations are long-running, so both providers poll the database until provisioning settles (read persists through creates, updates, and destroys). Typically held via DocumentDB Account Contributor, Contributor, or Owner on the resource group."
+      - purpose: ManageDatabaseThroughput
+        actions:
+          - Microsoft.DocumentDB/databaseAccounts/sqlDatabases/throughputSettings/read
+          - Microsoft.DocumentDB/databaseAccounts/sqlDatabases/throughputSettings/write
+        provenance: derived
+        notes: "Needed when the spec sets throughput or autoscale_max_throughput: the shared budget rides the create payload, but the provider reads the database's throughput settings on every refresh to detect drift and issues throughputSettings/write for in-place throughput changes. A pure-namespace database (both fields unset) has no throughput sub-resource, and these actions go unused."

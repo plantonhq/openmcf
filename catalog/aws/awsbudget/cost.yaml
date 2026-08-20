@@ -1,0 +1,29 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbudget
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: AWSBudgets
+      sku_meter: action-enabled budget days
+      pricing_unit: Budget-days
+      description: A budget carrying ANY action bills $0.10 per budget-day (~$3.04 a month) from creation, past the account's first 62 free action-enabled budget-days each month -- an account-level allowance no single manifest can see, so committed estimates price the full rate and state it. Monitoring-only budgets never bill.
+  cost_drivers:
+    - field_path: actions
+      sku_meter: action-enabled budget days
+      pricing_unit: Budget-days
+      impact: The one paid switch on this kind -- a budget with ANY action attached becomes an action-enabled budget billing $0.10 per budget-day (~$3.04 a month) past the account's free allowance, however many actions it carries. A notifications-only budget never bills.
+    - field_path: notifications
+      sku_meter: action-enabled budget days
+      pricing_unit: Budget-days
+      impact: Free at any count -- alert notifications to email or SNS carry no meter of their own and do NOT make the budget action-enabled. Only entries under actions flip the paid meter.
+  free_tier: "Two permanent zero bands, both written into the AWSBudgets offer itself: monitoring-only budgets are free at any count (the plain Budget-days meter prices $0.00 flat), and the account's first 62 action-enabled budget-days each month -- two action-enabled budgets running a full month -- price $0.00 before the $0.10 rate starts. The 62-day allowance is account-level, invisible to a single manifest, so committed estimates price the full rate and state the allowance."
+  estimate_exclusions:
+    - AWS Budgets Reports (scheduled emailed reports) bill $0.01 per delivered report -- a console feature this spec does not model
+    - SNS topics subscribed to notifications bill on their own components; email subscribers are free
+    - what a fired action DOES (denying IAM groups, attaching SCPs, stopping EC2/RDS via SSM) changes other components' bills, not this one's
+  notes: "Budgets is an account-global service served from us-east-1 -- the spec's region is only the provider's API endpoint, and the single global rate card prices every budget identically. Budget evaluation, forecasting, and the filter generations (legacy cost_filters or the modern metric + filter_expression pair) all cost nothing; the entire price structure is the one action-enabled flag. The billing quantum is the budget-DAY: flipping actions on mid-month bills only the remaining days, and deleting the budget stops the meter that day."

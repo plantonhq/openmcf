@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awselasticacheuser
+spec:
+  billing_model: free
+  free_tier: An ElastiCache user is an RBAC identity, and ElastiCache has no meter for identities -- the service bills node-hours on node-based clusters and data stored (GB-hours) plus request units (ECPUs) on serverless caches, and none of those meters count users. AWS's own documentation is explicit that its security features, RBAC included, carry no additional cost.
+  notes: "No field of this spec buys anything: the user name, ACL access string, and authentication mode (passwords, IAM, or none) are access-control configuration stored by the ElastiCache control plane. The real spend lives on the caches this identity eventually governs -- node-based replication groups bill per node-hour from creation, and serverless caches bill GB-hours of stored data plus ECPUs per request, whether or not any RBAC user exists. The path between them runs through AwsElasticacheUserGroup: users join a group, the group attaches to a cache, and only the cache meters run. IAM authentication ('iam' mode) is likewise free -- the tokens are signed with the caller's existing IAM identity."

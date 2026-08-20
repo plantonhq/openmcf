@@ -1,0 +1,45 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awssecretsmanagersecret
+spec:
+  # A Secrets Manager secret under live E2E: two free, seconds-scale lanes.
+  # The minimal lane proves the secret + managed version lifecycle with
+  # recovery_window 0 (the name frees immediately, keeping re-runs clean).
+  # The full-surface lane adds the resource policy (through the standalone
+  # policy resource with block_public_policy), a custom staging label
+  # riding AWSCURRENT, and a us-east-1 replica -- the zero-orphan sweep
+  # must treat the replica region too. Verification is DescribeSecret keyed
+  # on the secret name (a secret with DeletedDate set counts as absent --
+  # the soft-delete class).
+  #
+  # Deliberately not exercised live: rotation (both arms need real rotation
+  # infrastructure -- a Lambda implementing the four rotation steps with
+  # invoke permission for secretsmanager.amazonaws.com, or a partner-side
+  # external integration; offline plans/previews prove the render
+  # arm-for-arm) and binary_value (same PutSecretValue path as
+  # string_value). Unblock: a rotation-function fixture (a minimal Python
+  # rotation handler packaged as an AwsLambda prerequisite shape).
+  #
+  # Proven live 2026-08-13, both engines, both scenarios, with the
+  # IDEMPOTENCY phase (re-plan after apply empty ×4 lanes) and the blind
+  # import round-trip green (full-surface: secret/policy/version re-imported
+  # via ARN + the {secret_arn}|{version_id} composite, only the declared
+  # config-only attributes tolerated; minimal: zero tolerated). Per-engine
+  # watcher evidence: bluegreen-active riding AWSCURRENT on the managed
+  # version; the us-east-1 replica InSync in-window and cleanly deleted
+  # after destroy; distinct run-scoped names attribute the windows.
+  # ONE live catch, fixed at the full bar: destroying a replicated secret
+  # with recovery window 0 can outrun AWS's ASYNC replica deletion and
+  # strand the replica as a live standalone secret (observed once;
+  # $0-probed: the async deletion needs the primary's tombstone), and a
+  # stranded ex-replica blocks the same name's next replication SILENTLY
+  # (force_overwrite does not clear it). Verifier now polls declared
+  # replicas to InSync at exists and replica-regions-gone at absent; the
+  # full-surface scenario rides a run-scoped name + recovery window 7
+  # (which also live-proves the DeletedDate-absent contract); truths on
+  # the spec fields, both modules, GUIDE, and the harness manual.
+  tier: 1
+  status: green
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 30

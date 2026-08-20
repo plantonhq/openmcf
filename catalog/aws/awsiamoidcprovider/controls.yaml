@@ -1,0 +1,64 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsiamoidcprovider
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An OIDC provider stores no customer data -- the issuer URL, audiences, and thumbprints are IAM control-plane metadata held inside AWS's own service infrastructure.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); IAM exposes no KMS surface for OIDC providers.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every connection this trust anchor participates in is TLS by construction -- the spec accepts only https:// issuer URLs (AWS rejects anything else), AWS validates the issuer's certificate chain against its trusted CA store (or the pinned thumbprints for privately-rooted issuers), and the token exchange itself rides the TLS-only STS endpoint.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The provider has no network endpoint to expose -- it is a registration record. The issuer it points at is whatever the operator federates (a public CI issuer or a cluster's issuer), owned outside this spec.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; the provider is an identity-federation object with no addresses or ports.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The provider receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: not_applicable
+      notes: The provider authenticates issuers, it authorizes nothing -- registering it grants zero permissions. WHO may assume WHAT through its tokens is governed entirely on the AwsIamRole side, where each role's trust policy names this provider as a Federated principal and scopes acceptance by subject and audience conditions. The client_id_list here only bounds which audiences can authenticate at all.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Keyless workload identity IS this component -- it exists solely so an external issuer's short-lived tokens can be exchanged for temporary AWS credentials via sts:AssumeRoleWithWebIdentity. No static access key is created, stored, or distributable through it at any configuration; EKS IRSA and CI federation (GitHub Actions, GitLab) are exactly this pattern.
+      notes: The loop closes on AwsIamRole's oidc_trust arm, which composes the role trust document from this provider's outputs so provider, role, and consumer deploy in one run.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The provider carries no credential path of its own to weaken -- the only tokens it accepts are short-lived OIDC tokens whose audience must appear in client_id_list, and the credentials they buy are expiring STS sessions.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. IAM management calls on the provider and every AssumeRoleWithWebIdentity exchange through it are recorded by AWS CloudTrail as account-level posture, not per-provider configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: IAM publishes no CloudWatch metrics per OIDC provider; federation activity is visible only through CloudTrail's STS events at account level.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The provider holds no data to back up -- it is declarative configuration fully re-creatable from the manifest (AWS allows one provider per issuer URL per account, so re-creation lands on the same identity).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: IAM is a global control-plane service -- the provider is account-wide regardless of the region field, which only selects the API endpoint the deploy talks to. There is no zonal placement to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for OIDC providers. AWS deletes the provider even while roles still trust it (their federated assumption then fails), so teardown care is operational discipline, not a configurable guard.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: The provider is a pure configuration object with no software to patch. Certificate trust maintenance is AWS's own -- with thumbprint_list empty, AWS secures the issuer connection from its trusted CA store and keeps it current without operator action.

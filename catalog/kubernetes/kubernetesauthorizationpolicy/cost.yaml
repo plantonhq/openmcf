@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesauthorizationpolicy
+spec:
+  billing_model: free
+  free_tier: An Istio AuthorizationPolicy is a record in the Kubernetes API server -- an action (ALLOW/DENY/AUDIT/CUSTOM) plus request-matching rules that istiod compiles into the Envoy configuration of already-running sidecars and gateways. No provider bills for the policy object, and it reserves no cluster capacity of its own.
+  notes: "No field of this spec buys anything: selector, target_refs, rules, and action decide WHICH requests the existing proxies admit or reject -- enforcement runs inside proxy containers that already exist. The real spend lives in the workloads and gateways the policy protects (their own components' cluster-capacity profiles) and, for the CUSTOM action, in the external authorizer service the mesh delegates to, which runs and bills as its own workload."

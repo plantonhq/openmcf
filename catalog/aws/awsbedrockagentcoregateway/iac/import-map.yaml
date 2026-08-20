@@ -1,0 +1,22 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsbedrockagentcoregateway
+spec:
+  # The gateway imports by its bare id. Targets compose the gateway id
+  # with their own ids, derived blind from the target_ids output map keyed
+  # exactly like the module's for_each entries.
+  values:
+    - name: gateway_id
+      derivations:
+        - from_stack_output: gateway_id
+      where_to_find: >-
+        Bedrock AgentCore console -> Gateways -> <gateway> (the ID), or
+        `aws bedrock-agentcore-control list-gateways` (gatewayId).
+    - name: target_id
+      derivations:
+        - from_stack_output_keyed_by_address: target_ids
+      where_to_find: >-
+        `aws bedrock-agentcore-control list-gateway-targets
+        --gateway-identifier <id>` lists targetId per target; match each
+        to its spec.targets entry by name.

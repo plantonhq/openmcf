@@ -12,7 +12,7 @@ This directory contains the Terraform/OpenTofu implementation for deploying a Ce
    ```bash
    gcloud auth application-default login
    ```
-4. **IAM permissions**: `roles/certificatemanager.editor` (or broader) on the target project
+4. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs
 
 ## Module Files
 

@@ -12,7 +12,6 @@ A single global forwarding rule in the chosen project — the resource DNS recor
 - **An existing GCP project** — referenced via `projectId` (or the provider's default project)
 - **A target proxy** — a `GcpTargetHttpsProxy` or `GcpTargetHttpProxy` (or another global target's URI)
 - **Recommended: a reserved static IP** — a `GcpGlobalAddress`, so the VIP survives frontend rebuilds
-- **IAM permissions** — any role carrying `compute.globalForwardingRules.*` on the target project
 
 ## Quick Start
 

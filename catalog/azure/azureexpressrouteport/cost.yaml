@@ -1,0 +1,32 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureexpressrouteport
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: ExpressRoute
+      sku_meter: Direct port pair
+      pricing_unit: port-months
+      description: The port pair bills its full monthly rate from the moment ARM creates it -- before any cross-connect exists, before a single circuit is carved -- at the rate for its bandwidth, billing type, and the peering FACILITY'S pricing zone (not the ARM region, which is metadata). One of the most expensive single objects in Azure networking.
+  cost_drivers:
+    - field_path: bandwidth_in_gbps
+      sku_meter: Direct port pair
+      pricing_unit: port-months
+      impact: Picks the port-fee ladder -- 100 Gbps bills roughly an order of magnitude above 10 Gbps. Fixed at creation; resizing replaces the port and every circuit riding on it.
+    - field_path: billing_type
+      sku_meter: Direct port pair
+      pricing_unit: port-months
+      impact: METERED_DATA (the default) bills the base port fee plus per-GB outbound charges on the circuits' traffic; UNLIMITED_DATA multiplies the port fee severalfold and removes egress metering -- economical only at sustained high utilization. The one big dial that is NOT ForceNew; Azure allows switching between metered and unlimited in place.
+    - field_path: peering_location
+      sku_meter: Direct port pair
+      pricing_unit: port-months
+      impact: Decides the pricing zone the port fee is billed in -- Azure prices the same meter differently per facility zone (Zone 1 through Zone 4), so the colocation choice moves the monthly list rate. Fixed at creation.
+  estimate_exclusions:
+    - circuits carved from the port bill on their own AzureExpressRouteCircuit components -- Premium circuit add-ons carry a monthly fee, and on METERED_DATA ports the circuits' outbound traffic bills per GB
+    - the physical cross-connect and rack/colocation charges are contracted with the facility operator, outside Azure entirely
+    - MACsec key reads bill as Key Vault operations on the referenced vault's component
+  notes: "ExpressRoute Direct bills the capacity itself: one monthly meter per port PAIR (ARM always provisions dual links on separate Microsoft edge routers; the fee covers both), running from creation until deletion regardless of whether the facility ever completes the cross-connect -- order ports when the letter of authorization can be acted on, not before. The meter is keyed three ways: bandwidth (10 or 100 Gbps), billing type (metered vs unlimited), and the peering facility's pricing zone. Everything else on the spec is free -- MACsec, link admin state, issued authorizations, and the identity add no meters. Circuits are where the rest of the money lives: aggregate provisioned circuit bandwidth may oversubscribe the port up to 2x at no port-side charge, Premium circuits add their own monthly fee, and metered ports pay per-GB egress through those circuits."

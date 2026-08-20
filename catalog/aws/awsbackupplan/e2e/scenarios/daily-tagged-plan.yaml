@@ -1,0 +1,50 @@
+# The plan's cost-floored full surface: one daily rule into the vault
+# fixture (registry prerequisite) with a delete-only lifecycle, plus a
+# tag-driven selection assuming the consumer-scoped backup service role
+# (annotation prerequisite -- the role is conditional in the schema).
+# The rule's schedule never fires inside a lane window and the
+# selection's tag matches nothing that exists, so NO recovery points
+# are ever created and the lane bills nothing. Destroy exercises the
+# provider's selections-drain-then-plan-delete ordering.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupPlan
+metadata:
+  name: planton-oss-e2e-awsbkp
+  id: planton-oss-e2e-awsbkp
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbackupplan
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  rules:
+    - name: daily
+      targetVaultName:
+        valueFrom:
+          kind: AwsBackupVault
+          name: planton-oss-e2e-awsbkp-vault
+          fieldPath: status.outputs.vault_name
+      schedule: cron(0 5 ? * * *)
+      startWindowMinutes: 60
+      completionWindowMinutes: 180
+      lifecycle:
+        deleteAfterDays: 35
+      recoveryPointTags:
+        source-plan: planton-oss-e2e-awsbkp
+  selections:
+    - name: tagged
+      iamRoleArn:
+        valueFrom:
+          kind: AwsIamRole
+          name: planton-oss-e2e-awsbkp-role
+          fieldPath: status.outputs.role_arn
+      selectionTags:
+        - type: STRINGEQUALS
+          key: planton-e2e-backup
+          value: never-matches

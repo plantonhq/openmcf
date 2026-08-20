@@ -324,6 +324,7 @@ Fields on other kinds that can point at this resource:
 | GcpGkeNodePool | `spec.nodeConfig.serviceAccount` | `status.outputs.email` |
 | GcpGkeWorkloadIdentityBinding | `spec.serviceAccountEmail` | `status.outputs.email` |
 | GcpKmsKeyIamMember | `spec.member` | `status.outputs.member` |
+| GcpPlantonRunner | `spec.serviceAccount` | `status.outputs.email` |
 | GcpProjectIamMember | `spec.member` | `status.outputs.member` |
 | GcpPubSubSubscription | `spec.pushConfig.oidcToken.serviceAccountEmail` | `status.outputs.email` |
 | GcpPubSubSubscription | `spec.bigqueryConfig.serviceAccountEmail` | `status.outputs.email` |

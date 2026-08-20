@@ -1,0 +1,84 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpspannerinstance
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Spanner encrypts all stored data at rest with Google-managed keys on every instance without configuration.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed encryption in Spanner is configured per database at database creation, on the separate GcpSpannerDatabase resource -- this instance spec carries no KMS field.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Clients reach Spanner only through Google's API endpoints over TLS; no cleartext data path exists.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Spanner serves through Google's API endpoint rather than an address in your network -- there is no VPC placement or public-IP knob on this spec. Reachability is governed by IAM, and org-level VPC Service Controls can add a network perimeter outside this component.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: There is no network ingress surface to restrict -- access is via the IAM-authenticated API endpoint; source-based restriction lives in org-level VPC Service Controls, outside this spec.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A managed relational API endpoint is protected by TLS and IAM rather than a WAF; no request-filtering attachment point exists.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management and data operation authorizes through Cloud IAM roles at project, instance, or database scope; fine-grained access control extends roles down to tables and columns.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Spanner clients authenticate exclusively with Google Cloud IAM credentials (service accounts, workload identity federation) -- no static database passwords exist for the service.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Spanner has no legacy or password-based authentication path to disable -- IAM is the only door.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Administrative operations on the instance land in Cloud Audit Logs (Admin Activity) unconditionally; Data Access audit logs can additionally be enabled at the project or org level.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Spanner publishes instance metrics (CPU by priority, storage, latency, throughput) to Cloud Monitoring for every instance without configuration.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: default_backup_schedule_type
+      evidence:
+        type: spec_default
+        reference: NONE (the default) attaches no automatic backup schedule to new databases; AUTOMATIC gives every new database on the instance a default backup schedule. Explicit GcpSpannerBackupSchedule resources offer full control either way.
+      notes: Presets 02 and 03 set AUTOMATIC. force_destroy false (the default) refuses to destroy the instance while any backup exists -- a restore-point safety net.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Backup retention is configured on backup schedules (the separate GcpSpannerBackupSchedule resource), not on the instance -- this spec only chooses whether new databases get a default schedule.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every Spanner regional configuration synchronously replicates each node across three read-write replicas in three zones with automatic failover -- no single-zone Spanner exists.
+      notes: config selects the topology; multi-region configurations (preset 03's nam6) extend replication across regions for the 99.999% SLA tier on ENTERPRISE_PLUS.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Unset means DELETE; PREVENT makes any destroy fail while the instance exists. Independently, force_destroy false (the default) blocks destroy while any database on the instance holds backups.
+      notes: No preset sets PREVENT; the backup-gated force_destroy default is the always-on layer of protection.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Spanner is a fully managed service -- Google applies all software and security patching invisibly; no version or maintenance surface exists on the spec.

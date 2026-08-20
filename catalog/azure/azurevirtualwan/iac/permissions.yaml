@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurevirtualwan
+spec:
+  azure:
+    groups:
+      - purpose: ManageVirtualWan
+        actions:
+          - Microsoft.Network/virtualWans/read
+          - Microsoft.Network/virtualWans/write
+          - Microsoft.Network/virtualWans/delete
+        provenance: derived
+        notes: Covers azurerm_virtual_wan -- create, read/refresh, in-place policy updates (branch-to-branch, Office 365 breakout, type upgrade, tags), and destroy. Held via Network Contributor, Contributor, or narrower custom roles.

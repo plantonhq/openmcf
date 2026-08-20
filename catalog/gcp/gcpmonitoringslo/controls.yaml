@@ -1,0 +1,70 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpmonitoringslo
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An SLO stores no customer data -- its goal, period, and SLI definition (and any Monitoring service this kind creates) are Cloud Monitoring control-plane metadata; the metric data the SLI reads lives in Monitoring's datastore, not in this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); the Monitoring API exposes no CMEK surface for SLOs or services.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: An SLO terminates no connections of its own. Management calls and SLI evaluation inside Google's infrastructure happen on Google API endpoints, which serve exclusively over TLS as provider behavior, not per-SLO configuration.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: An SLO has no network endpoint to expose; it is a control-plane object reachable only through the IAM-governed Monitoring API.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; an SLO is a configuration object with no addresses or ports.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: An SLO receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Creating, modifying, and deleting SLOs and Monitoring services is governed by Cloud Monitoring IAM roles on the owning project (the monitoring.slos.* and monitoring.services.* permission families); no anonymous or non-IAM management path exists.
+      notes: The spec exposes no per-SLO access surface -- access scoping is the project's IAM posture.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: An SLO holds no credentials and calls no cloud APIs as itself; SLI computation runs inside Cloud Monitoring's own service identity.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The only authentication path involving the SLO is IAM-authenticated Monitoring API access; no weaker alternative exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every create, update, and delete on the SLO and on any Monitoring service this kind creates is recorded in Cloud Audit Logs' Admin Activity log, which is always on and cannot be disabled.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloud Monitoring exposes every SLO's health as queryable time series without configuration -- the select_slo_health, select_slo_compliance, select_slo_budget, and select_slo_burn_rate time-series selectors serve the SLI value, error-budget remainder, and burn rate for dashboards and burn-rate alert policies.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: An SLO holds no data to back up -- it is declarative configuration fully re-creatable from the manifest (historical SLI performance lives in Monitoring's metric store, not in the SLO object).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: SLOs live in Cloud Monitoring's regional-redundant control plane with no zonal placement to configure; availability is Google's service posture, not per-SLO configuration.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE (the provider default); PREVENT makes any destroying plan fail until the value is lifted, and ABANDON removes the SLO from management while it keeps existing in GCP. The same value flows to any Monitoring service this kind created.
+      notes: This is an IaC-engine guard, not an API-side flag -- deletion through the GCP console or gcloud is not blocked by it. Burn-rate alert policies referencing a deleted SLO stop evaluating.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: An SLO is a pure configuration object with no software to patch; the evaluation engine is Google-operated.

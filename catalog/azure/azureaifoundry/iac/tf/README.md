@@ -50,10 +50,3 @@ and `spec` variables matching the generated `variables.tf`.
   fight the read-back (the flag is ForceNew).
 - **Soft delete**: a destroyed hub holds its name as a purgeable
   ghost until purged (the ML workspace class).
-
-## Required Permissions
-
-The deploying principal needs
-`Microsoft.MachineLearningServices/workspaces/*` on the resource
-group (Contributor covers it), plus read access on the referenced
-key vault, storage account, and any insights/registry attachments.

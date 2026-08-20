@@ -1,86 +1,50 @@
 ---
 title: "Getting Started"
-description: "Download Planton, open it, and deploy real infrastructure to your own cloud — from the app or the CLI"
-icon: "rocket"
-order: 2
+description: "Choose your starting point — deploy infrastructure, ship applications, or understand how the platform is organized."
+icon: getting-started
+order: 1
+tags:
+  - Getting Started
+  - Overview
 ---
 
 # Getting Started
 
-Planton is a free desktop app and CLI for your cloud infrastructure. You download it, open it, and deploy to your own cloud — with clean, auditable infrastructure-as-code running underneath. No account, no sign-up, no ceremony.
+New to Planton? Start with the [Platform Getting Started Guide](/docs/platform/getting-started) to create your account, set up an organization, connect a cloud provider, and deploy your first resource.
 
-This page gets you from zero to a first deployment with the **desktop app** — the primary way to use Planton — and then shows how the **CLI** drives the same engine when you'd rather stay in the terminal.
+Already set up? Choose a path based on what you want to do.
 
-## Deploy with the desktop app
+## Deploy Infrastructure
 
-The fastest way to see Planton work.
+1. [Connect your cloud provider](/docs/connections/cloud-providers) — link your AWS, GCP, or Azure account
+2. [Browse the deployment catalog](/docs/infrastructure/cloud-resource-kinds) — see what you can deploy
+3. [Deploy a Cloud Resource](/docs/infrastructure/cloud-resources) — provision a VPC, database, Kubernetes cluster, or any supported resource
+4. [Compose with Infra Charts](/docs/infrastructure/infra-charts) — deploy a coordinated set of resources as a single unit
 
-1. **Download Planton** for your platform from [planton.dev/download](/download), and open it. On first launch, Planton starts a local instance on your machine — a local control plane that runs entirely on your own hardware. There is nothing to sign up for.
-2. **It finds the cloud you're already signed into.** Planton detects your existing local credentials (for example, the AWS profile you already use) — no connection to configure.
-3. **Pick a stack and fill a short form.** Choose a ready-made stack or a single component, fill in only what's truly required (smart defaults handle the rest), and review a plain summary plus the exact manifest that will be applied.
-4. **Click deploy, and watch it come online.** See the architecture before you deploy, then watch each resource light up as it is created — real infrastructure-as-code, stored and versioned, every change a diff.
+## Deploy Applications
 
-The desktop app deploys to **AWS, GCP, Azure, and Kubernetes**.
+1. [Connect your Git provider](/docs/connections/git-providers) — link your GitHub or GitLab organization
+2. [Create a Service](/docs/ci-cd/what-is-a-service) — connect a repository and configure build settings
+3. [Push code and deploy](/docs/ci-cd/pipelines) — trigger automated builds and deployments
+4. [Configure ingress](/docs/ci-cd/ingress) — set up domains and routing for your service
 
-## Or drive it from the CLI
+## Understand the Platform
 
-The `planton` CLI is a companion to the desktop app — it drives the same engine and the same proven modules. The managed backend (state, ready-made charts, and history) comes from Planton itself, so most people run the app and reach for the CLI when they'd rather stay in the terminal.
+- [Platform Overview](/docs/platform) — what Planton is and how it is organized
+- [Platform Tour](/docs/platform/platform-tour) — walkthrough of the console interface
+- [Core Concepts](/docs/platform/core-concepts) — key terminology and how concepts connect
+- [Resource Hierarchy](/docs/platform/resource-hierarchy) — organizations, environments, and resources
 
-It mirrors the two gestures Kubernetes made great — and frees them for every cloud. There are two commands, and they are never interchangeable:
+## Documentation Sections
 
-- **`planton apply -f <manifest>`** applies a **single** component from one manifest — the `kubectl apply -f` parallel.
-- **`planton chart install <chart> …`** installs a **whole environment** from a chart — the `helm install` parallel.
-
-### Install the CLI
-
-```bash
-brew install plantonhq/tap/planton
-```
-
-Verify the installation:
-
-```bash
-planton version
-```
-
-### Apply a single manifest
-
-Every Planton manifest follows the Kubernetes Resource Model (KRM) — the same `apiVersion`, `kind`, `metadata`, `spec` shape you already know, extended to every cloud. Create a file named `bucket.yaml`:
-
-```yaml
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsS3Bucket
-metadata:
-  name: my-first-bucket
-spec:
-  awsRegion: us-east-1
-```
-
-Deploy it:
-
-```bash
-planton apply -f bucket.yaml
-```
-
-The CLI resolves the proven, pre-built module for `AwsS3Bucket`, runs it locally, and **streams the live output to your terminal** as the resource is created — genuinely live, not fire-and-forget.
-
-### Install a whole environment
-
-A chart installs a whole environment in one command — many resources, wired together:
-
-```bash
-planton chart install aws-ecs --name api --env dev --values values.yaml
-```
-
-You'll watch every resource in the environment come up, live, as it happens.
-
-## What's running underneath
-
-Whichever path you take, Planton **runs proven, pre-built infrastructure-as-code modules** for you — it does not ask you to write them. Each module is backed by Terraform or Pulumi, with secure, cost-aware, well-architected defaults baked in. Your configuration is stored and versioned, every change is a diff, and you can export it and run it yourself at any time. Nothing locks you in.
-
-## Next steps
-
-- **Understand the model.** Read [Desktop App and CLI](/docs/concepts/desktop-and-cli) for how the two commands map to Kubernetes, and [Core Concepts](/docs/concepts) for the resource model.
-- **Browse the catalog.** Explore the [components](/docs/catalog) across 17 cloud providers, each with a guided form and ready-made presets.
-- **Go deeper.** See [Manifests](/docs/concepts/manifests), [Dual IaC Engines](/docs/concepts/dual-iac-engines), and [State Management](/docs/concepts/state-management).
-- **Troubleshoot.** Check the [Troubleshooting Guide](/docs/troubleshooting) if you run into problems.
+| Section | What It Covers |
+|---------|---------------|
+| [Platform](/docs/platform) | Resource hierarchy, core concepts, and console navigation |
+| [Connections](/docs/connections) | Credentials and integrations for cloud providers, Git, registries, and state backends |
+| [Infrastructure](/docs/infrastructure) | Infrastructure provisioning — Cloud Resources, Infra Charts, Infra Pipelines, Stack Jobs |
+| [CI/CD](/docs/ci-cd) | Application CI/CD — Services, Pipelines, build methods, deployment targets |
+| [Secrets](/docs/secrets) | Secrets management, variables, and secret backends |
+| [Operations](/docs/operations) | Runtime operations — Kubernetes pod management, log streaming, resource browsing |
+| [Runner](/docs/runner) | Secure execution agent deployed in your infrastructure |
+| [Teams and Access](/docs/teams-and-access) | Team management, role-based permissions, and billing |
+| [CLI](/docs/cli) | Install and use the Planton command-line interface |

@@ -1,0 +1,20 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuredataprotectionbackupinstance
+spec:
+  azure:
+    groups:
+      - purpose: ManageBackupInstance
+        actions:
+          - Microsoft.DataProtection/backupVaults/backupInstances/read
+          - Microsoft.DataProtection/backupVaults/backupInstances/write
+          - Microsoft.DataProtection/backupVaults/backupInstances/delete
+          - Microsoft.DataProtection/backupVaults/backupInstances/operationResults/read
+        provenance: derived
+        notes: "Covers all six count-gated variant resources (azurerm_data_protection_backup_instance_blob_storage / _disk / _kubernetes_cluster / _mysql_flexible_server / _postgresql_flexible_server / _data_lake_storage and their classic-SDK Pulumi twins) -- exactly one materializes per deployment, and every variant is the same ARM child type under the vault, whichever argument names its provider resource uses. The vault, policy, and datasource references arrive as resolved literals in the payload, so the modules read no other API. operationResults/read covers ARM's asynchronous-operation polling of the instance's long-running create and delete (same convention as the vault sibling). Lifecycle is create, read/refresh, in-place policy re-bind (backupInstances/write; the kubernetes_cluster variant instead replaces), and delete. Backup Contributor on the vault's resource group covers the group -- distinct from the VAULT IDENTITY's datasource grants (Disk Backup Reader, Disk Snapshot Contributor, Storage Account Backup Contributor, the AKS extension + trusted access, the flexible servers' backup roles), which Azure validates at create time against the vault's managed identity, not the deploying principal. All four actions are present in the committed operations inventory (Microsoft.DataProtection)."

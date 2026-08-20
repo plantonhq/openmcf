@@ -1,0 +1,123 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesrabbitmqoperator
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The rabbitmq-system Namespace is one document of the applied release manifest (kubectl_manifest.cluster_operator) -- the name is FIXED upstream, baked into the manifest's own cross-references, and the namespace deletes with the resource like every other document.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - serviceaccounts
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Manifest documents applied verbatim -- the operator ServiceAccount, the webhook Service (the API server's admission target), and the metrics Service, all in rabbitmq-system.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The operator Deployment -- the ONE document the module patches with the spec's typed overrides (resources, images, watch scope, node placement) before applying; every other document applies verbatim.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The manifest's namespaced RBAC in rabbitmq-system (leader election and namespace-local rights), applied verbatim.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The manifest's cluster-wide RBAC -- the operator reconciles RabbitmqCluster resources and their children (StatefulSets, Services, Secrets, PVCs) in every namespace; the RBAC objects are fixed upstream regardless of watch_namespaces (the fence is the OPERATOR_SCOPE_NAMESPACE environment variable, not narrower RBAC).
+      - api_groups:
+          - admissionregistration.k8s.io
+        resources:
+          - mutatingwebhookconfigurations
+          - validatingwebhookconfigurations
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The manifest's RabbitmqCluster admission webhooks -- cluster-scoped SINGLETONS with fixed names (the reason exactly one install per cluster is the upstream contract), failurePolicy Fail, CA-injected by cert-manager.
+      - api_groups:
+          - cert-manager.io
+        resources:
+          - issuers
+          - certificates
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The webhook serving-certificate documents -- a self-signed Issuer and the Certificate cert-manager issues from it (CA-injection annotations wire the bundle into the webhook configurations). cert-manager itself is a hard registry prerequisite of this kind; without it the certificate never issues and every RabbitmqCluster admission fails.
+      - api_groups:
+          - apiextensions.k8s.io
+        resources:
+          - customresourcedefinitions
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: "The RabbitmqCluster CRD is one document of the applied manifest (~342 KB -- server-side apply is REQUIRED, the document exceeds the client-side annotation cap) and, unlike every chart-based operator in this catalog, it DELETES with the resource: destroying the operator cascade-deletes every RabbitmqCluster on the cluster. The delete verb is real and loaded -- never destroy the operator while KubernetesRabbitMq resources exist."

@@ -402,7 +402,11 @@ message AwsMskClusterAuthentication {
 
   // tls_certificate_authority_arns are the ARNs of ACM Private Certificate Authority resources
   // trusted for client certificate validation. Required when tls_enabled is true.
-  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef tls_certificate_authority_arns = 4;
+  // Reference AwsPrivateCa certificate_authority_arn outputs or pass literal ARNs.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef tls_certificate_authority_arns = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsPrivateCa,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.certificate_authority_arn"
+  ];
 
   // unauthenticated allows clients to connect without any authentication.
   // Not recommended for production. Useful for development or when network-level

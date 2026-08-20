@@ -1,0 +1,85 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsredshiftcluster
+spec:
+  presets:
+    - preset: 01-single-node-dev
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Redshift
+          sku_meter: node hours
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: number_of_nodes (the AWS default 1, a single-node cluster, when unset) x 730 hours at the node_type's On-Demand rate
+          list_unit_price: "0.543"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRedshift/20260814134227/us-west-2/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "396.3900"
+      total_list_cost: "396.3900"
+      exclusions:
+        - RA3 managed storage bills per GB-month of data actually stored -- workload-dependent, invisible at manifest time
+        - concurrency scaling bills per-second above the free daily credits when bursts spill onto transient clusters
+        - Redshift Spectrum bills per TB scanned in S3
+        - backup storage beyond the free allowance grows with churn across the retention window
+        - data transfer out of the region and cross-region datasharing follow query and consumer traffic
+      notes: Estimated at the declared node topology running all 730 hours -- the committed always-on spend.
+    - preset: 02-multi-node-production
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Redshift
+          sku_meter: node hours
+          pricing_unit: hours
+          pricing_quantity: "1460"
+          quantity_basis: number_of_nodes (the AWS default 1, a single-node cluster, when unset) x 730 hours at the node_type's On-Demand rate
+          list_unit_price: "1.086"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRedshift/20260814134227/us-west-2/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "1585.5600"
+      total_list_cost: "1585.5600"
+      exclusions:
+        - RA3 managed storage bills per GB-month of data actually stored -- workload-dependent, invisible at manifest time
+        - concurrency scaling bills per-second above the free daily credits when bursts spill onto transient clusters
+        - Redshift Spectrum bills per TB scanned in S3
+        - backup storage beyond the free allowance grows with churn across the retention window
+        - cross-region snapshot copy bills destination-region snapshot storage plus the data transfer to get there
+        - audit log delivery bills the destination -- CloudWatch ingestion and storage, or the S3 bucket's storage -- and its volume follows query traffic
+        - data transfer out of the region and cross-region datasharing follow query and consumer traffic
+      notes: Estimated at the declared node topology running all 730 hours -- the committed always-on spend.
+    - preset: 03-analytics-workload
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Redshift
+          sku_meter: node hours
+          pricing_unit: hours
+          pricing_quantity: "5840"
+          quantity_basis: Multi-AZ provisions an equal number of compute nodes in a second availability zone at the same rate -- AWS bills double the compute -- so 2 x number_of_nodes x 730 hours
+          list_unit_price: "3.26"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRedshift/20260814134227/us-west-2/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "19038.4000"
+      total_list_cost: "19038.4000"
+      exclusions:
+        - RA3 managed storage bills per GB-month of data actually stored -- workload-dependent, invisible at manifest time
+        - concurrency scaling bills per-second above the free daily credits when bursts spill onto transient clusters
+        - Redshift Spectrum bills per TB scanned in S3
+        - backup storage beyond the free allowance grows with churn across the retention window
+        - audit log delivery bills the destination -- CloudWatch ingestion and storage, or the S3 bucket's storage -- and its volume follows query traffic
+        - data transfer out of the region and cross-region datasharing follow query and consumer traffic
+      notes: Estimated at the declared node topology running all 730 hours -- the committed always-on spend. Multi-AZ doubles compute, not storage -- managed storage is shared across both availability zones.

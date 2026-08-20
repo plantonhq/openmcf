@@ -1,0 +1,66 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureCosmosdbSqlDatabase manifest's spec values into metered
+# quantities and price choices -- one arm per throughput mode, because
+# the mode picks the meter: fixed shared throughput bills every
+# provisioned 100 RU/s hourly at the standard rate, and autoscale bills
+# a COMMITTED FLOOR of 10% of the ceiling at the 1.5x autoscale rate
+# (Microsoft's pricing page: a 1,000 RU/s maximum scales hourly between
+# 100 and 1,000 RU/s -- the floor bills even when every container in
+# the database sits idle; hours above it follow load and are excluded).
+# A database with neither field set is a pure namespace and emits no
+# lines -- an honest zero: committed throughput lives on the containers
+# (their own AzureCosmosdbSqlContainer manifests) or on a serverless
+# account's per-request meter. Quantities convert RU/s to the book's
+# 100-RU/s pricing unit (x 0.01 fixed; x 0.001 autoscale, folding in
+# the 10% floor). Single-region assumption stated in notes. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/azurecosmosdbsqldatabase.yaml; a server-side
+# estimator evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azurecosmosdbsqldatabase
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    assumption: eastus
+  lines:
+    - sku_meter: provisioned throughput RU/s
+      applies_when:
+        - field_path: throughput
+          op: is_set
+      quantity:
+        - field_value:
+            field_path: throughput
+        - constant: "0.01"
+        - hours_in_month: true
+      price_slug: cosmosdb-standard-100rus-hour-eastus
+      basis: fixed shared RU/s divided by 100 (the meter's 100-RU/s unit, hence x 0.01) x 730 hours at the standard provisioned rate -- one budget billed hourly from creation, drawn on by every container without its own throughput
+    - sku_meter: autoscale throughput RU/s
+      applies_when:
+        - field_path: autoscale_max_throughput
+          op: is_set
+      quantity:
+        - field_value:
+            field_path: autoscale_max_throughput
+        - constant: "0.001"
+        - hours_in_month: true
+      price_slug: cosmosdb-autoscale-100rus-hour-eastus
+      basis: the committed autoscale floor is 10% of the ceiling, billed per 100 RU/s (hence x 0.001) x 730 hours at the 1.5x autoscale rate -- Azure bills each hour's highest scaled-to RU/s and never below the floor, so this is the spend the manifest commits at zero traffic
+  exclusions:
+    - applies_when:
+        - field_path: autoscale_max_throughput
+          op: is_set
+      text: hours where traffic scales the shared budget above the 10% floor bill the same autoscale meter up to the full ceiling -- the estimate prices the committed floor, and the ceiling is 10x it
+    - applies_when:
+        - field_path: throughput
+          op: is_unset
+        - field_path: autoscale_max_throughput
+          op: is_unset
+      text: a pure-namespace database commits nothing itself -- containers that provision dedicated throughput bill on their own AzureCosmosdbSqlContainer manifests, and on a serverless account the account bills consumed request units per million
+    - text: consumed storage bills per GB-month (0.25 USD in eastus at list) on the containers' documents plus indexes and follows what the applications write
+    - text: backup storage beyond the account's free allowance bills per the account's backup posture
+  notes:
+    - text: "Single-region assumption: shared RU/s and storage bill again in every region the ACCOUNT replicates to (and at the multi-region-write rate when enabled) -- the region topology lives on the AzureCosmosdbAccount manifest, invisible here, so these rules price one region at eastus list rates. A free-tier account additionally discounts its first 1,000 RU/s and 25 GB account-wide; estimates price list rates without that discount."

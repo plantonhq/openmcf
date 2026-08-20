@@ -1,0 +1,63 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsebsvolume
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Amazon Elastic Block Store
+      sku_meter: volume storage
+      pricing_unit: GB-months
+      description: Every volume bills its provisioned capacity per GB-month from creation until deletion -- full or empty, attached or not, and while the attached instance is stopped. Billing is per-second with a 60-second minimum. The rate follows the volume type (us-east-1 from the EBS pricing page -- gp3 $0.08, gp2 $0.10, io1/io2 $0.125, st1 $0.045, sc1 $0.015 per GB-month).
+  cost_drivers:
+    - field_path: type
+      sku_meter: volume storage
+      pricing_unit: GB-months
+      impact: "The type picks the per-GB-month rate AND the performance meters that exist at all: gp3 adds independently provisioned IOPS and throughput dials with free included baselines; io1/io2 bill EVERY provisioned IOPS (io2 in decreasing tiers above 32,000 and 64,000); gp2, st1, sc1, and standard fold all performance into the storage rate."
+    - field_path: size_gb
+      sku_meter: volume storage
+      pricing_unit: GB-months
+      impact: The linear committed lever -- every provisioned GiB bills monthly whether or not data fills it. Growing the volume in place raises the meter immediately; EBS never shrinks a volume, so size only ratchets up.
+    - field_path: iops
+      sku_meter: provisioned IOPS
+      pricing_unit: IOPS-months
+      impact: gp3 includes 3,000 IOPS free per volume and bills only the EXCESS above it ($0.005 per provisioned IOPS-month in us-east-1); io1/io2 have no included baseline -- every provisioned IOPS bills from the first.
+    - field_path: throughput_mibps
+      sku_meter: provisioned throughput
+      pricing_unit: MiBps-months
+      impact: gp3-only. 125 MiB/s is included free per volume; only the excess above 125 bills ($0.04 per provisioned MiB/s-month in us-east-1, published as $40.96 per GiB/s-month).
+    - field_path: snapshot_id
+      sku_meter: volume storage
+      pricing_unit: GB-months
+      impact: Restoring from a snapshot sets the size floor -- with size_gb unset the volume inherits the snapshot's size, so the committed GB-month meter is decided by the referenced snapshot, invisible to this manifest.
+    - field_path: volume_initialization_rate
+      sku_meter: volume initialization
+      pricing_unit: GB
+      impact: A one-time hydration fee, not a monthly meter -- charged per GiB of the FULL SNAPSHOT SIZE at the chosen rate (us-east-1 example on the EBS pricing page -- $0.0036 per GiB at 300 MiB/s). The snapshot's actual size is unknowable from this manifest.
+    - field_path: copy_from
+      sku_meter: volume clone
+      pricing_unit: GB
+      impact: The copy arm bills a one-time Volume Clones fee per GB of the source volume's WRITTEN blocks at clone time, then the copy itself bills as a standard volume -- inheriting the source's size, so its committed GB-month meter is also decided outside this manifest.
+    - field_path: final_snapshot
+      sku_meter: snapshot storage
+      pricing_unit: GB-months
+      impact: The teardown safety net starts a new meter -- the final snapshot bills standard snapshot storage ($0.05 per GB-month us-east-1) from destroy day until someone deletes it, and it is not tracked by this resource.
+    - field_path: kms_key_id
+      sku_meter: KMS requests
+      pricing_unit: requests
+      impact: A customer-managed key bills its monthly fee and per-request charges on the referenced AwsKmsKey component. encrypted=true with kms_key_id unset uses the AWS-managed aws/ebs key -- no monthly fee.
+    - field_path: region
+      sku_meter: volume storage
+      pricing_unit: GB-months
+      impact: Every EBS rate -- storage per type, gp3 excess IOPS and throughput, snapshot storage -- is published per region.
+  free_tier: "The real permanent inclusions are per-volume performance baselines, not storage: every gp3 volume includes 3,000 IOPS and 125 MiB/s throughput at no charge, and only provisioning above them bills. The AWS Free Tier's 30 GB of EBS storage is an account-signup program (free plan or credits, time-boxed), not a permanent part of the price structure."
+  estimate_exclusions:
+    - I/O on gp2, st1, sc1, and standard volumes is included in the storage rate -- no request meter exists to estimate
+    - io2 provisioned IOPS above 32,000 and 64,000 bill at decreasing tier rates -- tiering applies per volume
+    - snapshots the owner takes (and the final_snapshot safety net) bill standard snapshot storage per GB-month of changed blocks until deleted
+    - the one-time volume-initialization fee follows the referenced snapshot's full size, and the one-time clone fee follows the source volume's written blocks -- both invisible to this manifest
+    - customer-managed KMS key charges (monthly key fee, per-request grants and data-key operations) bill on the referenced AwsKmsKey component
+  notes: "Storage, provisioned IOPS, and provisioned throughput all bill per-second with a 60-second minimum -- but they bill around the clock, so a volume is committed spend the moment it exists. Deleting the volume is the only off switch: detaching it, stopping the instance, or emptying the filesystem changes nothing. gp3's excess-over-included billing (3,000 IOPS and 125 MiB/s free baselines) is why this component is hand-modeled rather than derivation-driven -- derivation rules cannot subtract the included baseline from the provisioned value."

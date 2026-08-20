@@ -1,0 +1,43 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesstrimzikafkaoperator
+spec:
+  presets:
+    - preset: 01-default
+      capacity_footprint:
+        cpu_requests: 200m
+        memory_requests: 384Mi
+        cpu_limits: 1000m
+        memory_limits: 384Mi
+        basis: 1 operator replica x (200m CPU / 384Mi memory requests, 1000m CPU / 384Mi limits) from the chart defaults (applied by the chart when the manifest omits resources) -- no persistent volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - the Kafka clusters this operator reconciles reserve their own capacity -- each rides its KubernetesKafka resource
+    - preset: 02-cluster-wide
+      capacity_footprint:
+        cpu_requests: 200m
+        memory_requests: 512Mi
+        cpu_limits: "1"
+        memory_limits: 1Gi
+        basis: 1 operator replica x (200m CPU / 512Mi memory requests, 1 CPU / 1Gi limits) -- no persistent volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - the Kafka clusters this operator reconciles reserve their own capacity -- each rides its KubernetesKafka resource
+    - preset: 03-fenced-teams
+      capacity_footprint:
+        cpu_requests: 200m
+        memory_requests: 512Mi
+        cpu_limits: "1"
+        memory_limits: 1Gi
+        basis: 1 operator replica x (200m CPU / 512Mi memory requests, 1 CPU / 1Gi limits) -- no persistent volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node economics
+        - the Kafka clusters this operator reconciles reserve their own capacity -- each rides its KubernetesKafka resource

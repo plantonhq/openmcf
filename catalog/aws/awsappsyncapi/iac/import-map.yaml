@@ -1,0 +1,96 @@
+# Where each placeholder in this component's import-ID formats comes
+# from (the formats themselves live in aa_import/catalog.yaml).
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsappsyncapi
+spec:
+  # Every satellite's composite ID starts with the API id; keyed
+  # satellites derive their own parts from the for_each address key
+  # (names are hyphen-free by the spec's patterns, so the provider's
+  # hyphen-composite IDs split unambiguously) or from the echo maps
+  # the modules export for cloud-generated and config-carried parts.
+  values:
+    - name: api_id
+      derivations:
+        - from_stack_output: api_id
+      where_to_find: >-
+        AppSync console -> APIs (the API ID column), or
+        `aws appsync list-graphql-apis` / `aws appsync list-apis`
+        (apiId).
+    - name: datasource_name
+      derivations:
+        - from_address_key_segment: 0
+      where_to_find: >-
+        `aws appsync list-data-sources --api-id <id>` (name) - the
+        spec datasources entry's name.
+    - name: resolver_type
+      derivations:
+        - from_address_key_segment: 0
+      where_to_find: >-
+        The schema type the resolver sits on (`aws appsync
+        list-resolvers --api-id <id> --type-name <type>`) - the spec
+        resolvers entry's type.
+    - name: resolver_field
+      derivations:
+        - from_address_key_segment: 1
+      where_to_find: >-
+        The resolved field (fieldName in list-resolvers) - the spec
+        resolvers entry's field.
+    - name: function_id
+      derivations:
+        - from_stack_output_keyed_by_address: function_ids
+      where_to_find: >-
+        `aws appsync list-functions --api-id <id>` (functionId) - the
+        cloud-generated id of the function whose name is the address
+        key.
+    - name: type_name
+      derivations:
+        - from_address_key_segment: 0
+      where_to_find: >-
+        `aws appsync list-types --api-id <id> --format SDL` (name) -
+        the spec types entry's name.
+    - name: type_format
+      derivations:
+        - from_stack_output_keyed_by_address: type_formats
+      where_to_find: >-
+        The spec types entry's format (SDL or JSON) - echoed by the
+        type_formats output keyed by type name.
+    - name: api_key_id
+      derivations:
+        - from_stack_output_keyed_by_address: api_key_ids
+      where_to_find: >-
+        `aws appsync list-api-keys --api-id <id>` (id, the "da2-..."
+        key id, not the secret) - keyed by the spec api_keys entry's
+        name.
+    - name: channel_namespace_name
+      derivations:
+        - from_address_key_segment: 0
+      where_to_find: >-
+        `aws appsync list-channel-namespaces --api-id <id>` (name) -
+        the spec channel_namespaces entry's name.
+    - name: custom_domain_name
+      derivations:
+        - from_spec_field: custom_domain.domain_name
+      where_to_find: >-
+        The spec custom_domain's domain_name (`aws appsync
+        list-domain-names` shows domainName).
+    - name: source_api_association_id
+      derivations:
+        - from_stack_output_keyed_by_address: source_api_association_ids
+      where_to_find: >-
+        `aws appsync list-source-api-associations --api-id <merged-id>`
+        (associationId) - keyed by the spec source_apis entry's name.
+    - name: web_acl_arn
+      derivations:
+        - from_spec_field: graphql.web_acl_arn.value
+      where_to_find: >-
+        WAF console -> Web ACLs (REGIONAL scope, the API's region) -
+        the ACL's ARN; when the spec references an AwsWafWebAcl, its
+        web_acl_arn output.
+    - name: api_arn
+      derivations:
+        - from_stack_output: api_arn
+      where_to_find: >-
+        The API's ARN (`aws appsync get-graphql-api --api-id <id>`
+        shows arn).

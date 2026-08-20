@@ -1,0 +1,67 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuremssqldatabase
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: SQL Database
+      sku_meter: database compute
+      pricing_unit: vCore-hours
+      description: A provisioned vCore database bills its compute by the hour from creation; the sku_name (tier_hardware_capacity) fixes the per-vCore rate. Serverless skus (GP_S_/HS_S_) instead bill per vCore-second actually consumed and can auto-pause to zero compute.
+    - service_name: SQL Database
+      sku_meter: SQL Server license
+      pricing_unit: vCore-hours
+      description: Pay-as-you-go licensing adds a per-vCore-hour SQL license meter on top of compute unless license_type BASE_PRICE (Azure Hybrid Benefit) brings your own license.
+    - service_name: SQL Database
+      sku_meter: database storage
+      pricing_unit: GB-months
+      description: The provisioned data storage (max_size_gb) bills per GB-month whether used or empty; Hyperscale instead bills the storage actually allocated as data grows.
+  cost_drivers:
+    - field_path: sku_name
+      sku_meter: database compute
+      pricing_unit: vCore-hours
+      impact: The dominant lever -- General Purpose, Business Critical, and Hyperscale each carry their own per-vCore rate, the trailing capacity number multiplies it, and a _S_ serverless sku changes the billing model entirely (per vCore-second consumed, auto-pause floor).
+    - field_path: max_size_gb
+      sku_meter: database storage
+      pricing_unit: GB-months
+      impact: The provisioned storage ceiling is the storage bill for DTU/vCore tiers; unset lets Azure apply the SKU's default max size, which still bills. Hyperscale ignores it.
+    - field_path: license_type
+      sku_meter: SQL Server license
+      pricing_unit: vCore-hours
+      impact: BASE_PRICE (Azure Hybrid Benefit) removes the per-vCore SQL license meter from the bill; unset defaults to LicenseIncluded, which pays it every hour.
+    - field_path: read_replica_count
+      sku_meter: database compute
+      pricing_unit: vCore-hours
+      impact: Hyperscale only -- each readable replica bills the same per-vCore compute as the primary, so two replicas triple the compute line.
+    - field_path: zone_redundant
+      sku_meter: database compute
+      pricing_unit: vCore-hours
+      impact: General Purpose zone redundancy bills an uplifted compute meter; Hyperscale zone redundancy carries no meter of its own but requires at least one HA replica (billed as compute) and zone-redundant backup storage.
+    - field_path: auto_pause_delay_in_minutes
+      sku_meter: database compute
+      pricing_unit: vCore-hours
+      impact: Serverless only -- a paused database bills no compute at all (storage keeps billing); the delay decides how quickly an idle database stops costing.
+    - field_path: min_capacity
+      sku_meter: database compute
+      pricing_unit: vCore-hours
+      impact: Serverless only -- the always-warm vCore floor is the minimum rate billed per second whenever the database is not paused.
+    - field_path: storage_account_type
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: Backup storage redundancy prices differently -- zone- and geo-redundant backup storage bill more per GB than locally redundant.
+    - field_path: long_term_retention_policy
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: Weekly/monthly/yearly retention accumulates full backups billed per GB-month long after the point-in-time-restore window closes.
+    - field_path: elastic_pool_id
+      sku_meter: database compute
+      pricing_unit: vCore-hours
+      impact: A pooled database (sku_name ElasticPool) bills nothing itself -- compute and storage ride the referenced pool's component.
+  estimate_exclusions:
+    - backup storage beyond the free allowance (100% of the database size) follows churn and retention settings
+    - network egress follows client placement
+  notes: "Azure bills the database, not the logical server: the AzureMssqlServer it rides on is a free control-plane shell, and every dollar lands here. The bill is compute (per-vCore hour), a separate pay-as-you-go SQL license meter unless Azure Hybrid Benefit removes it, and provisioned storage per GB-month -- Microsoft's own pricing FAQ words it as provisioned compute in vCores, provisioned storage in GB/month, and consumed backup storage beyond 100% of the database size."

@@ -1,0 +1,40 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchDashboard
+metadata:
+  name: service-health
+spec:
+  region: us-east-1
+  dashboardName: ServiceHealth
+  dashboardBody:
+    widgets:
+      - type: text
+        x: 0
+        y: 0
+        width: 24
+        height: 2
+        properties:
+          markdown: "# Service health — errors, latency, saturation"
+      - type: metric
+        x: 0
+        y: 2
+        width: 12
+        height: 6
+        properties:
+          metrics:
+            - ["AWS/Lambda", "Errors", "FunctionName", "my-service"]
+          period: 300
+          stat: Sum
+          region: us-east-1
+          title: Lambda errors
+      - type: metric
+        x: 12
+        y: 2
+        width: 12
+        height: 6
+        properties:
+          metrics:
+            - ["AWS/Lambda", "Duration", "FunctionName", "my-service"]
+          period: 300
+          stat: p95
+          region: us-east-1
+          title: p95 latency

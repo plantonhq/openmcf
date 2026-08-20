@@ -1,0 +1,26 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpvertexaiindex
+spec:
+  gcp:
+    groups:
+      - purpose: EnableVertexAiApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service (Terraform) / projects.Service (Pulumi) enabling aiplatform.googleapis.com on the target project. disable_on_destroy is false in both modules, so the disable permission is never needed.
+      - purpose: ManageIndex
+        permissions:
+          - aiplatform.indexes.create
+          - aiplatform.indexes.get
+          - aiplatform.indexes.update
+          - aiplatform.indexes.delete
+        provenance: derived
+        notes: "Covers google_vertex_ai_index (Terraform) / vertex.AiIndex (Pulumi) -- create, read/refresh, in-place updates (display_name, description, labels, and the single-field contents_delta_uri PATCH), and destroy; the provider polls the long-running operations each mutation returns under the same index-scoped authorization. When kms_key_name sets CMEK, the deployer needs no Cloud KMS permission -- the grant that matters is roles/cloudkms.cryptoKeyEncrypterDecrypter to the Vertex AI SERVICE AGENT on the key, a prerequisite made outside this module; likewise the service agent, not the deployer, reads the embedding files at contents_delta_uri during batch builds."

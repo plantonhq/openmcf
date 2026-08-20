@@ -1,0 +1,31 @@
+# Minimal posture: CloudWatch-only delivery. The log group and the
+# bedrock-trusting role are consumer-scoped fixtures
+# (e2e/prerequisites/awscloudwatchloggroup.yaml, awsiamrole.yaml).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockInvocationLogging
+metadata:
+  name: planton-oss-e2e-awsbedil-cw
+  id: planton-oss-e2e-awsbedil-cw
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockinvocationlogging
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsCloudwatchLogGroup,AwsIamRole"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  cloudwatch:
+    logGroupName:
+      valueFrom:
+        kind: AwsCloudwatchLogGroup
+        name: planton-oss-e2e-bedil-lg
+        fieldPath: status.outputs.log_group_name
+    roleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: planton-oss-e2e-bedil-role
+        fieldPath: status.outputs.role_arn

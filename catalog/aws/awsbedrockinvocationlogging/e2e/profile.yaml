@@ -1,0 +1,23 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbedrockinvocationlogging
+spec:
+  # A settings singleton under live E2E: consumer-scoped fixtures (log
+  # group, bedrock-trusting role, policy-carrying bucket) deploy first,
+  # then the configuration proves create, GetModelInvocationLogging
+  # Configuration verification (destination echoes + data-type
+  # toggles), destroy (a REAL delete for this singleton -- the region
+  # reverts to no logging), and verify-destroyed on both provisioners.
+  # Free (settings object; log/S3 volume is zero without invocations).
+  #
+  # Singleton collision class: one configuration per account+region --
+  # lanes run sequentially within a session, and concurrent sessions
+  # must not run this kind's lanes in the same region simultaneously.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q38
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

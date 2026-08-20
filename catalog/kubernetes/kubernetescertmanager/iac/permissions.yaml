@@ -1,0 +1,139 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetescertmanager
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.cert_manager -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - services
+          - serviceaccounts
+          - configmaps
+          - secrets
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Chart-rendered objects applied by helm_release.cert_manager -- the controller-metrics and webhook ClusterIP Services, the controller/webhook/cainjector/startupapicheck ServiceAccounts, and configuration ConfigMaps where chart values render them. Secrets cover Helm's own release-state Secret in the installation namespace; the webhook's serving-certificate Secret is created at runtime by cert-manager itself, not by the runner.
+      - api_groups:
+          - apps
+        resources:
+          - deployments
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The chart's three Deployments -- controller, webhook, and cainjector (cainjector rendered while cainjector.enabled, the default).
+      - api_groups:
+          - batch
+        resources:
+          - jobs
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: The startupapicheck post-install hook Job that proves the webhook serves before the release reports success -- rendered while startupapicheck.enabled, the default; both modules wait on hook Jobs (wait_for_jobs).
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - clusterroles
+          - clusterrolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart's per-function ClusterRoles and ClusterRoleBindings -- the controller's certificate/issuer/challenge management across all namespaces, the cainjector's webhook-configuration and CRD patching, and the webhook's subjectaccessreview access. The chart's cluster RBAC surface is broad by design; the runner must be able to grant everything the chart's roles contain.
+      - api_groups:
+          - rbac.authorization.k8s.io
+        resources:
+          - roles
+          - rolebindings
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Namespaced RBAC the chart renders -- the webhook's dynamic-serving Role in the installation namespace and the leader-election Roles in the leader-election namespace (spec.leader_election_namespace, chart default kube-system -- the runner touches THAT namespace, not just the installation one).
+      - api_groups:
+          - admissionregistration.k8s.io
+        resources:
+          - mutatingwebhookconfigurations
+          - validatingwebhookconfigurations
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The chart registers cert-manager's admission webhook cluster-wide -- one mutating and one validating configuration, both rendered unconditionally.
+      - api_groups:
+          - apiextensions.k8s.io
+        resources:
+          - customresourcedefinitions
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: The cert-manager CRDs (Certificate, Issuer, ClusterIssuer, CertificateRequest, Challenge, Order) -- installed with the release while crds.install is true, the Planton default. With crds.keep_on_uninstall (default true) Helm keeps them on uninstall, so delete is exercised only when keeping is explicitly disabled.
+      - api_groups:
+          - policy
+        resources:
+          - poddisruptionbudgets
+        verbs:
+          - get
+          - list
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: One PodDisruptionBudget per component (minAvailable 1) -- rendered only when spec.pod_disruption_budget is true.

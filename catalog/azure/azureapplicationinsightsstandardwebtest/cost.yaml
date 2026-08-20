@@ -1,0 +1,36 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureapplicationinsightsstandardwebtest
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Azure Monitor
+      sku_meter: standard web test executions
+      pricing_unit: executions
+      description: Every scheduled run from every location bills one execution (0.0005 at eastus list) -- and because the schedule never stops, the spend is a fixed function of the manifest, 8,760 executions per location per month at the default 5-minute frequency, accruing whether anyone looks at the results or not.
+  cost_drivers:
+    - field_path: geo_locations
+      sku_meter: standard web test executions
+      pricing_unit: executions
+      impact: Each location runs the full schedule independently, so the bill is linear in locations -- three locations is exactly three times one. Multi-location is what distinguishes a real outage from one region's network blip; each added vantage point costs one more schedule's worth of executions.
+    - field_path: frequency
+      sku_meter: standard web test executions
+      pricing_unit: executions
+      impact: The run interval sets the volume -- 300 seconds (the default) is 8,760 runs per location per month, 600 halves that, 900 cuts it to a third. Slower is proportionally cheaper and proportionally later to notice an outage.
+    - field_path: enabled
+      sku_meter: standard web test executions
+      pricing_unit: executions
+      impact: false keeps the definition but stops the schedule -- no runs, no executions, no cost; the free way to pause a test without losing its configuration.
+    - field_path: retry_enabled
+      sku_meter: standard web test executions
+      pricing_unit: executions
+      impact: Retrying failed runs adds executions only when failures happen -- negligible in steady state, a small surcharge exactly when the endpoint is unhealthy.
+  estimate_exclusions:
+    - test results and their traces are ingested into the bound Application Insights component and bill that component's per-GB Log Analytics ingestion meters
+    - retries of failed runs add executions that follow the endpoint's actual failure behavior
+    - the alert rule that pages on this test's failures is its own AzureMonitorMetricAlert component with its own monthly fee
+  notes: "A standard web test is a metronome with a per-tick price: Microsoft's pricing page bills standard web tests per scheduled test execution, and the schedule is fully determined by this manifest -- locations x (seconds per month / frequency). That makes the committed spend exact: one location at the default 5-minute frequency is 8,760 executions a month (about 4.38 at eastus list), and every added location or faster frequency scales it linearly. URL ping tests are free and multi-step tests bill per test per month, but this component is the standard kind -- the priced, recommended replacement for both. Prices verified from Microsoft's Retail Prices API and the Azure Monitor pricing page on 2026-08-18."

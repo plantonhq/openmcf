@@ -1,0 +1,44 @@
+# Consumer-scoped AwsIamRole install profile for the fixture recorder
+# the pack deploys under (AWS refuses conformance-pack deployment
+# without an active recorder in the region).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-awscfgcp-role
+  id: planton-oss-e2e-awscfgcp-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-east-2
+  description: Planton E2E role AWS Config assumes for the pack kind's fixture recorder
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/service-role/AWS_ConfigRole
+  inlinePolicies:
+    configBucketDelivery:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+          Resource: "arn:aws:s3:::planton-oss-e2e-awscfgcp-history/*"
+          Condition:
+            StringEquals:
+              s3:x-amz-acl: bucket-owner-full-control
+        - Effect: Allow
+          Action:
+            - s3:GetBucketAcl
+          Resource: "arn:aws:s3:::planton-oss-e2e-awscfgcp-history"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: config.amazonaws.com
+        Action: sts:AssumeRole

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurefrontdoorroute
+spec:
+  billing_model: free
+  free_tier: The route itself -- URL patterns, protocol policy, domain attachments, and edge-cache settings -- never bills. Azure charges for the requests and bytes the route serves, never for the routing rule.
+  notes: "No field of this spec buys anything of its own: the route is configuration inside a Front Door endpoint, and Front Door billing lives on the PROFILE at the top of the graph -- a base fee per its own SKU plus requests and egress, a separate catalog kind. Edge caching carries no meter of its own; it typically REDUCES spend by answering repeats at the edge instead of pulling from the origin. origin_ids are never sent to Azure at all (pure deployment sequencing)."

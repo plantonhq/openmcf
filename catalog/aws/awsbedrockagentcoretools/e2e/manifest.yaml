@@ -1,0 +1,66 @@
+# Canonical AwsBedrockAgentCoreTools example (hack/dev manifest and
+# refgen Example source): the full tools bundle -- a recorded, signed
+# browser with enterprise policies and an mTLS certificate, a VPC
+# browser, a saved browser profile, and code interpreters in SANDBOX and
+# VPC postures. Literal ARNs/ids stand in for composed references so the
+# offline `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreTools
+metadata:
+  name: support-agent-tools
+  id: support-agent-tools
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  browsers:
+    - name: research_browser
+      description: Web research sessions with recording
+      executionRoleArn:
+        value: arn:aws:iam::123456789012:role/agentcore-tools-role
+      network:
+        mode: PUBLIC
+      signingEnabled: true
+      recording:
+        enabled: true
+        s3Location:
+          bucket:
+            value: my-recordings-bucket
+          prefix: browser-sessions/
+      enterprisePolicies:
+        - type: MANAGED
+          s3:
+            bucket:
+              value: my-policies-bucket
+            prefix: chrome/policy.json
+      certificates:
+        - secretArn:
+            value: arn:aws:secretsmanager:us-west-2:123456789012:secret:mtls-client-cert-AbCdEf
+    - name: internal_browser
+      description: Reaches intranet sites through the VPC
+      network:
+        mode: VPC
+        vpcConfig:
+          subnets:
+            - value: subnet-0123456789abcdef0
+          securityGroups:
+            - value: sg-0123456789abcdef0
+  browserProfiles:
+    - name: logged_in_docs
+      description: Saved session state with the docs-site login
+  codeInterpreters:
+    - name: python_sandbox
+      description: Runs model-written analysis code with no network
+      network:
+        mode: SANDBOX
+    - name: vpc_interpreter
+      description: Reaches private data stores from executed code
+      executionRoleArn:
+        value: arn:aws:iam::123456789012:role/agentcore-tools-role
+      network:
+        mode: VPC
+        vpcConfig:
+          subnets:
+            - value: subnet-0123456789abcdef0
+          securityGroups:
+            - value: sg-0123456789abcdef0

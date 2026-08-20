@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureplantonrunner.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azureplantonrunner/v1alpha1/outputs.proto";
+import "catalog/azure/azureplantonrunner/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzurePlantonRunner is a standing Planton runner appliance hosted in your
+// Azure subscription: an always-on worker that executes deploy operations
+// and cloud operations from inside your network perimeter, making private
+// endpoints (most notably private AKS API servers) deployable and operable
+// with an outbound-only network posture. It is born with a runner token,
+// registers itself with the control plane on first boot, and receives its
+// own individually revocable identity.
+message AzurePlantonRunner {
+  // api-version must be set to "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = "azure.planton.dev/v1alpha1"];
+
+  // resource-kind for this resource, always "AzurePlantonRunner".
+  string kind = 2 [(buf.validate.field).string.const = 'AzurePlantonRunner'];
+
+  // metadata captures identifying information (name, org, version, etc.)
+  // and must pass standard validations for resource naming.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec holds the core configuration defining where the runner lives,
+  // how big it is, which build it runs, and the token it joins with.
+  AzurePlantonRunnerSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status holds runtime or post-deployment information.
+  AzurePlantonRunnerStatus status = 5;
+}
+
+// AzurePlantonRunnerStatus describes the status fields for a runner
+// appliance resource.
+message AzurePlantonRunnerStatus {
+  // outputs captures the outputs returned by Pulumi/Terraform after
+  // provisioning.
+  AzurePlantonRunnerStackOutputs outputs = 1;
+}

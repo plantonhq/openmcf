@@ -1,0 +1,68 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureprivatednszone
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A private zone holds DNS routing data served from Azure's managed resolution fleet; it exposes no customer at-rest encryption surface.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No at-rest encryption surface to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Resolution happens over standard plaintext DNS between VNet clients and the Azure-provided resolver (168.63.129.16) inside the linked network -- a platform path the zone exposes no transport-encryption control over.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A private zone is never resolvable from the public internet -- only virtual networks explicitly linked to it can query it, and Azure's public authoritative fleet does not serve it. That containment is the product and cannot be switched off.
+      notes: The privatelink.* zone names deliberately shadow public service domains INSIDE linked networks -- that shadowing is what makes private endpoints resolve privately while the public internet still sees the services' public records.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Resolution scope is link territory -- AzurePrivateDnsZoneVirtualNetworkLink components declare which networks may resolve this zone, one link per network, deliberately outside this manifest. A zone with no links answers nobody.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Queries are answered by Azure's managed resolution path inside each linked network; there is no request-filtering attachment point on a zone.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the zone exposes no authentication plane of its own. Worth knowing composition-side -- a private endpoint registering into this zone needs privateDnsZones/join/action on the zone's scope, so RBAC on the zone gates who may wire services into it.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The zone runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own; private zones offer no DNSSEC surface, and none is needed -- answers never traverse the public internet.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Per-query logging is not offered for private zones; administrative changes to the zone and its record sets land in the Azure Activity Log as subscription-level posture.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure DNS publishes private-zone metrics -- query volume, record set count and capacity utilization, and virtual network link count and capacity -- to Azure Monitor for every zone without configuration.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Zone contents are declarative record manifests recreated from source control; Microsoft operates the store redundantly. The blast radius worth knowing is that the zone's NAME is its ARM identity -- renaming or deleting the zone drops every record in it in one stroke.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A private zone is a global resource -- the spec deliberately omits region because the zone is pinned to no region or availability zone. Resolution is served platform-redundantly inside every linked network; single-zone operation is unrepresentable.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Private DNS API nor this spec offers a deletion-protection flag (Azure resource locks are subscription-side governance outside the manifest); zone contents are recreated declaratively from record manifests, though clients cached against the old zone see resolution fail until links and records are rebuilt.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Microsoft operates and patches the private-resolution fleet; no customer-visible patch surface exists.

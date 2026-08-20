@@ -225,6 +225,24 @@ func BuildVolumes(containers ...*kubernetesv1.WorkloadContainer) corev1.VolumeAr
 					ReadOnly:  pulumi.Bool(vm.Pvc.ReadOnly),
 				}
 
+			case vm.ServiceAccountToken != nil:
+				// A kubelet-rotated, audience-bound ServiceAccount token rides the
+				// "projected" volume type in the Kubernetes API.
+				tokenProjection := &corev1.ServiceAccountTokenProjectionArgs{
+					Audience: pulumi.String(vm.ServiceAccountToken.Audience),
+					Path:     pulumi.String(serviceAccountTokenPath(vm.ServiceAccountToken)),
+				}
+				if vm.ServiceAccountToken.ExpirationSeconds > 0 {
+					tokenProjection.ExpirationSeconds = pulumi.Int(int(vm.ServiceAccountToken.ExpirationSeconds))
+				}
+				volumeArgs.Projected = &corev1.ProjectedVolumeSourceArgs{
+					Sources: corev1.VolumeProjectionArray{
+						&corev1.VolumeProjectionArgs{
+							ServiceAccountToken: tokenProjection,
+						},
+					},
+				}
+
 			default:
 				// A mount without a source references a volume defined elsewhere —
 				// for StatefulSets that is a volumeClaimTemplate name, which the
@@ -238,6 +256,15 @@ func BuildVolumes(containers ...*kubernetesv1.WorkloadContainer) corev1.VolumeAr
 	}
 
 	return volumes
+}
+
+// serviceAccountTokenPath returns the in-volume filename for a projected
+// ServiceAccount token, defaulting to "token" (the Kubernetes convention).
+func serviceAccountTokenPath(source *kubernetesv1.ServiceAccountTokenVolumeSource) string {
+	if source.Path != "" {
+		return source.Path
+	}
+	return "token"
 }
 
 func applyScheduling(podSpec *corev1.PodSpecArgs, s *kubernetesv1.WorkloadScheduling) {

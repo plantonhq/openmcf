@@ -17,11 +17,14 @@ spec:
   # AES256 default proves the same encryption block wiring) — proven by CEL
   # spec tests and the offline gate.
   #
-  # pending_proof: the depth closure modeled the archive storage-class tier
-  # (transition action + archive retention clock), converged the engines'
-  # lifecycle-policy JSON documents (Terraform no longer emits a null
-  # description member), and dropped the Terraform-only Name tag; the
-  # previous green run predates this surface.
+  # The archive storage-class arms (transition/expire-from-archive) remain
+  # offline-proven only: a live archive transition needs 90 days of pull
+  # history, and the full-surface lane's policy exercises the pre-archive
+  # rule shapes. PutLifecyclePolicy document acceptance for the archive
+  # pair is CEL- and offline-gate-proven.
   tier: 1
-  status: pending_proof
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 10

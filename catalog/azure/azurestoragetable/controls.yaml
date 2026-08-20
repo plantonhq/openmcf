@@ -1,0 +1,66 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurestoragetable
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Azure Storage service-side encryption covers every table entity with 256-bit AES, always on, with no disable switch at any configuration level."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "Customer-managed keys for the table service are an ACCOUNT posture -- Azure prices and provisions \"tables encrypted with a key scoped to the storage account\" as an account-creation-time choice. This spec carries no key lever; key custody composes on the AzureStorageAccount."
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: "Transport posture is account-level -- HTTPS-only enforcement and minimum TLS live on the AzureStorageAccount and cover the table endpoint; the table offers no transport lever of its own."
+    - control_id: no-public-access
+      status: not_applicable
+      notes: "The table data plane has no anonymous mode -- every request requires authorization (Entra RBAC, SAS, or shared key) -- but internet REACHABILITY of the account's table endpoint is the account's firewall and private-endpoint posture, with no per-table network lever."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: "Network-source restriction (IP rules, VNet rules, private endpoints) is the account's firewall posture -- one table endpoint serves every table in the account. Worth knowing when composing: the official modules deploy over the table DATA plane, so a firewall that blocks the runner blocks deploys too."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: "The table endpoint accepts storage API requests, not application traffic -- no WAF attachment point exists at this grain."
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every table request must be authorized -- Entra ID RBAC, SAS, or the account's shared key; no anonymous path exists. The table's ARM ID is a first-class role-assignment scope, so Storage Table Data Reader / Contributor grants can be issued per table."
+      notes: "Compose per-table grants via AzureRoleAssignment against the table_id output. The spec's acls field is the SAS half of the story: policy-anchored SAS tokens are revocable by shortening or deleting the stored access policy -- the operational reason to prefer them over ad-hoc SAS (the Policy-Anchored Access preset demonstrates it)."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: "The table holds no credentials and runs no workloads; keyless access is composed caller-side (a managed identity plus a table data role). Shared-key and SAS alternatives are governed by the account's shared_access_key_enabled posture."
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "Disabling shared-key authorization is the AzureStorageAccount's shared_access_key_enabled switch -- but note the deploy contract: the official modules drive table creation and stored access policies through the table data plane WITH shared-key authorization, so the parent account must keep shared_access_key_enabled true (Azure's default) for this kind to deploy at all. Locking down legacy auth on the account and provisioning tables through these modules are mutually exclusive today."
+    - control_id: audit-logging
+      status: not_applicable
+      notes: "Table create/delete land in the Azure Activity Log automatically; data-plane operation auditing is Azure Monitor resource logs on the account's table service via diagnostic settings -- account-side, with no per-table toggle."
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: "Storage metrics emit at the account and table-service grain (transactions, capacity, availability); Microsoft defines no per-table metric surface and this spec carries no monitoring toggle."
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "Table Storage has NO native backup, versioning, or point-in-time-restore surface -- unlike blobs, there is nothing to enable. Durability against infrastructure loss follows the account's replication; protection against logical corruption or bad deletes is application-side (AzCopy or SDK-driven export to another account). Deleting the table -- or renaming it, which replaces it -- destroys every entity irrecoverably."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: "No backups exist to retain (see backup-recovery)."
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: "Zone and geo redundancy follow the ACCOUNT's replication choice (LRS through RA-GZRS); the table inherits it with no per-table lever."
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither the table API nor this spec offers a deletion-protection flag; ARM locks are subscription-side governance. With no soft delete for tables, a deleted table is unrecoverable -- the strongest argument for treating table deletion as a reviewed change."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Table Storage is a fully managed service -- Microsoft operates and patches the storage infrastructure with no customer-visible patch surface."

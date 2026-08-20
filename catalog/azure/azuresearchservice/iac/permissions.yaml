@@ -1,0 +1,33 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuresearchservice
+spec:
+  azure:
+    groups:
+      - purpose: ManageService
+        actions:
+          - Microsoft.Search/searchServices/read
+          - Microsoft.Search/searchServices/write
+          - Microsoft.Search/searchServices/delete
+        provenance: derived
+        notes: Covers azurerm_search_service (Terraform) and search.Service (Pulumi) -- create, read/refresh, in-place updates (counts, auth, network, semantic, identity, tags), and destroy. Action spellings are the official Microsoft.Search operations.
+      - purpose: ReadServiceKeys
+        actions:
+          - Microsoft.Search/searchServices/listAdminKeys/action
+          - Microsoft.Search/searchServices/listQueryKeys/action
+        provenance: derived
+        notes: The modules export the primary/secondary admin keys and the default query key as sensitive outputs, and the providers list both on create and refresh. In the RBAC-only posture (local_authentication_enabled false) the outputs come back empty, but the provider still performs the reads while local authentication is enabled -- the default.
+      - purpose: ManageSharedPrivateLinks
+        actions:
+          - Microsoft.Search/searchServices/sharedPrivateLinkResources/read
+          - Microsoft.Search/searchServices/sharedPrivateLinkResources/write
+          - Microsoft.Search/searchServices/sharedPrivateLinkResources/delete
+          - Microsoft.Search/searchServices/sharedPrivateLinkResources/operationStatuses/read
+        provenance: derived
+        notes: Required only when shared_private_link_services declares links -- azurerm_search_shared_private_link_service manages one resource per entry, and creation is asynchronous (the provider polls the operation status). The deploying principal also needs read access on each link's target resource in the TARGET's scope; approving the pending connection is the target owner's action with the target's own permissions, never the deployer's.

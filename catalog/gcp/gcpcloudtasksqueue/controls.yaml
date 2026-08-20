@@ -1,0 +1,86 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpcloudtasksqueue
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Queue configuration and the payloads of every task waiting in it are stored by Cloud Tasks encrypted at rest with Google-managed keys without configuration, per Google Cloud's default encryption at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Cloud Tasks supports CMEK only through the API's location-level CmekConfig resource (its own cloudtasks.cmekConfig.* permission family), which keys every queue in a location at once -- the queue resource itself exposes no key field, so no per-queue CMEK surface exists on this spec.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: http_target.uri_override.scheme
+      evidence:
+        type: spec_default
+        reference: Unset leaves each task's URI as the producer enqueued it -- http or https; setting the scheme override to HTTPS rewrites every dispatch from this queue onto TLS regardless of what was enqueued.
+      notes: The 03-secure-cloud-run-target preset forces HTTPS with enforce_mode ALWAYS. Enqueue-side API calls always ride Google's TLS.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A queue has no inbound network surface -- it is a configuration object that accepts IAM-authorized API calls and makes outbound dispatches; there is nothing for the internet to reach.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress exists to restrict -- see no-public-access.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The queue serves no inbound traffic for a WAF to filter; protecting the dispatched-to endpoint is that component's concern.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Google's Cloud Tasks access-control documentation states every Cloud Tasks method requires the caller to hold the necessary IAM permission, grantable at project or queue level -- and the role family deliberately separates producers (cloudtasks.enqueuer) from queue administrators (cloudtasks.queueAdmin).
+    - control_id: workload-identity
+      status: configurable
+      field_path: http_target.oidc_token
+      evidence:
+        type: spec_default
+        reference: Unset dispatches carry no identity; configuring oidc_token (for Cloud Run, Cloud Functions, custom endpoints) or oauth_token (for Google APIs) makes every dispatch carry a short-lived token minted for the named service account -- no static credential is ever stored on the queue.
+      notes: The 03-secure-cloud-run-target preset dispatches with an OIDC token for a referenced GcpServiceAccount. oauth_token and oidc_token are mutually exclusive (spec CEL rule).
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: http_target.oidc_token
+      evidence:
+        type: spec_default
+        reference: The weak path is an anonymous, unauthenticated HTTP dispatch (the default); queue-level token generation retires it by letting the target demand authenticated callers only.
+      notes: Anonymous dispatch remains legitimate for targets that authenticate by other means -- the 01-basic-queue preset configures no target at all and leaves auth to each enqueued task.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Queue create, update, pause, resume, purge, and delete land in Cloud Audit Logs (Admin Activity) unconditionally; Admin Activity logging cannot be disabled.
+      notes: Admin Activity covers changes TO the queue; per-dispatch visibility of traffic THROUGH the queue is stackdriver_logging_config's job (see monitoring-integration).
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: stackdriver_logging_config.sampling_ratio
+      evidence:
+        type: spec_default
+        reference: Omitted (or 0.0, the default) writes no dispatch logs; raising the ratio exports that fraction of dispatch operations to Cloud Logging -- 1.0 logs every dispatch, the posture the 03 preset chooses for a security-sensitive queue.
+      notes: Queue metrics (depth, dispatch and error counts) flow to Cloud Monitoring regardless -- the ratio governs per-operation logs, which bill by volume on high-throughput queues.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The queue's configuration is declarative and re-creatable from the manifest. The task backlog is transient in-flight work the API exposes no backup or export surface for -- deleting the queue deletes its tasks, which is exactly what deletion-protection guards.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain -- see backup-recovery.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The queue runs on Google's managed regional dispatch service; replication is not a configuration surface this API exposes, and no zonal placement choice exists on the resource.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE (the queue AND every task still in it are removed); PREVENT makes destroy fail outright -- the guard for a queue whose backlog must not be lost; ABANDON unmanages the queue while it keeps dispatching.
+      notes: Deletion is doubly costly here -- the backlog dies with the queue, and the API reserves the deleted queue's ID for up to 7 days, blocking an immediate recreate under the same name.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: There is no software surface here to patch -- Cloud Tasks is a fully managed service whose dispatch infrastructure Google maintains invisibly, with no version or channel exposed on the resource.

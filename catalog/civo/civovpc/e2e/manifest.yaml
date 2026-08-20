@@ -1,9 +1,0 @@
-apiVersion: civo.planton.dev/v1alpha1
-kind: CivoVpc
-metadata:
-  name: example-vpc
-spec:
-  network_name: example-vpc
-  region: lon1
-  ip_range_cidr: "10.10.1.0/24"
-  description: "Example VPC network"

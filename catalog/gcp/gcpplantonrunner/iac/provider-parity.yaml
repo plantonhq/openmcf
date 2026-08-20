@@ -1,0 +1,56 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# GcpPlantonRunner is the Planton-internal runner APPLIANCE: a composite of
+# six provider resources (a single-instance Cloud Run service + Secret
+# Manager + IAM + API enablement) whose spec deliberately models INTENT —
+# placement, sizing, version, the runner token — and not the underlying
+# resources. Every consumed resource is module-shaped plumbing (the internal
+# judgment); every spec field drives one or more of those internal resources
+# and is accounted below. No resource here is user-configurable provider
+# surface: adopters who want first-class Cloud Run/Secret Manager/IAM
+# configuration use those kinds.
+
+resources:
+  google_cloud_run_v2_service:
+    internal: module-shaped appliance plumbing -- the always-on single-instance service running the runner; spec.region places it, spec.cpu/spec.memory size it, spec.image_repository + spec.runner_version compose its container image, spec.vpc_access wires its direct VPC egress, spec.service_account wires its runtime identity; everything else (ingress, probes, scaling pins, execution environment) is a module decision
+
+  google_secret_manager_secret:
+    internal: module-shaped appliance plumbing -- the module-owned secret holding spec.token so the runner token never rides the service definition in plaintext
+
+  google_secret_manager_secret_version:
+    internal: module-shaped appliance plumbing -- the token payload written into the module-owned secret
+
+  google_secret_manager_secret_iam_member:
+    internal: module-shaped appliance plumbing -- the secretAccessor grant on the module-owned secret, naming exactly the runner's own service account
+
+  google_service_account:
+    internal: module-shaped appliance plumbing -- the permissionless runtime fallback identity created only when spec.service_account is not provided; name and description are module decisions
+
+  google_project_service:
+    internal: module-shaped appliance plumbing -- Cloud Run API enablement so a fresh project deploys first try; never disabled on destroy
+
+specExclusions:
+  # Every spec field drives internal appliance resources (judged above);
+  # none is a 1:1 provider-argument pass-through surface.
+  - field: spec.project_id
+    reason: provider-connection project for the whole appliance -- drives where every internal resource is created (empty falls back to the provider's default project)
+  - field: spec.region
+    reason: places the internal google_cloud_run_v2_service
+  - field: spec.token
+    reason: the runner token, stored in the internal google_secret_manager_secret and injected as a secret-backed env -- never a provider argument in plaintext
+  - field: spec.control_plane_endpoint
+    reason: the control-plane coordinate injected into the internal service's container environment -- never a provider argument
+  - field: spec.runner_version
+    reason: composes the internal service's container image tag
+  - field: spec.image_repository
+    reason: composes the internal service's container image repository
+  - field: spec.service_account
+    reason: wires the internal service's runtime identity; when unset the module creates the internal fallback google_service_account
+  - field: spec.vpc_access
+    reason: drives the internal service's direct-VPC-egress network interface (network/subnetwork/tags)
+  - field: spec.cpu
+    reason: sizes the internal service's container resources (Cloud Run vCPU limits)
+  - field: spec.memory
+    reason: sizes the internal service's container resources (Cloud Run memory limits)

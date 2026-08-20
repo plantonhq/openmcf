@@ -24,7 +24,8 @@ const (
 
 // *
 // VolumeMount defines how to mount a volume into a container.
-// Supports multiple volume types: ConfigMap, Secret, HostPath, EmptyDir, and PVC.
+// Supports multiple volume types: ConfigMap, Secret, HostPath, EmptyDir, PVC,
+// and projected ServiceAccount tokens.
 // Only one volume source should be specified per mount.
 //
 // Example usage:
@@ -72,9 +73,13 @@ type VolumeMount struct {
 	// PersistentVolumeClaim volume source.
 	// Use this to mount an existing PVC.
 	// For StatefulSets, this can reference a volumeClaimTemplate.
-	Pvc           *PvcVolumeSource `protobuf:"bytes,9,opt,name=pvc,proto3" json:"pvc,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Pvc *PvcVolumeSource `protobuf:"bytes,9,opt,name=pvc,proto3" json:"pvc,omitempty"`
+	// Projected ServiceAccount token volume source.
+	// Use this to mount a short-lived, audience-bound identity token that the
+	// kubelet issues for the pod's ServiceAccount and rotates automatically.
+	ServiceAccountToken *ServiceAccountTokenVolumeSource `protobuf:"bytes,10,opt,name=service_account_token,json=serviceAccountToken,proto3" json:"service_account_token,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *VolumeMount) Reset() {
@@ -166,6 +171,13 @@ func (x *VolumeMount) GetEmptyDir() *EmptyDirVolumeSource {
 func (x *VolumeMount) GetPvc() *PvcVolumeSource {
 	if x != nil {
 		return x.Pvc
+	}
+	return nil
+}
+
+func (x *VolumeMount) GetServiceAccountToken() *ServiceAccountTokenVolumeSource {
+	if x != nil {
+		return x.ServiceAccountToken
 	}
 	return nil
 }
@@ -579,11 +591,106 @@ func (x *PvcVolumeSource) GetReadOnly() bool {
 	return false
 }
 
+// *
+// ServiceAccountTokenVolumeSource mounts a projected ServiceAccount token.
+// The kubelet requests a token for the pod's ServiceAccount, bound to the
+// requested audience, writes it into the volume, and rotates it automatically
+// before expiry. The token also becomes invalid when the pod or the
+// ServiceAccount is deleted.
+//
+// This is the standard way to give a workload a short-lived, audience-scoped
+// identity credential without storing any secret: the receiving service
+// verifies the token with the cluster (TokenReview) or against the cluster's
+// OIDC discovery documents.
+//
+// The token is projected through the Kubernetes "projected" volume type and
+// is always mounted read-only.
+//
+// Example:
+//
+//	volumeMounts:
+//	  - name: control-plane-identity
+//	    mountPath: /var/run/secrets/tokens
+//	    readOnly: true
+//	    serviceAccountToken:
+//	      audience: my-control-plane
+//	      expirationSeconds: 3600
+//	      path: token
+type ServiceAccountTokenVolumeSource struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Intended audience of the token. The receiving service must identify
+	// itself with this audience when verifying the token; a token minted for a
+	// different audience is rejected. Required: an audience-less token would be
+	// replayable against any service in the cluster.
+	Audience string `protobuf:"bytes,1,opt,name=audience,proto3" json:"audience,omitempty"`
+	// Requested lifetime of the token in seconds. The kubelet starts rotating
+	// the token when it passes 80% of its lifetime or 24 hours, whichever is
+	// shorter. Defaults to 3600 (1 hour). The Kubernetes API enforces a
+	// minimum of 600 (10 minutes).
+	ExpirationSeconds int64 `protobuf:"varint,2,opt,name=expiration_seconds,json=expirationSeconds,proto3" json:"expiration_seconds,omitempty"`
+	// Filename for the token relative to the mount path.
+	// Defaults to "token".
+	Path          string `protobuf:"bytes,3,opt,name=path,proto3" json:"path,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ServiceAccountTokenVolumeSource) Reset() {
+	*x = ServiceAccountTokenVolumeSource{}
+	mi := &file_catalog_kubernetes_volume_mount_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServiceAccountTokenVolumeSource) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServiceAccountTokenVolumeSource) ProtoMessage() {}
+
+func (x *ServiceAccountTokenVolumeSource) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_kubernetes_volume_mount_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServiceAccountTokenVolumeSource.ProtoReflect.Descriptor instead.
+func (*ServiceAccountTokenVolumeSource) Descriptor() ([]byte, []int) {
+	return file_catalog_kubernetes_volume_mount_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ServiceAccountTokenVolumeSource) GetAudience() string {
+	if x != nil {
+		return x.Audience
+	}
+	return ""
+}
+
+func (x *ServiceAccountTokenVolumeSource) GetExpirationSeconds() int64 {
+	if x != nil {
+		return x.ExpirationSeconds
+	}
+	return 0
+}
+
+func (x *ServiceAccountTokenVolumeSource) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
 var File_catalog_kubernetes_volume_mount_proto protoreflect.FileDescriptor
 
 const file_catalog_kubernetes_volume_mount_proto_rawDesc = "" +
 	"\n" +
-	"%catalog/kubernetes/volume_mount.proto\x12\x16dev.planton.kubernetes\x1a\x1bbuf/validate/validate.proto\"\xeb\x03\n" +
+	"%catalog/kubernetes/volume_mount.proto\x12\x16dev.planton.kubernetes\x1a\x1bbuf/validate/validate.proto\"\xd8\x04\n" +
 	"\vVolumeMount\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12%\n" +
 	"\n" +
@@ -595,7 +702,9 @@ const file_catalog_kubernetes_volume_mount_proto_rawDesc = "" +
 	"\x06secret\x18\x06 \x01(\v2*.dev.planton.kubernetes.SecretVolumeSourceR\x06secret\x12I\n" +
 	"\thost_path\x18\a \x01(\v2,.dev.planton.kubernetes.HostPathVolumeSourceR\bhostPath\x12I\n" +
 	"\tempty_dir\x18\b \x01(\v2,.dev.planton.kubernetes.EmptyDirVolumeSourceR\bemptyDir\x129\n" +
-	"\x03pvc\x18\t \x01(\v2'.dev.planton.kubernetes.PvcVolumeSourceR\x03pvc\"|\n" +
+	"\x03pvc\x18\t \x01(\v2'.dev.planton.kubernetes.PvcVolumeSourceR\x03pvc\x12k\n" +
+	"\x15service_account_token\x18\n" +
+	" \x01(\v27.dev.planton.kubernetes.ServiceAccountTokenVolumeSourceR\x13serviceAccountToken\"|\n" +
 	"\x15ConfigMapVolumeSource\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\tR\x03key\x12\x12\n" +
@@ -618,7 +727,12 @@ const file_catalog_kubernetes_volume_mount_proto_rawDesc = "" +
 	"\x0fPvcVolumeSource\x12%\n" +
 	"\n" +
 	"claim_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tclaimName\x12\x1b\n" +
-	"\tread_only\x18\x02 \x01(\bR\breadOnlyB\xd9\x01\n" +
+	"\tread_only\x18\x02 \x01(\bR\breadOnly\"\x9e\x02\n" +
+	"\x1fServiceAccountTokenVolumeSource\x12\"\n" +
+	"\baudience\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\baudience\x12\xc2\x01\n" +
+	"\x12expiration_seconds\x18\x02 \x01(\x03B\x92\x01\xbaH\x8e\x01\xba\x01\x8a\x01\n" +
+	"(service_account_token.expiration_seconds\x12DExpiration must be at least 600 seconds (the Kubernetes API minimum)\x1a\x18this == 0 || this >= 600R\x11expirationSeconds\x12\x12\n" +
+	"\x04path\x18\x03 \x01(\tR\x04pathB\xd9\x01\n" +
 	"\x1acom.dev.planton.kubernetesB\x10VolumeMountProtoP\x01Z/github.com/plantonhq/planton/catalog/kubernetes\xa2\x02\x03DPK\xaa\x02\x16Dev.Planton.Kubernetes\xca\x02\x16Dev\\Planton\\Kubernetes\xe2\x02\"Dev\\Planton\\Kubernetes\\GPBMetadata\xea\x02\x18Dev::Planton::Kubernetesb\x06proto3"
 
 var (
@@ -633,14 +747,15 @@ func file_catalog_kubernetes_volume_mount_proto_rawDescGZIP() []byte {
 	return file_catalog_kubernetes_volume_mount_proto_rawDescData
 }
 
-var file_catalog_kubernetes_volume_mount_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_catalog_kubernetes_volume_mount_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_catalog_kubernetes_volume_mount_proto_goTypes = []any{
-	(*VolumeMount)(nil),           // 0: dev.planton.kubernetes.VolumeMount
-	(*ConfigMapVolumeSource)(nil), // 1: dev.planton.kubernetes.ConfigMapVolumeSource
-	(*SecretVolumeSource)(nil),    // 2: dev.planton.kubernetes.SecretVolumeSource
-	(*HostPathVolumeSource)(nil),  // 3: dev.planton.kubernetes.HostPathVolumeSource
-	(*EmptyDirVolumeSource)(nil),  // 4: dev.planton.kubernetes.EmptyDirVolumeSource
-	(*PvcVolumeSource)(nil),       // 5: dev.planton.kubernetes.PvcVolumeSource
+	(*VolumeMount)(nil),                     // 0: dev.planton.kubernetes.VolumeMount
+	(*ConfigMapVolumeSource)(nil),           // 1: dev.planton.kubernetes.ConfigMapVolumeSource
+	(*SecretVolumeSource)(nil),              // 2: dev.planton.kubernetes.SecretVolumeSource
+	(*HostPathVolumeSource)(nil),            // 3: dev.planton.kubernetes.HostPathVolumeSource
+	(*EmptyDirVolumeSource)(nil),            // 4: dev.planton.kubernetes.EmptyDirVolumeSource
+	(*PvcVolumeSource)(nil),                 // 5: dev.planton.kubernetes.PvcVolumeSource
+	(*ServiceAccountTokenVolumeSource)(nil), // 6: dev.planton.kubernetes.ServiceAccountTokenVolumeSource
 }
 var file_catalog_kubernetes_volume_mount_proto_depIdxs = []int32{
 	1, // 0: dev.planton.kubernetes.VolumeMount.config_map:type_name -> dev.planton.kubernetes.ConfigMapVolumeSource
@@ -648,11 +763,12 @@ var file_catalog_kubernetes_volume_mount_proto_depIdxs = []int32{
 	3, // 2: dev.planton.kubernetes.VolumeMount.host_path:type_name -> dev.planton.kubernetes.HostPathVolumeSource
 	4, // 3: dev.planton.kubernetes.VolumeMount.empty_dir:type_name -> dev.planton.kubernetes.EmptyDirVolumeSource
 	5, // 4: dev.planton.kubernetes.VolumeMount.pvc:type_name -> dev.planton.kubernetes.PvcVolumeSource
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	6, // 5: dev.planton.kubernetes.VolumeMount.service_account_token:type_name -> dev.planton.kubernetes.ServiceAccountTokenVolumeSource
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_catalog_kubernetes_volume_mount_proto_init() }
@@ -666,7 +782,7 @@ func file_catalog_kubernetes_volume_mount_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_kubernetes_volume_mount_proto_rawDesc), len(file_catalog_kubernetes_volume_mount_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

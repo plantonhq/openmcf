@@ -1,0 +1,77 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcploggingsink
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A sink stores no data -- it is a routing rule; the exported entries rest in the destination (GCS bucket, BigQuery dataset, Pub/Sub topic, or log bucket), whose at-rest encryption is that destination kind's posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key on the sink itself; CMEK for exported logs is configured on the destination resource (bucket, dataset, topic), not here.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A sink terminates no connections of its own. Management calls ride TLS-only Google API endpoints, and export traffic from Logging to the destination travels inside Google's infrastructure -- platform behavior, not per-sink configuration.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A sink has no network endpoint to expose; it is a control-plane routing rule reachable only through the IAM-governed Logging API.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; a sink is a configuration object with no addresses or ports.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A sink receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Creating, modifying, and deleting sinks is governed by Logging IAM (the logging.sinks.* permission family) at the sink's scope -- project, folder, organization, or billing account; no anonymous or non-IAM management path exists. Separately, the sink's writer identity can only deliver where it is explicitly granted on the destination.
+      notes: The destination grant is a deliberate second authorization gate -- an ungranted sink exports nothing rather than defaulting open.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The sink's exports authenticate as a GCP-minted writer-identity service account (the writer_identity output) using Google-internal short-lived credentials -- no static key ever exists for the export path, and destination access is granted to that identity, not to a secret.
+      notes: unique_writer_identity (default true) mints a dedicated per-sink identity; custom_writer_identity substitutes a caller-owned service account on project sinks. Folder, organization, and billing-account sinks always get a unique writer.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: unique_writer_identity
+      evidence:
+        type: spec_default
+        reference: Setting false on a project sink falls back to the legacy shared cloud-logs@ service account -- one identity shared by every legacy sink in the project (single-project GCS/Pub/Sub only). The default true retires that path with a dedicated per-sink writer, and the spec pins the field to project scope because other scopes never offer the legacy identity.
+      notes: BigQuery destinations refuse the legacy writer outright (spec-validated, mirroring the provider's own constraint).
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every create, update, and delete on a sink is recorded in Cloud Audit Logs' Admin Activity log, which is always on and cannot be disabled.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloud Logging publishes per-sink export metrics to Cloud Monitoring automatically -- logging.googleapis.com/exports/byte_count, log_entry_count, and error_count carry the sink name as a label, so silent export failure (the classic missing-destination-grant symptom) is alertable without configuration.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A sink holds no data to back up -- it is declarative configuration re-creatable from the manifest; already-exported entries persist in the destination independently of the sink's life.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery); retention of exported logs is the destination's setting (log-bucket retention, GCS lifecycle, BigQuery expiration).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Sinks live in Cloud Logging's control plane with no zonal placement to configure; routing availability is Google's service posture, not per-sink configuration.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: Empty defaults to DELETE (the provider default); PREVENT makes any destroying plan fail until the value is lifted -- protecting a compliance-mandated export pipeline -- and ABANDON removes the sink from management while it keeps exporting in GCP.
+      notes: This is an IaC-engine guard, not an API-side flag -- deletion through the GCP console or gcloud is not blocked by it.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A sink is a pure configuration object with no software to patch; the routing engine is Google-operated.

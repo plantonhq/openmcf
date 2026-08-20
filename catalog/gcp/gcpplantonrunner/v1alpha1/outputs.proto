@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpplantonrunner.v1alpha1;
+
+// GcpPlantonRunnerStackOutputs captures the observable identifiers of a
+// deployed runner appliance -- the handles for day-2 operations: tailing
+// the runner's logs, granting its service account permissions, and
+// finding the service in GCP tooling.
+message GcpPlantonRunnerStackOutputs {
+  // The fully qualified name of the Cloud Run service keeping the runner
+  // running (projects/{project}/locations/{region}/services/{name}). The
+  // primary handle for inspecting the appliance with GCP tooling.
+  string service_name = 1;
+
+  // The service's short name (metadata.name).
+  string service_short_name = 2;
+
+  // The email of the service account the runner runs as -- the identity
+  // the runner holds while executing work. Grant this account roles to
+  // let keyless cloud operations run through the runner (it is the
+  // referenced service_account when one was supplied, else the
+  // permissionless account created with the appliance).
+  string service_account_email = 3;
+
+  // The Secret Manager secret holding the runner token
+  // (projects/{project}/secrets/{name}). The token authorizes joining
+  // and is never the runner's identity.
+  string token_secret_id = 4;
+
+  // The name the runner registers itself under with the control plane --
+  // the value shown by `planton runner list` the moment it joins.
+  string runner_name = 5;
+
+  // The GCP project the runner was deployed in. Echoed so downstream
+  // tooling and verifiers can target the correct project.
+  string project_id = 6;
+
+  // The GCP region the runner was deployed in. Echoed so downstream
+  // tooling and verifiers can target the correct region.
+  string region = 7;
+}

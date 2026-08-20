@@ -1,0 +1,50 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbedrockmodelaccess
+spec:
+  # Bedrock model access under live E2E: one lane accepting (and on
+  # destroy, canceling) the public offer of a third-party marketplace
+  # model that needs NO use-case form. The scenario ships Cohere Command R
+  # -- probe-verified in the test account 2026-08-13: it carries a public
+  # offer with a usage-based rate card only (no subscription fee),
+  # authorizationStatus AUTHORIZED, agreement NOT_AVAILABLE pre-lane.
+  # Probe-caught classes recorded for the lane: auto-enabled models
+  # (Mistral 7B, Llama 3, Amazon first-party) REJECT
+  # ListFoundationModelAgreementOffers with "Agreement not supported for
+  # this model", and Anthropic models reject it with "account is not
+  # authorized" until the use-case form is on file -- if the offer catalog
+  # shifts, re-probe before the lane. Invocations bill per token but the
+  # lane never invokes; the agreement itself carries no fixed fee.
+  # Verification is GetFoundationModelAvailability keyed on model_id
+  # (agreementAvailability.status AVAILABLE after deploy, NOT_AVAILABLE
+  # after destroy -- the create waiter's contract both directions).
+  #
+  # Deliberately not exercised live: use_case_form -- the form is
+  # ACCOUNT-GLOBAL and write-once (AWS provides no delete and errors on
+  # differing re-puts), so a lane would permanently stamp the shared test
+  # account with fixture form data and break re-runs with different
+  # content. Offline plans/previews prove the render arm-for-arm; the arm
+  # is a jsonencode passthrough on both engines. Unblock: an owner call
+  # accepting a permanent, dedicated use-case form for the test account.
+  #
+  tier: 1
+  # ENVIRONMENT-BLOCKED, OWNER-DEFERRED (owner direction 2026-08-14):
+  # the live lane attempted 2026-08-13 resolved the Cohere offer token
+  # and created the agreement, but AWS Marketplace resolved it to state
+  # ERROR -- "INVALID_PAYMENT_INSTRUMENT: A valid payment instrument must
+  # be provided." The test account carries no marketplace payment method,
+  # and the owner has decided to keep it that way for now -- this is a
+  # standing deferral, not a pending ask. Not a module or spec defect:
+  # the provider waiter surfaced the ERROR state correctly after ~15 min
+  # of polling, and the failed agreement left nothing to cancel
+  # (DeleteFoundationModelAgreement answers "No agreement exists").
+  # GetFoundationModelAvailability retains the last attempt's ERROR
+  # message until a successful acceptance. Unblock: an owner decision to
+  # add a payment instrument (AWS console -> Billing -> Payment
+  # preferences), then re-probe the offer and run both engines' lanes
+  # (~20 minutes).
+  status: deferred
+  deferred_reason: "owner-deferred 2026-08-14: AWS Marketplace agreements need a payment instrument the test account deliberately lacks (INVALID_PAYMENT_INSTRUMENT); unblock is an owner decision to add one, then run both engines' lanes"
+  validated_provisioners: []
+  timeout_minutes: 45

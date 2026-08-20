@@ -1,0 +1,50 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsmanagedprometheusscraper
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: AmazonPrometheus
+      sku_meter: collector hours
+      pricing_unit: hours
+      description: The scraper is a running collector from the moment AWS finishes provisioning it -- $0.04 per collector-hour (us-east-1, from the AmazonPrometheus offer), about $29.20 a month around the clock, whether its targets answer or not. There is no stop switch; deleting the scraper is the only way off the meter.
+  cost_drivers:
+    - field_path: scrape_configuration
+      sku_meter: metric samples collected
+      pricing_unit: samples
+      impact: The scrape configuration decides the usage half of the bill -- scrape_interval and target count multiply into samples collected ($0.03 per 10M in us-east-1) and into the samples the destination workspace then bills for ingesting. Halving the interval doubles both meters.
+    - field_path: source_eks
+      sku_meter: metric samples collected
+      pricing_unit: samples
+      impact: An EKS source with AWS's default configuration scrapes the whole cluster surface (kubelets, cAdvisor, service endpoints) -- sample volume follows cluster size, so the same manifest costs more as the cluster grows. Changing the source replaces the scraper (long create, drain on delete) but the meter carries on.
+    - field_path: source_vpc
+      sku_meter: metric samples collected
+      pricing_unit: samples
+      impact: A VPC source scrapes exactly the endpoints its required scrape_configuration lists -- sample volume follows the static target list, the more predictable of the two arms.
+    - field_path: amp_workspace_arn
+      sku_meter: metric samples ingested
+      pricing_unit: samples
+      impact: Everything collected is delivered and billed AGAIN as ingestion on the destination AMP workspace (tiered from $0.90 per 10M in us-east-1, after that workspace's 40M-sample monthly free band) -- the scraper's cadence directly drives another component's bill.
+    - field_path: cloudwatch_dataset_arn
+      sku_meter: collector hours
+      pricing_unit: hours
+      impact: Delivering to a CloudWatch dataset instead of AMP moves the committed meter to the CloudWatch collector-hour usage type -- the same $0.04 rate in us-east-1 under a different SKU, with ingestion then billed by CloudWatch's Prometheus-metrics pricing rather than AMP's.
+    - field_path: logging
+      sku_meter: log ingestion
+      pricing_unit: GB
+      impact: Scraper component logs (service discovery, collector, exporter) flow to the referenced CloudWatch log group and bill that component's ingestion and storage meters.
+    - field_path: region
+      sku_meter: collector hours
+      pricing_unit: hours
+      impact: The collector-hour rate and the per-sample rates are published per region.
+  free_tier: "No free allowance exists on collector hours -- the meter runs from provisioning. The zero-rated bands nearby belong to OTHER meters: the destination workspace's first 40M ingested samples and first 10 GB of storage each month, and AMP's first 200B query samples."
+  estimate_exclusions:
+    - metric samples collected bill $0.03 per 10M (us-east-1) on top of collector hours -- volume follows scrape_interval and target count, which live in the scrape configuration and the scraped fleet's size, not in any fixed spec value
+    - ingestion, storage, and query charges for the delivered metrics bill on the destination AMP workspace (or CloudWatch's Prometheus pricing for dataset destinations), not on this component
+    - scraper component logs bill ingestion and storage on the referenced CloudWatch log group component
+    - cross-account role_configuration adds no charge of its own
+  notes: "AWS's agentless collector replaces a self-managed Prometheus agent fleet -- the $29.20/month committed fee buys the scraping infrastructure AWS runs in your subnets. Both catalog presets deliver to an AMP workspace, so the committed meter is the AMP collector-hour usage type; the CloudWatch-dataset variant is the same rate under a different SKU and is deliberately left unpriced until a preset exercises it."

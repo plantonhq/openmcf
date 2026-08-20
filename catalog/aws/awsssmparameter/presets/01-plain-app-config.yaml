@@ -1,0 +1,11 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSsmParameter
+metadata:
+  name: app-log-level
+spec:
+  region: <aws-region>
+  parameterName: /<app>/config/log-level
+  type: String
+  value: info
+  description: Application log level
+  allowedPattern: "^(debug|info|warn|error)$"

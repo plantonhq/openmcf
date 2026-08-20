@@ -1,0 +1,3 @@
+name: kubernetes-planton-platform
+runtime: go
+description: A self-hosted Planton platform declared as a PlantonPlatform custom resource — control plane, console, identity server, databases, secrets manager, and in-cluster runner, reconciled by the Planton operator

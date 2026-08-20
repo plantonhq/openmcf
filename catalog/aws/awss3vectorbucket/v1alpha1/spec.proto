@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+package dev.planton.aws.awss3vectorbucket.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsS3VectorBucketSpec defines one S3 vector bucket with its vector
+// indexes - purpose-built storage for AI embeddings, queried by
+// similarity instead of key. The natural backend for Bedrock
+// knowledge bases (AwsBedrockKnowledgeBase's s3_vectors arm points at
+// an index defined here) and for any RAG stack that wants
+// pay-per-query vector search without running a vector database.
+//
+// The bucket's name is metadata.name (3-63 lowercase letters,
+// digits, hyphens). Indexes key their entries by name, and EVERY
+// index property is fixed for life - an index is replaced, not
+// edited, so dimension must match the embedding model before the
+// first vector lands. The index data_type argument is module-pinned
+// to float32 - the provider's enum holds exactly that one value.
+message AwsS3VectorBucketSpec {
+  // Index names are the satellite keys.
+  option (buf.validate.message).cel = {
+    id: "spec.index_names_unique"
+    message: "index names must be unique"
+    expression: "this.indexes.map(i, i.name).unique()"
+  };
+
+  // The AWS region the vector bucket lives in. Example: "us-east-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Encryption at rest. Unset means S3-managed keys (SSE-S3). Fixed
+  // for life of the bucket.
+  AwsS3VectorsEncryption encryption = 2;
+
+  // Let destroy succeed on a non-empty bucket by deleting every
+  // index and vector first. Off by default: destroying embeddings
+  // that took real money to compute should hurt. Config-only at AWS
+  // - imports never round-trip it.
+  bool force_destroy = 3;
+
+  // The bucket's resource policy (JSON) - who can put/query vectors.
+  // Bedrock knowledge bases in other accounts get their access here.
+  string policy = 4 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // The vector indexes, keyed by name.
+  repeated AwsS3VectorsIndex indexes = 5;
+}
+
+// AwsS3VectorsEncryption selects the at-rest encryption for the
+// bucket or one index.
+message AwsS3VectorsEncryption {
+  // A KMS key only pairs with aws:kms.
+  option (buf.validate.message).cel = {
+    id: "encryption.kms_key_requires_kms_type"
+    message: "kms_key_arn requires sse_type aws:kms"
+    expression: "!has(this.kms_key_arn) || this.sse_type == 'aws:kms'"
+  };
+
+  // The encryption type: S3-managed keys (AES256) or KMS (aws:kms).
+  string sse_type = 1 [(buf.validate.field).string = {
+    in: [
+      "AES256",
+      "aws:kms"
+    ]
+  }];
+
+  // The KMS key for aws:kms. Reference an AwsKmsKey key_arn output
+  // or pass a literal key ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+}
+
+// AwsS3VectorsIndex is one similarity-search index. Everything here
+// is fixed for life - size the dimension to the embedding model
+// FIRST.
+message AwsS3VectorsIndex {
+  // The index name - what Bedrock knowledge bases and query calls
+  // address. 3-63 lowercase letters, digits, hyphens. Fixed for
+  // life.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 63
+    pattern: "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+  }];
+
+  // The vector dimension (1-4096). MUST equal the embedding model's
+  // output dimension (Titan Text v2: 1024/512/256; Cohere: 1024) -
+  // a mismatched put is rejected vector-by-vector.
+  int64 dimension = 2 [(buf.validate.field).int64 = {
+    gte: 1
+    lte: 4096
+  }];
+
+  // How similarity is scored: "cosine" (angle - the usual choice for
+  // normalized text embeddings) or "euclidean" (distance).  Must
+  // match what the embedding model was trained for.
+  string distance_metric = 3 [(buf.validate.field).string = {
+    in: [
+      "cosine",
+      "euclidean"
+    ]
+  }];
+
+  // Metadata keys stored WITH vectors but excluded from filterable
+  // metadata (1-10 keys). Bulky payload fields (the source text
+  // chunk, URLs) belong here - filterable metadata has a hard size
+  // budget per vector.
+  repeated string non_filterable_metadata_keys = 4 [(buf.validate.field).repeated = {
+    max_items: 10
+    unique: true
+  }];
+
+  // Encryption for THIS index when it must differ from the bucket
+  // default. Fixed for life.
+  AwsS3VectorsEncryption encryption = 5;
+}

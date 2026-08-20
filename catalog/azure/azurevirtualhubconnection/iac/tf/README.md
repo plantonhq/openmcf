@@ -61,11 +61,3 @@ module "spoke_app" {
 - `static_vnet_local_route_override_criteria` is fixed once created
   (ARM replaces the connection to change it).
 - The hub cannot be deleted while this connection exists.
-
-## Required Permissions
-
-The deploying credential needs
-`Microsoft.Network/virtualHubs/hubVirtualNetworkConnections/write` plus
-join permission on the spoke VNet
-(`Microsoft.Network/virtualNetworks/peer/action` class) -- held via
-Network Contributor, Contributor, or Owner on both sides.

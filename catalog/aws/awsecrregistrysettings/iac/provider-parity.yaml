@@ -1,0 +1,99 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_ecr_registry_policy:
+    mappings:
+      - arg: policy
+        spec: spec.registry_policy
+  aws_ecr_registry_scanning_configuration:
+    mappings:
+      # Scanning folds in as the spec.scanning arm.
+      - arg: scan_type
+        spec: spec.scanning.scan_type
+      - arg: rule.scan_frequency
+        spec: spec.scanning.rules.scan_frequency
+      - arg: rule.repository_filter.filter
+        spec: spec.scanning.rules.filters
+    exclusions:
+      - arg: rule.repository_filter.filter_type
+        reason: one-value vocabulary -- WILDCARD is the only filter type AWS supports; the modules pin it
+  aws_ecr_replication_configuration:
+    mappings:
+      # Replication folds in as the spec.replication_rules list.
+      - arg: replication_configuration.rule.destination.region
+        spec: spec.replication_rules.destinations.region
+      - arg: replication_configuration.rule.destination.registry_id
+        spec: spec.replication_rules.destinations.registry_id
+      - arg: replication_configuration.rule.repository_filter.filter
+        spec: spec.replication_rules.repository_filters
+    exclusions:
+      - arg: replication_configuration.rule.repository_filter.filter_type
+        reason: one-value vocabulary -- PREFIX_MATCH is the only filter type AWS supports; the modules pin it
+  aws_ecr_pull_through_cache_rule:
+    mappings:
+      # Cache rules fold in as the spec.pull_through_cache_rules list keyed
+      # by prefix.
+      - arg: ecr_repository_prefix
+        spec: spec.pull_through_cache_rules.ecr_repository_prefix
+      - arg: upstream_registry_url
+        spec: spec.pull_through_cache_rules.upstream_registry_url
+      - arg: upstream_repository_prefix
+        spec: spec.pull_through_cache_rules.upstream_repository_prefix
+      - arg: credential_arn
+        spec: spec.pull_through_cache_rules.credential_arn
+      - arg: custom_role_arn
+        spec: spec.pull_through_cache_rules.custom_role_arn
+  aws_ecr_repository_creation_template:
+    mappings:
+      # Creation templates fold in as the spec.repository_creation_templates
+      # list keyed by prefix.
+      - arg: prefix
+        spec: spec.repository_creation_templates.prefix
+      - arg: description
+        spec: spec.repository_creation_templates.description
+      - arg: applied_for
+        spec: spec.repository_creation_templates.applied_for
+      - arg: custom_role_arn
+        spec: spec.repository_creation_templates.custom_role_arn
+      - arg: image_tag_mutability
+        spec: spec.repository_creation_templates.image_tag_mutability
+      - arg: image_tag_mutability_exclusion_filter.filter
+        spec: spec.repository_creation_templates.image_tag_mutability_exclusion_filters
+      - arg: encryption_configuration.encryption_type
+        spec: spec.repository_creation_templates.encryption.type
+      - arg: encryption_configuration.kms_key
+        spec: spec.repository_creation_templates.encryption.kms_key
+      - arg: lifecycle_policy
+        spec: spec.repository_creation_templates.lifecycle_policy
+      - arg: repository_policy
+        spec: spec.repository_creation_templates.repository_policy
+      - arg: resource_tags
+        spec: spec.repository_creation_templates.resource_tags
+    exclusions:
+      - arg: image_tag_mutability_exclusion_filter.filter_type
+        reason: one-value vocabulary -- WILDCARD is the only filter type AWS supports; the modules pin it
+  aws_ecr_account_setting:
+    mappings:
+      # The provider's name/value magic strings became three TYPED fields
+      # (the design lift): each configured field renders one PutAccountSetting
+      # upsert with the matching name.
+      - arg: value
+        spec: spec.account_settings.basic_scan_type_version
+      - arg: value
+        spec: spec.account_settings.blob_mounting
+      - arg: value
+        spec: spec.account_settings.registry_policy_scope
+    exclusions:
+      - arg: name
+        reason: derived by the module from WHICH typed spec.account_settings field is set (BASIC_SCAN_TYPE_VERSION / BLOB_MOUNTING / REGISTRY_POLICY_SCOPE) -- a free-form name field could contradict the typed arm
+  aws_ecr_pull_time_update_exclusion:
+    mappings:
+      # Exclusions fold in as the spec.pull_time_update_exclusions ARN list.
+      - arg: principal_arn
+        spec: spec.pull_time_update_exclusions

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awseksaddon
+spec:
+  billing_model: free
+  free_tier: The managed add-on object carries no EKS meter -- Amazon EKS bills per cluster hour (with a higher extended-support rate), for Auto Mode compute, and for hybrid-node vCPU-hours, and none of those meters count add-ons, their versions, or their configuration. The AWS-built catalog (vpc-cni, coredns, kube-proxy, the EBS/EFS CSI drivers, eks-pod-identity-agent, snapshot-controller, and peers) is free software; installing it as a managed add-on instead of a Helm chart adds nothing to the bill.
+  notes: "One field of this spec CAN activate a real subscription: addon_name also accepts vendor-prefixed AWS Marketplace add-ons, and choosing a paid one starts that vendor's subscription, billed through AWS Marketplace on the vendor's own terms -- the charge rides the Marketplace agreement, not any EKS meter, and the AWS-built names never trigger it. Beyond that, the add-on's pods run on the cluster's existing compute (node groups, Fargate, or Auto Mode, billed on the AwsEksCluster side either way -- configuration_values sizing like coredns replicaCount nudges how much of that paid capacity the add-on occupies), and what the SOFTWARE does can drive downstream meters on its own services: amazon-cloudwatch-observability ships telemetry into CloudWatch's ingestion and storage meters, the EBS/EFS CSI drivers provision volumes that bill as EBS/EFS storage. Those charges land on the respective services and the volumes' own resources, never on this object."

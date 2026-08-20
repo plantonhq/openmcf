@@ -33,7 +33,3 @@ The generated `variables.tf` mirrors the proto contract:
 - **Endpoints carry NO ARM tags on any engine** -- the platform's derived tags land on the owning profile instead.
 - **Name, profile, type, and subnet claims are fixed at creation**; everything else (target, weight, priority, enabled, geo claims, headers) updates in place.
 - **Endpoints are free at rest** -- each billable meter (health probes, queries) lives on the profile.
-
-## Required Permissions
-
-The deploying principal needs `Microsoft.Network/trafficManagerProfiles/*` (endpoints are profile children; Network Contributor on the resource group covers it).

@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurecosmosdbsqlroledefinition
+spec:
+  azure:
+    groups:
+      - purpose: ManageSqlRoleDefinition
+        actions:
+          - Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions/read
+          - Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions/write
+          - Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions/delete
+        provenance: derived
+        notes: Covers azurerm_cosmosdb_sql_role_definition -- create, read/refresh, in-place updates (name, type, assignable scopes, permissions), and destroy, all control-plane operations on the parent account's child path (the module parses the resource group and account name from the account's ARM ID, so no separate resolution happens). These are ARM control-plane actions -- but note the built-in Cosmos DB Operator role explicitly carves sqlRoleDefinitions/write and delete OUT via notActions (verified against the live role definition), so hold them via DocumentDB Account Contributor, Contributor, Owner, or a custom role scoped to the account.

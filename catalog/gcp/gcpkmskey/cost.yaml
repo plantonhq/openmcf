@@ -1,0 +1,41 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpkmskey
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Cloud Key Management Service (KMS)
+      sku_meter: active key version months
+      pricing_unit: version-months
+      description: Every active key version (ENABLED, DISABLED, or DESTROY_SCHEDULED) bills a prorated monthly fee from the moment it exists; the rate is set by the version's protection level and key class. The key object itself is free -- versions are what bill.
+  cost_drivers:
+    - field_path: version_template.protection_level
+      sku_meter: active key version months
+      pricing_unit: version-months
+      impact: SOFTWARE versions bill $0.06 per month; HSM versions bill $1.00 (RSA-3072/4096 and elliptic-curve HSM versions $2.50, dropping to $1.00 past 2,000 per account); EXTERNAL and EXTERNAL_VPC versions bill $3.00 plus whatever the external key manager charges on its side. Immutable at creation -- the rate class is fixed for the key's life.
+    - field_path: rotation_period
+      sku_meter: active key version months
+      pricing_unit: version-months
+      impact: Each automatic rotation mints a new active version while old versions keep billing until destroyed -- the active-version count, and with it the monthly fee, grows by one per rotation period unless old versions are destroyed. Rotation itself is a free administrative operation.
+    - field_path: purpose
+      sku_meter: cryptographic operations
+      pricing_unit: operations
+      impact: Every encrypt, decrypt, sign, verify, or MAC operation against the key's versions bills per 10,000 calls ($0.03 for software and HSM-symmetric classes, $0.15 for HSM RSA-3072/4096 and elliptic-curve classes); the purpose determines which operations the key serves. Admin operations are free.
+    - field_path: skip_initial_version_creation
+      sku_meter: active key version months
+      pricing_unit: version-months
+      impact: When true the key is created with zero versions and bills nothing until a version is created or imported -- the import-only/BYOK posture starts at $0.00 committed.
+    - field_path: destroy_scheduled_duration
+      sku_meter: active key version months
+      pricing_unit: version-months
+      impact: DESTROY_SCHEDULED versions still count as active and keep billing until the recovery window elapses and they are permanently destroyed -- a longer window extends the billing tail of every destroyed version.
+  free_tier: Only keys created through Cloud KMS Autokey receive free usage (100 active versions and 10,000 cryptographic operations per month per billing account); keys created directly -- as this component does -- have no free tier. Rotation is always free.
+  estimate_exclusions:
+    - cryptographic operation volume -- encrypt/decrypt/sign/verify calls bill per 10,000 and follow request traffic no manifest can know
+    - versions beyond the initial one -- rotations, manual version creation, and imported versions each add an active version billing monthly
+    - external key manager charges for EXTERNAL and EXTERNAL_VPC keys -- the partner system bills separately from Google
+  notes: "Keys can never be deleted from GCP: the key shell remains forever at no cost, and only its versions bill. Version fees are prorated to actual active hours within the month, and the rates are location-independent -- one list price across all Cloud KMS locations."

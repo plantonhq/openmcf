@@ -1,0 +1,17 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsssmdocument
+spec:
+  # The document imports by its name -- metadata.name on both engines
+  # (document names allow hyphens), so the value derives with zero user
+  # input.
+  values:
+    - name: document_name
+      derivations:
+        - from_metadata_name: true
+        - from_stack_output: document_name
+      where_to_find: >-
+        Systems Manager console -> Documents -> Owned by me (the
+        document's name), or `aws ssm list-documents
+        --filters Key=Owner,Values=Self` (Name).

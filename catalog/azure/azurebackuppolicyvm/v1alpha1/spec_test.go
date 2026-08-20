@@ -83,6 +83,8 @@ var _ = ginkgo.Describe("AzureBackupPolicyVmSpec Validation Tests", func() {
 			ginkgo.It("should accept an hourly V2 policy", func() {
 				input := validResource()
 				input.Spec.PolicyType = strPtr("V2")
+				// V2 defaults Instant RP to 7; daily count 7 is not strictly greater.
+				input.Spec.InstantRestoreRetentionDays = int32Ptr(2)
 				input.Spec.Backup = &AzureBackupPolicyVmSchedule{
 					Frequency:    "Hourly",
 					Time:         "08:00",
@@ -128,6 +130,7 @@ var _ = ginkgo.Describe("AzureBackupPolicyVmSpec Validation Tests", func() {
 			ginkgo.It("should accept a V2 crash-consistent policy", func() {
 				input := validResource()
 				input.Spec.PolicyType = strPtr("V2")
+				input.Spec.InstantRestoreRetentionDays = int32Ptr(2)
 				input.Spec.ConsistencyType = "OnlyCrashConsistent"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
@@ -144,6 +147,7 @@ var _ = ginkgo.Describe("AzureBackupPolicyVmSpec Validation Tests", func() {
 				input := validResource()
 				input.Spec.PolicyType = strPtr("V2")
 				input.Spec.InstantRestoreRetentionDays = int32Ptr(30)
+				input.Spec.RetentionDaily = &AzureBackupPolicyVmRetentionDaily{Count: 31}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
@@ -313,6 +317,21 @@ var _ = ginkgo.Describe("AzureBackupPolicyVmSpec Validation Tests", func() {
 			ginkgo.It("should reject instant restore retention above 5 on V1", func() {
 				input := validResource()
 				input.Spec.InstantRestoreRetentionDays = int32Ptr(6)
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject a V2 policy with daily count 7 and instant restore unset", func() {
+				input := validResource()
+				input.Spec.PolicyType = strPtr("V2")
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject instant restore that meets or exceeds daily retention", func() {
+				input := validResource()
+				input.Spec.PolicyType = strPtr("V2")
+				input.Spec.InstantRestoreRetentionDays = int32Ptr(7)
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).NotTo(gomega.BeNil())
 			})

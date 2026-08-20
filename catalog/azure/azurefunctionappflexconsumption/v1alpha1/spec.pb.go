@@ -853,7 +853,9 @@ type AzureFunctionAppFlexConsumptionSpec struct {
 	// (both enforced here, exactly as Azure enforces them at apply time);
 	// SYSTEM_ASSIGNED_IDENTITY needs neither -- grant the app's
 	// system-assigned identity "Storage Blob Data Contributor" on the
-	// storage account instead.
+	// storage account instead. Live-proven: ARM does NOT check that
+	// grant at app create -- the site object succeeds without it. The
+	// grant is still required before a package deploy (day-2).
 	StorageAuthenticationType AzureFunctionAppFlexConsumptionStorageAuthenticationType `protobuf:"varint,6,opt,name=storage_authentication_type,json=storageAuthenticationType,proto3,enum=dev.planton.azure.azurefunctionappflexconsumption.v1alpha1.AzureFunctionAppFlexConsumptionStorageAuthenticationType" json:"storage_authentication_type,omitempty"`
 	// The storage account access key, required when
 	// storage_authentication_type is STORAGE_ACCOUNT_CONNECTION_STRING.
@@ -3281,7 +3283,7 @@ var File_catalog_azure_azurefunctionappflexconsumption_v1alpha1_spec_proto proto
 
 const file_catalog_azure_azurefunctionappflexconsumption_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Acatalog/azure/azurefunctionappflexconsumption/v1alpha1/spec.proto\x12:dev.planton.azure.azurefunctionappflexconsumption.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe0(\n" +
+	"Acatalog/azure/azurefunctionappflexconsumption/v1alpha1/spec.proto\x12:dev.planton.azure.azurefunctionappflexconsumption.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xdc(\n" +
 	"#AzureFunctionAppFlexConsumptionSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
@@ -3292,8 +3294,8 @@ const file_catalog_azure_azurefunctionappflexconsumption_v1alpha1_spec_proto_raw
 	"\x1astorage_container_endpoint\x18\x05 \x01(\tB\xd1\x01\xbaH\xcd\x01\xba\x01\xc6\x01\n" +
 	"!storage_container_endpoint_format\x12tstorage_container_endpoint must be an https blob container URL (https://{account}.blob.core.windows.net/{container})\x1a+this.matches('^https://[^/.]+\\\\.[^/]+/.+$')\xc8\x01\x01R\x18storageContainerEndpoint\x12\xc1\x01\n" +
 	"\x1bstorage_authentication_type\x18\x06 \x01(\x0e2t.dev.planton.azure.azurefunctionappflexconsumption.v1alpha1.AzureFunctionAppFlexConsumptionStorageAuthenticationTypeB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\x19storageAuthenticationType\x12\x94\x01\n" +
-	"\x12storage_access_key\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xa0\xa6\x1d\x01\x88\xd4a\xd9\x0f\x92\xd4a!status.outputs.primary_access_key\x98\xd4a\x01R\x10storageAccessKey\x12\xa5\x01\n" +
-	"!storage_user_assigned_identity_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_id\x98\xd4a\x01R\x1dstorageUserAssignedIdentityId\x12\x96\x01\n" +
+	"\x12storage_access_key\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xa0\xa6\x1d\x01\x88\xd4a\xd9\x0f\x92\xd4a!status.outputs.primary_access_key\x98\xd4a\x01R\x10storageAccessKey\x12\xa1\x01\n" +
+	"!storage_user_assigned_identity_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\x8c\x10\x92\xd4a\x1astatus.outputs.identity_idR\x1dstorageUserAssignedIdentityId\x12\x96\x01\n" +
 	"\fruntime_name\x18\t \x01(\x0e2f.dev.planton.azure.azurefunctionappflexconsumption.v1alpha1.AzureFunctionAppFlexConsumptionRuntimeNameB\v\xbaH\b\xc8\x01\x01\x82\x01\x02\x10\x01R\vruntimeName\x123\n" +
 	"\x0fruntime_version\x18\n" +
 	" \x01(\tB\n" +

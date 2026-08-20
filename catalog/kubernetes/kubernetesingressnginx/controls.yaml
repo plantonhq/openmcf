@@ -1,0 +1,90 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: kubernetesingressnginx
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The controller is stateless -- it programs NGINX from watched Ingress objects and holds no data at rest. TLS certificates live in kubernetes.io/tls Secrets whose at-rest encryption is the cluster's etcd posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed keys for etcd are configured on the target cluster (see enc-at-rest); this spec has no seam for them.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: service.enable_http
+      evidence:
+        type: spec_default
+        reference: HTTPS (port 443) and plain HTTP (port 80) are BOTH served by default. HTTPS-only entry points disable enable_http (clients then get connection refused) or keep it and force redirects with NGINX's ssl-redirect through nginx_config. Certificates ride each Ingress's TLS secret (cert-manager) or cluster-wide via default_tls_certificate.
+      notes: The 04-tls-default-cert preset wires default_tls_certificate to a KubernetesCertificate output for an auto-renewed wildcard default.
+    - control_id: no-public-access
+      status: configurable
+      field_path: service.annotations
+      evidence:
+        type: spec_default
+        reference: The default LoadBalancer Service gets whatever the cloud's default is -- typically a PUBLIC address. The annotations map is how the cloud shapes it -- internal-LB annotations (aws-load-balancer-scheme internal, networking.gke.io/load-balancer-type Internal, azure-load-balancer-internal) keep the entry point private; service.type cluster_ip serves in-cluster only.
+      notes: The 02-internal-only preset is the full private pattern -- own namespace, distinct "nginx-internal" class, internal AWS NLB annotations.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: service.load_balancer_source_ranges
+      evidence:
+        type: spec_default
+        reference: Empty means the load balancer accepts ALL sources. Declaring CIDRs restricts who may reach the entry point at the LB/cloud level (loadBalancerSourceRanges), ahead of any Ingress-level auth.
+    - control_id: edge-protection
+      status: configurable
+      field_path: nginx_config
+      evidence:
+        type: spec_default
+        reference: This component IS the edge. Web-application-firewall inspection is available through upstream's own ConfigMap vocabulary passed verbatim in nginx_config -- enable-modsecurity and enable-owasp-modsecurity-crs turn on ModSecurity with the OWASP core rule set. Off by default.
+      notes: The admission webhook (enabled by default, failure_policy fail) complements it by rejecting broken NGINX config at kubectl-apply time -- a bad Ingress cannot take down the shared entry point.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The chart runs the controller under its own ServiceAccount bound to purpose-scoped RBAC (watch Ingresses/Services/Endpoints, write IngressClass leases and events). Managing the install and the Ingress objects it serves is governed by the target cluster's Kubernetes RBAC.
+      notes: allow_snippet_annotations stays FALSE by default (upstream posture since CVE-2021-25742) -- snippets let any Ingress author inject raw NGINX directives into the shared controller; enable only where every Ingress author is trusted at controller level.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The controller never calls cloud APIs -- the load balancer is provisioned by the cluster's own cloud controller reading the Service annotations, under the cluster's identity. There is no credential seam in this spec.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The controller has no authentication path of its own -- authentication for routed applications is declared per-Ingress (auth annotations) or in the applications themselves.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: NGINX access and error logs stream to stdout/stderr by default -- every routed request is logged and captured by the cluster's log pipeline; log format and verbosity tune through nginx_config (upstream's log-format-upstream vocabulary). Changes to the install and to Ingress objects are Kubernetes API operations captured by the cluster's audit policy.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: metrics.enabled
+      evidence:
+        type: spec_default
+        reference: Chart default false. Enabling exposes controller metrics on port 10254 with a metrics Service; metrics.service_monitor adds a ServiceMonitor for scrape discovery -- it requires the Prometheus operator CRDs on the cluster, and the release FAILS to install without them.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The controller is stateless -- the install declaration and the Ingress objects it serves are Kubernetes resources that back up with the cluster; NGINX config is regenerated from them on every start.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: replicas
+      evidence:
+        type: spec_default
+        reference: Default 1 -- a single point of entry failure. Production entry points run 2+ (the 01, 02, and 04 presets all set 2); with more than one replica the chart automatically guards the controller with a PodDisruptionBudget (minAvailable 1), and autoscaling can follow traffic between min and max.
+      notes: With external_traffic_policy local (the presets' choice for source-IP preservation), LB health checks only pass on nodes running a controller pod -- spread replicas across zones.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists in the chart or the modules. Destroying the release tears down the controller AND the cloud load balancer -- the cluster's entry point and its address are gone; plan DNS and traffic migration before destroying.
+    - control_id: managed-patching
+      status: configurable
+      field_path: chart_version
+      evidence:
+        type: spec_default
+        reference: The chart version is pinned (default "4.15.1", shipping controller v1.15.1 -- chart and controller are released together but numbered independently). Upgrades are deliberate pin changes re-running the release; pick versions from the chart repository's index -- the SERVED chart is the contract.
+      notes: image_registry is the air-gap/mirror knob for all three chart images (controller, kube-webhook-certgen, defaultbackend).

@@ -1,0 +1,73 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azuremssqlelasticpool
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The pool holds no data of its own; every member database is protected by Transparent Data Encryption, which Azure enables by default and which is configured per database, not per pool.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Customer-managed TDE keys are configured on the logical server or per database (the AzureMssqlServer and AzureMssqlDatabase components carry those fields); the pool API has no key surface.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure SQL only accepts TLS-encrypted TDS connections to the databases in the pool; the handshake is not a pool-level dial and cannot be disabled from this spec.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Network exposure is a property of the logical server the pool rides on (its AzureMssqlServer component carries the public-access and private-endpoint posture); the pool has no endpoint of its own.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Client allowlisting (firewall rules, VNet rules) lives on the logical server component; the pool offers no narrowing field.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A SQL endpoint is protected by TLS, authentication, and the server's network scoping rather than a WAF; no request-filtering attachment point exists on a pool.
+    - control_id: rbac
+      status: not_applicable
+      notes: Authentication modes (SQL logins, Entra administrators, Entra-only enforcement) are configured on the logical server; the pool exposes no authentication fields. Management-plane access is always Azure RBAC.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Workload identities authenticate through the server's Entra configuration (an AzureMssqlServer concern); the pool carries no identity surface.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Password (SQL) authentication is enabled or retired at the logical-server scope; the pool exposes no authentication fields.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management actions on the pool (create, resize, delete) land in the Azure Activity Log unconditionally; SQL audit trails are configured at the server or database scope outside this spec.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every pool publishes eDTU/vCore utilization, storage, and session metrics to Azure Monitor without configuration, including per-database activity within the pool.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Backups are taken per member database (automated full/differential/log backups with point-in-time restore are always on for each database); the pool itself holds no restorable data.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Retention windows and long-term retention are member-database settings (the AzureMssqlDatabase component carries them); the pool API has no retention fields.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: zone_redundant
+      evidence:
+        type: spec_default
+        reference: Defaults to false (single-zone); true spreads the pool's replicas across availability zones on Premium and Business Critical pools plus zone-capable General Purpose regions. Hyperscale pools add high_availability_replica_count readable replicas per database.
+      notes: The 03-business-critical-zr preset enables it.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the ARM elastic-pool API nor this spec offers a deletion-protection flag (Azure resource locks are subscription-side governance outside the manifest); a pool with member databases cannot be deleted until they leave, which is the practical guard.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure SQL Database is an evergreen PaaS -- Microsoft patches the engine continuously; maintenance_configuration_name steers when disruptive maintenance may happen (member databases inherit the pool's window), never whether patching occurs.

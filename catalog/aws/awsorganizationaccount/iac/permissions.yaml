@@ -1,0 +1,58 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsorganizationaccount
+spec:
+  aws:
+    statements:
+      - sid: CreateAccount
+        actions:
+          - organizations:CreateAccount
+          - organizations:CreateGovCloudAccount
+          - organizations:DescribeCreateAccountStatus
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers the creation side of aws_organizations_account / organizations.Account -- CreateAccount (or CreateGovCloudAccount when create_govcloud is set) starts the asynchronous build, and the provider polls DescribeCreateAccountStatus until the account exists. All three actions are NON-SCOPABLE (the service reference lists no resource types for them; the account ARN cannot exist before the call anyway), so the wildcard is the narrowest possible scope. Everything runs FROM the organization's management account.
+      - sid: ManageAccountLifecycle
+        actions:
+          - organizations:DescribeAccount
+          - organizations:RemoveAccountFromOrganization
+          - organizations:CloseAccount
+          - organizations:TagResource
+          - organizations:UntagResource
+          - organizations:ListTagsForResource
+        resources:
+          - arn:aws:organizations::*:account/o-*/*
+        provenance: derived
+        notes: "The read, tag, and delete sides of aws_organizations_account / organizations.Account, all scoped to the member-account ARN per the service reference. DescribeAccount and ListTagsForResource run on every plan/refresh; TagResource/UntagResource reconcile tags. The delete pair implements the spec's two-way delete contract -- destroy calls RemoveAccountFromOrganization when close_on_deletion is false (the account survives standalone) and CloseAccount when true (~90-day PENDING_CLOSURE, quota-limited per rolling 30 days). Grant both: the flag is engine behavior chosen at destroy time, not account state."
+      - sid: PlaceAccountInTree
+        actions:
+          - organizations:ListParents
+          - organizations:MoveAccount
+        resources:
+          - arn:aws:organizations::*:account/o-*/*
+          - arn:aws:organizations::*:ou/o-*/ou-*
+          - arn:aws:organizations::*:root/o-*/r-*
+        provenance: derived
+        notes: Serves parent_id on aws_organizations_account / organizations.Account -- ListParents reads the account's current placement on every refresh, and MoveAccount relocates it in place when parent_id changes. The service reference scopes both actions across the account, organizational-unit, and root formats (a move authorizes against the account plus the source and destination containers), so all three ARN shapes are granted.
+      - sid: ManageAccountSettings
+        actions:
+          - account:PutAccountName
+          - account:PutAlternateContact
+          - account:GetAlternateContact
+          - account:DeleteAlternateContact
+          - account:PutContactInformation
+          - account:GetContactInformation
+          - account:EnableRegion
+          - account:DisableRegion
+          - account:GetRegionOptStatus
+        resources:
+          - arn:aws:account::*:account/o-*/*
+        provenance: derived
+        notes: "The Account Management satellites, all scoped to the accountInOrganization ARN format (the management-account path to a member account's settings) per the service reference. PutAccountName renames the account in place when account_name changes (the display name updates through Account Management, not Organizations). Put/Get/DeleteAlternateContact cover aws_account_alternate_contact / account.AlternativeContact -- one per category, Get on every refresh, Delete when an arm is removed. Put/GetContactInformation cover aws_account_primary_contact / account.PrimaryContact (no delete API exists -- removal is a no-op). Enable/DisableRegion and GetRegionOptStatus cover aws_account_region / account.Region (long operations, up to ~60 minutes each way; entry removal is a provider no-op so no extra delete action exists). These calls additionally require trusted access for account.amazonaws.com on the organization -- an organization-side prerequisite carried on the AwsOrganization spec, not a grant here."

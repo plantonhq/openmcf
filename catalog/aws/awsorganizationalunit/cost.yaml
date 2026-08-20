@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsorganizationalunit
+spec:
+  billing_model: free
+  free_tier: "An organizational unit is covered by the AWS Organizations pricing page's blanket statement: 'AWS Organizations is offered at no additional charge. You are charged only for AWS resources that users and roles in your member accounts use.' An OU is a pure grouping container in the org tree -- no meter counts OUs, their nesting depth, their names, or the accounts grouped under them."
+  notes: "Nothing in this two-field spec (a display name and an immutable parent reference) can buy anything, and the pricing page is explicit that the OU structure does not even shape the bill: 'Your bill will not reflect the structure that you have defined in your organization.' The OU's financial significance is entirely indirect -- it is where AwsOrganizationPolicy documents attach (SCPs that restrict what member accounts may spend on) and where AwsOrganizationAccount members land through their parent_id, and every dollar in that subtree bills on the workloads inside those member accounts, rolled up to the management account's consolidated bill. Cost visibility per subtree comes from cost allocation tags on individual accounts, not from the OU object."

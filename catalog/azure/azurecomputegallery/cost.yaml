@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurecomputegallery
+spec:
+  billing_model: free
+  free_tier: A compute gallery is the library shelf, not the books -- the named container an organization's image definitions and versions live in. Microsoft documents it plainly ("there's no extra charge for using the Azure Compute Gallery service"); the gallery object, its description, and its sharing profile carry no meter, and an empty or full gallery holds for nothing.
+  notes: "No field of this spec buys anything: name, region, description, sharing mode, and tags are catalog metadata. The real spend lives in the IMAGE VERSIONS published inside the gallery: each version's replicas are billed as managed-disk snapshots -- occupied gigabytes times replica count times replicated regions -- plus network egress for the first replica copied into each additional region (Microsoft's compute-gallery billing rules). Those charges attach to the image resources (the AzureComputeGalleryImage kind and its versions), not to this container; Community sharing changes who can DEPLOY the images, not what anything costs."

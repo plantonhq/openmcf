@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awswafregexpatternset
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A regex pattern set stores only regular expressions -- firewall configuration held by the WAF control plane, not customer data with an encryption surface.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer data store means no key decision here (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A pattern set terminates no connections -- WAF evaluates it inline at the protected resource's edge, and transport encryption is that resource's posture.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A pattern set is not addressable -- it has no endpoint, only a management API governed by IAM.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Regexes match request CONTENT (paths, headers, query strings, bodies), not network sources -- source-based restriction is the IP set's job, and network-level filtering belongs to the protected resource's security groups. Enforcement of any match lives on the referencing web ACL rule (see edge-protection).
+    - control_id: edge-protection
+      status: configurable
+      field_path: regular_expressions
+      evidence:
+        type: spec_default
+        reference: Serving edge request filtering IS this component's purpose -- the expressions are the match material web ACL rules evaluate against inspected request components (URI paths, headers, query strings, bodies), centralizing patterns like exploit signatures or scanner fingerprints that many rules share. AWS rejects an empty set, so a deployed set always carries at least one active pattern.
+      notes: The set contributes the WHAT to match; the referencing web ACL rule owns the verdict (allow, block, count, CAPTCHA) and the web ACL owns the attachment to the protected resource. Updating the expressions propagates to every referencing rule immediately, with no web ACL redeploy. AWS supports a PCRE subset -- no backreferences or lookaround -- so patterns depending on them are rejected at create time rather than silently not matching.
+    - control_id: rbac
+      status: not_applicable
+      notes: The set has no data plane; management (who may change the patterns) is IAM on the caller's side, account-level posture outside this spec.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A pattern set runs no workloads and holds no credentials of any kind.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The spec exposes no authentication surface -- there is no protocol negotiation and no legacy path to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Changes to the set (who altered a firewall pattern) land in CloudTrail as account-level posture; request-level logging is the referencing web ACL's logging configuration, not the set's.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: WAF publishes CloudWatch metrics per web ACL and per rule -- matches against this set appear under the referencing rule's metric name; the set itself has no metric dimension and no export knob.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The set holds no data to back up beyond its declarative expression list, which is re-creatable from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at the set level to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: WAF is a managed regional (or CloudFront-global) control plane with no zonal footprint to replicate -- availability is AWS's side of the shared-responsibility line.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for pattern sets. AWS does refuse to delete a set still referenced by a web ACL rule -- a dependency guard, not a configurable protection.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A pattern set is configuration on a fully managed service -- there is no software of its own to patch.

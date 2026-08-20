@@ -1095,6 +1095,8 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsAppSyncApi | `spec.datasources[].opensearch.endpoint` | `status.outputs.endpoint` |
+| AwsBedrockKnowledgeBase | `spec.storage.opensearchManaged.domainArn` | `status.outputs.domain_arn` |
 | AwsKinesisFirehose | `spec.opensearch.domainArn` | `status.outputs.domain_arn` |
 
 ## See Also

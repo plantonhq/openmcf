@@ -1,0 +1,32 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetessolr
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Every Solr node carries the declared resources and its own data volume -- 3 (the operator default) is the floor for real shard/replica placement, and each node multiplies the reservation.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The CPU and memory requests are what the scheduler reserves per Solr node. Empty means no requests at all -- set them for any real deployment, and pair the memory with java_mem (heap at roughly half the container memory; the rest is OS page cache Solr leans on).
+    - field_path: storage.persistent.size
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: Every node provisions its own index volume of this size. The default posture is EPHEMERAL emptyDir (no volume, data lost on pod eviction) -- declaring persistent storage is what creates this reservation.
+    - field_path: zookeeper.provided.replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: The bundled ZooKeeper ensemble runs alongside the Solr nodes -- 3 members by default (the quorum minimum), each a pod with its own resources and volume, managed by the zookeeper-operator the Solr operator chart bundles. zookeeper.external replaces this with an ensemble you already run.
+    - field_path: zookeeper.provided.persistence.size
+      sku_meter: persistent volume storage
+      pricing_unit: GB-months
+      impact: Each ensemble member provisions a volume of this size -- 20Gi when unset (the zookeeper-operator default). Losing ZooKeeper state means losing collection topology, so it is protected like data.
+  estimate_exclusions:
+    - the price of reserved CPU, memory, and volume storage is the target cluster's node and storage-class economics, which this catalog cannot know
+    - the zookeeper-operator's default container resources and 20Gi volumes apply to ensemble members when the manifest declares none -- reservations a manifest-time estimate cannot see
+    - backup data written to registered repositories lands in external object storage (S3, GCS) or a shared volume, billed outside this cluster
+  notes: "This component creates no cloud SKU of its own -- its cost is the share of the cluster it reserves, realized on the cluster's bill. An honest manifest-time statement is the capacity footprint: Solr nodes plus ZooKeeper ensemble members, each class times its (requests + volumes). The Apache Solr Operator that reconciles this resource is a separate component (KubernetesSolrOperator) with its own footprint."

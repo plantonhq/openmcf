@@ -1,0 +1,72 @@
+# A PostgreSQL proxy fronting the RDS-instance fixture: IAM-required
+# client auth over TLS, pool tuning through the default target group,
+# one read-only endpoint, and the instance registered as the target.
+# The registry prerequisites (the consumer-scoped rds-trusting role,
+# the shared two-AZ subnet pair) chain automatically; the annotation
+# adds the RDS instance fixture (the lane's wall-clock dominator,
+# ~10 minutes each way) and the consumer-scoped credentials secret.
+# Proxy cost is per-vCPU of the target (minutes = cents).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRdsProxy
+metadata:
+  name: planton-oss-e2e-awsrdsp-pg
+  id: planton-oss-e2e-awsrdsp-pg
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsrdsproxy
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsRdsInstance,catalog/aws/awsrdsproxy/e2e/prerequisites/db-credentials-secret.yaml"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  engineFamily: POSTGRESQL
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-rdsproxy-role
+      fieldPath: status.outputs.role_arn
+  vpcSubnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-a
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: planton-oss-e2e-awssubnet-prereq-b
+        fieldPath: status.outputs.subnet_id
+  auth:
+    - secretArn:
+        valueFrom:
+          kind: AwsSecretsManagerSecret
+          name: planton-oss-e2e-rdsproxy-creds
+          fieldPath: status.outputs.secret_arn
+      description: Planton E2E proxy sign-in
+      iamAuth: REQUIRED
+  requireTls: true
+  idleClientTimeout: 300
+  connectionPool:
+    maxConnectionsPercent: 90
+    maxIdleConnectionsPercent: 10
+    connectionBorrowTimeout: 60
+  endpoints:
+    - name: readers
+      targetRole: READ_ONLY
+      vpcSubnetIds:
+        - valueFrom:
+            kind: AwsSubnet
+            name: planton-oss-e2e-awssubnet-prereq-a
+            fieldPath: status.outputs.subnet_id
+        - valueFrom:
+            kind: AwsSubnet
+            name: planton-oss-e2e-awssubnet-prereq-b
+            fieldPath: status.outputs.subnet_id
+  target:
+    dbInstanceIdentifier:
+      valueFrom:
+        kind: AwsRdsInstance
+        name: planton-oss-e2e-rdsins-min
+        fieldPath: status.outputs.instance_identifier

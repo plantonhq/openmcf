@@ -1,0 +1,59 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. All three engine flavors are free to
+# CREATE: the azure flavor bills vCore-hours only while a Spark cluster
+# is up, the SSIS flavor is created STOPPED and unbilled (node-hours
+# start at start), and the self-hosted flavor is a free registration
+# for compute you own -- so the profile is usage_based with no baseline
+# charges. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azuredatafactoryintegrationruntime
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: azure.core_count
+      sku_meter: data flow execution vCore-hours
+      pricing_unit: vCore-hour
+      impact: "Every data flow run on this runtime bills its full core count (8 to 272 vCores) for every minute the cluster is up -- a 32-core cluster burns vCore-hours four times as fast as the 8-core default for the same wall-clock run."
+    - field_path: azure.compute_type
+      sku_meter: data flow execution vCore-hours
+      pricing_unit: ""
+      impact: "Selects the vCore-hour rate card: General Purpose \"0.27325\" USD, Memory Optimized \"0.34275\" USD, Compute Optimized \"0.19225\" USD per vCore-hour at East US -- the same run costs about 25% more per vCore on memory-optimized hardware."
+    - field_path: azure.time_to_live_min
+      sku_meter: data flow execution vCore-hours
+      pricing_unit: vCore-hour
+      impact: "Warm minutes bill like run minutes: after every data flow run the idle cluster keeps burning core_count vCores for this many minutes before teardown. Zero runs means zero warm time -- the pool only exists after a run -- but back-to-back schedules pay for every warm gap."
+    - field_path: azure.interactive_authoring_time_to_live_in_minutes
+      sku_meter: data flow debugging vCore-hours
+      pricing_unit: vCore-hour
+      impact: "Enabling interactive authoring keeps a live debug cluster billing vCore-hours while enabled, auto-terminating after this many idle minutes (10-120). Omitted, no debug cluster ever spins up from this manifest."
+    - field_path: azure_ssis.node_size
+      sku_meter: SSIS node-hours
+      pricing_unit: node-hour
+      impact: "Sets the per-node-hour VM rate that bills from the moment the runtime is STARTED until it is stopped (e.g. Standard_D4_v3 Standard edition license-included is \"0.969\" USD/hour at East US). Creating the runtime bills nothing -- Azure's own status model starts billing at Starting and stops it at Stopped; start/stop is an operational action outside this manifest."
+    - field_path: azure_ssis.number_of_nodes
+      sku_meter: SSIS node-hours
+      pricing_unit: node-hour
+      impact: "Multiplies the started runtime's node-hour rate by the cluster size (1-10 nodes) -- ten D4_v3 nodes bill ten times the single-node rate for every started hour."
+    - field_path: azure_ssis.license_type
+      sku_meter: SSIS node-hours
+      pricing_unit: ""
+      impact: "BasePrice applies Azure Hybrid Benefit (bring your own SQL Server license) and roughly halves the started node-hour rate versus LicenseIncluded (D4_v3: \"0.579\" versus \"0.969\" USD/hour at East US); edition moves it the other way (Enterprise D4_v3 license-included is \"2.042\" USD/hour)."
+    - field_path: azure_ssis.catalog_info
+      sku_meter: Azure SQL Database (SSISDB)
+      pricing_unit: ""
+      impact: "On the runtime's FIRST START Azure creates the SSISDB catalog database on your SQL server at the chosen pricing_tier -- from then on that database bills continuously on the SQL server's own component (an S1 is a standing monthly charge), independent of whether the runtime keeps running."
+    - field_path: self_hosted
+      sku_meter: self-hosted orchestration and data movement
+      pricing_unit: ""
+      impact: "The registration itself is free and the compute is yours (your VMs, your patching, your power). Activities executed through it bill the factory at self-hosted rates -- orchestration \"1.5\" USD per 1,000 runs and data movement \"0.10\" USD/hour at East US -- cheaper per unit than cloud rates because you supply the machines."
+  estimate_exclusions:
+    - the azure flavor bills data flow vCore-hours only while a Spark cluster is up -- runs, warm time_to_live_min minutes after each run, and any enabled interactive-authoring debug session -- at General Purpose "0.27325", Memory Optimized "0.34275", or Compute Optimized "0.19225" USD per vCore-hour (East US), 8-vCore minimum
+    - the SSIS flavor bills node-hours per node while STARTED (VM size times node count times edition/license rate; Standard_D4_v3 Standard license-included "0.969" USD/hour at East US) -- created stopped and unbilled, and stopping releases the nodes and stops billing
+    - the SSISDB catalog database (when catalog_info is set) is created on YOUR Azure SQL server at first start and bills there continuously as that server's own component, at the chosen pricing_tier
+    - activities executed ON any flavor bill the factory's meters at that flavor's rate class -- orchestration runs per 1,000, data movement per DIU-hour or per hour, pipeline and external activity hours
+    - the self-hosted flavor's machines, their OS licenses, and their network egress are entirely outside Azure's Data Factory meters -- your infrastructure bill
+    - copies that egress an Azure datacenter add outbound data transfer at bandwidth rates
+  notes: "The manifest never starts anything: all three flavors deploy to a zero-billing state, and every dollar afterward is an act of use. The two cliffs worth knowing are both SSIS-side -- a started runtime bills node-hours around the clock until explicitly stopped (Microsoft's own guidance is to schedule start/stop around package runs), and the SSISDB catalog created at first start is a PERMANENT standing database charge on your SQL server that outlives any stop. On the azure flavor, time_to_live_min and interactive authoring are the quiet multipliers: warm minutes and debug sessions bill exactly like runs. Rates verified live from the Retail Prices API (serviceName 'Azure Data Factory v2', eastus) and Microsoft's Data Factory pricing page on 2026-08-18; the created-stopped-and-unbilled claim from Microsoft's integration runtime status model (billing starts at Starting, stops at Stopped)."

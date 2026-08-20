@@ -1,0 +1,23 @@
+# AwsBedrockAgentCoreTools minimal scenario: one SANDBOX code
+# interpreter -- the smallest, safest arm of the bundle (no network, no
+# role). Fixture-free.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreTools
+metadata:
+  name: planton-oss-e2e-awsactl-min
+  id: planton-oss-e2e-awsactl-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockagentcoretools
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  codeInterpreters:
+    - name: planton_e2e_sandbox
+      network:
+        mode: SANDBOX

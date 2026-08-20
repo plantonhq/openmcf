@@ -1,0 +1,44 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureEventgridNamespace manifest's spec values into metered quantities
+# and price choices -- one committed meter, because the namespace has one
+# SKU ("Standard" is the only legal value) and one committed dial: the
+# provisioned throughput units bill by the hour whatever else the
+# namespace does. Everything MQTT- and delivery-shaped is pay-per-use
+# operations with monthly free grants, carried as exclusions. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/azureeventgridnamespace.yaml; a server-side
+# estimator evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azureeventgridnamespace
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: eastus
+  lines:
+    - sku_meter: throughput units
+      quantity:
+        - field_value:
+            field_path: capacity
+            default_when_unset: "1"
+        - hours_in_month: true
+      price_slug: eventgrid-standard-throughput-unit-eastus
+      basis: capacity TUs (Azure's default 1 when unset; 1-40, updatable in place) x 730 hours at the Standard Throughput Unit rate -- pre-purchased capacity that bills every hour it is provisioned, traffic or none
+  exclusions:
+    - text: event operations (publishes to namespace topics, delivery attempts, data-field filters, dead-letters) bill per million above a 1M/month free grant, counted per 64 KB of data, and follow traffic
+    - applies_when:
+        - field_path: topic_spaces_configuration
+          op: is_set
+      text: MQTT operations (CONNECT, SUBSCRIBE/UNSUBSCRIBE, and every PUBLISH in or out) bill per million above a 1M/month free grant, counted per 64 KB -- the broker adds no always-on meter of its own
+    - applies_when:
+        - field_path: topic_spaces_configuration.route_topic_id
+          op: is_set
+      text: routed and enriched MQTT messages bill on the event-operations meter at Microsoft's published 4-per-billable-operation accounting, and the route topic's own per-operation charges bill on the referenced AzureEventgridTopic component
+    - text: network egress follows subscriber placement
+  notes:
+    - text: The TU count is also the MQTT connection ceiling (10,000 concurrent clients per TU), so device-fleet growth raises this committed line even when message volume is modest.
+    - text: Namespace topics are free objects inside the namespace -- event retention on a namespace topic is free for 7 days -- so the capacity line is the namespace's whole committed bill.

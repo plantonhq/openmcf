@@ -1,0 +1,96 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: gcpdataproccluster
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every persistent disk and local SSD attached to cluster nodes is encrypted at rest with Google-managed keys, and the auto-created staging/temp buckets carry Cloud Storage's default encryption -- no configuration required.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: cluster_config.encryption_kms_key_name
+      evidence:
+        type: spec_default
+        reference: Unset means Google-managed encryption; naming a Cloud KMS key encrypts all persistent disks in the cluster with the customer-managed key. Changing the key forces cluster recreation.
+      notes: The 02-ha-production preset pins a CMEK by reference to a GcpKmsKey. The Dataproc service agent needs encrypt/decrypt on the key as a prerequisite. Kerberos secret files are additionally KMS-encrypted at rest via kerberos_config.kms_key_uri.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All Dataproc control-plane API traffic and Component Gateway sessions are TLS, and Google encrypts VM-to-VM traffic inside a VPC at the network layer without configuration.
+      notes: Application-layer encryption of Hadoop RPC (wire encryption between daemons) additionally requires Kerberos (security_config.kerberos_config), which enables Hadoop Secure Mode.
+    - control_id: no-public-access
+      status: configurable
+      field_path: cluster_config.gce_config.internal_ip_only
+      evidence:
+        type: spec_default
+        reference: Unset (false) gives every node an external IP; true removes external IPs entirely -- nodes reach Google APIs over Private Google Access and need Cloud NAT for internet egress.
+      notes: The 02-ha-production preset sets internal_ip_only true. The Component Gateway (endpoint_config) exposes web UIs only through Google-authenticated HTTPS proxying, not raw node addresses.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: cluster_config.gce_config.tags
+      evidence:
+        type: spec_default
+        reference: Network tags applied to all cluster nodes are the targeting handle for VPC firewall rules -- ingress is restricted by writing firewall rules scoped to these tags (the rules themselves are separate VPC resources). Placement into a controlled subnetwork (gce_config.subnetwork) narrows the reachable network in the first place.
+      notes: The 02-ha-production preset tags nodes (dataproc, spark) and places them in a referenced subnetwork with internal-only IPs.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A batch compute cluster serves no public web traffic to filter; its only HTTP surface is the Component Gateway, a Google-authenticated proxy with no WAF attachment point.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Management-plane access is governed by Dataproc IAM roles (and per-cluster IAM policies) unconditionally; job submission itself requires dataproc.clusters.use authorization.
+      notes: security_config.identity_config (personal cluster authentication) additionally maps each interactive user to their own service account instead of a shared cluster identity.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cluster VMs authenticate to Google APIs with short-lived tokens issued by the metadata server for the attached service account -- no static keys are provisioned on nodes.
+      notes: gce_config.service_account pins a minimal custom identity (the 02-ha-production preset does); leaving it unset falls back to the broad Compute Engine default service account.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: cluster_config.security_config.kerberos_config.enable_kerberos
+      evidence:
+        type: spec_default
+        reference: Without Kerberos, in-cluster Hadoop protocols run in simple (unauthenticated) mode -- the legacy-weak path; enabling Kerberos turns on Hadoop Secure Mode and retires it.
+      notes: No preset enables Kerberos; the presets rely on network isolation and IAM instead. security_config accepts exactly one of kerberos_config or identity_config.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cluster create, update, and delete land in Cloud Audit Logs (Admin Activity) unconditionally; job submissions are captured in the Dataproc API's audit trail.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: cluster_config.dataproc_metric_config.metrics
+      evidence:
+        type: spec_default
+        reference: Node VM metrics flow to Cloud Monitoring by default; declaring metric sources (SPARK, YARN, HDFS, and others) additionally exports the open-source framework metrics SRE dashboards alert on.
+      notes: The 02-ha-production preset collects SPARK and YARN metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A Dataproc cluster is ephemeral compute over scratch HDFS -- there is no backup facility for the cluster, by design; durable data belongs in Cloud Storage and a persistent Hive metastore (metastore_config), each with its own protection.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain -- see backup-recovery; durability lives in the referenced Cloud Storage buckets and metastore service.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The Dataproc API places every node of a GCE-arm cluster in a single zone -- HA mode (master_config.num_instances 3) survives master VM failure, not zone loss. Zone-level resilience comes from recreating the ephemeral cluster elsewhere, not from replication.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_policy
+      evidence:
+        type: spec_default
+        reference: DELETE (the default) tears the cluster down with the manifest; PREVENT makes the IaC engine refuse any plan that would destroy it; ABANDON removes it from management while leaving it running.
+      notes: This is an engine-side guard -- the Dataproc API itself has no deletion-protection flag. No preset sets PREVENT; ephemeral clusters deliberately keep deletion cheap.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Running clusters are never patched in place -- software_config.image_version pins an immutable image, and fixes arrive only by recreating the cluster on a newer image. The managed channel is Google's image catalog, not the cluster.

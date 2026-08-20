@@ -1,0 +1,11 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEbsVolume
+metadata:
+  name: db-data-restored
+spec:
+  region: us-east-1
+  availabilityZone: us-east-1b
+  type: gp3
+  snapshotId:
+    value: snap-0123456789abcdef0
+  volumeInitializationRate: 300

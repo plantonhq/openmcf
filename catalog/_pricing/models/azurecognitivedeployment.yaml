@@ -1,0 +1,48 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. All three presets are genuinely zero-committed: every one
+# deploys a pay-per-token SKU (GlobalStandard or Standard) where capacity is
+# a rate limit, not idle cost -- and the price list agrees, publishing no
+# meter for holding a Standard-class deployment. The ProvisionedManaged SKU
+# class the spec ALSO admits bills PTU capacity continuously while deployed;
+# no preset uses it, so it lives in exclusions as precisely-stated
+# conditional data, never padded into fabricated dollars. Schema:
+# finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: azurecognitivedeployment
+spec:
+  presets:
+    - preset: 01-chat-mini
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - every chat call bills gpt-5.4-mini's token meters through the parent account -- GlobalStandard input at 0.75 per 1M tokens list (eastus, retrieved 2026-08-18), output and cached-input at their own rates -- following traffic no manifest can predict
+        - the 50K-tokens-per-minute capacity is a free rate limit on this SKU, never a charge
+        - a ProvisionedManaged-class SKU would instead bill capacity times the per-PTU hourly rate continuously while deployed (Global 1.0, Regional 2.0 per PTU-hour list) -- this preset does not deploy one
+        - the parent account and any private-endpoint path bill on their own components
+      notes: Zero committed cost -- a GlobalStandard deployment with no traffic bills nothing; the deployment is the free half of the pay-per-token pattern.
+    - preset: 01-gpt-4o-chat
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - every chat call bills gpt-4o-mini's token meters through the parent account -- GlobalStandard input at 0.00015 and output at 0.0006 per 1K tokens list (eastus, retrieved 2026-08-18) -- following traffic no manifest can predict
+        - the 50K-tokens-per-minute capacity is a free rate limit on this SKU, never a charge
+        - a ProvisionedManaged-class SKU would instead bill capacity times the per-PTU hourly rate continuously while deployed (Global 1.0, Regional 2.0 per PTU-hour list) -- this preset does not deploy one
+        - the parent account and any private-endpoint path bill on their own components
+      notes: Zero committed cost -- idle GlobalStandard deployments carry no meter; every dollar follows tokens served.
+    - preset: 02-text-embeddings
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - every embedding call bills text-embedding-3-large's token meter through the parent account -- Standard (regional) at 0.000143 per 1K tokens list (eastus, retrieved 2026-08-18) -- following pipeline volume no manifest can predict
+        - the 120K-tokens-per-minute capacity is a free rate limit on this SKU, never a charge
+        - the NO_AUTO_UPGRADE version pin is free compliance posture -- it moves upgrade timing, not rates
+        - a ProvisionedManaged-class SKU would instead bill PTU capacity continuously while deployed -- this preset does not deploy one
+      notes: Zero committed cost -- the embeddings deployment idles free between pipeline runs; only tokens embedded ever bill.

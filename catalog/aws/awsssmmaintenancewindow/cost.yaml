@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsssmmaintenancewindow
+spec:
+  billing_model: free
+  free_tier: "A maintenance window is free at any size -- the Systems Manager pricing page's whole entry for Maintenance Windows reads \"No additional charges. Limits may apply.\" No charge counts windows, their schedules, registered targets, or registered tasks; Run Command task executions on EC2 instances are equally free (\"No additional charges for usage on Amazon EC2 instances\")."
+  notes: "What a window's TASKS invoke is where money can start, priced on each task type's own service. (1) An AUTOMATION task bills Systems Manager Automation rates per execution -- $0.002 per step plus $0.00003 per second for aws:executeScript steps. (2) A LAMBDA task bills the function's requests and duration on the referenced AwsLambda. (3) A STEP_FUNCTIONS task bills state transitions on the referenced AwsStepFunction. (4) A RUN_COMMAND task is free against EC2 targets; against hybrid and multicloud nodes it bills $0.002 per invocation starting September 30, 2026 (unbilled during AWS's June 30 - September 30, 2026 transition). Delivery plumbing routes likewise: command output to S3 bills the referenced bucket, cloudwatch_config bills the log group's ingestion on its AwsCloudwatchLogGroup, and notification_config publishes on the referenced AwsSnsTopic. The window itself -- the schedule, the cutoff arithmetic, the rate controls -- never appears on an invoice."

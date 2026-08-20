@@ -92,9 +92,9 @@ jobs:
             # dependency-free charts.
             helm dependency build "${chart}"
 
-            # credentials.existingSecret placeholder satisfies the runner chart's
-            # required-credentials guard during lint; the other charts ignore it.
-            helm lint "${chart}" --set credentials.existingSecret=lint-placeholder
+            # enrollment.existingSecret placeholder satisfies the runner chart's
+            # required-token guard during lint; the other charts ignore it.
+            helm lint "${chart}" --set enrollment.existingSecret=lint-placeholder
             helm package "${chart}" --destination /tmp/helm-pkg
 
             if [ "${PUSH}" = "true" ]; then

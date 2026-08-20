@@ -1,0 +1,19 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuredatafactorylinkedservice
+spec:
+  azure:
+    groups:
+      - purpose: ManageLinkedService
+        actions:
+          - Microsoft.DataFactory/factories/linkedServices/read
+          - Microsoft.DataFactory/factories/linkedServices/write
+          - Microsoft.DataFactory/factories/linkedServices/delete
+        provenance: derived
+        notes: Covers all 23 connection variants the module fans out to (azurerm_data_factory_linked_service_azure_blob_storage through _web plus azurerm_data_factory_linked_custom_service) -- Azure stores every type in the same factory-scoped linkedservices namespace, so create, read/refresh, update, and destroy are the same three child operations on the factory for each. Held at the factory's scope; Data Factory Contributor carries them. The module parses data_factory_id client-side and performs no factory read, key listing, or Key Vault call -- secrets travel write-only in the PUT payload, and Key-Vault-sourced references are resolved by Data Factory itself at run time (using the factory's identity), never by the deploying principal. ARM's inventory spells the child segment camel-case (linkedServices).

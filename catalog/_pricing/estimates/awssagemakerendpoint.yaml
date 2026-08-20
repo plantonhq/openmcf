@@ -1,0 +1,46 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awssagemakerendpoint
+spec:
+  presets:
+    - preset: 01-serverless-endpoint
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - invocations bill per second of compute duration at the 2 GB memory tier (memory_size_mb 2048) -- workload-driven, zero when idle
+        - endpoint data processing bills per GB in and per GB out of the endpoint, following payload volume
+        - CloudWatch ingestion for container logs follows model output volume
+        - the referenced SageMaker model and its S3 artifacts bill on their own components
+      notes: The single variant is serverless with no provisioned_concurrency -- the committed monthly cost of this endpoint existing is exactly zero. Configuring provisioned concurrency is the one serverless setting that would create a standing per-second charge.
+    - preset: 02-production-canary-endpoint
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon SageMaker
+          sku_meter: hosting instance hours
+          pricing_unit: hours
+          pricing_quantity: "2190"
+          quantity_basis: 3 instances (stable variant ml.m5.large x2 + canary variant ml.m5.large x1, both variants the same instance type) x 730 hours
+          list_unit_price: "0.115"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonSageMaker/20260815025356/us-west-2/index.json
+          retrieved_on: "2026-08-16"
+          list_cost: "251.8500"
+      total_list_cost: "251.8500"
+      exclusions:
+        - endpoint data processing bills per GB in and per GB out of the endpoint, following invocation payload volume
+        - data capture stores 20% of request and response payloads in the destination S3 bucket, which bills its own storage and requests
+        - each blue/green update runs a full parallel fleet through the canary shift, bake, and termination wait -- roughly double the hourly rate for the deployment window
+        - endpoint ML storage bills per GB-month at the instance family's AWS-default volume size (the preset sets no volume_size_gb)
+        - CloudWatch ingestion for container logs follows model output volume
+      notes: Both variants run ml.m5.large, so one hosting rate covers all three instances; the 0.9/0.1 traffic weights split invocations, never the hourly charge. The referenced models bill on their own components.

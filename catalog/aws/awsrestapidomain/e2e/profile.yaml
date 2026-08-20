@@ -1,0 +1,28 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsrestapidomain
+spec:
+  # A REST API custom domain under live E2E: the registry-declared
+  # AwsCertManagerCert prerequisite deploys first (the imported
+  # self-signed certificate fixture -- its CN is what the domain name
+  # must match), the scenario composes the dependency-free REST API
+  # prerequisite fixture via the e2e-prerequisites annotation, then the
+  # domain proves create (TLS binding + REGIONAL endpoint), the root
+  # base-path mapping, GetDomainName verification, destroy, and
+  # verify-destroyed on both provisioners. example.com is IANA-reserved.
+  #
+  # Deliberately not exercised live: mutual TLS (needs an S3-hosted
+  # truststore fixture), uploaded certificate material (legacy path;
+  # ACM is the live arm), PRIVATE domains and access associations
+  # (need a VPC-endpoint fixture chain), EDGE domains (us-east-1 ACM
+  # + CloudFront provisioning, 60-minute waiter), and DNS records
+  # (the domain exists independently of any record pointing at it) --
+  # all offline-proven via e2e/manifest.yaml / spec tests.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q37
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

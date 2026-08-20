@@ -1,0 +1,135 @@
+# Cost derivation: the machine-executable rules turning any
+# AzureFabricCapacity manifest's spec values into metered quantities and
+# price choices -- the F-SKU's Capacity Unit count x 730 hours at the
+# pay-as-you-go CU-hour rate. The F-SKU number IS the CU count, but the
+# sku_name is a string the engine cannot parse arithmetic from, so each
+# legal SKU carries its own line with the count as a constant. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/azurefabriccapacity.yaml; a server-side estimator
+# evaluates the same rules against live manifests.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: azurefabriccapacity
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+  lines:
+    - sku_meter: capacity compute
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: F2
+      quantity:
+        - constant: "2"
+        - hours_in_month: true
+      price_slug: fabric-capacity-cu-hour-eastus
+      basis: F2 provisions 2 Capacity Units x 730 hours at the pay-as-you-go CU-hour rate
+    - sku_meter: capacity compute
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: F4
+      quantity:
+        - constant: "4"
+        - hours_in_month: true
+      price_slug: fabric-capacity-cu-hour-eastus
+      basis: F4 provisions 4 Capacity Units x 730 hours at the pay-as-you-go CU-hour rate
+    - sku_meter: capacity compute
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: F8
+      quantity:
+        - constant: "8"
+        - hours_in_month: true
+      price_slug: fabric-capacity-cu-hour-eastus
+      basis: F8 provisions 8 Capacity Units x 730 hours at the pay-as-you-go CU-hour rate
+    - sku_meter: capacity compute
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: F16
+      quantity:
+        - constant: "16"
+        - hours_in_month: true
+      price_slug: fabric-capacity-cu-hour-eastus
+      basis: F16 provisions 16 Capacity Units x 730 hours at the pay-as-you-go CU-hour rate
+    - sku_meter: capacity compute
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: F32
+      quantity:
+        - constant: "32"
+        - hours_in_month: true
+      price_slug: fabric-capacity-cu-hour-eastus
+      basis: F32 provisions 32 Capacity Units x 730 hours at the pay-as-you-go CU-hour rate
+    - sku_meter: capacity compute
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: F64
+      quantity:
+        - constant: "64"
+        - hours_in_month: true
+      price_slug: fabric-capacity-cu-hour-eastus
+      basis: F64 provisions 64 Capacity Units x 730 hours at the pay-as-you-go CU-hour rate
+    - sku_meter: capacity compute
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: F128
+      quantity:
+        - constant: "128"
+        - hours_in_month: true
+      price_slug: fabric-capacity-cu-hour-eastus
+      basis: F128 provisions 128 Capacity Units x 730 hours at the pay-as-you-go CU-hour rate
+    - sku_meter: capacity compute
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: F256
+      quantity:
+        - constant: "256"
+        - hours_in_month: true
+      price_slug: fabric-capacity-cu-hour-eastus
+      basis: F256 provisions 256 Capacity Units x 730 hours at the pay-as-you-go CU-hour rate
+    - sku_meter: capacity compute
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: F512
+      quantity:
+        - constant: "512"
+        - hours_in_month: true
+      price_slug: fabric-capacity-cu-hour-eastus
+      basis: F512 provisions 512 Capacity Units x 730 hours at the pay-as-you-go CU-hour rate
+    - sku_meter: capacity compute
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: F1024
+      quantity:
+        - constant: "1024"
+        - hours_in_month: true
+      price_slug: fabric-capacity-cu-hour-eastus
+      basis: F1024 provisions 1024 Capacity Units x 730 hours at the pay-as-you-go CU-hour rate
+    - sku_meter: capacity compute
+      applies_when:
+        - field_path: sku_name
+          op: equals
+          value: F2048
+      quantity:
+        - constant: "2048"
+        - hours_in_month: true
+      price_slug: fabric-capacity-cu-hour-eastus
+      basis: F2048 provisions 2048 Capacity Units x 730 hours at the pay-as-you-go CU-hour rate
+  exclusions:
+    - text: OneLake storage bills per GB-month on its own meters ('OneLake Storage Hot Data Stored' and its cool/cold tiers), following data volume
+    - text: capacity overage consumption, where enabled, bills its own CU meter ('Capacity Overage Capacity Usage CU') beyond the provisioned CUs
+  notes:
+    - text: Estimated always-on -- a suspended capacity stops the CU-hour meter entirely, so 730 hours is the never-paused ceiling.

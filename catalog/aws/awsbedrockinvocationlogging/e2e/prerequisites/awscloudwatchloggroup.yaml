@@ -1,0 +1,21 @@
+# Consumer-scoped AwsCloudwatchLogGroup install profile for the
+# invocation-logging singleton: one plain log group with short
+# retention (the fixture only receives validation writes; no
+# invocations run in the lanes).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudwatchLogGroup
+metadata:
+  name: planton-oss-e2e-bedil-lg
+  id: planton-oss-e2e-bedil-lg
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscloudwatchloggroup
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  retentionInDays: 1

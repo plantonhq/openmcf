@@ -1,0 +1,51 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpgcsbucket
+spec:
+  presets:
+    - preset: 01-private-standard
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - an empty bucket bills nothing -- storage accrues per GB-month as workloads write (STANDARD regional storage), and versioning keeps noncurrent copies billing until the lifecycle rule purges the 3rd-newest and older
+        - operations and network egress follow access patterns
+      notes: Creation is free; the estimate is zero because the manifest commits no bytes, not because storage is free.
+    - preset: 02-static-website
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - stored site assets bill at the US multi-region STANDARD rate per GB-month as they are uploaded
+        - egress to site visitors is the real cost of a busy static site, billed per GB served
+        - operations follow request volume
+      notes: The estimate is zero at creation; a website bucket's spend follows its traffic, and serving through a load balancer with CDN (separate components) changes the egress economics.
+    - preset: 03-data-lake-autoclass
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - stored bytes bill at the custom dual-region rate for their current class -- Autoclass moves cold objects toward ARCHIVE automatically, trading storage rate for retrieval fees, plus a small per-1000-objects management fee
+        - the 30-day tmp/ deletion and multipart-abort rules cap runaway growth but the data volume itself follows the pipelines writing to the lake
+      notes: Zero committed at creation; Autoclass makes the steady-state rate follow access patterns rather than a fixed class.
+    - preset: 04-event-driven-pipeline
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - stored bytes bill at the STANDARD regional rate as uploads arrive; the 30-day uploads/ deletion rule bounds retention
+        - Pub/Sub message charges for the OBJECT_FINALIZE notifications bill on the topic's project
+        - operations and egress follow the pipeline's traffic
+      notes: Zero committed at creation -- the bucket is the free front door; the pipeline's cost lives in the traffic and the downstream topic.

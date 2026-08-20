@@ -1,0 +1,26 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awselasticacheusergroup
+spec:
+  aws:
+    statements:
+      - sid: ManageUserGroup
+        actions:
+          - elasticache:CreateUserGroup
+          - elasticache:ModifyUserGroup
+          - elasticache:DeleteUserGroup
+          - elasticache:DescribeUserGroups
+          - elasticache:AddTagsToResource
+          - elasticache:RemoveTagsFromResource
+          - elasticache:ListTagsForResource
+        resources:
+          - arn:aws:elasticache:*:*:usergroup:*
+          - arn:aws:elasticache:*:*:user:*
+        provenance: derived
+        notes: Covers aws_elasticache_user_group -- creation with tags, in-place membership updates (ModifyUserGroup), reads during plan/refresh, tagging, and deletion. The user ARN format is required alongside usergroup because the service reference scopes CreateUserGroup and ModifyUserGroup to BOTH -- authorizing membership means authorizing against every member user's ARN, and omitting the user format denies provisioning outright. DeleteUserGroup and DescribeUserGroups scope to the usergroup format alone; all actions here are resource-scoped, so no wildcard statement is needed.

@@ -1,0 +1,46 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: kubernetesstatefulset
+spec:
+  presets:
+    - preset: 01-database
+      capacity_footprint:
+        cpu_requests: 100m
+        memory_requests: 256Mi
+        cpu_limits: 1000m
+        memory_limits: 1Gi
+        persistent_storage: 10Gi
+        basis: 1 replica x (100m CPU / 256Mi memory requests, 1000m CPU / 1Gi limits) + 1 x 10Gi data volume
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - under the default Retain retention policy the data PVC stays claimed after workload deletion or scale-down until manually removed
+    - preset: 02-ha-quorum-cluster
+      capacity_footprint:
+        cpu_requests: 750m
+        memory_requests: 1536Mi
+        cpu_limits: "3"
+        memory_limits: 6Gi
+        persistent_storage: 60Gi
+        basis: 3 replicas x (250m CPU / 512Mi memory requests, 1000m CPU / 2Gi limits) + 3 x 20Gi data volumes
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - the explicit Retain retention policy keeps each member's data PVC through deletion and scale-down -- storage stays claimed until manually removed
+    - preset: 03-hardened-database
+      capacity_footprint:
+        cpu_requests: 100m
+        memory_requests: 256Mi
+        cpu_limits: 1000m
+        memory_limits: 1Gi
+        persistent_storage: 10Gi
+        basis: 1 replica x (100m CPU / 256Mi memory requests, 1000m CPU / 1Gi limits) + 1 x 10Gi data volume
+      exclusions:
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
+        - under the default Retain retention policy the data PVC stays claimed after workload deletion or scale-down until manually removed

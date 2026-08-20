@@ -1,0 +1,117 @@
+# Cost derivation: the machine-executable rules turning any
+# AwsVpcEndpoint manifest's spec values into metered quantities and price
+# choices. The bill is keyed entirely on endpoint_type: Gateway (the
+# default when empty) is free with no meter of any kind; Interface and
+# GatewayLoadBalancer endpoints bill per endpoint-hour in EACH
+# Availability Zone (one ENI per subnet, and AWS allows one endpoint
+# subnet per AZ, so the subnet count IS the billed AZ count); a Resource
+# endpoint bills per resource-hour with no AZ multiplier; a
+# ServiceNetwork endpoint refuses -- its committed spend follows the
+# resource count of the referenced service network, which this manifest
+# cannot see. The estimate generator replays the catalog presets through
+# these rules to emit ../estimates/awsvpcendpoint.yaml; a server-side
+# estimator evaluates the same rules against live manifests. Prices live
+# in the provider's price book (../pricebook/).
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsvpcendpoint
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  refusals:
+    - when:
+        - field_path: endpoint_type
+          op: equals
+          value: ServiceNetwork
+      reason: A ServiceNetwork endpoint carries no endpoint meter of its own, but every VPC resource associated with the referenced service network bills the endpoint owner per resource-hour -- a count that lives on the service network, invisible to this manifest
+  lines:
+    - sku_meter: VPC endpoint hours
+      applies_when:
+        - field_path: endpoint_type
+          op: equals
+          value: Interface
+      quantity:
+        - count_of: subnet_ids
+        - hours_in_month: true
+      price_slug: vpc-endpoint-interface-hours-us-east-1
+      basis: one ENI per subnet, each billing its own endpoint-hour in its Availability Zone every hour of the month (AWS allows one endpoint subnet per AZ, so the subnet count is the AZ count); every catalog preset leaves region a placeholder, so this prices the us-east-1 rate
+    - sku_meter: VPC endpoint hours
+      applies_when:
+        - field_path: endpoint_type
+          op: equals
+          value: GatewayLoadBalancer
+      quantity:
+        - count_of: subnet_ids
+        - hours_in_month: true
+      price_slug: vpc-endpoint-gwlbe-hours-us-east-1
+      basis: a Gateway Load Balancer endpoint bills the same per-AZ endpoint-hour shape as Interface at its own rate -- one ENI per subnet, one AZ per subnet, every hour of the month
+    - sku_meter: VPC endpoint hours
+      applies_when:
+        - field_path: endpoint_type
+          op: equals
+          value: Resource
+      quantity:
+        - hours_in_month: true
+      price_slug: vpc-endpoint-resource-hours-us-east-1
+      basis: a Resource endpoint bills per resource per hour with NO per-AZ multiplier however many subnets carry its ENIs, and this endpoint reaches exactly one resource configuration; assumes a standard VPC resource -- a resource configuration backed by an ODB network bills a higher resource-hour rate
+  exclusions:
+    - applies_when:
+        - field_path: endpoint_type
+          op: equals
+          value: Interface
+      text: data processing bills per GB through the endpoint regardless of the traffic's source or destination, on a regional tier that aggregates across ALL interface endpoints in the region
+    - applies_when:
+        - field_path: endpoint_type
+          op: equals
+          value: Interface
+      text: some AWS services fold their interface-endpoint cost into their own service pricing, and the PrivateLink service being reached bills its owner separately (endpoint-service hours, cross-region active-region hours)
+    - applies_when:
+        - field_path: endpoint_type
+          op: equals
+          value: GatewayLoadBalancer
+      text: data processing bills per GB through the endpoint at the Gateway Load Balancer endpoint's own flat rate, and the appliance fleet behind the GWLB bills on its own resources
+    - applies_when:
+        - field_path: endpoint_type
+          op: equals
+          value: Resource
+      text: data processing bills per GB on a regional tier that aggregates across all resource endpoints in the region, and the resource being reached bills its owner separately
+    - applies_when:
+        - field_path: service_region
+          op: is_set
+      text: a cross-region endpoint adds no PrivateLink premium, but every gigabyte moving between the regions bills inter-region data transfer to the endpoint owner regardless of direction
+    - applies_when:
+        - field_path: endpoint_type
+          op: equals
+          value: Gateway
+      text: the S3 or DynamoDB traffic riding this endpoint bills requests and storage on those services' own components, and the zero here is the endpoint's absent meter, not the workload's spend
+    - applies_when:
+        - field_path: endpoint_type
+          op: is_unset
+      text: the S3 or DynamoDB traffic riding this endpoint bills requests and storage on those services' own components, and the zero here is the endpoint's absent meter, not the workload's spend
+  notes:
+    - applies_when:
+        - field_path: endpoint_type
+          op: is_unset
+      text: A Gateway endpoint (AWS's default when the type is left empty) is a route-table entry with no meter of any kind -- the committed monthly cost is honestly zero, and it is often a net saver because S3/DynamoDB traffic riding it stops paying NAT gateway data-processing rates.
+    - applies_when:
+        - field_path: endpoint_type
+          op: equals
+          value: Gateway
+      text: A Gateway endpoint is a route-table entry with no meter of any kind -- the committed monthly cost is honestly zero, and it is often a net saver because S3/DynamoDB traffic riding it stops paying NAT gateway data-processing rates.
+    - applies_when:
+        - field_path: endpoint_type
+          op: is_set
+        - field_path: endpoint_type
+          op: not_equals
+          value: Gateway
+      text: The hourly meter survives even a rejected or failed service association -- AWS bills while the endpoint remains provisioned, and a rejected endpoint must be DELETED to stop the meter, not just left unassociated.
+    - applies_when:
+        - field_path: endpoint_type
+          op: equals
+          value: Resource
+      text: Priced at the standard VPC-resource rate; when the referenced resource configuration fronts an ODB network (Oracle Database@AWS), AWS bills a higher per-resource-hour rate this manifest cannot detect from the ARN.

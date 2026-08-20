@@ -1,0 +1,24 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockCustomModel
+metadata:
+  name: test-support-titan-ft
+  id: test-support-titan-ft
+  org: test-org
+  env: dev
+spec:
+  region: us-east-1
+  baseModelArn: arn:aws:bedrock:us-east-1::foundation-model/amazon.titan-text-lite-v1
+  customizationType: FINE_TUNING
+  jobName: test-support-titan-ft-001
+  hyperparameters:
+    epochCount: "1"
+    batchSize: "1"
+    learningRate: "0.00001"
+  roleArn:
+    value: arn:aws:iam::123456789012:role/bedrock-customization
+  customModelKmsKeyArn:
+    value: arn:aws:kms:us-east-1:123456789012:key/abc-123
+  trainingDataS3Uri: s3://test-training-bucket/data/train.jsonl
+  outputDataS3Uri: s3://test-training-bucket/output/
+  validationDataS3Uris:
+    - s3://test-training-bucket/data/validate.jsonl

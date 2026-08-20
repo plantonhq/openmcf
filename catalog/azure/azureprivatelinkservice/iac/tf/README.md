@@ -83,7 +83,4 @@ module "orders_pls" {
 
 ## Required Permissions
 
-The deploying credential needs
-`Microsoft.Network/privateLinkServices/write` plus join permission on
-the referenced subnets and LB frontends -- held via Network
-Contributor, Contributor, or Owner.
+Least-privilege runner permissions for this component are declared in [`../permissions.yaml`](../permissions.yaml).

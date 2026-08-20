@@ -1,0 +1,34 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpeventarcmessagebus
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: google_api_sources
+      sku_meter: bus publishing
+      pricing_unit: events per million
+      impact: Every event a source publishes into the bus bills the Eventarc Advanced bus-publishing meter -- $1.00 per 1,000,000 count -- and a Google API source turns entire Google-service event streams (audit logs, direct events) into publishers. Events larger than 16 KiB bill per 16 KiB portion, so a 1 MiB event counts as 64.
+    - field_path: enrollments
+      sku_meter: pipeline messages
+      pricing_unit: messages per million
+      impact: Each message an enrollment routes into a pipeline bills $0.50 per 1,000,000 count on top of its bus publishing -- and enrollments multiply, not split, the meter; a broad celMatch of "true" routes 100% of published events, and two overlapping matches deliver the same event twice.
+    - field_path: pipelines
+      sku_meter: pipeline transformations
+      pricing_unit: operations per million
+      impact: A pipeline that applies a mediation transformation or converts payload formats (Avro/JSON/Protobuf) bills $0.40 per 1,000,000 count per operation; pipelines that pass payloads through untouched skip this meter entirely.
+    - field_path: log_severity
+      sku_meter: Cloud Logging ingestion
+      pricing_unit: GiB
+      impact: The API default (NONE) writes no platform logs; INFO on a busy hub records bus activity to Cloud Logging, billed there by ingested volume -- both presets choose INFO deliberately while onboarding, with the note to scale back in steady state.
+    - field_path: crypto_key
+      sku_meter: Cloud KMS key operations
+      impact: CMEK routes every encrypt/decrypt of messages at rest through the named key -- key-version storage and per-operation charges bill on the GcpKmsKey component's project. Each satellite (source, pipeline) can carry its own crypto_key with the same economics.
+  estimate_exclusions:
+    - an idle bus bills nothing -- all three Eventarc Advanced meters (bus publishing, pipeline messages, pipeline transformations) count events, and zero events means zero count
+    - what the pipelines deliver TO bills downstream -- Pub/Sub message charges on topic destinations, Workflows steps on workflow destinations, and the receiving service's compute on HTTP endpoints
+    - standard Cloud Monitoring and Cloud Logging charges apply, per Google's own pricing note
+  notes: "Eventarc Advanced prices the hub as three per-million-event meters and nothing else: publishing into the bus ($1.00/million), delivering out through a pipeline ($0.50/million), and transforming or converting in flight ($0.40/million) -- all chunked at 16 KiB per counted event. No standing fee for the bus, its sources, pipelines, or enrollments appears on Google's Eventarc pricing page, so existence is free and every dollar follows event volume. Unlike Eventarc Standard, no free event allotment is published for the Advanced meters."

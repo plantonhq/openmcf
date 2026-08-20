@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsrdsproxy.v1alpha1;
+
+// AwsRdsProxyStackOutputs captures the observable state of the proxy
+// after apply.
+message AwsRdsProxyStackOutputs {
+  // The proxy's name (wired from metadata.name) - the provider's
+  // import ID and the join key for AWS CLI/API lookups.
+  string proxy_name = 1;
+
+  // The proxy's ARN.
+  string proxy_arn = 2;
+
+  // The proxy's DEFAULT endpoint DNS name - what applications
+  // connect to. The chart-ready join key for application database
+  // hosts.
+  string endpoint = 3;
+
+  // The default target group's ARN.
+  string default_target_group_arn = 4;
+
+  // The default target group's name (always "default" at AWS).
+  string default_target_group_name = 5;
+
+  // Additional endpoints' DNS names keyed by endpoint name.
+  map<string, string> endpoint_addresses = 6;
+
+  // Additional endpoints' ARNs keyed by endpoint name.
+  map<string, string> endpoint_arns = 7;
+
+  // The registered target's type as AWS reports it (RDS_INSTANCE or
+  // TRACKED_CLUSTER) - part of the target's import ID.
+  string target_type = 8;
+
+  // The registered target's RDS resource id - part of the target's
+  // import ID.
+  string target_rds_resource_id = 9;
+}

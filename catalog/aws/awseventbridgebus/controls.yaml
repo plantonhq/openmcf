@@ -1,0 +1,91 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awseventbridgebus
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: EventBridge encrypts events at rest with an AWS-owned key on every bus unconditionally -- the kms_key_identifier field swaps WHICH key, never whether encryption happens.
+      notes: Events transit the bus briefly; the durable at-rest copies live in archives, which carry their own default encryption and their own key field.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_identifier
+      evidence:
+        type: spec_default
+        reference: Unset means the AWS-owned key; referencing a KMS key (ARN, id, or alias) encrypts events on the bus with a key you own and can revoke. Each archive keys independently through archives.kms_key_identifier -- the bus's key does not cover its archives.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The only way onto or off the bus is the EventBridge API, which serves exclusively over TLS -- PutEvents, rule deliveries to AWS targets, and every management call ride encrypted transport with no plaintext option.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A bus has no network endpoint -- it is reachable only through SigV4-signed EventBridge API calls by IAM-authenticated principals. The resource_policy can admit OTHER ACCOUNTS' principals, but never anonymous or unauthenticated access.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Ingress to a bus is principal-based, not network-based -- the resource_policy grants or withholds PutEvents per account, organization, or role, and no CIDR, security-group, or network-source surface exists to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The bus serves no HTTP surface a WAF could front; publishers call the regional EventBridge API endpoint, which is AWS-operated infrastructure outside this manifest.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation against the bus -- publishing events, attaching rules, managing archives, deleting the bus -- is authorized by IAM unconditionally. The resource_policy extends PutEvents grants across accounts as an addition to IAM, never a bypass of it.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The spec carries no principal for the service to assume -- publishers authenticate as their own IAM identities via SigV4, and the roles EventBridge assumes to invoke targets belong to the rules (AwsEventBridgeRule), deliberately outside this manifest.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: SigV4-signed API access over TLS is the only path onto the bus -- no API key, password, or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: configurable
+      field_path: log_config
+      evidence:
+        type: spec_default
+        reference: Unset means no delivery logs; the log_config block writes per-event delivery records (successes, failures, or full traces by level) to CloudWatch Logs -- the trail of what the bus actually did with each event. Management calls (bus create, policy change, archive change) land in CloudTrail by default regardless.
+      notes: include_detail FULL captures event payloads in the log records -- an audit-completeness gain that is also a data-exposure decision for sensitive payloads.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: EventBridge publishes bus-level CloudWatch metrics (PutEvents counts, ingestion latency, and per-rule matched/invocation metrics for rules attached to the bus) automatically -- no configuration in this spec enables or disables them.
+      notes: log_config deepens observability from aggregate metrics to per-event delivery records.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: archives
+      evidence:
+        type: spec_default
+        reference: An archive continuously records the bus's delivered events (all of them, or the subset matching its pattern) so they can be replayed later through StartReplay -- the recovery mechanism for event-driven systems, turning transient events into restorable history.
+      notes: Replay itself is an on-demand EventBridge operation, not declarative configuration; the archive defines what is recorded and for how long.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: archives.retention_days
+      evidence:
+        type: spec_default
+        reference: Zero (the default) retains archived events indefinitely; a day count expires them on schedule -- per-archive retention set to organizational policy.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: EventBridge is a regional serverless service operated across multiple availability zones by AWS -- no single-zone deployment mode exists and no zonal placement is configurable.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the EventBridge API nor the modules expose a deletion-protection flag for buses. Deleting the bus takes its archives with it -- they are bus-scoped children that cannot outlive their source -- so archived history worth keeping deserves attention before destroy.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the EventBridge infrastructure; no customer-visible patch surface exists.

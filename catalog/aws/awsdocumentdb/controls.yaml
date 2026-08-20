@@ -1,0 +1,108 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsdocumentdb
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: storage_encrypted
+      evidence:
+        type: spec_default
+        reference: Carries recommended_default=true; a create-time-only decision -- an unencrypted cluster can never be encrypted in place, and both presets set it true.
+      notes: Encryption covers the shared cluster volume, automated backups, snapshots, and every instance serving the cluster.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset means the AWS-managed aws/rds key; setting kms_key_id encrypts cluster storage under the referenced customer-managed key, with a separate key available per instance for Performance Insights.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: parameters
+      evidence:
+        type: provider_default
+        reference: New DocumentDB clusters ship with the tls cluster parameter enabled -- clients must connect over TLS unless a custom parameter group explicitly sets tls to disabled.
+      notes: The tls parameter rides the parameters field (values include enabled, tls1.2+, tls1.3+, fips-140-3); neither preset overrides the enabled default.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: DocumentDB clusters are VPC-only by design -- instances expose no public-IP option anywhere in the API, so endpoints resolve only inside the VPC.
+      notes: Reachability from outside the VPC requires the customer's own network path (peering, VPN, or a fronting proxy) -- never a public database endpoint.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_default
+        reference: The attached security groups are the complete inbound surface -- the database port opens only to the sources those groups declare; empty falls back to the VPC default group.
+      notes: Both presets attach an explicit database security group placeholder.
+    - control_id: rbac
+      status: not_applicable
+      notes: Database access control is MongoDB-style users and roles managed in-database (createUser and grants against the master user), not a spec control; DocumentDB has no IAM database authentication. The management plane is always IAM-governed.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A database endpoint has no WAF attachment point; request filtering belongs to the application tier in front of it.
+    - control_id: workload-identity
+      status: configurable
+      field_path: manage_master_user_password
+      evidence:
+        type: spec_default
+        reference: Carries recommended_default=true -- AWS generates, stores, and rotates the master password in Secrets Manager, so no human ever handles it; the alternative master_password field is marked sensitive and mutually exclusive.
+      notes: Both presets set it true. Applications still authenticate to the database with the secret (DocumentDB has no token-based database auth), but no long-lived credential ever touches the manifest or IaC state.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: DocumentDB speaks one authentication mechanism (SCRAM over the MongoDB wire protocol); there is no legacy authentication path to disable at the spec level.
+    - control_id: audit-logging
+      status: configurable
+      field_path: enabled_cloudwatch_logs_exports
+      evidence:
+        type: spec_default
+        reference: Empty exports nothing; listing "audit" streams DDL and authentication events to CloudWatch Logs -- paired with the audit_logs cluster parameter, which actually turns event capture on.
+      notes: The production preset enables both halves (the audit export and the audit_logs parameter); "profiler" adds slow-operation profiling the same two-part way.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: instances.performance_insights_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to off per instance; true enables Performance Insights (free at the default 7-day retention) for query-level load analysis -- DocumentDB scopes the setting to the instance, with no cluster-level switch.
+      notes: Basic CloudWatch cluster and instance metrics flow automatically either way; neither preset enables Performance Insights.
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cluster backups are continuous and cannot be disabled -- backup_retention_period is bounded 1-35 days (0 keeps the AWS default of 1), so point-in-time recovery always exists.
+      notes: Both presets extend retention to 7 days; skip_final_snapshot=false with a named final snapshot additionally protects teardown (CEL forces the name when not skipping).
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: backup_retention_period
+      evidence:
+        type: spec_validation
+        reference: The retention window is a first-class dial validated to 0-35 days, so organizational retention policy is expressed directly in the manifest.
+      notes: Final snapshots govern what survives cluster deletion.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: instances
+      evidence:
+        type: spec_default
+        reference: Each instances entry is its own DB instance; AWS spreads them across the cluster's zones automatically, so a writer plus at least one reader survives an AZ loss with automatic failover by promotion_tier.
+      notes: Cluster storage is always replicated across three AZs regardless of instance count. The production preset runs writer plus reader; the serverless preset runs a single instance.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_protection
+      evidence:
+        type: spec_default
+        reference: Defaults to false; when true, AWS refuses to delete the cluster until protection is explicitly lifted.
+      notes: The production preset enables it alongside final-snapshot protection.
+    - control_id: managed-patching
+      status: configurable
+      field_path: instances.auto_minor_version_upgrade
+      evidence:
+        type: spec_default
+        reference: Carries default=true per instance (mirroring AWS) -- minor engine versions patch automatically in the maintenance window; major upgrades remain deliberate manifest changes gated by allow_major_version_upgrade.
+      notes: Per-instance maintenance windows let readers patch at staggered times.

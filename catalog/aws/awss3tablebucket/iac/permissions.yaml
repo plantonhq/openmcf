@@ -1,0 +1,78 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awss3tablebucket
+spec:
+  aws:
+    statements:
+      - sid: ManageTableBucket
+        actions:
+          - s3tables:CreateTableBucket
+          - s3tables:DeleteTableBucket
+          - s3tables:GetTableBucket
+          - s3tables:PutTableBucketEncryption
+          - s3tables:GetTableBucketEncryption
+          - s3tables:DeleteTableBucketEncryption
+          - s3tables:PutTableBucketMaintenanceConfiguration
+          - s3tables:GetTableBucketMaintenanceConfiguration
+          - s3tables:TagResource
+          - s3tables:UntagResource
+          - s3tables:ListTagsForResource
+        resources:
+          - arn:aws:s3tables:*:*:bucket/*
+        provenance: derived
+        notes: "Covers aws_s3tables_table_bucket / s3tables.TableBucket -- the bucket plus its two attached configurations: the encryption block (SSE-S3 or aws:kms; the delete action serves clearing it back to default) and the unreferenced-file-removal maintenance configuration. Gets run on every plan/refresh. All actions scope to the TableBucket ARN format per the service reference; the tag trio also authorizes on the Table format, covered by the ManageTables statement's ARN. The KMS key-policy grant the maintenance service needs (maintenance.s3tables.amazonaws.com) is the referenced AwsKmsKey's contract, not runner IAM."
+      - sid: ManageBucketPolicy
+        actions:
+          - s3tables:PutTableBucketPolicy
+          - s3tables:GetTableBucketPolicy
+          - s3tables:DeleteTableBucketPolicy
+        resources:
+          - arn:aws:s3tables:*:*:bucket/*
+        provenance: derived
+        notes: Covers aws_s3tables_table_bucket_policy (rendered only when spec.resource_policy is set). Get runs on plan/refresh; Delete on removal. Scoped to the TableBucket ARN per the service reference.
+      - sid: ManageNamespacesAndTables
+        actions:
+          - s3tables:CreateNamespace
+          - s3tables:DeleteNamespace
+          - s3tables:GetNamespace
+          - s3tables:CreateTable
+          - s3tables:DeleteTable
+          - s3tables:GetTable
+          - s3tables:PutTableEncryption
+          - s3tables:GetTableEncryption
+          - s3tables:PutTableMaintenanceConfiguration
+          - s3tables:GetTableMaintenanceConfiguration
+          - s3tables:PutTablePolicy
+          - s3tables:GetTablePolicy
+          - s3tables:DeleteTablePolicy
+        resources:
+          - arn:aws:s3tables:*:*:bucket/*
+          - arn:aws:s3tables:*:*:bucket/*/table/*
+        provenance: derived
+        notes: "Covers aws_s3tables_namespace, aws_s3tables_table (with its create-time Iceberg schema/properties metadata and per-table encryption and compaction/snapshot maintenance configurations), and aws_s3tables_table_policy. BOTH ARN formats are required: the service reference scopes namespace actions and CreateTable to the TableBucket format, while per-table Get/Put/Delete actions scope to the Table format (arn:...:bucket/name/table/id -- the segment is the table's ID, not its name, so the wildcard is the narrowest static grant). force_destroy's cleanup rides these same delete actions. No RenameTable grant: names are create-only in the modules (renames replace)."
+      - sid: ManageReplication
+        actions:
+          - s3tables:PutTableBucketReplication
+          - s3tables:GetTableBucketReplication
+          - s3tables:DeleteTableBucketReplication
+          - s3tables:PutTableReplication
+          - s3tables:GetTableReplication
+          - s3tables:DeleteTableReplication
+        resources:
+          - arn:aws:s3tables:*:*:bucket/*
+          - arn:aws:s3tables:*:*:bucket/*/table/*
+        provenance: derived
+        notes: Covers aws_s3tables_table_bucket_replication and aws_s3tables_table_replication (rendered only when the respective replication blocks are set). Bucket-level actions scope to the TableBucket format, table-level to the Table format, per the service reference. The provider manages the version_token concurrency handshake through these same Get/Put calls.
+      - sid: PassReplicationRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: Configuring replication hands the referenced IAM role to the S3 Tables replication service -- IAM requires the caller to hold iam:PassRole on any role it passes. Tighten the resource to the specific replication role ARN(s) per deployment; only needed when a replication block is set.

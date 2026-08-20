@@ -1,0 +1,38 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awssagemakerfeaturegroup
+spec:
+  aws:
+    statements:
+      - sid: ManageFeatureGroup
+        actions:
+          - sagemaker:CreateFeatureGroup
+          - sagemaker:DescribeFeatureGroup
+          - sagemaker:UpdateFeatureGroup
+          - sagemaker:DeleteFeatureGroup
+        resources:
+          - arn:aws:sagemaker:*:*:feature-group/*
+        provenance: derived
+        notes: Covers aws_sagemaker_feature_group / sagemaker.FeatureGroup. DescribeFeatureGroup serves every plan/refresh; UpdateFeatureGroup reconciles the ONLY in-place surfaces (online-store TTL and the throughput settings) -- every other spec change forces a replacement, so Delete and Create both fire on routine edits, not just at creation and teardown. All four actions take resource-level scoping on the feature-group ARN format per the service reference. Glue-side table creation for the offline store is performed by the Feature Store SERVICE under the passed execution role, not by the runner, so no glue grants belong here.
+      - sid: TagFeatureGroup
+        actions:
+          - sagemaker:AddTags
+          - sagemaker:DeleteTags
+          - sagemaker:ListTags
+        resources:
+          - arn:aws:sagemaker:*:*:feature-group/*
+        provenance: derived
+        notes: Tag-on-create plus later tag reconciliation and the tag read on every refresh. The service reference scopes all three tagging actions to dozens of SageMaker resource formats; the feature-group format is the only one this component touches.
+      - sid: PassExecutionRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: CreateFeatureGroup passes the referenced role (role_arn, required by the spec) to SageMaker, which assumes it to persist records into the offline store's S3 location -- and because the role is create-time only, changing it replaces the group and passes the new one. Add an iam:PassedToService=sagemaker.amazonaws.com condition and narrow to the actual role ARN in a hardened deployment.

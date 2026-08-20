@@ -1,0 +1,297 @@
+syntax = "proto3";
+
+package dev.planton.aws.awseventbridgeapidestination.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsEventBridgeApiDestinationSpec defines the authenticated HTTP(S)
+// endpoint EventBridge rules, pipes, and schedules invoke, as two
+// independently deployable arms:
+//
+// The CONNECTION arm is the auth trust anchor: api-key, basic, or
+// OAuth client credentials. AWS stores the credential values in a
+// Secrets Manager secret it creates and owns (the
+// connection_secret_arn output); DescribeConnection NEVER returns
+// them. One connection serves many destinations - a shared connection
+// lives in ONE owning instance and other instances reference it by
+// ARN.
+//
+// The DESTINATION arm is the invocable endpoint: HTTPS URL + method +
+// rate limit, bound to a connection - the one this instance owns, or
+// one that exists elsewhere by ARN.
+message AwsEventBridgeApiDestinationSpec {
+  // An empty spec manages nothing.
+  option (buf.validate.message).cel = {
+    id: "spec.at_least_one_arm"
+    message: "configure the connection arm, the destination arm, or both - an empty spec manages nothing"
+    expression: "has(this.connection) || has(this.destination)"
+  };
+  // The destination binds to exactly one connection: the owned one or
+  // an external ARN, never both, never neither.
+  option (buf.validate.message).cel = {
+    id: "spec.destination_connection_exactly_one"
+    message: "the destination uses this instance's connection arm OR an external connection_arn - configure exactly one of the two"
+    expression: "!has(this.destination) || (has(this.connection) != has(this.destination.connection_arn))"
+  };
+
+  // The AWS region the connection and destination live in. Example:
+  // "us-east-1".
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The owned connection - the auth trust anchor.
+  AwsEventBridgeConnection connection = 2;
+
+  // The owned API destination - the invocable endpoint.
+  AwsEventBridgeDestination destination = 3;
+}
+
+// AwsEventBridgeConnection is the authenticated connection. The auth
+// mode is exactly one of api_key, basic, and oauth - the modules
+// derive AWS's authorization_type from whichever is set, so the two
+// can never disagree.
+message AwsEventBridgeConnection {
+  // Exactly one auth mode.
+  option (buf.validate.message).cel = {
+    id: "connection.exactly_one_auth_mode"
+    message: "configure exactly one of api_key, basic, and oauth"
+    expression: "[has(this.api_key), has(this.basic), has(this.oauth)].filter(x, x).size() == 1"
+  };
+
+  // The connection's name in AWS (its identity - renaming replaces
+  // it). Up to 64 characters: letters, digits, dot, dash, underscore.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+    pattern: "^[0-9A-Za-z_.-]+$"
+  }];
+
+  // What this connection authenticates against (the SaaS or internal
+  // API it fronts).
+  string description = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 512
+  ];
+
+  // API-key auth: the key is sent as an HTTP header
+  // ("{key}: {value}") on every invocation.
+  AwsEventBridgeConnectionApiKeyAuth api_key = 3;
+
+  // HTTP basic auth.
+  AwsEventBridgeConnectionBasicAuth basic = 4;
+
+  // OAuth client-credentials auth: EventBridge fetches a token from
+  // the authorization endpoint before invoking.
+  AwsEventBridgeConnectionOAuth oauth = 5;
+
+  // Extra static parameters (headers, query string, body fields) sent
+  // with EVERY invocation through this connection - API version pins,
+  // tenant ids, and the like.
+  AwsEventBridgeConnectionHttpParameters invocation_http_parameters = 6;
+
+  // Invoke a PRIVATE endpoint (behind a VPC Lattice resource
+  // configuration) instead of a public one. Unset for public
+  // endpoints.
+  AwsEventBridgePrivateEndpoint private_invocation_endpoint = 7;
+
+  // Reach a PRIVATE OAuth authorization endpoint through VPC Lattice.
+  // Only meaningful with oauth. Unset for public authorization
+  // endpoints.
+  AwsEventBridgePrivateEndpoint private_authorization_endpoint = 8;
+
+  // Customer-managed KMS key that encrypts the connection's secret
+  // material (unset uses AWS-owned keys). The key policy must allow
+  // Secrets Manager decryption scoped to the AWS-created secret
+  // (kms:EncryptionContext:SecretARN on
+  // "arn:aws:secretsmanager:*:*:secret:events!connection/*").
+  // Reference an AwsKmsKey key_arn output or pass a literal key
+  // id/ARN/alias.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_identifier = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+}
+
+// AwsEventBridgeConnectionApiKeyAuth carries the API-key credential.
+message AwsEventBridgeConnectionApiKeyAuth {
+  // The header name the key is sent under. Example: "x-api-key".
+  string key = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 512
+  }];
+
+  // The API key itself. Stored by AWS in the connection's Secrets
+  // Manager secret; never returned by any AWS read API.
+  string value = 2 [
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 512
+    },
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// AwsEventBridgeConnectionBasicAuth carries the basic-auth credential.
+message AwsEventBridgeConnectionBasicAuth {
+  // The username.
+  string username = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 512
+  }];
+
+  // The password. Stored by AWS in the connection's Secrets Manager
+  // secret; never returned by any AWS read API.
+  string password = 2 [
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 512
+    },
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// AwsEventBridgeConnectionOAuth carries OAuth client-credentials auth.
+message AwsEventBridgeConnectionOAuth {
+  // The token endpoint EventBridge calls to obtain the access token.
+  // Example: "https://auth.example.com/oauth2/token".
+  string authorization_endpoint = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 2048
+  }];
+
+  // The HTTP method for the token request.
+  string http_method = 2 [(buf.validate.field).string = {
+    in: [
+      "GET",
+      "POST",
+      "PUT"
+    ]
+  }];
+
+  // The OAuth client id.
+  string client_id = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 512
+  }];
+
+  // The OAuth client secret. Stored by AWS in the connection's Secrets
+  // Manager secret; never returned by any AWS read API.
+  string client_secret = 4 [
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 512
+    },
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // Parameters added to the TOKEN request (grant_type in the body,
+  // scope, audience...). AWS requires at least one entry here - most
+  // OAuth servers need "grant_type=client_credentials" in the body.
+  AwsEventBridgeConnectionHttpParameters oauth_http_parameters = 5 [(buf.validate.field).required = true];
+}
+
+// AwsEventBridgeConnectionHttpParameters is a set of static HTTP
+// parameters - at least one of body, header, and query_string.
+message AwsEventBridgeConnectionHttpParameters {
+  // An empty parameter set configures nothing.
+  option (buf.validate.message).cel = {
+    id: "http_parameters.at_least_one"
+    message: "configure at least one of body, header, and query_string parameters"
+    expression: "this.body.size() > 0 || this.header.size() > 0 || this.query_string.size() > 0"
+  };
+
+  // Body fields (form/JSON fields on the request body).
+  repeated AwsEventBridgeConnectionHttpParameter body = 1;
+
+  // HTTP headers.
+  repeated AwsEventBridgeConnectionHttpParameter header = 2;
+
+  // Query-string parameters.
+  repeated AwsEventBridgeConnectionHttpParameter query_string = 3;
+}
+
+// AwsEventBridgeConnectionHttpParameter is one static key/value HTTP
+// parameter.
+message AwsEventBridgeConnectionHttpParameter {
+  // The parameter name.
+  string key = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The parameter value. The provider treats every value as sensitive
+  // (AWS masks them all on read), so this field is secret-typed
+  // regardless of is_value_secret.
+  string value = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // Store this value in the connection's Secrets Manager secret (true)
+  // rather than the connection configuration (false). Set true for
+  // anything credential-like.
+  bool is_value_secret = 3;
+}
+
+// AwsEventBridgePrivateEndpoint points a connection at a private
+// endpoint through a VPC Lattice resource configuration.
+message AwsEventBridgePrivateEndpoint {
+  // The VPC Lattice resource configuration's ARN. AWS creates the
+  // resource association itself (the association ARN is observable in
+  // AWS, not modeled here).
+  string resource_configuration_arn = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^arn:aws.*$"
+  }];
+}
+
+// AwsEventBridgeDestination is the invocable endpoint bound to a
+// connection.
+message AwsEventBridgeDestination {
+  // The destination's name in AWS (its identity - renaming replaces
+  // it). Up to 64 characters: letters, digits, dot, dash, underscore.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+    pattern: "^[0-9A-Za-z_.-]+$"
+  }];
+
+  // What this destination invokes.
+  string description = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 512
+  ];
+
+  // A connection that exists elsewhere, by ARN - another instance's
+  // owned connection (reference its connection_arn output) or any
+  // pre-existing one. Leave unset when this instance's connection arm
+  // serves the destination.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef connection_arn = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsEventBridgeApiDestination,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.connection_arn"
+  ];
+
+  // The HTTPS endpoint to invoke. Path parameters use "*" wildcards
+  // filled by the event target's path parameter values. Example:
+  // "https://api.example.com/orders/*/refund".
+  string invocation_endpoint = 4 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^https://.+$"
+  }];
+
+  // The HTTP method for invocations.
+  string http_method = 5 [(buf.validate.field).string = {
+    in: [
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "HEAD",
+      "OPTIONS"
+    ]
+  }];
+
+  // The maximum invocations per second (AWS default: 300). Invocations
+  // beyond the limit queue in EventBridge - size it to what the
+  // downstream API tolerates. Presence-typed so 1 is expressible.
+  optional int32 invocation_rate_limit_per_second = 6 [(buf.validate.field).int32.gte = 1];
+}

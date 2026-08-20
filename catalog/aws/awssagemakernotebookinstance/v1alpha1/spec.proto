@@ -1,0 +1,179 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssagemakernotebookinstance.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsSagemakerNotebookInstanceSpec defines the desired configuration
+// for an Amazon SageMaker AI notebook instance - a managed EC2 instance
+// running Jupyter - together with its folded lifecycle configuration
+// (bootstrap scripts). The instance's AWS name derives from
+// metadata.name.
+//
+// Update semantics worth knowing: SageMaker STOPS the instance to apply
+// most changes and restarts it afterwards (the modules ride the
+// provider's stop-update-start choreography - budget several minutes
+// per change). Growing `volume_size_gb` updates in place; SHRINKING it
+// replaces the instance (AWS cannot shrink a volume).
+message AwsSagemakerNotebookInstanceSpec {
+  // The AWS region where the notebook instance will be created.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Compute instance type (an "ml.*" type, e.g. "ml.t3.medium" - the
+  // cheapest current-generation choice, ~$0.05/hour). AWS's accepted
+  // set grows with every release - the value passes through to the API,
+  // which rejects unknown types.
+  string instance_type = 2 [(buf.validate.field).string.pattern = "^ml\\.[a-z0-9]+([.-][a-z0-9]+)*$"];
+
+  // IAM role the notebook assumes for AWS API calls made from it. The
+  // role must trust sagemaker.amazonaws.com.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // ML storage volume in GB (5-16384; AWS default 5). Growing updates
+  // in place; shrinking REPLACES the instance.
+  optional int32 volume_size_gb = 4 [(buf.validate.field).int32 = {
+    gte: 5
+    lte: 16384
+  }];
+
+  // Place the notebook in a VPC subnet (private notebooks). Changing it
+  // replaces the instance.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Security groups applied to the notebook's ENI (requires
+  // `subnet_id`).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+
+  // KMS key encrypting the ML storage volume at rest.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // "Enabled" (AWS default - the notebook gets a direct internet route)
+  // or "Disabled" (traffic flows only through your VPC - requires
+  // subnet_id and security_group_ids, plus a NAT or endpoint path for
+  // training/hosting calls). Changing it replaces the instance.
+  string direct_internet_access = 8 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Enabled",
+        "Disabled"
+      ]
+    }
+  ];
+
+  // "Enabled" (AWS default) or "Disabled" - whether notebook users get
+  // root on the instance. Lifecycle scripts always run as root.
+  string root_access = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Enabled",
+        "Disabled"
+      ]
+    }
+  ];
+
+  // Runtime platform. Omitted = AWS default ("notebook-al2-v3").
+  // "notebook-al1-v1", "notebook-al2-v1", and "notebook-al2-v2" are
+  // deprecated platforms AWS still accepts for existing workloads;
+  // prefer "notebook-al2-v3" (Amazon Linux 2, JupyterLab 4) or
+  // "notebook-al2023-v1" (Amazon Linux 2023). Changing it replaces the
+  // instance.
+  string platform_identifier = 10 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "notebook-al1-v1",
+        "notebook-al2-v1",
+        "notebook-al2-v2",
+        "notebook-al2-v3",
+        "notebook-al2023-v1"
+      ]
+    }
+  ];
+
+  // Git repository cloned as the notebook's default working directory -
+  // an AWS CodeCommit/SageMaker code-repository NAME or any public Git
+  // HTTPS URL.
+  string default_code_repository = 11 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Up to three additional Git repositories cloned alongside the
+  // default one.
+  repeated string additional_code_repositories = 12 [(buf.validate.field).repeated = {
+    max_items: 3
+    unique: true
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // Minimum instance-metadata-service version: "1" (IMDSv1 and v2 both
+  // allowed) or "2" (IMDSv2 only - the hardened choice). Omitted = AWS
+  // default ("1").
+  string imds_minimum_version = 13 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "1",
+        "2"
+      ]
+    }
+  ];
+
+  // Bootstrap scripts run on the instance (the folded lifecycle
+  // configuration - its AWS name derives from metadata.name).
+  AwsSagemakerNotebookInstanceLifecycleConfig lifecycle_config = 14;
+
+  // AWS requires VPC wiring to confine the notebook.
+  option (buf.validate.message).cel = {
+    id: "disabled_internet_requires_vpc"
+    message: "direct_internet_access Disabled requires subnet_id and security_group_ids"
+    expression: "this.direct_internet_access != 'Disabled' || (has(this.subnet_id) && this.security_group_ids.size() > 0)"
+  };
+
+  // Security groups attach to the subnet ENI - meaningless without one.
+  option (buf.validate.message).cel = {
+    id: "security_groups_require_subnet"
+    message: "security_group_ids requires subnet_id"
+    expression: "this.security_group_ids.size() == 0 || has(this.subnet_id)"
+  };
+}
+
+// AwsSagemakerNotebookInstanceLifecycleConfig carries the bootstrap
+// shell scripts (each base64-encoded by the modules before sending;
+// write plain shell here). Scripts run as root; a script that runs
+// longer than 5 minutes fails the instance start (AWS's limit) - push
+// long work to the background.
+message AwsSagemakerNotebookInstanceLifecycleConfig {
+  // Shell script run ONCE, when the instance is first created (max
+  // 16384 characters base64-encoded - keep the plain script well under
+  // that).
+  string on_create = 1 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Shell script run EVERY time the instance starts, including at
+  // creation.
+  string on_start = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // An empty lifecycle configuration configures nothing - AWS accepts
+  // it, but it is always authoring drift.
+  option (buf.validate.message).cel = {
+    id: "at_least_one_script"
+    message: "at least one of on_create and on_start must be set"
+    expression: "this.on_create != '' || this.on_start != ''"
+  };
+}

@@ -1,0 +1,62 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsiaminstanceprofile
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An instance profile stores no customer data -- it is an IAM container holding one role reference, control-plane metadata inside AWS's own service infrastructure.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); IAM exposes no KMS surface for instance profiles.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A profile terminates no connections. The credential vending it enables happens between an instance and its local metadata service (a link-local exchange inside the instance), and IAM management calls ride AWS API endpoints served exclusively over TLS -- neither is per-profile configuration.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A profile has no network endpoint to expose. The credentials it delivers are only reachable through the instance's own metadata service, never from outside the instance.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; a profile is an identity-delivery object with no addresses or ports.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A profile receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: not_applicable
+      notes: The profile performs no access control of its own -- it carries exactly one role (an AWS limit), and everything about WHO and WHAT is governed on that AwsIamRole's trust and policy surface. The required role field is a delivery address, not a grant.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Keyless workload identity IS this component's purpose -- EC2 instances cannot assume a role directly, so the profile exists solely to let the instance metadata service vend the carried role's temporary, auto-rotating STS credentials to whatever runs on the instance. No static access key is ever created, stored, or distributable through this component, at any configuration.
+      notes: The role can be swapped in place; running instances pick up the new role's credentials on their next metadata refresh. Hardening the metadata service itself (IMDSv2 enforcement) is the instance's configuration, on the EC2 component.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: A profile has no authentication path of its own to weaken -- the only credentials involved are the temporary STS sessions the metadata service vends for the carried role, and those expire automatically.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface. IAM management calls on the profile and every API request made with the vended role credentials are recorded by AWS CloudTrail as account-level posture, not per-profile configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: IAM publishes no CloudWatch metrics per instance profile; the instances that carry it publish their own metrics as their own catalog kind.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A profile holds no data to back up -- it is declarative configuration fully re-creatable from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: IAM is a global control-plane service -- AWS replicates profile definitions across its own infrastructure, and the profile is usable in every region with no zonal placement to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for instance profiles. AWS will delete a profile even while instances are running with it (breaking their credential refresh), so care at teardown is operational discipline, not a configurable guard.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A profile is a pure configuration object with no software to patch.

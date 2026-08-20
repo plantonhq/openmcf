@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurevpnserverconfiguration
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A policy document held by Azure's network control plane; it stores configuration, not customer data -- certificate entries are PUBLIC material only (root bodies and revocation thumbprints), and the RADIUS shared secret is write-only (ARM never returns it on reads).
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      field_path: vpn_protocols
+      evidence:
+        type: spec_default
+        reference: Encrypted transit IS the product this policy configures -- the only tunnel protocols the configuration can offer are IkeV2 (IPsec) and OpenVPN (TLS-based), both encrypted end to end; no cleartext option exists in the vocabulary, so every client session under any configuration is encrypted. The ipsec_policy block pins the exact IKE/IPsec suite when client policy demands specific algorithms.
+      notes: One honest caveat -- ipsec_policy's provider vocabulary still includes weak legacy values (DES, DES3, MD5, SHA1, DHGroup1/2); leaving the block unset offers Azure's default proposal set, and a pinned proposal should choose the modern values (AES-GCM, SHA256+, ECP/DH14+).
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The configuration has no endpoint of its own -- the point-to-site GATEWAY exposes the public tunnel endpoint (necessarily public -- remote users dial in from the internet), a separate kind.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface of its own to restrict; who gets in is decided by authentication (the no-legacy-auth stance), and policy_groups can steer authenticated users into distinct address pools on the gateway -- segmentation raw material, not an ingress filter here.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request path of its own to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; VPN user authorization is the configuration's own authentication contract, recorded under no-legacy-auth.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The configuration runs no workloads and holds no cloud credentials; it defines how HUMAN remote users authenticate.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: vpn_authentication_types
+      evidence:
+        type: spec_default
+        reference: The configuration IS the decision about which authentication paths exist -- the vocabulary is exactly "AAD" (Entra ID -- interactive sign-in with conditional access and MFA), "Certificate" (mutual TLS against client_root_certificates), and "Radius" (delegated to your RADIUS servers), and only the listed types are offered. A configuration listing only "AAD" has no shared-secret or certificate path at all; each enabled type must bring its block (spec-enforced CEL mirrors ARM's contract), so a half-configured weaker path cannot deploy.
+      notes: client_revoked_certificates blocks an individual lost or compromised client certificate by thumbprint without rotating the root -- the revocation half of running the Certificate path responsibly. Gateways pick up in-place changes, so tightening the policy propagates without redeploying.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Configuration changes land in the Azure Activity Log automatically as subscription-level posture -- meaningful, since every change alters who can enter the network; per-connection logs are the gateways' diagnostic posture.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: A policy document emits no metrics; connection counts and tunnel health ride the point-to-site gateways.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless declarative configuration -- nothing to back up; the manifest recreates it (the RADIUS shared secret comes from its referenced secret, never from state).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A configuration object with no runtime footprint -- availability is the gateways' and hubs' posture; one configuration can serve many gateways, which is management convenience, not runtime redundancy.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag (Azure resource locks are subscription-side governance outside the manifest); Azure refuses to delete a configuration still attached to gateways, but that is dependency ordering, not a control.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The gateways that enforce this policy are Microsoft-operated Virtual WAN infrastructure, patched by Microsoft; no customer-visible patch surface exists on the configuration or its enforcement plane (RADIUS servers, when used, are yours to patch).

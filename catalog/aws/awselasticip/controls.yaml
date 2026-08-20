@@ -1,0 +1,59 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awselasticip
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An Elastic IP is a routable public IPv4 address, not a store -- it holds no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The address is not an endpoint and terminates no connections; encryption in transit belongs to whatever resource the address is associated with.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A public IPv4 address is public by definition -- that is the resource. What is actually reachable through it is governed by the associated target's security groups and network ACLs, none of which live in this spec.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The address filters nothing; ingress restriction is owned by the security groups and network ACLs of the resource it fronts (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request surface to filter -- the address forwards nothing itself; WAF-style protection attaches to the fronting service (a load balancer, CloudFront), not to an address allocation.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is AWS-account IAM posture, not a component choice; the address exposes no management or data plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The address runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths exist on an address allocation.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no logging surface -- an address emits no access events of its own. Allocation, association, and release are management-plane calls captured account-wide by CloudTrail, outside this component.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: AWS publishes no CloudWatch metrics for an address allocation itself. Account-wide public IPv4 visibility (Public IP Insights) is an Amazon VPC IPAM feature configured outside this spec; traffic metrics belong to the associated resource.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: No data to back up. The allocation is declarative and re-creatable from the manifest -- though a re-created EIP is a NEW public address unless it is recovered through a BYOIP or IPAM pool (public_ipv4_pool / ipam_pool_id with address).
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: An Elastic IP is region-scoped, not zonal -- there is nothing to replicate across Availability Zones. It survives zone failure by re-associating to a healthy target; the optional network_border_group field narrows scope to a Local or Wavelength zone rather than widening it.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag on an address allocation -- the spec and the provider's aws_eip resource carry none. Releasing the address surrenders it to the pool (BYOIP/IPAM addresses can be re-recovered; Amazon-pool addresses generally cannot).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: An address is not software -- there is nothing to patch on either side.

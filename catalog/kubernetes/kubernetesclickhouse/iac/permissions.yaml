@@ -1,0 +1,64 @@
+# Least-privilege permissions the IaC runner's Kubernetes principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: kubernetesclickhouse
+spec:
+  kubernetes:
+    rules:
+      - api_groups:
+          - ""
+        resources:
+          - namespaces
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: true
+        provenance: derived
+        notes: Covers kubernetes_namespace_v1.namespace -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+      - api_groups:
+          - ""
+        resources:
+          - secrets
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubernetes_secret_v1.auth -- the `<name>-clickhouse-auth` Secret holding one key per provisioned user's password, rendered only when spec.users is non-empty. Namespace-scoped to the cluster's namespace.
+      - api_groups:
+          - clickhouse.altinity.com
+        resources:
+          - clickhouseinstallations
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubectl_manifest.clickhouse_installation -- the ClickHouseInstallation (clickhouse.altinity.com/v1) applied via server-side apply. The host StatefulSets, Services, ConfigMaps, PVCs, and PDB are created by the Altinity operator reconciling this CR, under the operator's own RBAC -- the runner touches only the CR.
+      - api_groups:
+          - clickhouse-keeper.altinity.com
+        resources:
+          - clickhousekeeperinstallations
+        verbs:
+          - get
+          - create
+          - update
+          - patch
+          - delete
+        cluster_scoped: false
+        provenance: derived
+        notes: Covers kubectl_manifest.keeper -- the ClickHouseKeeperInstallation (clickhouse-keeper.altinity.com/v1) applied via server-side apply. Rendered only when coordination resolves to a managed Keeper -- explicit managed_keeper, or coordination unset with shards > 1 or replicas > 1 (locals keeper_managed / DeployKeeper).

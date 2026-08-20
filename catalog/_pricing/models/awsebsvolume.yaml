@@ -1,0 +1,42 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. A hand model rather than a derivation: gp3 bills IOPS and
+# throughput only IN EXCESS of its included baselines (3,000 IOPS and
+# 125 MiB/s per the EBS pricing page), and derivation rules cannot
+# subtract -- the gcpcomputedisk Hyperdisk precedent. Each preset's excess
+# is computed here and defended in its quantity basis.
+# Preset 02-snapshot-restore is deliberately OMITTED: it sets no size_gb,
+# so its committed GB-month quantity is the referenced snapshot's size --
+# real committed spend of unknowable magnitude, and a refusal (no
+# estimate) beats a silent zero or an invented number. Its one-time
+# volume-initialization fee follows the snapshot's full size, equally
+# unknowable. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awsebsvolume
+spec:
+  presets:
+    - preset: 01-database-data-volume
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: volume storage
+          price: ebs-gp3-storage-us-east-1
+          pricing_quantity: "200"
+          quantity_basis: the manifest provisions 200 GiB of gp3 (size_gb 200), billing every GiB monthly from creation -- full or empty, attached or not
+        - sku_meter: provisioned IOPS
+          price: ebs-gp3-iops-us-east-1
+          pricing_quantity: "3000"
+          quantity_basis: the manifest provisions 6,000 IOPS and gp3 includes a 3,000-IOPS baseline free -- only the 3,000-IOPS excess bills monthly
+        - sku_meter: provisioned throughput
+          price: ebs-gp3-throughput-us-east-1
+          pricing_quantity: "125"
+          quantity_basis: the manifest provisions 250 MiB/s and gp3 includes a 125-MiB/s baseline free -- only the 125-MiB/s excess bills monthly
+      exclusions:
+        - snapshot storage follows whatever snapshots the owner takes -- none are configured here (final_snapshot is unset)
+        - I/O carries no request meter on gp3 -- performance is what is provisioned, and only the excess over the included baselines bills
+      notes: "encrypted true with kms_key_id unset uses the AWS-managed aws/ebs key -- no monthly fee and no extra meter. The attachment to the database instance adds no charge, and the volume keeps billing all three meters while that instance is stopped; deleting the volume is the only off switch. All three meters bill per-second with a 60-second minimum."

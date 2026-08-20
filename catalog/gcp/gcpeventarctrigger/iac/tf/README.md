@@ -12,7 +12,7 @@ This directory contains the Terraform/OpenTofu implementation for deploying an E
    ```bash
    gcloud auth application-default login
    ```
-4. **IAM permissions**: `roles/eventarc.admin` (or narrower eventarc roles) on the target project; the trigger's `service_account` needs `roles/eventarc.eventReceiver` (plus `roles/run.invoker` for authenticated Cloud Run destinations)
+4. **IAM permissions**: see [`../permissions.yaml`](../permissions.yaml) for the least-privilege permission set the deploying principal needs; the trigger's `service_account` needs `roles/eventarc.eventReceiver` (plus `roles/run.invoker` for authenticated Cloud Run destinations)
 
 ## Module Files
 

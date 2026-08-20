@@ -189,7 +189,10 @@ var _ = ginkgo.Describe("AzureContainerInstanceSpec Validation Tests", func() {
 					WorkspaceId:  literal("00000000-0000-0000-0000-000000000000"),
 					WorkspaceKey: literal("d29ya3NwYWNlLWtleQ=="),
 					LogType:      "ContainerInsights",
-					Metadata:     map[string]string{"team": "platform"},
+					// Keys come from ARM's closed vocabulary (pod-uuid,
+					// cluster-resource-id, node-name) -- see the
+					// closed-vocabulary rejection test below.
+					Metadata: map[string]string{"node-name": "aci-connector"},
 				}
 				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 			})
@@ -429,6 +432,44 @@ var _ = ginkgo.Describe("AzureContainerInstanceSpec Validation Tests", func() {
 				input.Spec.DiagnosticsLogAnalytics.Metadata = nil
 				input.Spec.DiagnosticsLogAnalytics.LogType = "AllLogs"
 				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject the undeployable ContainerInstanceLogs log type and accept ContainerInsights with metadata", func() {
+				// ARM rejects metadata for ContainerInstanceLogs
+				// (LogAnalyticsMetadataNotAllowed) and the provider always
+				// sends a metadata object alongside a log type, so the value
+				// cannot deploy through either engine -- the CEL front-loads
+				// the failure at validation.
+				input := validResource()
+				input.Spec.DiagnosticsLogAnalytics = &AzureContainerInstanceLogAnalytics{
+					WorkspaceId:  literal("00000000-0000-0000-0000-000000000000"),
+					WorkspaceKey: literal("d29ya3NwYWNlLWtleQ=="),
+					LogType:      "ContainerInstanceLogs",
+				}
+				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+				input.Spec.DiagnosticsLogAnalytics.LogType = "ContainerInsights"
+				input.Spec.DiagnosticsLogAnalytics.Metadata = map[string]string{"node-name": "platform"}
+				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject metadata keys outside ARM's closed vocabulary", func() {
+				// ARM validates the metadata KEY set server-side
+				// (InvalidLogAnalyticsMetadataKeys, live-proven): only
+				// pod-uuid, cluster-resource-id, and node-name pass.
+				input := validResource()
+				input.Spec.DiagnosticsLogAnalytics = &AzureContainerInstanceLogAnalytics{
+					WorkspaceId:  literal("00000000-0000-0000-0000-000000000000"),
+					WorkspaceKey: literal("d29ya3NwYWNlLWtleQ=="),
+					LogType:      "ContainerInsights",
+					Metadata:     map[string]string{"team": "platform"},
+				}
+				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+				input.Spec.DiagnosticsLogAnalytics.Metadata = map[string]string{
+					"pod-uuid":            "00000000-0000-0000-0000-000000000000",
+					"cluster-resource-id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.ContainerService/managedClusters/c",
+					"node-name":           "n1",
+				}
+				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 			})
 
 			ginkgo.It("should reject Log Analytics diagnostics missing the workspace id or key", func() {

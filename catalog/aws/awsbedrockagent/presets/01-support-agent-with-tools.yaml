@@ -1,0 +1,37 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgent
+metadata:
+  name: support-agent
+spec:
+  region: us-west-2
+  description: Customer support agent with order tools
+  foundationModel: amazon.nova-micro-v1:0
+  agentResourceRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: bedrock-agent-role
+      fieldPath: status.outputs.role_arn
+  instruction: >-
+    You are a customer support agent. Use the order tools to answer order
+    questions, ask the user for missing details, and keep every response
+    short and accurate.
+  idleSessionTtlSeconds: 900
+  actionGroups:
+    - name: orders
+      description: Look up customer orders.
+      executor:
+        returnControl: true
+      functionSchema:
+        functions:
+          - name: get_order
+            description: Look up one order by its ID.
+            parameters:
+              - name: order_id
+                type: string
+                description: The order identifier.
+                required: true
+    - name: user-input
+      parentActionGroupSignature: AMAZON.UserInput
+  aliases:
+    - name: live
+      description: Production serving endpoint

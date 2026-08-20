@@ -1,0 +1,7 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupVault
+metadata:
+  name: app-backups
+spec:
+  region: <aws-region>
+  standard: {}
