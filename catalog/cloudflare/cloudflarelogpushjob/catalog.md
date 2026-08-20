@@ -44,7 +44,7 @@ planton apply -f logpush-job.yaml
 | Field | Type | Description | Validation |
 |-------|------|-------------|------------|
 | `dataset` | string | Which log dataset ships. | One of 35 provider values (enum-walled); immutable. |
-| `destinationConf` | string | Destination URI with embedded credentials. | Required, sensitive; rejected on update by the API. |
+| `destinationConf` | string | Destination URI with embedded credentials. | Required, sensitive; a new destination must re-prove ownership. |
 | `accountId` / `zoneId` | string | The scope. | Exactly one must be set. |
 
 ### Optional Fields

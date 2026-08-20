@@ -7,14 +7,13 @@ spec:
   # update, delete), account-scoped, free. THE API-TOKEN DEFECT CLASS: four
   # of the provider's five acceptance tests (and both migration tests)
   # blank CLOUDFLARE_API_TOKEN for this resource with the comment "the
-  # notification service does not yet support the API tokens" -- our
-  # harness authenticates with an API token, so a 403 on create is the
-  # expected ambush and a recorded deferral is the honest outcome. The lane
-  # is also the class's direct live probe: its sibling notification_policy
-  # carries no such workaround upstream, so measuring which of the pair
-  # actually 403s is proof-session evidence worth recording. Second watch
-  # item: whether Cloudflare probes the URL at registration (the generic
-  # destination is an https example endpoint).
+  # notification service does not yet support the API tokens" -- and the
+  # sibling notification_policy tests blank it too, so the class covers the
+  # whole alerting/v3 family. Our harness authenticates with an API token,
+  # so a 403 on create is the expected ambush and a recorded deferral is
+  # the honest outcome. Second watch item: whether Cloudflare probes the
+  # URL at registration (the generic destination is an https example
+  # endpoint).
   tier: 1
   # Authored to the full offline bar; awaiting the first live proof session
   # (no Cloudflare account exists yet). The proving session flips this to

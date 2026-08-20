@@ -33,11 +33,13 @@ const (
 // account datasets like audit_logs and gateway_* need account scope).
 //
 // Two provider truths this spec teaches:
-//   - `dataset` is IMMUTABLE (changing it forces replacement).
-//   - `destination_conf` is NOT marked for replacement by the provider, yet
-//     Cloudflare's API rejects changing it on an existing job (HTTP 400 at
-//     apply time, proven by the provider's own tests). To point a job at a
-//     new destination, delete and recreate the job.
+//   - `dataset` is IMMUTABLE (changing it forces replacement), and so is the
+//     scope (account_id/zone_id force replacement).
+//   - `kind` is IMMUTABLE at the API but not in the plan: the provider plans
+//     a clean in-place update and Cloudflare rejects it with HTTP 400 at
+//     apply time (the provider's own immutable-fields test). Pick the job
+//     variant at creation. destination_conf, by contrast, updates in place
+//     fine -- the provider's own tests change it three times over.
 //
 // Most destinations must prove ownership before a job may write to them:
 // Cloudflare drops a challenge file into the destination, and its token is
@@ -71,8 +73,9 @@ type CloudflareLogpushJobSpec struct {
 	// Deliberately NOT decomposed into typed parts: the URI grammar differs per
 	// destination product and is Cloudflare's contract to evolve. SENSITIVE:
 	// the string routinely embeds access keys -- provide a managed-secret
-	// reference and the platform resolves it just-in-time at deploy. Changing
-	// it on an existing job fails at the API (see the message comment).
+	// reference and the platform resolves it just-in-time at deploy. Updates
+	// in place; a NEW destination must re-prove ownership (see
+	// ownership_challenge below).
 	DestinationConf *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=destination_conf,json=destinationConf,proto3" json:"destination_conf,omitempty"`
 	// Display name for the job, shown in the dashboard's Logpush list.
 	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
@@ -88,6 +91,9 @@ type CloudflareLogpushJobSpec struct {
 	Filter string `protobuf:"bytes,7,opt,name=filter,proto3" json:"filter,omitempty"`
 	// The job variant. Empty is a normal batching Logpush job; "edge" is an
 	// Instant Logs job (live tail over WebSocket, http_requests dataset only).
+	// IMMUTABLE at the API without a plan-time guard: changing it plans a
+	// clean in-place update that Cloudflare rejects with HTTP 400 -- pick the
+	// variant at creation (see the message comment).
 	Kind string `protobuf:"bytes,8,opt,name=kind,proto3" json:"kind,omitempty"`
 	// Upload batch size ceiling in bytes. 0 (or unset) lets Cloudflare pick;
 	// otherwise 5 MB to 1 GB. The API may still deliver smaller batches.

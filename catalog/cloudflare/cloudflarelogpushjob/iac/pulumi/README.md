@@ -14,7 +14,7 @@ module/outputs.go       — job_id, scope ids, ownership-challenge trio
 
 ## Behavior
 
-A plain CRUD resource: real create/update/delete. Dual scope -- exactly one of `account_id` or `zone_id` is set (spec validation enforces it). `dataset` is immutable (the provider replaces the job), and `destination_conf` is rejected on update by the API even though it plans in place -- repointing means recreating.
+A plain CRUD resource: real create/update/delete. Dual scope -- exactly one of `account_id` or `zone_id` is set (spec validation enforces it). `dataset` and the scope are immutable (the provider replaces the job); `kind` is immutable at the API without a plan guard (an in-place update 400s at apply). `destination_conf` updates in place.
 
 `enabled` defaults to TRUE here even though Cloudflare's own default is FALSE: a declared log job is meant to ship logs.
 

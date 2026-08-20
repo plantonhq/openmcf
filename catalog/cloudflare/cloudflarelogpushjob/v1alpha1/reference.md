@@ -17,11 +17,13 @@ scope must be set (zone datasets like http_requests need zone scope;
 account datasets like audit_logs and gateway_* need account scope).
 
 Two provider truths this spec teaches:
-  - `dataset` is IMMUTABLE (changing it forces replacement).
-  - `destination_conf` is NOT marked for replacement by the provider, yet
-    Cloudflare's API rejects changing it on an existing job (HTTP 400 at
-    apply time, proven by the provider's own tests). To point a job at a
-    new destination, delete and recreate the job.
+  - `dataset` is IMMUTABLE (changing it forces replacement), and so is the
+    scope (account_id/zone_id force replacement).
+  - `kind` is IMMUTABLE at the API but not in the plan: the provider plans
+    a clean in-place update and Cloudflare rejects it with HTTP 400 at
+    apply time (the provider's own immutable-fields test). Pick the job
+    variant at creation. destination_conf, by contrast, updates in place
+    fine -- the provider's own tests change it three times over.
 
 Most destinations must prove ownership before a job may write to them:
 Cloudflare drops a challenge file into the destination, and its token is
@@ -146,8 +148,9 @@ or "https://splunk.example.com/services/collector/raw?channel=...").
 Deliberately NOT decomposed into typed parts: the URI grammar differs per
 destination product and is Cloudflare's contract to evolve. SENSITIVE:
 the string routinely embeds access keys -- provide a managed-secret
-reference and the platform resolves it just-in-time at deploy. Changing
-it on an existing job fails at the API (see the message comment).
+reference and the platform resolves it just-in-time at deploy. Updates
+in place; a NEW destination must re-prove ownership (see
+ownership_challenge below).
 
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
@@ -182,6 +185,9 @@ Empty ships every line of the dataset.
 
 The job variant. Empty is a normal batching Logpush job; "edge" is an
 Instant Logs job (live tail over WebSocket, http_requests dataset only).
+IMMUTABLE at the API without a plan-time guard: changing it plans a
+clean in-place update that Cloudflare rejects with HTTP 400 -- pick the
+variant at creation (see the message comment).
 
 - rule: kind must be empty (normal logpush) or edge (instant logs)
 

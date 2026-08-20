@@ -42,7 +42,7 @@
 | `name` | string | Display name in the dashboard's Logpush list. |
 | `enabled` | bool | Whether logs ship. Defaults to **true** here (Cloudflare's own default is disabled). |
 | `filter` | string | Cloudflare JSON filter expression narrowing which records ship. |
-| `kind` | string | Empty for a normal batching job, `edge` for Instant Logs. |
+| `kind` | string | Empty for a normal batching job, `edge` for Instant Logs. Locked at creation: the API rejects changing it (HTTP 400) even though the plan looks clean. |
 | `max_upload_bytes` | int64 | 0 (Cloudflare picks) or 5 MB–1 GB. |
 | `max_upload_interval_seconds` | int64 | 0 (Cloudflare picks) or 30–300. |
 | `max_upload_records` | int64 | 0 (Cloudflare picks) or 1,000–1,000,000. |

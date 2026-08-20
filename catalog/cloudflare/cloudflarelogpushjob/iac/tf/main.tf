@@ -3,10 +3,10 @@
 # or zone_id is set (spec validation enforces it).
 #
 # Two API truths this module honors:
-#   - `dataset` is immutable (the provider replaces the job when it changes).
-#   - `destination_conf` is NOT marked for replacement by the provider, yet
-#     Cloudflare rejects changing it on an existing job (HTTP 400 at apply).
-#     To repoint a job, delete and recreate it.
+#   - `dataset` and the scope are immutable (the provider replaces the job).
+#   - `kind` is immutable at the API but not in the plan: a change plans a
+#     clean in-place update that Cloudflare rejects with HTTP 400 at apply.
+#     destination_conf, by contrast, updates in place fine.
 #
 # `enabled` defaults to TRUE here even though Cloudflare's own default is
 # FALSE: a declared log job is meant to ship logs. Set enabled = false

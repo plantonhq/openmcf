@@ -664,9 +664,10 @@ spec:
       id_format: "{scope_prefix}/{scope_id}/{job_id}"
       notes: >-
         ownership_challenge is write-only (never returned by the API) and must
-        be re-asserted from configuration after import. destination_conf comes
-        back but cannot be changed afterwards -- Cloudflare rejects the update
-        with HTTP 400 even though the provider plans it in place.
+        be re-asserted from configuration after import. kind cannot be changed
+        on an existing job -- Cloudflare rejects the update with HTTP 400 even
+        though the provider plans it in place -- and a legacy job may read
+        back kind "instant-logs", which the provider normalizes to "".
     - terraform_type: cloudflare_logpush_ownership_challenge
       pulumi_type: cloudflare:index/logpushOwnershipChallenge:LogpushOwnershipChallenge
       not_importable_upstream_reason: >-

@@ -10,10 +10,10 @@ import (
 // log dataset to a destination the account controls. Dual scope -- exactly
 // one of account_id or zone_id is set (spec validation enforces it).
 //
-// Two API truths this module honors: `dataset` is immutable (the provider
-// replaces the job when it changes), and `destination_conf` is not marked
-// for replacement by the provider yet Cloudflare rejects changing it on an
-// existing job -- repointing means delete and recreate.
+// Two API truths this module honors: `dataset` and the scope are immutable
+// (the provider replaces the job), and `kind` is immutable at the API but
+// not in the plan -- a change plans a clean in-place update that Cloudflare
+// rejects with HTTP 400 at apply. destination_conf updates in place fine.
 func logpushJob(
 	ctx *pulumi.Context,
 	locals *Locals,

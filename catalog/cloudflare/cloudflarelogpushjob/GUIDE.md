@@ -2,9 +2,11 @@
 
 The judgment this guide protects you from: two of this resource's fields cannot be changed after the job exists, and the destination handshake deliberately routes through storage only you can read.
 
-## The destination cannot be repointed -- recreate instead
+## The job variant is locked at creation -- and the plan will not warn you
 
-`destination_conf` looks editable: the provider does not mark it for replacement, so a changed URI plans a clean in-place update. Cloudflare then rejects the request with HTTP 400 (the provider's own immutable-fields test records exactly this). To move a job to a new destination, delete it and create a new one -- and remember credentials rotated *inside* the URI count as a change. `dataset` is honest about being immutable: changing it replaces the job.
+`kind` (normal batching vs `edge` Instant Logs) carries no replacement guard in the provider: changing it plans a clean in-place update, and Cloudflare then rejects the apply with HTTP 400 (the provider's own immutable-fields test records exactly this). Pick the variant when you create the job; changing it later means delete and recreate. `dataset` and the scope are honest about being immutable: changing either replaces the job in the plan.
+
+`destination_conf`, despite being the field that LOOKS most locked-down, updates in place fine -- the provider's own tests change it three times over. Two cautions still apply: a NEW destination must prove ownership before logs flow (see below), and credentials rotated *inside* the URI count as an update, so rotate them deliberately rather than as a side effect of an unrelated apply.
 
 ## Ownership proof passes through your bucket, on purpose
 

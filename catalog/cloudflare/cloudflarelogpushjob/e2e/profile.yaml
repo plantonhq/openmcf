@@ -11,8 +11,9 @@ spec:
   # outcome; (2) the live arm assumes a SAME-ACCOUNT R2 destination skips
   # the ownership challenge -- verify, and if a challenge is demanded the
   # lane needs the generate_ownership_challenge arm plus the manual token
-  # fetch; (3) destination_conf is rejected on update (HTTP 400) despite
-  # planning in-place -- never mutate it in a lane; (4) the R2 destination
+  # fetch; (3) `kind` is rejected on update (HTTP 400) despite planning
+  # in-place -- never mutate it in a lane (destination_conf, by contrast,
+  # updates fine per the provider's own tests); (4) the R2 destination
   # URI embeds credentials and enters only via env reference.
   tier: 1
   # Authored to the full offline bar; awaiting the first live proof session
