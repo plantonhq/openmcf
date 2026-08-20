@@ -16,7 +16,7 @@ import {
   FREE_TIER_SEATS,
   COMMUNITY_SEAT_LIMIT,
   MARKETS,
-  SELF_HOSTED_LICENSE_SIZES,
+  SELF_HOSTED_LICENSE_SEAT_CEILINGS,
 } from './pricing';
 
 export type PlanColumnId = 'free' | 'team' | 'community' | 'license' | 'enterprise';
@@ -75,9 +75,13 @@ export interface MatrixCategory {
   rows: MatrixRow[];
 }
 
-const licenseSeatText = SELF_HOSTED_LICENSE_SIZES.map((r) => r.seatCeiling).join(' or ');
+const licenseSeatText = SELF_HOSTED_LICENSE_SEAT_CEILINGS.join(' or ');
 // Seat ceilings are market-independent; any market's tier list carries them.
-const enterpriseSeatText = MARKETS.us.enterprise.map((t) => t.seatCeiling).join(' — ');
+// Each enterprise package is named beside its own ceiling — a bare
+// "100 — 250" read as a range (and as a maximum), which is neither.
+const enterpriseSeatText = `Up to ${MARKETS.us.enterprise
+  .map((t) => `${t.seatCeiling} (${t.name.replace('Enterprise ', '')})`)
+  .join(' · ')}`;
 
 export const VALUE_MATRIX: MatrixCategory[] = [
   {

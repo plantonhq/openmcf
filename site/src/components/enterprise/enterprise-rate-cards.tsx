@@ -89,6 +89,10 @@ export const EnterpriseRateCards: FC = () => {
         })}
       </Grid2>
       <Typography className="text-sm text-[#8a8a8a] max-w-[760px] text-center">
+        Beyond 250 seats, contracts are quoted individually — the published
+        packages are where the price sheet stops, not where the product does.
+      </Typography>
+      <Typography className="text-sm text-[#8a8a8a] max-w-[760px] text-center">
         Features marked Coming Soon are decided packaging that is still
         shipping — they become live as they ship.
       </Typography>

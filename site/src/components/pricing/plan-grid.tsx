@@ -18,7 +18,6 @@ import {
   EVALUATION_DAYS,
   COMMUNITY_SEAT_LIMIT,
   FREE_TIER_SEATS,
-  SELF_HOSTED_LICENSE_SIZES,
 } from '@/data/pricing';
 
 /**
@@ -113,7 +112,11 @@ const PlanCard: FC<PlanCardData> = ({
           </Badge>
         )}
       </Box>
-      <Box>
+      {/* The price zone and the tagline reserve fixed room (min-heights sized
+          for their worst wrap: a price line plus a two-line sub, and a
+          two-line tagline) so the bullet lists — and their check marks —
+          start at the same height on every card at every breakpoint. */}
+      <Box className="min-h-[4.75rem]">
         <Box className="flex items-baseline gap-1">
           <Typography className="text-3xl font-bold text-white">{priceMain}</Typography>
           {priceUnit && (
@@ -124,7 +127,7 @@ const PlanCard: FC<PlanCardData> = ({
           {priceSub ?? '·'}
         </Typography>
       </Box>
-      <Typography className="text-sm text-[#b0b0b0]">{tagline}</Typography>
+      <Typography className="text-sm text-[#b0b0b0] min-h-[2.5rem]">{tagline}</Typography>
       <Stack className="gap-2 flex-1">
         {bullets.map((bullet) => (
           <Box key={bullet} className="flex items-start gap-2">
@@ -163,10 +166,10 @@ const AI_COMING_SELF_HOSTED: PlanCardData['ai'] = {
 };
 
 export const PlanGrid: FC = () => {
-  const { market, marketId } = useMarket();
+  const { market } = useMarket();
 
-  const sizeLow = SELF_HOSTED_LICENSE_SIZES[0];
-  const sizeHigh = SELF_HOSTED_LICENSE_SIZES[SELF_HOSTED_LICENSE_SIZES.length - 1];
+  const sizeLow = market.licenses[0];
+  const sizeHigh = market.licenses[market.licenses.length - 1];
 
   const plantonAiPlans: PlanCardData[] = [
     {
@@ -215,12 +218,11 @@ export const PlanGrid: FC = () => {
     },
     {
       name: 'Licensed',
-      priceMain: `From $${sizeLow.usdPerYear.toLocaleString()}`,
+      priceMain: `From ${sizeLow.perYearCard}`,
       priceUnit: '/year',
       priceSub:
-        `$${sizeLow.usdPerYear.toLocaleString()} — ${sizeLow.seatCeiling} seats · ` +
-        `$${sizeHigh.usdPerYear.toLocaleString()} — ${sizeHigh.seatCeiling} seats` +
-        (marketId === 'us' ? '' : ' · billed in USD'),
+        `${sizeLow.perYear} — ${sizeLow.seatCeiling} seats · ` +
+        `${sizeHigh.perYear} — ${sizeHigh.seatCeiling} seats`,
       tagline: 'Org-scale capabilities on your install.',
       bullets: [
         'Works fully offline — expiry never breaks anything',
