@@ -253,7 +253,10 @@ taken is a bug; an assumption named is an invitation to refine.
    infrastructure produces, run the cross-boundary check in
    `references/dependencies.md`: the producer may be in this chart, in a
    sibling chart of this workspace, or already deployed in the org — wire
-   `valueFrom` and that param never exists. What remains a param is only
+   `valueFrom` and that param never exists. Credential-shaped values
+   (passwords, API keys, tokens) are never params at all: they become
+   `$secret/` references, looked up or declared per
+   `references/config-references.md`. What remains a param is only
    what the person deploying genuinely decides (image, hostname, region,
    CIDRs, sizing, feature toggles); everything else is hardcoded or
    defaulted in the template. Prefer few, meaningful params with safe
@@ -459,6 +462,16 @@ shared state and needs the user's explicit go-ahead:
   org's deployed estate (`references/dependencies.md`, the cross-boundary
   check). A `vpc_id`-shaped param asks the user to hand-copy what the
   platform already knows; that hand-off is the failure, not a convenience.
+- **Sensitive fields hold `$secret/` references — never plaintext, never a
+  paste-your-credential param.** A password, API key, token, or private-key
+  field accepts ONLY a reference to a managed secret; the control plane
+  rejects plaintext before anything deploys. Scope lives in the reference
+  itself (`$secret/<slug>` org-wide, `$secret/@<env>/<slug>` per
+  environment — no fallback between them), so look up the real slug and
+  scope before writing (`planton secret list -o json`), and when the secret
+  does not exist yet, write the reference anyway and hand the user the
+  create command in the explain-after — never an invented value
+  (`references/config-references.md`).
 - **Cluster-scoped, shared-by-design components live in the shared chart.**
   Operators, CRDs, and controllers (Istio, cert-manager, external-dns, the
   gateway CRDs) belong in the shared-infrastructure chart, exactly once —
@@ -511,6 +524,7 @@ shared state and needs the user's explicit go-ahead:
 | `references/chart-format.md` | Writing Chart.yaml or values.yaml; naming things |
 | `references/templating.md` | Writing template expressions, conditionals, loops |
 | `references/dependencies.md` | Wiring resources together, in-chart and ACROSS charts; the references-before-params check; valueFrom or relationships |
+| `references/config-references.md` | A field needs a credential or operator-managed config value; the `$var`/`$secret` grammar (org- and env-scoped); looking up or creating secrets and variables |
 | `references/kubernetes-on-cluster.md` | The chart has Kubernetes-kind resources; wiring workloads to a cluster |
 | `references/discovery.md` | Starting a conversation; learning the person, their Planton, and the motive |
 | `references/personalization.md` | A profile fact sheet is present; shaping ANY explanation — the explain-after, refinement answers, live narration |

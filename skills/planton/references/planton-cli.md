@@ -30,7 +30,15 @@ planton infra-project get <id-or-name>    # one project, full record
 planton env list                          # environments in the org
 planton search connections                # provider connections (which clouds/clusters)
 planton connection authorization list     # which connections which envs may use
+planton secret list -o json               # managed secrets ("env" field = scope)
+planton variable list -o json             # managed variables ("env" field = scope)
 ```
+
+The secret/variable lists ground `$var`/`$secret` references before you write
+them (`config-references.md`); `-o json` matters because only the JSON
+records carry each entry's `env`, which decides the reference form. Creating
+one (`planton secret set` / `planton variable set`) is a mutation — one
+confirmation, same as any other.
 
 Read `infra-project list` results with an eye on `env` and
 `infra_project_source` — a chart-sourced project in env `dev` means that
