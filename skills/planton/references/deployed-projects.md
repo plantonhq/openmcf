@@ -33,7 +33,11 @@ What the binding changes:
 
 - **Your edits target the running project.** Saving records a new project
   version and the platform starts a deployment pipeline for it immediately —
-  there is no separate "deploy" step to offer.
+  there is no separate "deploy" step to offer. The organization's catalog
+  policy never blocks these saves: it refuses only NEW creations of
+  disabled kinds, and a deployed project's resources already exist — never
+  warn about availability on a working-copy save
+  (`catalog-availability.md`).
 - **The app refreshes this folder from the server every time it opens**, so
   what you read here is the deployed truth as of the conversation's start.
 - **The chart is out of the picture.** Never suggest publishing this folder

@@ -181,8 +181,10 @@ step here is a lookup, not a question (read `references/discovery.md` for
 the full protocol):
 
 1. Look up their Planton (context, charts, projects and their deploy status,
-   connections — `references/planton-cli.md`). What you find shapes the
-   build: an existing green cluster is something to build ON, not duplicate.
+   connections — `references/planton-cli.md`; the organization's catalog
+   availability — `references/catalog-availability.md`). What you find
+   shapes the build: an existing green cluster is something to build ON,
+   not duplicate.
 2. Read the PERSON — the profile fact sheet first, their words second. The
    fact sheet (standing session context, when present) carries what no
    message reveals: companion mode, per-area experience numbers, the goal,
@@ -229,9 +231,13 @@ taken is a bug; an assumption named is an invitation to refine.
    skill is your research layer here: its provider indexes answer what
    exists (400+ kinds, PascalCase like `AwsVpc`, `AwsEksCluster`,
    `KubernetesCertManager`), its per-component pages answer what a kind
-   requires and exports, and its reference graph answers what can wire to
+   requires and exports, and its reference graph answers    what can wire to
    what — usually in one or two file reads. `planton explain --list` is the
-   offline fallback when no pack is reachable.
+   offline fallback when no pack is reachable. Map to the RIGHT kind even
+   when Phase 0's availability check showed the organization's catalog
+   policy disables it — availability never truncates a design; the
+   disclosure happens before deploy, not here
+   (`references/catalog-availability.md`).
 3. Ground every kind you are not certain about BEFORE writing YAML — the
    component's reference page first (the catalog skill names the reading
    order), and `planton explain` for the drill-down:
@@ -408,6 +414,11 @@ every "Always keep in mind" line applies to this reply like any other.
    user's own vocabulary (application language for developers).
 2. **The cost picture**: rough monthly total, what dominates it, the levers
    that lower it (`references/cost-transparency.md`) — unasked, always.
+   When Phase 0's availability check found kinds this design uses disabled
+   by the organization's catalog policy, the disclosure rides this same
+   block (`references/catalog-availability.md`) — which components, that
+   the rest can deploy now, and that an Infrastructure Admin can enable
+   them; silence when the policy touches nothing the design uses.
 3. **The assumption register**: every default you took because the user did
    not say — purpose, region, sizing, redundancy — each phrased as an
    invitation: "I assumed dev-scale to keep this near $X/month; if this is
@@ -441,7 +452,10 @@ shared state and needs the user's explicit go-ahead:
   performed as part of composition -- and on the user's EXPLICIT ask you
   perform it yourself (`planton chart install`, one confirmation, then
   narrate the pipeline; `references/machine-deploy.md` has the command and
-  the follow-through). This is also the moment to notice the machine: on a
+  the follow-through). The availability disclosure is a precondition of the
+  deploy act: when the organization's catalog policy disables kinds this
+  chart uses, the user hears it BEFORE the deploy starts, never from the
+  refusal (`references/catalog-availability.md`). This is also the moment to notice the machine: on a
   signed-in instance, when the machine carries a login for the chart's
   cloud, the deploy offer takes its strongest form -- deploying from THIS
   machine with the login already here. The probe, the offer's grammar, and
@@ -539,6 +553,7 @@ shared state and needs the user's explicit go-ahead:
 | `references/kubernetes-architecture.md` | What runs on the cluster: the Istio/external-dns paved road; the shared-infra vs environment-chart split |
 | `references/environments.md` | The user mentions environments; how many clusters; cross-env connection authorization |
 | `references/cost-transparency.md` | The monthly cost picture from the catalog's verified estimates (read, never recalled); honesty rules for money; saving levers |
+| `references/catalog-availability.md` | Working in an organization's context; which kinds its catalog policy disables; the check-design-disclose law; a deploy refused naming the catalog policy |
 | `references/filing-platform-gaps.md` | Planton fell short of a need; filing the gap as a GitHub issue |
 | `references/build-contract.md` | Parsing build output; exit codes; CI usage; endpoint pinning |
 | `references/issue-catalog.md` | A build failed and you need the fix pattern for an error |

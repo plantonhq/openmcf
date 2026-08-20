@@ -32,6 +32,9 @@ planton search connections                # provider connections (which clouds/c
 planton connection authorization list     # which connections which envs may use
 planton secret list -o json               # managed secrets ("env" field = scope)
 planton variable list -o json             # managed variables ("env" field = scope)
+planton catalog search --server           # the catalog MINUS what the org's catalog
+                                          # policy disables (offline default shows all;
+                                          # see catalog-availability.md)
 ```
 
 The secret/variable lists ground `$var`/`$secret` references before you write

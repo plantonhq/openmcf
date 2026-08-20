@@ -41,10 +41,10 @@ a deterministic zip and publishes them to the downloads CDN together with a
 `definitions-manifest.json` carrying the release version, per-archive
 SHA-256 checksums, and the compatibility floor from `compat.yaml`
 (the minimum daemon and CLI versions the content assumes). Consumers verify
-checksums before installing; the Planton desktop's local daemon embeds a
-machine-vendored copy of this content as its offline seed baseline and
-locks it to the pinned release with a byte-identity test — the vendored
-copy is never hand-edited.
+checksums before installing; the Planton desktop's local daemon carries no
+embedded copy — it resolves a stable release-channel pointer at boot and
+seeds the pointed-at release into its engine, verifying each artifact's
+checksum, the compatibility floor, and content shape before adopting it.
 
 ## The authoring bar
 
