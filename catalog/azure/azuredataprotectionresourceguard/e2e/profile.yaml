@@ -3,15 +3,19 @@ kind: ComponentE2EProfile
 metadata:
   name: azuredataprotectionresourceguard
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, offline tofu plan green); live dual-engine
-  # proof has not yet run. The guard is a FREE governance object that
-  # creates in seconds -- the fastest lane in the family. The smoke
-  # carries one exclusion entry to prove the list's wire shape; no
-  # vault references the guard in the lane, so create and delete are
+  # PROVEN live on both engines (proof session, 2026-08-20): Pulumi
+  # 3m25s; Terraform 2m25s incl. a blind import round-trip (18s) with
+  # a no-differences re-plan. The guard is a FREE governance object
+  # that creates in seconds -- the fastest lane in the family. The
+  # smoke carries one exclusion entry to prove the list's wire shape;
+  # the lane also caught ARM's server-side exclusion contract live
+  # (BMSUserErrorInvalidCriticalOperationExclusionList: the
+  # MUA-mandatory operations can never be excluded -- now mirrored as
+  # spec validation, so bad lists fail at admission). No vault
+  # references the guard in the lane, so create and delete are
   # unconstrained (a guard deletes cleanly even while referenced --
   # the approval requirement simply goes with it).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

@@ -3,12 +3,16 @@ kind: ComponentE2EProfile
 metadata:
   name: azuredataprotectionbackupinstance
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, per-variant offline tofu plans green across
-  # all six variants); live dual-engine proof has not yet run. The
-  # instance is a FREE binding object -- the lane's cost is the
-  # fixture disk's pennies and its time the fixture chain (resource
-  # group + vault + disk policy + managed disk + the two RBAC grants).
+  # PROVEN live on both engines (proof session, 2026-08-20): Pulumi
+  # 12m47s; Terraform 12m46s incl. a blind import round-trip (13s) on
+  # the vault-child ID with a no-differences re-plan. The RBAC grants
+  # propagated in time on the first attempt (deploy ~2m incl. the
+  # ProtectionConfigured waiter), and the destroy on the
+  # soft-delete-Off fixture vault purged the instance outright --
+  # absence verified immediately, no ghost. The instance is a FREE
+  # binding object -- the lane's cost is the fixture disk's pennies
+  # and its time the fixture chain (resource group + vault + disk
+  # policy + managed disk + the two RBAC grants).
   #
   # ONE scenario runs live: `minimal` (the disk variant -- the one
   # variant whose full fixture chain exists in the estate; the policy
@@ -31,6 +35,6 @@ spec:
   # inspected in the per-variant offline plans -- recorded honestly
   # here rather than shipping lanes that cannot run.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 60

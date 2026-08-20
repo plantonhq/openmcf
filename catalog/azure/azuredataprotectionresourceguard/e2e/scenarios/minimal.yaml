@@ -3,7 +3,12 @@
 # seconds. The exclusion entry is present to prove the list's wire
 # shape live (production guidance is an EMPTY list, which guards every
 # critical operation); no vault references the guard in this lane, so
-# create and delete are unconstrained.
+# create and delete are unconstrained. The entry must be an operation
+# ARM allows excluding -- Azure keeps a mandatory always-guarded set
+# and rejects any list naming one
+# (BMSUserErrorInvalidCriticalOperationExclusionList, mirrored as spec
+# validation); backupResourceGuardProxies/write is excludable per the
+# service's own contract.
 apiVersion: azure.planton.dev/v1alpha1
 kind: AzureDataProtectionResourceGuard
 metadata:
@@ -25,7 +30,7 @@ spec:
       name: planton-oss-e2e-azure-fixture-rg
   name: planton-oss-e2e-dprg-smoke
   vaultCriticalOperationExclusionList:
-    - Microsoft.RecoveryServices/vaults/backupconfig/write
+    - Microsoft.RecoveryServices/vaults/backupResourceGuardProxies/write
   tags:
     e2e-suite: azure
     purpose: smoke
