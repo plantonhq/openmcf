@@ -1,0 +1,36 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsmanagedprometheus
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: configuration.retention_period_in_days
+      sku_meter: metric samples and metadata stored
+      pricing_unit: GB
+      impact: Storage bills $0.03 per GB-month, prorated by the hour and -- in AWS's own words -- "billed only when you send metrics", so an empty workspace stores nothing at any retention. Longer retention holds more sample-months on disk; AWS's default is 150 days, and the presets deliberately shorten it (90 and 30) to cap the standing GB a busy workspace accumulates.
+    - field_path: configuration.limits_per_label_set
+      sku_meter: metric samples ingested
+      pricing_unit: samples
+      impact: The brake on the biggest meter -- ingestion bills $0.90 per 10 million samples in the first 2-billion tier, and a runaway-cardinality workload (an experiment tagging series per request ID) burns it fastest. A max_series cap per label set stops that population cold at the limit (0 blocks the set entirely), turning an unbounded meter into a governed one.
+    - field_path: rule_group_namespaces
+      sku_meter: query samples processed
+      pricing_unit: samples
+      impact: Every recording and alerting rule evaluates as a PromQL query on schedule, and the samples those evaluations read bill at $0.10 per billion QSP -- the pricing page's own alerting-rule example (10,000 series every minute, all month) works out to $0.04 per month, so rules are cheap but never free once series exist to read.
+    - field_path: anomaly_detectors
+      sku_meter: query samples processed
+      pricing_unit: samples
+      impact: Each detector's Random Cut Forest model re-runs its PromQL query every evaluation interval, reading samples that meter as QSP like any other query -- proportional to the series the query selects and the interval's frequency, and near zero over a workspace nothing writes to.
+  free_tier: "The workspace itself has no fee -- AWS's pricing page opens with \"there are no upfront fees or commitments. You pay only for what you use, based on metrics ingested, queried, stored, and collected\", so creating a workspace (with rules, alertmanager, limits, and detectors configured) commits nothing. The page's AWS Free Tier table grants 40 M metric samples ingested, 200 B query samples processed, and 10 GB stored; it ties the allowance to AWS Free Tier eligibility without labeling it always-free versus new-account -- treat it as an eligibility-gated allowance, not a standing discount."
+  estimate_exclusions:
+    - ingestion is entirely workload-driven -- $0.90 per 10 million samples for the first 2 billion each month (volume tiers beyond), and nothing in this manifest remote-writes; the writers (workloads, collectors) decide the sample count
+    - storage accumulates at $0.03 per GB-month only as samples arrive, scaled by retention_period_in_days
+    - query samples processed bill $0.10 per billion across EVERY reader -- rules, detectors, dashboards, and ad-hoc PromQL alike
+    - alertmanager notifications ride SNS -- delivery charges bill on the referenced SNS topic, not here
+    - workspace event logging and query logging land in referenced AwsCloudwatchLogGroup components, which bill their own ingestion and storage
+    - a customer-managed kms_key_arn makes the referenced AwsKmsKey bill its monthly key charge and per-request API calls (AWS's encryption docs say the default AWS-owned-key encryption is free)
+    - scrapers are deliberately a separate kind (AwsManagedPrometheusScraper) with their own collector-hour and samples-collected meters -- a workspace never bills for collection
+  notes: "AMP is the pure pay-as-you-go shape: verified against AWS's pricing page, there is NO per-workspace fee -- existence, rule files, the alertmanager document, label-set limits, query logging, and anomaly detectors all cost nothing at rest. The three real meters are ingestion ($0.90/10M samples, first tier), storage ($0.03/GB-month, \"billed only when you send metrics\"), and QSP ($0.10/billion), and all three sit at effectively zero until something remote-writes. The classic surprise is cardinality, not volume: a label explosion multiplies active series, which multiplies ingestion AND the samples every rule evaluation reads -- which is exactly what limits_per_label_set exists to govern."

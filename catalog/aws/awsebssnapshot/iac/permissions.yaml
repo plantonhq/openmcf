@@ -1,0 +1,79 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsebssnapshot
+spec:
+  aws:
+    statements:
+      - sid: ManageSnapshot
+        actions:
+          - ec2:CreateSnapshot
+          - ec2:CopySnapshot
+          - ec2:ImportSnapshot
+          - ec2:DeleteSnapshot
+        resources:
+          - arn:aws:ec2:*::snapshot/*
+          - arn:aws:ec2:*:*:volume/*
+          - arn:aws:ec2:*:*:import-snapshot-task/*
+        provenance: derived
+        notes: Covers the three source arms -- aws_ebs_snapshot (CreateSnapshot, authorizing against BOTH the source volume ARN and the created snapshot ARN), aws_ebs_snapshot_copy (CopySnapshot on the snapshot ARN), and aws_ebs_snapshot_import (ImportSnapshot on the snapshot AND import-snapshot-task ARNs) -- plus the shared DeleteSnapshot on destroy. The snapshot ARN format carries NO account id (arn:${Partition}:ec2:${Region}::snapshot/${SnapshotId}) per the service reference. The import arm's role_name names the VM Import/Export service role (vmimport by default), which must pre-exist with its documented trust and S3 policy -- the service resolves it by name, so no iam:PassRole flows through the module.
+      - sid: ManageSnapshotTierAndRestore
+        actions:
+          - ec2:ModifySnapshotTier
+          - ec2:RestoreSnapshotTier
+        resources:
+          - arn:aws:ec2:*::snapshot/*
+        provenance: derived
+        notes: Needed only when storage_tier is archive (ModifySnapshotTier moves the snapshot to the archive tier on all three arms) or when permanent_restore / temporary_restore_days trigger a restore (RestoreSnapshotTier). Both scope to the snapshot ARN per the service reference.
+      - sid: ManageFastSnapshotRestore
+        actions:
+          - ec2:EnableFastSnapshotRestores
+          - ec2:DisableFastSnapshotRestores
+        resources:
+          - arn:aws:ec2:*::snapshot/*
+        provenance: derived
+        notes: Covers aws_ebs_fast_snapshot_restore, one per fast_restore_availability_zones entry -- Enable on create, Disable on removal. Both scope to the snapshot ARN per the service reference.
+      - sid: ManageCreateVolumePermissionGrants
+        actions:
+          - ec2:ModifySnapshotAttribute
+          - ec2:DescribeSnapshotAttribute
+          - ec2:ResetSnapshotAttribute
+        resources:
+          - arn:aws:ec2:*::snapshot/*
+        provenance: derived
+        notes: Covers aws_snapshot_create_volume_permission, one per share_with_account_ids entry -- ModifySnapshotAttribute adds and removes the per-account createVolumePermission grant, DescribeSnapshotAttribute reads grants back on every refresh, ResetSnapshotAttribute is the provider's clear-all path. All three scope to the snapshot ARN per the service reference.
+      - sid: ReadSnapshotState
+        actions:
+          - ec2:DescribeSnapshots
+          - ec2:DescribeSnapshotTierStatus
+          - ec2:DescribeImportSnapshotTasks
+          - ec2:DescribeFastSnapshotRestores
+        resources:
+          - "*"
+        provenance: derived
+        notes: All four are NON-SCOPABLE per the service reference (they list no resource types), so the wildcard is the narrowest possible scope -- an ARN-scoped grant here would be a runtime DENY. DescribeSnapshots serves every plan/refresh and the create/copy completion waiters; DescribeSnapshotTierStatus reads archive-tier state; DescribeImportSnapshotTasks is the import arm's task waiter; DescribeFastSnapshotRestores reads FSR state per zone.
+      - sid: TagSnapshot
+        actions:
+          - ec2:CreateTags
+          - ec2:DeleteTags
+        resources:
+          - arn:aws:ec2:*::snapshot/*
+        provenance: derived
+        notes: All three source arms tag the snapshot (tags = local.aws_tags) -- tag-on-create plus later tag reconciliation, scoped to the account-less snapshot ARN format.
+      - sid: KmsForCustomerManagedKey
+        actions:
+          - kms:CreateGrant
+          - kms:DescribeKey
+          - kms:GenerateDataKeyWithoutPlaintext
+          - kms:Decrypt
+          - kms:ReEncryptFrom
+          - kms:ReEncryptTo
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Needed only when copy_from.kms_key_id or import_from.kms_key_id references a customer-managed key -- EC2 authorizes the CALLING principal for the grant and data-key operations it performs to re-encrypt the copy or encrypt the import under that key (a cross-region copy additionally needs Decrypt/ReEncryptFrom on the SOURCE snapshot's key). encrypted=true with the key unset uses the AWS-managed aws/ebs key, which requires no caller-side KMS grant.

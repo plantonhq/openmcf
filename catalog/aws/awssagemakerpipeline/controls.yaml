@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awssagemakerpipeline
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The pipeline stores no customer data -- the definition JSON is workflow configuration held in SageMaker's control plane. The data its executions touch (training inputs, artifacts, outputs) rests in the S3 locations the definition names, encrypted per those buckets' posture and the per-step KMS settings inside the definition.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key on the pipeline object itself; customer-key choices for step data live inside the definition's per-job configuration and on the destination buckets.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The pipeline terminates no connections of its own. Management calls and execution starts ride the TLS-only SageMaker API; data movement between steps rides AWS's TLS service channels between the jobs and S3.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A pipeline has no network endpoint to expose -- it is orchestration configuration reachable only through the IAM-authorized SageMaker API. The step jobs it launches run on SageMaker-managed infrastructure with no inbound surface.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens on a pipeline; there is no inbound network surface to restrict. Network placement for step jobs (VPC subnets, security groups) is declared per job inside the definition, not on this spec.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Not a web-facing surface -- the pipeline receives no HTTP traffic and no web ACL can attach to it.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation is IAM-authorized against the pipeline ARN -- lifecycle actions on the definition, and StartPipelineExecution / StopPipelineExecution / the execution describe-list family on the run side, so WHO may change the DAG and WHO may run it are independently grantable.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The spec's required role_arn is the only credential path executions ever get -- SageMaker assumes it with short-lived credentials to launch and run every step job (training, processing, registration). No static credentials exist anywhere on the pipeline or inside its runs.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The single access path is SigV4-signed HTTPS through the SageMaker API; no legacy or weaker authentication path exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management call and every execution start (CreatePipeline, UpdatePipeline, DeletePipeline, StartPipelineExecution) is recorded by CloudTrail by default -- who changed the DAG and who ran it are always attributable, and each execution's step-by-step history is retained queryably on the pipeline itself.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: SageMaker emits pipeline execution status changes and per-step status changes directly to Amazon EventBridge as documented service events (detail-types "SageMaker Model Building Pipeline Execution Status Change" and the step variant), with no opt-in -- alarms, notifications, and downstream automation attach as EventBridge rules. Step jobs additionally publish their own CloudWatch metrics and logs.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The pipeline holds no data to back up -- it is declarative configuration fully re-creatable from the manifest (the definition is either inline here or a versioned S3 object). Execution artifacts live in S3 with that bucket's durability.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The orchestration layer is serverless AWS infrastructure with no zonal placement to configure; step jobs are transient compute that SageMaker places per job, declared inside the definition.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Pipelines expose no deletion-protection flag -- DeletePipeline succeeds whenever IAM allows it. Deletion removes the DAG and its execution history; artifacts already written to S3 survive on their buckets.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The orchestration service is fully managed -- AWS operates and patches the execution engine; the pipeline exposes no runtime, version, or maintenance surface. Step containers are the customer's own images, patched by rebuilding them and updating the definition.

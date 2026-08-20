@@ -1,0 +1,138 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsappsyncapi
+spec:
+  aws:
+    statements:
+      - sid: CreateApis
+        actions:
+          - appsync:CreateGraphqlApi
+          - appsync:CreateApi
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_appsync_graphql_api / appsync.GraphQLApi (the graphql arm) and aws_appsync_api / appsync.Api (the events arm) at create. Neither create action takes resource-level scoping -- the AppSync service reference lists no resource types for them, so an ARN-scoped grant would be a runtime DENY; the wildcard IS the narrowest possible scope. The spec's CEL wall guarantees exactly one arm renders per manifest.
+      - sid: ManageApis
+        actions:
+          - appsync:GetGraphqlApi
+          - appsync:UpdateGraphqlApi
+          - appsync:DeleteGraphqlApi
+          - appsync:GetApi
+          - appsync:UpdateApi
+          - appsync:DeleteApi
+        resources:
+          - arn:aws:appsync:*:*:apis/*
+        provenance: derived
+        notes: Read, update, and destroy for both arms. The Get twins run on every plan/refresh. All six actions scope to the api/graphqlapi ARN format (arn:...:apis/${ApiId}) per the service reference.
+      - sid: ManageSchema
+        actions:
+          - appsync:StartSchemaCreation
+          - appsync:GetSchemaCreationStatus
+        resources:
+          - "*"
+        provenance: derived
+        notes: The graphql arm's schema applies through AppSync's asynchronous StartSchemaCreation, polled by GetSchemaCreationStatus (both engines set schema on the aws_appsync_graphql_api / appsync.GraphQLApi resource, which drives these calls). Neither action takes resource-level scoping per the service reference, so the wildcard is the narrowest possible scope.
+      - sid: TagApis
+        actions:
+          - appsync:TagResource
+          - appsync:UntagResource
+          - appsync:ListTagsForResource
+        resources:
+          - arn:aws:appsync:*:*:apis/*
+          - arn:aws:appsync:*:*:domainnames/*
+        provenance: derived
+        notes: Tag-on-create plus tag reconciliation and the tag read on every refresh, for the tagged resources the modules manage -- both API arms and channel namespaces (whose channelNamespace ARN format lives under apis/${ApiId}/channelNamespace/... and is matched by the apis/* pattern). The domain format is listed for completeness; the service reference scopes all three tagging actions to api, graphqlapi, channelNamespace, and domain ARNs.
+      - sid: ManageGraphqlSatellites
+        actions:
+          - appsync:CreateDataSource
+          - appsync:GetDataSource
+          - appsync:UpdateDataSource
+          - appsync:DeleteDataSource
+          - appsync:CreateFunction
+          - appsync:GetFunction
+          - appsync:UpdateFunction
+          - appsync:DeleteFunction
+          - appsync:CreateResolver
+          - appsync:GetResolver
+          - appsync:UpdateResolver
+          - appsync:DeleteResolver
+          - appsync:CreateType
+          - appsync:GetType
+          - appsync:UpdateType
+          - appsync:DeleteType
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_appsync_datasource / appsync.DataSource (spec.datasources, either arm), aws_appsync_function / appsync.Function (graphql.functions), aws_appsync_resolver / appsync.Resolver (graphql.resolvers), and aws_appsync_type / appsync.Type (graphql.types). NONE of these sixteen actions takes resource-level scoping -- the service reference lists no resource types for any of them (data sources, functions, resolvers, and types are addressed by API id plus name in the request, not by ARN), so an ARN-scoped grant would be a runtime DENY; the wildcard is the narrowest possible scope.
+      - sid: ManageCacheAndApiKeys
+        actions:
+          - appsync:CreateApiCache
+          - appsync:GetApiCache
+          - appsync:UpdateApiCache
+          - appsync:DeleteApiCache
+          - appsync:CreateApiKey
+          - appsync:ListApiKeys
+          - appsync:UpdateApiKey
+          - appsync:DeleteApiKey
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_appsync_api_cache / appsync.ApiCache (graphql.cache, the one-per-API singleton) and aws_appsync_api_key / appsync.ApiKey (spec.api_keys, either arm). The provider reads keys back through ListApiKeys because AWS exposes no per-key Get. None of these eight actions takes resource-level scoping per the service reference; the wildcard is the narrowest possible scope.
+      - sid: ManageChannelNamespaces
+        actions:
+          - appsync:CreateChannelNamespace
+          - appsync:GetChannelNamespace
+          - appsync:UpdateChannelNamespace
+          - appsync:DeleteChannelNamespace
+        resources:
+          - arn:aws:appsync:*:*:apis/*/channelNamespace/*
+        provenance: derived
+        notes: Covers aws_appsync_channel_namespace / appsync.ChannelNamespace (events.channel_namespaces). All four actions scope to the channelNamespace ARN format per the service reference.
+      - sid: ManageCustomDomain
+        actions:
+          - appsync:CreateDomainName
+          - appsync:GetDomainName
+          - appsync:UpdateDomainName
+          - appsync:DeleteDomainName
+          - appsync:AssociateApi
+          - appsync:DisassociateApi
+          - appsync:GetApiAssociation
+        resources:
+          - arn:aws:appsync:*:*:domainnames/*
+        provenance: derived
+        notes: Covers aws_appsync_domain_name / appsync.DomainName and aws_appsync_domain_name_api_association / appsync.DomainNameApiAssociation (spec.custom_domain). All seven actions -- the domain CRUD and the association trio -- scope to the domain ARN format per the service reference. The referenced ACM certificate must already exist in us-east-1; the modules read nothing from ACM, so no acm grants are needed here.
+      - sid: ManageSourceApiAssociations
+        actions:
+          - appsync:AssociateSourceGraphqlApi
+          - appsync:AssociateMergedGraphqlApi
+          - appsync:GetSourceApiAssociation
+          - appsync:UpdateSourceApiAssociation
+          - appsync:DisassociateSourceGraphqlApi
+        resources:
+          - arn:aws:appsync:*:*:apis/*
+        provenance: derived
+        notes: Covers aws_appsync_source_api_association / appsync.SourceApiAssociation -- created only when graphql.merged.source_apis has entries. AWS authorizes the associate pair on the graphqlapi ARN (merged and source sides respectively), and the get/update/disassociate trio on the sourceApiAssociation ARN (apis/${MergedApiId}/sourceApiAssociations/${AssociationId}), which the apis/* pattern also matches since IAM wildcards cross path segments.
+      - sid: AssociateWebAcl
+        actions:
+          - wafv2:AssociateWebACL
+          - wafv2:DisassociateWebACL
+          - wafv2:GetWebACLForResource
+          - wafv2:GetWebACL
+        resources:
+          - arn:aws:appsync:*:*:apis/*
+          - arn:aws:wafv2:*:*:regional/webacl/*/*
+        provenance: derived
+        notes: Covers aws_wafv2_web_acl_association / wafv2.WebAclAssociation -- created only when graphql.web_acl_arn is set (GraphQL arm only; AWS's WAF association does not support Events APIs). The WAFv2 service reference scopes the associate/disassociate/read-back actions to the protected resource's ARN (the appsync format) plus the webacl ARN; GetWebACL serves the provider's read of the ACL itself during association.
+      - sid: PassServiceRoles
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: The modules pass IAM roles to AppSync in three places -- each data source's service_role_arn (assumed to reach the backend), the log_config delivery role on either arm (assumed to write CloudWatch logs), and a MERGED API's execution_role_arn (assumed to read source APIs during merges). Add an iam:PassedToService=appsync.amazonaws.com condition and narrow to the actual role ARNs in a hardened deployment.

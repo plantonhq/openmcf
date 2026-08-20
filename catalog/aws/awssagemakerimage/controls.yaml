@@ -1,0 +1,63 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awssagemakerimage
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An image stores no customer data -- it is a named catalog entry whose versions are pointers to ECR images, all control-plane metadata held inside AWS's service infrastructure. The container layers themselves rest in the ECR repository behind each version's base_image, and encryption there is that AwsEcrRepo component's posture.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest to key (see enc-at-rest); neither the image nor its versions exposes a KMS surface. Customer-key encryption of the underlying layers is configured on the ECR repository.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: An image terminates no connections of its own. The only wire traffic involving it -- SageMaker management calls, and the ECR pulls SageMaker performs when a surface launches a version -- rides AWS API and registry endpoints that serve exclusively over TLS as provider behavior, not per-image configuration.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: An image has no network endpoint to expose -- it is registry metadata reachable only through the IAM-authorized SageMaker API. Whether the underlying container images are publicly pullable is the ECR repository's policy, decided on that component.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network surface exists to filter; an image is a catalog object with no addresses or ports.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: An image receives no HTTP requests -- web ACLs and request filters have nothing to attach to.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation on the image and its versions -- create, describe, update, delete, alias changes -- is IAM-authorized against the image and image-version ARN formats; no non-IAM access path exists.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: An image runs no workload. Its one identity -- role_arn, required by the spec -- is assumed by SageMaker itself with short-lived credentials to pull version images from ECR when a Studio or notebook surface launches them; service plumbing fixed by AWS's design, not a workload-identity choice this manifest makes.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The single access path is SigV4-signed HTTPS through the SageMaker API; no legacy or weaker authentication path exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management call on the image and its versions (CreateImage, CreateImageVersion, UpdateImage, DeleteImage, alias updates) is a control-plane API operation recorded by CloudTrail by default -- who registered, retargeted, or retired a version is always attributable.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: SageMaker publishes no CloudWatch metrics for image objects -- there is no runtime to measure. Operational signals belong to the surfaces that RUN versions (Studio apps, notebook instances, jobs), each monitored on its own component.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: An image holds no data to back up -- it is declarative configuration fully re-creatable from the manifest. The one wrinkle is version NUMBERS, which AWS assigns monotonically and never reuses, so a re-created image renumbers its versions from 1; the container layers themselves live durably in ECR either way.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The image is regional control-plane metadata AWS stores in its own multi-AZ service infrastructure; there is no zonal placement to configure and no availability posture the manifest could change.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor the modules expose a deletion-protection flag for images or versions -- DeleteImage succeeds whenever IAM allows it. Deleting the registry entry never touches the container layers in ECR.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: "The image object has no software to patch. The container images its versions point at are the customer's own artifacts, patched by rebuilding and registering a new version -- a workflow this component records (vendor_guidance, release_notes) but does not perform."

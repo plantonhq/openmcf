@@ -1,0 +1,45 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsredshiftserverlessnamespace
+spec:
+  aws:
+    statements:
+      - sid: ManageNamespace
+        actions:
+          - redshift-serverless:CreateNamespace
+          - redshift-serverless:GetNamespace
+          - redshift-serverless:UpdateNamespace
+          - redshift-serverless:DeleteNamespace
+        resources:
+          - arn:aws:redshift-serverless:*:*:namespace/*
+        provenance: derived
+        notes: Covers aws_redshiftserverless_namespace / redshiftserverless.Namespace -- the module's only AWS resource. GetNamespace serves every plan/refresh and feeds the admin_password_secret_arn output in managed-password mode; UpdateNamespace reconciles credentials, the KMS keys, iam_roles, the default role, and log_exports in place (a data-key change is an in-place but long-running re-encryption, and AWS serializes it -- no other namespace action runs while the key changes). All four actions scope to the namespace ARN per the redshift-serverless service reference (AWS-generated namespace ID, hence the wildcard).
+      - sid: TagNamespace
+        actions:
+          - redshift-serverless:TagResource
+          - redshift-serverless:UntagResource
+          - redshift-serverless:ListTagsForResource
+        resources:
+          - arn:aws:redshift-serverless:*:*:namespace/*
+        provenance: derived
+        notes: Tag-on-create with the platform's standard tags plus tag reconciliation and the read-back every refresh performs. All three actions scope to the namespace ARN per the service reference.
+      - sid: PassEngineRoles
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: Associating iam_roles and default_iam_role_arn hands those roles to the Redshift engine to assume during COPY/UNLOAD/Spectrum -- and handing a role to a service is exactly what iam:PassRole authorizes on the CALLER. Narrow the resource to the actual engine-role ARNs in a hardened deployment, and pin the pass with a condition limiting iam:PassedToService to redshift.amazonaws.com.
+      - sid: CreateServiceLinkedRole
+        actions:
+          - iam:CreateServiceLinkedRole
+        resources:
+          - arn:aws:iam::*:role/aws-service-role/redshift.amazonaws.com/AWSServiceRoleForRedshift
+        provenance: derived
+        notes: First-use only -- the account's first Redshift resource makes AWS create the AWSServiceRoleForRedshift service-linked role, and that creation is authorized against the caller. A no-op in accounts where the role already exists; safe to drop there.

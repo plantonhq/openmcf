@@ -1,0 +1,52 @@
+# IaC runner permissions: the least-privilege statements a provisioning
+# identity needs to manage this component's full lifecycle (create, read,
+# update, delete, tag) through the official modules. Resource patterns use
+# catalog placeholders; NON-SCOPABLE facts are verified against the AWS
+# service reference (servicereference.us-east-1.amazonaws.com/v1/dlm/dlm.json).
+# Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsdlmlifecyclepolicy
+spec:
+  aws:
+    statements:
+      - sid: CreatePolicy
+        actions:
+          - dlm:CreateLifecyclePolicy
+        resources:
+          - "*"
+        provenance: derived
+        notes: "NON-SCOPABLE: the service reference lists no resource type for CreateLifecyclePolicy -- the policy ID (policy-XXXX) does not exist until the call returns, so the ARN cannot be predicted and the action requires '*'. It DOES honor aws:RequestTag/${TagKey} and aws:TagKeys condition keys, so tag-on-create governance can constrain it even without a resource pattern; the module tags every policy with the platform's standard tag set at creation."
+      - sid: OperatePolicy
+        actions:
+          - dlm:GetLifecyclePolicy
+          - dlm:UpdateLifecyclePolicy
+          - dlm:DeleteLifecyclePolicy
+        resources:
+          - "arn:aws:dlm:*:{account_id}:policy/*"
+        provenance: derived
+        notes: "Read, in-place update (all spec fields including state changes via the disabled flag update in place -- the module never forces replacement), and delete, all scoped to the policy resource type. Policy IDs are service-generated, so the resource segment stays a wildcard within the account; deleting the policy deletes no snapshots it created."
+      - sid: ListPolicies
+        actions:
+          - dlm:GetLifecyclePolicies
+        resources:
+          - "*"
+        provenance: derived
+        notes: "NON-SCOPABLE: the list/summary call carries no resource type in the service reference and requires '*'. Read-only; used for import and drift workflows that locate a policy before reading it by ID."
+      - sid: TagPolicy
+        actions:
+          - dlm:TagResource
+          - dlm:UntagResource
+          - dlm:ListTagsForResource
+        resources:
+          - "arn:aws:dlm:*:{account_id}:policy/*"
+        provenance: derived
+        notes: "The module maintains the platform's standard tags (resource ID, org, env) on the policy across updates; all three actions scope to the policy ARN."
+      - sid: PassExecutionRole
+        actions:
+          - iam:PassRole
+        resources:
+          - "arn:aws:iam::{account_id}:role/*"
+        provenance: derived
+        notes: "The spec's required execution_role_arn is handed to DLM at create/update time, and IAM demands the caller hold iam:PassRole on that role. Tighten the resource pattern to the specific execution role(s) your policies use (e.g. service-role/AWSDataLifecycleManagerDefaultRole), and pin the condition iam:PassedToService = dlm.amazonaws.com so the grant cannot pass roles to any other service."

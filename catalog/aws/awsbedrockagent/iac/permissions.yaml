@@ -1,0 +1,76 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsbedrockagent
+spec:
+  aws:
+    statements:
+      - sid: CreateAgent
+        actions:
+          - bedrock:CreateAgent
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers the create call of aws_bedrockagent_agent / bedrock.AgentAgent. CreateAgent is NON-SCOPABLE -- the bedrock service reference lists no resource types for it (the agent ID does not exist until the call returns), so an ARN-scoped grant would be a runtime DENY; the wildcard is the narrowest possible scope.
+      - sid: ManageAgent
+        actions:
+          - bedrock:GetAgent
+          - bedrock:UpdateAgent
+          - bedrock:DeleteAgent
+          - bedrock:PrepareAgent
+        resources:
+          - arn:aws:bedrock:*:*:agent/*
+        provenance: derived
+        notes: Covers aws_bedrockagent_agent / bedrock.AgentAgent after creation. GetAgent serves every plan/refresh; PrepareAgent compiles the draft for serving -- the provider re-prepares after every agent or satellite change and polls until PREPARED, so it fires on nearly every apply. All four actions scope to the agent ARN per the service reference.
+      - sid: ManageAgentSatellites
+        actions:
+          - bedrock:CreateAgentActionGroup
+          - bedrock:GetAgentActionGroup
+          - bedrock:UpdateAgentActionGroup
+          - bedrock:DeleteAgentActionGroup
+          - bedrock:AssociateAgentCollaborator
+          - bedrock:GetAgentCollaborator
+          - bedrock:UpdateAgentCollaborator
+          - bedrock:DisassociateAgentCollaborator
+          - bedrock:AssociateAgentKnowledgeBase
+          - bedrock:GetAgentKnowledgeBase
+          - bedrock:UpdateAgentKnowledgeBase
+          - bedrock:DisassociateAgentKnowledgeBase
+        resources:
+          - arn:aws:bedrock:*:*:agent/*
+          - arn:aws:bedrock:*:*:knowledge-base/*
+        provenance: derived
+        notes: Covers aws_bedrockagent_agent_action_group, aws_bedrockagent_agent_collaborator, and aws_bedrockagent_agent_knowledge_base_association (and their Pulumi twins) -- all attach to the agent's DRAFT version, and the Get twins run on every refresh. Action-group and collaborator actions scope to the agent ARN; the knowledge-base association actions authorize against BOTH the agent and knowledge-base ARN formats per the service reference, which is why the knowledge-base ARN pattern is granted here.
+      - sid: ManageAgentAliases
+        actions:
+          - bedrock:CreateAgentAlias
+          - bedrock:GetAgentAlias
+          - bedrock:UpdateAgentAlias
+          - bedrock:DeleteAgentAlias
+        resources:
+          - arn:aws:bedrock:*:*:agent/*
+          - arn:aws:bedrock:*:*:agent-alias/*
+        provenance: derived
+        notes: Covers aws_bedrockagent_agent_alias / bedrock.AgentAgentAlias for spec.aliases entries. CreateAgentAlias authorizes on the agent ARN (the snapshot happens against the agent); Get/Update/Delete scope to the agent-alias ARN format (agent-alias/AgentId/AliasId) per the service reference.
+      - sid: TagAgentResources
+        actions:
+          - bedrock:TagResource
+          - bedrock:UntagResource
+          - bedrock:ListTagsForResource
+        resources:
+          - arn:aws:bedrock:*:*:agent/*
+          - arn:aws:bedrock:*:*:agent-alias/*
+        provenance: derived
+        notes: The modules tag the agent and every alias (tag-on-create plus reconciliation), and the tag read runs on every refresh. The service reference scopes all three tagging actions to the agent and agent-alias ARN formats among others; only the two this component tags are granted.
+      - sid: PassAgentServiceRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: CreateAgent and UpdateAgent pass the referenced agent_resource_role_arn (required by the spec) to Bedrock, which assumes it to invoke the model, call action-group Lambdas, and query knowledge bases. Add an iam:PassedToService=bedrock.amazonaws.com condition and narrow to the actual role ARN in a hardened deployment.

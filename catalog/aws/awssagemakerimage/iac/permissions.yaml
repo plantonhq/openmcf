@@ -1,0 +1,44 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awssagemakerimage
+spec:
+  aws:
+    statements:
+      - sid: ManageImage
+        actions:
+          - sagemaker:CreateImage
+          - sagemaker:DescribeImage
+          - sagemaker:UpdateImage
+          - sagemaker:DeleteImage
+          - sagemaker:AddTags
+          - sagemaker:DeleteTags
+          - sagemaker:ListTags
+        resources:
+          - arn:aws:sagemaker:*:*:image/*
+        provenance: derived
+        notes: Covers aws_sagemaker_image / sagemaker.Image -- create (the provider sleeps ~1 minute first for IAM propagation, then calls CreateImage), the Describe read on every plan/refresh, in-place updates of display_name and description, tagging, and teardown. All four lifecycle actions scope to the image ARN format per the service reference; the tagging trio also accepts it (tags live on the image only -- image versions carry no tags upstream by provider design).
+      - sid: ManageImageVersions
+        actions:
+          - sagemaker:CreateImageVersion
+          - sagemaker:DescribeImageVersion
+          - sagemaker:UpdateImageVersion
+          - sagemaker:DeleteImageVersion
+          - sagemaker:ListAliases
+        resources:
+          - arn:aws:sagemaker:*:*:image/*
+          - arn:aws:sagemaker:*:*:image-version/*
+        provenance: derived
+        notes: Covers aws_sagemaker_image_version for every spec.versions entry. Both ARN formats are required, not optional -- the service reference scopes CreateImageVersion to the IMAGE format but Describe/Update/Delete to the IMAGE-VERSION format, and ListAliases (the provider's alias read-back on every refresh) accepts either. UpdateImageVersion reconciles aliases and the compatibility metadata in place; a changed base_image instead deletes and re-creates the version under a NEW AWS-assigned number.
+      - sid: PassImagePullRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: CreateImage passes the referenced role (role_arn, required by the spec) to SageMaker, which assumes it to pull version images from ECR when surfaces launch them -- and because the role is create-time only on this resource, changing it replaces the image and passes the new one. The provider's ~1 minute pre-create sleep for IAM propagation is a plain wait, not an IAM read, so no iam:GetRole grant is needed. Add an iam:PassedToService=sagemaker.amazonaws.com condition and narrow to the actual role ARN in a hardened deployment.

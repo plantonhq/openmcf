@@ -1,0 +1,32 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awscloudwatchlogaccountpolicy
+spec:
+  presets:
+    - preset: 01-pii-masking
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the DATA_PROTECTION policy has no selection_criteria, so it covers EVERY log group in the region -- each GB those groups ingest is also a GB scanned at $0.12 per GB, a meter with no free allotment that starts with the account's first ingested byte
+        - the ingestion being scanned bills separately on each AwsCloudwatchLogGroup ($0.50 per GB standard class, after the permanent 5 GB monthly free tier) -- the scan is a second meter over the same bytes
+        - both statements pin an empty FindingsDestination, so no findings-delivery spend exists; naming a log group, Firehose stream, or S3 bucket there would bill on that component
+      notes: Zero committed cost -- the policy object never bills and an account with silent log groups scans nothing; the $0.12/GB scan meter tracks region-wide ingestion volume, which the manifest cannot see.
+    - preset: 02-field-indexing
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - a FIELD_INDEX policy carries no listed charge of its own on the CloudWatch pricing page -- no scan meter, no per-field fee; the three indexed fields (requestId, customerId, sourceIp) exist to make Logs Insights queries cheaper, not to bill
+        - the log groups under the "/app" prefix keep billing their own ingestion and storage on AwsCloudwatchLogGroup, and Logs Insights queries over them bill per GB of data scanned to whoever runs them -- field indexes reduce that scanned volume
+      notes: Zero committed cost -- and unlike the data-protection preset this zero is not merely commitment-absence at rest; AWS lists no meter for field-index policies at any volume, so the object stays at $0 even over busy log groups.

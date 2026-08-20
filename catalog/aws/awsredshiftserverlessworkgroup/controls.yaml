@@ -1,0 +1,83 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsredshiftserverlessworkgroup
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The workgroup is the stateless COMPUTE plane -- the warehouse data lives in Redshift Managed Storage on the attached AwsRedshiftServerlessNamespace, and encryption at rest (always on, with the optional customer-managed key) is that component's control.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: The customer-managed key wraps the namespace's storage, not the workgroup's compute -- the kms_key surface lives on AwsRedshiftServerlessNamespace.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: config_parameters
+      evidence:
+        type: spec_default
+        reference: With no require_ssl parameter the endpoint accepts both TLS and plaintext PostgreSQL-protocol connections (the AWS default). Setting config_parameters require_ssl to "true" makes the workgroup refuse unencrypted connections -- the production preset does exactly that -- and use_fips_ssl further pins FIPS-approved TLS.
+      notes: The custom_domain association adds ACM-served TLS on a DNS name you own; the management API is HTTPS-only regardless.
+    - control_id: no-public-access
+      status: configurable
+      field_path: publicly_accessible
+      evidence:
+        type: spec_default
+        reference: Off by default -- the workgroup's endpoint gets no public IP and is reachable only inside the VPC through its subnets, managed VPC endpoints, or Query Editor. Setting it true exposes the endpoint publicly; no shipped preset does.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_default
+        reference: Empty attaches the VPC's DEFAULT security group (the AWS default -- typically open within the VPC). Referencing locked-down AwsSecurityGroup nodes restricts who reaches the warehouse port; the ingress rules themselves (e.g. 5439 from BI tooling only) live on those referenced nodes, which is the composition the spec enforces.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The workgroup serves the PostgreSQL wire protocol on a VPC endpoint, not HTTP -- there is no WAF attachment point, and edge request filtering has no meaning for a warehouse port.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every control-plane operation is IAM-authorized against the workgroup ARN, and data-plane entry is role-gated too -- redshift-serverless:GetCredentials mints database credentials from the caller's IAM identity, and inside the warehouse PostgreSQL grants govern schemas and tables.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every workgroup supports IAM-minted short-lived database credentials (GetCredentials) out of the box -- a workload authenticates from its IAM role with no stored password. The static admin-password surface exists on the NAMESPACE, but nothing about the workgroup requires using it.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The workgroup exposes no authentication-protocol dial -- credential mechanisms (IAM-minted credentials, the admin password, Secrets Manager management) are namespace-and-caller concerns. The nearest workgroup-side hardening is transport, covered under enc-in-transit.
+    - control_id: audit-logging
+      status: configurable
+      field_path: config_parameters
+      evidence:
+        type: spec_default
+        reference: Setting config_parameters enable_user_activity_logging to "true" records every SQL statement users run; unset keeps the AWS default (off). The recorded logs ship through the namespace's log_exports surface -- the two components split the control exactly as AWS splits the resources.
+      notes: Control-plane operations on the workgroup (create, capacity changes, delete) are captured by CloudTrail unconditionally regardless of this parameter.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Redshift Serverless publishes workgroup metrics -- RPU capacity in use, compute seconds, query counts -- to CloudWatch automatically; usage_limits with breach_action "emit-metric" additionally publish limit-breach metrics for alarming.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Recovery points and snapshots protect the DATA, which lives on the attached AwsRedshiftServerlessNamespace -- backup posture is that component's control. Destroying a workgroup loses nothing but compute configuration; the warehouse data survives on the namespace.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no workgroup-owned backups there is no retention dial here -- snapshot retention rides the namespace's backup surface.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AWS refuses a workgroup without at least three subnets spanning three distinct availability zones (the spec's CEL mirrors the requirement), so the compute plane always has three-AZ placement to schedule and recover across.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Redshift Serverless workgroups have no deletion-protection flag -- a delete call with IAM permission proceeds. The blast radius is bounded by the architecture (data lives on the namespace, and the namespace's own deletion posture is its control), but the workgroup itself cannot refuse deletion.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Serverless has no instances, versions, or maintenance windows to manage -- AWS patches and upgrades the fleet invisibly. track_name only chooses WHICH certified release stream the workgroup follows ("current" by default, "trailing" one behind); staying patched is not optional.

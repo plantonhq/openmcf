@@ -8,6 +8,28 @@
 # own modification stamp.
 provider: aws
 services:
+  - prefix: account
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/account/account.json
+    source_modified: "2026-08-17"
+    retrieved_on: "2026-08-20"
+    actions:
+      - AcceptPrimaryEmailUpdate
+      - CloseAccount
+      - DeleteAlternateContact
+      - DisableRegion
+      - EnableRegion
+      - GetAccountInformation
+      - GetAlternateContact
+      - GetContactInformation
+      - GetGovCloudAccountInformation
+      - GetPrimaryEmail
+      - GetPrimaryEmailUpdateStatus
+      - GetRegionOptStatus
+      - ListRegions
+      - PutAccountName
+      - PutAlternateContact
+      - PutContactInformation
+      - StartPrimaryEmailUpdate
   - prefix: acm
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/acm/acm.json
     source_modified: "2026-08-13"
@@ -62,6 +84,37 @@ services:
       - PutAccountConfiguration
       - RequestCertificate
       - SearchCertificates
+  - prefix: acm-pca
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/acm-pca/acm-pca.json
+    source_modified: "2026-03-25"
+    retrieved_on: "2026-08-20"
+    actions:
+      - CreateCertificateAuthority
+      - CreateCertificateAuthorityAuditReport
+      - CreatePermission
+      - DeleteCertificateAuthority
+      - DeletePermission
+      - DeletePolicy
+      - DescribeCertificateAuthority
+      - DescribeCertificateAuthorityAuditReport
+      - GetCertificate
+      - GetCertificateAuthorityCertificate
+      - GetCertificateAuthorityCsr
+      - GetPolicy
+      - ImportCertificateAuthorityCertificate
+      - IssueCertificate
+      - ListCertificateAuthorities
+      - ListPermissions
+      - ListTags
+      - PutPolicy
+      - RestoreCertificateAuthority
+      - RevokeCertificate
+      - TagCertificateAuthority
+      - UntagCertificateAuthority
+      - UpdateCertificateAuthority
+    non_scopable_actions:
+      - CreateCertificateAuthority
+      - ListCertificateAuthorities
   - prefix: airflow
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/airflow/airflow.json
     source_modified: "2026-08-07"
@@ -306,6 +359,221 @@ services:
       - ListServices
       - ListVpcConnectors
       - ListVpcIngressConnections
+  - prefix: appsync
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/appsync/appsync.json
+    source_modified: "2026-05-26"
+    retrieved_on: "2026-08-20"
+    actions:
+      - AssociateApi
+      - AssociateMergedGraphqlApi
+      - AssociateSourceGraphqlApi
+      - AssociateWebACL
+      - CreateApi
+      - CreateApiCache
+      - CreateApiKey
+      - CreateChannelNamespace
+      - CreateDataSource
+      - CreateDomainName
+      - CreateFunction
+      - CreateGraphqlApi
+      - CreateResolver
+      - CreateType
+      - DeleteApi
+      - DeleteApiCache
+      - DeleteApiKey
+      - DeleteChannelNamespace
+      - DeleteDataSource
+      - DeleteDomainName
+      - DeleteFunction
+      - DeleteGraphqlApi
+      - DeleteResolver
+      - DeleteResourcePolicy
+      - DeleteType
+      - DisassociateApi
+      - DisassociateMergedGraphqlApi
+      - DisassociateSourceGraphqlApi
+      - DisassociateWebACL
+      - EvaluateCode
+      - EvaluateMappingTemplate
+      - EventConnect
+      - EventPublish
+      - EventSubscribe
+      - FlushApiCache
+      - GetApi
+      - GetApiAssociation
+      - GetApiCache
+      - GetChannelNamespace
+      - GetDataSource
+      - GetDataSourceIntrospection
+      - GetDomainName
+      - GetFunction
+      - GetGraphqlApi
+      - GetGraphqlApiEnvironmentVariables
+      - GetIntrospectionSchema
+      - GetResolver
+      - GetResourcePolicy
+      - GetSchemaCreationStatus
+      - GetSourceApiAssociation
+      - GetType
+      - GetWebACLForResource
+      - GraphQL
+      - ListApiKeys
+      - ListApis
+      - ListChannelNamespaces
+      - ListDataSources
+      - ListDomainNames
+      - ListFunctions
+      - ListGraphqlApis
+      - ListResolvers
+      - ListResolversByFunction
+      - ListResourcesForWebACL
+      - ListSourceApiAssociations
+      - ListTagsForResource
+      - ListTypes
+      - ListTypesByAssociation
+      - PutGraphqlApiEnvironmentVariables
+      - PutResourcePolicy
+      - SetWebACL
+      - SourceGraphQL
+      - StartDataSourceIntrospection
+      - StartSchemaCreation
+      - StartSchemaMerge
+      - TagResource
+      - UntagResource
+      - UpdateApi
+      - UpdateApiCache
+      - UpdateApiKey
+      - UpdateChannelNamespace
+      - UpdateDataSource
+      - UpdateDomainName
+      - UpdateFunction
+      - UpdateGraphqlApi
+      - UpdateResolver
+      - UpdateSourceApiAssociation
+      - UpdateType
+    non_scopable_actions:
+      - CreateApi
+      - CreateApiCache
+      - CreateApiKey
+      - CreateDataSource
+      - CreateFunction
+      - CreateGraphqlApi
+      - CreateResolver
+      - CreateType
+      - DeleteApiCache
+      - DeleteApiKey
+      - DeleteDataSource
+      - DeleteFunction
+      - DeleteResolver
+      - DeleteResourcePolicy
+      - DeleteType
+      - EvaluateCode
+      - EvaluateMappingTemplate
+      - FlushApiCache
+      - GetApiCache
+      - GetDataSource
+      - GetDataSourceIntrospection
+      - GetFunction
+      - GetGraphqlApiEnvironmentVariables
+      - GetIntrospectionSchema
+      - GetResolver
+      - GetResourcePolicy
+      - GetSchemaCreationStatus
+      - GetType
+      - ListApiKeys
+      - ListApis
+      - ListDataSources
+      - ListDomainNames
+      - ListFunctions
+      - ListGraphqlApis
+      - ListResolvers
+      - ListResolversByFunction
+      - ListResourcesForWebACL
+      - ListSourceApiAssociations
+      - ListTypes
+      - ListTypesByAssociation
+      - PutGraphqlApiEnvironmentVariables
+      - PutResourcePolicy
+      - SetWebACL
+      - StartDataSourceIntrospection
+      - StartSchemaCreation
+      - UpdateApiCache
+      - UpdateApiKey
+      - UpdateDataSource
+      - UpdateFunction
+      - UpdateResolver
+      - UpdateType
+  - prefix: aps
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/aps/aps.json
+    source_modified: "2026-03-25"
+    retrieved_on: "2026-08-20"
+    actions:
+      - CreateAlertManagerAlerts
+      - CreateAlertManagerDefinition
+      - CreateAnomalyDetector
+      - CreateLoggingConfiguration
+      - CreateQueryLoggingConfiguration
+      - CreateRuleGroupsNamespace
+      - CreateScraper
+      - CreateWorkspace
+      - DeleteAlertManagerDefinition
+      - DeleteAlertManagerSilence
+      - DeleteAnomalyDetector
+      - DeleteLoggingConfiguration
+      - DeleteQueryLoggingConfiguration
+      - DeleteResourcePolicy
+      - DeleteRuleGroupsNamespace
+      - DeleteScraper
+      - DeleteScraperLoggingConfiguration
+      - DeleteWorkspace
+      - DescribeAlertManagerDefinition
+      - DescribeAnomalyDetector
+      - DescribeLoggingConfiguration
+      - DescribeQueryLoggingConfiguration
+      - DescribeResourcePolicy
+      - DescribeRuleGroupsNamespace
+      - DescribeScraper
+      - DescribeScraperLoggingConfiguration
+      - DescribeWorkspace
+      - DescribeWorkspaceConfiguration
+      - GetAlertManagerSilence
+      - GetAlertManagerStatus
+      - GetDefaultScraperConfiguration
+      - GetLabels
+      - GetMetricMetadata
+      - GetSeries
+      - ListAlertManagerAlertGroups
+      - ListAlertManagerAlerts
+      - ListAlertManagerReceivers
+      - ListAlertManagerSilences
+      - ListAlerts
+      - ListAnomalyDetectors
+      - ListRuleGroupsNamespaces
+      - ListRules
+      - ListScrapers
+      - ListTagsForResource
+      - ListWorkspaces
+      - PreviewAnomalyDetector
+      - PutAlertManagerDefinition
+      - PutAlertManagerSilences
+      - PutAnomalyDetector
+      - PutResourcePolicy
+      - PutRuleGroupsNamespace
+      - QueryMetrics
+      - RemoteWrite
+      - TagResource
+      - UntagResource
+      - UpdateLoggingConfiguration
+      - UpdateQueryLoggingConfiguration
+      - UpdateScraper
+      - UpdateScraperLoggingConfiguration
+      - UpdateWorkspaceAlias
+      - UpdateWorkspaceConfiguration
+    non_scopable_actions:
+      - CreateWorkspace
+      - GetDefaultScraperConfiguration
+      - ListScrapers
+      - ListWorkspaces
   - prefix: athena
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/athena/athena.json
     source_modified: "2026-03-25"
@@ -506,6 +774,172 @@ services:
       - DescribeWarmPool
       - GetPredictiveScalingForecast
       - PutAccountSetting
+  - prefix: aws-marketplace
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/aws-marketplace/aws-marketplace.json
+    source_modified: "2026-08-18"
+    retrieved_on: "2026-08-20"
+    actions:
+      - AcceptAgreementApprovalRequest
+      - AcceptAgreementCancellationRequest
+      - AcceptAgreementPaymentRequest
+      - AcceptAgreementRequest
+      - AssociateProductsWithPrivateMarketplace
+      - BatchCreateBillingAdjustmentRequest
+      - BatchMeterUsage
+      - CancelAgreement
+      - CancelAgreementCancellationRequest
+      - CancelAgreementPaymentRequest
+      - CancelAgreementRequest
+      - CancelChangeSet
+      - CreateAgreementRequest
+      - CreatePrivateMarketplaceRequests
+      - CreateVerificationEvidence
+      - DeleteResourcePolicy
+      - DescribeAgreement
+      - DescribeAssessment
+      - DescribeBuilds
+      - DescribeChangeSet
+      - DescribeEntity
+      - DescribePrivateMarketplaceRequests
+      - DescribeProcurementSystemConfiguration
+      - DisassociateProductsFromPrivateMarketplace
+      - GetAgreementApprovalRequest
+      - GetAgreementCancellationRequest
+      - GetAgreementEntitlements
+      - GetAgreementPaymentRequest
+      - GetAgreementRequest
+      - GetAgreementTerms
+      - GetBillingAdjustmentRequest
+      - GetBuyerDashboard
+      - GetEntitlements
+      - GetInvoiceSubmissionTask
+      - GetIssuedTaxInvoice
+      - GetListing
+      - GetOffer
+      - GetOfferSet
+      - GetOfferTerms
+      - GetProduct
+      - GetResourcePolicy
+      - GetSellerDashboard
+      - GetTaxComplianceProfile
+      - GetVerification
+      - GetVerificationEvidence
+      - ListAgreementApprovalRequests
+      - ListAgreementCancellationRequests
+      - ListAgreementCharges
+      - ListAgreementInvoiceLineItems
+      - ListAgreementPaymentRequests
+      - ListAgreementRequests
+      - ListAssessments
+      - ListBillingAdjustmentRequests
+      - ListBuilds
+      - ListChangeSets
+      - ListEntities
+      - ListEntitlementDetails
+      - ListFulfillmentOptions
+      - ListInvoiceSubmissionTasks
+      - ListIssuedTaxInvoices
+      - ListPayables
+      - ListPrivateListings
+      - ListPrivateMarketplaceRequests
+      - ListPurchaseOptions
+      - ListTagsForResource
+      - ListTaxComplianceProfileChangeTasks
+      - ListTaxComplianceProfiles
+      - ListVerificationEvidence
+      - ListVerifications
+      - MeterUsage
+      - PutDeploymentParameter
+      - PutProcurementSystemConfiguration
+      - PutResourcePolicy
+      - RegisterUsage
+      - RejectAgreementApprovalRequest
+      - RejectAgreementCancellationRequest
+      - RejectAgreementPaymentRequest
+      - ResolveCustomer
+      - SearchAgreements
+      - SearchFacets
+      - SearchListings
+      - SendAgreementCancellationRequest
+      - SendAgreementPaymentRequest
+      - StartBuild
+      - StartChangeSet
+      - StartInvoiceSubmissionTask
+      - StartTaxComplianceProfileChangeTask
+      - StartVerification
+      - Subscribe
+      - TagResource
+      - Unsubscribe
+      - UntagResource
+      - UpdateAgreementApprovalRequest
+      - UpdatePurchaseOrders
+      - UpdateVerificationEvidence
+      - ViewSubscriptions
+    non_scopable_actions:
+      - AcceptAgreementApprovalRequest
+      - AcceptAgreementCancellationRequest
+      - AcceptAgreementPaymentRequest
+      - AcceptAgreementRequest
+      - AssociateProductsWithPrivateMarketplace
+      - BatchCreateBillingAdjustmentRequest
+      - BatchMeterUsage
+      - CancelAgreement
+      - CancelAgreementCancellationRequest
+      - CancelAgreementPaymentRequest
+      - CancelAgreementRequest
+      - CreateAgreementRequest
+      - CreatePrivateMarketplaceRequests
+      - DescribeAgreement
+      - DescribeBuilds
+      - DescribePrivateMarketplaceRequests
+      - DescribeProcurementSystemConfiguration
+      - DisassociateProductsFromPrivateMarketplace
+      - GetAgreementApprovalRequest
+      - GetAgreementCancellationRequest
+      - GetAgreementEntitlements
+      - GetAgreementPaymentRequest
+      - GetAgreementRequest
+      - GetAgreementTerms
+      - GetBillingAdjustmentRequest
+      - GetEntitlements
+      - GetVerification
+      - ListAgreementApprovalRequests
+      - ListAgreementCancellationRequests
+      - ListAgreementCharges
+      - ListAgreementInvoiceLineItems
+      - ListAgreementPaymentRequests
+      - ListAgreementRequests
+      - ListAssessments
+      - ListBillingAdjustmentRequests
+      - ListBuilds
+      - ListChangeSets
+      - ListEntities
+      - ListEntitlementDetails
+      - ListInvoiceSubmissionTasks
+      - ListIssuedTaxInvoices
+      - ListPayables
+      - ListPrivateListings
+      - ListPrivateMarketplaceRequests
+      - ListTaxComplianceProfileChangeTasks
+      - ListTaxComplianceProfiles
+      - ListVerificationEvidence
+      - ListVerifications
+      - MeterUsage
+      - PutProcurementSystemConfiguration
+      - RegisterUsage
+      - RejectAgreementApprovalRequest
+      - RejectAgreementCancellationRequest
+      - RejectAgreementPaymentRequest
+      - ResolveCustomer
+      - SearchAgreements
+      - SendAgreementCancellationRequest
+      - SendAgreementPaymentRequest
+      - StartBuild
+      - Subscribe
+      - Unsubscribe
+      - UpdateAgreementApprovalRequest
+      - UpdatePurchaseOrders
+      - ViewSubscriptions
   - prefix: backup
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/backup/backup.json
     source_modified: "2026-08-17"
@@ -677,6 +1111,42 @@ services:
       - StopBackupJob
       - UpdateGlobalSettings
       - UpdateRegionSettings
+  - prefix: backup-storage
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/backup-storage/backup-storage.json
+    source_modified: "2026-03-25"
+    retrieved_on: "2026-08-20"
+    actions:
+      - CommitBackupJob
+      - DeleteObjects
+      - DescribeBackupJob
+      - GetBaseBackup
+      - GetChunk
+      - GetIncrementalBaseBackup
+      - GetObjectMetadata
+      - ListChunks
+      - ListObjects
+      - MountCapsule
+      - NotifyObjectComplete
+      - PutChunk
+      - PutObject
+      - StartObject
+      - UpdateObjectComplete
+    non_scopable_actions:
+      - CommitBackupJob
+      - DeleteObjects
+      - DescribeBackupJob
+      - GetBaseBackup
+      - GetChunk
+      - GetIncrementalBaseBackup
+      - GetObjectMetadata
+      - ListChunks
+      - ListObjects
+      - MountCapsule
+      - NotifyObjectComplete
+      - PutChunk
+      - PutObject
+      - StartObject
+      - UpdateObjectComplete
   - prefix: batch
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/batch/batch.json
     source_modified: "2026-08-05"
@@ -741,8 +1211,8 @@ services:
       - ListServiceJobs
   - prefix: bedrock
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/bedrock/bedrock.json
-    source_modified: "2026-08-14"
-    retrieved_on: "2026-08-18"
+    source_modified: "2026-08-20"
+    retrieved_on: "2026-08-20"
     actions:
       - AgenticRetrieveStream
       - AllowVendedLogDeliveryForResource
@@ -772,6 +1242,7 @@ services:
       - CreateDataAutomationLibrary
       - CreateDataAutomationProject
       - CreateDataSource
+      - CreateDataSourceToken
       - CreateEvaluationJob
       - CreateFlow
       - CreateFlowAlias
@@ -861,6 +1332,7 @@ services:
       - GetDataAutomationProject
       - GetDataAutomationStatus
       - GetDataSource
+      - GetDataSourceAuthorizationUrl
       - GetDocumentContent
       - GetEvaluationJob
       - GetExecutionFlowSnapshot
@@ -1014,6 +1486,7 @@ services:
       - CreateBlueprint
       - CreateCustomModel
       - CreateDataAutomationLibrary
+      - CreateDataSourceToken
       - CreateFlow
       - CreateFoundationModelAgreement
       - CreateKnowledgeBase
@@ -1028,6 +1501,7 @@ services:
       - GenerateQuery
       - GetAccountDataRetention
       - GetBlueprintRecommendation
+      - GetDataSourceAuthorizationUrl
       - GetDocumentContent
       - GetFoundationModelAvailability
       - GetIngestedDocumentAcl
@@ -1067,6 +1541,431 @@ services:
       - Rerank
       - RetrieveAndGenerate
       - ValidateFlowDefinition
+  - prefix: bedrock-agentcore
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/bedrock-agentcore/bedrock-agentcore.json
+    source_modified: "2026-08-11"
+    retrieved_on: "2026-08-20"
+    actions:
+      - AddDatasetExamples
+      - AllowVendedLogDeliveryForResource
+      - AuthorizeAction
+      - BatchCreateMemoryRecords
+      - BatchDeleteMemoryRecords
+      - BatchPutGatewayRateLimits
+      - BatchUpdateMemoryRecords
+      - CompleteResourceTokenAuth
+      - ConnectBrowserAutomationStream
+      - ConnectBrowserLiveViewStream
+      - CreateABTest
+      - CreateAgentRuntime
+      - CreateAgentRuntimeEndpoint
+      - CreateApiKeyCredentialProvider
+      - CreateBrowser
+      - CreateBrowserProfile
+      - CreateCapacityProvider
+      - CreateCodeInterpreter
+      - CreateConfigurationBundle
+      - CreateDataset
+      - CreateDatasetVersion
+      - CreateEvaluator
+      - CreateEvent
+      - CreateGateway
+      - CreateGatewayRateLimit
+      - CreateGatewayRule
+      - CreateGatewayTarget
+      - CreateHarness
+      - CreateHarnessEndpoint
+      - CreateMemory
+      - CreateOauth2CredentialProvider
+      - CreateOnlineEvaluationConfig
+      - CreatePaymentConnector
+      - CreatePaymentCredentialProvider
+      - CreatePaymentInstrument
+      - CreatePaymentManager
+      - CreatePaymentSession
+      - CreatePolicy
+      - CreatePolicyEngine
+      - CreateRegistry
+      - CreateRegistryRecord
+      - CreateWorkloadIdentity
+      - DeleteABTest
+      - DeleteAgentRuntime
+      - DeleteAgentRuntimeEndpoint
+      - DeleteApiKeyCredentialProvider
+      - DeleteBatchEvaluation
+      - DeleteBrowser
+      - DeleteBrowserProfile
+      - DeleteCapacityProvider
+      - DeleteCapacityProviderSession
+      - DeleteCodeInterpreter
+      - DeleteConfigurationBundle
+      - DeleteDataset
+      - DeleteDatasetExamples
+      - DeleteEvaluator
+      - DeleteEvent
+      - DeleteGateway
+      - DeleteGatewayRateLimit
+      - DeleteGatewayRule
+      - DeleteGatewayTarget
+      - DeleteHarness
+      - DeleteHarnessEndpoint
+      - DeleteMemory
+      - DeleteMemoryRecord
+      - DeleteOauth2CredentialProvider
+      - DeleteOnlineEvaluationConfig
+      - DeletePaymentConnector
+      - DeletePaymentCredentialProvider
+      - DeletePaymentInstrument
+      - DeletePaymentManager
+      - DeletePaymentSession
+      - DeletePolicy
+      - DeletePolicyEngine
+      - DeleteRecommendation
+      - DeleteRegistry
+      - DeleteRegistryRecord
+      - DeleteResourcePolicy
+      - DeleteWorkloadIdentity
+      - Evaluate
+      - GatewayAssociateWebACL
+      - GatewayDisassociateWebACL
+      - GatewayGetWebACLForResource
+      - GatewayListResourcesForWebACL
+      - GetABTest
+      - GetAgentCard
+      - GetAgentRuntime
+      - GetAgentRuntimeEndpoint
+      - GetApiKeyCredentialProvider
+      - GetBatchEvaluation
+      - GetBrowser
+      - GetBrowserProfile
+      - GetBrowserSession
+      - GetCapacityProvider
+      - GetCodeInterpreter
+      - GetCodeInterpreterSession
+      - GetConfigurationBundle
+      - GetConfigurationBundleVersion
+      - GetDataset
+      - GetEvaluator
+      - GetEvent
+      - GetGateway
+      - GetGatewayRateLimit
+      - GetGatewayRule
+      - GetGatewayTarget
+      - GetHarness
+      - GetHarnessEndpoint
+      - GetMemory
+      - GetMemoryRecord
+      - GetOauth2CredentialProvider
+      - GetOnlineEvaluationConfig
+      - GetPaymentConnector
+      - GetPaymentCredentialProvider
+      - GetPaymentInstrument
+      - GetPaymentInstrumentBalance
+      - GetPaymentManager
+      - GetPaymentSession
+      - GetPolicy
+      - GetPolicyEngine
+      - GetPolicyEngineSummary
+      - GetPolicyGeneration
+      - GetPolicyGenerationSummary
+      - GetPolicySummary
+      - GetRecommendation
+      - GetRegistry
+      - GetRegistryRecord
+      - GetResourceApiKey
+      - GetResourceOauth2Token
+      - GetResourcePaymentToken
+      - GetResourcePolicy
+      - GetTokenVault
+      - GetWorkloadAccessToken
+      - GetWorkloadAccessTokenForJWT
+      - GetWorkloadAccessTokenForUserId
+      - GetWorkloadIdentity
+      - InvokeAgentRuntime
+      - InvokeAgentRuntimeCommand
+      - InvokeAgentRuntimeCommandShell
+      - InvokeAgentRuntimeForUser
+      - InvokeAgentRuntimeWithWebSocketStream
+      - InvokeAgentRuntimeWithWebSocketStreamForUser
+      - InvokeCodeInterpreter
+      - InvokeGateway
+      - InvokeHarness
+      - InvokeRegistryMcp
+      - InvokeWebSearch
+      - ListABTests
+      - ListActors
+      - ListAgentRuntimeEndpoints
+      - ListAgentRuntimeVersions
+      - ListAgentRuntimeVersionsByCapacityProvider
+      - ListAgentRuntimes
+      - ListApiKeyCredentialProviders
+      - ListBatchEvaluations
+      - ListBrowserProfiles
+      - ListBrowserSessions
+      - ListBrowsers
+      - ListCapacityProviders
+      - ListCodeInterpreterSessions
+      - ListCodeInterpreters
+      - ListConfigurationBundleVersions
+      - ListConfigurationBundles
+      - ListDatasetExamples
+      - ListDatasetVersions
+      - ListDatasets
+      - ListEvaluators
+      - ListEvents
+      - ListGatewayRateLimits
+      - ListGatewayRules
+      - ListGatewayTargets
+      - ListGateways
+      - ListHarnessEndpoints
+      - ListHarnessVersions
+      - ListHarnesses
+      - ListMemories
+      - ListMemoryExtractionJobs
+      - ListMemoryRecords
+      - ListOauth2CredentialProviders
+      - ListOnlineEvaluationConfigs
+      - ListPaymentConnectors
+      - ListPaymentCredentialProviders
+      - ListPaymentInstruments
+      - ListPaymentManagers
+      - ListPaymentSessions
+      - ListPolicies
+      - ListPolicyEngineSummaries
+      - ListPolicyEngines
+      - ListPolicyGenerationAssets
+      - ListPolicyGenerationSummaries
+      - ListPolicyGenerations
+      - ListPolicySummaries
+      - ListRecommendations
+      - ListRegistries
+      - ListRegistryRecords
+      - ListSessions
+      - ListTagsForResource
+      - ListWorkloadIdentities
+      - ManageAdminPolicy
+      - ManageResourceScopedPolicy
+      - PartiallyAuthorizeActions
+      - PassCapacityProvider
+      - ProcessPayment
+      - PutResourcePolicy
+      - PutSystemLogEvents
+      - RetrieveMemoryRecords
+      - SaveBrowserSessionProfile
+      - SearchRegistryRecords
+      - SetTokenVaultCMK
+      - StartBatchEvaluation
+      - StartBrowserSession
+      - StartCodeInterpreterSession
+      - StartMemoryExtractionJob
+      - StartPolicyGeneration
+      - StartRecommendation
+      - StopBatchEvaluation
+      - StopBrowserSession
+      - StopCodeInterpreterSession
+      - StopRuntimeSession
+      - SubmitRegistryRecordForApproval
+      - SynchronizeGatewayTargets
+      - TagResource
+      - UntagResource
+      - UpdateABTest
+      - UpdateAgentRuntime
+      - UpdateAgentRuntimeEndpoint
+      - UpdateApiKeyCredentialProvider
+      - UpdateBrowserStream
+      - UpdateCapacityProvider
+      - UpdateConfigurationBundle
+      - UpdateDataset
+      - UpdateDatasetExamples
+      - UpdateEvaluator
+      - UpdateGateway
+      - UpdateGatewayRateLimit
+      - UpdateGatewayRule
+      - UpdateGatewayTarget
+      - UpdateHarness
+      - UpdateHarnessEndpoint
+      - UpdateMemory
+      - UpdateOauth2CredentialProvider
+      - UpdateOnlineEvaluationConfig
+      - UpdatePaymentConnector
+      - UpdatePaymentCredentialProvider
+      - UpdatePaymentManager
+      - UpdatePolicy
+      - UpdatePolicyEngine
+      - UpdateRegistry
+      - UpdateRegistryRecord
+      - UpdateRegistryRecordStatus
+      - UpdateWorkloadIdentity
+    non_scopable_actions:
+      - ConnectBrowserAutomationStream
+      - ConnectBrowserLiveViewStream
+      - CreateABTest
+      - CreateAgentRuntime
+      - CreateBrowser
+      - CreateBrowserProfile
+      - CreateCapacityProvider
+      - CreateCodeInterpreter
+      - CreateConfigurationBundle
+      - CreateDataset
+      - CreateEvaluator
+      - CreateGateway
+      - CreateHarness
+      - CreateMemory
+      - CreateOnlineEvaluationConfig
+      - CreatePaymentManager
+      - CreatePolicyEngine
+      - CreateRegistry
+      - GatewayListResourcesForWebACL
+      - ListABTests
+      - ListAgentRuntimeEndpoints
+      - ListAgentRuntimeVersions
+      - ListAgentRuntimeVersionsByCapacityProvider
+      - ListAgentRuntimes
+      - ListBatchEvaluations
+      - ListBrowserProfiles
+      - ListBrowserSessions
+      - ListBrowsers
+      - ListCapacityProviders
+      - ListCodeInterpreters
+      - ListConfigurationBundles
+      - ListDatasets
+      - ListEvaluators
+      - ListGateways
+      - ListHarnessEndpoints
+      - ListHarnessVersions
+      - ListHarnesses
+      - ListMemories
+      - ListOnlineEvaluationConfigs
+      - ListPaymentManagers
+      - ListPolicyEngineSummaries
+      - ListPolicyEngines
+      - ListRecommendations
+      - ListRegistries
+      - ManageAdminPolicy
+      - StartBatchEvaluation
+      - StartRecommendation
+  - prefix: budgets
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/budgets/budgets.json
+    source_modified: "2026-06-04"
+    retrieved_on: "2026-08-20"
+    actions:
+      - CreateBudgetAction
+      - DeleteBudgetAction
+      - DescribeBudgetAction
+      - DescribeBudgetActionHistories
+      - DescribeBudgetActionsForAccount
+      - DescribeBudgetActionsForBudget
+      - ExecuteBudgetAction
+      - ListTagsForResource
+      - ModifyBudget
+      - TagResource
+      - UntagResource
+      - UpdateBudgetAction
+      - ViewBudget
+    non_scopable_actions:
+      - DescribeBudgetActionsForAccount
+  - prefix: ce
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/ce/ce.json
+    source_modified: "2026-03-25"
+    retrieved_on: "2026-08-20"
+    actions:
+      - CreateAnomalyMonitor
+      - CreateAnomalySubscription
+      - CreateCostCategoryDefinition
+      - CreateNotificationSubscription
+      - CreateReport
+      - DeleteAnomalyMonitor
+      - DeleteAnomalySubscription
+      - DeleteCostCategoryDefinition
+      - DeleteNotificationSubscription
+      - DeleteReport
+      - DescribeCostCategoryDefinition
+      - DescribeNotificationSubscription
+      - DescribeReport
+      - GetAnomalies
+      - GetAnomalyMonitors
+      - GetAnomalySubscriptions
+      - GetApproximateUsageRecords
+      - GetCommitmentPurchaseAnalysis
+      - GetConsoleActionSetEnforced
+      - GetCostAndUsage
+      - GetCostAndUsageComparisons
+      - GetCostAndUsageWithResources
+      - GetCostCategories
+      - GetCostComparisonDrivers
+      - GetCostForecast
+      - GetDimensionValues
+      - GetPreferences
+      - GetReservationCoverage
+      - GetReservationPurchaseRecommendation
+      - GetReservationUtilization
+      - GetRightsizingRecommendation
+      - GetSavingsPlanPurchaseRecommendationDetails
+      - GetSavingsPlansCoverage
+      - GetSavingsPlansPurchaseRecommendation
+      - GetSavingsPlansUtilization
+      - GetSavingsPlansUtilizationDetails
+      - GetTags
+      - GetUsageForecast
+      - ListCommitmentPurchaseAnalyses
+      - ListCostAllocationTagBackfillHistory
+      - ListCostAllocationTags
+      - ListCostCategoryDefinitions
+      - ListCostCategoryResourceAssociations
+      - ListSavingsPlansPurchaseRecommendationGeneration
+      - ListTagsForResource
+      - ProvideAnomalyFeedback
+      - StartCommitmentPurchaseAnalysis
+      - StartCostAllocationTagBackfill
+      - StartSavingsPlansPurchaseRecommendationGeneration
+      - TagResource
+      - UntagResource
+      - UpdateAnomalyMonitor
+      - UpdateAnomalySubscription
+      - UpdateConsoleActionSetEnforced
+      - UpdateCostAllocationTagsStatus
+      - UpdateCostCategoryDefinition
+      - UpdateNotificationSubscription
+      - UpdatePreferences
+      - UpdateReport
+    non_scopable_actions:
+      - CreateAnomalyMonitor
+      - CreateAnomalySubscription
+      - CreateCostCategoryDefinition
+      - CreateNotificationSubscription
+      - CreateReport
+      - DeleteNotificationSubscription
+      - DeleteReport
+      - DescribeNotificationSubscription
+      - DescribeReport
+      - GetApproximateUsageRecords
+      - GetCommitmentPurchaseAnalysis
+      - GetConsoleActionSetEnforced
+      - GetPreferences
+      - GetReservationCoverage
+      - GetReservationPurchaseRecommendation
+      - GetReservationUtilization
+      - GetRightsizingRecommendation
+      - GetSavingsPlanPurchaseRecommendationDetails
+      - GetSavingsPlansCoverage
+      - GetSavingsPlansPurchaseRecommendation
+      - GetSavingsPlansUtilization
+      - GetSavingsPlansUtilizationDetails
+      - ListCommitmentPurchaseAnalyses
+      - ListCostAllocationTagBackfillHistory
+      - ListCostAllocationTags
+      - ListCostCategoryDefinitions
+      - ListCostCategoryResourceAssociations
+      - ListSavingsPlansPurchaseRecommendationGeneration
+      - ProvideAnomalyFeedback
+      - StartCommitmentPurchaseAnalysis
+      - StartCostAllocationTagBackfill
+      - StartSavingsPlansPurchaseRecommendationGeneration
+      - UpdateConsoleActionSetEnforced
+      - UpdateCostAllocationTagsStatus
+      - UpdateNotificationSubscription
+      - UpdatePreferences
+      - UpdateReport
   - prefix: cloudfront
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/cloudfront/cloudfront.json
     source_modified: "2026-07-17"
@@ -1976,6 +2875,22 @@ services:
       - SelectResourceConfig
       - StartRemediationExecution
       - StartResourceEvaluation
+  - prefix: dlm
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/dlm/dlm.json
+    source_modified: "2026-03-25"
+    retrieved_on: "2026-08-20"
+    actions:
+      - CreateLifecyclePolicy
+      - DeleteLifecyclePolicy
+      - GetLifecyclePolicies
+      - GetLifecyclePolicy
+      - ListTagsForResource
+      - TagResource
+      - UntagResource
+      - UpdateLifecyclePolicy
+    non_scopable_actions:
+      - CreateLifecyclePolicy
+      - GetLifecyclePolicies
   - prefix: ds
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/ds/ds.json
     source_modified: "2026-07-27"
@@ -2088,6 +3003,44 @@ services:
       - ListADAssessments
       - ListLogSubscriptions
       - StartADAssessment
+  - prefix: dsql
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/dsql/dsql.json
+    source_modified: "2026-05-13"
+    retrieved_on: "2026-08-20"
+    actions:
+      - AddPeerCluster
+      - CreateCluster
+      - CreateStream
+      - DbConnect
+      - DbConnectAdmin
+      - DeleteCluster
+      - DeleteClusterPolicy
+      - DeleteStream
+      - GetBackupJob
+      - GetCluster
+      - GetClusterPolicy
+      - GetRestoreJob
+      - GetStream
+      - GetVpcEndpointServiceName
+      - InjectError
+      - ListClusters
+      - ListStreams
+      - ListTagsForResource
+      - PutClusterPolicy
+      - PutMultiRegionProperties
+      - PutWitnessRegion
+      - RemovePeerCluster
+      - StartBackupJob
+      - StartRestoreJob
+      - StopBackupJob
+      - StopRestoreJob
+      - TagResource
+      - UntagResource
+      - UpdateCluster
+      - UpdateStream
+    non_scopable_actions:
+      - InjectError
+      - ListClusters
   - prefix: dynamodb
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/dynamodb/dynamodb.json
     source_modified: "2026-08-05"
@@ -2188,8 +3141,8 @@ services:
       - UpdateAbacStatus
   - prefix: ec2
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/ec2/ec2.json
-    source_modified: "2026-08-07"
-    retrieved_on: "2026-08-18"
+    source_modified: "2026-08-19"
+    retrieved_on: "2026-08-20"
     actions:
       - AcceptAddressTransfer
       - AcceptCapacityReservationBillingOwnership
@@ -2209,6 +3162,7 @@ services:
       - AssignPrivateIpAddresses
       - AssignPrivateNatGatewayAddress
       - AssociateAddress
+      - AssociateApplicationStatusCheck
       - AssociateCapacityReservationBillingOwner
       - AssociateClientVpnTargetNetwork
       - AssociateDhcpOptions
@@ -2257,6 +3211,7 @@ services:
       - CopyImage
       - CopySnapshot
       - CopyVolumes
+      - CreateApplicationStatusCheck
       - CreateCapacityManagerDataExport
       - CreateCapacityReservation
       - CreateCapacityReservationBySplitting
@@ -2344,6 +3299,7 @@ services:
       - CreateTransitGatewayMulticastDomain
       - CreateTransitGatewayPeeringAttachment
       - CreateTransitGatewayPolicyTable
+      - CreateTransitGatewayPolicyTableEntry
       - CreateTransitGatewayPrefixListReference
       - CreateTransitGatewayRoute
       - CreateTransitGatewayRouteTable
@@ -2365,6 +3321,7 @@ services:
       - CreateVpnConnection
       - CreateVpnConnectionRoute
       - CreateVpnGateway
+      - DeleteApplicationStatusCheck
       - DeleteCapacityManagerDataExport
       - DeleteCarrierGateway
       - DeleteClientVpnEndpoint
@@ -2441,6 +3398,7 @@ services:
       - DeleteTransitGatewayMulticastDomain
       - DeleteTransitGatewayPeeringAttachment
       - DeleteTransitGatewayPolicyTable
+      - DeleteTransitGatewayPolicyTableEntry
       - DeleteTransitGatewayPrefixListReference
       - DeleteTransitGatewayRoute
       - DeleteTransitGatewayRouteTable
@@ -2475,6 +3433,9 @@ services:
       - DescribeAddresses
       - DescribeAddressesAttribute
       - DescribeAggregateIdFormat
+      - DescribeApplicationStatus
+      - DescribeApplicationStatusCheckAssociations
+      - DescribeApplicationStatusChecks
       - DescribeAvailabilityZones
       - DescribeAwsNetworkPerformanceMetricSubscriptions
       - DescribeBundleTasks
@@ -2670,6 +3631,7 @@ services:
       - DetachVpnGateway
       - DisableAddressTransfer
       - DisableAllowedImagesSettings
+      - DisableApplicationStatusCheckSuppression
       - DisableAwsNetworkPerformanceMetricSubscription
       - DisableCapacityManager
       - DisableEbsEncryptionByDefault
@@ -2690,6 +3652,7 @@ services:
       - DisableVpcClassicLink
       - DisableVpcClassicLinkDnsSupport
       - DisassociateAddress
+      - DisassociateApplicationStatusCheck
       - DisassociateCapacityReservationBillingOwner
       - DisassociateClientVpnTargetNetwork
       - DisassociateEnclaveCertificateIamRole
@@ -2710,6 +3673,7 @@ services:
       - DisassociateVpcCidrBlock
       - EnableAddressTransfer
       - EnableAllowedImagesSettings
+      - EnableApplicationStatusCheckSuppression
       - EnableAwsNetworkPerformanceMetricSubscription
       - EnableCapacityManager
       - EnableEbsEncryptionByDefault
@@ -2822,6 +3786,7 @@ services:
       - ListVolumesInRecycleBin
       - LockSnapshot
       - ModifyAddressAttribute
+      - ModifyApplicationStatusCheck
       - ModifyAvailabilityZoneGroup
       - ModifyCapacityReservation
       - ModifyCapacityReservationFleet
@@ -2875,6 +3840,7 @@ services:
       - ModifyTrafficMirrorSession
       - ModifyTransitGateway
       - ModifyTransitGatewayMeteringPolicy
+      - ModifyTransitGatewayPolicyTableEntry
       - ModifyTransitGatewayPrefixListReference
       - ModifyTransitGatewayVpcAttachment
       - ModifyVerifiedAccessEndpoint
@@ -2892,6 +3858,7 @@ services:
       - ModifyVpcEncryptionControl
       - ModifyVpcEndpoint
       - ModifyVpcEndpointConnectionNotification
+      - ModifyVpcEndpointPayerResponsibility
       - ModifyVpcEndpointServiceConfiguration
       - ModifyVpcEndpointServicePayerResponsibility
       - ModifyVpcEndpointServicePermissions
@@ -3006,6 +3973,9 @@ services:
       - DescribeAddresses
       - DescribeAddressesAttribute
       - DescribeAggregateIdFormat
+      - DescribeApplicationStatus
+      - DescribeApplicationStatusCheckAssociations
+      - DescribeApplicationStatusChecks
       - DescribeAvailabilityZones
       - DescribeAwsNetworkPerformanceMetricSubscriptions
       - DescribeBundleTasks
@@ -3436,10 +4406,11 @@ services:
       - PutAccountSettingDefault
   - prefix: eks
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/eks/eks.json
-    source_modified: "2026-08-11"
-    retrieved_on: "2026-08-18"
+    source_modified: "2026-08-19"
+    retrieved_on: "2026-08-20"
     actions:
       - AccessKubernetesApi
+      - ActivateCertificateAuthority
       - AssociateAccessPolicy
       - AssociateEncryptionConfig
       - AssociateIdentityProviderConfig
@@ -3447,6 +4418,7 @@ services:
       - CreateAccessEntry
       - CreateAddon
       - CreateCapability
+      - CreateCertificateAuthority
       - CreateCluster
       - CreateEksAnywhereSubscription
       - CreateFargateProfile
@@ -3455,6 +4427,7 @@ services:
       - DeleteAccessEntry
       - DeleteAddon
       - DeleteCapability
+      - DeleteCertificateAuthority
       - DeleteCluster
       - DeleteEksAnywhereSubscription
       - DeleteFargateProfile
@@ -3466,6 +4439,7 @@ services:
       - DescribeAddonConfiguration
       - DescribeAddonVersions
       - DescribeCapability
+      - DescribeCertificateAuthority
       - DescribeCluster
       - DescribeClusterVersions
       - DescribeEksAnywhereSubscription
@@ -3483,6 +4457,7 @@ services:
       - ListAddons
       - ListAssociatedAccessPolicies
       - ListCapabilities
+      - ListCertificateAuthorities
       - ListClusters
       - ListDashboardData
       - ListDashboardResources
@@ -5678,6 +6653,23 @@ services:
       - ListOutboundResponsibilityTransfers
       - ListPolicies
       - ListRoots
+  - prefix: pipes
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/pipes/pipes.json
+    source_modified: "2026-03-25"
+    retrieved_on: "2026-08-20"
+    actions:
+      - CreatePipe
+      - DeletePipe
+      - DescribePipe
+      - ListPipes
+      - ListTagsForResource
+      - StartPipe
+      - StopPipe
+      - TagResource
+      - UntagResource
+      - UpdatePipe
+    non_scopable_actions:
+      - ListPipes
   - prefix: rds
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/rds/rds.json
     source_modified: "2026-08-13"
@@ -6103,6 +7095,108 @@ services:
       - PurchaseReservedNodeOffering
       - RegisterNamespace
       - ViewQueriesFromConsole
+  - prefix: redshift-serverless
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/redshift-serverless/redshift-serverless.json
+    source_modified: "2026-04-29"
+    retrieved_on: "2026-08-20"
+    actions:
+      - ConvertRecoveryPointToSnapshot
+      - CreateCustomDomainAssociation
+      - CreateEndpointAccess
+      - CreateNamespace
+      - CreateReservation
+      - CreateScheduledAction
+      - CreateSnapshot
+      - CreateSnapshotCopyConfiguration
+      - CreateUsageLimit
+      - CreateWorkgroup
+      - DeleteCustomDomainAssociation
+      - DeleteEndpointAccess
+      - DeleteNamespace
+      - DeleteResourcePolicy
+      - DeleteScheduledAction
+      - DeleteSnapshot
+      - DeleteSnapshotCopyConfiguration
+      - DeleteUsageLimit
+      - DeleteWorkgroup
+      - DescribeOneTimeCredit
+      - GetCredentials
+      - GetCustomDomainAssociation
+      - GetEndpointAccess
+      - GetIdentityCenterAuthToken
+      - GetManagedWorkgroup
+      - GetNamespace
+      - GetRecoveryPoint
+      - GetReservation
+      - GetReservationOffering
+      - GetResourcePolicy
+      - GetScheduledAction
+      - GetSnapshot
+      - GetTableRestoreStatus
+      - GetTrack
+      - GetUsageLimit
+      - GetWorkgroup
+      - ListAutonomicsDenylist
+      - ListCustomDomainAssociations
+      - ListEndpointAccess
+      - ListManagedWorkgroups
+      - ListNamespaces
+      - ListRecoveryPoints
+      - ListReservationOfferings
+      - ListReservations
+      - ListScheduledActions
+      - ListSnapshotCopyConfigurations
+      - ListSnapshots
+      - ListTableRestoreStatus
+      - ListTagsForResource
+      - ListTracks
+      - ListUsageLimits
+      - ListWorkgroups
+      - PutResourcePolicy
+      - RestoreFromRecoveryPoint
+      - RestoreFromSnapshot
+      - RestoreTableFromRecoveryPoint
+      - RestoreTableFromSnapshot
+      - TagResource
+      - UntagResource
+      - UpdateAutonomicsDenylist
+      - UpdateCustomDomainAssociation
+      - UpdateEndpointAccess
+      - UpdateNamespace
+      - UpdateScheduledAction
+      - UpdateSnapshot
+      - UpdateSnapshotCopyConfiguration
+      - UpdateUsageLimit
+      - UpdateWorkgroup
+    non_scopable_actions:
+      - CreateReservation
+      - CreateUsageLimit
+      - DeleteResourcePolicy
+      - DeleteScheduledAction
+      - DeleteSnapshotCopyConfiguration
+      - DeleteUsageLimit
+      - DescribeOneTimeCredit
+      - GetReservation
+      - GetReservationOffering
+      - GetResourcePolicy
+      - GetScheduledAction
+      - GetTableRestoreStatus
+      - GetTrack
+      - GetUsageLimit
+      - ListCustomDomainAssociations
+      - ListManagedWorkgroups
+      - ListNamespaces
+      - ListReservationOfferings
+      - ListReservations
+      - ListScheduledActions
+      - ListTableRestoreStatus
+      - ListTracks
+      - ListUsageLimits
+      - ListWorkgroups
+      - PutResourcePolicy
+      - UpdateScheduledAction
+      - UpdateSnapshotCopyConfiguration
+      - UpdateUsageLimit
   - prefix: route53
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/route53/route53.json
     source_modified: "2026-04-19"
@@ -6201,6 +7295,93 @@ services:
       - ListTrafficPolicies
       - ListTrafficPolicyInstances
       - TestDNSAnswer
+  - prefix: route53resolver
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/route53resolver/route53resolver.json
+    source_modified: "2026-07-29"
+    retrieved_on: "2026-08-20"
+    actions:
+      - AssociateFirewallRuleGroup
+      - AssociateResolverEndpointIpAddress
+      - AssociateResolverQueryLogConfig
+      - AssociateResolverRule
+      - CreateFirewallDomainList
+      - CreateFirewallRule
+      - CreateFirewallRuleGroup
+      - CreateOutpostResolver
+      - CreateResolverEndpoint
+      - CreateResolverQueryLogConfig
+      - CreateResolverRule
+      - DeleteFirewallDomainList
+      - DeleteFirewallRule
+      - DeleteFirewallRuleGroup
+      - DeleteOutpostResolver
+      - DeleteResolverEndpoint
+      - DeleteResolverQueryLogConfig
+      - DeleteResolverRule
+      - DisassociateFirewallRuleGroup
+      - DisassociateResolverEndpointIpAddress
+      - DisassociateResolverQueryLogConfig
+      - DisassociateResolverRule
+      - GetFirewallConfig
+      - GetFirewallDomainList
+      - GetFirewallRuleGroup
+      - GetFirewallRuleGroupAssociation
+      - GetFirewallRuleGroupPolicy
+      - GetOutpostResolver
+      - GetResolverConfig
+      - GetResolverDnssecConfig
+      - GetResolverEndpoint
+      - GetResolverQueryLogConfig
+      - GetResolverQueryLogConfigAssociation
+      - GetResolverQueryLogConfigPolicy
+      - GetResolverRule
+      - GetResolverRuleAssociation
+      - GetResolverRulePolicy
+      - ImportFirewallDomains
+      - ListFirewallConfigs
+      - ListFirewallDomainLists
+      - ListFirewallDomains
+      - ListFirewallRuleGroupAssociations
+      - ListFirewallRuleGroups
+      - ListFirewallRuleTypes
+      - ListFirewallRules
+      - ListOutpostResolvers
+      - ListResolverConfigs
+      - ListResolverDnssecConfigs
+      - ListResolverEndpointIpAddresses
+      - ListResolverEndpoints
+      - ListResolverQueryLogConfigAssociations
+      - ListResolverQueryLogConfigs
+      - ListResolverRuleAssociations
+      - ListResolverRules
+      - ListTagsForResource
+      - PutFirewallRuleGroupPolicy
+      - PutResolverQueryLogConfigPolicy
+      - PutResolverRulePolicy
+      - TagResource
+      - UntagResource
+      - UpdateFirewallConfig
+      - UpdateFirewallDomains
+      - UpdateFirewallRule
+      - UpdateFirewallRuleGroupAssociation
+      - UpdateOutpostResolver
+      - UpdateResolverConfig
+      - UpdateResolverDnssecConfig
+      - UpdateResolverEndpoint
+      - UpdateResolverRule
+    non_scopable_actions:
+      - GetResolverQueryLogConfigAssociation
+      - ListFirewallConfigs
+      - ListFirewallDomainLists
+      - ListFirewallRuleGroupAssociations
+      - ListFirewallRuleGroups
+      - ListFirewallRuleTypes
+      - ListOutpostResolvers
+      - ListResolverEndpoints
+      - ListResolverQueryLogConfigAssociations
+      - ListResolverQueryLogConfigs
+      - ListResolverRuleAssociations
+      - ListResolverRules
   - prefix: s3
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/s3/s3.json
     source_modified: "2026-07-29"
@@ -6402,6 +7583,128 @@ services:
       - PutAccessPointPublicAccessBlock
       - PutAccountPublicAccessBlock
       - PutStorageLensConfiguration
+  - prefix: s3express
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/s3express/s3express.json
+    source_modified: "2026-04-20"
+    retrieved_on: "2026-08-20"
+    actions:
+      - CreateAccessPoint
+      - CreateBucket
+      - CreateSession
+      - DeleteAccessPoint
+      - DeleteAccessPointPolicy
+      - DeleteAccessPointScope
+      - DeleteBucket
+      - DeleteBucketPolicy
+      - GetAccessPoint
+      - GetAccessPointPolicy
+      - GetAccessPointScope
+      - GetBucketPolicy
+      - GetEncryptionConfiguration
+      - GetInventoryConfiguration
+      - GetLifecycleConfiguration
+      - GetMetricsConfiguration
+      - ListAccessPointsForDirectoryBuckets
+      - ListAllMyDirectoryBuckets
+      - ListTagsForResource
+      - PutAccessPointPolicy
+      - PutAccessPointScope
+      - PutBucketPolicy
+      - PutEncryptionConfiguration
+      - PutInventoryConfiguration
+      - PutLifecycleConfiguration
+      - PutMetricsConfiguration
+      - TagResource
+      - UntagResource
+    non_scopable_actions:
+      - ListAccessPointsForDirectoryBuckets
+      - ListAllMyDirectoryBuckets
+  - prefix: s3tables
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/s3tables/s3tables.json
+    source_modified: "2026-04-29"
+    retrieved_on: "2026-08-20"
+    actions:
+      - CreateNamespace
+      - CreateTable
+      - CreateTableBucket
+      - DeleteNamespace
+      - DeleteTable
+      - DeleteTableBucket
+      - DeleteTableBucketEncryption
+      - DeleteTableBucketMetricsConfiguration
+      - DeleteTableBucketPolicy
+      - DeleteTableBucketReplication
+      - DeleteTablePolicy
+      - DeleteTableReplication
+      - GetNamespace
+      - GetTable
+      - GetTableBucket
+      - GetTableBucketEncryption
+      - GetTableBucketMaintenanceConfiguration
+      - GetTableBucketMetricsConfiguration
+      - GetTableBucketPolicy
+      - GetTableBucketReplication
+      - GetTableBucketStorageClass
+      - GetTableData
+      - GetTableEncryption
+      - GetTableMaintenanceConfiguration
+      - GetTableMaintenanceJobStatus
+      - GetTableMetadataLocation
+      - GetTablePolicy
+      - GetTableRecordExpirationConfiguration
+      - GetTableRecordExpirationJobStatus
+      - GetTableReplication
+      - GetTableReplicationStatus
+      - GetTableStorageClass
+      - ListNamespaces
+      - ListTableBuckets
+      - ListTables
+      - ListTagsForResource
+      - PutTableBucketEncryption
+      - PutTableBucketMaintenanceConfiguration
+      - PutTableBucketMetricsConfiguration
+      - PutTableBucketPolicy
+      - PutTableBucketReplication
+      - PutTableBucketStorageClass
+      - PutTableData
+      - PutTableEncryption
+      - PutTableMaintenanceConfiguration
+      - PutTablePolicy
+      - PutTableRecordExpirationConfiguration
+      - PutTableReplication
+      - PutTableStorageClass
+      - RenameTable
+      - TagResource
+      - UntagResource
+      - UpdateTableMetadataLocation
+    non_scopable_actions:
+      - ListTableBuckets
+  - prefix: s3vectors
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/s3vectors/s3vectors.json
+    source_modified: "2026-03-25"
+    retrieved_on: "2026-08-20"
+    actions:
+      - CreateIndex
+      - CreateVectorBucket
+      - DeleteIndex
+      - DeleteVectorBucket
+      - DeleteVectorBucketPolicy
+      - DeleteVectors
+      - GetIndex
+      - GetVectorBucket
+      - GetVectorBucketPolicy
+      - GetVectors
+      - ListIndexes
+      - ListTagsForResource
+      - ListVectorBuckets
+      - ListVectors
+      - PutVectorBucketPolicy
+      - PutVectors
+      - QueryVectors
+      - TagResource
+      - UntagResource
+    non_scopable_actions:
+      - ListVectorBuckets
   - prefix: sagemaker
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/sagemaker/sagemaker.json
     source_modified: "2026-07-31"
@@ -6946,6 +8249,28 @@ services:
       - RenderUiTemplate
       - Search
       - SearchTrainingPlanOfferings
+  - prefix: scheduler
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/scheduler/scheduler.json
+    source_modified: "2026-04-29"
+    retrieved_on: "2026-08-20"
+    actions:
+      - CreateSchedule
+      - CreateScheduleGroup
+      - DeleteSchedule
+      - DeleteScheduleGroup
+      - GetSchedule
+      - GetScheduleGroup
+      - ListScheduleGroups
+      - ListSchedules
+      - ListSchedulesByTarget
+      - ListTagsForResource
+      - TagResource
+      - UntagResource
+      - UpdateSchedule
+    non_scopable_actions:
+      - ListScheduleGroups
+      - ListSchedules
+      - ListSchedulesByTarget
   - prefix: secretsmanager
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/secretsmanager/secretsmanager.json
     source_modified: "2026-06-09"
@@ -6978,6 +8303,381 @@ services:
       - BatchGetSecretValue
       - GetRandomPassword
       - ListSecrets
+  - prefix: servicediscovery
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/servicediscovery/servicediscovery.json
+    source_modified: "2026-03-25"
+    retrieved_on: "2026-08-20"
+    actions:
+      - CreateHttpNamespace
+      - CreatePrivateDnsNamespace
+      - CreatePublicDnsNamespace
+      - CreateService
+      - DeleteNamespace
+      - DeleteResourcePolicy
+      - DeleteService
+      - DeleteServiceAttributes
+      - DeregisterInstance
+      - DiscoverInstances
+      - DiscoverInstancesRevision
+      - GetInstance
+      - GetInstancesHealthStatus
+      - GetNamespace
+      - GetOperation
+      - GetResourcePolicy
+      - GetService
+      - GetServiceAttributes
+      - ListInstances
+      - ListNamespaces
+      - ListOperations
+      - ListServices
+      - ListTagsForResource
+      - PutResourcePolicy
+      - RegisterInstance
+      - TagResource
+      - UntagResource
+      - UpdateHttpNamespace
+      - UpdateInstanceCustomHealthStatus
+      - UpdatePrivateDnsNamespace
+      - UpdatePublicDnsNamespace
+      - UpdateService
+      - UpdateServiceAttributes
+    non_scopable_actions:
+      - CreateHttpNamespace
+      - CreatePrivateDnsNamespace
+      - CreatePublicDnsNamespace
+      - ListNamespaces
+      - ListOperations
+      - ListServices
+      - ListTagsForResource
+      - TagResource
+      - UntagResource
+  - prefix: ses
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/ses/ses.json
+    source_modified: "2026-08-17"
+    retrieved_on: "2026-08-20"
+    actions:
+      - AllowVendedLogDeliveryForResource
+      - BatchGetMetricData
+      - CancelExportJob
+      - CloneReceiptRuleSet
+      - CreateAddonInstance
+      - CreateAddonSubscription
+      - CreateAddressList
+      - CreateAddressListImportJob
+      - CreateArchive
+      - CreateConfigurationSet
+      - CreateConfigurationSetEventDestination
+      - CreateConfigurationSetTrackingOptions
+      - CreateContact
+      - CreateContactList
+      - CreateCustomVerificationEmailTemplate
+      - CreateDedicatedIpPool
+      - CreateDeliverabilityTestReport
+      - CreateEmailIdentity
+      - CreateEmailIdentityPolicy
+      - CreateEmailTemplate
+      - CreateExportJob
+      - CreateImportJob
+      - CreateIngressPoint
+      - CreateMultiRegionEndpoint
+      - CreateReceiptFilter
+      - CreateReceiptRule
+      - CreateReceiptRuleSet
+      - CreateRelay
+      - CreateRuleSet
+      - CreateTemplate
+      - CreateTenant
+      - CreateTenantResourceAssociation
+      - CreateTrafficPolicy
+      - DeleteAddonInstance
+      - DeleteAddonSubscription
+      - DeleteAddressList
+      - DeleteArchive
+      - DeleteConfigurationSet
+      - DeleteConfigurationSetEventDestination
+      - DeleteConfigurationSetTrackingOptions
+      - DeleteContact
+      - DeleteContactList
+      - DeleteCustomVerificationEmailTemplate
+      - DeleteDedicatedIpPool
+      - DeleteEmailIdentity
+      - DeleteEmailIdentityPolicy
+      - DeleteEmailTemplate
+      - DeleteIdentity
+      - DeleteIdentityPolicy
+      - DeleteIngressPoint
+      - DeleteMultiRegionEndpoint
+      - DeleteReceiptFilter
+      - DeleteReceiptRule
+      - DeleteReceiptRuleSet
+      - DeleteRelay
+      - DeleteRuleSet
+      - DeleteSuppressedDestination
+      - DeleteTemplate
+      - DeleteTenant
+      - DeleteTenantResourceAssociation
+      - DeleteTrafficPolicy
+      - DeleteVerifiedEmailAddress
+      - DeregisterMemberFromAddressList
+      - DescribeActiveReceiptRuleSet
+      - DescribeConfigurationSet
+      - DescribeReceiptRule
+      - DescribeReceiptRuleSet
+      - GetAccount
+      - GetAccountSendingEnabled
+      - GetAddonInstance
+      - GetAddonSubscription
+      - GetAddressList
+      - GetAddressListImportJob
+      - GetArchive
+      - GetArchiveExport
+      - GetArchiveMessage
+      - GetArchiveMessageContent
+      - GetArchiveSearch
+      - GetArchiveSearchResults
+      - GetBlacklistReports
+      - GetConfigurationSet
+      - GetConfigurationSetEventDestinations
+      - GetContact
+      - GetContactList
+      - GetCustomVerificationEmailTemplate
+      - GetDedicatedIp
+      - GetDedicatedIpPool
+      - GetDedicatedIps
+      - GetDeliverabilityDashboardOptions
+      - GetDeliverabilityTestReport
+      - GetDomainDeliverabilityCampaign
+      - GetDomainStatisticsReport
+      - GetEmailAddressInsights
+      - GetEmailIdentity
+      - GetEmailIdentityPolicies
+      - GetEmailTemplate
+      - GetExportJob
+      - GetIdentityDkimAttributes
+      - GetIdentityMailFromDomainAttributes
+      - GetIdentityNotificationAttributes
+      - GetIdentityPolicies
+      - GetIdentityVerificationAttributes
+      - GetImportJob
+      - GetIngressPoint
+      - GetMemberOfAddressList
+      - GetMessageInsights
+      - GetMultiRegionEndpoint
+      - GetRelay
+      - GetReputationEntity
+      - GetRuleSet
+      - GetSendQuota
+      - GetSendStatistics
+      - GetSuppressedDestination
+      - GetTemplate
+      - GetTenant
+      - GetTrafficPolicy
+      - ListAddonInstances
+      - ListAddonSubscriptions
+      - ListAddressListImportJobs
+      - ListAddressLists
+      - ListArchiveExports
+      - ListArchiveSearches
+      - ListArchives
+      - ListConfigurationSets
+      - ListContactLists
+      - ListContacts
+      - ListCustomVerificationEmailTemplates
+      - ListDedicatedIpPools
+      - ListDeliverabilityTestReports
+      - ListDomainDeliverabilityCampaigns
+      - ListEmailIdentities
+      - ListEmailTemplates
+      - ListExportJobs
+      - ListIdentities
+      - ListIdentityPolicies
+      - ListImportJobs
+      - ListIngressPoints
+      - ListMembersOfAddressList
+      - ListMultiRegionEndpoints
+      - ListReceiptFilters
+      - ListReceiptRuleSets
+      - ListRecommendations
+      - ListRelays
+      - ListReputationEntities
+      - ListResourceTenants
+      - ListRuleSets
+      - ListSuppressedDestinations
+      - ListTagsForResource
+      - ListTemplates
+      - ListTenantResources
+      - ListTenants
+      - ListTrafficPolicies
+      - ListVerifiedEmailAddresses
+      - PutAccountDedicatedIpWarmupAttributes
+      - PutAccountDetails
+      - PutAccountPricingAttributes
+      - PutAccountSendingAttributes
+      - PutAccountSuppressionAttributes
+      - PutAccountVdmAttributes
+      - PutConfigurationSetArchivingOptions
+      - PutConfigurationSetDeliveryOptions
+      - PutConfigurationSetReputationOptions
+      - PutConfigurationSetSendingOptions
+      - PutConfigurationSetSuppressionOptions
+      - PutConfigurationSetTrackingOptions
+      - PutConfigurationSetVdmOptions
+      - PutDedicatedIpInPool
+      - PutDedicatedIpPoolScalingAttributes
+      - PutDedicatedIpWarmupAttributes
+      - PutDeliverabilityDashboardOption
+      - PutEmailIdentityConfigurationSetAttributes
+      - PutEmailIdentityDkimAttributes
+      - PutEmailIdentityDkimSigningAttributes
+      - PutEmailIdentityFeedbackAttributes
+      - PutEmailIdentityMailFromAttributes
+      - PutIdentityPolicy
+      - PutSuppressedDestination
+      - PutTenantSuppressionAttributes
+      - RegisterMemberToAddressList
+      - ReorderReceiptRuleSet
+      - ReplicateEmailIdentityDkimSigningKey
+      - SendBounce
+      - SendBulkEmail
+      - SendBulkTemplatedEmail
+      - SendCustomVerificationEmail
+      - SendEmail
+      - SendRawEmail
+      - SendTemplatedEmail
+      - SetActiveReceiptRuleSet
+      - SetIdentityDkimEnabled
+      - SetIdentityFeedbackForwardingEnabled
+      - SetIdentityHeadersInNotificationsEnabled
+      - SetIdentityMailFromDomain
+      - SetIdentityNotificationTopic
+      - SetReceiptRulePosition
+      - StartAddressListImportJob
+      - StartArchiveExport
+      - StartArchiveSearch
+      - StopAddressListImportJob
+      - StopArchiveExport
+      - StopArchiveSearch
+      - TagResource
+      - TestRenderEmailTemplate
+      - TestRenderTemplate
+      - UntagResource
+      - UpdateAccountSendingEnabled
+      - UpdateArchive
+      - UpdateConfigurationSetEventDestination
+      - UpdateConfigurationSetReputationMetricsEnabled
+      - UpdateConfigurationSetSendingEnabled
+      - UpdateConfigurationSetTrackingOptions
+      - UpdateContact
+      - UpdateContactList
+      - UpdateCustomVerificationEmailTemplate
+      - UpdateEmailIdentityPolicy
+      - UpdateEmailTemplate
+      - UpdateIngressPoint
+      - UpdateReceiptRule
+      - UpdateRelay
+      - UpdateReputationEntityCustomerManagedStatus
+      - UpdateReputationEntityPolicy
+      - UpdateRuleSet
+      - UpdateTemplate
+      - UpdateTrafficPolicy
+      - VerifyDomainDkim
+      - VerifyDomainIdentity
+      - VerifyEmailAddress
+      - VerifyEmailIdentity
+    non_scopable_actions:
+      - CloneReceiptRuleSet
+      - CreateConfigurationSetTrackingOptions
+      - CreateExportJob
+      - CreateImportJob
+      - CreateMultiRegionEndpoint
+      - CreateReceiptFilter
+      - CreateReceiptRule
+      - CreateReceiptRuleSet
+      - CreateTemplate
+      - DeleteConfigurationSetTrackingOptions
+      - DeleteIdentity
+      - DeleteIdentityPolicy
+      - DeleteReceiptFilter
+      - DeleteReceiptRule
+      - DeleteReceiptRuleSet
+      - DeleteTemplate
+      - DeleteVerifiedEmailAddress
+      - DescribeActiveReceiptRuleSet
+      - DescribeConfigurationSet
+      - DescribeReceiptRule
+      - DescribeReceiptRuleSet
+      - GetAccount
+      - GetAccountSendingEnabled
+      - GetBlacklistReports
+      - GetDedicatedIp
+      - GetDeliverabilityDashboardOptions
+      - GetDomainDeliverabilityCampaign
+      - GetEmailAddressInsights
+      - GetIdentityDkimAttributes
+      - GetIdentityMailFromDomainAttributes
+      - GetIdentityNotificationAttributes
+      - GetIdentityPolicies
+      - GetIdentityVerificationAttributes
+      - GetMessageInsights
+      - GetSendQuota
+      - GetSendStatistics
+      - GetTemplate
+      - ListAddonInstances
+      - ListAddonSubscriptions
+      - ListAddressLists
+      - ListArchiveExports
+      - ListArchiveSearches
+      - ListArchives
+      - ListConfigurationSets
+      - ListContactLists
+      - ListCustomVerificationEmailTemplates
+      - ListDedicatedIpPools
+      - ListDeliverabilityTestReports
+      - ListDomainDeliverabilityCampaigns
+      - ListEmailIdentities
+      - ListEmailTemplates
+      - ListExportJobs
+      - ListIdentities
+      - ListIdentityPolicies
+      - ListImportJobs
+      - ListIngressPoints
+      - ListMultiRegionEndpoints
+      - ListReceiptFilters
+      - ListReceiptRuleSets
+      - ListRelays
+      - ListRuleSets
+      - ListTemplates
+      - ListTenants
+      - ListTrafficPolicies
+      - ListVerifiedEmailAddresses
+      - PutAccountDedicatedIpWarmupAttributes
+      - PutAccountDetails
+      - PutAccountPricingAttributes
+      - PutAccountSendingAttributes
+      - PutAccountSuppressionAttributes
+      - PutAccountVdmAttributes
+      - PutDedicatedIpWarmupAttributes
+      - PutDeliverabilityDashboardOption
+      - PutIdentityPolicy
+      - ReorderReceiptRuleSet
+      - SetActiveReceiptRuleSet
+      - SetIdentityDkimEnabled
+      - SetIdentityFeedbackForwardingEnabled
+      - SetIdentityHeadersInNotificationsEnabled
+      - SetIdentityMailFromDomain
+      - SetIdentityNotificationTopic
+      - SetReceiptRulePosition
+      - TestRenderTemplate
+      - UpdateAccountSendingEnabled
+      - UpdateConfigurationSetReputationMetricsEnabled
+      - UpdateConfigurationSetSendingEnabled
+      - UpdateConfigurationSetTrackingOptions
+      - UpdateReceiptRule
+      - UpdateTemplate
+      - VerifyDomainDkim
+      - VerifyDomainIdentity
+      - VerifyEmailAddress
+      - VerifyEmailIdentity
   - prefix: sns
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/sns/sns.json
     source_modified: "2026-08-16"
@@ -7075,6 +8775,231 @@ services:
       - UntagQueue
     non_scopable_actions:
       - ListQueues
+  - prefix: ssm
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/ssm/ssm.json
+    source_modified: "2026-08-19"
+    retrieved_on: "2026-08-20"
+    actions:
+      - AddTagsToResource
+      - AssociateOpsItemRelatedItem
+      - CancelCommand
+      - CancelMaintenanceWindowExecution
+      - CreateActivation
+      - CreateAssociation
+      - CreateAssociationBatch
+      - CreateCloudConnector
+      - CreateDocument
+      - CreateMaintenanceWindow
+      - CreateOpsItem
+      - CreateOpsMetadata
+      - CreatePatchBaseline
+      - CreateResourceDataSync
+      - DeleteActivation
+      - DeleteAssociation
+      - DeleteCloudConnector
+      - DeleteDocument
+      - DeleteInventory
+      - DeleteMaintenanceWindow
+      - DeleteOpsItem
+      - DeleteOpsMetadata
+      - DeleteParameter
+      - DeleteParameters
+      - DeletePatchBaseline
+      - DeleteResourceDataSync
+      - DeleteResourcePolicy
+      - DeregisterManagedInstance
+      - DeregisterPatchBaselineForPatchGroup
+      - DeregisterTargetFromMaintenanceWindow
+      - DeregisterTaskFromMaintenanceWindow
+      - DescribeActivations
+      - DescribeAssociation
+      - DescribeAssociationExecutionTargets
+      - DescribeAssociationExecutions
+      - DescribeAutomationExecutions
+      - DescribeAutomationStepExecutions
+      - DescribeAvailablePatches
+      - DescribeDocument
+      - DescribeDocumentParameters
+      - DescribeDocumentPermission
+      - DescribeEffectiveInstanceAssociations
+      - DescribeEffectivePatchesForPatchBaseline
+      - DescribeInstanceAssociationsStatus
+      - DescribeInstanceInformation
+      - DescribeInstancePatchStates
+      - DescribeInstancePatchStatesForPatchGroup
+      - DescribeInstancePatches
+      - DescribeInstanceProperties
+      - DescribeInventoryDeletions
+      - DescribeMaintenanceWindowExecutionTaskInvocations
+      - DescribeMaintenanceWindowExecutionTasks
+      - DescribeMaintenanceWindowExecutions
+      - DescribeMaintenanceWindowSchedule
+      - DescribeMaintenanceWindowTargets
+      - DescribeMaintenanceWindowTasks
+      - DescribeMaintenanceWindows
+      - DescribeMaintenanceWindowsForTarget
+      - DescribeOpsItems
+      - DescribeParameters
+      - DescribePatchBaselines
+      - DescribePatchGroupState
+      - DescribePatchGroups
+      - DescribePatchProperties
+      - DescribeSessions
+      - DisassociateOpsItemRelatedItem
+      - ExecuteAPI
+      - GetAccessToken
+      - GetAutomationExecution
+      - GetCalendar
+      - GetCalendarState
+      - GetCloudConnector
+      - GetCommandInvocation
+      - GetConnectionStatus
+      - GetDefaultPatchBaseline
+      - GetDeployablePatchSnapshotForInstance
+      - GetDocument
+      - GetExecutionPreview
+      - GetInventory
+      - GetInventorySchema
+      - GetMaintenanceWindow
+      - GetMaintenanceWindowExecution
+      - GetMaintenanceWindowExecutionTask
+      - GetMaintenanceWindowExecutionTaskInvocation
+      - GetMaintenanceWindowTask
+      - GetManifest
+      - GetOpsItem
+      - GetOpsMetadata
+      - GetOpsSummary
+      - GetParameter
+      - GetParameterHistory
+      - GetParameters
+      - GetParametersByPath
+      - GetPatchBaseline
+      - GetPatchBaselineForPatchGroup
+      - GetResourcePolicies
+      - GetServiceSetting
+      - LabelParameterVersion
+      - ListAssociationVersions
+      - ListAssociations
+      - ListCloudConnectors
+      - ListCommandInvocations
+      - ListCommands
+      - ListComplianceItems
+      - ListComplianceSummaries
+      - ListDocumentMetadataHistory
+      - ListDocumentVersions
+      - ListDocuments
+      - ListInstanceAssociations
+      - ListInventoryEntries
+      - ListNodes
+      - ListNodesSummary
+      - ListOpsItemEvents
+      - ListOpsItemRelatedItems
+      - ListOpsMetadata
+      - ListResourceComplianceSummaries
+      - ListResourceDataSync
+      - ListTagsForResource
+      - ModifyDocumentPermission
+      - PutCalendar
+      - PutComplianceItems
+      - PutConfigurePackageResult
+      - PutInventory
+      - PutParameter
+      - PutResourcePolicy
+      - RegisterDefaultPatchBaseline
+      - RegisterManagedInstance
+      - RegisterPatchBaselineForPatchGroup
+      - RegisterTargetWithMaintenanceWindow
+      - RegisterTaskWithMaintenanceWindow
+      - RemoveTagsFromResource
+      - RequestManagedInstanceRoleToken
+      - ResetServiceSetting
+      - ResumeSession
+      - SendAutomationSignal
+      - SendCommand
+      - StartAccessRequest
+      - StartAssociationsOnce
+      - StartAutomationExecution
+      - StartChangeRequestExecution
+      - StartExecutionPreview
+      - StartSession
+      - StopAutomationExecution
+      - TerminateSession
+      - UnlabelParameterVersion
+      - UpdateAssociation
+      - UpdateAssociationStatus
+      - UpdateCloudConnector
+      - UpdateDocument
+      - UpdateDocumentDefaultVersion
+      - UpdateDocumentMetadata
+      - UpdateInstanceAssociationStatus
+      - UpdateInstanceInformation
+      - UpdateMaintenanceWindow
+      - UpdateMaintenanceWindowTarget
+      - UpdateMaintenanceWindowTask
+      - UpdateManagedInstancePublicKey
+      - UpdateManagedInstanceRole
+      - UpdateOpsItem
+      - UpdateOpsMetadata
+      - UpdatePatchBaseline
+      - UpdateResourceDataSync
+      - UpdateServiceSetting
+      - ValidateCloudConnector
+    non_scopable_actions:
+      - CancelCommand
+      - CreateActivation
+      - CreateMaintenanceWindow
+      - CreateOpsItem
+      - CreateOpsMetadata
+      - CreatePatchBaseline
+      - DeleteActivation
+      - DeleteInventory
+      - DescribeActivations
+      - DescribeAutomationExecutions
+      - DescribeAvailablePatches
+      - DescribeInstanceInformation
+      - DescribeInstancePatchStatesForPatchGroup
+      - DescribeInstanceProperties
+      - DescribeInventoryDeletions
+      - DescribeMaintenanceWindowExecutionTaskInvocations
+      - DescribeMaintenanceWindowExecutionTasks
+      - DescribeMaintenanceWindowSchedule
+      - DescribeMaintenanceWindows
+      - DescribeMaintenanceWindowsForTarget
+      - DescribeOpsItems
+      - DescribeParameters
+      - DescribePatchBaselines
+      - DescribePatchGroupState
+      - DescribePatchGroups
+      - DescribePatchProperties
+      - DescribeSessions
+      - ExecuteAPI
+      - GetCommandInvocation
+      - GetDeployablePatchSnapshotForInstance
+      - GetExecutionPreview
+      - GetInventory
+      - GetInventorySchema
+      - GetMaintenanceWindowExecution
+      - GetMaintenanceWindowExecutionTask
+      - GetMaintenanceWindowExecutionTaskInvocation
+      - GetManifest
+      - GetPatchBaselineForPatchGroup
+      - ListAssociations
+      - ListCloudConnectors
+      - ListCommandInvocations
+      - ListCommands
+      - ListComplianceItems
+      - ListComplianceSummaries
+      - ListDocuments
+      - ListInventoryEntries
+      - ListOpsItemEvents
+      - ListOpsItemRelatedItems
+      - ListOpsMetadata
+      - ListResourceComplianceSummaries
+      - ListResourceDataSync
+      - PutConfigurePackageResult
+      - PutInventory
+      - RegisterManagedInstance
+      - StartExecutionPreview
   - prefix: states
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/states/states.json
     source_modified: "2026-03-25"
@@ -7129,6 +9054,40 @@ services:
       - SendTaskSuccess
       - TestState
       - ValidateStateMachineDefinition
+  - prefix: synthetics
+    source_url: https://servicereference.us-east-1.amazonaws.com/v1/synthetics/synthetics.json
+    source_modified: "2026-08-16"
+    retrieved_on: "2026-08-20"
+    actions:
+      - AssociateResource
+      - CreateCanary
+      - CreateGroup
+      - DeleteCanary
+      - DeleteGroup
+      - DescribeCanaries
+      - DescribeCanariesLastRun
+      - DescribeRuntimeVersions
+      - DisassociateResource
+      - GetCanary
+      - GetCanaryRuns
+      - GetGroup
+      - ListAssociatedGroups
+      - ListGroupResources
+      - ListGroups
+      - ListTagsForResource
+      - StartCanary
+      - StartCanaryDryRun
+      - StopCanary
+      - TagResource
+      - UntagResource
+      - UpdateCanary
+    non_scopable_actions:
+      - CreateCanary
+      - CreateGroup
+      - DescribeCanaries
+      - DescribeCanariesLastRun
+      - DescribeRuntimeVersions
+      - ListGroups
   - prefix: wafv2
     source_url: https://servicereference.us-east-1.amazonaws.com/v1/wafv2/wafv2.json
     source_modified: "2026-07-29"

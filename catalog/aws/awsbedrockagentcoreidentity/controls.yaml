@@ -1,0 +1,77 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbedrockagentcoreidentity
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every secret this bundle vaults -- API keys, OAuth2 client secrets -- is stored by AWS in Secrets Manager under the service's token vault, encrypted at rest; the Cedar engine's policies are likewise encrypted under a service-managed key when encryption_key_arn is unset. A plaintext-at-rest credential or policy is not representable.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: policy_engine.encryption_key_arn
+      evidence:
+        type: spec_default
+        reference: Unset means the service-managed key; referencing a KMS key puts the engine's stored Cedar policies under a customer-managed key you own and can revoke. Changing the key REPLACES the engine (provider-enforced) -- pick it before policies accumulate.
+      notes: This field covers only the policy engine. The CMK for the vaulted credentials lives on the account/region token vault -- the AwsBedrockAgentCoreTokenVault kind's contract, deliberately outside this bundle.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All operations on identities, credential providers, and the policy engine -- vaulting, rotation, token requests, authorization checks -- ride the HTTPS-only SigV4 bedrock-agentcore endpoints; no plaintext path to a vaulted secret or policy exists.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every read and write against this bundle's objects is an IAM-authorized API call; vaulted secrets are never returned in plaintext to callers of the management APIs (consumers reference the provider ARN, and only credential-request flows exchange it), and no anonymous or network-exposed access path exists.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens in your network -- identities, credential providers, and the policy engine are managed objects behind AWS's service endpoints; there is no inbound network surface to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: This bundle serves no requests a WAF could front -- AgentCore's WebACL attachment exists only on the gateway kind.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Create/read/update/delete on every object here is IAM-authorized, and the service reference scopes the operations to their own ARN formats -- workload identities under the directory ARN, credential providers under the token-vault ARN, policies under the engine ARN -- so resource-level policies can separate who manages credentials from who manages authorization rules.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: No workload runs here -- this bundle is where workload identity comes FROM. The workload_identities arm mints the named identities other AgentCore workloads (runtimes, gateways) present, and the vaulted providers hold the outbound credentials those workloads exchange; the consuming kinds carry the workload-identity posture of actually running under them.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The service has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable. The vaulted OAuth2 clients and API keys are OUTBOUND credentials to third-party services, not an authentication path into this component.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All bedrock-agentcore control-plane operations on this bundle -- creating identities, vaulting and rotating credentials, changing Cedar policies, deleting the engine -- are management events CloudTrail records unconditionally in the account's event history, so credential and policy tampering is itself recorded.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: This kind exposes no telemetry hook of its own. Credential-request visibility and authorization-decision visibility surface through AgentCore Observability on the consuming runtime and gateway kinds; CMK usage for the policy engine surfaces in the referenced key's CloudTrail events.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Everything here is configuration recreatable from the manifest -- identity names, provider definitions, Cedar statements. The vaulted secret values arrive as secret references resolved just-in-time at deploy, so re-applying the manifest re-vaults them from the source of truth; there is no service-side state only AWS holds.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Nothing here retains or expires data -- there is no retention window to police. Vaulted credentials persist until deleted or rotated; policies persist until deleted.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AgentCore Identity is a regional managed service AWS operates across availability zones -- the manifest has no zonal footprint to configure, and the token vault's storage inherits Secrets Manager's regional durability.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No object in this bundle carries a deletion-protection flag. Deleting the bundle removes the identity registrations, the vault entries, and the engine with its policies -- all recreatable from the manifest, with secrets re-resolved at the next deploy. Agents holding a deleted provider's ARN lose credential access immediately, which is also the revocation lever.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the vault, the token-exchange flows, and the Cedar evaluation engine; this bundle exposes no runtime, version, or maintenance surface.

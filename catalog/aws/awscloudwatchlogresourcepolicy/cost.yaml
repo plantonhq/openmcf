@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awscloudwatchlogresourcepolicy
+spec:
+  billing_model: free
+  free_tier: "A CloudWatch Logs resource policy is an IAM-style permission document with no meter of its own. AWS's CloudWatch billing reference enumerates every Logs UsageType -- collect (DataProcessing-Bytes), store (TimedStorage-ByteHrs), analyze (DataScanned-Bytes, Logs-LiveTail), data protection (DataProtection-Bytes), and delivery (VendedLog-Bytes, S3-Egress-Bytes, FH-Egress-Bytes) -- and none exists for resource policies, in either scope (account-wide by policy_name or pinned to one log group by resource_arn). The grant costs nothing whether it sits idle forever or authorizes a million writes a day."
+  notes: "No field of this spec buys anything: the policy document, its scope choice, and the service principals it names are all CloudWatch Logs control-plane configuration. The real spend lives in what the policy ENABLES -- once route53.amazonaws.com or events.amazonaws.com starts writing, the receiving log groups bill their own ingestion ($0.50 per GB standard class) and storage on AwsCloudwatchLogGroup, exactly as if an application had written the events. A grant into silent log groups is $0 everywhere; the moment it is exercised, the money lands on the log-group components, never here."

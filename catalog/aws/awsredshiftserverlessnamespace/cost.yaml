@@ -1,0 +1,39 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsredshiftserverlessnamespace
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: region
+      sku_meter: Redshift Managed Storage
+      pricing_unit: GB-month
+      impact: Everything the warehouse stores bills Redshift Managed Storage at a fixed regional GB-month rate ($0.024 in us-east-1), computed hourly on the actual data present -- the same rate whether the bytes sit on RMS's SSDs or have been offloaded to S3. An empty-on-create namespace stores nothing and bills nothing; the meter starts with the first loaded row and grows with the data.
+    - field_path: log_exports
+      sku_meter: CloudWatch Logs ingestion
+      pricing_unit: GB
+      impact: Each enabled export (connectionlog, useractivitylog, userlog) streams audit events to CloudWatch Logs, which bills its own per-GB ingestion and storage meters -- useractivitylog on a busy warehouse records every executed query and can dominate.
+    - field_path: manage_admin_password
+      sku_meter: Secrets Manager secrets
+      pricing_unit: secrets
+      impact: "The AWS-managed admin password lives as a secret in Secrets Manager; any secret and API charges follow Secrets Manager's own pricing on that service -- the Redshift pricing page carries no meter for it."
+    - field_path: kms_key_id
+      sku_meter: KMS requests
+      pricing_unit: requests
+      impact: Encrypting stored data under a customer-managed key routes the key's monthly rental and request charges to the referenced AwsKmsKey component; the default AWS-owned Redshift key bills nothing.
+    - field_path: admin_password_secret_kms_key_id
+      sku_meter: KMS requests
+      pricing_unit: requests
+      impact: A customer-managed key wrapping the managed-password secret likewise bills on the referenced AwsKmsKey; empty rides the AWS-managed aws/secretsmanager key at no charge.
+  free_tier: "A TRIAL, not a permanent tier: first-time Redshift Serverless users get a $300 credit expiring after 90 days that draws down against both compute and storage. There is no recurring free storage allotment -- every stored GB-month bills once the credit is gone."
+  estimate_exclusions:
+    - Redshift Managed Storage bills $0.024 per GB-month (us-east-1) on actual stored bytes, accrued hourly -- data volume is entirely workload-driven
+    - automatic recovery points (every 30 minutes, restorable across the last 24 hours) are free of charge; RETAINING a recovery point beyond 24 hours bills as part of RMS
+    - manual snapshots bill at the region's snapshot rate on the TOTAL UNIQUE data blocks across all active snapshots -- shared blocks count once, and snapshots keep billing after the namespace is gone until deleted
+    - cross-region snapshot copy and cross-region datasharing bill per-terabyte transfer at the rates on the Redshift pricing page
+    - audit log volume through log_exports bills CloudWatch Logs meters on the CloudWatch side
+    - the compute that fills and queries this data bills RPU-hours on the attached AwsRedshiftServerlessWorkgroup components, never here
+  notes: "The namespace is the DATA plane and carries only storage-shaped meters; every compute dollar lives on the workgroups that attach to it. Nothing on this spec commits spend on existence: a fresh namespace holds no data (RMS meters actual GB), exports nothing by default, and the recommended manage_admin_password posture adds at most a Secrets Manager secret. The census verdict holds -- empty-on-create commits nothing, and the bill grows only as data, snapshots, and audit logs accumulate."

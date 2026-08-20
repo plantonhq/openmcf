@@ -1,0 +1,40 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsorganizationalunit
+spec:
+  aws:
+    statements:
+      - sid: ManageOrganizationalUnit
+        actions:
+          - organizations:CreateOrganizationalUnit
+          - organizations:UpdateOrganizationalUnit
+          - organizations:DeleteOrganizationalUnit
+          - organizations:DescribeOrganizationalUnit
+        resources:
+          - arn:aws:organizations::*:ou/o-*/ou-*
+          - arn:aws:organizations::*:root/o-*/r-*
+        provenance: derived
+        notes: Covers aws_organizations_organizational_unit / organizations.OrganizationalUnit. CreateOrganizationalUnit authorizes on the PARENT container (the service reference scopes it to both the organizationalunit and root formats -- a first-level OU creates under the root, a nested OU under its parent OU), so both ARN shapes are granted; the provider also retries creation through the up-to-four-minute finalization window after CreateOrganization. UpdateOrganizationalUnit renames in place (ou_name); a parent_id change instead forces replacement through Delete + Create because AWS moves accounts, never OUs. DescribeOrganizationalUnit runs on every plan/refresh. Update/Delete/Describe scope to the OU ARN alone; the root format in this statement serves creation and the parent-side reads. All calls require the organization's management account.
+      - sid: ReadOrganizationalUnitChildren
+        actions:
+          - organizations:ListAccountsForParent
+        resources:
+          - arn:aws:organizations::*:ou/o-*/ou-*
+          - arn:aws:organizations::*:root/o-*/r-*
+        provenance: derived
+        notes: The provider populates the OU resource's accounts attribute by listing the member accounts directly under it on every refresh. The service reference scopes the action to the parent being listed (organizationalunit and root formats).
+      - sid: TagOrganizationalUnit
+        actions:
+          - organizations:TagResource
+          - organizations:UntagResource
+          - organizations:ListTagsForResource
+        resources:
+          - arn:aws:organizations::*:ou/o-*/ou-*
+        provenance: derived
+        notes: Tag-on-create plus later tag reconciliation and the tag read on every refresh, scoped to the OU ARN format (the service reference also lists other Organizations resource types for these actions; this component only touches OUs).

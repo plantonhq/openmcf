@@ -1,0 +1,35 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsssmassociation
+spec:
+  aws:
+    statements:
+      - sid: ManageAssociation
+        actions:
+          - ssm:CreateAssociation
+          - ssm:DescribeAssociation
+          - ssm:UpdateAssociation
+          - ssm:DeleteAssociation
+        resources:
+          - arn:aws:ssm:*:*:association/*
+          - arn:aws:ssm:*:*:document/*
+          - arn:aws:ssm:*::document/*
+          - arn:aws:ssm:*:*:managed-instance/*
+          - arn:aws:ec2:*:*:instance/*
+        provenance: derived
+        notes: "Covers aws_ssm_association / ssm.Association. Create binds the document to targets; the provider sends the full argument set on every update (AWS versions associations whole) and DescribeAssociation serves every plan/refresh. The service reference scopes all four actions to association, document, instance, and managed-instance ARNs -- the document ARN is evaluated at create/update, so BOTH document formats are granted: account-owned (arn:aws:ssm:*:*:document/*) and AWS-managed, whose ARNs carry an EMPTY account field (arn:aws:ssm:*::document/*, e.g. AWS-RunPatchBaseline -- omitting that second format is the classic deny when associating an AWS-managed document). Instance formats cover instance-targeted evaluation on the same actions."
+      - sid: TagAssociation
+        actions:
+          - ssm:AddTagsToResource
+          - ssm:RemoveTagsFromResource
+          - ssm:ListTagsForResource
+        resources:
+          - arn:aws:ssm:*:*:association/*
+        provenance: derived
+        notes: Tag-on-create plus later tag reconciliation and the tag read on every refresh. The service reference scopes all three tagging actions to many SSM resource types; only the association ARN format is needed here.

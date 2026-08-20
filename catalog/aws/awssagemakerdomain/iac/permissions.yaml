@@ -1,0 +1,74 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awssagemakerdomain
+spec:
+  aws:
+    statements:
+      - sid: ManageDomain
+        actions:
+          - sagemaker:CreateDomain
+          - sagemaker:DescribeDomain
+          - sagemaker:UpdateDomain
+          - sagemaker:DeleteDomain
+        resources:
+          - arn:aws:sagemaker:*:*:domain/*
+        provenance: derived
+        notes: The whole domain lifecycle scopes to the domain ARN per the service reference (CreateDomain included -- SageMaker domain ARNs are deterministic enough for the provider to authorize against the resource shape). One aws_sagemaker_domain per manifest.
+      - sid: ManageUserProfiles
+        actions:
+          - sagemaker:CreateUserProfile
+          - sagemaker:DescribeUserProfile
+          - sagemaker:UpdateUserProfile
+          - sagemaker:DeleteUserProfile
+        resources:
+          - arn:aws:sagemaker:*:*:user-profile/*
+        provenance: derived
+        notes: One aws_sagemaker_user_profile per user_profiles entry (for_each on user_profile_name).
+      - sid: ManageSpaces
+        actions:
+          - sagemaker:CreateSpace
+          - sagemaker:DescribeSpace
+          - sagemaker:UpdateSpace
+          - sagemaker:DeleteSpace
+        resources:
+          - arn:aws:sagemaker:*:*:space/*
+        provenance: derived
+        notes: One aws_sagemaker_space per spaces entry (for_each on space_name) -- including the space's provisioned EBS volume settings.
+      - sid: TagSagemakerResources
+        actions:
+          - sagemaker:AddTags
+          - sagemaker:DeleteTags
+          - sagemaker:ListTags
+        resources:
+          - arn:aws:sagemaker:*:*:domain/*
+          - arn:aws:sagemaker:*:*:user-profile/*
+          - arn:aws:sagemaker:*:*:space/*
+        provenance: derived
+        notes: The domain, profiles, and spaces carry the component tags (and tag_propagation ENABLED copies them onward); the tag actions scope to the three resource shapes this component creates.
+      - sid: PassExecutionRolesToSagemaker
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: CreateDomain/CreateUserProfile/UpdateDomain hand execution_role_arn (and any per-profile or Canvas-forecast role) to sagemaker.amazonaws.com -- iam:PassRole on those roles is mandatory. Role ARNs are manifest values (often foreign-key references), so the honest static scope is the wildcard; platforms templating per-deployment policies should substitute the concrete role ARNs.
+      - sid: DescribeVpcNetworking
+        actions:
+          - ec2:DescribeVpcs
+          - ec2:DescribeSubnets
+          - ec2:DescribeSecurityGroups
+        resources:
+          - "*"
+        provenance: derived
+        notes: Domain creation validates vpc_id, subnet_ids, and the security groups; the EC2 Describe* family is NON-SCOPABLE per the EC2 service reference.
+      - sid: EfsForDomainTeardown
+        actions:
+          - elasticfilesystem:DescribeFileSystems
+          - elasticfilesystem:DescribeMountTargets
+          - elasticfilesystem:DeleteMountTarget
+          - elasticfilesystem:DeleteFileSystem
+        resources:
+          - arn:aws:elasticfilesystem:*:*:file-system/*
+        provenance: derived
+        notes: The domain auto-creates its home EFS file system on SageMaker's side, but home_efs_retention_policy Delete makes the DESTROY remove that file system on the caller's authority -- the file-system id is cloud-generated, so the wildcard is the honest scope. Retain-mode domains never exercise the two Delete actions.

@@ -1,0 +1,34 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsbedrockprompt
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: variants.model_id
+      sku_meter: Bedrock model inference tokens
+      pricing_unit: 1M tokens
+      impact: Every execution of a variant bills the named model's per-1M-token input and output rates -- the prompt is a stored template, and this field decides whose rate card each run lands on. With multiple variants, an A/B experiment is also a price experiment (the presets pair nova-micro against nova-lite for exactly that reason).
+    - field_path: variants.agent_alias_arn
+      sku_meter: Bedrock model inference tokens
+      pricing_unit: 1M tokens
+      impact: Routing a variant through an agent alias replaces one model call with an agent RUN -- orchestration loops, tool calls, and knowledge-base lookups each burn model tokens on the referenced AwsBedrockAgent's cost surface. The same prompt template costs a multiple of its direct-model twin when executed this way.
+    - field_path: variants.inference_configuration.max_tokens
+      sku_meter: Bedrock model inference output tokens
+      pricing_unit: 1M tokens
+      impact: Output tokens are priced several times input tokens on most Bedrock rate cards, and this cap is the only hard ceiling on them per invocation -- a generous max_tokens on a chatty model quietly multiplies per-run cost, while a tight cap makes worst-case spend calculable.
+    - field_path: variants.text.cache_point
+      sku_meter: Bedrock cached input tokens
+      pricing_unit: 1M tokens
+      impact: Prompt caching turns the template's static prefix into cache reads billed at a discounted rate on supported models -- high-volume prompts with long fixed instructions recoup real money here. The chat template's message, system, and tool cache_point marks meter identically; caching is a rate discount, never a new charge.
+  free_tier: "Storing prompts is free, permanently -- Bedrock Prompt Management appears nowhere in the pricing page's meter list, and the spec's own contract states it: prompts are free to create; model invocations bill when the prompt is executed. There is no free allotment on the execution side -- the first run bills the variant's model at its published rates."
+  estimate_exclusions:
+    - execution volume is entirely workload-driven -- a stored template bills nothing until something invokes it, then bills per run at token rates this manifest cannot see
+    - per-token rates ride each variant's model_id (or the referenced agent's models) -- swapping a variant repricess every run
+    - versions snapshotted from the DRAFT (CreatePromptVersion, outside this spec) publish no meter of their own
+    - prompt optimization is a deliberate opt-in act with its own meters -- the simple optimizer bills $0.03 per 1,000 tokens via the OptimizePrompt API, and the advanced optimizer bills the on-demand tokens its rewrite/evaluate loops consume
+    - Intelligent Prompt Routing, if a variant targets a prompt router, adds $1.00 per 1,000 requests on top of the routed model's tokens
+  notes: "A prompt is the cheapest object in the Bedrock family -- a versioned template that costs nothing to hold and has no meter of its own. Its entire economic effect is indirection: model_id decides whose rate card each execution hits, max_tokens caps the expensive half of every run, and cache_point converts repeated static prefixes into discounted cache reads. The one structural cost cliff is agent_alias_arn -- pointing a variant at an agent turns a one-call template into an orchestrated run whose token fan-out bills on the agent's surface. Deleting a prompt stops nothing already billed and saves nothing ongoing; there is no ongoing."

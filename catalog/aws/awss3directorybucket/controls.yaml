@@ -1,0 +1,73 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awss3directorybucket
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every object in a directory bucket is server-side encrypted -- S3 applies SSE-S3 as the base-level encryption for the bucket, and unencrypted storage is not representable.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: AWS's s3express control plane accepts a bucket encryption configuration (SSE-KMS under a customer managed key), but this spec exposes no key field and the modules manage no encryption configuration -- a CMK posture is not representable on this component today; objects rest under the SSE-S3 default.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The spec carries no bucket-policy surface, so an enforced TLS-only posture (a deny on insecure transport, the standard S3 pattern) is not representable here. Clients reach the bucket over the HTTPS Regional and Zonal endpoints; requiring that at the bucket is a policy statement this component cannot yet make.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Directory buckets have all Block Public Access protections permanently on -- AWS does not allow disabling them for this bucket type, so a publicly readable directory bucket is not representable. By default no principal has any access at all (AWS's IAM guide for directory buckets states users have no permissions until granted).
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: A bucket has no listener or port surface to restrict -- reachability is the S3 Regional/Zonal API endpoints and optional gateway VPC endpoints, and every request is IAM-authorized (see rbac). Network-conditioned access (source-VPC conditions) would live in a bucket policy this spec does not carry.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A directory bucket serves no website and fronts no HTTP application -- there is no WAF attachment point; edge protection belongs to whatever service consumes the data.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Access is deny-by-default and doubly gated: bucket-level (Regional endpoint) operations are IAM-authorized on the s3express bucket ARN, and ALL object-level (Zonal endpoint) operations authorize through a single explicit grant -- s3express:CreateSession -- whose short-lived session token is the only path to the data plane, per AWS's IAM model for directory buckets."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The bucket runs no workloads and holds no credentials -- callers bring their own IAM principals and exchange them for scoped session tokens.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every request is SigV4-signed IAM, object operations additionally ride short-lived CreateSession tokens, and the permanent Block Public Access posture forecloses anonymous access -- no legacy or weaker path exists to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit dial. Bucket lifecycle operations (create, delete) land in AWS CloudTrail as management events at the account level; object-level audit capture is account CloudTrail territory, and S3 server access logging is a general-purpose-bucket feature -- none of it configurable on this component.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The spec exposes no monitoring surface. The s3express control plane does accept metrics configurations (PutMetricsConfiguration exists in the service's own action inventory), so the gap is this component's spec, not the service's capability.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "Single-zone is the class's defining trade: data lives in exactly ONE availability zone or Local Zone (data_redundancy can only say so), object versioning is not part of this spec, and no replication surface exists. Treat contents as reproducible -- both presets model exactly that (training scratch, render cache). Data that must survive zone loss belongs in a general-purpose bucket (AwsS3Bucket)."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No retention or lifecycle surface exists on this spec -- the s3express control plane accepts lifecycle configurations (PutLifecycleConfiguration is in its action inventory), but this component does not yet carry the dial, so expiry is the workload's own discipline.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The exact inverse of the general-purpose bucket's multi-AZ durability -- a directory bucket exists in ONE zone by design (zone_id), and SingleAvailabilityZone/SingleLocalZone are the only redundancy classes the spec admits. Zonal co-location IS the product; multi-zone resilience is what it deliberately trades for single-digit-millisecond latency.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: force_destroy
+      evidence:
+        type: spec_default
+        reference: Off by default -- destroying a bucket that still holds objects FAILS until the data is removed, which is the strongest guard this resource has. Setting force_destroy true removes the guard by deleting every object first; the spec's own comment says destroying data-holding buckets should hurt.
+      notes: force_destroy is config-only at AWS (never read back), so an imported bucket does not round-trip it.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed storage service -- AWS operates and patches the storage, request, and session infrastructure; the bucket exposes no runtime, version, or maintenance surface.

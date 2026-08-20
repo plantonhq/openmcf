@@ -1,0 +1,65 @@
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsprivateca
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The CA's private key is generated and held in FIPS 140-2 validated HSMs and never leaves them -- key_storage_security_standard only picks the validation level (Level 3 in most regions, Level 2 where that is the ceiling), it cannot weaken the posture to software storage.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: The protected asset IS a key, held in AWS-operated HSMs by design -- there is no KMS surface and no customer-managed-key option to layer on top.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Management and issuance ride the HTTPS-only ACM PCA API. CRL and OCSP distribution are by-design plaintext-readable PKI artifacts (signed, integrity-protected, meant for any relying party) -- there is no plaintext option to harden and no confidentiality expectation to enforce.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The CA has no anonymous surface -- every management and issuance call is IAM-authorized. The policy field grants issuance to OTHER accounts or an organization, but those grants are themselves IAM-authenticated principals, never the public internet. CRL/OCSP endpoints publish only signed revocation state, which is public by PKI design.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The CA exposes no network endpoint of its own -- no VPC placement, no security groups. Reachability questions live with the workloads presenting its certificates.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request-serving application surface exists; there is no WAF attachment point on a certificate authority.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation -- issue, revoke, get, configure, delete, and the acm_renewal_permission grant -- is IAM-authorized against the CA's ARN, so who can mint identity from this CA is entirely IAM posture.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The CA runs no workload -- it IS the identity issuer. What presents its certificates is other components' posture.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The API path is SigV4-signed only. OCSP and CRL are the PKI protocols themselves, not legacy authentication to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Every issuance, revocation, and configuration change is captured by account-level AWS CloudTrail, and the CA additionally keeps an internal audit report of every certificate it issued (CreateCertificateAuthorityAuditReport) -- service behaviors, not manifest choices.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: ACM PCA emits CloudWatch metrics and EventBridge events (certificate issued, CRL generated, CA expiry approaching) automatically -- provider behavior with no spec dial.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The private key is deliberately non-exportable (HSM-held), so there is nothing to back up -- the recovery story is the deletion restore window (see deletion-protection) plus re-issuance from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A regional AWS-operated service with no zonal placement in the spec -- availability topology is AWS's to run.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: permanent_deletion_time_in_days
+      evidence:
+        type: spec_default
+        reference: Deleting a CA parks it RESTORABLE for permanent_deletion_time_in_days (7-30 days; unset takes the provider's 30-day maximum) before permanent erasure -- the widest window is the default posture, and only ephemeral environments should shorten it to 7.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the CA infrastructure and its HSM fleet; no customer-visible patch surface exists.

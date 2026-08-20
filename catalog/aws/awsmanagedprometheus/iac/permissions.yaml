@@ -1,0 +1,99 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsmanagedprometheus
+spec:
+  aws:
+    statements:
+      - sid: CreateWorkspace
+        actions:
+          - aps:CreateWorkspace
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_prometheus_workspace / amp.Workspace at create. CreateWorkspace takes no resource-level scoping in the aps service reference (the workspace ID does not exist yet), so "*" is the narrowest possible grant. When kms_key_arn is set the runner only passes the ARN -- the three KMS grants the service needs to use the key are the referenced AwsKmsKey's contract, so no kms actions belong here.
+      - sid: OperateWorkspace
+        actions:
+          - aps:DescribeWorkspace
+          - aps:UpdateWorkspaceAlias
+          - aps:DeleteWorkspace
+          - aps:CreateLoggingConfiguration
+          - aps:DescribeLoggingConfiguration
+          - aps:UpdateLoggingConfiguration
+          - aps:DeleteLoggingConfiguration
+          - aps:DescribeWorkspaceConfiguration
+          - aps:UpdateWorkspaceConfiguration
+        resources:
+          - arn:aws:aps:*:*:workspace/*
+        provenance: derived
+        notes: "Covers the workspace resource's read/update/delete plus two folded satellites: the logging_configuration block (Create/Describe/Update/Delete LoggingConfiguration) and aws_prometheus_workspace_configuration (DescribeWorkspaceConfiguration on every plan/refresh, UpdateWorkspaceConfiguration for create AND update -- the configuration object is created via update and has NO delete API, so destroy calls nothing and the last-applied retention/limits persist at AWS). All actions here take resource-level scoping on the workspace ARN per the service reference."
+      - sid: ManageWorkspaceSatellites
+        actions:
+          - aps:CreateAlertManagerDefinition
+          - aps:DescribeAlertManagerDefinition
+          - aps:PutAlertManagerDefinition
+          - aps:DeleteAlertManagerDefinition
+          - aps:CreateQueryLoggingConfiguration
+          - aps:DescribeQueryLoggingConfiguration
+          - aps:UpdateQueryLoggingConfiguration
+          - aps:DeleteQueryLoggingConfiguration
+          - aps:PutResourcePolicy
+          - aps:DescribeResourcePolicy
+          - aps:DeleteResourcePolicy
+          - aps:CreateAnomalyDetector
+          - aps:ListAnomalyDetectors
+        resources:
+          - arn:aws:aps:*:*:workspace/*
+        provenance: derived
+        notes: Covers aws_prometheus_alert_manager_definition (strictly one per workspace -- its provider ID is the workspace ID), aws_prometheus_query_logging_configuration, aws_prometheus_resource_policy (revision-guarded server-side), and anomaly-detector creation/listing. The service reference scopes every one of these actions to the WORKSPACE ARN -- including CreateAnomalyDetector, whose detector ARN does not exist until after the call.
+      - sid: OperateAnomalyDetectors
+        actions:
+          - aps:DescribeAnomalyDetector
+          - aps:PutAnomalyDetector
+          - aps:DeleteAnomalyDetector
+        resources:
+          - arn:aws:aps:*:*:anomalydetector/*
+          - arn:aws:aps:*:*:workspace/*
+        provenance: derived
+        notes: Covers aws_prometheus_anomaly_detector reads, in-place updates (query, intervals, RCF knobs, suppression bands, missing-data action), and deletes. The service reference lists BOTH the anomalydetector and workspace ARN formats for all three actions, so the grant carries both.
+      - sid: ManageRuleGroupNamespaces
+        actions:
+          - aps:CreateRuleGroupsNamespace
+          - aps:DescribeRuleGroupsNamespace
+          - aps:PutRuleGroupsNamespace
+          - aps:DeleteRuleGroupsNamespace
+        resources:
+          - arn:aws:aps:*:*:rulegroupsnamespace/*
+        provenance: derived
+        notes: Covers aws_prometheus_rule_group_namespace (one per rule_group_namespaces entry, keyed by name). All four actions scope to the rulegroupsnamespace ARN format (arn:...:rulegroupsnamespace/{WorkspaceId}/{Namespace}) per the service reference; a hardened deployment can pin the workspace ID segment.
+      - sid: TagWorkspaceResources
+        actions:
+          - aps:TagResource
+          - aps:UntagResource
+          - aps:ListTagsForResource
+        resources:
+          - arn:aws:aps:*:*:workspace/*
+          - arn:aws:aps:*:*:rulegroupsnamespace/*
+          - arn:aws:aps:*:*:anomalydetector/*
+        provenance: derived
+        notes: The modules tag three taggable resource types (workspace, rule-group namespaces, anomaly detectors -- tags = local.aws_tags), so tag reconciliation and the tag read on every refresh need all three ARN formats, each listed for the tagging trio in the service reference. The other satellites (configuration, alertmanager, query logging, resource policy) are untaggable.
+      - sid: LogGroupDeliveryPolicy
+        actions:
+          - logs:PutResourcePolicy
+          - logs:DescribeResourcePolicies
+        resources:
+          - "*"
+        provenance: derived
+        notes: "Conditional, for the logging and query_logging arms: AMP vends workspace and query logs through CloudWatch's common logging infrastructure (the service appears in AWS's \"Enable logging from AWS services\" table), and the receiving log group must carry a resource policy admitting the delivery principal. When the referenced log group does not already carry it, AWS creates it during setup using the CALLER's permissions -- the same caller-executed auto-policy behavior AWS documents for CloudWatch-Logs-destination deliveries. Both actions operate on the account's resource-policy set, and the CloudWatch Logs service reference lists NO resource types for them -- IAM evaluates them against Resource \"*\" only, so the wildcard is the narrowest grant that can ever match; an ARN-scoped grant would be a runtime DENY. Omit when the AwsCloudwatchLogGroup component pre-provisions the policy."
+      - sid: ReadDeliveryLogGroups
+        actions:
+          - logs:DescribeLogGroups
+        resources:
+          - "*"
+        provenance: derived
+        notes: "The receiving-log-group read the delivery setup performs. The CloudWatch Logs service reference lists NO resource types for DescribeLogGroups -- IAM evaluates it against Resource \"*\" only, so the wildcard is the narrowest grant that can ever match; an ARN-scoped grant would be a runtime DENY."

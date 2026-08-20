@@ -1,0 +1,88 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbackupvault
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every AWS Backup vault encrypts its recovery points unconditionally -- a standard vault defaults to the AWS Backup service key when kms_key_arn is unset, and an air-gapped vault to an AWS-owned key. There is no unencrypted vault.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: standard.kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Unset means the AWS Backup service key; point it at an AwsKmsKey for customer-managed encryption. Decided at creation -- changing it later forces vault replacement, and once AWS fills in the default the field cannot be cleared. The air-gapped arm's equivalent is air_gapped.encryption_key_arn, likewise fixed at creation.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All AWS Backup API traffic and backup data movement between the service and the vault runs over TLS; no plaintext path to vault contents exists.
+    - control_id: no-public-access
+      status: configurable
+      field_path: standard.policy
+      evidence:
+        type: spec_default
+        reference: "A vault has no public endpoint; its exposure surface is the resource-based access policy. Unset leaves pure IAM (private to the account). A policy naming broad principals is the vault equivalent of a public bucket -- it can grant outside accounts rights over every recovery point inside. Review any Principal: \"*\" statement as an incident."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Vaults expose no network listener -- access is API-mediated through IAM and the vault policy; there are no ports, CIDRs, or security groups to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No request-serving surface exists to put a WAF in front of; vault access rides the AWS Backup API's own front door.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every vault operation is IAM-authorized and every vault action scopes to the vault ARN (arn:aws:backup:region:account:backup-vault:name), so grants can name exactly one vault. The resource policy (standard.policy) layers vault-side allow/deny on top -- including denying recovery-point deletion to everyone but a break-glass role.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A vault runs no workload -- backup and restore jobs execute under the IAM roles of the AwsBackupPlan that schedules them; the vault is the storage container those jobs write into.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "AWS Backup has a single authentication path: SigV4-signed IAM requests; no legacy or weaker protocol exists to disable."
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Vault lifecycle and every recovery-point operation against it (create, restore, delete) are CloudTrail management events, captured unconditionally.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: standard.notifications
+      evidence:
+        type: spec_default
+        reference: Omitted by default. Wiring notifications fans vault events (backup/restore/copy job outcomes, RECOVERY_POINT_MODIFIED, and more) to an SNS topic -- the alerting hook for failed backups and tamper signals. Air-gapped vaults cannot carry this satellite; monitor them from the plans that copy into them.
+    - control_id: backup-recovery
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "This component IS the backup estate's storage: the encrypted container recovery points live in. Restores are initiated from the vault's recovery points; durability of the points is AWS Backup's managed responsibility."
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: standard.lock.min_retention_days
+      evidence:
+        type: spec_default
+        reference: Without a lock, retention is whatever each backup plan rule says. Vault Lock's min/max retention bounds make the VAULT enforce the policy -- plan rules retaining less than the minimum are rejected. The air-gapped arm goes further; its min_retention_days / max_retention_days are REQUIRED at creation (floor 7 days) and immutable.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AWS Backup is a regional managed service; vault contents are stored redundantly across availability zones by the service with no zonal dial exposed to configure.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: standard.lock.changeable_for_days
+      evidence:
+        type: spec_default
+        reference: "Three escalating layers. Base (always on): AWS refuses to delete a vault holding recovery points while force_destroy stays false. Governance lock (lock set, changeable_for_days unset): recovery points are WORM-protected but privileged principals can remove the lock. Compliance lock (changeable_for_days set): once the cooling-off window passes the lock is IMMUTABLE -- nobody, not even AWS root, can remove it or delete the vault until every point ages out. Air-gapped vaults are born this way: their recovery points can never be manually deleted."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the Backup storage and control plane; a vault exposes no runtime, version, or maintenance surface.

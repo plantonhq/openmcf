@@ -1,0 +1,33 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsssmparameter
+spec:
+  presets:
+    - preset: 01-plain-app-config
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - Standard-tier API interactions are free at standard throughput; flipping the ACCOUNT-level higher-throughput switch (not a field of this manifest) makes every interaction bill $0.05 per 10,000
+      notes: Tier unset means Standard -- permanently free of charge per the AWS Systems Manager pricing page; the zero here is a real free tier, not commitment-absence.
+    - preset: 02-secure-secret
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - Standard-tier API interactions are free at standard throughput; flipping the ACCOUNT-level higher-throughput switch (not a field of this manifest) makes every interaction bill $0.05 per 10,000
+        - the customer-managed KMS key bills its monthly fee and per-request encrypt/decrypt charges on the referenced AwsKmsKey component -- the AWS-managed aws/ssm default carries no monthly fee
+      notes: Tier unset means Standard -- permanently free of charge per the AWS Systems Manager pricing page; the zero here is a real free tier, not commitment-absence.

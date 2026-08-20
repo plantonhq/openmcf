@@ -1,0 +1,31 @@
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsrdsproxy
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon Relational Database Service
+      sku_meter: proxy vCPU hours
+      pricing_unit: vCPU-hours
+      description: The proxy bills $0.015 per vCPU-hour of the fronted instance's class around the clock while it exists, with a 2-vCPU minimum (~$21.90 a month floor) -- the vCPU count rides the referenced target, invisible to this manifest, so the floor is the only knowable committed figure.
+  cost_drivers:
+    - field_path: target
+      sku_meter: proxy vCPU hours
+      pricing_unit: vCPU-hours
+      impact: The whole committed bill rides the TARGET's size -- the proxy bills $0.015 per hour per vCPU of the fronted RDS instance or Aurora cluster instances (us-east-1), around the clock while the proxy exists. Aurora Serverless v2 targets bill the same $0.015 per ACU-hour consumed instead. The manifest names the target by identifier only, so the vCPU count -- the entire quantity -- is invisible here.
+    - field_path: endpoints
+      sku_meter: PrivateLink endpoint hours
+      pricing_unit: endpoint-hours
+      impact: The default endpoint is free, but every ADDITIONAL endpoints entry provisions an AWS PrivateLink interface endpoint billing hourly per subnet AZ plus per-GB data processing -- a real committed adder per custom endpoint that lands on PrivateLink meters, not RDS Proxy's.
+    - field_path: region
+      sku_meter: proxy vCPU hours
+      pricing_unit: vCPU-hours
+      impact: The per-vCPU-hour rate is published per region under the AmazonRDS offer; $0.015 in us-east-1.
+  free_tier: "None. The proxy bills from creation, with a 10-minute minimum charge after each billable status change."
+  estimate_exclusions:
+    - the fronted database itself bills on its own component (AwsRdsInstance / AwsRdsCluster) -- the proxy fee is ON TOP of the database
+    - the Secrets Manager secrets in auth bill their monthly fee and API calls on their own components
+    - additional endpoints' PrivateLink interface-endpoint hourly and per-GB data-processing charges follow endpoint count, subnet AZ count, and traffic
+    - data transfer between proxy and clients or database follows the account's networking rates
+  notes: "This estimate is an honest REFUSAL: the committed quantity is the target database's vCPU count (or live ACU consumption for Aurora Serverless v2), and the manifest carries only the target's identifier -- a foreign-key reference into another component. A proxy on a db.r6g.xlarge (4 vCPUs) commits ~$43.80 a month, on a 2-vCPU instance ~$21.90 -- same manifest shape, different bill. No manifest value distinguishes them, so the derivation refuses with the reason instead of inventing a size."

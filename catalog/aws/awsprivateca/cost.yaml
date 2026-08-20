@@ -1,0 +1,38 @@
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsprivateca
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: AWSCertificateManager
+      sku_meter: general-purpose CA months
+      pricing_unit: ca-months
+      description: A general-purpose CA (usage_mode unset or GENERAL_PURPOSE) bills $400 a month (us-east-1, prorated hourly) from creation to deletion -- issuing or parked, enabled or disabled. Private CA prices under the AWSCertificateManager offer; no standalone offer exists.
+    - service_name: AWSCertificateManager
+      sku_meter: short-lived-mode CA months
+      pricing_unit: ca-months
+      description: A SHORT_LIVED_CERTIFICATE-mode CA bills $50 a month (us-east-1, prorated hourly) from creation to deletion -- the trade for 7-day-max certificates with no revocation support.
+  cost_drivers:
+    - field_path: usage_mode
+      sku_meter: short-lived-mode CA months
+      pricing_unit: ca-months
+      impact: The committed fork -- a GENERAL_PURPOSE CA (the unset default) bills $400 a month and a SHORT_LIVED_CERTIFICATE CA bills $50 a month (us-east-1, prorated hourly), from creation to deletion. The fee runs whether or not the CA ever issues -- a subordinate parked in PENDING_CERTIFICATE and a disabled CA both bill.
+    - field_path: issued_certificates
+      sku_meter: certificates issued
+      pricing_unit: certificates
+      impact: Every certificate issued bills a one-time fee at issuance -- tiered on the account's monthly volume for general-purpose CAs ($0.75 each for the first 1,000, $0.35 to 10,000, $0.001 beyond) and $0.058 flat for short-lived mode. The manifest's issued_certificates entries pay it at apply; ACM-renewed certificates pay it again at each renewal.
+    - field_path: revocation
+      sku_meter: OCSP response handling
+      pricing_unit: certificates
+      impact: Enabling OCSP bills $0.06 per certificate queried per month plus $0.20 per 100,000 OCSP queries (us-east-1) -- relying-party traffic, not a manifest quantity. An enabled CRL publishes to the named S3 bucket, which bills storage and requests on its own component.
+    - field_path: region
+      sku_meter: general-purpose CA months
+      pricing_unit: ca-months
+      impact: Every Private CA rate is published per region under the AWSCertificateManager offer.
+  free_tier: "AWS waives the monthly CA fee for the FIRST private CA created in the account in EACH REGION, for its first 30 days (the offer's $0.00 trial SKU; per-certificate fees still apply). Account-and-region-level and time-boxed -- the estimate prices the full rate."
+  estimate_exclusions:
+    - per-certificate issuance fees are one-time charges at issue/renewal time, tiered on account-level monthly volume -- not monthly committed spend
+    - OCSP response generation and query fees follow relying-party validation traffic
+    - the CRL S3 bucket's storage and request charges bill on the referenced AwsS3Bucket component
+  notes: "This component is the textbook committed-spend trap: the moment the CA exists the monthly fee runs -- $400 or $50 decided by usage_mode, prorated hourly -- and only deletion stops it (deleting parks it restorable for permanent_deletion_time_in_days at no charge). Disabling issuance (enabled: false) does NOT stop billing. The fee fork is a plain field condition, so the derivation grammar reaches it."

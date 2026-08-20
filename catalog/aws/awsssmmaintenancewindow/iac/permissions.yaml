@@ -1,0 +1,66 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsssmmaintenancewindow
+spec:
+  aws:
+    statements:
+      - sid: CreateWindow
+        actions:
+          - ssm:CreateMaintenanceWindow
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_ssm_maintenance_window / ssm.MaintenanceWindow creation. The service reference publishes NO resource types for CreateMaintenanceWindow (the window's mw- ID does not exist yet at authorization time), so an ARN-scoped grant would be a runtime DENY -- the wildcard is the narrowest possible scope for this one action.
+      - sid: ManageWindow
+        actions:
+          - ssm:GetMaintenanceWindow
+          - ssm:UpdateMaintenanceWindow
+          - ssm:DeleteMaintenanceWindow
+        resources:
+          - arn:aws:ssm:*:*:maintenancewindow/*
+        provenance: derived
+        notes: Covers the rest of aws_ssm_maintenance_window / ssm.MaintenanceWindow -- GetMaintenanceWindow serves every plan/refresh, Update reconciles schedule/duration/cutoff/enabled changes in place, Delete tears down. All three scope to the window ARN per the service reference.
+      - sid: ManageWindowTargets
+        actions:
+          - ssm:RegisterTargetWithMaintenanceWindow
+          - ssm:DescribeMaintenanceWindowTargets
+          - ssm:UpdateMaintenanceWindowTarget
+          - ssm:DeregisterTargetFromMaintenanceWindow
+        resources:
+          - arn:aws:ssm:*:*:maintenancewindow/*
+          - arn:aws:ssm:*:*:windowtarget/*
+        provenance: derived
+        notes: Covers aws_ssm_maintenance_window_target / ssm.MaintenanceWindowTarget -- one registration per named targets entry, folded into this component. Register and the Describe read authorize on the window ARN; Update and Deregister additionally list the windowtarget ARN in the service reference, so both formats are granted.
+      - sid: ManageWindowTasks
+        actions:
+          - ssm:RegisterTaskWithMaintenanceWindow
+          - ssm:GetMaintenanceWindowTask
+          - ssm:UpdateMaintenanceWindowTask
+          - ssm:DeregisterTaskFromMaintenanceWindow
+        resources:
+          - arn:aws:ssm:*:*:maintenancewindow/*
+          - arn:aws:ssm:*:*:windowtask/*
+        provenance: derived
+        notes: Covers aws_ssm_maintenance_window_task / ssm.MaintenanceWindowTask -- one registration per named tasks entry, folded into this component. Register and GetMaintenanceWindowTask authorize on the window ARN; Update and Deregister additionally list the windowtask ARN, so both formats are granted.
+      - sid: PassTaskServiceRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: "Needed only when a tasks entry (or its run_command invocation) references a custom service_role_arn: registering the task hands Systems Manager a role to assume at execution time, and IAM's standard rule is that a caller passing a role to a service must hold iam:PassRole on that role. Tighten the resource to the specific task roles' ARNs in hardened deployments; windows whose tasks ride AWS's service-linked SSM role need this statement not at all."
+      - sid: TagWindow
+        actions:
+          - ssm:AddTagsToResource
+          - ssm:RemoveTagsFromResource
+          - ssm:ListTagsForResource
+        resources:
+          - arn:aws:ssm:*:*:maintenancewindow/*
+        provenance: derived
+        notes: Tag-on-create plus later tag reconciliation and the tag read on every refresh of the window resource. The service reference scopes all three tagging actions to many SSM resource types; only the maintenancewindow ARN format is needed here.

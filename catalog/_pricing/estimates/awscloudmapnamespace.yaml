@@ -1,0 +1,60 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awscloudmapnamespace
+spec:
+  presets:
+    - preset: 01-private-dns-namespace
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Route 53
+          sku_meter: hosted zone months
+          pricing_unit: zone-months
+          pricing_quantity: "1"
+          quantity_basis: a PRIVATE_DNS namespace creates one Route 53 private hosted zone (corp.internal, visible in the app VPC) that bills every month the namespace exists
+          list_unit_price: "0.5"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260527092459/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "0.5000"
+        - service_name: AWSCloudMap
+          sku_meter: registered resource months
+          pricing_unit: resource-months
+          pricing_quantity: "1"
+          quantity_basis: one static registration is pinned -- the db service's "primary" instance (the RDS CNAME); the api service declares no static instances
+          list_unit_price: "0.1"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSCloudMap/20250828173015/us-east-1/index.json
+          retrieved_on: "2026-08-19"
+          list_cost: "0.1000"
+      total_list_cost: "0.6000"
+      exclusions:
+        - the api service is registered into at runtime (ECS service discovery style) -- each live task's registration bills its own $0.10 resource-month, following fleet size
+        - DNS lookups of api.corp.internal and db.corp.internal bill Route 53 query charges on the hosted zone; DiscoverInstances calls bill $1.00 per million
+      notes: "The custom heartbeat on the api service (health_check_custom_config) is free -- only Route 53 health checks (health_check_config, public namespaces only) would bill separately. Committed floor: $0.50 zone + $0.10 static registration = $0.60 a month."
+    - preset: 02-http-api-only
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: AWSCloudMap
+          sku_meter: registered resource months
+          pricing_unit: resource-months
+          pricing_quantity: "1"
+          quantity_basis: one static registration is pinned -- the workers service's "worker-1" instance with its custom attributes; HTTP namespaces create no hosted zone, so this is the only committed meter
+          list_unit_price: "0.1"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSCloudMap/20250828173015/us-east-1/index.json
+          retrieved_on: "2026-08-19"
+          list_cost: "0.1000"
+      total_list_cost: "0.1000"
+      exclusions:
+        - every DiscoverInstances lookup by consuming applications bills $1.00 per million API calls -- discovery traffic is the consumers' behavior
+        - additional workers registered at runtime bill their own resource-months, following fleet size
+      notes: "An HTTP namespace is API-only -- no DNS records, no hosted zone, no Route 53 charges. The committed floor is the single static registration: $0.10 a month."

@@ -1,0 +1,38 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awscloudmapnamespace
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon Route 53
+      sku_meter: hosted zone months
+      pricing_unit: zone-months
+      description: A PRIVATE_DNS or PUBLIC_DNS namespace creates a Route 53 hosted zone billing $0.50 a month (the first-25-zones rate) for as long as the namespace exists -- the fee rides Route 53's meter, created and owned by this namespace. HTTP namespaces create no zone and commit nothing.
+    - service_name: AWSCloudMap
+      sku_meter: registered resource months
+      pricing_unit: resource-months
+      description: Every instance this manifest registers statically bills $0.10 per resource-month (us-east-1, prorated hourly) from apply -- the committed floor beneath whatever runtime registrations later add.
+  cost_drivers:
+    - field_path: type
+      sku_meter: hosted zone months
+      pricing_unit: zone-months
+      impact: The committed fork -- PRIVATE_DNS and PUBLIC_DNS namespaces create a Route 53 hosted zone billing $0.50 a month (the account's first 25 zones rate) for as long as the namespace exists; an HTTP namespace creates no zone and commits nothing on existence.
+    - field_path: services
+      sku_meter: registered resource months
+      pricing_unit: resource-months
+      impact: Every instance registered into a service -- statically by this manifest's instances entries or at runtime by platforms like ECS service discovery -- bills $0.10 per resource-month (us-east-1, prorated hourly). The static entries are the committed floor; runtime registrations scale with the fleet.
+    - field_path: region
+      sku_meter: registered resource months
+      pricing_unit: resource-months
+      impact: The per-resource and discovery-call rates are published per region; the hosted zone fee is global.
+  free_tier: "None. Every registered resource, hosted zone, and discovery call bills from the first."
+  estimate_exclusions:
+    - DiscoverInstances API calls bill $1.00 per million (us-east-1) -- discovery traffic is the consuming applications' behavior, unknowable to this manifest
+    - DNS lookups against the namespace's records bill Route 53 query charges on the hosted zone -- resolver traffic, not a manifest value
+    - runtime platforms (ECS service discovery) register and deregister instances into these services on their own -- each live registration bills its resource-month on this account, following fleet size
+    - services using health_check_config create Route 53 health checks billing on their own terms; custom heartbeats (health_check_custom_config) are free
+  notes: "The namespace itself is free -- the money follows what registers in it and who looks things up. A DNS namespace carries the one committed dollar (its hosted zone); HTTP namespaces are pure pay-per-use. The committed static-registration count lives in nested repeated fields (services[].instances[]), which the derivation grammar cannot count -- hence the hand model."

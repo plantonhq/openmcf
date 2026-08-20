@@ -1,0 +1,30 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awss3directorybucket
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: zone_id
+      sku_meter: S3 Express One Zone storage
+      pricing_unit: GB-month
+      impact: The bucket object carries no fee -- the meter is every byte stored in the S3 Express One Zone class, from the first object, at rates the S3 pricing page publishes per zone location. The zone choice is simultaneously the performance model (co-locate with the compute) and the rate row.
+    - field_path: zone_type
+      sku_meter: S3 Express One Zone storage
+      pricing_unit: GB-month
+      impact: A Local Zone bucket runs the same meter family from an edge location -- storage and request rates are published per location on the pricing page, and Local Zone locations carry their own rate rows. Same zero-on-empty behavior either way.
+    - field_path: force_destroy
+      sku_meter: S3 Express One Zone storage
+      pricing_unit: GB-month
+      impact: "The teardown economics: DELETE and CANCEL requests are free on the S3 pricing page, so force_destroy empties a full scratch bucket at no request cost and ends the storage meter with it. What it buys is convenience, not savings -- and what it removes is the empty-bucket-only delete guard."
+  free_tier: "No permanent free allotment exists on the S3 Express One Zone class -- every stored byte and every billable request meters from the first one. What IS permanently free: the bucket's existence (the pricing page's 'You pay for storing objects in your S3 buckets' framing starts the meter at data, and no per-bucket or per-zone existence fee appears anywhere on the page) and DELETE/CANCEL requests. New-account AWS Free Tier credits (up to $200) are a time-boxed trial that expires, not an S3 Express allotment."
+  estimate_exclusions:
+    - S3 Express One Zone storage bills per GB-month from the first byte -- entirely workload-driven, and this manifest creates an empty bucket
+    - PUT, COPY, POST, and LIST requests bill per 1,000; RenameObject -- an API only this storage class supports -- bills at the same per-1,000 rate per the pricing page's request footnote
+    - GET and other read requests bill per 1,000
+    - per-GB data-upload and data-retrieval charges are meters of this class -- the pricing page's RenameObject footnote confirms them by exempting that one API from them
+    - data transfer out to the internet or to another region bills at S3 data-transfer rates; same-region transfer to AWS services is free per the page, and gateway VPC endpoint access carries no additional charge per the directory-bucket networking guide
+  notes: "The class exists for one trade: single-digit-millisecond access from compute in the SAME zone, in exchange for single-zone redundancy (data_redundancy can only name SingleAvailabilityZone or SingleLocalZone). Both presets create empty buckets -- an ML training scratch space and a Local Zone render cache -- so the committed cost of the manifest is exactly zero and every dollar that follows tracks the workload's bytes and requests. The pricing page's Express One Zone rate table publishes the concrete per-GB and per-request figures per location; none are echoed here because the quantity side is invisible to this manifest either way."

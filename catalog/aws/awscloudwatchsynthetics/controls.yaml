@@ -1,0 +1,79 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awscloudwatchsynthetics
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Run artifacts land in S3 server-side encrypted -- artifact_encryption_mode unset keeps AWS's default SSE_S3 for canary artifacts, and an unencrypted artifact write is not representable. The code bundle and logs live in S3 and CloudWatch Logs under those services' at-rest encryption.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: canary.artifact_encryption_kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Unset means S3-managed keys (SSE_S3); setting artifact_encryption_mode SSE_KMS with a referenced AwsKmsKey puts every run artifact under a customer-managed key you own and can revoke -- the spec's CEL ties the key to the SSE_KMS mode so a dangling key is unrepresentable.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Synthetics management API is HTTPS-only, and the canary's writes to S3, CloudWatch Logs, and CloudWatch metrics ride AWS's TLS service channels. What the SCRIPT probes is the script author's choice -- an http:// target is the monitored endpoint's posture, not this component's transport.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The canary exposes no endpoint -- it is an outbound prober. Whether its artifacts are internet-reachable is the referenced AwsS3Bucket's posture (public-access block, bucket policy), decided on that component.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens on a canary; there is no inbound network surface to restrict. Outbound reach is shaped by vpc_config (subnets and security groups) when probing private endpoints.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: With no request-serving surface there is no WAF attachment point -- the canary is the client, not the server.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every canary and group operation is IAM-authorized on the canary/group ARN, and the canary's runtime acts ONLY under the referenced execution role -- the blast radius of the script is exactly that role's policy.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: execution_role_arn is required -- the canary's Lambda always runs under a referenced IAM role with short-lived credentials; no static credential is representable in the spec, and environment_variables are documented write-only with an explicit never-put-secrets warning (Secrets Manager lookups belong in the script).
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Management is the SigV4-signed Synthetics API; the runtime authenticates as its execution role. No legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The component has no audit-logging configuration of its own -- management operations are captured by account-level AWS CloudTrail, and every run's execution log lands in CloudWatch Logs as service behavior, not a manifest choice.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: This component IS monitoring -- every run emits SuccessPercent, Duration, and failure metrics to CloudWatch automatically, stores run artifacts for forensics, and groups aggregate fleet health in the console. Nothing must be enabled for the signal to exist.
+      notes: Alarms on the canary's metrics are the owner's to add on their own AwsCloudwatchAlarm components -- the classic pairing for a heartbeat canary.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The canary is declarative and re-creatable from the manifest plus the S3-staged code bundle; run artifacts are point-in-time observations, not state to back up. Durability of the code bundle and artifacts is the referenced buckets' posture.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: canary.success_retention_period
+      evidence:
+        type: spec_default
+        reference: Unset keeps AWS's default 31 days for successful-run artifacts (failure_retention_period likewise for failures, 1-455 days each) -- the one retention dial this component owns, governing how long run evidence survives in the artifact bucket.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The canary runs on Synthetics-managed Lambda infrastructure AWS operates across zones; a VPC-attached canary's subnets shape network placement for probing, not an availability topology this manifest could get wrong.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Canaries and groups carry no deletion-protection flag -- neither the spec nor the provider resources have one. Deleting the canary stops future probing; delete_lambda decides whether the Synthetics-managed Lambda is swept with it or left for forensics.
+    - control_id: managed-patching
+      status: configurable
+      field_path: canary.runtime_version
+      evidence:
+        type: spec_default
+        reference: AWS operates the execution infrastructure, but the RUNTIME is pinned by this field ("syn-nodejs-puppeteer-9.1" style) and runtimes deprecate on AWS's published schedule -- staying patched means bumping runtime_version, an in-place update the owner must apply.

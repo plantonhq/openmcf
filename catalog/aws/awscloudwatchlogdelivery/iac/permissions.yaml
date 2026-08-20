@@ -1,0 +1,100 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awscloudwatchlogdelivery
+spec:
+  aws:
+    statements:
+      - sid: ManageVendedPipeline
+        actions:
+          - logs:PutDeliverySource
+          - logs:GetDeliverySource
+          - logs:DeleteDeliverySource
+          - logs:PutDeliveryDestination
+          - logs:GetDeliveryDestination
+          - logs:DeleteDeliveryDestination
+          - logs:PutDeliveryDestinationPolicy
+          - logs:GetDeliveryDestinationPolicy
+          - logs:DeleteDeliveryDestinationPolicy
+          - logs:CreateDelivery
+          - logs:GetDelivery
+          - logs:UpdateDeliveryConfiguration
+          - logs:DeleteDelivery
+        resources:
+          - arn:aws:logs:*:*:delivery:*
+          - arn:aws:logs:*:*:delivery-source:*
+          - arn:aws:logs:*:*:delivery-destination:*
+        provenance: derived
+        notes: "Covers aws_cloudwatch_log_delivery_source, aws_cloudwatch_log_delivery_destination, aws_cloudwatch_log_delivery_destination_policy, and aws_cloudwatch_log_delivery (and their Pulumi twins in vended.go). The Get twins serve every plan/refresh; UpdateDeliveryConfiguration reconciles a delivery's in-place wire-format settings (record_fields, field_delimiter, s3_configuration). The three-ARN resource list is exactly the shape AWS's own published user policy for V2 delivery setup uses (ReadWriteAccessForLogDeliveryActions in the \"Logs sent to Amazon S3 / CloudWatch Logs\" docs) -- CreateDelivery authorizes against delivery, delivery-source, AND delivery-destination ARNs per the service reference. One inventory quirk taught here: the service reference currently lists delivery-destination as DeleteDeliverySource's resource type (an apparent inventory defect -- its natural scope is the delivery-source ARN); this grant carries both formats either way, so the quirk cannot bite."
+      - sid: ReadDeliveryInventory
+        actions:
+          - logs:DescribeDeliveries
+          - logs:DescribeDeliverySources
+          - logs:DescribeDeliveryDestinations
+        resources:
+          - "*"
+        provenance: derived
+        notes: List-shaped read-backs the providers use to locate delivery objects during refresh and import. None of the three takes resource-level scoping (the service reference lists no resource types for them), so the wildcard is the narrowest possible scope -- AWS's own published V2 setup policy grants them on "*" for the same reason (its ListAccessForLogDeliveryActions statement).
+      - sid: AutoManageAccountResourcePolicies
+        actions:
+          - logs:PutResourcePolicy
+          - logs:DescribeResourcePolicies
+        resources:
+          - "*"
+        provenance: derived
+        notes: "Conditional, and honestly so: when a delivery is created, AWS auto-creates (or appends to) the DESTINATION log group's resource policy -- allowing delivery.logs.amazonaws.com logs:CreateLogStream/PutLogEvents -- USING THE CALLER'S PERMISSIONS, per AWS's published V2 destination pages. Both actions operate on the account's resource-policy set, and the CloudWatch Logs service reference lists NO resource types for them -- IAM evaluates them against Resource \"*\" only, so the wildcard is the narrowest grant that can ever match; an ARN-scoped grant here would be a runtime DENY. Grant when the referenced log group does not already carry the delivery statement; omit when the AwsCloudwatchLogGroup component pre-provisions its own policy."
+      - sid: AutoManageDestinationBucketPolicies
+        actions:
+          - s3:GetBucketPolicy
+          - s3:PutBucketPolicy
+        resources:
+          - arn:aws:s3:::*
+        provenance: derived
+        notes: "Conditional, the S3-destination sibling of the resource-policy statement above: delivery setup appends the bucket policy allowing delivery.logs.amazonaws.com s3:PutObject using the caller's permissions. Both actions scope to the bucket ARN per the S3 service reference. Tightening path: pin to the exact destination bucket ARN. Firehose destinations need no analog -- AWS uses a service-linked role on that path rather than a caller-written resource policy."
+      - sid: ReadDestinationLogGroups
+        actions:
+          - logs:DescribeLogGroups
+        resources:
+          - "*"
+        provenance: derived
+        notes: "The destination-side read delivery setup performs against the receiving log group. The CloudWatch Logs service reference lists NO resource types for DescribeLogGroups -- IAM evaluates it against Resource \"*\" only, so the wildcard is the narrowest grant that can ever match; an ARN-scoped grant would be a runtime DENY."
+      - sid: ManageLegacyCrossAccountDestination
+        actions:
+          - logs:PutDestination
+          - logs:PutDestinationPolicy
+          - logs:DeleteDestination
+        resources:
+          - arn:aws:logs:*:*:destination:*
+        provenance: derived
+        notes: Covers aws_cloudwatch_log_destination and aws_cloudwatch_log_destination_policy (cross_account_destination.go) -- created only when the cross_account_destination arm is configured. All three actions take resource-level scoping on the destination ARN per the service reference. PutDestination also carries the tag-on-create condition keys. Destroying the policy resource alone calls no AWS delete (the access policy persists at AWS by design); DeleteDestination is the real teardown.
+      - sid: ReadLegacyDestinations
+        actions:
+          - logs:DescribeDestinations
+        resources:
+          - "*"
+        provenance: derived
+        notes: The provider reads the legacy destination (and its access policy) back through the destinations listing on every plan/refresh. The action takes no resource-level scoping in the service reference, so the wildcard is the narrowest possible scope.
+      - sid: PassKinesisWriteRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: PutDestination hands cross_account_destination.role_arn to logs.amazonaws.com, which requires passing the role. Tighten to the exact role ARN in hardened deployments (the AwsIamRole the manifest references) and pin the service with an iam:PassedToService condition of logs.amazonaws.com; the wildcard ships only because the role ARN is deployment-specific. The role's trust of logs.amazonaws.com is the referenced AwsIamRole's contract -- both engines retry the first create for up to two minutes while that trust propagates.
+      - sid: TagDeliveryObjects
+        actions:
+          - logs:TagResource
+          - logs:UntagResource
+          - logs:ListTagsForResource
+        resources:
+          - arn:aws:logs:*:*:delivery:*
+          - arn:aws:logs:*:*:delivery-source:*
+          - arn:aws:logs:*:*:delivery-destination:*
+          - arn:aws:logs:*:*:destination:*
+        provenance: derived
+        notes: All four taggable object types the modules create carry tags = local.aws_tags (source, destination, delivery, and the legacy destination), so tag reconciliation and the tag read on every refresh need all four ARN formats -- each listed for the tagging trio in the service reference.

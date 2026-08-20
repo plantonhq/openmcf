@@ -1,0 +1,53 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsprivateca
+spec:
+  presets:
+    - preset: 01-internal-root-ca
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: AWSCertificateManager
+          sku_meter: general-purpose CA months
+          pricing_unit: ca-months
+          pricing_quantity: "1"
+          quantity_basis: a general-purpose CA (usage_mode unset or GENERAL_PURPOSE) bills its $400 monthly operation fee from creation to deletion, prorated hourly -- issuing or not, active or PENDING_CERTIFICATE, enabled or disabled
+          list_unit_price: "400"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSCertificateManager/20250828153721/us-east-1/index.json
+          retrieved_on: "2026-08-19"
+          list_cost: "400.0000"
+      total_list_cost: "400.0000"
+      exclusions:
+        - each certificate issued from this CA -- by this manifest's issued_certificates entries, by ACM, or by any later caller -- bills a ONE-TIME fee at issuance ($0.75 apiece in the account's first 1,000 general-purpose certs each month, $0.35 to 10,000, $0.001 beyond; $0.058 flat in short-lived mode) -- a per-issuance charge tiered on account-level volume, not monthly committed spend
+        - certificates ACM auto-renews from this CA each bill a fresh issuance fee at their renewal cadence
+      notes: "The AWSCertificateManager offer waives the monthly fee for the FIRST private CA created in the account in EACH REGION, for its first 30 days (the $0.00 trial SKU). Account-and-region-level and time-boxed -- whether THIS manifest is that CA no manifest can see, so the estimate prices the full rate and states the allowance (the adjudicated account-allowance treatment). Deletion parks the CA restorable for permanent_deletion_time_in_days (7-30, unset meaning 30) with no charge while parked -- but restoring a deleted CA back-bills the time between deletion and restore, per AWS's own pricing page. Billing stops for good only at permanent erasure or by never restoring. Disabling issuance (enabled: false) keeps the fee running. Private CA prices under the AWSCertificateManager offer code -- there is no standalone AWSPrivateCA offer."
+    - preset: 02-short-lived-workload-ca
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: AWSCertificateManager
+          sku_meter: short-lived-mode CA months
+          pricing_unit: ca-months
+          pricing_quantity: "1"
+          quantity_basis: a short-lived-certificate-mode CA bills its $50 monthly operation fee from creation to deletion, prorated hourly -- the trade for 7-day-max certificates with no revocation
+          list_unit_price: "50"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSCertificateManager/20250828153721/us-east-1/index.json
+          retrieved_on: "2026-08-19"
+          list_cost: "50.0000"
+      total_list_cost: "50.0000"
+      exclusions:
+        - each certificate issued from this CA -- by this manifest's issued_certificates entries, by ACM, or by any later caller -- bills a ONE-TIME fee at issuance ($0.75 apiece in the account's first 1,000 general-purpose certs each month, $0.35 to 10,000, $0.001 beyond; $0.058 flat in short-lived mode) -- a per-issuance charge tiered on account-level volume, not monthly committed spend
+      notes: "The AWSCertificateManager offer waives the monthly fee for the FIRST private CA created in the account in EACH REGION, for its first 30 days (the $0.00 trial SKU). Account-and-region-level and time-boxed -- whether THIS manifest is that CA no manifest can see, so the estimate prices the full rate and states the allowance (the adjudicated account-allowance treatment). Deletion parks the CA restorable for permanent_deletion_time_in_days (7-30, unset meaning 30) with no charge while parked -- but restoring a deleted CA back-bills the time between deletion and restore, per AWS's own pricing page. Billing stops for good only at permanent erasure or by never restoring. Disabling issuance (enabled: false) keeps the fee running. Private CA prices under the AWSCertificateManager offer code -- there is no standalone AWSPrivateCA offer."

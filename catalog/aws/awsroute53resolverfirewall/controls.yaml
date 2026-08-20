@@ -1,0 +1,72 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsroute53resolverfirewall
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The rule group stores only policy configuration (domain names, rule definitions) -- control-plane metadata in AWS's service, not customer data with an encryption dial.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest); the DNS Firewall API offers no KMS surface.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The firewall exposes no endpoint -- it inspects DNS queries inline inside the Route 53 Resolver path. Management rides the HTTPS-only API; the DNS transport it inspects belongs to the resolver, not this policy object.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Nothing here is reachable -- the rule group is a policy attached to VPCs via IAM-authorized associations. (Sharing a rule group to other accounts is a RAM act outside this single-account spec.)
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network ingress exists on a policy object. The firewall's whole purpose is EGRESS control -- restricting which DNS names workloads in associated VPCs can resolve, which is the spec's rules, not a network boundary of its own.
+    - control_id: edge-protection
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: This component IS a protection layer -- a DNS-layer firewall. A rules-free group is representable but inert; every catalog preset ships filtering rules (a sinkhole blocklist, Advanced threat detection), and the first matching rule's action applies in priority order to every query from associated VPCs.
+      notes: Web-request WAF protection is a different layer (AwsWafWebAcl on the serving side); this control is satisfied at the DNS layer for egress.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every rule-group, domain-list, rule, and association operation is IAM-authorized on its resource ARN; changing what an associated VPC can resolve requires rights on both the rule group and the association.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The firewall runs no workload and holds no credentials -- it is policy evaluated by the Resolver service.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The only access path is the SigV4-signed Route 53 Resolver API; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Management operations are captured by account-level AWS CloudTrail. Match visibility (which queries ALERTed or BLOCKed) rides Resolver Query Logging -- a separate VPC-level resource outside this spec -- so this manifest carries no logging dial.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Rule-group metrics (matched queries per rule, per action) publish to CloudWatch automatically, and firewall activity appears in VPC-level Resolver query logs when those are enabled -- nothing in this spec must be turned on for the signal to exist.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Fully declarative policy -- the rule group, lists, rules, and associations are re-creatable from the manifest. Nothing stateful to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The firewall is a regional policy evaluated inside AWS's resolver infrastructure -- no zonal placement exists anywhere in the spec, and AWS operates the evaluation plane across zones.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: vpc_associations.mutation_protection
+      evidence:
+        type: spec_default
+        reference: Unset leaves AWS's default (DISABLED) -- the association can be modified or deleted freely. Setting ENABLED turns on AWS's MutationProtection for the firewall-rule-group association, blocking accidental deletion or modification of the VPC's attachment to this filtering policy until it is switched off.
+      notes: The protection covers the ASSOCIATION only -- rule groups and domain lists themselves carry no deletion-protection flag. Deleting the group (or an unprotected association) removes DNS filtering from the associated VPCs; queries then resolve unfiltered, the fail-open consequence to plan around.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the resolver and firewall evaluation infrastructure, including the Advanced threat-detection models; no customer-visible patch surface exists.

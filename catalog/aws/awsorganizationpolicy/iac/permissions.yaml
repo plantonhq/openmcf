@@ -1,0 +1,43 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsorganizationpolicy
+spec:
+  aws:
+    statements:
+      - sid: ManagePolicy
+        actions:
+          - organizations:CreatePolicy
+          - organizations:UpdatePolicy
+          - organizations:DeletePolicy
+          - organizations:DescribePolicy
+          - organizations:ListTargetsForPolicy
+        resources:
+          - arn:aws:organizations::*:policy/o-*/*/p-*
+        provenance: derived
+        notes: Covers aws_organizations_policy / organizations.Policy -- creation with name, type, JSON document, and description; in-place updates of name, content, and description (the type forces replacement); deletion after attachments are gone. DescribePolicy runs on every plan/refresh, and ListTargetsForPolicy is the read side of the attachment entries (the provider verifies each attachment against the policy's target list). All five actions scope to the policy ARN format, whose third segment is the policy type -- the wildcard spans all thirteen types the spec admits. Requires the organization's management account and ALL features enabled.
+      - sid: ManagePolicyAttachments
+        actions:
+          - organizations:AttachPolicy
+          - organizations:DetachPolicy
+        resources:
+          - arn:aws:organizations::*:policy/o-*/*/p-*
+          - arn:aws:organizations::*:root/o-*/r-*
+          - arn:aws:organizations::*:ou/o-*/ou-*
+          - arn:aws:organizations::*:account/o-*/*
+        provenance: derived
+        notes: "Covers aws_organizations_policy_attachment / organizations.PolicyAttachment -- one per attachments entry, and because both leaves are immutable a target change re-attaches (detach + attach); destroy detaches everything before DeletePolicy. The service reference scopes both actions to the POLICY plus the TARGET being bound (root, OU, or member account), so all four ARN formats are granted. Attachment succeeds only where the policy's type is already enabled on the organization (AwsOrganization.enabled_policy_types) -- AWS state, not IAM, is that referee."
+      - sid: TagPolicy
+        actions:
+          - organizations:TagResource
+          - organizations:UntagResource
+          - organizations:ListTagsForResource
+        resources:
+          - arn:aws:organizations::*:policy/o-*/*/p-*
+        provenance: derived
+        notes: Tag-on-create plus later tag reconciliation and the tag read on every refresh, scoped to the policy ARN format (the service reference also lists other Organizations resource types for these actions; this component only tags the policy).

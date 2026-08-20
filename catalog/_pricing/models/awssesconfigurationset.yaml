@@ -1,0 +1,34 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Both presets are zero-committed: a configuration set is
+# free policy, neither preset names a dedicated IP pool or enables a VDM
+# override, and every meter the presets can start (outbound sending, VDM,
+# destination-service charges) bills on send activity as it happens --
+# stated in exclusions, never padded into fabricated dollars.
+# Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awssesconfigurationset
+spec:
+  presets:
+    - preset: 01-minimal-transactional
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - TLS enforcement, suppression overrides, and reputation metrics are free configuration -- no field of this preset starts a meter on its own
+        - outbound sending under the set bills $0.10 per 1,000 emails a la carte plus $0.12 per GB of attachment data, starting with the first send -- workload activity this manifest cannot see
+        - reputation_metrics_enabled publishes the set's bounce and complaint rates to CloudWatch as sends occur; any resulting CloudWatch metric charges bill under CloudWatch's own pricing
+      notes: Zero committed cost -- the set is pure sending policy with no dedicated IP pool and no VDM override; the zero is commitment-absence, and the per-1,000 sending meter belongs to the traffic, not the set.
+    - preset: 02-cloudwatch-events
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - outbound sending under the set bills $0.10 per 1,000 emails a la carte plus $0.12 per GB of attachment data, starting with the first send
+        - the CloudWatch event destination materializes custom metrics only as events flow -- one metric per event type per unique campaign-tag value, billed under CloudWatch's pricing; at zero sends no metric exists and nothing bills
+        - reputation_metrics_enabled publishes bounce and complaint rates to CloudWatch as sends occur, under CloudWatch's own pricing
+      notes: Zero committed cost is commitment-absence, not "free" -- the bounce-metrics destination is a real observability decision whose CloudWatch metric spend scales with event volume and tag cardinality once the set carries traffic.

@@ -1,0 +1,53 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsroute53resolverendpoint
+spec:
+  presets:
+    - preset: 01-inbound-from-onprem
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: AmazonRoute53
+          sku_meter: resolver network interface hours
+          pricing_unit: hours
+          pricing_quantity: "1460"
+          quantity_basis: one resolver network interface per ip_addresses entry (AWS requires 2-10), each billing every hour of the month from creation -- queries or none
+          list_unit_price: "0.125"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260819163141/us-east-1/index.json
+          retrieved_on: "2026-08-19"
+          list_cost: "182.5000"
+      total_list_cost: "182.5000"
+      exclusions:
+        - queries through the endpoint bill $0.40 per million for the first billion each month and $0.20 per million beyond (us-east-1) -- query volume is workload DNS behavior no manifest can know
+      notes: DoH and DoH-FIPS interfaces meter under the security-enabled usage type at the same $0.125/hour us-east-1 rate as plain Do53 -- a SKU distinction, not a price one, so the estimate's dollars hold for every protocols choice there. The two-ENI minimum makes $182.50/month the committed floor of every endpoint; each ENI beyond it adds $91.25.
+    - preset: 02-outbound-forward-to-onprem
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: AmazonRoute53
+          sku_meter: resolver network interface hours
+          pricing_unit: hours
+          pricing_quantity: "1460"
+          quantity_basis: one resolver network interface per ip_addresses entry (AWS requires 2-10), each billing every hour of the month from creation -- queries or none
+          list_unit_price: "0.125"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260819163141/us-east-1/index.json
+          retrieved_on: "2026-08-19"
+          list_cost: "182.5000"
+      total_list_cost: "182.5000"
+      exclusions:
+        - queries through the endpoint bill $0.40 per million for the first billion each month and $0.20 per million beyond (us-east-1) -- query volume is workload DNS behavior no manifest can know
+        - forwarding rules and their VPC associations are free to exist -- their cost effect is the per-query meter on the traffic they steer through the endpoint
+      notes: DoH and DoH-FIPS interfaces meter under the security-enabled usage type at the same $0.125/hour us-east-1 rate as plain Do53 -- a SKU distinction, not a price one, so the estimate's dollars hold for every protocols choice there. The two-ENI minimum makes $182.50/month the committed floor of every endpoint; each ENI beyond it adds $91.25.

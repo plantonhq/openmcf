@@ -1,0 +1,76 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsebsvolume
+spec:
+  aws:
+    statements:
+      - sid: ManageVolume
+        actions:
+          - ec2:CreateVolume
+          - ec2:ModifyVolume
+          - ec2:DeleteVolume
+        resources:
+          - arn:aws:ec2:*:*:volume/*
+          - arn:aws:ec2:*::snapshot/*
+        provenance: derived
+        notes: Covers aws_ebs_volume + aws_ebs_volume_copy / ebs.Volume + ebs.VolumeCopy (the spec's create-XOR-copy union renders exactly one). ModifyVolume serves the in-place updates (size, type, iops, throughput on both arms). CreateVolume authorizes against the volume ARN AND -- when snapshot_id restores from a snapshot -- the snapshot ARN, whose format carries NO account id (arn:${Partition}:ec2:${Region}::snapshot/${SnapshotId}) per the service reference; the copy arm provisions through the same CreateVolume surface (EBS Volume Clones) against the source volume. All three actions take resource-level scoping.
+      - sid: ReadVolumeState
+        actions:
+          - ec2:DescribeVolumes
+          - ec2:DescribeVolumesModifications
+          - ec2:DescribeInstances
+          - ec2:DescribeSnapshots
+        resources:
+          - "*"
+        provenance: derived
+        notes: All four are NON-SCOPABLE per the service reference (EC2 Describe* actions list no resource types), so the wildcard is the narrowest possible scope -- an ARN-scoped grant here would be a runtime DENY. DescribeVolumes serves every plan/refresh; DescribeVolumesModifications is the in-place-resize waiter; DescribeInstances backs the attachment reads and the stop-before-detach waiter; DescribeSnapshots is the final_snapshot completion read.
+      - sid: TagVolume
+        actions:
+          - ec2:CreateTags
+          - ec2:DeleteTags
+        resources:
+          - arn:aws:ec2:*:*:volume/*
+        provenance: derived
+        notes: Both arms tag the volume (tags = local.aws_tags / Tags in both modules) -- tag-on-create plus later tag reconciliation. Scoped to the volume ARN; the service reference scopes both actions per taggable resource type and the modules tag nothing else.
+      - sid: ManageAttachments
+        actions:
+          - ec2:AttachVolume
+          - ec2:DetachVolume
+        resources:
+          - arn:aws:ec2:*:*:volume/*
+          - arn:aws:ec2:*:*:instance/*
+        provenance: derived
+        notes: Covers aws_volume_attachment / ec2.VolumeAttachment, one per attachments entry. Both actions authorize against BOTH the volume and the instance ARNs per the service reference, so both formats are required. force_detach rides the same DetachVolume call; skip_destroy needs no extra grant (the attachment merely leaves management).
+      - sid: StopInstanceBeforeDetach
+        actions:
+          - ec2:StopInstances
+        resources:
+          - arn:aws:ec2:*:*:instance/*
+        provenance: derived
+        notes: Needed only when an attachments entry sets stop_instance_before_detaching -- the provider stops the instance (and leaves it stopped) before issuing DetachVolume. Scoped to the instance ARN per the service reference.
+      - sid: FinalSnapshotOnDestroy
+        actions:
+          - ec2:CreateSnapshot
+        resources:
+          - arn:aws:ec2:*:*:volume/*
+          - arn:aws:ec2:*::snapshot/*
+        provenance: derived
+        notes: Needed only when final_snapshot=true -- the provider snapshots the volume before DeleteVolume. CreateSnapshot authorizes against both the source volume ARN and the created snapshot ARN (account-less format) per the service reference.
+      - sid: KmsForCustomerManagedKey
+        actions:
+          - kms:CreateGrant
+          - kms:DescribeKey
+          - kms:GenerateDataKeyWithoutPlaintext
+          - kms:Decrypt
+          - kms:ReEncryptFrom
+          - kms:ReEncryptTo
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Needed only when spec.kms_key_id references a customer-managed key -- EC2 authorizes the CALLING principal for the grant and data-key operations it performs on the key to wire volume encryption (CreateGrant so the volume can use the key after the runner's session ends, DescribeKey to validate it, GenerateDataKeyWithoutPlaintext/Decrypt/ReEncrypt* for the encryption context). encrypted=true with kms_key_id unset uses the AWS-managed aws/ebs key, which requires no caller-side KMS grant.

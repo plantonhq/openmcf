@@ -1,0 +1,80 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsmanagedprometheusscraper
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The scraper stores no data at rest -- it is a collection pipe. Scraped samples land in the destination AMP workspace (or CloudWatch dataset) under THAT component's at-rest encryption; the scraper's own configuration is control-plane metadata AWS stores service-side.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest); the scraper API offers no KMS surface -- CMK posture lives on the destination workspace.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Delivery to the AMP workspace or CloudWatch dataset rides AWS's TLS service channels, and the management API is HTTPS-only. The scrape leg inside your VPC speaks whatever the targets speak -- Prometheus endpoints are conventionally plaintext HTTP inside the private network, which is target posture, not a dial this spec carries.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: The collector places into the subnets you list (both source arms require subnet_ids) and exposes no endpoint of its own -- there is nothing to reach from anywhere, and scraping happens outbound from inside your VPC.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: source_vpc.security_group_ids
+      evidence:
+        type: spec_default
+        reference: The security groups on the collector's network interfaces shape its network reach (VPC sources require at least one; EKS sources default to the cluster's security group when source_eks.security_group_ids is unset) -- the one network-posture dial this component owns.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request surface exists; the scraper is a client of your metric endpoints, not a server.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every scraper operation is IAM-authorized (CreateScraper additionally authorizes against the source EKS cluster and destination workspace ARNs), and the collector writes to the destination through AWS's service-linked role -- no ambient credentials exist to widen.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The collector authenticates to the destination via the AWS-managed service-linked role, and cross-account scraping uses the explicit role_configuration pair (source_role_arn in the scraped account, target_role_arn in the destination account) -- short-lived assumed-role credentials everywhere, no static secret anywhere in the spec.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Management is the SigV4-signed aps API and delivery is role-based; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: configurable
+      field_path: logging
+      evidence:
+        type: spec_default
+        reference: Unset keeps the scraper dark -- component logs (SERVICE_DISCOVERY, COLLECTOR, EXPORTER) exist only when logging wires a CloudWatch log group. Management-plane operations are captured by account-level CloudTrail regardless.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: This component IS monitoring collection -- its entire job is feeding Prometheus metrics into the destination workspace. Its own health is observable via the logging configuration and the destination's ingestion metrics.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless collector -- nothing to back up. The scraper is declarative and re-creatable from the manifest; collected metrics live (and are retained) in the destination workspace.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery); metric retention is the destination workspace's policy.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: source_eks.subnet_ids
+      evidence:
+        type: spec_default
+        reference: The subnets you list (either source arm) decide the zones AWS can place collector infrastructure into -- both catalog presets list private subnets, and the EKS preset spans two zones. AWS operates the collector fleet within that placement.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: The scraper API carries no deletion-protection flag -- neither the spec nor the provider resources have one. Deleting the scraper only stops future collection; already-delivered metrics are untouched in the destination.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Agentless by design -- AWS provisions, operates, and patches the collector infrastructure; there is no agent fleet, AMI, or runtime version for the owner to maintain.

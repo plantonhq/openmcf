@@ -1,0 +1,32 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awssagemakerpipeline
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: definition
+      sku_meter: step compute instance hours
+      pricing_unit: instance-hours
+      impact: "The DAG IS the bill: every TrainingStep, ProcessingStep, TransformStep, and TuningStep in the definition launches a SageMaker job on the instance types and counts IT declares, billed per second while the step runs. The pipeline adds no orchestration fee on top -- and no field outside this JSON can see or cap what the steps spend."
+    - field_path: definition_s3_location
+      sku_meter: step compute instance hours
+      pricing_unit: instance-hours
+      impact: The S3-sourced arm of the same DAG, with a cost-visibility trap -- AWS resolves the definition at create/update time and the describe API returns only the RESOLVED graph, so editing the S3 object changes nothing (and costs nothing) until the pipeline is updated, at which point the new steps' instance declarations become the new bill.
+    - field_path: parallelism_max_steps
+      sku_meter: step compute instance hours
+      pricing_unit: instance-hours
+      impact: A concurrency throttle, not a volume one -- capping parallel steps never reduces an execution's total instance-hours, it only spreads the same spend over a longer wall clock (and caps how many instances bill simultaneously across concurrent executions).
+  free_tier: "Permanently free at the pipeline layer -- AWS's FAQ states: \"There is no additional charge for SageMaker Pipelines. You pay only for the underlying compute or any separate AWS services you use within SageMaker Pipelines.\" No per-pipeline, per-execution, per-step, or state-transition fee exists, and this is the service's pricing model, not a trial allotment."
+  estimate_exclusions:
+    - every training, processing, transform, and tuning step bills its declared instances per second on SageMaker Training/Processing/Batch Transform meters while the step runs -- the instance declarations live inside the definition JSON, invisible to any field-level estimate
+    - a TuningStep multiplies training spend by its trial count -- the single most expensive step type per line of definition
+    - Lambda and callback steps bill AWS Lambda and the called services on their own lines
+    - step inputs, outputs, and model artifacts bill as S3 storage and requests on their buckets; step containers pull from ECR
+    - CloudWatch Logs ingestion for every step job's log stream follows step output volume
+    - model packages that RegisterModel steps create are free registry entries (AwsSagemakerModelRegistry) -- the artifacts they point at are the S3 line above
+    - execution frequency is the multiplier the manifest cannot see -- a nightly schedule bills the whole DAG's compute every night
+  notes: "A pipeline is free at rest and free to orchestrate -- the meter is entirely inside the definition, where each step declares the instances it launches. That makes the cost shape unusual: the same manifest costs nothing until someone (or an EventBridge schedule) starts an execution, and then costs exactly what the DAG's jobs cost, from cents for a small processing step to hundreds of dollars for a GPU tuning sweep. Step caching, configured inside the definition, is the one real cost throttle -- a cache-hit step reuses the previous result and launches nothing. The pipeline object itself never appears on an invoice; its executions' jobs appear as ordinary SageMaker Training, Processing, and Batch Transform usage."

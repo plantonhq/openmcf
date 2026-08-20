@@ -1,0 +1,80 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsredshiftserverlessworkgroup
+spec:
+  aws:
+    statements:
+      - sid: ManageWorkgroup
+        actions:
+          - redshift-serverless:CreateWorkgroup
+          - redshift-serverless:GetWorkgroup
+          - redshift-serverless:UpdateWorkgroup
+          - redshift-serverless:DeleteWorkgroup
+        resources:
+          - arn:aws:redshift-serverless:*:*:workgroup/*
+        provenance: derived
+        notes: Covers aws_redshiftserverless_workgroup / redshiftserverless.Workgroup. GetWorkgroup serves every plan/refresh and the provider's wait-for-available; UpdateWorkgroup reconciles capacity, the price-performance dial, network settings, config parameters, and the release track in place (AWS serializes capacity changes, so the provider issues one per update call). All four actions scope to the workgroup ARN per the redshift-serverless service reference -- the ARN carries an AWS-generated workgroup ID, hence the wildcard.
+      - sid: TagWorkgroup
+        actions:
+          - redshift-serverless:TagResource
+          - redshift-serverless:UntagResource
+          - redshift-serverless:ListTagsForResource
+        resources:
+          - arn:aws:redshift-serverless:*:*:workgroup/*
+        provenance: derived
+        notes: Tag-on-create with the platform's standard tags plus tag reconciliation and the read-back every refresh performs. All three actions scope to the workgroup ARN per the service reference.
+      - sid: ManageCustomDomain
+        actions:
+          - redshift-serverless:CreateCustomDomainAssociation
+          - redshift-serverless:GetCustomDomainAssociation
+          - redshift-serverless:UpdateCustomDomainAssociation
+          - redshift-serverless:DeleteCustomDomainAssociation
+        resources:
+          - arn:aws:redshift-serverless:*:*:workgroup/*
+        provenance: derived
+        notes: Covers aws_redshiftserverless_custom_domain_association / redshiftserverless.CustomDomainAssociation -- created only when custom_domain is set (one per workgroup, AWS's own cap). The service reference scopes all four actions to the WORKGROUP ARN, not a domain resource. The ACM certificate is referenced by ARN and only read by AWS itself, so no acm actions surface in the module's call path.
+      - sid: ManageEndpointAccess
+        actions:
+          - redshift-serverless:CreateEndpointAccess
+          - redshift-serverless:GetEndpointAccess
+          - redshift-serverless:UpdateEndpointAccess
+          - redshift-serverless:DeleteEndpointAccess
+        resources:
+          - arn:aws:redshift-serverless:*:*:managedvpcendpoint/*
+        provenance: derived
+        notes: Covers aws_redshiftserverless_endpoint_access / redshiftserverless.EndpointAccess -- one managed VPC endpoint per endpoint_accesses entry. All four actions scope to the managedvpcendpoint ARN per the service reference (AWS-generated endpoint ID, hence the wildcard).
+      - sid: VpcEndpointPlumbing
+        actions:
+          - ec2:CreateVpcEndpoint
+          - ec2:ModifyVpcEndpoint
+        resources:
+          - arn:aws:ec2:*:*:vpc-endpoint/*
+          - arn:aws:ec2:*:*:vpc/*
+          - arn:aws:ec2:*:*:subnet/*
+          - arn:aws:ec2:*:*:security-group/*
+          - arn:aws:ec2:*:*:route-table/*
+        provenance: derived
+        notes: "AWS's documentation is explicit that creating or modifying Redshift-managed VPC endpoints requires ec2:CreateVpcEndpoint / ec2:ModifyVpcEndpoint in the CALLER's policy, on top of the redshift-serverless actions -- the check passes through even though Redshift performs the actual network work. The wider network plumbing (network interfaces, endpoint deletes, describes) rides the AWSServiceRoleForRedshift service-linked role, not the runner. Left account-wide because CreateVpcEndpoint authorizes against several EC2 resource types (VPC, subnets, security groups, the endpoint itself) in the consumer VPC; tighten to those ARNs once the live capture lane proves the exact set."
+      - sid: ManageUsageLimits
+        actions:
+          - redshift-serverless:CreateUsageLimit
+          - redshift-serverless:GetUsageLimit
+          - redshift-serverless:UpdateUsageLimit
+          - redshift-serverless:DeleteUsageLimit
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_redshiftserverless_usage_limit / redshiftserverless.UsageLimit -- one per usage_limits entry, keyed by (usage_type, period). NON-SCOPABLE -- the service reference lists no resource types for any usage-limit action, so an ARN-scoped grant would be a runtime DENY; the API takes the workgroup ARN as a request PARAMETER instead of an authorization resource.
+      - sid: CreateServiceLinkedRole
+        actions:
+          - iam:CreateServiceLinkedRole
+        resources:
+          - arn:aws:iam::*:role/aws-service-role/redshift.amazonaws.com/AWSServiceRoleForRedshift
+        provenance: derived
+        notes: First-use only -- the account's first Redshift resource makes AWS create the AWSServiceRoleForRedshift service-linked role (which carries the EC2 network permissions Redshift uses on your behalf), and that creation is authorized against the caller. A no-op in accounts where the role already exists; safe to drop there.

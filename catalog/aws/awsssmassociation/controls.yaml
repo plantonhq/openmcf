@@ -1,0 +1,73 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsssmassociation
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An association stores no data of its own -- it is a scheduling binding held in Systems Manager's managed control plane. Command output, the one artifact a run can persist, lands in the referenced AwsS3Bucket (output_location), whose encryption posture is decided on that component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: With no data store there is no key surface -- the association API exposes no customer-managed-key option; the output bucket's key choice belongs to the bucket.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Systems Manager API is HTTPS-only, and the SSM Agent on every target polls Systems Manager over TLS to receive the association's instructions -- no plaintext path carries the association or its command payloads.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: An association exposes no endpoint. Its reach is defined by targets and IAM -- the SSM Agent initiates all connections outbound, so nothing about the association is internet-addressable.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens on an association -- the SSM Agent is outbound-only by design (targets need no inbound ports opened for State Manager to manage them, which is much of its security appeal).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: With no request-serving surface there is no WAF attachment point; edge filtering has no meaning for a scheduling binding.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every association operation -- create, update, delete, describe -- is IAM-authorized, and the service reference scopes them to the association and document ARNs, so a grant can be pinned to specific documents and associations. What the association may DO on targets is further bounded by each instance's own SSM instance profile.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The association runs no workload under its own identity -- commands execute on each target under that instance's IAM instance profile, and Automation runbooks assume their own service roles. Identity is carried by the executors, on their own components.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "Systems Manager has a single authentication path: SigV4-signed IAM requests, agent traffic included; no legacy or weaker protocol exists to disable."
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Association create/update/delete and every run's command invocations are management events captured in CloudTrail unconditionally -- who pointed which document at which fleet, and when it ran, is always on the record.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: output_location
+      evidence:
+        type: spec_default
+        reference: Unset means command output is not stored -- runs report status but their stdout/stderr evaporates. Referencing an S3 bucket persists every run's full output for inspection and pipeline consumption.
+      notes: compliance_severity and sync_compliance are the companion dials -- with AUTO sync (the default) every run writes association compliance that Systems Manager Compliance dashboards and AWS Config can watch fleet-wide.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: There is nothing to back up -- the association is a binding, recreatable by re-applying the manifest (AWS even regenerates its UUID identity). Run history is Systems Manager's operational record, not state this component owns.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no backup facility there is no backup retention to set; retention of stored command output is the referenced bucket's lifecycle policy, decided on that component.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: State Manager is a regional managed service AWS operates across availability zones; the association has no zonal footprint the manifest could configure -- its resilience concern (max_concurrency, max_errors) is about protecting the FLEET from a bad run, not about the scheduler's own availability.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists on an association. Destroy stops all future scheduled applications immediately -- the blast radius is unenforced state on the fleet from that moment (a quietly dangerous kind of loss for a patch or agent-install association), not lost data.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the State Manager scheduler and the SSM Agent distribution channel; the association exposes no runtime, version, or maintenance surface. It is also the catalog's own patching lever -- bound to AWS-RunPatchBaseline (the 01 preset), the association IS how a fleet gets managed patching.

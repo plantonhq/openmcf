@@ -1,0 +1,80 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsbedrockflow
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Bedrock encrypts the flow -- its node graph, inline prompt templates, and inline code -- at rest by default; with customer_encryption_key_arn unset the definition rests under a Bedrock-managed key, and an unencrypted flow is not representable.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: customer_encryption_key_arn
+      evidence:
+        type: spec_default
+        reference: Unset means the Bedrock-managed key; referencing a KMS key moves the flow definition under a customer-managed key you own and can revoke. The key policy must grant the Bedrock service use of the key -- AWS rejects the flow without it.
+      notes: Revoking the key's grant makes the stored definition unreadable to the service, which is the point of holding the key.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Both API surfaces -- the bedrock-agent control plane (create, update, versions, aliases) and the bedrock-agent-runtime data plane (InvokeFlow) -- are HTTPS-only SigV4 endpoints; no plaintext path to or from a flow exists.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every surface requires authentication: invoking the flow is an IAM-authorized InvokeFlow call scoped to the flow-alias ARN, and all management operations are IAM-authorized on the flow ARN. No anonymous or internet-open endpoint is representable."
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Nothing listens in your network -- the flow is a managed-service endpoint AWS operates. Reaching resources inside your VPC happens only through Lambda-function nodes, whose network posture lives on each referenced AwsLambda.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The flow exposes no request-serving surface a WAF could front -- callers reach it through AWS's own SigV4 API endpoints. Guardrails pinned on prompt and knowledge-base nodes are content-level safety, a different layer than edge filtering.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every operation -- create, update, delete, version and alias management, invocation -- is IAM-authorized, and the bedrock service reference scopes them to the flow and flow-alias ARN formats, so per-flow grants (including who may InvokeFlow on which alias) are enforceable.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The flow runs under the required execution_role_arn -- an IAM role trusting bedrock.amazonaws.com that the service assumes with short-lived credentials to invoke the models, agents, knowledge bases, and Lambdas the nodes reference. No static-credential path exists, and the spec cannot omit the role.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The service has a single authentication generation -- SigV4-signed IAM requests on both control and data planes; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All bedrock-agent control-plane operations on the flow -- who created it, changed the graph, published a version, re-pointed an alias, or deleted it -- are management events CloudTrail records unconditionally in the account's event history.
+      notes: Runtime capture is separate -- InvokeFlow is a data-plane call, and recording the model inputs/outputs the nodes produce is the account-level AwsBedrockInvocationLogging component's job, not a field on this manifest.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Bedrock publishes no flow-level CloudWatch metric namespace -- its monitoring documentation enumerates AWS/Bedrock (model invocations), AWS/Bedrock/Agents, and AWS/BedrockMantle, none of which covers flows. Model calls the nodes make surface only as account-level AWS/Bedrock model metrics; per-run visibility comes from flow-execution traces queried through the flow-execution APIs, not from a metric stream a manifest could alarm on.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The flow stores no unrecoverable state -- it is a declarative node graph recreated from this manifest, and published versions are immutable snapshots AWS keeps alongside the draft. Data the nodes touch lives on the referenced components (S3 buckets, knowledge bases) under their own durability postures.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No retention field exists by design -- there is nothing accumulating inside the flow to expire. Objects a storage node writes persist under the referenced AwsS3Bucket's lifecycle rules, decided on that component.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Bedrock is a regional managed service AWS operates across availability zones -- the flow has no zonal footprint the manifest could configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Flows carry no deletion-protection flag. Deleting the flow removes the graph, its versions, and aliases; the models, agents, knowledge bases, Lambdas, and buckets the nodes referenced survive on their own components.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the flow execution engine, including the sandbox that runs inline-code nodes; the flow exposes no runtime, version, or maintenance surface beyond the models the nodes name.

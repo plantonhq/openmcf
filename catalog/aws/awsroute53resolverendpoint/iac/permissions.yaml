@@ -1,0 +1,61 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsroute53resolverendpoint
+spec:
+  aws:
+    statements:
+      - sid: ManageResolverEndpoint
+        actions:
+          - route53resolver:CreateResolverEndpoint
+          - route53resolver:GetResolverEndpoint
+          - route53resolver:UpdateResolverEndpoint
+          - route53resolver:DeleteResolverEndpoint
+          - route53resolver:ListResolverEndpointIpAddresses
+          - route53resolver:AssociateResolverEndpointIpAddress
+          - route53resolver:DisassociateResolverEndpointIpAddress
+        resources:
+          - arn:aws:route53resolver:*:*:resolver-endpoint/*
+        provenance: derived
+        notes: Covers aws_route53_resolver_endpoint -- create/read/update/delete plus the ip-address association pair the provider uses to reconcile ip_addresses entries in place (adding or removing an entry associates or disassociates an ENI rather than replacing the endpoint). All scope to the resolver-endpoint ARN per the service reference.
+      - sid: ManageResolverRulesAndAssociations
+        actions:
+          - route53resolver:CreateResolverRule
+          - route53resolver:GetResolverRule
+          - route53resolver:UpdateResolverRule
+          - route53resolver:DeleteResolverRule
+          - route53resolver:AssociateResolverRule
+          - route53resolver:DisassociateResolverRule
+          - route53resolver:GetResolverRuleAssociation
+        resources:
+          - arn:aws:route53resolver:*:*:resolver-rule/*
+        provenance: derived
+        notes: Needed only when rules are configured -- covers aws_route53_resolver_rule (one per rules entry) and aws_route53_resolver_rule_association (one per rule per vpc_ids entry). Rule CRUD and the associate/disassociate pair scope to the resolver-rule ARN; GetResolverRuleAssociation reads each association back on refresh.
+      - sid: TagResolverResources
+        actions:
+          - route53resolver:TagResource
+          - route53resolver:UntagResource
+          - route53resolver:ListTagsForResource
+        resources:
+          - arn:aws:route53resolver:*:*:resolver-endpoint/*
+          - arn:aws:route53resolver:*:*:resolver-rule/*
+        provenance: derived
+        notes: The endpoint and each rule are tagged (tags = local.aws_tags) -- tag-on-create plus reconciliation and the tag read on every refresh, scoped per the service reference.
+      - sid: ManageEndpointNetworkInterfaces
+        actions:
+          - ec2:CreateNetworkInterface
+          - ec2:DeleteNetworkInterface
+          - ec2:DescribeNetworkInterfaces
+          - ec2:ModifyNetworkInterfaceAttribute
+          - ec2:DescribeSubnets
+          - ec2:DescribeSecurityGroups
+          - ec2:DescribeAvailabilityZones
+        resources:
+          - "*"
+        provenance: derived
+        notes: The Resolver service materializes one ENI per ip_addresses entry in YOUR subnets on the CALLER's authority -- AWS's own Route53ResolverFullAccess managed policy pairs exactly this EC2 set with the resolver actions. The Describe* actions are NON-SCOPABLE per the EC2 service reference, and the ENI create/delete/modify calls originate service-side against caller permissions, so the wildcard is the honest scope; narrow with conditions (e.g. aws:ResourceTag) only after live capture proves them.

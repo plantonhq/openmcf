@@ -1,0 +1,65 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsbedrockagentcoreruntime
+spec:
+  aws:
+    statements:
+      - sid: CreateAgentRuntime
+        actions:
+          - bedrock-agentcore:CreateAgentRuntime
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_bedrockagentcore_agent_runtime / bedrock.AgentcoreAgentRuntime at create. NON-SCOPABLE -- the service reference lists no resource types for CreateAgentRuntime (the runtime id does not exist until the call returns), so an ARN-scoped grant would be a runtime DENY; the wildcard is the narrowest possible scope for this one action.
+      - sid: ManageAgentRuntime
+        actions:
+          - bedrock-agentcore:GetAgentRuntime
+          - bedrock-agentcore:UpdateAgentRuntime
+          - bedrock-agentcore:DeleteAgentRuntime
+        resources:
+          - arn:aws:bedrock-agentcore:*:*:runtime/*
+        provenance: derived
+        notes: Covers the rest of aws_bedrockagentcore_agent_runtime / bedrock.AgentcoreAgentRuntime. GetAgentRuntime runs on every plan/refresh; UpdateAgentRuntime is how every in-arm spec change lands (each update creates a new immutable runtime VERSION); switching the artifact arm or renaming replaces the runtime. All three scope to the runtime ARN per the service reference. The service reads the S3 code bundle and pulls the ECR image through the spec's execution role, not the runner -- the referenced AwsIamRole's contract carries the s3/ecr grants, so the runner needs none of them.
+      - sid: ManageRuntimeEndpoints
+        actions:
+          - bedrock-agentcore:CreateAgentRuntimeEndpoint
+          - bedrock-agentcore:GetAgentRuntimeEndpoint
+          - bedrock-agentcore:UpdateAgentRuntimeEndpoint
+          - bedrock-agentcore:DeleteAgentRuntimeEndpoint
+        resources:
+          - arn:aws:bedrock-agentcore:*:*:runtime/*
+          - arn:aws:bedrock-agentcore:*:*:runtime/*/runtime-endpoint/*
+        provenance: derived
+        notes: Covers aws_bedrockagentcore_agent_runtime_endpoint / bedrock.AgentcoreAgentRuntimeEndpoint -- one per endpoints entry. CreateAgentRuntimeEndpoint scopes to the parent runtime ARN (the endpoint name does not exist yet); the Get/Update/Delete trio scopes to both the runtime and runtime-endpoint formats per the service reference. Update moves an endpoint's version pin -- the traffic-shift lever -- in place.
+      - sid: ManageRuntimeResourcePolicy
+        actions:
+          - bedrock-agentcore:PutResourcePolicy
+          - bedrock-agentcore:GetResourcePolicy
+          - bedrock-agentcore:DeleteResourcePolicy
+        resources:
+          - arn:aws:bedrock-agentcore:*:*:runtime/*
+        provenance: derived
+        notes: Covers aws_bedrockagentcore_resource_policy / bedrock.AgentcoreResourcePolicy -- created only when resource_policy is set. All three actions scope to the runtime ARN (the service reference also lists gateway and runtime-endpoint formats, which this component never targets). GetResourcePolicy runs on every refresh of the policy resource; AWS requires each statement's Resource to be exactly the runtime's own ARN, which both modules set after create.
+      - sid: TagRuntimeResources
+        actions:
+          - bedrock-agentcore:TagResource
+          - bedrock-agentcore:UntagResource
+          - bedrock-agentcore:ListTagsForResource
+        resources:
+          - arn:aws:bedrock-agentcore:*:*:runtime/*
+          - arn:aws:bedrock-agentcore:*:*:runtime/*/runtime-endpoint/*
+        provenance: derived
+        notes: Tag-on-create plus later tag reconciliation and the tag read on every refresh. The modules tag both the runtime and every endpoint (the resource-policy resource has no tags argument), so the grant scopes to exactly those two ARN formats.
+      - sid: PassRuntimeExecutionRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: "The runner passes the spec's required role_arn to the service at runtime create and on role changes. Tightening path: pin the resource to the specific role ARN and add the condition iam:PassedToService = bedrock-agentcore.amazonaws.com so the grant cannot leak the role to any other service."
