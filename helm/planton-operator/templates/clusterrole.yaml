@@ -54,20 +54,9 @@ rules:
       - get
       - list
   - apiGroups:
-      - acid.zalan.do
+      - postgresql.cnpg.io
     resources:
-      - operatorconfigurations
-    verbs:
-      - create
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - acid.zalan.do
-    resources:
-      - postgresqls
+      - clusters
     verbs:
       - create
       - delete
@@ -77,9 +66,9 @@ rules:
       - update
       - watch
   - apiGroups:
-      - acid.zalan.do
+      - postgresql.cnpg.io
     resources:
-      - postgresqls/status
+      - clusters/status
     verbs:
       - get
   - apiGroups:
