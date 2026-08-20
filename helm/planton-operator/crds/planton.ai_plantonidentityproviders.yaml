@@ -1,0 +1,394 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.1
+  name: plantonidentityproviders.planton.ai
+spec:
+  group: planton.ai
+  names:
+    kind: PlantonIdentityProvider
+    listKind: PlantonIdentityProviderList
+    plural: plantonidentityproviders
+    singular: plantonidentityprovider
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.boundPlatform
+      name: Platform
+      type: string
+    - jsonPath: .status.conditions[?(@.type=='Bound')].status
+      name: Bound
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1
+    schema:
+      openAPIV3Schema:
+        description: PlantonIdentityProvider is the Schema for the plantonidentityproviders
+          API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: spec defines the desired state of PlantonIdentityProvider
+            properties:
+              activeDirectory:
+                description: |-
+                  activeDirectory federates users from an on-prem Active Directory over
+                  LDAP. The field set mirrors the AD config surface platform teams
+                  already run elsewhere, so an existing setup transcribes directly.
+                properties:
+                  bindCredentialSecretRef:
+                    description: |-
+                      bindCredentialSecretRef points at the bind password. Required by
+                      reference: the password is never inline.
+                    properties:
+                      key:
+                        description: key within the Secret.
+                        minLength: 1
+                        type: string
+                      name:
+                        description: name of the Secret.
+                        minLength: 1
+                        type: string
+                    required:
+                    - key
+                    - name
+                    type: object
+                  bindDn:
+                    description: |-
+                      bindDn is the service account the identity server binds as to search
+                      the directory.
+                    minLength: 1
+                    type: string
+                  caBundleSecretRef:
+                    description: |-
+                      caBundleSecretRef points at a PEM CA bundle for verifying the
+                      directory's TLS certificate -- the private-CA case, the classic
+                      enterprise blocker. Omit it when the directory's certificate chains
+                      to a public root.
+                    properties:
+                      key:
+                        description: key within the Secret.
+                        minLength: 1
+                        type: string
+                      name:
+                        description: name of the Secret.
+                        minLength: 1
+                        type: string
+                    required:
+                    - key
+                    - name
+                    type: object
+                  editMode:
+                    default: READ_ONLY
+                    description: |-
+                      editMode is pinned READ_ONLY in v1: Planton never writes to the
+                      directory. The enum exists so a future writable mode is an additive
+                      change, not a breaking one.
+                    enum:
+                    - READ_ONLY
+                    type: string
+                  emailAttribute:
+                    default: mail
+                    description: |-
+                      emailAttribute maps the user's email -- the key Planton's grants and
+                      invitations match on.
+                    type: string
+                  firstNameAttribute:
+                    default: givenName
+                    description: firstNameAttribute maps the given name.
+                    type: string
+                  groupMemberAttribute:
+                    default: member
+                    description: groupMemberAttribute is the group attribute listing
+                      members.
+                    type: string
+                  groupNameAttribute:
+                    default: cn
+                    description: groupNameAttribute maps a group's name.
+                    type: string
+                  groupsDn:
+                    description: groupsDn is the search base for groups.
+                    minLength: 1
+                    type: string
+                  lastNameAttribute:
+                    default: sn
+                    description: lastNameAttribute maps the surname.
+                    type: string
+                  nestedGroups:
+                    default: true
+                    description: |-
+                      nestedGroups resolves group membership transitively (a member of
+                      team-a inside engineering is a member of both).
+                    type: boolean
+                  servers:
+                    description: |-
+                      servers are the directory endpoints, tried in order. The scheme
+                      decides transport: ldaps:// is TLS from the first byte, ldap:// is
+                      plaintext unless startTls upgrades it.
+                    items:
+                      type: string
+                    minItems: 1
+                    type: array
+                    x-kubernetes-validations:
+                    - message: every server must use the ldap:// or ldaps:// scheme
+                      rule: self.all(s, s.startsWith('ldap://') || s.startsWith('ldaps://'))
+                  startTls:
+                    default: false
+                    description: startTls upgrades an ldap:// connection to TLS after
+                      connect.
+                    type: boolean
+                  syncPeriodMinutes:
+                    default: 60
+                    description: |-
+                      syncPeriodMinutes is how often the identity server re-syncs users
+                      from the directory.
+                    format: int32
+                    minimum: 5
+                    type: integer
+                  userObjectClasses:
+                    default:
+                    - person
+                    - organizationalPerson
+                    - user
+                    description: userObjectClasses filter which directory entries
+                      are users.
+                    items:
+                      type: string
+                    type: array
+                  usernameAttribute:
+                    default: sAMAccountName
+                    description: usernameAttribute is the sign-in name attribute.
+                    type: string
+                  usersDn:
+                    description: usersDn is the search base for people.
+                    minLength: 1
+                    type: string
+                required:
+                - bindCredentialSecretRef
+                - bindDn
+                - groupsDn
+                - servers
+                - usersDn
+                type: object
+                x-kubernetes-validations:
+                - message: startTls is only legal with ldap:// servers; ldaps:// is
+                    already TLS
+                  rule: '!has(self.startTls) || !self.startTls || self.servers.all(s,
+                    s.startsWith(''ldap://''))'
+              oidc:
+                description: |-
+                  oidc brokers sign-in to an upstream OIDC identity provider (Entra ID,
+                  ADFS, or any spec-compliant issuer).
+                properties:
+                  clientId:
+                    description: |-
+                      clientId of the app registration the company's IT created for
+                      Planton.
+                    minLength: 1
+                    type: string
+                  clientSecretRef:
+                    description: |-
+                      clientSecretRef points at the app registration's client secret.
+                      Required by reference: the secret is never inline.
+                    properties:
+                      key:
+                        description: key within the Secret.
+                        minLength: 1
+                        type: string
+                      name:
+                        description: name of the Secret.
+                        minLength: 1
+                        type: string
+                    required:
+                    - key
+                    - name
+                    type: object
+                  groupsClaim:
+                    default: groups
+                    description: groupsClaim is where group memberships arrive in
+                      upstream tokens.
+                    type: string
+                  issuerUrl:
+                    description: |-
+                      issuerUrl is the upstream issuer. For Entra ID this must be the
+                      single-tenant form (https://login.microsoftonline.com/{tenant-id}/v2.0)
+                      -- the /common and /organizations multiplexers cannot satisfy strict
+                      issuer validation, and verification names that limit when it detects
+                      them.
+                    pattern: ^https?://.+
+                    type: string
+                  scopes:
+                    default:
+                    - openid
+                    - profile
+                    - email
+                    description: |-
+                      scopes requested from the upstream provider. Add the provider's group
+                      scope when group claims need it.
+                    items:
+                      type: string
+                    type: array
+                required:
+                - clientId
+                - clientSecretRef
+                - issuerUrl
+                type: object
+              platformRef:
+                description: |-
+                  platformRef names the PlantonPlatform this identity config belongs to.
+                  Optional: when empty, it resolves to the single PlantonPlatform in
+                  this namespace; two platforms in the namespace with no ref is a status
+                  error naming both candidates, never a guess. The resolution is
+                  recorded in status.boundPlatform so it is visible, not implicit.
+                properties:
+                  name:
+                    description: name of the PlantonPlatform resource.
+                    minLength: 1
+                    type: string
+                required:
+                - name
+                type: object
+              signInButtonLabel:
+                description: |-
+                  signInButtonLabel is the text on the sign-in page's federation button.
+                  Defaults to an arm-appropriate label when empty.
+                maxLength: 64
+                type: string
+            type: object
+            x-kubernetes-validations:
+            - message: exactly one of activeDirectory or oidc must be set
+              rule: has(self.activeDirectory) != has(self.oidc)
+          status:
+            description: status defines the observed state of PlantonIdentityProvider
+            properties:
+              boundPlatform:
+                description: |-
+                  boundPlatform is the resolved PlantonPlatform this identity config is
+                  bound to -- recorded so an empty platformRef's resolution is visible,
+                  not implicit.
+                type: string
+              conditions:
+                description: |-
+                  conditions represent the current state. "Bound" tracks platform
+                  binding resolution.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              verification:
+                description: |-
+                  verification carries per-check verdicts from the last federation
+                  verification pass (connection reached, TLS trusted, bind
+                  authenticated, search bases readable, issuer discovered). Populated
+                  by the federation provisioning reconcile.
+                properties:
+                  checks:
+                    description: checks, in the order they ran.
+                    items:
+                      description: IdentityProviderVerificationCheck is one verification
+                        verdict.
+                      properties:
+                        message:
+                          description: |-
+                            message explains the verdict in plain language, naming the remedy on
+                            failure.
+                          type: string
+                        name:
+                          description: name of the check (e.g. "connection", "tls",
+                            "bind", "usersSearch").
+                          type: string
+                        verdict:
+                          description: verdict of the check.
+                          enum:
+                          - Passed
+                          - Failed
+                          - Unknown
+                          type: string
+                      required:
+                      - name
+                      - verdict
+                      type: object
+                    type: array
+                type: object
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
