@@ -78,3 +78,7 @@ volumeIds:
 - `GUIDE.md` — operational judgment calls (expand-only sizing, formatting, snapshots)
 - `presets/` — general-purpose ext4 and database xfs starting points
 - `v1alpha1/reference.md` — the generated field-by-field contract
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

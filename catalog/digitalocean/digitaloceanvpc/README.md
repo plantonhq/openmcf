@@ -68,3 +68,7 @@ vpc:
 - `GUIDE.md` — operational judgment calls (range planning, the default-VPC trap, deletion order)
 - `presets/` — standard starting point
 - `v1alpha1/reference.md` — the generated field-by-field contract
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

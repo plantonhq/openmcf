@@ -65,3 +65,7 @@ Both provisioners export the identical output set:
 - **`resizeDisk` defaults ON provider-side.** A disk-growing resize is permanent — you can never pick a smaller disk afterward. Set `false` to scale CPU/RAM reversibly.
 - **Disabling IPv6 on a running droplet recreates it**; enabling it updates in place.
 - **Pulumi SDK v4.49.0 cannot express `publicNetworking: false` or `gpuPartitionMode`.** The Pulumi module fails loudly if they are set; Terraform wires them. See the [GUIDE](GUIDE.md).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

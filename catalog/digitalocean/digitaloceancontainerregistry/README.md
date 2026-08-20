@@ -63,3 +63,7 @@ spec:
 - `GUIDE.md` — operational judgment calls (the singleton constraint, credential lifetimes, tier changes)
 - `presets/` — professional-tier starting point
 - `v1alpha1/reference.md` — the generated field-by-field contract
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

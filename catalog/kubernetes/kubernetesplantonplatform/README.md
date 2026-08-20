@@ -108,3 +108,7 @@ in the namespace (its deletion — automatic with `create_namespace: true`
 — sweeps them), and the platform's namespace-qualified token-review
 ClusterRole/Binding lingers inert until an operator release adds the
 janitor.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

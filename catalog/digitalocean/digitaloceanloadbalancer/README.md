@@ -83,3 +83,7 @@ Both provisioners export the identical output set:
 - **GLOBAL balancers have no region and no forwarding rules.** They route through `glbSettings`, `domains`, and `targetLoadBalancerIds`.
 - **`network`, `networkStack`, and `tlsCipherPolicy` are write-only.** The API never reports them back, so import leaves them empty and drift on them is invisible.
 - **Pulumi SDK v4.49.0 cannot express `subnetUuid` or BYOIP `ip`.** The Pulumi module fails loudly if they are set; Terraform wires them. See the [GUIDE](GUIDE.md).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

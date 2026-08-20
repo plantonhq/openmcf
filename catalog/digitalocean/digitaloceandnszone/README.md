@@ -72,3 +72,7 @@ spec:
 - `GUIDE.md` — operational judgment calls (inline vs. standalone records, delegation, apex rules)
 - `presets/` — simple-website and production-with-email starting points
 - `v1alpha1/reference.md` — the generated field-by-field contract
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -57,3 +57,7 @@ Deploy with either provisioner; both produce identical resources and outputs.
 - `iac/tf/` -- OpenTofu/Terraform module (provider pinned `~> 2.99`)
 - `iac/pulumi/` -- Pulumi module (Go, pulumi-digitalocean SDK)
 - Both engines wire the same spec fields and export the same outputs; behavioral parity is the contract.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

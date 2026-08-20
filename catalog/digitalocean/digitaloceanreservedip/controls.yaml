@@ -44,7 +44,7 @@ spec:
       notes: Reservations emit no metrics; traffic metrics belong to the assigned droplet.
     - control_id: backup-recovery
       status: not_applicable
-      notes: Nothing to back up -- but note the address itself is NOT recoverable: destroying the reservation releases the address permanently, and a recreated reservation gets a DIFFERENT address (documented in the GUIDE).
+      notes: "Nothing to back up -- but note the address itself is NOT recoverable: destroying the reservation releases the address permanently, and a recreated reservation gets a DIFFERENT address (documented in the GUIDE)."
     - control_id: backup-retention-policy
       status: not_applicable
       notes: No backup surface (see backup-recovery).

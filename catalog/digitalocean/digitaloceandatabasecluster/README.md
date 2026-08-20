@@ -113,3 +113,7 @@ See `GUIDE.md` for operational judgment (sizing, engine selection, upgrade pract
 - `iac/import-map.yaml` — how an existing cluster's identity derives for import
 - `presets/` — ready-to-deploy starting points (PostgreSQL HA/dev, Redis, Kafka, OpenSearch)
 - `e2e/` — test profile, canonical manifests, and live-lane scenarios
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

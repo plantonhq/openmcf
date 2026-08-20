@@ -106,3 +106,7 @@ the admin through the console's setup page.
 |---|---|
 | `namespace` | Namespace the operator runs in |
 | `release_name` | Helm release name (fixed `planton-operator`) |
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

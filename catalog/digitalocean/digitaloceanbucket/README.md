@@ -57,3 +57,7 @@ Both provisioners export the identical output set:
 - **`forceDestroy` is irreversible for the bucket's data.** Leave it false for anything you cannot lose; the e2e `full` scenario sets it true so teardown cannot stall on leftover objects.
 - **Access logging needs a second bucket** to receive the logs. Logging a bucket to itself works but compounds: reads of the logs generate more logs.
 - **Spaces is a second credential plane.** Deploys and verification need `SPACES_ACCESS_KEY_ID` / `SPACES_SECRET_ACCESS_KEY` alongside the DigitalOcean API token. See the [GUIDE](GUIDE.md).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

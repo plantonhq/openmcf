@@ -61,3 +61,7 @@ Both provisioners export the identical output set:
 - **Taints must spell their effect exactly as Kubernetes does** (`NoSchedule`, `PreferNoSchedule`, `NoExecute`), and a taint's `value` may be empty — Kubernetes allows valueless taints.
 - **A cluster's default pool cannot be managed here** — it is part of the cluster resource itself, and DigitalOcean refuses to import a default pool as a standalone one.
 - **Pulumi SDK v4.49.0 cannot express `gpuPartitionMode`.** The Pulumi module fails loudly if it is set; Terraform wires it. See the [GUIDE](GUIDE.md).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -86,3 +86,7 @@ spec:
 - `GUIDE.md` — operational judgment calls (tier layouts, egress policy, the double-firewall trap)
 - `presets/` — ready-to-adapt web-tier and database-tier rule sets
 - `v1alpha1/reference.md` — the generated field-by-field contract
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

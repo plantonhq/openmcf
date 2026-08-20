@@ -85,3 +85,7 @@ forwardingRules:
 - `GUIDE.md` — operational judgment calls (Let's Encrypt vs custom, rotation, the UUID trap)
 - `presets/` — Let's Encrypt and custom starting points
 - `v1alpha1/reference.md` — the generated field-by-field contract
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

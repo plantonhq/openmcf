@@ -53,3 +53,7 @@ underlying kind — the chart's param default is the line this chart
 release was validated against. Upgrading a running platform is editing
 the value and redeploying; the operator rolls the platform to the new
 line.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

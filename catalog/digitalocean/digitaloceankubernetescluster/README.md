@@ -105,3 +105,7 @@ See `GUIDE.md` for operational judgment (upgrade practice, pool sizing, firewall
 - `iac/import-map.yaml` — how an existing cluster's identity derives for import
 - `presets/` — ready-to-deploy starting points (production HA, development)
 - `e2e/` — test profile, canonical manifests, and live-lane scenarios
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).
