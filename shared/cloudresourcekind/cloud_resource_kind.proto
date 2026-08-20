@@ -4771,6 +4771,35 @@ enum CloudResourceKind {
     prerequisites: [DigitalOceanVpc]
   }];
 
+  // An access-key pair for Spaces object storage. Bucket grants are an
+  // optional composition seam, so there is no registry prerequisite.
+  DigitalOceanSpacesKey = 5060 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dospk"
+  }];
+
+  // A CDN endpoint serving a Spaces bucket's content from the global edge:
+  // the origin reference is required, resolved to the DigitalOceanBucket's
+  // exported bucket_domain_name output.
+  DigitalOceanCdn = 5061 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "docdn"
+    prerequisites: [DigitalOceanBucket]
+  }];
+
+  // A pool of identical droplets DigitalOcean keeps at a fixed size or
+  // scales on utilization. The template's ssh_keys reference is required
+  // (the API mandates SSH keys), resolved to the DigitalOceanSshKey's
+  // exported ssh_key_id output.
+  DigitalOceanDropletAutoscalePool = 5070 [(kind_meta) = {
+    provider: digital_ocean
+    version: "v1alpha1"
+    id_prefix: "dodasp"
+    prerequisites: [DigitalOceanSshKey]
+  }];
+
   // 6000–6999: Civo resources
   CivoBucket = 6000 [(kind_meta) = {
     provider: civo

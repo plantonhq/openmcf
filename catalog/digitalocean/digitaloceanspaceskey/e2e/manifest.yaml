@@ -1,0 +1,29 @@
+# Reference manifest for DigitalOceanSpacesKey -- protovalidate-valid,
+# embedded as the reference page's Example block, and the document the
+# offline tofu plan renders. Two documents: a per-bucket key (the common
+# shape) and a full-access key (the empty-bucket grant grammar).
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanSpacesKey
+metadata:
+  name: ci-uploads-key
+spec:
+  keyName: ci-uploads
+  # Literal bucket names; use valueFrom to reference DigitalOceanBucket
+  # resources instead.
+  grants:
+    - bucket:
+        value: app-assets
+      permission: readwrite
+    - bucket:
+        value: app-logs
+      permission: read
+---
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanSpacesKey
+metadata:
+  name: admin-key
+spec:
+  keyName: spaces-admin
+  # A fullaccess grant covers every bucket in the account and names none.
+  grants:
+    - permission: fullaccess

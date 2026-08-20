@@ -1586,6 +1586,18 @@ const (
 	// A private-network peering connection between exactly two VPCs; both
 	// VPC references are required.
 	CloudResourceKind_DigitalOceanVpcPeering CloudResourceKind = 5051
+	// An access-key pair for Spaces object storage. Bucket grants are an
+	// optional composition seam, so there is no registry prerequisite.
+	CloudResourceKind_DigitalOceanSpacesKey CloudResourceKind = 5060
+	// A CDN endpoint serving a Spaces bucket's content from the global edge:
+	// the origin reference is required, resolved to the DigitalOceanBucket's
+	// exported bucket_domain_name output.
+	CloudResourceKind_DigitalOceanCdn CloudResourceKind = 5061
+	// A pool of identical droplets DigitalOcean keeps at a fixed size or
+	// scales on utilization. The template's ssh_keys reference is required
+	// (the API mandates SSH keys), resolved to the DigitalOceanSshKey's
+	// exported ssh_key_id output.
+	CloudResourceKind_DigitalOceanDropletAutoscalePool CloudResourceKind = 5070
 	// 6000–6999: Civo resources
 	CloudResourceKind_CivoBucket             CloudResourceKind = 6000
 	CloudResourceKind_CivoCertificate        CloudResourceKind = 6001
@@ -2319,6 +2331,9 @@ var (
 		5041:  "DigitalOceanUptimeCheck",
 		5050:  "DigitalOceanReservedIp",
 		5051:  "DigitalOceanVpcPeering",
+		5060:  "DigitalOceanSpacesKey",
+		5061:  "DigitalOceanCdn",
+		5070:  "DigitalOceanDropletAutoscalePool",
 		6000:  "CivoBucket",
 		6001:  "CivoCertificate",
 		6002:  "CivoComputeInstance",
@@ -3042,6 +3057,9 @@ var (
 		"DigitalOceanUptimeCheck":                        5041,
 		"DigitalOceanReservedIp":                         5050,
 		"DigitalOceanVpcPeering":                         5051,
+		"DigitalOceanSpacesKey":                          5060,
+		"DigitalOceanCdn":                                5061,
+		"DigitalOceanDropletAutoscalePool":               5070,
 		"CivoBucket":                                     6000,
 		"CivoCertificate":                                6001,
 		"CivoComputeInstance":                            6002,
@@ -3595,7 +3613,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x98\xc4\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xc5\xc5\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4183,7 +4201,10 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x18DigitalOceanMonitorAlert\x10\xb0'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05domal\x126\n" +
 	"\x17DigitalOceanUptimeCheck\x10\xb1'\x1a\x18\xa2\xf7\x04\x14\b\x11\x12\bv1alpha1\"\x06douptc\x124\n" +
 	"\x16DigitalOceanReservedIp\x10\xba'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05dorip\x129\n" +
-	"\x16DigitalOceanVpcPeering\x10\xbb'\x1a\x1c\xa2\xf7\x04\x18\b\x11\x12\bv1alpha1\"\x06dovpcp:\x02\x94'\x12(\n" +
+	"\x16DigitalOceanVpcPeering\x10\xbb'\x1a\x1c\xa2\xf7\x04\x18\b\x11\x12\bv1alpha1\"\x06dovpcp:\x02\x94'\x123\n" +
+	"\x15DigitalOceanSpacesKey\x10\xc4'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05dospk\x121\n" +
+	"\x0fDigitalOceanCdn\x10\xc5'\x1a\x1b\xa2\xf7\x04\x17\b\x11\x12\bv1alpha1\"\x05docdn:\x02\x89'\x12C\n" +
+	" DigitalOceanDropletAutoscalePool\x10\xce'\x1a\x1c\xa2\xf7\x04\x18\b\x11\x12\bv1alpha1\"\x06dodasp:\x02\xa7'\x12(\n" +
 	"\n" +
 	"CivoBucket\x10\xf0.\x1a\x17\xa2\xf7\x04\x13\b\x0e\x12\bv1alpha1\"\x05cibkt\x12.\n" +
 	"\x0fCivoCertificate\x10\xf1.\x1a\x18\xa2\xf7\x04\x14\b\x0e\x12\bv1alpha1\"\x06cicert\x122\n" +

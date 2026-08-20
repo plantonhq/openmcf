@@ -119,6 +119,7 @@ Fields on other kinds that can point at this resource:
 | DigitalOceanDatabaseCluster | `spec.vpc` | `status.outputs.vpc_id` |
 | DigitalOceanDatabaseReplica | `spec.vpc` | `status.outputs.vpc_id` |
 | DigitalOceanDroplet | `spec.vpc` | `status.outputs.vpc_id` |
+| DigitalOceanDropletAutoscalePool | `spec.dropletTemplate.vpc` | `status.outputs.vpc_id` |
 | DigitalOceanKubernetesCluster | `spec.vpc` | `status.outputs.vpc_id` |
 | DigitalOceanLoadBalancer | `spec.vpc` | `status.outputs.vpc_id` |
 | DigitalOceanVpcPeering | `spec.vpc1` | `status.outputs.vpc_id` |

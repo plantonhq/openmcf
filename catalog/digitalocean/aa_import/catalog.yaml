@@ -138,6 +138,21 @@ spec:
         - snapshot_id
         - initial_filesystem_type
         - initial_filesystem_label
+    - terraform_type: digitalocean_droplet_autoscale
+      pulumi_type: digitalocean:index/dropletAutoscale:DropletAutoscale
+      id_format: "{pool_id}"
+      notes: >-
+        Passthrough importer on the pool UUID. The template's image reads
+        back as a NUMERIC image id even when a slug was configured -- the
+        provider's Read persists the configured value to hide the drift,
+        but a fresh import has no configured value to keep, so the first
+        post-import plan diffs the image when the config uses a slug.
+      # public_networking is schema-declared but never copied into any
+      # create/update request at the pin (dead on write); Read still
+      # populates it from the API, so it round-trips as whatever the
+      # platform defaulted, never as configured intent.
+      config_only_attributes:
+        - droplet_template.0.public_networking
 
     # --- Kubernetes ----------------------------------------------------------
     - terraform_type: digitalocean_kubernetes_cluster
@@ -262,6 +277,23 @@ spec:
         Shares the bucket importer's region,name composite. Read fetches
         target_bucket and target_prefix unconditionally from
         GetBucketLogging.
+    - terraform_type: digitalocean_spaces_key
+      pulumi_type: digitalocean:index/spacesKey:SpacesKey
+      id_format: "{access_key}"
+      notes: >-
+        Import is IMPOSSIBLE at the provider pin: the resource declares NO
+        importer, and even a future one could never recover secret_key --
+        the API returns it only in the create response (write-once by
+        design). The owning kind's import map records the exclusion;
+        re-evaluate on any provider pin bump that adds an importer.
+    - terraform_type: digitalocean_cdn
+      pulumi_type: digitalocean:index/cdn:Cdn
+      id_format: "{cdn_id}"
+      notes: >-
+        Passthrough importer on the endpoint UUID. Lossless: the provider's
+        Read resolves the API's certificate UUID back to the stable
+        certificate NAME (schema v1 stores names, never UUIDs -- Let's
+        Encrypt renewals rotate the UUID).
 
     # --- Certificates ----------------------------------------------------------
     - terraform_type: digitalocean_certificate

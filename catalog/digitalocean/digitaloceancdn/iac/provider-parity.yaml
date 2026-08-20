@@ -1,0 +1,20 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# digitalocean provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+resources:
+  digitalocean_cdn:
+    mappings:
+      # The spec wires the Space origin by reference (resolved to the
+      # bucket's FQDN).
+      - spec: spec.origin
+        arg: origin
+      # The spec's certificate reference carries the certificate NAME --
+      # exactly what the provider's v1 schema wants. The provider's
+      # deprecated certificate_id argument is outside the checker's
+      # configurable-argument universe at the pin (Deprecated + Computed
+      # after the v0->v1 migration) and is deliberately not modeled: its
+      # update path reads only certificate_name, so a config using only
+      # certificate_id silently DETACHES the certificate when custom_domain
+      # changes.
+      - spec: spec.certificate
+        arg: certificate_name

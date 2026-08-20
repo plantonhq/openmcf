@@ -323,6 +323,33 @@ func TestDigitalOceanVpcPeering_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "digitaloceanvpcpeering", "terraform")
 }
 
+// --- DigitalOcean Spaces Key (per-bucket scenario rides the Bucket fixture; the bucket lane needs the Spaces key pair env) ---
+
+func TestDigitalOceanSpacesKey_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceanspaceskey", "pulumi")
+}
+func TestDigitalOceanSpacesKey_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceanspaceskey", "terraform")
+}
+
+// --- DigitalOcean CDN (bucket-origin fixture via the scenario's e2e-prerequisites annotation) ---
+
+func TestDigitalOceanCdn_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceancdn", "pulumi")
+}
+func TestDigitalOceanCdn_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceancdn", "terraform")
+}
+
+// --- DigitalOcean Droplet Autoscale Pool (SshKey registry prerequisite; member droplets BILL and destroy destroys them) ---
+
+func TestDigitalOceanDropletAutoscalePool_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceandropletautoscalepool", "pulumi")
+}
+func TestDigitalOceanDropletAutoscalePool_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceandropletautoscalepool", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a
 // DigitalOcean component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {

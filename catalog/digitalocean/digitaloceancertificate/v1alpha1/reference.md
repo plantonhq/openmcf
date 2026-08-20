@@ -156,6 +156,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| DigitalOceanCdn | `spec.certificate` | `status.outputs.certificate_id` |
 | DigitalOceanLoadBalancer | `spec.forwardingRules[].certificateName` | `status.outputs.certificate_id` |
 | DigitalOceanLoadBalancer | `spec.domains[].certificateName` | `status.outputs.certificate_id` |
 

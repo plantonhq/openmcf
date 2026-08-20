@@ -28,9 +28,6 @@ resources:
   - resource: digitalocean_byoip_prefix
     disposition: deferred
     reason: "bring-your-own-IP needs an out-of-band provisioning workflow (signed request, DigitalOcean-side verification, later advertisement) and serves a small compliance-driven audience -- deferred until the workflow can be represented honestly"
-  - resource: digitalocean_cdn
-    disposition: model-planned
-    reason: "judged as a planned DigitalOceanCdn kind (CDN endpoint fronting a Spaces bucket origin, certificate reference for custom domains)"
   - resource: digitalocean_container_registries
     disposition: composed
     reason: "the plural resource is the newer multi-registry API for the same product surface; DigitalOceanContainerRegistry absorbs it as an implementation upgrade rather than a second registry kind"
@@ -79,9 +76,6 @@ resources:
   - resource: digitalocean_dedicated_inference_token
     disposition: composed
     reason: "access tokens are many-per-endpoint credential rows tightly coupled to the endpoint they authorize; folds into the planned DigitalOceanDedicatedInference kind"
-  - resource: digitalocean_droplet_autoscale
-    disposition: model-planned
-    reason: "judged as a planned DigitalOceanDropletAutoscalePool kind (a pool with its own scaling config and lifecycle -- the closest thing DigitalOcean has to a managed instance group; FK vpc, ssh keys, project)"
   - resource: digitalocean_droplet_snapshot
     disposition: deferred
     reason: "a point-in-time capture is operationally an action, not durable declared state -- gated with volume_snapshot on an action/snapshot-policy surface"
@@ -142,9 +136,6 @@ resources:
   - resource: digitalocean_spaces_bucket_object
     disposition: deferred
     reason: "uploading object content is data-plane work, not infrastructure; a declarative kind for file contents is marginal and invites abuse as a deployment mechanism"
-  - resource: digitalocean_spaces_key
-    disposition: model-planned
-    reason: "judged as a planned DigitalOceanSpacesKey kind (access keys have independent create/rotate lifecycles and are the credential workloads actually reference; FK buckets via per-bucket grants)"
   - resource: digitalocean_tag
     disposition: deferred
     reason: "DigitalOcean creates tags implicitly when any resource declares them; a standalone name-reservation kind is marginal -- revisit if tag-targeted references (firewalls, load balancers, monitor alerts) prove to need a first-class handle"

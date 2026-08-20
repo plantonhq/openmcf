@@ -1,0 +1,23 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: digitaloceanspaceskey
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests, both
+  # engine builds, tofu validate green, checker-green parity manifest,
+  # import map, presets, README/catalog/GUIDE). Live dual-engine proof has
+  # not yet run. Two scenarios: `full-access` (fixture-free, token-only --
+  # the empty-bucket grant grammar) and `per-bucket` (readwrite grant on
+  # the Bucket install fixture BY REFERENCE; the bucket lane needs the
+  # Spaces key pair SPACES_ACCESS_KEY_ID / SPACES_SECRET_ACCESS_KEY
+  # alongside DIGITALOCEAN_TOKEN). Keys are free objects; both lanes run
+  # in seconds.
+  # Watch items for the proof lane: the secret_key output exists ONLY in
+  # the create response (both engines must capture it at create -- there
+  # is no re-read to fall back on); import is EXCLUDED (the resource has
+  # no upstream importer); grant-list and rename updates are in-place
+  # arms the six-phase runner cannot exercise (recorded deferrals).
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

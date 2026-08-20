@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "apps.go",
         "bucket.go",
+        "cdn.go",
         "certificate.go",
         "container_registry.go",
         "database_cluster.go",
@@ -15,6 +16,7 @@ go_library(
         "database_user.go",
         "domains.go",
         "droplet.go",
+        "droplet_autoscale_pool.go",
         "firewall.go",
         "kafka_schema.go",
         "kafka_topic.go",
@@ -23,6 +25,7 @@ go_library(
         "monitor_alert.go",
         "project.go",
         "reserved_ip.go",
+        "spaces_key.go",
         "ssh_key.go",
         "uptime_check.go",
         "verifier.go",

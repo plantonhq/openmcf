@@ -1,0 +1,29 @@
+# Per-bucket DigitalOceanSpacesKey: a readwrite grant scoped to one bucket
+# wired BY REFERENCE to the Bucket install fixture (the e2e-prerequisites
+# annotation). The bucket lane brings its own environmental gate: bucket
+# deploys need the Spaces key pair (SPACES_ACCESS_KEY_ID /
+# SPACES_SECRET_ACCESS_KEY) alongside DIGITALOCEAN_TOKEN.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanSpacesKey
+metadata:
+  name: planton-oss-e2e-digitaloceanspaceskey-per-bucket
+  id: planton-oss-e2e-digitaloceanspaceskey-per-bucket
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanspaceskey
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "DigitalOceanBucket"
+  tags:
+    - planton-e2e
+spec:
+  keyName: pltn-e2e-dospk-bkt-${E2E_RUN_ID}
+  grants:
+    - bucket:
+        valueFrom:
+          kind: DigitalOceanBucket
+          name: planton-oss-e2e-digitaloceanbucket-min
+          fieldPath: status.outputs.bucket_id
+      permission: readwrite

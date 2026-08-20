@@ -1,0 +1,26 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: digitaloceancdn
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests, both
+  # engine builds, tofu validate green, checker-green parity manifest,
+  # import map, presets, README/catalog/GUIDE). Live dual-engine proof has
+  # not yet run. Two scenarios, both riding the Bucket install fixture BY
+  # REFERENCE: `minimal` (ttl unset -- the provider-default read-back
+  # path) and `configured` (explicit ttl). CDN endpoints are free; the
+  # bucket lane needs the Spaces key pair SPACES_ACCESS_KEY_ID /
+  # SPACES_SECRET_ACCESS_KEY alongside DIGITALOCEAN_TOKEN.
+  # Deferred arm (environmental gate, the D8 Let's Encrypt class): the
+  # certificate + custom_domain pair needs a delegated domain -- recorded,
+  # not skipped. Watch items for the proof lane: CDN creation is
+  # eventually consistent (the provider retries reads on 404 for 30s), and
+  # the provider's read-after-destroy ERRORS instead of settling (it
+  # clears state but still returns an error after its 404 retry window) --
+  # treat destroy verification through the verifier's absence check, not
+  # an IaC refresh. TTL/certificate edits are in-place update arms the
+  # six-phase runner cannot exercise (recorded deferrals).
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

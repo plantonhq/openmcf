@@ -1,0 +1,27 @@
+# Configured DigitalOceanCdn: the same bucket-fixture origin with an
+# explicit cache TTL -- proves the ttl create path (distinct from the
+# minimal scenario's default read-back). The certificate/custom-domain
+# arm is a recorded environmental-gate deferral: it needs a delegated
+# domain and a certificate (the Let's Encrypt class).
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanCdn
+metadata:
+  name: planton-oss-e2e-digitaloceancdn-configured
+  id: planton-oss-e2e-digitaloceancdn-configured
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceancdn
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "DigitalOceanBucket"
+  tags:
+    - planton-e2e
+spec:
+  origin:
+    valueFrom:
+      kind: DigitalOceanBucket
+      name: planton-oss-e2e-digitaloceanbucket-min
+      fieldPath: status.outputs.bucket_domain_name
+  ttl: 600

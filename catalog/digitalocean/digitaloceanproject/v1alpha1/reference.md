@@ -149,6 +149,14 @@ Reference an output from another manifest as `valueFrom: {kind: DigitalOceanProj
 | `status.outputs.owner_uuid` | `string` | UUID of the account or team that owns the project. |
 | `status.outputs.owner_id` | `string` | Numeric id of the account or team that owns the project. |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| DigitalOceanDropletAutoscalePool | `spec.dropletTemplate.projectId` | `status.outputs.project_id` |
+
 ## See Also
 
 - [Overview](../README.md)

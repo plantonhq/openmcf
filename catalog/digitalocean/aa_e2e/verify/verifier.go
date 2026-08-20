@@ -53,6 +53,7 @@ type OutputsVerifier interface {
 var verifiers = map[string]Verifier{
 	"digitaloceanapp":                &appVerifier{component: "digitaloceanapp", idOutputKey: "app_id"},
 	"digitaloceanbucket":             &bucketVerifier{},
+	"digitaloceancdn":                &cdnVerifier{},
 	"digitaloceancertificate":        &certificateVerifier{},
 	"digitaloceancontainerregistry":  &containerRegistryVerifier{},
 	"digitaloceandatabasecluster":        &databaseClusterVerifier{},
@@ -66,6 +67,7 @@ var verifiers = map[string]Verifier{
 	"digitaloceandnsrecord":              &dnsRecordVerifier{},
 	"digitaloceandnszone":            &dnsZoneVerifier{},
 	"digitaloceandroplet":            &dropletVerifier{},
+	"digitaloceandropletautoscalepool": &dropletAutoscalePoolVerifier{},
 	"digitaloceanfirewall":           &firewallVerifier{},
 	"digitaloceanfunction":           &appVerifier{component: "digitaloceanfunction", idOutputKey: "function_id"},
 	"digitaloceankubernetescluster":  &kubernetesClusterVerifier{},
@@ -74,6 +76,7 @@ var verifiers = map[string]Verifier{
 	"digitaloceanmonitoralert":       &monitorAlertVerifier{},
 	"digitaloceanproject":            &projectVerifier{},
 	"digitaloceanreservedip":         &reservedIpVerifier{},
+	"digitaloceanspaceskey":          &spacesKeyVerifier{},
 	"digitaloceansshkey":             &sshKeyVerifier{},
 	"digitaloceanuptimecheck":        &uptimeCheckVerifier{},
 	"digitaloceanvolume":             &volumeVerifier{},

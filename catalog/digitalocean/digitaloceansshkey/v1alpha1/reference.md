@@ -73,6 +73,14 @@ Reference an output from another manifest as `valueFrom: {kind: DigitalOceanSshK
 | `status.outputs.ssh_key_id` | `string` | Numeric id of the SSH key, as a string (for example "263654"). This is the key's API identity and the ONLY id imports accept -- the fingerprint does not work as an import id even though droplets accept it as a key reference. |
 | `status.outputs.fingerprint` | `string` | MD5 fingerprint of the key in colon-separated hex form, computed by DigitalOcean from the key material (never derived locally). Droplets accept it interchangeably with the numeric id in their ssh_keys list. |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| DigitalOceanDropletAutoscalePool | `spec.dropletTemplate.sshKeys` | `status.outputs.ssh_key_id` |
+
 ## See Also
 
 - [Overview](../README.md)

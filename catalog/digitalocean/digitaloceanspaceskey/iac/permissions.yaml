@@ -1,0 +1,30 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# DigitalOcean authenticates with a bearer API token, not IAM-statement
+# policies, so none of the schema's provider sections (aws/gcp/azure/
+# kubernetes) applies -- their absence is the schema's own claim that the
+# modules touch no such API. The DigitalOcean least-privilege story lives in
+# the token's SCOPES until the schema grows a DigitalOcean section, at which
+# point this inventory converts mechanically:
+#
+#   Custom-scopes token (recommended):
+#     spaces_key:read    -- read the key via GET /v2/spaces/keys/{access_key} (provenance: derived)
+#     spaces_key:create  -- create the key via POST /v2/spaces/keys (derived)
+#     spaces_key:update  -- rename / re-grant via PUT /v2/spaces/keys/{access_key} (derived)
+#     spaces_key:delete  -- delete the key via DELETE /v2/spaces/keys/{access_key} (derived)
+#   A full-access token also works; it is never least-privilege.
+#
+# Note: keys are managed through the control-plane REST API -- the runner
+# needs NO Spaces (S3) credentials to manage keys; the key it creates IS a
+# Spaces credential for workloads.
+#
+# All entries are derived from static analysis of the official modules
+# (digitalocean_spaces_key's create/read/update/delete paths; the resource
+# has no importer); the live capture lane upgrades them to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceanspaceskey
+spec: {}

@@ -395,6 +395,8 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | DigitalOceanBucket | `spec.logging.targetBucket` | `status.outputs.bucket_id` |
+| DigitalOceanCdn | `spec.origin` | `status.outputs.bucket_domain_name` |
+| DigitalOceanSpacesKey | `spec.grants[].bucket` | `status.outputs.bucket_id` |
 
 ## See Also
 

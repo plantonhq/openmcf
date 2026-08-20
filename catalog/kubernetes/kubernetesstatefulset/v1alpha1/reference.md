@@ -1766,6 +1766,9 @@ Allowed values (use exactly as shown):
 - `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
 - `DigitalOceanReservedIp` -- A static public IP address (IPv4 or IPv6) reserved in a region and optionally assigned to a droplet. The droplet attachment is an optional composition seam, so there is no registry prerequisite.
 - `DigitalOceanVpcPeering` -- A private-network peering connection between exactly two VPCs; both VPC references are required.
+- `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
+- `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`
@@ -2652,6 +2655,9 @@ Allowed values (use exactly as shown):
 - `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
 - `DigitalOceanReservedIp` -- A static public IP address (IPv4 or IPv6) reserved in a region and optionally assigned to a droplet. The droplet attachment is an optional composition seam, so there is no registry prerequisite.
 - `DigitalOceanVpcPeering` -- A private-network peering connection between exactly two VPCs; both VPC references are required.
+- `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
+- `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`
@@ -4687,6 +4693,9 @@ Allowed values (use exactly as shown):
 - `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
 - `DigitalOceanReservedIp` -- A static public IP address (IPv4 or IPv6) reserved in a region and optionally assigned to a droplet. The droplet attachment is an optional composition seam, so there is no registry prerequisite.
 - `DigitalOceanVpcPeering` -- A private-network peering connection between exactly two VPCs; both VPC references are required.
+- `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
+- `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`
@@ -5573,6 +5582,9 @@ Allowed values (use exactly as shown):
 - `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
 - `DigitalOceanReservedIp` -- A static public IP address (IPv4 or IPv6) reserved in a region and optionally assigned to a droplet. The droplet attachment is an optional composition seam, so there is no registry prerequisite.
 - `DigitalOceanVpcPeering` -- A private-network peering connection between exactly two VPCs; both VPC references are required.
+- `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
+- `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`
@@ -7649,6 +7661,9 @@ Allowed values (use exactly as shown):
 - `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
 - `DigitalOceanReservedIp` -- A static public IP address (IPv4 or IPv6) reserved in a region and optionally assigned to a droplet. The droplet attachment is an optional composition seam, so there is no registry prerequisite.
 - `DigitalOceanVpcPeering` -- A private-network peering connection between exactly two VPCs; both VPC references are required.
+- `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
+- `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`
@@ -8535,6 +8550,9 @@ Allowed values (use exactly as shown):
 - `DigitalOceanUptimeCheck` -- An availability/latency probe on an external endpoint with composed alert rules; the target is outside the account, so there is no registry prerequisite.
 - `DigitalOceanReservedIp` -- A static public IP address (IPv4 or IPv6) reserved in a region and optionally assigned to a droplet. The droplet attachment is an optional composition seam, so there is no registry prerequisite.
 - `DigitalOceanVpcPeering` -- A private-network peering connection between exactly two VPCs; both VPC references are required.
+- `DigitalOceanSpacesKey` -- An access-key pair for Spaces object storage. Bucket grants are an optional composition seam, so there is no registry prerequisite.
+- `DigitalOceanCdn` -- A CDN endpoint serving a Spaces bucket's content from the global edge: the origin reference is required, resolved to the DigitalOceanBucket's exported bucket_domain_name output.
+- `DigitalOceanDropletAutoscalePool` -- A pool of identical droplets DigitalOcean keeps at a fixed size or scales on utilization. The template's ssh_keys reference is required (the API mandates SSH keys), resolved to the DigitalOceanSshKey's exported ssh_key_id output.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`

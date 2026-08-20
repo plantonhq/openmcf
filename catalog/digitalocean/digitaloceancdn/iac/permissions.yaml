@@ -1,0 +1,28 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential needs
+# to provision, update, and destroy this component with the official
+# modules. Schema: iac/componentpermissions/v1.
+#
+# DigitalOcean authenticates with a bearer API token, not IAM-statement
+# policies, so none of the schema's provider sections (aws/gcp/azure/
+# kubernetes) applies -- their absence is the schema's own claim that the
+# modules touch no such API. The DigitalOcean least-privilege story lives in
+# the token's SCOPES until the schema grows a DigitalOcean section, at which
+# point this inventory converts mechanically:
+#
+#   Custom-scopes token (recommended):
+#     cdn:read           -- read the endpoint via GET /v2/cdn/endpoints/{id} (provenance: derived)
+#     cdn:create         -- create the endpoint via POST /v2/cdn/endpoints (derived)
+#     cdn:update         -- update ttl / custom domain via PUT /v2/cdn/endpoints/{id} (derived)
+#     cdn:delete         -- delete the endpoint via DELETE /v2/cdn/endpoints/{id} (derived)
+#     certificate:read   -- resolve the certificate NAME to its current UUID on create/update/read (FindCertificateByName lists, then gets) (derived)
+#   A full-access token also works; it is never least-privilege.
+#
+# All entries are derived from static analysis of the official modules
+# (digitalocean_cdn's create/read/update/delete/import paths, including the
+# certificate name<->id resolution the provider performs on every read); the
+# live capture lane upgrades them to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceancdn
+spec: {}

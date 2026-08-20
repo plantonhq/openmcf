@@ -1,0 +1,13 @@
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanSpacesKey
+metadata:
+  name: app-uploads-key
+spec:
+  keyName: app-uploads
+  grants:
+    - bucket:
+        valueFrom:
+          kind: DigitalOceanBucket
+          name: app-assets
+          fieldPath: status.outputs.bucket_id
+      permission: readwrite
