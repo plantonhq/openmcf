@@ -1,0 +1,23 @@
+# The minimal live arm: a generic webhook destination with no secret --
+# proves the create/update/delete lifecycle and the type echo (Cloudflare
+# infers "generic" from the URL). This lane is also the API-token
+# defect-class probe: the provider's own tests blank the token for this
+# resource, so a 403 here is the expected ambush (see the profile).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareNotificationWebhook
+metadata:
+  name: planton-oss-e2e-cloudflarenotificationwebhook-minimal
+  id: planton-oss-e2e-cloudflarenotificationwebhook-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarenotificationwebhook
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: e2e-webhook-${E2E_RUN_ID}
+  url: "https://example.com/planton-e2e-hook"

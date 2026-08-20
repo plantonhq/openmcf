@@ -1,0 +1,14 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareNotificationPolicy
+metadata:
+  name: certificate-expiry-warning
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  name: certificate-expiry-warning
+  alert_type: universal_ssl_event_type
+  description: warn the platform team before a Universal SSL certificate lapses
+  mechanisms:
+    emails:
+      - platform@example.com
+    webhook_ids:
+      - value: "REPLACE_WITH_NOTIFICATION_WEBHOOK_UUID"

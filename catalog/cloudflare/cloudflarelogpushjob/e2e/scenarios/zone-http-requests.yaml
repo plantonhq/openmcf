@@ -1,0 +1,34 @@
+# The live Logpush arm: HTTP request logs from the run-scoped fixture zone
+# to a same-account R2 destination (which skips the ownership challenge).
+# The zone is a SCENARIO-declared prerequisite (the annotation below)
+# because the kind has no registry prerequisite -- account scope needs no
+# zone at all. The destination URI embeds R2 credentials, so it enters only
+# by env reference; unset, the lane skips honestly.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareLogpushJob
+metadata:
+  name: planton-oss-e2e-cloudflarelogpushjob-zone-http-requests
+  id: planton-oss-e2e-cloudflarelogpushjob-zone-http-requests
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarelogpushjob
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "CloudflareDnsZone"
+    planton.dev/e2e-required-env: PLANTON_E2E_CLOUDFLARE_LOGPUSH_R2_DESTINATION
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  dataset: http_requests
+  destination_conf:
+    value: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_LOGPUSH_R2_DESTINATION}
+  name: e2e-logpush-${E2E_RUN_ID}
+  max_upload_interval_seconds: 60
+  output_options:
+    output_type: ndjson
+    timestamp_format: rfc3339

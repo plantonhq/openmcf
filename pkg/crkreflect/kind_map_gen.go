@@ -366,6 +366,7 @@ import (
 	azurevpnserverconfigurationv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevpnserverconfiguration/v1alpha1"
 	azurevpnsitev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevpnsite/v1alpha1"
 	azurewebapplicationfirewallpolicyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurewebapplicationfirewallpolicy/v1alpha1"
+	cloudflareaccountapitokenv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareaccountapitoken/v1alpha1"
 	cloudflareaigatewayv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareaigateway/v1alpha1"
 	cloudflareauthenticatedoriginpullsv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareauthenticatedoriginpulls/v1alpha1"
 	cloudflareauthenticatedoriginpullscertificatev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareauthenticatedoriginpullscertificate/v1alpha1"
@@ -390,7 +391,10 @@ import (
 	cloudflareloadbalancerv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareloadbalancer/v1alpha1"
 	cloudflareloadbalancermonitorv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareloadbalancermonitor/v1alpha1"
 	cloudflareloadbalancerpoolv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareloadbalancerpool/v1alpha1"
+	cloudflarelogpushjobv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarelogpushjob/v1alpha1"
 	cloudflaremtlscertificatev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflaremtlscertificate/v1alpha1"
+	cloudflarenotificationpolicyv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarenotificationpolicy/v1alpha1"
+	cloudflarenotificationwebhookv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarenotificationwebhook/v1alpha1"
 	cloudflareorigincacertificatev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareorigincacertificate/v1alpha1"
 	cloudflarepagesprojectv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarepagesproject/v1alpha1"
 	cloudflarequeuev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarequeue/v1alpha1"
@@ -403,6 +407,7 @@ import (
 	cloudflareturnstilewidgetv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareturnstilewidget/v1alpha1"
 	cloudflarewaitingroomv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarewaitingroom/v1alpha1"
 	cloudflarewaitingroomeventv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarewaitingroomevent/v1alpha1"
+	cloudflarewebanalyticssitev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarewebanalyticssite/v1alpha1"
 	cloudflareworkerv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareworker/v1alpha1"
 	cloudflareworkerskvpairv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareworkerskvpair/v1alpha1"
 	cloudflareworkflowv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflareworkflow/v1alpha1"
@@ -1047,6 +1052,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 }
 
 var ProviderCloudflareMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
+	cloudresourcekind.CloudResourceKind_CloudflareAccountApiToken:                     &cloudflareaccountapitokenv1alpha1.CloudflareAccountApiToken{},
 	cloudresourcekind.CloudResourceKind_CloudflareAiGateway:                           &cloudflareaigatewayv1alpha1.CloudflareAiGateway{},
 	cloudresourcekind.CloudResourceKind_CloudflareAuthenticatedOriginPulls:            &cloudflareauthenticatedoriginpullsv1alpha1.CloudflareAuthenticatedOriginPulls{},
 	cloudresourcekind.CloudResourceKind_CloudflareAuthenticatedOriginPullsCertificate: &cloudflareauthenticatedoriginpullscertificatev1alpha1.CloudflareAuthenticatedOriginPullsCertificate{},
@@ -1071,7 +1077,10 @@ var ProviderCloudflareMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_CloudflareLoadBalancer:                        &cloudflareloadbalancerv1alpha1.CloudflareLoadBalancer{},
 	cloudresourcekind.CloudResourceKind_CloudflareLoadBalancerMonitor:                 &cloudflareloadbalancermonitorv1alpha1.CloudflareLoadBalancerMonitor{},
 	cloudresourcekind.CloudResourceKind_CloudflareLoadBalancerPool:                    &cloudflareloadbalancerpoolv1alpha1.CloudflareLoadBalancerPool{},
+	cloudresourcekind.CloudResourceKind_CloudflareLogpushJob:                          &cloudflarelogpushjobv1alpha1.CloudflareLogpushJob{},
 	cloudresourcekind.CloudResourceKind_CloudflareMtlsCertificate:                     &cloudflaremtlscertificatev1alpha1.CloudflareMtlsCertificate{},
+	cloudresourcekind.CloudResourceKind_CloudflareNotificationPolicy:                  &cloudflarenotificationpolicyv1alpha1.CloudflareNotificationPolicy{},
+	cloudresourcekind.CloudResourceKind_CloudflareNotificationWebhook:                 &cloudflarenotificationwebhookv1alpha1.CloudflareNotificationWebhook{},
 	cloudresourcekind.CloudResourceKind_CloudflareOriginCaCertificate:                 &cloudflareorigincacertificatev1alpha1.CloudflareOriginCaCertificate{},
 	cloudresourcekind.CloudResourceKind_CloudflarePagesProject:                        &cloudflarepagesprojectv1alpha1.CloudflarePagesProject{},
 	cloudresourcekind.CloudResourceKind_CloudflareQueue:                               &cloudflarequeuev1alpha1.CloudflareQueue{},
@@ -1084,6 +1093,7 @@ var ProviderCloudflareMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_CloudflareTurnstileWidget:                     &cloudflareturnstilewidgetv1alpha1.CloudflareTurnstileWidget{},
 	cloudresourcekind.CloudResourceKind_CloudflareWaitingRoom:                         &cloudflarewaitingroomv1alpha1.CloudflareWaitingRoom{},
 	cloudresourcekind.CloudResourceKind_CloudflareWaitingRoomEvent:                    &cloudflarewaitingroomeventv1alpha1.CloudflareWaitingRoomEvent{},
+	cloudresourcekind.CloudResourceKind_CloudflareWebAnalyticsSite:                    &cloudflarewebanalyticssitev1alpha1.CloudflareWebAnalyticsSite{},
 	cloudresourcekind.CloudResourceKind_CloudflareWorker:                              &cloudflareworkerv1alpha1.CloudflareWorker{},
 	cloudresourcekind.CloudResourceKind_CloudflareWorkersKvPair:                       &cloudflareworkerskvpairv1alpha1.CloudflareWorkersKvPair{},
 	cloudresourcekind.CloudResourceKind_CloudflareWorkflow:                            &cloudflareworkflowv1alpha1.CloudflareWorkflow{},

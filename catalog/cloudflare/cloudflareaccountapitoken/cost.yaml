@@ -1,0 +1,14 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflareaccountapitoken
+spec:
+  billing_model: free
+  notes: >-
+    API tokens are free on every plan and carry no per-call charge. What the
+    token's permissions let a caller DO can of course drive spend on the
+    metered products it reaches -- scope tokens narrowly for that reason, not
+    for the token's own cost.

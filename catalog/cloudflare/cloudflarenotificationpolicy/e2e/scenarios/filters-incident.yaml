@@ -1,0 +1,30 @@
+# The filters arm: an incident alert narrowed by the enum-walled
+# incident_impact filter -- proves the filters fan-in and the CEL wall's
+# values live, still email-delivered (no cross-kind dependency).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareNotificationPolicy
+metadata:
+  name: planton-oss-e2e-cloudflarenotificationpolicy-filters-incident
+  id: planton-oss-e2e-cloudflarenotificationpolicy-filters-incident
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarenotificationpolicy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: e2e-filters-incident-${E2E_RUN_ID}
+  alert_type: incident_alert
+  description: planton e2e incident policy with impact filters
+  enabled: true
+  mechanisms:
+    emails:
+      - e2e@example.com
+  filters:
+    incident_impact:
+      - INCIDENT_IMPACT_MAJOR
+      - INCIDENT_IMPACT_CRITICAL

@@ -1,0 +1,22 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarelogpushjob
+spec:
+  # Logpush jobs under live E2E: plain CRUD objects (real create, update,
+  # delete), dual-scope -- the live arm is zone-scoped (http_requests to an
+  # R2 destination). Watch items for the proving session: (1) Logpush is
+  # historically Enterprise-gated for most datasets -- if the test account's
+  # plan refuses the create, a recorded entitlement deferral is the honest
+  # outcome; (2) the live arm assumes a SAME-ACCOUNT R2 destination skips
+  # the ownership challenge -- verify, and if a challenge is demanded the
+  # lane needs the generate_ownership_challenge arm plus the manual token
+  # fetch; (3) destination_conf is rejected on update (HTTP 400) despite
+  # planning in-place -- never mutate it in a lane; (4) the R2 destination
+  # URI embeds credentials and enters only via env reference.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes pass.
+  status: pending_proof
+  timeout_minutes: 10

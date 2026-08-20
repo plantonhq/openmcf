@@ -1,0 +1,36 @@
+# The condition + validity-window arm: nested sub-resource scoping, client
+# IP restrictions, and an expiry -- proves the nested resources form, the
+# condition fan-in, and the RFC 3339 walls live.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareAccountApiToken
+metadata:
+  name: planton-oss-e2e-cloudflareaccountapitoken-condition-ttl
+  id: planton-oss-e2e-cloudflareaccountapitoken-condition-ttl
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareaccountapitoken
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-required-env: PLANTON_E2E_CLOUDFLARE_PERMISSION_GROUP_ID
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: e2e-token-condition-${E2E_RUN_ID}
+  policies:
+    - effect: allow
+      permission_group_ids:
+        - ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_PERMISSION_GROUP_ID}
+      resources:
+        "com.cloudflare.api.account.${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}":
+          subresources:
+            "com.cloudflare.api.account.zone.*": "*"
+  condition:
+    request_ip:
+      in_cidrs:
+        - "198.51.100.0/24"
+        - "203.0.113.0/24"
+  expires_on: "2027-12-31T23:59:59Z"
+  status: active

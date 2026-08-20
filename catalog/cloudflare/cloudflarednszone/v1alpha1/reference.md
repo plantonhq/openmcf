@@ -1221,12 +1221,14 @@ Fields on other kinds that can point at this resource:
 | CloudflareHealthcheck | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareIpAccessRule | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareLoadBalancer | `spec.zoneId` | `status.outputs.zone_id` |
+| CloudflareLogpushJob | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareR2Bucket | `spec.customDomains[].zoneId` | `status.outputs.zone_id` |
 | CloudflareRuleset | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareSnippet | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareSnippetRules | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareWaitingRoom | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareWaitingRoomEvent | `spec.zoneId` | `status.outputs.zone_id` |
+| CloudflareWebAnalyticsSite | `spec.zoneTag` | `status.outputs.zone_id` |
 | CloudflareWorker | `spec.customDomains[].zoneId` | `status.outputs.zone_id` |
 | CloudflareWorker | `spec.routes[].zoneId` | `status.outputs.zone_id` |
 | CloudflareZeroTrustAccessApplication | `spec.zoneId` | `status.outputs.zone_id` |

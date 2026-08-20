@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarenotificationpolicy.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarenotificationpolicy/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarenotificationpolicy/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareNotificationPolicy is a KRM-style resource for creating
+// notification policies: alert rules that deliver Cloudflare events to
+// email, PagerDuty, and webhook destinations.
+message CloudflareNotificationPolicy {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareNotificationPolicy'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareNotificationPolicySpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareNotificationPolicyStatus status = 5;
+}
+
+// CloudflareNotificationPolicyStatus represents the observed state of the
+// policy.
+message CloudflareNotificationPolicyStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareNotificationPolicyStackOutputs outputs = 1;
+}

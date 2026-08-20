@@ -1,0 +1,16 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareLogpushJob
+metadata:
+  name: audit-logs-to-splunk
+spec:
+  account_id: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  dataset: audit_logs_v2
+  destination_conf:
+    value: "https://splunk.example.com:8088/services/collector/raw?channel=REPLACE_WITH_CHANNEL&header_Authorization=Splunk%20REPLACE_WITH_HEC_TOKEN&insecure-skip-verify=false"
+  name: audit-logs-to-splunk
+  ownership_challenge:
+    value: "REPLACE_WITH_OWNERSHIP_CHALLENGE_TOKEN"
+  max_upload_interval_seconds: 30
+  output_options:
+    output_type: ndjson
+    timestamp_format: rfc3339

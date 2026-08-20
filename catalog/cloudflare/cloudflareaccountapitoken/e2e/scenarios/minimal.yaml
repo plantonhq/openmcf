@@ -1,0 +1,31 @@
+# The minimal live arm: one allow policy granting one permission group over
+# the whole account -- proves the create/update/delete lifecycle, the typed
+# resources serialization (whole-resource grant form), and the create-only
+# secret value output. The permission-group UUID is account-fetchable in
+# one call (see the profile) and enters by env reference; unset, the lane
+# skips honestly.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareAccountApiToken
+metadata:
+  name: planton-oss-e2e-cloudflareaccountapitoken-minimal
+  id: planton-oss-e2e-cloudflareaccountapitoken-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareaccountapitoken
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-required-env: PLANTON_E2E_CLOUDFLARE_PERMISSION_GROUP_ID
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: e2e-token-minimal-${E2E_RUN_ID}
+  policies:
+    - effect: allow
+      permission_group_ids:
+        - ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_PERMISSION_GROUP_ID}
+      resources:
+        "com.cloudflare.api.account.${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}":
+          permission: "*"

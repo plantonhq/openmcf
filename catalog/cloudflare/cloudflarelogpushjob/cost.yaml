@@ -1,0 +1,18 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarelogpushjob
+spec:
+  billing_model: free
+  notes: >-
+    Cloudflare bills nothing for the job object itself and charges no
+    per-delivery fee, but two real costs sit on either side of it. Logpush is
+    an ENTITLEMENT: most datasets require an Enterprise plan (a few, such as
+    Workers trace events, reach lower tiers), so the plan is the gate on
+    using this component at all. And delivery lands at the DESTINATION -- R2,
+    S3, or the log vendor bills the storage and ingest, and a busy zone's
+    http_requests dataset is high volume. Use `filter` and
+    output_options.sample_rate to bound what ships.

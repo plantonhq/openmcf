@@ -1950,6 +1950,21 @@ const (
 	// CloudflareWaitingRoom is a prerequisite because events run on a room (and
 	// the room's own chain brings the zone).
 	CloudResourceKind_CloudflareWaitingRoomEvent CloudResourceKind = 7241
+	// No prerequisites: logpush jobs are dual-scope (account or zone) and the
+	// zone reference is optional -- zone-scoped lanes declare the edge at the
+	// scenario level.
+	CloudResourceKind_CloudflareLogpushJob CloudResourceKind = 7250
+	// No prerequisites: every delivery mechanism (email, PagerDuty, webhook)
+	// is optional -- policies referencing a webhook declare the edge at the
+	// scenario level.
+	CloudResourceKind_CloudflareNotificationPolicy CloudResourceKind = 7251
+	// No prerequisites: a webhook destination is account-scoped and
+	// self-contained -- notification policies reference it, not the reverse.
+	CloudResourceKind_CloudflareNotificationWebhook CloudResourceKind = 7252
+	// No prerequisites: a site is identified by host OR zone, and the zone
+	// reference is optional -- zone-measured lanes declare the edge at the
+	// scenario level.
+	CloudResourceKind_CloudflareWebAnalyticsSite CloudResourceKind = 7253
 	// CloudflareWorker is a prerequisite because a workflow registers a class
 	// exported by a DEPLOYED Worker script -- the spec's script_name reference
 	// must resolve first.
@@ -1965,6 +1980,9 @@ const (
 	// optional Secrets Store link (BYO provider keys) is a scenario-level
 	// composition, not a structural requirement.
 	CloudResourceKind_CloudflareAiGateway CloudResourceKind = 7300
+	// No prerequisites: an account-owned API token is self-contained; the
+	// resources its policies cover are identifiers, not references.
+	CloudResourceKind_CloudflareAccountApiToken CloudResourceKind = 7370
 	// CloudflareDnsZone is a prerequisite because standalone health checks are
 	// zone-scoped -- the spec's zone_id reference must resolve first.
 	CloudResourceKind_CloudflareHealthcheck CloudResourceKind = 7400
@@ -2627,10 +2645,15 @@ var (
 		7213: "CloudflareSnippetRules",
 		7240: "CloudflareWaitingRoom",
 		7241: "CloudflareWaitingRoomEvent",
+		7250: "CloudflareLogpushJob",
+		7251: "CloudflareNotificationPolicy",
+		7252: "CloudflareNotificationWebhook",
+		7253: "CloudflareWebAnalyticsSite",
 		7270: "CloudflareWorkflow",
 		7271: "CloudflareSecretsStore",
 		7272: "CloudflareSecretsStoreSecret",
 		7300: "CloudflareAiGateway",
+		7370: "CloudflareAccountApiToken",
 		7400: "CloudflareHealthcheck",
 		8000: "Auth0Connection",
 		8001: "Auth0Client",
@@ -3284,10 +3307,15 @@ var (
 		"CloudflareSnippetRules":                         7213,
 		"CloudflareWaitingRoom":                          7240,
 		"CloudflareWaitingRoomEvent":                     7241,
+		"CloudflareLogpushJob":                           7250,
+		"CloudflareNotificationPolicy":                   7251,
+		"CloudflareNotificationWebhook":                  7252,
+		"CloudflareWebAnalyticsSite":                     7253,
 		"CloudflareWorkflow":                             7270,
 		"CloudflareSecretsStore":                         7271,
 		"CloudflareSecretsStoreSecret":                   7272,
 		"CloudflareAiGateway":                            7300,
+		"CloudflareAccountApiToken":                      7370,
 		"CloudflareHealthcheck":                          7400,
 		"Auth0Connection":                                8000,
 		"Auth0Client":                                    8001,
@@ -3678,7 +3706,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xf9\xae\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\x98\xb1\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4360,11 +4388,16 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x11CloudflareSnippet\x10\xac8\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x06cfsnip:\x02\xd86\x12<\n" +
 	"\x16CloudflareSnippetRules\x10\xad8\x1a\x1f\xa2\xf7\x04\x1b\b\x0f\x12\bv1alpha1\"\acfsnipr:\x04\xd86\xac8\x129\n" +
 	"\x15CloudflareWaitingRoom\x10\xc88\x1a\x1d\xa2\xf7\x04\x19\b\x0f\x12\bv1alpha1\"\acfwroom:\x02\xd86\x12=\n" +
-	"\x1aCloudflareWaitingRoomEvent\x10\xc98\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x06cfwrev:\x02\xc88\x123\n" +
+	"\x1aCloudflareWaitingRoomEvent\x10\xc98\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x06cfwrev:\x02\xc88\x122\n" +
+	"\x14CloudflareLogpushJob\x10\xd28\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cflpj\x129\n" +
+	"\x1cCloudflareNotificationPolicy\x10\xd38\x1a\x16\xa2\xf7\x04\x12\b\x0f\x12\bv1alpha1\"\x04cfnp\x12:\n" +
+	"\x1dCloudflareNotificationWebhook\x10\xd48\x1a\x16\xa2\xf7\x04\x12\b\x0f\x12\bv1alpha1\"\x04cfnw\x128\n" +
+	"\x1aCloudflareWebAnalyticsSite\x10\xd58\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfwas\x123\n" +
 	"\x12CloudflareWorkflow\x10\xe68\x1a\x1a\xa2\xf7\x04\x16\b\x0f\x12\bv1alpha1\"\x04cfwf:\x02\xdb6\x123\n" +
 	"\x16CloudflareSecretsStore\x10\xe78\x1a\x16\xa2\xf7\x04\x12\b\x0f\x12\bv1alpha1\"\x04cfss\x12>\n" +
 	"\x1cCloudflareSecretsStoreSecret\x10\xe88\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x05cfsss:\x02\xe78\x121\n" +
-	"\x13CloudflareAiGateway\x10\x849\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfaig\x126\n" +
+	"\x13CloudflareAiGateway\x10\x849\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfaig\x128\n" +
+	"\x19CloudflareAccountApiToken\x10\xca9\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfatok\x126\n" +
 	"\x15CloudflareHealthcheck\x10\xe89\x1a\x1a\xa2\xf7\x04\x16\b\x0f\x12\bv1alpha1\"\x04cfhc:\x02\xd86\x12.\n" +
 	"\x0fAuth0Connection\x10\xc0>\x1a\x18\xa2\xf7\x04\x14\b\x15\x12\bv1alpha1\"\x06a0conn\x12)\n" +
 	"\vAuth0Client\x10\xc1>\x1a\x17\xa2\xf7\x04\x13\b\x15\x12\bv1alpha1\"\x05a0cli\x12-\n" +

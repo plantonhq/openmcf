@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarenotificationwebhook.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// CloudflareNotificationWebhookSpec registers a webhook destination for
+// notification policies: an HTTPS endpoint (Slack, Google Chat, Datadog,
+// Discord, Feishu, Opsgenie, Splunk, or any generic receiver) that
+// CloudflareNotificationPolicy resources deliver alerts to. Cloudflare
+// infers the destination's type from the URL and reports it as an output.
+// A plain CRUD object -- real create, update, delete.
+message CloudflareNotificationWebhookSpec {
+  // The Cloudflare account the webhook destination belongs to.
+  string account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "account_id.hex32"
+      message: "account_id must be a 32-character hex string"
+      expression: "this.matches('^[0-9a-fA-F]{32}$')"
+    }
+  ];
+
+  // The destination's name, shown in the dashboard's destinations list.
+  string name = 2 [(buf.validate.field).required = true];
+
+  // The endpoint URL alerts are POSTed to (for Slack/Google Chat/Discord
+  // and kin, the integration's incoming-webhook URL; for Datadog/Splunk/
+  // Opsgenie, the vendor's intake endpoint).
+  string url = 3 [(buf.validate.field).required = true];
+
+  // Optional shared secret sent with each delivery so the receiver can
+  // authenticate Cloudflare (for Datadog/Splunk/Opsgenie this carries the
+  // vendor API key). WRITE-ONLY: Cloudflare never returns it in any API
+  // response -- it cannot be read back, imported, or drift-detected.
+  // Provide a managed-secret reference; the platform resolves it
+  // just-in-time at deploy.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret = 4 [
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}

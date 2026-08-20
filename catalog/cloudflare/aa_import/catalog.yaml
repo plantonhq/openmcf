@@ -654,3 +654,66 @@ spec:
         The elements list forces replacement on any change, so a post-import
         graph edit plans a replace, never an update -- renaming the route is
         the only in-place change.
+    # --- Logs -------------------------------------------------------------------
+    # Logpush jobs are dual-scope: the import id carries the scope
+    # discriminator, so an account job imports as
+    # accounts/<account_id>/<job_id> and a zone job as
+    # zones/<zone_id>/<job_id>.
+    - terraform_type: cloudflare_logpush_job
+      pulumi_type: cloudflare:index/logpushJob:LogpushJob
+      id_format: "{scope_prefix}/{scope_id}/{job_id}"
+      notes: >-
+        ownership_challenge is write-only (never returned by the API) and must
+        be re-asserted from configuration after import. destination_conf comes
+        back but cannot be changed afterwards -- Cloudflare rejects the update
+        with HTTP 400 even though the provider plans it in place.
+    - terraform_type: cloudflare_logpush_ownership_challenge
+      pulumi_type: cloudflare:index/logpushOwnershipChallenge:LogpushOwnershipChallenge
+      not_importable_upstream_reason: >-
+        The provider ships no ImportState for the challenge, and its Read and
+        Delete are both empty -- the resource records a one-shot POST that
+        Cloudflare keeps forever. Its own plan warning says it "cannot be
+        destroyed from Terraform" and destroying it only drops it from state.
+    # --- Notifications ----------------------------------------------------------
+    - terraform_type: cloudflare_notification_policy
+      pulumi_type: cloudflare:index/notificationPolicy:NotificationPolicy
+      id_format: "{account_id}/{policy_id}"
+      notes: >-
+        Everything round-trips (no write-only fields), but the provider ships
+        no import acceptance test for this resource -- unlike its webhooks
+        sibling -- so verify the imported filters tree against configuration
+        before trusting a clean plan.
+    - terraform_type: cloudflare_notification_policy_webhooks
+      pulumi_type: cloudflare:index/notificationPolicyWebhooks:NotificationPolicyWebhooks
+      id_format: "{account_id}/{webhook_id}"
+      notes: >-
+        secret never round-trips ("Secrets are not returned in any API
+        response body") and must be re-asserted from configuration. The
+        provider's own import tests additionally ignore created_at and type on
+        verify; type is a server-inferred echo of the URL, never configured.
+    # --- Analytics --------------------------------------------------------------
+    - terraform_type: cloudflare_web_analytics_site
+      pulumi_type: cloudflare:index/webAnalyticsSite:WebAnalyticsSite
+      id_format: "{account_id}/{site_tag}"
+      notes: >-
+        The import id uses the site TAG (the resource's real key; its id
+        attribute is a copy). Four attributes -- enabled, host, lite, zone_tag
+        -- are never read back from the API, so an imported site carries them
+        only from configuration; the provider hand-backfills zone_tag from the
+        computed ruleset during import.
+    - terraform_type: cloudflare_web_analytics_rule
+      pulumi_type: cloudflare:index/webAnalyticsRule:WebAnalyticsRule
+      not_importable_upstream_reason: >-
+        The provider ships no ImportState, and its Read is an empty stub, so
+        rules are write-only from IaC's perspective -- an adopted site
+        re-asserts its declared rules on the next apply.
+    # --- Accounts, IAM & organization ------------------------------------------
+    - terraform_type: cloudflare_account_token
+      pulumi_type: cloudflare:index/accountToken:AccountToken
+      id_format: "{account_id}/{token_id}"
+      notes: >-
+        The token VALUE is never re-fetchable (returned only by the original
+        create), so an imported token has no usable credential in state -- if
+        the value was lost, rotate the token rather than importing it. The
+        provider's own import tests also ignore policies, because Cloudflare
+        returns them in canonical order rather than the order applied.

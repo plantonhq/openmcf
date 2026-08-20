@@ -5813,6 +5813,69 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"rule_id"},
 		},
 		{
+			// CloudflareLogpushJob: the numeric job id travels in string form,
+			// the scope ids key the verifier's path, and the challenge trio is
+			// populated only when the issuing arm ran (empty here -- the
+			// common shape).
+			name: "CloudflareLogpushJob",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareLogpushJob,
+			rawOutputs: map[string]interface{}{
+				"job_id":                       "146678",
+				"account_id":                   "",
+				"zone_id":                      "023e105f4ecef8ad9ca31a8372d0c353",
+				"ownership_challenge_filename": "",
+				"ownership_challenge_message":  "",
+				"ownership_challenge_valid":    false,
+			},
+			mustPopulate: []string{"job_id", "zone_id"},
+		},
+		{
+			name: "CloudflareNotificationPolicy",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareNotificationPolicy,
+			rawOutputs: map[string]interface{}{
+				"policy_id": "0da2b59e-f118-42de-95bd-14fdd8ff4d7a",
+			},
+			mustPopulate: []string{"policy_id"},
+		},
+		{
+			// CloudflareNotificationWebhook: the destination UUID policies
+			// reference, plus the type Cloudflare inferred from the URL.
+			name: "CloudflareNotificationWebhook",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareNotificationWebhook,
+			rawOutputs: map[string]interface{}{
+				"webhook_id": "9430334d-cf60-4147-8b76-8d6cbea1b099",
+				"type":       "generic",
+			},
+			mustPopulate: []string{"webhook_id", "type"},
+		},
+		{
+			// CloudflareWebAnalyticsSite: the site tag keys every RUM API
+			// path, the token and snippet are the beacon credential (secret-
+			// marked in both engines), and the ruleset id is the parent the
+			// folded rules live under.
+			name: "CloudflareWebAnalyticsSite",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareWebAnalyticsSite,
+			rawOutputs: map[string]interface{}{
+				"site_tag":   "0b7b0f1a08a54c6db26a6f1b193a2c85",
+				"site_token": "e64a2265d1a04f1cbb073b7d3a4a6b8d",
+				"snippet":    "<script defer src='https://static.cloudflareinsights.com/beacon.min.js'></script>",
+				"ruleset_id": "b4c1e7f2a3d94e6f8a9b0c1d2e3f4a5b",
+			},
+			mustPopulate: []string{"site_tag", "site_token", "ruleset_id"},
+		},
+		{
+			// CloudflareAccountApiToken: the management id and the
+			// create-only secret value (returned by Cloudflare exactly once;
+			// secret-marked in both engines).
+			name: "CloudflareAccountApiToken",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareAccountApiToken,
+			rawOutputs: map[string]interface{}{
+				"token_id": "ed17574386854bf78a67040be0a770b0",
+				"value":    "8M7wS6hCpXVc-DoRnPPY_UCWPgy8aea4Wy6kCe5T",
+			},
+			mustPopulate: []string{"token_id", "value"},
+		},
+		{
 			// AzureResourceGroup: flat scalar outputs from both engines (ARM id,
 			// name, region) must each land on the StackOutputs proto --
 			// resource_group_name is the FK target every other Azure kind

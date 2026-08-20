@@ -696,6 +696,50 @@ var verifiers = map[string]Verifier{
 		outputKeys:    []string{"rule_id"},
 		accountScoped: true,
 	},
+	// Logpush jobs delete for real and 404 honestly. The kind is
+	// dual-scope; the verifier matches the live arm's scope (zone-scoped,
+	// per the IpAccessRule precedent) with the account arm plan-proven
+	// offline. The folded ownership challenge is a one-shot POST with no
+	// read surface at all -- nothing to verify, nothing to orphan.
+	"cloudflarelogpushjob": &apiPathVerifier{
+		component:  "cloudflarelogpushjob",
+		pathFormat: "zones/%s/logpush/jobs/%s",
+		outputKeys: []string{"zone_id", "job_id"},
+	},
+	// Notification policies delete for real and 404 honestly.
+	"cloudflarenotificationpolicy": &apiPathVerifier{
+		component:     "cloudflarenotificationpolicy",
+		pathFormat:    "accounts/%s/alerting/v3/policies/%s",
+		outputKeys:    []string{"policy_id"},
+		accountScoped: true,
+	},
+	// Webhook destinations delete for real and 404 honestly (the type
+	// field is a server-side echo inferred from the URL, never a
+	// tombstone).
+	"cloudflarenotificationwebhook": &apiPathVerifier{
+		component:     "cloudflarenotificationwebhook",
+		pathFormat:    "accounts/%s/alerting/v3/destinations/webhooks/%s",
+		outputKeys:    []string{"webhook_id"},
+		accountScoped: true,
+	},
+	// Web Analytics sites delete for real and 404 honestly, keyed by the
+	// site tag. The folded rules ride the site (deleting the site retires
+	// its ruleset and rules).
+	"cloudflarewebanalyticssite": &apiPathVerifier{
+		component:     "cloudflarewebanalyticssite",
+		pathFormat:    "accounts/%s/rum/site_info/%s",
+		outputKeys:    []string{"site_tag"},
+		accountScoped: true,
+	},
+	// Account API tokens delete for real and 404 honestly (expired and
+	// revoked are status values on a live object, never deletion
+	// tombstones).
+	"cloudflareaccountapitoken": &apiPathVerifier{
+		component:     "cloudflareaccountapitoken",
+		pathFormat:    "accounts/%s/tokens/%s",
+		outputKeys:    []string{"token_id"},
+		accountScoped: true,
+	},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is

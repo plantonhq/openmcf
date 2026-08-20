@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarewebanalyticssite.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// CloudflareWebAnalyticsSiteSpec creates a Web Analytics (RUM) site:
+// Cloudflare's privacy-first real-user monitoring for one website, measured
+// by a JavaScript beacon. The site is identified by either a hostname (any
+// site, Cloudflare-proxied or not -- you embed the snippet yourself) or a
+// Cloudflare zone (auto_install can then inject the snippet at the edge) --
+// exactly one must be set. Free on every plan.
+//
+// The optional `rules[]` narrow WHAT gets measured: include or exclude
+// traffic by host and path. Cloudflare manages rules as separate objects
+// under the site's ruleset; this kind folds them in, and the modules manage
+// one rule object per row.
+//
+// One provider truth this spec teaches: the provider never reads rules back
+// after writing them (its refresh is deliberately blind), so rule edits
+// made in the Cloudflare dashboard are invisible to IaC until the next
+// apply re-asserts the declared rows. Manage rules from here or from the
+// dashboard -- not both.
+message CloudflareWebAnalyticsSiteSpec {
+  option (buf.validate.message).cel = {
+    id: "spec.site_identity_exactly_one"
+    message: "set exactly one of host (measure any site by hostname) or zone_tag (measure a Cloudflare zone)"
+    expression: "(this.host != '') != has(this.zone_tag)"
+  };
+
+  // The Cloudflare account the site belongs to.
+  string account_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "account_id.hex32"
+      message: "account_id must be a 32-character hex string"
+      expression: "this.matches('^[0-9a-fA-F]{32}$')"
+    }
+  ];
+
+  // The hostname to measure (e.g. www.example.com). Use for sites not on
+  // Cloudflare, or when you embed the snippet yourself. Set this OR
+  // zone_tag, never both.
+  string host = 2;
+
+  // The Cloudflare zone to measure. Set this OR host, never both.
+  // When using value_from, defaults to CloudflareDnsZone kind and status.outputs.zone_id field path.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef zone_tag = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareDnsZone,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // Whether Cloudflare injects the measurement snippet automatically at the
+  // edge (orange-clouded zones only -- pair with zone_tag).
+  optional bool auto_install = 4;
+
+  // Whether measurement is active. Cloudflare's default is enabled; the
+  // modules send the flag only when set.
+  optional bool enabled = 5;
+
+  // Serve the lightweight beacon variant (smaller script, reduced metric
+  // set).
+  optional bool lite = 6;
+
+  // Include/exclude rules narrowing what gets measured. Cloudflare manages
+  // each as its own object under the site's ruleset; the modules keep one
+  // object per row, in order.
+  repeated CloudflareWebAnalyticsSiteRule rules = 7;
+}
+
+// CloudflareWebAnalyticsSiteRule includes or excludes traffic from
+// measurement by host and paths.
+message CloudflareWebAnalyticsSiteRule {
+  // The hostname the rule applies to (e.g. shop.example.com; empty applies
+  // to every host of the site).
+  string host = 1;
+
+  // The paths the rule applies to (e.g. /checkout/*; * wildcards allowed).
+  repeated string paths = 2;
+
+  // Whether matching traffic is measured (true, an include rule) or
+  // dropped from measurement (false, an exclude rule).
+  optional bool inclusive = 3;
+
+  // Whether the rule is currently paused (kept but not applied).
+  optional bool is_paused = 4;
+}

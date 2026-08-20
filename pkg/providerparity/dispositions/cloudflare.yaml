@@ -350,29 +350,9 @@ resources:
     disposition: model-planned
     reason: "folds into the planned CloudflareApiShield kind (zone-level JWT rules spanning multiple credential configs)"
   # ---- Logs ------------------------------------------------------------
-  - resource: cloudflare_logpush_job
-    disposition: model-planned
-    reason: "judged as a planned CloudflareLogpushJob kind (log delivery jobs, the observability backbone)"
-  - resource: cloudflare_logpush_ownership_challenge
-    disposition: model-planned
-    reason: "folds into the planned CloudflareLogpushJob kind (the challenge is a destination-validation step, not an object)"
   - resource: cloudflare_logpull_retention
     disposition: deferred
     reason: "Enterprise-only entitlement: Logpull API"
-  # ---- Notifications ------------------------------------------------------------
-  - resource: cloudflare_notification_policy
-    disposition: model-planned
-    reason: "judged as a planned CloudflareNotificationPolicy kind (alerting policies for every Cloudflare product)"
-  - resource: cloudflare_notification_policy_webhooks
-    disposition: model-planned
-    reason: "judged as a planned CloudflareNotificationWebhook kind (webhook destinations referenced by policies)"
-  # ---- Analytics ------------------------------------------------------------
-  - resource: cloudflare_web_analytics_site
-    disposition: model-planned
-    reason: "judged as a planned CloudflareWebAnalyticsSite kind (real-user-monitoring site)"
-  - resource: cloudflare_web_analytics_rule
-    disposition: model-planned
-    reason: "folds into the planned CloudflareWebAnalyticsSite kind (path rules of the site)"
   # ---- Accounts, IAM & organization ------------------------------------------------------------
   - resource: cloudflare_account
     disposition: model-planned
@@ -383,9 +363,6 @@ resources:
   - resource: cloudflare_account_subscription
     disposition: model-planned
     reason: "folds into the planned CloudflareAccount kind (the plan is an attribute of the account)"
-  - resource: cloudflare_account_token
-    disposition: model-planned
-    reason: "judged as a planned CloudflareAccountApiToken kind (scoped account API tokens with independent rotation lifecycle)"
   - resource: cloudflare_api_token
     disposition: model-planned
     reason: "judged as a planned CloudflareApiToken kind (user-scoped tokens; the API and ownership model differ from account tokens)"

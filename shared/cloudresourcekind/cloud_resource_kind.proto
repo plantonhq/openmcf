@@ -5611,6 +5611,40 @@ enum CloudResourceKind {
     prerequisites: [CloudflareWaitingRoom]
   }];
 
+  // --- 7250-7269: Cloudflare logs, notifications & analytics sub-band ---
+
+  // No prerequisites: logpush jobs are dual-scope (account or zone) and the
+  // zone reference is optional -- zone-scoped lanes declare the edge at the
+  // scenario level.
+  CloudflareLogpushJob = 7250 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cflpj"
+  }];
+  // No prerequisites: every delivery mechanism (email, PagerDuty, webhook)
+  // is optional -- policies referencing a webhook declare the edge at the
+  // scenario level.
+  CloudflareNotificationPolicy = 7251 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfnp"
+  }];
+  // No prerequisites: a webhook destination is account-scoped and
+  // self-contained -- notification policies reference it, not the reverse.
+  CloudflareNotificationWebhook = 7252 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfnw"
+  }];
+  // No prerequisites: a site is identified by host OR zone, and the zone
+  // reference is optional -- zone-measured lanes declare the edge at the
+  // scenario level.
+  CloudflareWebAnalyticsSite = 7253 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfwas"
+  }];
+
   // --- 7270-7299: Cloudflare Workers-platform sub-band ---
 
   // CloudflareWorker is a prerequisite because a workflow registers a class
@@ -5648,6 +5682,16 @@ enum CloudResourceKind {
     provider: cloudflare
     version: "v1alpha1"
     id_prefix: "cfaig"
+  }];
+
+  // --- 7370-7399: Cloudflare accounts & IAM sub-band ---
+
+  // No prerequisites: an account-owned API token is self-contained; the
+  // resources its policies cover are identifiers, not references.
+  CloudflareAccountApiToken = 7370 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfatok"
   }];
 
   // --- 7400-7409: Cloudflare load-balancing & health completions sub-band ---

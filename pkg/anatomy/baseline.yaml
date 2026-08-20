@@ -1057,6 +1057,7 @@ violations:
   - catalog/azure/azurewebapplicationfirewallpolicy/iac:missing-permissions
   - catalog/azure/azurewebapplicationfirewallpolicy:missing-control-profile
   - catalog/azure/azurewebapplicationfirewallpolicy:missing-cost-profile
+  - catalog/cloudflare/cloudflareaccountapitoken/iac:missing-permissions
   - catalog/cloudflare/cloudflareaigateway/iac:missing-permissions
   - catalog/cloudflare/cloudflareauthenticatedoriginpulls/iac:missing-permissions
   - catalog/cloudflare/cloudflareauthenticatedoriginpullscertificate/iac:missing-permissions
@@ -1113,7 +1114,10 @@ violations:
   - catalog/cloudflare/cloudflareloadbalancerpool/iac:missing-permissions
   - catalog/cloudflare/cloudflareloadbalancerpool:missing-control-profile
   - catalog/cloudflare/cloudflareloadbalancerpool:missing-cost-profile
+  - catalog/cloudflare/cloudflarelogpushjob/iac:missing-permissions
   - catalog/cloudflare/cloudflaremtlscertificate/iac:missing-permissions
+  - catalog/cloudflare/cloudflarenotificationpolicy/iac:missing-permissions
+  - catalog/cloudflare/cloudflarenotificationwebhook/iac:missing-permissions
   - catalog/cloudflare/cloudflareorigincacertificate/iac:missing-permissions
   - catalog/cloudflare/cloudflareorigincacertificate:missing-control-profile
   - catalog/cloudflare/cloudflareorigincacertificate:missing-cost-profile
@@ -1138,6 +1142,7 @@ violations:
   - catalog/cloudflare/cloudflareturnstilewidget:missing-cost-profile
   - catalog/cloudflare/cloudflarewaitingroom/iac:missing-permissions
   - catalog/cloudflare/cloudflarewaitingroomevent/iac:missing-permissions
+  - catalog/cloudflare/cloudflarewebanalyticssite/iac:missing-permissions
   - catalog/cloudflare/cloudflareworker/iac:missing-permissions
   - catalog/cloudflare/cloudflareworker:missing-control-profile
   - catalog/cloudflare/cloudflareworker:missing-cost-profile

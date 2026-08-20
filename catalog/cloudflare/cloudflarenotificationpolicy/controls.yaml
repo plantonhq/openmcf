@@ -1,0 +1,70 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarenotificationpolicy
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: An alert rule; it stores no customer data of its own.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No storage surface.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloudflare delivers alerts over TLS (HTTPS webhooks, provider APIs for PagerDuty, TLS-backed mail transport).
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A configuration surface; nothing is exposed publicly.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress surface; the policy pushes outbound to its destinations.
+    - control_id: edge-protection
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The alerting API runs on Cloudflare's anycast edge with its standard DDoS posture.
+    - control_id: rbac
+      status: not_applicable
+      notes: Who may change policies is Cloudflare account-membership and API-token-scope posture (Notifications Write).
+    - control_id: workload-identity
+      status: not_applicable
+      notes: No workload identity surface; webhook authentication is the destination's shared secret (see CloudflareNotificationWebhook).
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No user-auth surface of its own.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Policy changes land in the Cloudflare account audit log.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: mechanisms
+      evidence:
+        type: spec_default
+        reference: This component IS the monitoring-integration surface -- it routes Cloudflare's own alerts to email, PagerDuty, and webhook destinations the operator runs.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Configuration-only surface, reproducible from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No stored data.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cloudflare-operated SaaS alerting on its global network; there is no zonal placement to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No provider-side deletion guard; deleting a policy silently stops the alerts it delivered (see GUIDE.md).
+    - control_id: managed-patching
+      status: not_applicable
+      notes: SaaS control plane -- Cloudflare operates it.

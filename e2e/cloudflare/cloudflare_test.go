@@ -441,6 +441,36 @@ func TestCloudflareZeroTrustDevicePostureRule_Pulumi(t *testing.T) {
 func TestCloudflareZeroTrustDevicePostureRule_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "cloudflarezerotrustdeviceposturerule", "terraform")
 }
+func TestCloudflareLogpushJob_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarelogpushjob", "pulumi")
+}
+func TestCloudflareLogpushJob_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarelogpushjob", "terraform")
+}
+func TestCloudflareNotificationPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarenotificationpolicy", "pulumi")
+}
+func TestCloudflareNotificationPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarenotificationpolicy", "terraform")
+}
+func TestCloudflareNotificationWebhook_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarenotificationwebhook", "pulumi")
+}
+func TestCloudflareNotificationWebhook_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarenotificationwebhook", "terraform")
+}
+func TestCloudflareWebAnalyticsSite_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarewebanalyticssite", "pulumi")
+}
+func TestCloudflareWebAnalyticsSite_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarewebanalyticssite", "terraform")
+}
+func TestCloudflareAccountApiToken_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflareaccountapitoken", "pulumi")
+}
+func TestCloudflareAccountApiToken_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflareaccountapitoken", "terraform")
+}
 func TestCloudflareZeroTrustAccessServiceToken_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "cloudflarezerotrustaccessservicetoken", "terraform")
 }

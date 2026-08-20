@@ -1,0 +1,20 @@
+# The minimal live arm: a host-identified site with no rules -- proves the
+# create/update/delete lifecycle, the host-XOR-zone wall, and the site_tag/
+# site_token/ruleset_id outputs live.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareWebAnalyticsSite
+metadata:
+  name: planton-oss-e2e-cloudflarewebanalyticssite-host-minimal
+  id: planton-oss-e2e-cloudflarewebanalyticssite-host-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarewebanalyticssite
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  account_id: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  host: e2e-${E2E_RUN_ID}.example.com
