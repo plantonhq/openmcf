@@ -28,6 +28,8 @@ rules:
       - create
       - get
       - list
+      - patch
+      - update
       - watch
   - apiGroups:
       - ""
@@ -210,9 +212,22 @@ rules:
       - rbac.authorization.k8s.io
     resources:
       - clusterrolebindings
+    verbs:
+      - create
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      # delete: opt-out reconciles remove namespaced grants they previously
+      # created (the runner's build grant when builds are disabled).
       - rolebindings
     verbs:
       - create
+      - delete
       - get
       - list
       - patch
@@ -228,11 +243,51 @@ rules:
       # (config/rbac/role.yaml) already carries -- this block is its
       # hand-synced chart copy.
       - clusterroles
-      - roles
     verbs:
       - bind
       - create
       - escalate
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      # delete: opt-out reconciles remove namespaced grants they previously
+      # created (the runner's build grant when builds are disabled).
+      - roles
+    verbs:
+      - bind
+      - create
+      - delete
+      - escalate
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      # The vendored Tekton Pipelines release ships its own webhook
+      # configurations; installing it means applying them.
+      - admissionregistration.k8s.io
+    resources:
+      - mutatingwebhookconfigurations
+      - validatingwebhookconfigurations
+    verbs:
+      - create
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - autoscaling
+    resources:
+      - horizontalpodautoscalers
+    verbs:
+      - create
       - get
       - list
       - patch
