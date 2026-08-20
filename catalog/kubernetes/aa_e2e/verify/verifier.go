@@ -1525,6 +1525,27 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 			Name:      info.Name,
 		}, nil
 
+	// The Planton operator: the manager Available in its namespace, the
+	// module-owned PlantonPlatform CRD Established — and THE DESIGN
+	// INVARIANT proven: NO PlantonPlatform exists after installing the
+	// operator alone (platforms are always deliberate declarations).
+	// Destroy asserts the KEEP posture positively: the CRD survives.
+	case "kubernetesplantonoperator":
+		return &PlantonOperatorInstallVerifier{
+			Namespace: info.Namespace,
+		}, nil
+
+	// A declared Planton platform: the PlantonPlatform reaches phase
+	// Ready (the operator's per-component gates all pass inside it) and
+	// the first-visit handles exist (gateway Service, setup-code
+	// Secret). Destroy polls the garbage-collected drain — the operator
+	// has no finalizers; teardown is owner-reference GC.
+	case "kubernetesplantonplatform":
+		return &PlantonPlatformVerifier{
+			Namespace: info.Namespace,
+			Name:      info.Name,
+		}, nil
+
 	default:
 		if crdNames, ok := crdInstallKinds[component]; ok {
 			return &CRDInstallVerifier{

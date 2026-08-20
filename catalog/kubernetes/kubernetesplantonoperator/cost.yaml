@@ -1,0 +1,20 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: kubernetesplantonoperator
+spec:
+  billing_model: cluster_capacity
+  cost_drivers:
+    - field_path: replicas
+      sku_meter: cluster CPU and memory reservations
+      impact: Each replica reserves the container resources below. Extras are leader-elected warm standbys — they multiply the reservation without adding reconciliation throughput.
+    - field_path: resources
+      sku_meter: cluster CPU and memory reservations
+      impact: The reservation per operator pod. Empty means the chart's defaults (requests 10m/256Mi, limits 500m/512Mi) — a deliberately small manager; the platforms it reconciles carry their own, far larger footprints as separate resources.
+  estimate_exclusions:
+    - the platforms this operator reconciles (control plane, console, identity server, databases, runner, secrets manager) are the real capacity story — they are declared as KubernetesPlantonPlatform resources and billed through their own workloads, never through this component's footprint
+    - the price of reserved CPU and memory is the target cluster's node economics, which this catalog cannot know
+  notes: "This component creates no cloud SKU of its own — its cost is the share of the cluster its single small manager Deployment reserves, realized on the cluster's bill. The operator is the lifecycle manager, not the workload: installing it alone deploys no platform."

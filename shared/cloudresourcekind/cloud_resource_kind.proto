@@ -5604,6 +5604,21 @@ enum CloudResourceKind {
     id_prefix: "k8srun"
   }];
 
+  KubernetesPlantonOperator = 4174 [(kind_meta) = {
+    provider: kubernetes
+    version: "v1alpha1"
+    id_prefix: "k8spltnop"
+  }];
+  // KubernetesPlantonOperator is a prerequisite because this kind declares
+  // the PlantonPlatform custom resource that only the operator's CRD
+  // admits and only the operator reconciles into a running platform.
+  KubernetesPlantonPlatform = 4175 [(kind_meta) = {
+    provider: kubernetes
+    version: "v1alpha1"
+    id_prefix: "k8spltn"
+    prerequisites: [KubernetesPlantonOperator]
+  }];
+
   // 5000–5999: DigitalOcean resources
   DigitalOceanAppPlatformService = 5000 [(kind_meta) = {
     provider: digital_ocean

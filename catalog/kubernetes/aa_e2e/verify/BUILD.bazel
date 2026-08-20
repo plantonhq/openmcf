@@ -64,6 +64,7 @@ go_library(
         "perconamongodb.go",
         "perconamysql.go",
         "perconaoperator.go",
+        "plantonplatform.go",
         "plantonrunner.go",
         "preemption.go",
         "pvcdatasource.go",

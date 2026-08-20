@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesplantonplatform.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetesplantonplatform/v1alpha1/outputs.proto";
+import "catalog/kubernetes/kubernetesplantonplatform/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// KubernetesPlantonPlatform declares a self-hosted Planton platform as a
+// PlantonPlatform custom resource the Planton operator reconciles — the
+// control plane, console, identity server, databases, secrets manager,
+// and in-cluster runner, in one namespace. Requires the operator
+// (KubernetesPlantonOperator) on the cluster; one operator serves every
+// platform.
+message KubernetesPlantonPlatform {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'KubernetesPlantonPlatform'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  KubernetesPlantonPlatformSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  KubernetesPlantonPlatformStatus status = 5;
+}
+
+// KubernetesPlantonPlatformStatus describes the observed state of KubernetesPlantonPlatform.
+message KubernetesPlantonPlatformStatus {
+  // stack-outputs
+  KubernetesPlantonPlatformStackOutputs outputs = 1;
+}

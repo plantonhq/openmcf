@@ -2043,10 +2043,15 @@ const (
 	// KubernetesPostgres is a prerequisite because the recommended (and
 	// E2E-proven) database composition backs Temporal's default and
 	// visibility stores with a CloudNativePG cluster.
-	CloudResourceKind_KubernetesTemporal      CloudResourceKind = 4170
-	CloudResourceKind_KubernetesNats          CloudResourceKind = 4171
-	CloudResourceKind_KubernetesLocust        CloudResourceKind = 4172
-	CloudResourceKind_KubernetesPlantonRunner CloudResourceKind = 4173
+	CloudResourceKind_KubernetesTemporal        CloudResourceKind = 4170
+	CloudResourceKind_KubernetesNats            CloudResourceKind = 4171
+	CloudResourceKind_KubernetesLocust          CloudResourceKind = 4172
+	CloudResourceKind_KubernetesPlantonRunner   CloudResourceKind = 4173
+	CloudResourceKind_KubernetesPlantonOperator CloudResourceKind = 4174
+	// KubernetesPlantonOperator is a prerequisite because this kind declares
+	// the PlantonPlatform custom resource that only the operator's CRD
+	// admits and only the operator reconciles into a running platform.
+	CloudResourceKind_KubernetesPlantonPlatform CloudResourceKind = 4175
 	// 5000–5999: DigitalOcean resources
 	CloudResourceKind_DigitalOceanAppPlatformService CloudResourceKind = 5000
 	CloudResourceKind_DigitalOceanBucket             CloudResourceKind = 5001
@@ -2725,6 +2730,8 @@ var (
 		4171: "KubernetesNats",
 		4172: "KubernetesLocust",
 		4173: "KubernetesPlantonRunner",
+		4174: "KubernetesPlantonOperator",
+		4175: "KubernetesPlantonPlatform",
 		5000: "DigitalOceanAppPlatformService",
 		5001: "DigitalOceanBucket",
 		5002: "DigitalOceanContainerRegistry",
@@ -3394,6 +3401,8 @@ var (
 		"KubernetesNats":                                 4171,
 		"KubernetesLocust":                               4172,
 		"KubernetesPlantonRunner":                        4173,
+		"KubernetesPlantonOperator":                      4174,
+		"KubernetesPlantonPlatform":                      4175,
 		"DigitalOceanAppPlatformService":                 5000,
 		"DigitalOceanBucket":                             5001,
 		"DigitalOceanContainerRegistry":                  5002,
@@ -3828,7 +3837,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xe7\xb1\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xe3\xb2\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4520,7 +4529,9 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x12KubernetesTemporal\x10\xca \x1a\x1d\xa2\xf7\x04\x19\b\x13\x12\bv1alpha1\"\ak8stprl:\x02\x85 \x12.\n" +
 	"\x0eKubernetesNats\x10\xcb \x1a\x19\xa2\xf7\x04\x15\b\x13\x12\bv1alpha1\"\ak8snats\x12/\n" +
 	"\x10KubernetesLocust\x10\xcc \x1a\x18\xa2\xf7\x04\x14\b\x13\x12\bv1alpha1\"\x06k8sloc\x126\n" +
-	"\x17KubernetesPlantonRunner\x10\xcd \x1a\x18\xa2\xf7\x04\x14\b\x13\x12\bv1alpha1\"\x06k8srun\x12<\n" +
+	"\x17KubernetesPlantonRunner\x10\xcd \x1a\x18\xa2\xf7\x04\x14\b\x13\x12\bv1alpha1\"\x06k8srun\x12;\n" +
+	"\x19KubernetesPlantonOperator\x10\xce \x1a\x1b\xa2\xf7\x04\x17\b\x13\x12\bv1alpha1\"\tk8spltnop\x12=\n" +
+	"\x19KubernetesPlantonPlatform\x10\xcf \x1a\x1d\xa2\xf7\x04\x19\b\x13\x12\bv1alpha1\"\ak8spltn:\x02\xce \x12<\n" +
 	"\x1eDigitalOceanAppPlatformService\x10\x88'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05doapp\x120\n" +
 	"\x12DigitalOceanBucket\x10\x89'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05dobkt\x12:\n" +
 	"\x1dDigitalOceanContainerRegistry\x10\x8a'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04docr\x128\n" +

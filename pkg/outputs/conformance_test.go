@@ -1614,6 +1614,39 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// KubernetesPlantonOperator: the installation handles — the
+			// namespace and the fixed release name (one operator per
+			// cluster, self-enforced at startup).
+			name: "KubernetesPlantonOperator",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesPlantonOperator,
+			rawOutputs: map[string]interface{}{
+				"namespace":    "planton-operator",
+				"release_name": "planton-operator",
+			},
+			mustPopulate: []string{"namespace", "release_name"},
+		},
+		{
+			// KubernetesPlantonPlatform: the first-visit handles — the
+			// platform's namespace and name (the prefix of every
+			// operator-created object), the gateway Service, the
+			// setup-code Secret, and the two exact commands a person (or
+			// the desktop's connect-existing flow) runs.
+			name: "KubernetesPlantonPlatform",
+			kind: cloudresourcekind.CloudResourceKind_KubernetesPlantonPlatform,
+			rawOutputs: map[string]interface{}{
+				"namespace":            "planton",
+				"platform_name":        "planton",
+				"gateway_service":      "planton-gateway",
+				"setup_code_secret":    "planton-identity-setup-code",
+				"port_forward_command": "kubectl port-forward -n planton svc/planton-gateway 8080:80",
+				"setup_code_command":   "kubectl -n planton get secret planton-identity-setup-code -o jsonpath='{.data.setup-code}' | base64 -d",
+			},
+			mustPopulate: []string{
+				"namespace", "platform_name", "gateway_service",
+				"setup_code_secret", "port_forward_command", "setup_code_command",
+			},
+		},
+		{
 			// KubernetesGhaRunnerScaleSetController: the pinned-fullname
 			// naming contract — the controller ServiceAccount equals the
 			// release name — the handle fenced scale sets reference.

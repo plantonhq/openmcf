@@ -653,6 +653,8 @@ go_library(
         "//catalog/kubernetes/kubernetesperconamongooperator/v1alpha1",
         "//catalog/kubernetes/kubernetesperconamysqloperator/v1alpha1",
         "//catalog/kubernetes/kubernetespersistentvolumeclaim/v1alpha1",
+        "//catalog/kubernetes/kubernetesplantonoperator/v1alpha1",
+        "//catalog/kubernetes/kubernetesplantonplatform/v1alpha1",
         "//catalog/kubernetes/kubernetesplantonrunner/v1alpha1",
         "//catalog/kubernetes/kubernetespoddisruptionbudget/v1alpha1",
         "//catalog/kubernetes/kubernetespostgres/v1alpha1",

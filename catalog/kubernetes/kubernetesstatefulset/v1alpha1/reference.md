@@ -1843,6 +1843,8 @@ Allowed values (use exactly as shown):
 - `KubernetesNats`
 - `KubernetesLocust`
 - `KubernetesPlantonRunner`
+- `KubernetesPlantonOperator`
+- `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
 - `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
@@ -2675,6 +2677,8 @@ Allowed values (use exactly as shown):
 - `KubernetesNats`
 - `KubernetesLocust`
 - `KubernetesPlantonRunner`
+- `KubernetesPlantonOperator`
+- `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
 - `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
@@ -4693,6 +4697,8 @@ Allowed values (use exactly as shown):
 - `KubernetesNats`
 - `KubernetesLocust`
 - `KubernetesPlantonRunner`
+- `KubernetesPlantonOperator`
+- `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
 - `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
@@ -5525,6 +5531,8 @@ Allowed values (use exactly as shown):
 - `KubernetesNats`
 - `KubernetesLocust`
 - `KubernetesPlantonRunner`
+- `KubernetesPlantonOperator`
+- `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
 - `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
@@ -7584,6 +7592,8 @@ Allowed values (use exactly as shown):
 - `KubernetesNats`
 - `KubernetesLocust`
 - `KubernetesPlantonRunner`
+- `KubernetesPlantonOperator`
+- `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
 - `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
@@ -8416,6 +8426,8 @@ Allowed values (use exactly as shown):
 - `KubernetesNats`
 - `KubernetesLocust`
 - `KubernetesPlantonRunner`
+- `KubernetesPlantonOperator`
+- `KubernetesPlantonPlatform` -- KubernetesPlantonOperator is a prerequisite because this kind declares the PlantonPlatform custom resource that only the operator's CRD admits and only the operator reconciles into a running platform.
 - `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`

@@ -635,6 +635,8 @@ import (
 	kubernetesperconamongooperatorv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesperconamongooperator/v1alpha1"
 	kubernetesperconamysqloperatorv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesperconamysqloperator/v1alpha1"
 	kubernetespersistentvolumeclaimv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetespersistentvolumeclaim/v1alpha1"
+	kubernetesplantonoperatorv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesplantonoperator/v1alpha1"
+	kubernetesplantonplatformv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesplantonplatform/v1alpha1"
 	kubernetesplantonrunnerv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesplantonrunner/v1alpha1"
 	kubernetespoddisruptionbudgetv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetespoddisruptionbudget/v1alpha1"
 	kubernetespostgresv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetespostgres/v1alpha1"
@@ -1337,6 +1339,8 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesPerconaMongoOperator:        &kubernetesperconamongooperatorv1alpha1.KubernetesPerconaMongoOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesPerconaMysqlOperator:        &kubernetesperconamysqloperatorv1alpha1.KubernetesPerconaMysqlOperator{},
 	cloudresourcekind.CloudResourceKind_KubernetesPersistentVolumeClaim:       &kubernetespersistentvolumeclaimv1alpha1.KubernetesPersistentVolumeClaim{},
+	cloudresourcekind.CloudResourceKind_KubernetesPlantonOperator:             &kubernetesplantonoperatorv1alpha1.KubernetesPlantonOperator{},
+	cloudresourcekind.CloudResourceKind_KubernetesPlantonPlatform:             &kubernetesplantonplatformv1alpha1.KubernetesPlantonPlatform{},
 	cloudresourcekind.CloudResourceKind_KubernetesPlantonRunner:               &kubernetesplantonrunnerv1alpha1.KubernetesPlantonRunner{},
 	cloudresourcekind.CloudResourceKind_KubernetesPodDisruptionBudget:         &kubernetespoddisruptionbudgetv1alpha1.KubernetesPodDisruptionBudget{},
 	cloudresourcekind.CloudResourceKind_KubernetesPostgres:                    &kubernetespostgresv1alpha1.KubernetesPostgres{},

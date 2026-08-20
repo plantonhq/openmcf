@@ -1,0 +1,12 @@
+# The baseline install: the operator alone, chart defaults — the shape the
+# platform kind's prerequisite chain installs. Installing the operator
+# alone deploys NO platform (the verifier asserts exactly that); platforms
+# are declared separately with KubernetesPlantonPlatform resources.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPlantonOperator
+metadata:
+  name: e2e-planton-operator-minimal
+spec:
+  namespace:
+    value: planton-operator
+  create_namespace: true

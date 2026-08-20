@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/kubernetes/kubernetesplantonoperator/v1alpha1/outputs.proto";
+import "catalog/kubernetes/kubernetesplantonoperator/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// KubernetesPlantonOperator installs the Planton operator — the lifecycle
+// manager that reconciles a PlantonPlatform declaration (a
+// KubernetesPlantonPlatform resource) into a running self-hosted Planton.
+// One install per cluster; installing the operator alone deploys no
+// platform.
+message KubernetesPlantonOperator {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'kubernetes.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'KubernetesPlantonOperator'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  KubernetesPlantonOperatorSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  KubernetesPlantonOperatorStatus status = 5;
+}
+
+// KubernetesPlantonOperatorStatus describes the observed state of KubernetesPlantonOperator.
+message KubernetesPlantonOperatorStatus {
+  // stack-outputs
+  KubernetesPlantonOperatorStackOutputs outputs = 1;
+}
