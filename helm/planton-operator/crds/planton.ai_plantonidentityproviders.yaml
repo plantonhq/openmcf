@@ -21,6 +21,9 @@ spec:
     - jsonPath: .status.conditions[?(@.type=='Bound')].status
       name: Bound
       type: string
+    - jsonPath: .status.conditions[?(@.type=='Provisioned')].status
+      name: Provisioned
+      type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
