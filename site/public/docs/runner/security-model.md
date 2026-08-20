@@ -32,7 +32,7 @@ The strongest form of this isolation is [runner-delegated authentication](#runne
 
 ## Runner Identity
 
-Each runner has a dedicated machine identity on the Planton platform, represented by a [service account](/docs/security/authentication-and-authorization#service-accounts). When you [generate credentials](/docs/runner/deployment) for a runner, Planton auto-provisions a service account, mints an API key, and embeds the key in the runner's credentials file. The runner uses this key to authenticate with Planton's control plane at startup and during runtime operations.
+Each runner has a dedicated machine identity on the Planton platform, represented by a [service account](/docs/security/authentication-and-authorization#service-accounts). When a runner [enrolls](/docs/runner/deployment) — started with a runner token, it registers itself with Planton on arrival — Planton auto-provisions a service account, mints an API key, and delivers the key in the runner's identity document. The runner uses this key to authenticate with Planton's control plane at startup and during runtime operations.
 
 This identity enables just-in-time credential resolution. Instead of embedding cloud provider secrets or state backend passwords in the runner's configuration, the runner fetches them from Planton's secrets manager at the moment they are needed. The service account's permissions control what the runner can access — scoped to its owning organization's secrets and variables.
 

@@ -108,8 +108,8 @@ If your environment uses an egress proxy or firewall that inspects TLS traffic, 
 
 Deploying a runner takes three steps:
 
-1. **Generate credentials** for the runner using the CLI or web console. This produces a single credentials file containing the mTLS certificates, an API key, and organizational context the runner needs.
-2. **Deploy** the runner to your infrastructure — Kubernetes, AWS ECS, GCP Cloud Run, or Azure Container Apps.
+1. **Create a runner token** in the console (Organization Settings → Runner Tokens) or with `planton runner token create`. The token authorizes runners to join your organization — it is never a runner's identity.
+2. **Start or deploy** a runner with the token — Kubernetes, AWS ECS, GCP Cloud Run, or Azure Container Apps. Each runner enrolls itself on arrival and receives its own individually revocable identity.
 3. **Set as default** (optional) so your organization's connections automatically route through this runner.
 
 See [Deployment](/docs/runner/deployment) for the complete walkthrough.

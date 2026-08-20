@@ -69,7 +69,7 @@ planton auth login
 planton iam apikey new --name "ci-pipeline"
 ```
 
-**Service accounts** — For machine-to-machine authentication. Service accounts are dedicated machine identities with their own API keys, purpose-built for [Runners](/docs/runner) and other automated systems. When you generate credentials for a runner, Planton auto-provisions a service account and mints an API key — the runner uses it to authenticate with the control plane and resolve secrets at runtime.
+**Service accounts** — For machine-to-machine authentication. Service accounts are dedicated machine identities with their own API keys, purpose-built for [Runners](/docs/runner) and other automated systems. When a runner enrolls with a runner token, Planton auto-provisions a service account and mints an API key — the runner uses it to authenticate with the control plane and resolve secrets at runtime.
 
 ```bash
 planton sa create --org acme --name deploy-runner
