@@ -74,6 +74,19 @@ postures:
   name (`cp`/`mv` -- a path the user gives you is an invitation under the
   boundary above).
 
+  **What already exists is checked out, never re-typed.** When the work
+  starts from a published chart or a deployed project, pull the real files
+  into their own top-level subfolder and work there: `planton chart
+  checkout <slug> --output-dir <chart-dir>` lays out a chart from the
+  catalog ready to customize, and `planton infra project checkout
+  <id-or-name> --output-dir <project-dir>` lays out a deployed project's
+  working copy (its hidden binding included, so the folder follows
+  `references/deployed-projects.md`). A checkout writes many files at
+  once, so the composing declaration below comes FIRST, exactly as for
+  files you author yourself. And it lands where your SHELL is: `cd` to the
+  folder you were given before running it (see the shell-location rule
+  below) so the subfolder is born inside the workspace, never beside it.
+
   **A chart is for an architecture; a single one-off resource is a loose
   manifest.** When the request names one thing ("an S3 bucket for our
   assets") rather than an architecture, a chart is ceremony: write ONE
@@ -97,9 +110,18 @@ postures:
   THAT project, saving starts a real deployment pipeline, and the workflow
   below bends -- read `references/deployed-projects.md` before doing
   anything.
-- **Neither exists -- the folder itself is the chart.** A chart checked out
-  from git, a scaffold, a folder the user picked: compose in place at its
-  root, exactly as the anatomy above shows.
+- **Neither exists -- the folder itself is the chart.** A chart pulled from
+  git or with `planton chart checkout`, a scaffold, a folder the user
+  picked: compose in place at its root, exactly as the anatomy above shows.
+
+**Your shell does not start in the folder you were given.** The shell's
+working directory is the host application's, not the workspace's -- a
+relative path in any command (a checkout's `--output-dir`, the declaration
+below, a build target) lands OUTSIDE the folder unless you anchor it. So
+before your first file-writing shell command, `cd` to the folder you were
+given (your file tools list its absolute path), or write every path
+workspace-absolute. Files created beside the workspace are invisible to
+the user's canvas -- work that simply never appears.
 
 **Will this turn write files? Then declare the span in the same breath as
 the check.** The identity check just told you where files go; when the turn
@@ -110,11 +132,12 @@ shell command is the declaration:
 mkdir -p .planton && printf 'state: composing\n' > .planton/composing.yaml
 ```
 
-Run it at the root of the folder you were given, BEFORE grounding lookups
-and scaffolding -- it is how the user's canvas presents your work honestly
-(Phase 2's step 1 says why; Phase 4 rewrites it to `state: done` at the
-finish). A declaration written after your first chart file defeats it: the
-user watches error flashes from half-written work you meant to spare them.
+Run it at the root of the folder you were given (`cd` there first -- the
+shell-location rule above), BEFORE grounding lookups and scaffolding -- it
+is how the user's canvas presents your work honestly (Phase 2's step 1
+says why; Phase 4 rewrites it to `state: done` at the finish). A
+declaration written after your first chart file defeats it: the user
+watches error flashes from half-written work you meant to spare them.
 
 ## Know your instruments (check once, first)
 
@@ -126,7 +149,12 @@ missing instrument is a fact you adapt to, not a problem you report.
 
 1. **Is the `planton` CLI here?** `planton version` (or `command -v
    planton`). Found -- you are on the **CLI arm**: everything in this skill
-   reads exactly as written. Then probe the control plane cheaply: run
+   reads exactly as written, and `references/planton-cli.md` is your
+   COMPLETE command map -- read it before your first planton command and
+   trust it: never explore with `planton help`/`planton --help` (a
+   discovery journey wastes the user's turn on commands this skill already
+   wrote down; a specific command's own `--help` is for when a command
+   from the map fails). Then probe the control plane cheaply: run
    `planton chart build <dir> -o json` on any chart directory -- exit code 2
    with an empty stdout means the environment (not the chart) is the
    problem. Read `references/build-contract.md` for the full contract. No
