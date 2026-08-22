@@ -816,6 +816,54 @@ document (~13 fixture deploys at ~1 minute each) before the host
 starts; budget `-timeout=90m` per engine (120m with the import
 round-trip enabled).
 
+### Private DNS Resolver family: serialized lanes, ~16-minute class
+
+The Private DNS Resolver family (resolver, forwarding ruleset, virtual
+network link) is a hard-serialization family: Azure allows ONE resolver
+per virtual network and ONE endpoint per delegated subnet, and every
+lane in the family -- the resolver's own smoke AND the fixture resolver
+the ruleset/link chains deploy -- anchors the same fixture network and
+delegated subnets. **Never run any two of this family's lanes
+concurrently**, and never use the `make e2e-test-component` wrapper for
+the resolver (its unanchored `-run "Test.*AzurePrivateDnsResolver"`
+regex matches all three kinds' test entries at once); use exact
+anchored filters like `-run 'TestAzurePrivateDnsResolver_Pulumi$'`.
+Measured live (eastus, both engines): every lane in the family lands in
+a tight **~15.5-17.5 minute** band -- resolver deploy 2m40s-3m08s and
+destroy ~2m30s (endpoint deletes poll past ARM's first answer), ruleset
+and link deploys/destroys 20-35 SECONDS each, with the ~7-8 minute
+fixture chain up and down dominating everything. Budget `-timeout=90m`
+per lane; endpoints bill hourly (cents for a lane-length life),
+everything else is free at rest.
+
+### Silently dropped fixture-chain deletes after resolver-endpoint teardowns: the resurfacing resource group
+
+Twice in one proof session, the lane teardown following a fixture
+RESOLVER destroy reported every dependency destroyed -- `pulumi
+destroy` succeeded per stack, no retries consumed -- while Azure kept
+the fixture VNet, most of its subnets, and the resource group. The
+delete-side signature to recognize:
+
+- The engines' subnet/VNet/RG deletes are ACCEPTED (destroy exits
+  clean) but ARM never runs them -- the session-055
+  DeleteThenPoll-returned-success-with-no-delete-job class, here hitting
+  the network chain within minutes of the resolver's endpoint deletes
+  (whose subnet-association cleanup lags server-side).
+- The resource group can RESURFACE: an `az group list` probe right
+  after teardown read clean, and a minute later the RG was back
+  (provisioningState `Succeeded`) holding the VNet -- ARM hid it during
+  the accepted-then-failed group delete. Probe AGAIN ~90 seconds later
+  before trusting a clean read between this family's lanes.
+- Nothing genuinely refuses deletion: an explicit
+  `az group delete -n <fixture-rg> --yes` clears the whole chain in
+  ~1-4 minutes, first try.
+
+The next lane fails loud and cheap at DEPENDENCIES-UP (`a resource with
+the ID ... already exists`, ~17s in) -- that gate working as designed.
+The remedy is environmental, never a module edit: delete the fixture
+resource group explicitly, re-probe after the resurface window, re-run
+the failed lane. Both occurrences' re-runs passed with zero changes.
+
 ### Bare `ServiceUnavailable` on an ARM create LRO: transient, retry the lane once
 
 Some ARM operations fail their create's long-running poll with a bare

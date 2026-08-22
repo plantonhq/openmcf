@@ -3,25 +3,33 @@ kind: ComponentE2EProfile
 metadata:
   name: azureprivatednsresolverforwardingruleset
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, offline tofu plan green for the two-rule
-  # canonical shape); live dual-engine proof has not yet run. ONE
-  # scenario runs: `minimal` (one rule to an RFC-5737 documentation
+  # green: live dual-engine proof complete. The `minimal` scenario (one
+  # rule forwarding a trailing-dot domain to an RFC-5737 documentation
   # target, bound to the fixture resolver's outbound endpoint by
-  # reference -- which live-proves the resolver-output wiring edge).
+  # reference) passed the full lifecycle on BOTH engines: the
+  # resolver-output wiring edge resolved live (the reference chained the
+  # fixture resolver's outbound_endpoint_id), ARM accepted the
+  # trailing-dot domain as authored, deploys 19-32s and destroys 23-31s
+  # (the ~7-8 minute fixture chain dominates the 16m44s-16m45s lanes),
+  # idempotency re-plans clean, 2/2 outputs populated. The Terraform
+  # lane's blind import round-trip re-imported BOTH resources -- the
+  # ruleset by ARM id, the forwarding rule by its address-key-derived
+  # child id -- with a zero-change plan and zero tolerances consumed.
   # The lane's chain deploys the fixture resolver (outbound endpoint
   # hours are the only billing meter -- cents); rulesets and rules are
   # free at rest. This kind's lane never runs in parallel with the
   # resolver or link lanes (the fixture resolver anchors the shared
-  # fixture network -- Azure allows one resolver per network).
-  # OFFLINE-ONLY with reasons: multi-rule shapes, the disabled-rule
-  # arm, per-rule metadata, and non-standard ports (pure ARM property
-  # writes on the exact create path the one-rule lane proves --
-  # plan-verified with rendered-value inspection); the two-endpoint
-  # binding (Azure caps a ruleset at 2 endpoints from the SAME
-  # resolver; the fixture carries one -- unblock: a second fixture
-  # outbound endpoint, worth it only when a consumer needs the shape).
+  # fixture network -- Azure allows one resolver per network; the
+  # family's serialization contract and the resurfacing-resource-group
+  # teardown class live in the harness manual). OFFLINE-ONLY with
+  # reasons: multi-rule shapes, the disabled-rule arm, per-rule
+  # metadata, and non-standard ports (pure ARM property writes on the
+  # exact create path the one-rule lane proves -- plan-verified with
+  # rendered-value inspection); the two-endpoint binding (Azure caps a
+  # ruleset at 2 endpoints from the SAME resolver; the fixture carries
+  # one -- unblock: a second fixture outbound endpoint, worth it only
+  # when a consumer needs the shape).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 60
