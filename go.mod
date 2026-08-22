@@ -92,6 +92,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/digitalocean/godo v1.202.0
 	github.com/fatih/color v1.18.0
 	github.com/google/cel-go v0.26.1
 	github.com/google/go-containerregistry v0.21.8
@@ -185,7 +186,6 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/digitalocean/godo v1.202.0 // indirect
 	github.com/djherbis/times v1.5.0 // indirect
 	github.com/docker/cli v29.6.2+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.3 // indirect

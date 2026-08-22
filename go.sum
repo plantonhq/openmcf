@@ -425,6 +425,8 @@ github.com/hashicorp/go-cleanhttp v0.5.2 h1:035FKYIWjmULyFRBKPs8TBQoi0x6d9G4xc9n
 github.com/hashicorp/go-cleanhttp v0.5.2/go.mod h1:kO/YDlP8L1346E6Sodw+PrpBSV4/SoxCXGY6BqNFT48=
 github.com/hashicorp/go-getter/v2 v2.2.3 h1:6CVzhT0KJQHqd9b0pK3xSP0CM/Cv+bVhk+jcaRJ2pGk=
 github.com/hashicorp/go-getter/v2 v2.2.3/go.mod h1:hp5Yy0GMQvwWVUmwLs3ygivz1JSLI323hdIE9J9m7TY=
+github.com/hashicorp/go-hclog v1.6.3 h1:Qr2kF+eVWjTiYmU7Y31tYlP1h0q/X3Nl3tPGdaB11/k=
+github.com/hashicorp/go-hclog v1.6.3/go.mod h1:W4Qnvbt70Wk/zYJryRzDRU/4r0kIg0PVHBcfoyhpF5M=
 github.com/hashicorp/go-multierror v1.1.1 h1:H5DkEtf6CXdFp0N0Em5UCwQpXMWke8IA0+lD48awMYo=
 github.com/hashicorp/go-multierror v1.1.1/go.mod h1:iw975J/qwKPdAO1clOe2L8331t/9/fmwbPZ6JB6eMoM=
 github.com/hashicorp/go-retryablehttp v0.7.7 h1:C8hUCYzor8PIfXHa4UrZkU4VvK8o9ISHxT2Q8+VepXU=
@@ -586,8 +588,6 @@ github.com/pulumi/pulumi-azure/sdk/v6 v6.38.0 h1:Dy27hUjOj545pkCX1+Hk4w69TackbAV
 github.com/pulumi/pulumi-azure/sdk/v6 v6.38.0/go.mod h1:U/+Cmdop0QSy2zy6Cmq9987Dnm+3WxKU6DIGHZpFU1o=
 github.com/pulumi/pulumi-cloudflare/sdk/v6 v6.17.0 h1:EAgb6T2aQ6GHMTyq2zAU1P7ysBgAS+sF3jW8TYy20QU=
 github.com/pulumi/pulumi-cloudflare/sdk/v6 v6.17.0/go.mod h1:xj1wh7fz3MnClHlaE1LZuJ70QktVCqechvH6n6WGI8Q=
-github.com/pulumi/pulumi-digitalocean/sdk/v4 v4.49.0 h1:7mkHTeFgT+3zFvdQlHnKW1NcGKs/E+9NFLrAkN20ntk=
-github.com/pulumi/pulumi-digitalocean/sdk/v4 v4.49.0/go.mod h1:cYq42QaPIr4lQZNKnBG9Ng5CPC8XX0BmzKK6NjZ6IKs=
 github.com/pulumi/pulumi-digitalocean/sdk/v4 v4.53.0 h1:Ds1vEDn7//8giz8c30Z37YAeWAuRLBedNIl021B/PFA=
 github.com/pulumi/pulumi-digitalocean/sdk/v4 v4.53.0/go.mod h1:/aZf3ZyT9lm2QjtP6MuhrsWMsQ84TlvMjT4kH1NkjFc=
 github.com/pulumi/pulumi-gcp/sdk/v9 v9.29.0 h1:Iuge/kZ7CrpQ8IHGa61nelS4/kmhI/kC9Fdao7MpXJU=

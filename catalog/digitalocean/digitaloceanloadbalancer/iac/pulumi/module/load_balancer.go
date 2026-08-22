@@ -28,11 +28,11 @@ func loadBalancer(
 	}
 
 	args := &digitalocean.LoadBalancerArgs{
-		Name:                           pulumi.String(spec.LoadBalancerName),
-		RedirectHttpToHttps:            pulumi.Bool(spec.RedirectHttpToHttps),
-		EnableProxyProtocol:            pulumi.Bool(spec.EnableProxyProtocol),
-		EnableBackendKeepalive:         pulumi.Bool(spec.EnableBackendKeepalive),
-		DisableLetsEncryptDnsRecords:   pulumi.Bool(spec.DisableLetsEncryptDnsRecords),
+		Name:                         pulumi.String(spec.LoadBalancerName),
+		RedirectHttpToHttps:          pulumi.Bool(spec.RedirectHttpToHttps),
+		EnableProxyProtocol:          pulumi.Bool(spec.EnableProxyProtocol),
+		EnableBackendKeepalive:       pulumi.Bool(spec.EnableBackendKeepalive),
+		DisableLetsEncryptDnsRecords: pulumi.Bool(spec.DisableLetsEncryptDnsRecords),
 	}
 
 	if spec.Region != 0 {
