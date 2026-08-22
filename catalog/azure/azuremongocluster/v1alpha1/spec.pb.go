@@ -98,7 +98,9 @@ type AzureMongoClusterSpec struct {
 	// (general purpose, dedicated vCores). Required for "Default" mode;
 	// updatable in place. "Free" and "M25" clusters cannot use
 	// zone-redundant high availability and cannot shard beyond one
-	// shard.
+	// shard, and "Free" clusters cannot use MicrosoftEntraID
+	// authentication (ARM rejects the create with 400 "Microsoft Entra
+	// ID authentication is not supported for 'Free' cluster tier").
 	ComputeTier *string `protobuf:"bytes,8,opt,name=compute_tier,json=computeTier,proto3,oneof" json:"compute_tier,omitempty"`
 	// Storage per shard in GiB, 32-32768. Required for "Default" mode;
 	// grows in place (shrinking is not supported by the service).
@@ -130,7 +132,11 @@ type AzureMongoClusterSpec struct {
 	// unset list to ["NativeAuth"] -- the engines send the list only
 	// when it is set, mirroring that service default. Include
 	// "MicrosoftEntraID" here before creating AzureMongoClusterUser
-	// grants against the cluster.
+	// grants against the cluster. Not available on the "Free" tier:
+	// ARM rejects a Free cluster listing "MicrosoftEntraID" at create
+	// (400 "Microsoft Entra ID authentication is not supported for
+	// 'Free' cluster tier" -- a server-side contract no provider
+	// schema carries); use M10 or higher when grants are needed.
 	AuthenticationMethods []string `protobuf:"bytes,13,rep,name=authentication_methods,json=authenticationMethods,proto3" json:"authentication_methods,omitempty"`
 	// User-assigned identities attached to the cluster, by ARM ID (the
 	// service supports ONLY user-assigned identities on this resource).
@@ -581,7 +587,7 @@ var File_catalog_azure_azuremongocluster_v1alpha1_spec_proto protoreflect.FileDe
 
 const file_catalog_azure_azuremongocluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"3catalog/azure/azuremongocluster/v1alpha1/spec.proto\x12,dev.planton.azure.azuremongocluster.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xbf&\n" +
+	"3catalog/azure/azuremongocluster/v1alpha1/spec.proto\x12,dev.planton.azure.azuremongocluster.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xda(\n" +
 	"\x15AzureMongoClusterSpec\x12\x8c\x01\n" +
 	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\xef\x01\n" +
 	"\x04name\x18\x02 \x01(\tB\xda\x01\xbaH\xd6\x01\xba\x01\xcf\x01\n" +
@@ -617,13 +623,14 @@ const file_catalog_azure_azuremongocluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\x04tags\x18\x17 \x03(\v2M.dev.planton.azure.azuremongocluster.v1alpha1.AzureMongoClusterSpec.TagsEntryR\x04tags\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x8c\x13\xbaH\x88\x13\x1a\xc3\x03\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xa7\x15\xbaH\xa3\x15\x1a\xc3\x03\n" +
 	"'mongo_cluster_default_mode_requirements\x12\xa9\x01Default-mode clusters (create_mode unset or 'Default') require administrator_username, version, compute_tier, storage_size_in_gb, shard_count, and high_availability_mode\x1a\xeb\x01(has(this.create_mode) && this.create_mode != 'Default') || (this.administrator_username != '' && has(this.version) && has(this.compute_tier) && has(this.storage_size_in_gb) && has(this.shard_count) && has(this.high_availability_mode))\x1a\xeb\x01\n" +
 	"&mongo_cluster_geo_replica_requirements\x12EGeoReplica-mode clusters require source_server_id and source_location\x1az!(has(this.create_mode) && this.create_mode == 'GeoReplica') || (has(this.source_server_id) && this.source_location != '')\x1a\xbb\x01\n" +
 	"\"mongo_cluster_restore_requirements\x12:PointInTimeRestore-mode clusters require the restore block\x1aY!(has(this.create_mode) && this.create_mode == 'PointInTimeRestore') || has(this.restore)\x1a\x96\x02\n" +
 	"$mongo_cluster_admin_credentials_pair\x12Fadministrator_username and administrator_password must be set together\x1a\xa5\x01(this.administrator_username == '') == !(has(this.administrator_password) && (has(this.administrator_password.value) || has(this.administrator_password.value_from)))\x1a\x9d\x01\n" +
 	"6mongo_cluster_source_location_pairs_with_source_server\x12)source_location requires source_server_id\x1a8this.source_location == '' || has(this.source_server_id)\x1a\x89\x03\n" +
-	"#mongo_cluster_burstable_tier_limits\x12nThe Free and M25 tiers cannot use ZoneRedundantPreferred high availability and cannot have more than one shard\x1a\xf1\x01!(has(this.compute_tier) && (this.compute_tier == 'Free' || this.compute_tier == 'M25')) || ((!has(this.high_availability_mode) || this.high_availability_mode != 'ZoneRedundantPreferred') && (!has(this.shard_count) || this.shard_count <= 1))\x1a\xc7\x01\n" +
+	"#mongo_cluster_burstable_tier_limits\x12nThe Free and M25 tiers cannot use ZoneRedundantPreferred high availability and cannot have more than one shard\x1a\xf1\x01!(has(this.compute_tier) && (this.compute_tier == 'Free' || this.compute_tier == 'M25')) || ((!has(this.high_availability_mode) || this.high_availability_mode != 'ZoneRedundantPreferred') && (!has(this.shard_count) || this.shard_count <= 1))\x1a\x98\x02\n" +
+	" mongo_cluster_free_tier_no_entra\x12\x81\x01The Free tier does not support MicrosoftEntraID authentication -- use M10 or higher for clusters that Entra principals sign in to\x1ap!(has(this.compute_tier) && this.compute_tier == 'Free') || !('MicrosoftEntraID' in this.authentication_methods)\x1a\xc7\x01\n" +
 	"(mongo_cluster_data_api_default_mode_only\x12>data_api_mode_enabled can only be set on Default-mode clusters\x1a[!has(this.data_api_mode_enabled) || !has(this.create_mode) || this.create_mode == 'Default'\x1a\x8d\x01\n" +
 	"(mongo_cluster_storage_type_requires_size\x12(storage_type requires storage_size_in_gb\x1a7!has(this.storage_type) || has(this.storage_size_in_gb)\x1a\xd2\x01\n" +
 	"#mongo_cluster_cmk_requires_identity\x12\\customer_managed_key requires the unwrap identity to be listed in user_assigned_identity_ids\x1aM!has(this.customer_managed_key) || this.user_assigned_identity_ids.size() > 0\x1a\x9f\x01\n" +

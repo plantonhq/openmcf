@@ -12,7 +12,7 @@ Azure never returns `create_mode` on reads, so the provider replaces the cluster
 
 ## Free and M25 are sandboxes with walls
 
-The two burstable tiers reject zone-redundant HA and sharding past one shard (enforced at manifest time here), and upgrades AWAY from them stage a tier-first update the provider performs itself -- expect two update waves in one apply. One Free cluster per subscription is Azure's own cap. Never let a Free-tier proof-of-concept quietly become production: the tier ceiling arrives as throttling, not as an error.
+The two burstable tiers reject zone-redundant HA and sharding past one shard (enforced at manifest time here), and upgrades AWAY from them stage a tier-first update the provider performs itself -- expect two update waves in one apply. One Free cluster per subscription is Azure's own cap. The Free tier also refuses Microsoft Entra ID authentication outright -- ARM rejects the create with "Microsoft Entra ID authentication is not supported for 'Free' cluster tier" (enforced at manifest time here), so a sandbox that needs passwordless app sign-in via AzureMongoClusterUser grants starts at M10. Never let a Free-tier proof-of-concept quietly become production: the tier ceiling arrives as throttling, not as an error.
 
 ## Password rotation is an update; username is forever
 
@@ -25,3 +25,7 @@ The two burstable tiers reject zone-redundant HA and sharding past one shard (en
 ## The connection strings substitute real credentials
 
 Azure returns connection strings with a `<user>:<password>` placeholder; the engines substitute the actual administrator credentials into the outputs. Treat `connection_string`/`connection_strings` as secrets end to end (they are marked sensitive on every surface) and wire consumers by reference so a password rotation propagates.
+
+## Adopting an existing cluster: expect one convergence apply
+
+Azure never returns `create_mode` or the admin password on a read, so a freshly imported cluster's state cannot carry them. The first apply after an import therefore shows one in-place update re-asserting exactly those two values from your manifest -- that is expected convergence, not drift (setting the same password again is a cloud-side no-op), and it never proposes a replace. From the second apply on, the plan is clean.

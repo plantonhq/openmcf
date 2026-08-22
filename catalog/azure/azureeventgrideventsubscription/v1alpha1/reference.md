@@ -596,6 +596,15 @@ CNCF standard; "CustomInputSchema" passes a custom-schema topic's
 events through unmapped. Defaults to "EventGridSchema" -- the
 platform sends the default explicitly.
 
+The delivery schema must be one the SOURCE can map: a topic whose
+input_schema is CloudEventSchemaV1_0 cannot deliver
+EventGridSchema -- ARM rejects the create with InvalidRequest
+("cannot be used in combination with the topic's input schema"),
+a contract enforced only server-side. When subscribing to a
+CloudEvents topic, set this field to CloudEventSchemaV1_0
+explicitly; the default only suits EventGridSchema-input sources
+(system topics and platform events always emit EventGridSchema).
+
 **ForceNew**: changing the schema destroys and recreates the
 subscription.
 

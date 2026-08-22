@@ -116,7 +116,9 @@ message AzureMongoClusterSpec {
   // (general purpose, dedicated vCores). Required for "Default" mode;
   // updatable in place. "Free" and "M25" clusters cannot use
   // zone-redundant high availability and cannot shard beyond one
-  // shard.
+  // shard, and "Free" clusters cannot use MicrosoftEntraID
+  // authentication (ARM rejects the create with 400 "Microsoft Entra
+  // ID authentication is not supported for 'Free' cluster tier").
   optional string compute_tier = 8 [(buf.validate.field).string = {
     in: [
       "Free",
@@ -182,7 +184,11 @@ message AzureMongoClusterSpec {
   // unset list to ["NativeAuth"] -- the engines send the list only
   // when it is set, mirroring that service default. Include
   // "MicrosoftEntraID" here before creating AzureMongoClusterUser
-  // grants against the cluster.
+  // grants against the cluster. Not available on the "Free" tier:
+  // ARM rejects a Free cluster listing "MicrosoftEntraID" at create
+  // (400 "Microsoft Entra ID authentication is not supported for
+  // 'Free' cluster tier" -- a server-side contract no provider
+  // schema carries); use M10 or higher when grants are needed.
   repeated string authentication_methods = 13 [(buf.validate.field).repeated = {
     unique: true
     items: {
@@ -312,6 +318,12 @@ message AzureMongoClusterSpec {
     id: "mongo_cluster_burstable_tier_limits"
     message: "The Free and M25 tiers cannot use ZoneRedundantPreferred high availability and cannot have more than one shard"
     expression: "!(has(this.compute_tier) && (this.compute_tier == 'Free' || this.compute_tier == 'M25')) || ((!has(this.high_availability_mode) || this.high_availability_mode != 'ZoneRedundantPreferred') && (!has(this.shard_count) || this.shard_count <= 1))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "mongo_cluster_free_tier_no_entra"
+    message: "The Free tier does not support MicrosoftEntraID authentication -- use M10 or higher for clusters that Entra principals sign in to"
+    expression: "!(has(this.compute_tier) && this.compute_tier == 'Free') || !('MicrosoftEntraID' in this.authentication_methods)"
   };
 
   option (buf.validate.message).cel = {

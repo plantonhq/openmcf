@@ -7,12 +7,22 @@
 # references to resolve against.
 #
 # COST AND TIME: the vault is FREE at rest and creates in one to three
-# minutes. The fixture deliberately stays at the plain defaults
-# (locally-redundant, soft delete On, no immutability, no CMK) so
-# dependent lanes stay fast and their teardown stays unblocked: an
-# immutable fixture vault would complicate deletes, and CMK is a
-# one-way door nobody wants welded onto a shared fixture. The smoke
-# scenario is where the vault's own deeper surface is proven.
+# minutes. The fixture deliberately stays close to the plain defaults
+# (locally-redundant, no immutability, no CMK) so dependent lanes stay
+# fast and their teardown stays unblocked: an immutable fixture vault
+# would complicate deletes, and CMK is a one-way door nobody wants
+# welded onto a shared fixture. The smoke scenario is where the
+# vault's own deeper surface is proven. Two deliberate departures from
+# the defaults, both serving the teardown-stays-unblocked intent:
+#
+#   - identity SYSTEM_ASSIGNED: the backup-instance lanes' RBAC grants
+#     bind to this identity's principal (Azure Backup acts AS the
+#     vault's identity when it validates disk access at instance
+#     create) -- without it the grants have no principal to name.
+#   - softDelete "Off": a destroyed backup instance on a soft-delete-On
+#     vault ghosts for 14 days and wedges the vault's own delete; Off
+#     lets a destroyed instance purge outright so the fixture chain
+#     tears down cleanly every run.
 #
 # TEARDOWN ORDER: a vault with backup instances refuses to delete --
 # the harness's reverse-order destroy (instances first) satisfies that
@@ -41,6 +51,9 @@ spec:
   name: planton-oss-e2e-fixture-dpbv
   datastoreType: VaultStore
   redundancy: LocallyRedundant
+  softDelete: "Off"
+  identity:
+    type: SYSTEM_ASSIGNED
   tags:
     e2e-suite: azure
     purpose: fixture

@@ -10,6 +10,7 @@ This preset delivers a custom topic's events into a storage queue -- the cheapes
 ## Key Configuration Choices
 
 - **Storage queue destination** -- pull-based, cheap, and tolerant of consumer downtime; note Azure ignores delivery properties on queue destinations
+- **Delivery schema matches the topic** -- Azure rejects a subscription whose delivery schema the source topic cannot map (a CloudEvents-input topic cannot deliver `EventGridSchema`); the preset pins `CloudEventSchemaV1_0` to match the catalog's topic examples -- drop it only for an `EventGridSchema`-input topic
 - **Dead-letter configured up front** -- events that exhaust retries land in a blob container instead of being dropped; create the container before deploying
 - **No filters** -- every event on the topic reaches the queue; add `subjectFilter` or `advancedFilter` when consumers need less noise
 

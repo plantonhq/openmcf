@@ -3,14 +3,16 @@ kind: ComponentE2EProfile
 metadata:
   name: azureeventgridnamespace
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, offline tofu plan green); live dual-engine
-  # proof has not yet run. ONE scenario runs: `minimal` (a 1-TU
-  # namespace with the MQTT broker on at defaults -- the create-only
-  # MQTT decision proven live; the route-topic arm stays
-  # offline-proven, reason in the scenario). NOT free at rest (~1
-  # TU-hour per lane); creates in a few minutes.
+  # PROVEN live on both engines (dual-engine six-phase runner + blind
+  # import round-trip). ONE scenario runs: `minimal` (a 1-TU namespace
+  # with one inbound CIDR and the MQTT broker on at defaults -- the
+  # create-only MQTT decision proven live; the apply-idempotency gate
+  # read clean over the always-sent session dials). Measured: create
+  # ~1m40-50s, destroy ~40-55s, full lane ~4-5 min per engine; the
+  # blind import by ARM id round-tripped zero-change with zero
+  # tolerances. The route-topic enrichment arm stays offline-proven,
+  # reason in the scenario. NOT free at rest (~1 TU-hour per lane).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

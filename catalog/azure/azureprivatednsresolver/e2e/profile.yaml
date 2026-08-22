@@ -3,23 +3,30 @@ kind: ComponentE2EProfile
 metadata:
   name: azureprivatednsresolver
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, offline tofu plans green for the static-inbound
-  # and dynamic-hybrid shapes); live dual-engine proof has not yet run.
-  # ONE scenario runs: `minimal` (one dynamic inbound + one outbound
-  # endpoint on the two delegated fixture subnets -- the fixtures'
-  # FIRST live exercise of the subnet delegation surface). Endpoints
-  # bill hourly (cents for a lane-length life); the resolver object is
-  # free. Azure allows ONE resolver per virtual network, and endpoints
-  # are one-per-subnet: this kind's lane never runs in parallel with
-  # the forwarding-ruleset or link lanes (their fixture resolver
-  # anchors to the same network and subnets). OFFLINE-ONLY with
-  # reasons: the STATIC inbound arm (pins an address inside the
-  # fixture subnet's range -- the same create path the dynamic lane
-  # proves, with one property pinned; plan-verified with
-  # rendered-value inspection); multi-endpoint shapes (pure repetition
-  # of the proven per-endpoint path; Azure caps 5 each way).
+  # green: live dual-engine proof complete. The `minimal` scenario (one
+  # dynamic inbound + one outbound endpoint on the two delegated fixture
+  # subnets -- the fixtures' first live exercise of the subnet
+  # delegation surface, accepted by ARM first-try) passed the full
+  # lifecycle on BOTH engines: deploy 2m40s-3m08s, destroy ~2m30s
+  # (endpoint deletes poll past ARM's first answer), lane total
+  # 15m31s-16m10s, idempotency re-plans clean, 6/6 outputs populated.
+  # The Terraform lane's blind import round-trip re-imported all THREE
+  # resources -- the resolver by ARM id, both endpoints by their
+  # address-key-derived child ids -- with a zero-change plan and zero
+  # tolerances consumed. Endpoints bill hourly (cents for a lane-length
+  # life); the resolver object is free. Azure allows ONE resolver per
+  # virtual network, and endpoints are one-per-subnet: this kind's lane
+  # never runs in parallel with the forwarding-ruleset or link lanes
+  # (their fixture resolver anchors to the same network and subnets --
+  # serialization contract in the harness manual's Private DNS Resolver
+  # section, alongside the resurfacing-resource-group teardown class the
+  # family's lanes taught). OFFLINE-ONLY with reasons: the STATIC
+  # inbound arm (pins an address inside the fixture subnet's range --
+  # the same create path the dynamic lane proves, with one property
+  # pinned; plan-verified with rendered-value inspection);
+  # multi-endpoint shapes (pure repetition of the proven per-endpoint
+  # path; Azure caps 5 each way).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 60

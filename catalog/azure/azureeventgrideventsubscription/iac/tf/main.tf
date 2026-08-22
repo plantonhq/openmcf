@@ -24,7 +24,12 @@ resource "azurerm_eventgrid_event_subscription" "main" {
   name  = var.spec.name
   scope = var.spec.scope
 
-  # Always sent (platform default mirrors Azure's). Create-only.
+  # Always sent (platform default mirrors Azure's). Create-only. The
+  # EventGridSchema default is only deliverable from
+  # EventGridSchema-input sources: ARM rejects the create
+  # (InvalidRequest, enforced server-side only) when the scoped topic's
+  # input_schema is CloudEventSchemaV1_0 -- such manifests must set the
+  # spec field to CloudEventSchemaV1_0 explicitly.
   event_delivery_schema = var.spec.event_delivery_schema
 
   expiration_time_utc = var.spec.expiration_time_utc != "" ? var.spec.expiration_time_utc : null

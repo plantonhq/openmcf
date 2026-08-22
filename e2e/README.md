@@ -803,6 +803,84 @@ create-time UUID generation. The sibling `SqlRoleDefinition` needs the
 same explicit-GUID treatment for `role_definition_id` when unset; its
 logical name can stay on `metadata.name`.
 
+### Long-running Azure components (Bastion hosts)
+
+A Bastion host is the ~10-minute duration class outside gateways:
+measured live (BASIC SKU, eastus, dedicated AzureBastionSubnet), the
+create ran **10-14 minutes** (13m33s Pulumi, 9m59s Terraform) and the
+delete **6-9 minutes** (6m16s / 8m41s), and the host bills (~$0.19/h)
+from creation. A full single-engine lane (fixture chain up, deploy,
+verify, destroy, verify-gone, chain down) totals **~35-45 minutes**
+because the shared subnet and address install profiles deploy every
+document (~13 fixture deploys at ~1 minute each) before the host
+starts; budget `-timeout=90m` per engine (120m with the import
+round-trip enabled).
+
+### Private DNS Resolver family: serialized lanes, ~16-minute class
+
+The Private DNS Resolver family (resolver, forwarding ruleset, virtual
+network link) is a hard-serialization family: Azure allows ONE resolver
+per virtual network and ONE endpoint per delegated subnet, and every
+lane in the family -- the resolver's own smoke AND the fixture resolver
+the ruleset/link chains deploy -- anchors the same fixture network and
+delegated subnets. **Never run any two of this family's lanes
+concurrently**, and never use the `make e2e-test-component` wrapper for
+the resolver (its unanchored `-run "Test.*AzurePrivateDnsResolver"`
+regex matches all three kinds' test entries at once); use exact
+anchored filters like `-run 'TestAzurePrivateDnsResolver_Pulumi$'`.
+Measured live (eastus, both engines): every lane in the family lands in
+a tight **~15.5-17.5 minute** band -- resolver deploy 2m40s-3m08s and
+destroy ~2m30s (endpoint deletes poll past ARM's first answer), ruleset
+and link deploys/destroys 20-35 SECONDS each, with the ~7-8 minute
+fixture chain up and down dominating everything. Budget `-timeout=90m`
+per lane; endpoints bill hourly (cents for a lane-length life),
+everything else is free at rest.
+
+### Silently dropped fixture-chain deletes after resolver-endpoint teardowns: the resurfacing resource group
+
+Twice in one proof session, the lane teardown following a fixture
+RESOLVER destroy reported every dependency destroyed -- `pulumi
+destroy` succeeded per stack, no retries consumed -- while Azure kept
+the fixture VNet, most of its subnets, and the resource group. The
+delete-side signature to recognize:
+
+- The engines' subnet/VNet/RG deletes are ACCEPTED (destroy exits
+  clean) but ARM never runs them -- the session-055
+  DeleteThenPoll-returned-success-with-no-delete-job class, here hitting
+  the network chain within minutes of the resolver's endpoint deletes
+  (whose subnet-association cleanup lags server-side).
+- The resource group can RESURFACE: an `az group list` probe right
+  after teardown read clean, and a minute later the RG was back
+  (provisioningState `Succeeded`) holding the VNet -- ARM hid it during
+  the accepted-then-failed group delete. Probe AGAIN ~90 seconds later
+  before trusting a clean read between this family's lanes.
+- Nothing genuinely refuses deletion: an explicit
+  `az group delete -n <fixture-rg> --yes` clears the whole chain in
+  ~1-4 minutes, first try.
+
+The next lane fails loud and cheap at DEPENDENCIES-UP (`a resource with
+the ID ... already exists`, ~17s in) -- that gate working as designed.
+The remedy is environmental, never a module edit: delete the fixture
+resource group explicitly, re-probe after the resurface window, re-run
+the failed lane. Both occurrences' re-runs passed with zero changes.
+
+### Bare `ServiceUnavailable` on an ARM create LRO: transient, retry the lane once
+
+Some ARM operations fail their create's long-running poll with a bare
+`ServiceUnavailable` -- empty error code, message "The service is
+unavailable now. Please retry the request later." -- minutes after the
+resource reads as materializing (a mid-poll GET saw it `Updating`).
+First live member: a Network Watcher flow log create with Traffic
+Analytics polled 12 minutes into that answer, Azure rolled the
+half-created flow log back cleanly (NotFound moments later, nothing
+stranded), and the IDENTICAL manifest created in 36 seconds on the
+retry. This is the ML MFE `InternalServerError` class wearing a 503:
+treat the first occurrence as a transient service fault -- wait out the
+failed lane's teardown, verify the half-created resource rolled back
+(flow logs live under the watcher in `NetworkWatcherRG`, NOT the
+fixture resource group, so check there), and retry once before touching
+the module. A second identical failure is the finding.
+
 ### Front Door: fast creates, ~18-minute profile deletes
 
 Azure Front Door (Standard/Premium) inverts the usual timing profile:

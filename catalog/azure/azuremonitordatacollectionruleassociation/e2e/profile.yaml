@@ -3,20 +3,26 @@ kind: ComponentE2EProfile
 metadata:
   name: azuremonitordatacollectionruleassociation
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, offline tofu plan green); live dual-engine
-  # proof has not yet run. ONE scenario runs: `minimal` (the fixture VM
-  # attached to the rule kind's smoke instance -- the chain deploys the
-  # VM's NIC/subnet/VNet fixtures and the rule's workspace fixture; the
-  # association itself is free and creates in seconds; the lane's cost
-  # is the fixture VM's hour at ~Standard_B2s). OFFLINE-ONLY with
-  # reasons: the ENDPOINT binding arm cannot run live -- a Data
-  # Collection Endpoint is not a catalog kind yet, and the arm needs a
-  # live DCE to bind (unblock: the DCE kind entering the catalog; the
-  # arm is a two-field ARM write on the same association resource the
-  # rule arm proves). The timeout budgets the VM chain, not the
-  # association.
+  # Live-proven on BOTH engines (2026-08-22): the `minimal` scenario
+  # (the fixture VM attached to the rule kind's smoke instance) ran the
+  # full lifecycle green -- the association created on an AGENT-LESS VM
+  # (Azure's design: configuration and agent rollout are decoupled),
+  # deploy ~10-21s, idempotency re-plan clean, destroy ~10-20s, and the
+  # reverse teardown (association -> VM -> rule) ran with zero InUse
+  # retries. Full lane ~17-18 min: the 8-dependency fixture chain
+  # (rule + workspace + VM + NIC/subnet/VNet + managed disk) dominates;
+  # the VM itself created in ~1.5 min. The Terraform lane's blind
+  # import round-trip re-adopted the association by its TARGET-scoped
+  # extension id ({vm_id}/providers/Microsoft.Insights/
+  # dataCollectionRuleAssociations/{name}) -- the catalog's first
+  # foreign-scoped single-id import -- with a zero-change plan, zero
+  # tolerances. OFFLINE-ONLY with reasons: the ENDPOINT binding arm
+  # cannot run live -- a Data Collection Endpoint is not a catalog kind
+  # yet, and the arm needs a live DCE to bind (unblock: the DCE kind
+  # entering the catalog; the arm is a two-field ARM write on the same
+  # association resource the rule arm proves). The timeout budgets the
+  # VM chain, not the association.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 60
